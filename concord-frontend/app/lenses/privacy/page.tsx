@@ -46,7 +46,7 @@ export default function PrivacySharingPage() {
   const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
-  const [active, setActive] = useState<PrivacyView>('consent');
+  const [active, setActive] = useState<PrivacyView>('controls');
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -79,13 +79,12 @@ export default function PrivacySharingPage() {
       <NorthStarFrame
         lensId="privacy"
         crumb="Privacy"
-        title={`What you share${who ? `, ${who}` : ''}`}
-        subtitle="Consent, DPO studio and data controls in one privacy desk"
+        title={`Your controls${who ? `, ${who}` : ''}`}
+        subtitle="Download what is yours. Requests, sharing and flows sit in the other tabs."
         tabs={VIEWS}
         activeTab={active}
         onTab={(id) => setActive(id as PrivacyView)}
         tabsLabel="Privacy views"
-        cta={{ label: 'Request my data', icon: Database, onClick: () => setActive('controls'), title: 'Open data controls: DSAR, export, retention' }}
       >
       <AnimatePresence mode="wait">
         <motion.div key={active} {...motionProps}>

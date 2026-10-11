@@ -11,9 +11,39 @@
  * @see ../README.md for architecture overview
  */
 
+import expressRateLimit from "express-rate-limit";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
+import {
+  redactLogValue,
+  actorFromCtx,
+  projectLogs,
+  denyUnlessAuthenticated,
+  denyUnlessAdmin,
+  gateLogRead,
+  gateLogAdmin,
+  sendGate,
+  mapPublicEvents,
+  buildChatConversations,
+  buildGenericEventLog,
+  finalizeActivityFeed,
+  projectTraces,
+  resolveTrace,
+  projectBusEvents,
+  projectBridgeLog,
+  selectScopedUserId,
+  summarizePerfSamples,
+  sessionOwnerLookup,
+  projectReasoningTraces,
+  reasoningTraceAccess,
+  resolveAnonMessageRead,
+  combatLogAccess,
+  isLogAdmin,
+  actorFromReq,
+} from "./lib/log-access.js";
+import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -55,6 +85,7 @@ try {
  */
 
 import express from "express";
+import { installTrustedClientIp } from "./lib/trusted-client-ip.js";
 import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
@@ -71,8 +102,18 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
 import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
+import {
+  assessDbBackupDisk,
+  finalizeVerifiedGzip,
+  cleanStaleDbBackupTemps,
+  evaluateStartupBackup,
+  recordDbBackupRunStatus,
+  applyDbBackupRetention,
+  dbBackupKeepCount,
+  dbBackupStartupIntervalMs,
+} from "./lib/db-snapshot-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -1873,6 +1914,8 @@ import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
+import { detectContentInjection } from "./lib/dtu-content-injection.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -1884,8 +1927,20 @@ const _DTU_SIDECAR_LAG_BYPASS_MS = Number(process.env.CONCORD_DTU_SIDECAR_LAG_BY
 function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
 }
+// Test seam: NODE_ENV=test may set globalThis.__dtuSidecarList to force the
+// sidecar branch (including a stale empty cache) without the Rust process.
+function _dtuSidecarListActive() {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") return true;
+  return dtuSidecar.ENABLED;
+}
+async function _dtuSidecarListCall(args) {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") {
+    return globalThis.__dtuSidecarList(args);
+  }
+  return dtuSidecar.list(args);
+}
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
-import { brainStatusForViewer, mountBrainStatusRoute } from "./lib/brain-status-public.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -1928,6 +1983,7 @@ import {
   hotReload as loaderHotReload, buildSandboxedContext,
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
 import { getArtifactSchema } from "./lib/artifact-schemas.js";
@@ -2054,6 +2110,20 @@ import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-ro
 // ~line 26290); see server/lib/csl-router.js for the gate contract and
 // docs/SPRINT-33-SPECS.md "Worker: cc-sonnet" Task 4 for the design.
 import { createCslToolGate } from "./lib/csl-router.js";
+import {
+  parseExplicitDtuSave,
+  isPdfCreateRequest,
+  explicitDtuCreateInput,
+  savedDtuReply,
+  PDF_CAPABILITY_MESSAGE,
+} from "./lib/chat/dtu-save-intent.js";
+import {
+  shouldSkipToolFollowup,
+  composeToolTurnReply,
+  toolFollowUpUserMessage,
+  followUpFailureReply,
+  ensureCreatedDtuIds,
+} from "./lib/chat/tool-turn-reply.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -2610,54 +2680,9 @@ const _SANITIZE_PATTERNS = {
   sqlKeywords: /\b(union|select|insert|update|delete|drop|truncate|exec|execute)\b.*\b(from|into|table|database)\b/gi,
 };
 
-// ---- DTU Content Injection Detection ----
-// Detects prompt injection / jailbreak patterns in DTU content that could manipulate LLM reasoning
-// Injection defense: consolidated patterns (authoritative source: injection-defense.js)
-// These inline patterns are the fast-path check; the full scan uses injection-defense.js
-const _INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i,
-  /you\s+are\s+now\s+(a|an|in)\s+/i,
-  /system\s*:\s*you\s+(are|must|should|will)/i,
-  /\bDAN\b.*\bjailbreak/i,
-  /forget\s+(everything|all|your)\s+(you|instructions?|rules?)/i,
-  /act\s+as\s+(if|though)\s+you\s+(have\s+no|don't\s+have)/i,
-  /override\s+(your|the|all)\s+(safety|content|system)/i,
-  /\[\s*SYSTEM\s*\]/i,
-  /<<\s*SYS\s*>>/i,
-];
-
-function detectContentInjection(text) {
-  if (typeof text !== "string" || text.length < 10) return { injected: false, patterns: [] };
-  const matched = [];
-  for (const pat of _INJECTION_PATTERNS) {
-    if (pat.test(text)) matched.push(pat.source.slice(0, 40));
-  }
-  // Also run the full injection defense module if available. NOTE: injection-defense.js
-  // returns `findings` (not `detections`) — the previous code mapped the wrong field
-  // and silently dropped the actual pattern matches, leaving the structuredLog line
-  // carrying an empty patterns array. That hid the real signal in 94+ false-positive
-  // dtu_injection_detected warnings (2026-08-12). Fixed to include the actual findings
-  // types so the operator can see what's matching.
-  try {
-    const injDef = globalThis._injectionDefenseModule;
-    if (injDef?.scanContent) {
-      const fullScan = injDef.scanContent(globalThis._concordSTATE || {}, text);
-      const findings = fullScan?.findings || [];
-      if (fullScan?.threatLevel && fullScan.threatLevel !== "NONE") {
-        return {
-          injected: true,
-          patterns: [
-            ...matched,
-            ...findings.map(f => `${f.type}:${f.severity ?? "?"}`),
-          ],
-          threatLevel: fullScan.threatLevel,
-          firstFinding: findings[0]?.message || null,
-        };
-      }
-    }
-  } catch (e) { logger.debug('server', 'silent catch', { error: e?.message }); }
-  return { injected: matched.length > 0, patterns: matched };
-}
+// DTU content injection detection lives in lib/dtu-content-injection.js.
+// Threat levels from injection-defense.js are lowercase ("none"). The gate
+// is case-insensitive and requires at least one finding.
 
 // Merge extended domain rules into main registry
 try {
@@ -13244,26 +13269,27 @@ try {
   structuredLog("info", "state_fields_initialized", { maps: 30, arrays: 14, objects: 7 });
 }
 
-// Auto-migrate DTU ownership (runs once, idempotent)
+// Auto-migrate DTU ownership (idempotent).
+//
+// Must persist through STATE.dtus.set(). This runs after the write-through
+// store is attached; an in-place field write never reaches `dtu_store`, and
+// saveStateDebounced() omits DTUs from the snapshot once that store is
+// active. That is why ownerless `dtu_oracle_*` (type oracle_answer) rows
+// came back with no owner and no visibility on every restart — rehydrate
+// reloads the JSON column, which the old loop never updated.
+//
+// News-feed items, system summaries, and the genesis/seed corpus are stamped
+// system-owned but stay public. Other ownerless rows (including oracle
+// answers) become system-owned and internal. See lib/dtu-ownership.js.
 {
-  let migrated = 0;
-  for (const [id, dtu] of STATE.dtus) {
-    if (dtu.ownerId) continue; // already migrated
-    if (dtu.creatorType === "user" || dtu.creatorType === "user_uploaded_text" || dtu.source === "local") {
-      dtu.ownerId = "founder";
-      dtu.visibility = dtu.visibility || "private";
-    } else {
-      dtu.ownerId = "system";
-      dtu.visibility = "internal";
+  try {
+    const ownership = normalizeOwnerlessDtus(STATE.dtus);
+    if (ownership.migrated > 0) {
+      structuredLog("info", "dtu_ownership_migration", { ...ownership, total: STATE.dtus.size });
+      saveStateDebounced();
     }
-    if (!dtu.creatorType) {
-      dtu.creatorType = dtu.ownerId === "system" ? "system" : "user";
-    }
-    migrated++;
-  }
-  if (migrated > 0) {
-    structuredLog("info", "dtu_ownership_migration", { migrated, total: STATE.dtus.size });
-    saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "dtu_ownership_migration_failed", { error: String(e?.message || e) });
   }
 }
 
@@ -13672,8 +13698,15 @@ try {
 }
 
 // ---- logging ----
-function log(type, message, meta={}) {
-  const entry = { id: uid("log"), ts: nowISO(), type, message, meta };
+function log(type, message, meta={}, actorUserId=null) {
+  const entry = {
+    id: uid("log"),
+    ts: nowISO(),
+    type: typeof type === "string" ? redactLogValue(type) : type,
+    message: typeof message === "string" ? redactLogValue(message) : message,
+    meta: redactLogValue(meta && typeof meta === "object" ? meta : {}),
+  };
+  if (actorUserId && actorUserId !== "anon" && actorUserId !== "system") entry.userId = actorUserId;
   STATE.logs.push(entry);
   if (STATE.logs.length > 2000) STATE.logs.splice(0, STATE.logs.length - 2000);
   return entry;
@@ -14186,7 +14219,9 @@ async function runMacro(domain, name, input, ctx) {
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
     graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
-    events: new Set(["list", "recent", "log", "paginated"]),
+    // events.list/recent/log/paginated read the process-wide STATE.logs ring
+    // (other sessions' chat). Not a public read — handlers require an actor
+    // and return only that caller's rows. See lib/log-access.js.
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
     // "create"/"update"/"delete" removed (public-read-write-verb-detector,
     // confirmed dead 2026-07-31): the real goals macros are
@@ -14207,7 +14242,10 @@ async function runMacro(domain, name, input, ctx) {
     metalearning: new Set(["strategies", "status"]),
     reasoning: new Set(["chains", "steps", "status", "traces", "trace"]),
     temporal: new Set(["status", "get"]),
-    inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // traces/spans/threads/checkpoints/sandboxes/costs are debug reads of
+    // other callers' inference. They are not public. `query` stays: it is
+    // the deterministic logic engine, not the span SQL console.
+    inference: new Set(["status", "query"]),
     // (The dx domain is registered later in this file with the
     //  full DX-Platform macro set; the onboarding macros
     //  `onboarding_progress` and `welcome` are appended to that
@@ -14346,7 +14384,9 @@ async function runMacro(domain, name, input, ctx) {
     feedback: new Set(["aggregate"]),
     artifact: new Set(["info", "thumbnail"]),
     // Missing frontend domains (three-gate audit scan)
-    bridge: new Set(["births", "debates", "emergents", "log", "organisms"]),
+    // `log` dropped: GET /api/bridge/log is an operator dump (query text,
+    // DTU ids) and is admin-only. The other names are catalogs, not logs.
+    bridge: new Set(["births", "debates", "emergents", "organisms"]),
     brief: new Set(["morning", "dismiss"]),
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
@@ -15498,31 +15538,37 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   });
 }, { public:false });
 
-register("multimodal","image_generate", (ctx, input={}) => {
-  enforceEthosInvariant("generate_image");
-  const flags = _c3sessionFlags(ctx);
-  if (!ctx.state.__chicken3?.multimodalEnabled) return { ok:false, error:"multimodal disabled" };
-  if (!flags.multimodalOptIn) return { ok:false, error:"session multimodal opt-in required" };
-
-  const prompt = String(input.prompt || "");
-  if (!prompt) return { ok:false, error:"prompt required" };
-
-  return governedCall(ctx, "multimodal.image_generate", async () => {
-
-  // Local-first: Stable Diffusion / ComfyUI HTTP if configured
-  const SD_URL = process.env.SD_URL || process.env.COMFYUI_URL || process.env.A1111_URL || "";
-  if (SD_URL) {
-    const body = { prompt, steps: clamp(Number(input.steps || 30), 5, 80) };
-    const r = await fetch(SD_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) }).catch(_e=>null);
-    if (r && r.ok) {
-      const j = await r.json().catch(()=>null);
-      const img = j?.images?.[0] || j?.image || j?.data?.[0] || null;
-      return { ok:true, image: img, source: "stable_diffusion", raw: j };
-    }
+register("multimodal","image_generate", async (_ctx, input={}) => {
+  // Pod GPU only. The previous body touched session flags before any
+  // image was made, so the agent loop (ctx has no session) surfaced
+  // macro_uncaught_throw — twice, when the model retried. It also told
+  // the caller to configure an outside diffusion URL. This handler never
+  // throws and never names an outside service.
+  try {
+    enforceEthosInvariant("generate_image");
+    const prompt = String(input.prompt || "").trim();
+    if (!prompt) return { ok:false, error:"prompt required" };
+    const { produceGpuImage } = await import("./lib/chat/image-router.js");
+    const gen = await produceGpuImage({
+      prompt,
+      width: input.width,
+      height: input.height,
+      seed: input.seed,
+      ownerId: _ctx?.actor?.userId,
+    });
+    if (!gen.ok) return { ok:false, error: gen.error, reason: gen.reason };
+    return {
+      ok: true,
+      url: gen.artifact.url,
+      mediaId: gen.artifact.mediaId,
+      source: gen.source,
+      width: gen.artifact.width,
+      height: gen.artifact.height,
+      prompt: gen.prompt,
+    };
+  } catch (e) {
+    return { ok: false, error: "handler_error", message: String(e?.message || e) };
   }
-
-  return { ok:false, error:"No image generation backend configured. Set SD_URL (Stable Diffusion) or COMFYUI_URL or A1111_URL" };
-  });
 }, { public:false });
 
 register("voice","transcribe", async (ctx, input={}) => {
@@ -17403,7 +17449,9 @@ function makeCtx(req=null) {
       founderSecret: req.get("x-founder-secret") || "",
       at: nowISO()
     } : null,
-    log,
+    // Stamp the caller onto STATE.logs so log.list can hide other
+    // sessions. The ring itself is process-global; attribution is not.
+    log: (type, message, meta) => log(type, message, meta, resolvedActor?.userId),
     utils: { uid, normalizeText, simpleTokens, jaccard, cretiPack, clamp },
     macro: {
       run: (domain, name, input) => runMacro(domain, name, input, makeCtx(req)),
@@ -17623,7 +17671,15 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
+              body: JSON.stringify({
+                model: brainModel,
+                messages: ollamaMessages,
+                stream: false,
+                // Not a named parameter — chat.respond passes think:false and
+                // the destructure above drops it. Read the call object here.
+                ...(typeof arguments[0]?.think === "boolean" ? { think: arguments[0].think } : {}),
+                options: { temperature, num_predict: maxTokens, num_ctx: _numCtx },
+              }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
@@ -18104,6 +18160,9 @@ function dtusByIds(ids=[]) {
   return out;
 }
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
+  // Sidecar cache is refreshed from SQLite on a timer. Record the write so
+  // dtu.list can fall back while that cache is behind.
+  try { noteDtuWrite(); } catch { /* clock */ }
   // Input sanitization: prevent XSS and normalize tags
   if (typeof sanitizeDTUInput === "function") {
     try { sanitizeDTUInput(dtu); } catch (e) { structuredLog("error", "dtu_sanitization_failed", { id: dtu?.id, error: String(e) }); }
@@ -25268,8 +25327,15 @@ register("dtu", "create", async (ctx, input) => {
       const firstKey = globalThis._injDedup.keys().next().value;
       globalThis._injDedup.delete(firstKey);
     }
-    // Tag for quarantine review rather than hard-block (reduces false positives)
+    // Tag for quarantine review rather than hard-block (reduces false positives).
+    // Record the scan so the untag script can tell a real finding from the
+    // historical "none" vs "NONE" false positive (those rows have no scan).
     if (!tags.includes("quarantine:injection-review")) tags.push("quarantine:injection-review");
+    meta.injectionScan = {
+      threatLevel: injScan.threatLevel || "pattern",
+      patterns: injScan.patterns,
+      findings: injScan.patterns,
+    };
   }
 
   // ── Lens-based visibility defaults ──────────────────────────────────
@@ -25462,6 +25528,7 @@ register("dtu", "create", async (ctx, input) => {
   }
 
   if (rawText) {
+    dtu.content = rawText;
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
@@ -25477,6 +25544,7 @@ register("dtu", "create", async (ctx, input) => {
   const isUserInitiated = source === "user" ||
     source === "forge" ||
     source === "lens" ||
+    source === "chat_tool" ||
     (actorRole && actorRole !== "system" && actorRole !== "internal");
   const _promotePublic = (
     input.promotePublic === true ||
@@ -25516,6 +25584,13 @@ register("dtu", "create", async (ctx, input) => {
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
   _beat("persisting");
+  if (input.skipAutoTag === true || meta?.skipAutoTag === true) {
+    dtu._skipAutoTag = true;
+    dtu.skipAutoTag = true;
+    if (!dtu.meta || typeof dtu.meta !== "object") dtu.meta = {};
+    dtu.meta.skipAutoTag = true;
+  }
+
   const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
@@ -25661,7 +25736,8 @@ register("dtu", "get", async (ctx, input) => {
         if (r && (r.ok === true || r.error === "DTU not found")) {
           if (!r.ok) return { ok: false, error: "DTU not found" };
           // Sidecar get is unfiltered. Apply the same private gate as the
-          // in-memory path before the body leaves this macro.
+          // in-memory path before the body leaves this macro. visibility
+          // "internal" (boot-stamped ownerless oracle answers) is included.
           if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
           return { ok: true, dtu: r.dtu };
         }
@@ -25676,6 +25752,7 @@ register("dtu", "get", async (ctx, input) => {
   // Private / user-scoped DTUs are owner-only. Same predicate as
   // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
   // the id exists. Internal callers (makeInternalCtx) are exempt.
+  // visibility "internal" is hidden here too (ctxMayReadDtu).
   if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
@@ -25688,26 +25765,18 @@ register("dtu", "update", async (ctx, input) => {
   const existing = STATE.dtus.get(id);
   if (!existing) return { ok: false, error: "DTU not found" };
 
-  // SECURITY: ownership gate — only the DTU's owner (or admin) can
-  // update it. Skipped in AUTH_MODE=public because local-first
-  // single-user installs trust the local user with everything, and
-  // skipped for legacy DTUs with no owner field so old content
-  // remains editable. Protected-seed DTUs still reject everyone via
-  // the `protected/immutable/seedOrigin` check in dtu.delete and a
-  // similar check would apply here if we ever seed immutable DTUs.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const role = ctx?.actor?.role || "guest";
-    const isAdmin = ["owner", "admin", "founder"].includes(role);
-    const ownerField = existing.ownerId || existing.createdBy || existing.createdByUser || existing.authorId;
-    const isOwner = userId && ownerField && ownerField === userId;
-    // Only gate DTUs that have a concrete foreign owner. Legacy unowned
-    // DTUs fall through (anyone can edit) so pre-existing content
-    // doesn't suddenly become read-only after an upgrade.
-    if (!isAdmin && ownerField && !isOwner && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only update your own DTUs" };
-    }
-  }
+  // Ownerless and system DTUs (no real user owner, or ownerId "system")
+  // are editable only by an admin/owner role. A member used to be able to
+  // rewrite title/content/tags on any DTU that had no owner field — that
+  // included every oracle_answer. AUTH_MODE=public stays local-first.
+  // ctx?.actor?.userId is read here so the public-read write-verb detector
+  // still sees the ownership idiom on this handler.
+  const denial = dtuMutationDenial(existing, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // ---- Optimistic Locking (Category 2: Concurrency) ----
   // If client sends expectedVersion, reject if stale
@@ -25728,6 +25797,11 @@ register("dtu", "update", async (ctx, input) => {
   const updated = { ...existing };
   if (input.title !== undefined) updated.title = String(input.title || existing.title);
   if (input.content !== undefined) updated.content = String(input.content);
+  if (input.summary !== undefined) {
+    const summary = String(input.summary);
+    updated.summary = summary;
+    updated.human = { ...(existing.human || {}), summary };
+  }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
   // Tier changes require admin role - prevent gaming via direct update
@@ -25765,26 +25839,21 @@ register("dtu", "delete", async (ctx, input) => {
     return { ok: false, error: "Cannot delete protected seed DTU" };
   }
 
-  // Ownership validation — DTU's owner fields must match actor userId
-  // (or actor must be admin). Skipped in AUTH_MODE=public (local-first
-  // single-user mode) and for legacy DTUs with no owner stamp so old
-  // content stays editable.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId);
-    const isAuthor = userId && (dtu.authorId === userId || dtu.source === userId);
-    const isAdmin = ctx?.actor?.role === "owner" || ctx?.actor?.role === "admin" || ctx?.actor?.role === "founder";
-    const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId;
-    if (hasOwner && !isOwner && !isAuthor && !isAdmin && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only delete your own DTUs" };
-    }
-  }
+  // Same ownerless/system gate as dtu.update. Anonymous callers are
+  // rejected (they used to skip the check because userId === "anon").
+  const denial = dtuMutationDenial(dtu, ctx, {
+    authMode: AUTH_MODE,
+    verb: "delete",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // Fire plugin before-delete hooks
   try { fireHook(STATE, "dtu:beforeDelete", dtu); } catch (e) { log("hook.warn", `dtu:beforeDelete: ${e?.message}`); }
 
   // Delete the DTU
   STATE.dtus.delete(id);
+  try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
@@ -25839,6 +25908,20 @@ register("dtu", "delete", async (ctx, input) => {
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
 
+// Admin custody: set visibility and owner on existing DTUs by id.
+// Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
+// without a restart. dryRun changes nothing. Role check is inside
+// assignDtuCustody (owner/admin/founder/sovereign) and the call is
+// audit-logged. Not on the public-read allowlist.
+register("dtu", "assignCustody", async (ctx, input) => {
+  const actorUserId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  return assignDtuCustody(STATE.dtus, input || {}, ctx, {
+    authMode: AUTH_MODE,
+    actorUserId,
+    persist: (dtu) => upsertDTU(dtu, { broadcast: true }),
+  });
+}, { description: "Admin-only: set visibility and owner on existing DTUs by id. dryRun leaves storage unchanged. Audit-logged." });
+
 // dtu.stats — single source of truth for DTU counts + tier/kind
 // distribution + average richness. The /api/dtus/stats REST route
 // in routes/dtus.js delegates to this macro so the two can't drift.
@@ -25883,11 +25966,12 @@ register("dtu", "list", async (ctx, input) => {
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
   // the in-memory filter below. Behaviour pinned by the differential proof at
   // engines/concord-dtu-sidecar/proof/run-proof.mjs.
-  if (dtuSidecar.ENABLED && !_dtuSidecarLagBypass()) {
+  if (_dtuSidecarListActive() && !_dtuSidecarLagBypass()) {
     try {
-      if (await dtuSidecar.isAvailable()) {
+      const testHook = process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function";
+      if (testHook || await dtuSidecar.isAvailable()) {
         const loc = _resolveViewerLocation(userId);
-        const r = await dtuSidecar.list({
+        const sidecarArgs = {
           viewer: userId || "",
           scope: scopeFilter,
           tier,
@@ -25897,8 +25981,14 @@ register("dtu", "list", async (ctx, input) => {
           offset,
           viewerRegional: loc.declaredRegional || "",
           viewerNational: loc.declaredNational || "",
+        };
+        const r = await _dtuSidecarListCall(sidecarArgs);
+        const fallback = shouldFallbackFromSidecarList(r, {
+          q: input.q || "",
+          lastWriteAt: globalThis._dtuLastWriteAt || 0,
+          now: Date.now(),
         });
-        if (r && r.ok && Array.isArray(r.dtus)) {
+        if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
           const items = r.dtus;
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
@@ -25906,7 +25996,7 @@ register("dtu", "list", async (ctx, input) => {
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          return { ok: true, dtus: items, limit, offset, total: r.total ?? items.length, _source: "dtu-sidecar" };
+          return { ok: true, dtus: items, limit, offset, total: sidecarListTotal(r), _source: "dtu-sidecar" };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -25965,7 +26055,7 @@ register("dtu", "list", async (ctx, input) => {
 
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
-  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || d.creti || "")).includes(q));
+  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -26004,7 +26094,7 @@ register("dtu", "search", (ctx, input = {}) => {
       const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
       const qq = tokenish(q);
       hits = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow")
-        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || d.creti || "")).includes(qq))
+        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq))
         .slice(0, limit);
     }
     return { ok: true, query: q, dtus: hits, total: hits.length, limit };
@@ -27754,6 +27844,31 @@ let localReply = formatCrispResponse({
   }
   // ===== END DTU CONTEXT PIPELINE =====
 
+  // An explicit "save/create a DTU titled … with content …" is fulfilled
+  // here, before the brain. The model used to answer from retrieved notes
+  // (and the CSL gate then rejected create_dtu as not_formal_intent). The
+  // id in the reply is the id that was stored. A PDF request has no tool
+  // on this path — say so, instead of inventing a file.
+  let _explicitDtu = null;
+  let _lockedReply = null;
+  const _explicitSave = parseExplicitDtuSave(prompt);
+  if (_explicitSave) {
+    try {
+      const created = await runMacro("dtu", "create", explicitDtuCreateInput(_explicitSave, sessionId), ctx);
+      const id = created?.dtu?.id || created?.id;
+      if (created?.ok && id) {
+        _explicitDtu = { id, title: created.dtu?.title || _explicitSave.title };
+        _lockedReply = savedDtuReply(_explicitDtu);
+      } else {
+        _lockedReply = `I couldn't save that DTU. ${created?.error || created?.reason || "The record store refused it."}`;
+      }
+    } catch (e) {
+      _lockedReply = `I couldn't save that DTU. ${e?.message || "create failed"}`;
+    }
+  } else if (isPdfCreateRequest(prompt)) {
+    _lockedReply = PDF_CAPABILITY_MESSAGE;
+  }
+
   let finalReply = localReply;
   let llmUsed = false;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
@@ -27798,6 +27913,7 @@ let localReply = formatCrispResponse({
         return rt.executeTurn({
           userId: cslOpts?.userId, sessionId: cslOpts?.sessionId, turnText,
           domainHint: cslOpts?.domainHint, macroHint: cslOpts?.macroHint,
+          userPrompt: cslOpts?.userPrompt,
         });
       };
     }
@@ -27807,6 +27923,7 @@ let localReply = formatCrispResponse({
     sessionId,
     userId: ctx?.actor?.userId,
     clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
+    userText: prompt,
   });
 
   // Operator-only prompt segments (lib/runtime/operator-gate.js): the V6 observe
@@ -27837,8 +27954,10 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- generate_image: Generate an image on Concord's GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
 ${_operatorToolLines}
 Rules for tool use:
+- For an explicit request to make, draw, or generate an image, use generate_image. Never recommend DALL-E, Midjourney, Stable Diffusion, or any outside image service. If the GPU server is down, say exactly: GPU image generation is offline.
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
 - Use browse_url when the user provides a URL or asks about a specific page.
@@ -27879,6 +27998,10 @@ ${_operatorV6Block}` : "";
   // Set when a deterministic engine answered the question outright (e.g. a
   // written beam-deflection problem); enforced after the brain replies.
   let _deterministicAnswer = null;
+  // Set when an explicit image request was answered by the pod GPU. The
+  // reply is the image (or the offline sentence). A later brain turn must
+  // not replace it with a recommendation for an outside image service.
+  let _imageTurn = null;
   // Compute-don't-guess on ANY model (lib/chat/compute-router.js): a fully
   // specified computational question (arithmetic, calculus, units, beam /
   // column / electrical / hydraulic / HVAC, stats, chemistry, finance…) is
@@ -27888,6 +28011,16 @@ ${_operatorV6Block}` : "";
     const _routed = _routeComputeQuestion(prompt);
     if (_routed) _deterministicAnswer = { value: _routed.value, text: _composeRoutedReply(_routed), route: _routed.route };
   } catch { /* never block chat on a compute failure */ }
+  if (!_deterministicAnswer) {
+    try {
+      const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
+      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId });
+      if (_image) {
+        _imageTurn = _image;
+        _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
+      }
+    } catch { /* never block chat on an image-router failure */ }
+  }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
     _parseObserveCalls = _v6.parseObserveCalls;
@@ -27930,32 +28063,31 @@ ${_operatorV6Block}` : "";
     try {
       switch (call.tool) {
         case "web_search": {
-          const searchResult = await runMacro("tools", "web_search", {
-            query: String(call.params.query || ""),
-            sessionId,
-          }, ctx);
-          if (!searchResult?.ok) {
-            return { tool: call.tool, ok: false, error: searchResult?.error || "web_search failed" };
-          }
-          return {
-            tool: call.tool, ok: true,
-            result: (searchResult.summary || searchResult.text || "").slice(0, MAX_TOOL_RESULT_LEN),
-            source: searchResult.source || "unknown",
-          };
+          // expert_mode.web_search, same as the agent loop. tools.web_search
+          // goes through governedCall and is rejected overlap_below_threshold
+          // once the substrate is past ~1000 DTUs.
+          const { dispatchChatWebSearch } = await import("./lib/chat-tool-surface.js");
+          return dispatchChatWebSearch(runMacro, ctx, call.params || {});
         }
         case "create_dtu": {
-          const dtuResult = await runMacro("dtu", "create", {
-            title: String(call.params.title || "Untitled"),
-            human: { summary: String(call.params.summary || ""), bullets: [] },
-            tags: Array.isArray(call.params.tags) ? call.params.tags : [],
-            tier: "regular",
-            source: "chat_tool",
-            sessionId,
-          }, ctx);
-          if (!dtuResult?.ok) {
-            return { tool: call.tool, ok: false, error: dtuResult?.error || "create_dtu failed" };
+          // The explicit-save path already minted one private DTU. A second
+          // tool call in the same turn must not mint another.
+          if (_explicitDtu?.id) {
+            return { tool: call.tool, ok: true, dtuId: _explicitDtu.id, title: _explicitDtu.title };
           }
-          return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
+          const title = String(call.params.title || "Untitled");
+          const summary = String(call.params.summary || call.params.content || title);
+          const createdInput = explicitDtuCreateInput({ title, content: summary }, sessionId);
+          if (Array.isArray(call.params.tags) && call.params.tags.length) {
+            createdInput.tags = call.params.tags.map((t) => String(t));
+          }
+          const dtuResult = await runMacro("dtu", "create", createdInput, ctx);
+          if (!dtuResult?.ok) {
+            return { tool: call.tool, ok: false, error: dtuResult?.error || dtuResult?.reason || "create_dtu failed" };
+          }
+          const dtuId = dtuResult.dtu?.id || dtuResult.id;
+          if (!dtuId) return { tool: call.tool, ok: false, error: "create_dtu returned no id" };
+          return { tool: call.tool, ok: true, dtuId, title: dtuResult.dtu?.title || title };
         }
         case "run_compute": {
           // Normalize model-invented shapes ("multiply", {expression}) onto the
@@ -28021,6 +28153,12 @@ ${_operatorV6Block}` : "";
           }
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
+        }
+        case "generate_image": {
+          // Same GPU-only path as the agent loop. Never the old
+          // multimodal.image_generate macro (it threw without ctx.state).
+          const { executeToolCall: _imageTool } = await import("./lib/chat-agent.js");
+          return _imageTool(ctx, runMacro, LENS_ACTIONS, call);
         }
         case "list_capabilities":
         case "invoke_capability": {
@@ -28119,6 +28257,7 @@ ${_operatorV6Block}` : "";
       if (r.tool === "browse_url") return `[TOOL_RESULT: browse_url url=${r.url}]\nTitle: ${r.title}\n${r.text}`;
       if (r.tool === "create_dtu") return `[TOOL_RESULT: create_dtu] Created DTU "${r.title}" (id: ${r.dtuId})`;
       if (r.tool === "run_lens_action") return `[TOOL_RESULT: run_lens_action] ${JSON.stringify(r.result).slice(0, 4000)}`;
+      if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image] Image generated and attached.`;
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 4000)}`;
     }).join("\n\n");
   };
@@ -28156,7 +28295,9 @@ ${_operatorV6Block}` : "";
     verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
   });
   const _conversationalChat = isConversationalChatMode(mode);
-  if (_deterministicAnswer) {
+  if (_lockedReply) {
+    finalReply = _lockedReply;
+  } else if (_deterministicAnswer) {
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
@@ -28448,20 +28589,36 @@ ${_operatorV6Block}` : "";
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
-        // Strip tool call markers from the initial response
-        // A JSON-only first reply (bare tool object, often with a GUESSED
-        // "answer" beside it) must not be fed back — it anchors the follow-up.
-        const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
-
+        const _genImages = _toolResults.filter((r) => r.tool === "generate_image");
         if (_arithOnly) {
           finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else if (_genImages.length > 0) {
+          // The image is the reply. A follow-up brain call restates it as
+          // "I can't generate images, try DALL-E" and drops the artifact.
+          const { markdownImageReply: _markdownImageReply } = await import("./lib/chat/image-router.js");
+          const _imgHit = _genImages.find((r) => r.artifact?.url);
+          if (_imgHit) {
+            finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.url);
+            _imageTurn = { ok: true, reply: finalReply, artifact: _imgHit.artifact, prompt: _imgHit.prompt };
+          } else {
+            finalReply = String(_genImages.find((r) => !r.ok)?.error || "GPU image generation is offline");
+            _imageTurn = { ok: false, offline: finalReply === "GPU image generation is offline", reply: finalReply };
+          }
+          _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
+        } else if (shouldSkipToolFollowup(_toolResults)) {
+          // A failed tool, or a plain DTU save, is answered from the tool
+          // result. The pre-tool assistant draft is retrieved-note context
+          // and must not become the visible reply.
+          const _toolResultsText = _formatToolResults(_toolResults);
+          finalReply = composeToolTurnReply(_toolResults) || followUpFailureReply(_toolResults, _toolResultsText);
+          ctx.log("chat_tools", "Skipped follow-up brain call; answering from tool results", { toolCount: _toolResults.length });
         } else {
-        // Build follow-up messages with tool results
+        // Follow-up sees the user prompt and the tool results only — not
+        // the pre-tool assistant draft, which is where unrelated retrieved
+        // notes were leaking into the visible reply.
         const _toolResultsText = _formatToolResults(_toolResults);
         const _followUpMessages = [
-          { role: "user", content: `User prompt:\n${prompt}` },
-          { role: "assistant", content: _cleanedInitialReply || "(tool calls issued)" },
-          { role: "user", content: `Tool results:\n${_toolResultsText}\n\nGROUNDING RULES (mandatory):\n- If web_search results include numbered snippets with title/url/excerpt, your answer MUST cite at least one real title and full https URL from those snippets. Refusing to cite when URLs are present is wrong.\n- Quote or paraphrase only from the provided excerpts — do NOT invent Google Cloud docs, API pages, or other sources not listed.\n- Only say you cannot verify when snippets are empty or clearly irrelevant to the question.\n- Do NOT output any [TOOL_CALL:] markers. Respond naturally.` }
+          { role: "user", content: toolFollowUpUserMessage(prompt, _toolResultsText) },
         ];
 
         // Make a follow-up brain call with tool results
@@ -28497,25 +28654,16 @@ ${_operatorV6Block}` : "";
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (_fuRes.ok && _fuJson.message?.content) {
             _replyDoneReason = _fuJson.done_reason || null;
-            finalReply = _enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText);
+            finalReply = ensureCreatedDtuIds(_enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText), _toolResults);
             ctx.log("chat_tools", "Follow-up brain call with tool results succeeded", { elapsed: _fuElapsed, toolCount: _toolResults.length, citeEnforce: true });
           } else {
-            // Follow-up failed — use the cleaned initial reply + inline tool results
             BRAIN.conscious.stats.errors++;
-            finalReply = _cleanedInitialReply + "\n\n" + _toolResults
-              .filter(r => r.ok)
-              .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-              .join("\n\n");
+            finalReply = followUpFailureReply(_toolResults, _toolResultsText);
             ctx.log("chat_tools", "Follow-up brain call failed, using inline results", { status: _fuRes.status });
           }
         } catch (_fuErr) {
           BRAIN.conscious.stats.errors++;
-          // Graceful degradation: append tool results to the cleaned reply
-          const _cleanReply = _stripToolCalls(finalReply);
-          finalReply = _cleanReply + "\n\n" + _toolResults
-            .filter(r => r.ok)
-            .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-            .join("\n\n");
+          finalReply = followUpFailureReply(_toolResults, _toolResultsText);
           ctx.log("chat_tools", "Follow-up brain call threw, using inline results", { error: String(_fuErr?.message || _fuErr) });
         }
         } // end non-arithmetic follow-up
@@ -28574,7 +28722,7 @@ ${_operatorV6Block}` : "";
   // brain's reply doesn't carry that number (4 significant figures), the
   // engine's answer is the reply — a model's re-derivation is never trusted
   // over the engine for a fully-specified problem.
-  if (_deterministicAnswer && typeof finalReply === "string") {
+  if (!_lockedReply && _deterministicAnswer && typeof finalReply === "string") {
     const _dv = _deterministicAnswer.value;
     const _carries = typeof _dv === "number"
       ? [String(Number(_dv.toPrecision(4))), String(Number(_dv.toPrecision(3)))].some((v) => finalReply.replace(/,(?=\d{3})/g, "").includes(v))
@@ -28583,7 +28731,7 @@ ${_operatorV6Block}` : "";
   }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
-  if (!llmUsed && localReply && finalReply === localReply) {
+  if (!_lockedReply && !llmUsed && localReply && finalReply === localReply && !_deterministicAnswer?.image) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -28605,7 +28753,7 @@ ${_operatorV6Block}` : "";
   // A length stop is not a finished reply. One short continuation, then
   // trim to the last complete sentence or list item. Persist only that
   // text — the next turn must not be handed a mid-sentence stub.
-  if (llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
+  if (!_lockedReply && llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
     try {
       const _finished = await finishLengthLimitedReply(finalReply, {
         doneReason: _replyDoneReason,
@@ -28646,6 +28794,11 @@ ${_operatorV6Block}` : "";
     }
   }
 
+  if (!_lockedReply && _toolCallsExecuted.length) {
+    finalReply = ensureCreatedDtuIds(finalReply, _toolCallsExecuted);
+  }
+  if (_lockedReply) finalReply = _lockedReply;
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
@@ -28659,6 +28812,7 @@ ${_operatorV6Block}` : "";
       brain: llmUsed ? "conscious" : "local",
       confidence: llmUsed ? 0.8 : 0.5,
       workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+      userId: ctx?.actor?.userId || null,
     });
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
@@ -28676,7 +28830,7 @@ ${_operatorV6Block}` : "";
   // Accelerated chat DTU promotion every 5 exchanges
   try {
     if (isAcceleratedPromotionDue(sess)) {
-      const _promoResult = acceleratedChatPromotion(STATE, sessionId);
+      const _promoResult = acceleratedChatPromotion(STATE, sessionId, ctx?.actor?.userId || null);
       if (_promoResult.promoted > 0 || _promoResult.megaCreated) {
         ctx.log("chat_enrichment", "Accelerated chat DTU promotion", {
           sessionId, promoted: _promoResult.promoted,
@@ -28881,6 +29035,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
       tool: t.tool, ok: t.ok,
       params: t.params || {},
@@ -28942,69 +29097,15 @@ ${_operatorV6Block}` : "";
 // ===== CHAT PIPELINE MACROS =====
 // New macros for the DTU-enriched context pipeline.
 
-register("chat", "tools", (ctx, _input = {}) => {
+register("chat", "tools", async (ctx, _input = {}) => {
   try {
   const flags = _c3sessionFlags(ctx);
-  const globalEnabled = Boolean(STATE.__chicken3?.toolsEnabled);
-  const sessionOptIn = flags.toolsOptIn;
-  const available = globalEnabled && sessionOptIn;
-
-  const tools = [
-    {
-      name: "web_search",
-      description: "Search the web for current information using DuckDuckGo or SearxNG.",
-      params: { query: { type: "string", required: true, description: "Search query" } },
-      requiresOptIn: true,
-    },
-    {
-      name: "create_dtu",
-      description: "Create a new DTU (Decision/Thought Unit) from the conversation.",
-      params: {
-        title: { type: "string", required: true, description: "DTU title" },
-        summary: { type: "string", required: false, description: "Brief summary" },
-        tags: { type: "array", required: false, description: "Tags for categorization" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_compute",
-      description: "Run a physics, chemistry, math, quantum, or engineering calculation. Keys: chemistry.molecularAnalysis, chemistry.balanceReaction, physics.beamDeflection, quantum.simulateCircuit, engineering.columnBuckling, statistics.linearRegression, etc.",
-      params: {
-        key: { type: "string", required: true, description: "module.function e.g. chemistry.balanceReaction" },
-        input: { type: "object", required: false, description: "Function-specific arguments" },
-      },
-      requiresOptIn: false,
-    },
-    {
-      name: "browse_url",
-      description: "Fetch and read the text content of any public web page.",
-      params: {
-        url: { type: "string", required: true, description: "Full https:// URL" },
-        selector: { type: "string", required: false, description: "Optional CSS selector to narrow content" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_lens_action",
-      description: "Invoke a lens domain action (e.g., legal.draft, finance.analyze).",
-      params: {
-        domain: { type: "string", required: true, description: "Lens domain" },
-        action: { type: "string", required: true, description: "Action name" },
-        params: { type: "object", required: false, description: "Action-specific parameters" },
-      },
-      requiresOptIn: true,
-    },
-  ];
-
-  // Compute module keys for discovery
-  const computeKeys = [
-    "chemistry.molecularAnalysis","chemistry.balanceReaction","chemistry.solutionChemistry","chemistry.enthalpyOfReaction","chemistry.gibbsFreeEnergy",
-    "physics.beamDeflection","physics.windLoad","physics.momentOfInertia","physics.heatTransfer","physics.carnotEfficiency","physics.idealGasLaw",
-    "quantum.simulateCircuit","quantum.analyzeCircuit","quantum.measureCircuit","quantum.circuitDepth",
-    "engineering.columnBuckling","engineering.weldStrength","engineering.reinforcedConcreteWall","engineering.voltageDrop","engineering.heatLoadCalc",
-    "statistics.linearRegression","statistics.polynomialRegression","statistics.pearsonCorrelation","statistics.fitNormal","statistics.hypothesisTest",
-    "math.differentiate","math.integrate","math.solve","math.simplify",
-  ];
+  const { buildChatToolsReport } = await import("./lib/chat-tool-surface.js");
+  const report = buildChatToolsReport({
+    toolsEnabled: STATE.__chicken3?.toolsEnabled,
+    sessionOptIn: flags.toolsOptIn,
+    operator: _isOperatorActor(ctx),
+  });
 
   // List registered lens actions
   const lensActions = [];
@@ -29013,18 +29114,9 @@ register("chat", "tools", (ctx, _input = {}) => {
     lensActions.push({ domain, action, key });
   }
 
-  return {
-    ok: true,
-    available,
-    globalEnabled,
-    sessionOptIn,
-    tools,
-    lensActions,
-    computeKeys,
-    usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
-  };
+  return { ok: true, ...report, lensActions };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "List all tools available to the chat system and their opt-in status." });
+}, { description: "List the tools chat.respond and the agent loop actually inject, and whether each path will dispatch them." });
 
 // Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
 // a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The
@@ -33257,21 +33349,18 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "list", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 100), 200);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const events = logs.slice(-limit).map((log) => ({
-        id: log.id || undefined,
-        type: log.domain || "system",
-        action: log.action || "event",
-        message: log.message || "",
-        timestamp: log.ts || log.timestamp || null,
-        meta: log.meta || {},
-      }));
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const events = mapPublicEvents(projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) }));
       return { ok: true, events, count: events.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Recent system events (GET /api/events)." });
+  }, { description: "Recent system events scoped to the caller (GET /api/events). Admin sees the full ring." });
 
   register("events", "recent", async (ctx, input = {}) => {
     return _aliasRun(ctx, "events", "list", { ...input, limit: input.limit || 50 });
@@ -33279,25 +33368,35 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "log", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 20), 100);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      return { ok: true, log: logs.slice(-limit), count: Math.min(logs.length, limit) };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const log = projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) });
+      return { ok: true, log, count: log.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Tail of STATE.logs (read-only)." });
+  }, { description: "Tail of STATE.logs scoped to the caller (admin sees all)." });
 
   register("events", "paginated", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 50), 200);
       const offset = Math.max(Number(input.offset || 0), 0);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const slice = logs.slice().reverse().slice(offset, offset + limit);
-      return { ok: true, events: slice, limit, offset, total: logs.length };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const visible = projectLogs(logs, actor, { limit: logs.length || 1, sessionOwner: sessionOwnerLookup(sessions) });
+      const slice = visible.slice().reverse().slice(offset, offset + limit);
+      return { ok: true, events: slice, limit, offset, total: visible.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Paginated events from STATE.logs." });
+  }, { description: "Paginated STATE.logs scoped to the caller (admin sees all)." });
 
   register("daily", "list", async (ctx, input = {}) => {
     const r = await _aliasRun(ctx, "daily", "list_mine", input);
@@ -33785,21 +33884,23 @@ register("settings", "set", (ctx, input) => {
       try {
         if (typeof getBrainStatus === "function") {
           const raw = { ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined };
-          return { ...brainStatusForViewer(raw, ctx?.actor), aliasOf: "GET /api/brain/status" };
+          return authenticatedBrainStatus(raw, ctx?.actor, { aliasOf: "GET /api/brain/status" });
         }
         return _honest("brain.status", "no_macro_substrate", "getBrainStatus unavailable");
       } catch (e) {
         return _honest("brain.status", "handler_error", String(e?.message || e));
       }
-    }, { description: "Per-brain health (mirrors GET /api/brain/status)." });
+    }, { description: "Per-brain health (mirrors GET /api/brain/status). Anonymous refused; members get no URLs or model names." });
   }
   if (!MACROS.get("brain")?.has("health")) {
     register("brain", "health", async (ctx, _input = {}) => {
       // Lightweight projection — full probe is GET /api/brain/health (expensive).
       try {
         if (typeof getBrainStatus === "function") {
-          const s = brainStatusForViewer(getBrainStatus(), ctx?.actor);
-          return { ok: true, ...s, note: "macro projection; for live Ollama probes use GET /api/brain/health", aliasOf: "getBrainStatus" };
+          return authenticatedBrainStatus(getBrainStatus(), ctx?.actor, {
+            note: "macro projection; for live Ollama probes use GET /api/brain/health",
+            aliasOf: "getBrainStatus",
+          });
         }
         return _honest("brain.health", "no_macro_substrate", "use GET /api/brain/health");
       } catch (e) {
@@ -34019,8 +34120,16 @@ register("interface", "tabs", (_ctx, _input) => {
 
 // Logs domain
 register("log", "list", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAuthenticated(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit || 200), 1, 2000);
-  return { ok:true, logs: ctx.state.logs.slice(-limit) };
+  const sessions = ctx.state?.sessions || STATE.sessions;
+  const logs = projectLogs(ctx.state?.logs || STATE.logs, actor, {
+    limit,
+    sessionOwner: sessionOwnerLookup(sessions),
+  });
+  return { ok: true, logs };
 });
 
 // Materials test domain (debug hook)
@@ -35548,32 +35657,36 @@ register("paper","export", (ctx, input) => {
 register("observability", "log_error", (ctx, input = {}) => {
   try {
     const { lensId, message, stack, componentStack } = input || {};
-    const entry = {
+    const _errUser = ctx?.actor?.userId;
+    const entry = redactLogValue({
       at: Date.now(),
       kind: "client_error",
       lensId: String(lensId || "unknown"),
       message: String(message || "").slice(0, 500),
       stack: String(stack || "").slice(0, 4000),
       componentStack: String(componentStack || "").slice(0, 2000),
-      userId: ctx?.actor?.userId || null,
-    };
+      userId: _errUser && _errUser !== "anon" ? _errUser : null,
+    });
     (STATE.logs ||= []).push(entry);
     return { ok: true, result: { logged: true, lensId: entry.lensId } };
   } catch { return { ok: true, result: { logged: false }, reason: "log_failed" }; }
 }, { note: "Sink for LensErrorBoundary client-side error reports." });
 
 register("audit","query", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAdmin(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
   const contains = normalizeText(input.contains||"");
-  const logs = (STATE.logs||[]).slice(-2000).filter(x => {
+  const logs = projectLogs(STATE.logs || [], actor, { limit: 2000 }).filter(x => {
     if (!x) return false;
-    if (domain && String(x.domain||"") !== domain) return false;
+    if (domain && String(x.domain || x.type || "") !== domain) return false;
     if (contains && !JSON.stringify(x).toLowerCase().includes(contains.toLowerCase())) return false;
     return true;
   }).slice(-limit);
   return { ok:true, logs };
-}, { summary:"Query recent audit logs (in-memory mirror)."} );
+}, { summary:"Query recent audit logs (admin/owner only; secrets redacted)."} );
 
 
 // =================== VERIFY / SCORE / DERIVE MACROS (minimal, opt-in) ===================
@@ -36805,13 +36918,16 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
 
 const app = express();
 
-// ---- Trust Proxy ----
-// Required when behind a reverse proxy (nginx, traefik, Docker, Cloudflare).
-// Without this, Express thinks protocol is HTTP → secure cookies are not set,
-// req.ip returns the proxy IP, and rate limiting/CSRF break.
-if (NODE_ENV === "production" || process.env.TRUST_PROXY) {
-  app.set("trust proxy", process.env.TRUST_PROXY || 1);
-}
+// ---- Trust Proxy / client IP (INC-20261010-15) ----
+// Loopback peers only (cloudflared and the Next.js rewrite on this host).
+// TRUST_PROXY=1 as a string is not hop-count 1 — proxy-addr reads it as
+// 0.0.0.1 — so every proxied login was one 127.0.0.1 bucket. The middleware
+// sets req.ip from CF-Connecting-IP or the rightmost non-loopback
+// X-Forwarded-For hop, and logs when it still has to share a bucket.
+// Rate limiters below (authRateLimiter, the general limiter, unauth,
+// upload) and routes/auth.js checkLoginRateLimit / the register cap all
+// key on req.ip, so they follow this. See lib/trusted-client-ip.js.
+installTrustedClientIp(app);
 
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
@@ -40321,6 +40437,9 @@ app.post("/api/telemetry/console-ping", express.json({ limit: "2kb" }), asyncHan
   const result = cs.recordConsolePing({ userAgent, gamepadId });
   res.json(result);
 }));
+// Reviewed 2026-10-10: device-class counts only (no user id, session,
+// UA string, or token). Stays public so the console-demand page can
+// render without a login. Do not add raw pings to this payload.
 app.get("/api/telemetry/console-stats", asyncHandler(async (_req, res) => {
   const cs = await import("./lib/console-stats.js");
   res.json({ ok: true, ...cs.getConsoleStats() });
@@ -40353,21 +40472,12 @@ app.post("/api/world/perf-telemetry", express.json({ limit: "8kb" }), (req, res)
     res.status(400).json({ ok: false, error: "invalid_payload" });
   }
 });
-app.get("/api/world/perf-telemetry", (_req, res) => {
-  const s = _perfTelemetry.samples;
-  if (!s.length) return res.json({ ok: true, samples: 0, breachRate: 0, p50Fps: 0, p10Fps: 0 });
-  const fps = s.map(x => x.avgFps).sort((a,b) => a-b);
-  const breaches = s.reduce((a,x) => a + x.breaches, 0);
-  const total = s.reduce((a,x) => a + x.samples, 0) || 1;
-  res.json({
-    ok: true,
-    samples: s.length,
-    breachRate: Math.round((breaches / total) * 10000) / 100,
-    p50Fps: fps[Math.floor(fps.length * 0.5)],
-    p10Fps: fps[Math.floor(fps.length * 0.1)],
-    p90Fps: fps[Math.floor(fps.length * 0.9)],
-    recent: s.slice(-30),
-  });
+app.get("/api/world/perf-telemetry", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  // Aggregates only for a member. `recent` includes other clients' UA
+  // strings and is admin-only. POST intake above stays anonymous.
+  res.json(summarizePerfSamples(_perfTelemetry.samples, gate.actor));
 });
 
 // E4 — client-error intake. Public-write (Gate-1 POST bypass already whitelists
@@ -43428,7 +43538,7 @@ register("admin", "logs", (ctx, input) => {
   // alias of `ts` because the admin lens frontend reads `log.at`.
   let logs = STATE.logs || [];
   if (type) logs = logs.filter(l => l.type === type);
-  logs = logs.slice(-limit).reverse().map(l => ({ ...l, at: l.ts }));
+  logs = logs.slice(-limit).reverse().map(l => redactLogValue({ ...l, at: l.ts }));
 
   return { ok: true, logs, count: logs.length };
 });
@@ -47099,9 +47209,12 @@ app.post("/api/system/circuit-breakers/reset", requireOwner, asyncHandler(async 
 
 // Request traces
 app.get("/api/system/traces", asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit || "50", 10);
   const minDurationMs = req.query.slow ? parseInt(req.query.slow, 10) : undefined;
-  res.json(getRecentTraces({ limit, minDurationMs }));
+  const body = getRecentTraces({ limit, minDurationMs });
+  res.json(redactLogValue(body));
 }));
 
 app.get("/api/system/trace-metrics", asyncHandler(async (req, res) => {
@@ -52195,44 +52308,11 @@ app.get("/api/chat/messages", requireAuth(), async (req, res) => {
     const db = STATE.db;
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 
-    // Owner gate — the chat_sessions row must belong to the caller.
-    // Anonymous (NULL owner_id) sessions can't be cross-loaded; they're
-    // per-browser and localStorage-scoped by design.
-    let ownerRow;
-    try {
-      ownerRow = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-    if (!ownerRow) return res.status(404).json({ ok: false, error: "session_not_found" });
-    if (!ownerRow.owner_id || ownerRow.owner_id !== userId) {
-      return res.status(403).json({ ok: false, error: "session_forbidden" });
-    }
-
-    let rows;
-    try {
-      rows = db.prepare(`
-        SELECT role, content, ts, meta_json
-        FROM chat_messages
-        WHERE session_id = ?
-        ORDER BY ts ASC
-        LIMIT ?
-      `).all(sessionId, limit);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-
-    const messages = (rows || []).map(r => {
-      let meta = null;
-      try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
-      return {
-        role: r.role,
-        content: r.content,
-        ts: new Date(r.ts).toISOString(),
-        meta: meta || undefined,
-      };
-    });
-    res.json({ ok: true, sessionId, messages });
+    // Unknown session → 200 empty list (the code lens asks before the first
+    // message). Another user's session stays 403. See chat-messages-read.js.
+    const { readChatMessages } = await import("./lib/chat-messages-read.js");
+    const read = readChatMessages(db, { userId, sessionId, limit });
+    return res.status(read.status).json(read.body);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -55013,6 +55093,52 @@ register("whiteboard", "list", (ctx, _input) => {
   return { ok: true, whiteboards, count: whiteboards.length };
 });
 
+// Delete and rename are owner-only. A missing ownerId is not ownership:
+// legacy boards stay readable, but a stranger cannot remove them.
+function _wbCallerId(ctx) {
+  return ctx?.actor?.userId || ctx?.userId || null;
+}
+function _wbMutateGate(dtu, ctx) {
+  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found", status: 404 };
+  const owner = dtu.ownerId || null;
+  const caller = _wbCallerId(ctx);
+  if (!owner || !caller || owner !== caller) return { ok: false, error: "owner_required", status: 403 };
+  return null;
+}
+
+register("whiteboard", "rename", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  const next = String(input?.title || "").trim();
+  if (!next) return { ok: false, error: "title required", status: 400 };
+  const wb = dtu.machine.data || {};
+  wb.title = next;
+  wb.updatedAt = nowISO();
+  dtu.machine.data = wb;
+  dtu.title = `Whiteboard: ${next}`;
+  dtu.updatedAt = wb.updatedAt;
+  STATE.dtus.set(whiteboardId, dtu);
+  saveStateDebounced();
+  return { ok: true, whiteboard: wb };
+});
+
+register("whiteboard", "delete", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  STATE.dtus.delete(whiteboardId);
+  saveStateDebounced();
+  return { ok: true, deleted: true, id: whiteboardId };
+});
+
+function _wbHttp(res, result) {
+  const status = result && result.ok === false && Number.isInteger(result.status) ? result.status : 200;
+  return res.status(status).json(result);
+}
+
 app.post("/api/collab/session", asyncHandler(async (req, res) => res.json(await runMacro("collab", "createSession", req.body, makeCtx(req)))));
 app.post("/api/collab/join", asyncHandler(async (req, res) => res.json(await runMacro("collab", "join", req.body, makeCtx(req)))));
 app.post("/api/collab/edit", asyncHandler(async (req, res) => res.json(await runMacro("collab", "edit", req.body, makeCtx(req)))));
@@ -55023,6 +55149,8 @@ app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await r
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
 app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
 app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
+app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 5: Collaboration & Whiteboard" });
@@ -55848,40 +55976,46 @@ app.post("/api/obsidian/import", asyncHandler(async (req, res) => res.json(await
 app.post("/api/notion/import", asyncHandler(async (req, res) => res.json(await runMacro("notion", "import", req.body, makeCtx(req)))));
 app.get("/api/integrations", asyncHandler(async (req, res) => res.json(await runMacro("integration", "list", {}, makeCtx(req)))));
 
-// Additional endpoints for frontend compatibility
+// Additional endpoints for frontend compatibility.
+// The ring is global; the response is not. Anonymous 401, a member sees
+// only rows attributed to them, admin/owner/founder/sovereign see all.
 app.get("/api/events", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
-    // Return recent system events/logs
-    const events = (STATE.logs || []).slice(-100).map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-      meta: log.meta || {}
-    }));
+    const events = mapPublicEvents(
+      projectLogs(STATE.logs || [], gate.actor, { limit: 100, sessionOwner: sessionOwnerLookup(STATE.sessions) }),
+      () => uid("evt"),
+    );
     return res.json({ ok: true, events, count: events.length });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
-// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions
+// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions.
+// Each row is tagged with the user ids allowed to see it. Unattributed rows
+// (another session's DTU title, a system log) are admin-only.
 app.get("/api/events/paginated", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
     const domain = req.query.domain;
     const entityType = req.query.entityType;
     const activities = [];
+    const sessionOwner = sessionOwnerLookup(STATE.sessions);
 
     // Source 1: DTU lifecycle events from thought timeline
     for (const e of THOUGHT_TIMELINE) {
+      const parties = [e.userId, e.snapshot?.userId, e.snapshot?.ownerId, e.snapshot?.owner_id].filter(Boolean);
       activities.push({
         id: e.id, type: "dtu", action: e.action,
         message: `DTU ${e.action}: ${e.snapshot?.title || e.dtuId}`,
         entityId: e.dtuId, entityType: "dtu",
-        timestamp: e.timestamp, meta: e.snapshot || {}
+        timestamp: e.timestamp, meta: e.snapshot || {},
+        _parties: parties,
       });
     }
 
@@ -55896,19 +56030,24 @@ app.get("/api/events/paginated", (req, res) => {
             id: r.id, type: r.category || "system", action: r.action,
             message: `${r.action} ${r.path || ""}`.trim(),
             entityId: r.user_id, entityType: r.category || "audit",
-            timestamp: r.timestamp, meta: det
+            timestamp: r.timestamp, meta: det,
+            _parties: r.user_id ? [r.user_id] : [],
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
     // Source 3: Recent structured logs
-    for (const log of (STATE.logs || []).slice(-200)) {
+    for (const logEntry of (STATE.logs || []).slice(-200)) {
+      const parties = [logEntry.userId, logEntry.meta?.userId];
+      const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
+      if (sessOwner) parties.push(sessOwner);
       activities.push({
-        id: log.id || uid("evt"), type: log.domain || "system",
-        action: log.action || "log", message: log.message || "",
-        entityId: null, entityType: log.domain || "system",
-        timestamp: log.ts || log.timestamp || nowISO(), meta: log.meta || {}
+        id: logEntry.id || uid("evt"), type: logEntry.type || logEntry.domain || "system",
+        action: logEntry.action || "log", message: logEntry.message || "",
+        entityId: logEntry.userId || null, entityType: logEntry.domain || "system",
+        timestamp: logEntry.ts || logEntry.timestamp || nowISO(), meta: logEntry.meta || {},
+        _parties: parties.filter(Boolean),
       });
     }
 
@@ -55922,24 +56061,20 @@ app.get("/api/events/paginated", (req, res) => {
             message: `${tx.type}: ${tx.amount} credits${tx.memo ? " — " + tx.memo : ""}`,
             entityId: tx.from_user_id || tx.to_user_id, entityType: "transaction",
             timestamp: tx.created_at,
-            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id }
+            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id },
+            _parties: [tx.from_user_id, tx.to_user_id].filter(Boolean),
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
-    // Filter
     let filtered = activities;
     if (domain) filtered = filtered.filter(a => a.type === domain);
     if (entityType) filtered = filtered.filter(a => a.entityType === entityType);
 
-    // Sort descending, paginate
-    filtered.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
-    const total = filtered.length;
-    const page = filtered.slice(offset, offset + limit);
-    return res.json({ ok: true, events: page, total, limit, offset });
+    return res.json(finalizeActivityFeed(filtered, gate.actor, { limit, offset }));
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json(emptyEventsPage(String(e?.message || e), { limit, offset }));
   }
 });
 
@@ -55957,42 +56092,22 @@ app.post("/api/undo", (req, res) => {
   }
 });
 
-// Events log — threads lens expects conversations from chat sessions
+// Events log — threads lens expects conversations from chat sessions.
+// type=chat used to return every session's title, summary, and last
+// message. It now returns only sessions the caller owns or participates in.
 app.get("/api/events/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const type = req.query.type;
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
     if (type === "chat") {
-      // Build conversation list from STATE.sessions
-      const conversations = [];
-      for (const [sessionId, sess] of (STATE.sessions || new Map())) {
-        const msgs = sess.messages || [];
-        if (msgs.length === 0) continue;
-        const userMsgs = msgs.filter(m => m.role === "user");
-        const lastMsg = msgs[msgs.length - 1];
-        conversations.push({
-          id: sessionId,
-          title: userMsgs[0]?.content?.slice(0, 80) || "Untitled",
-          summary: userMsgs.slice(-1)[0]?.content?.slice(0, 120) || "",
-          lastMessage: lastMsg?.content?.slice(0, 200) || "",
-          messageCount: msgs.length,
-          createdAt: sess.createdAt || msgs[0]?.ts || nowISO(),
-          updatedAt: lastMsg?.ts || sess.createdAt || nowISO(),
-        });
-      }
-      conversations.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-      return res.json({ ok: true, conversations: conversations.slice(0, limit) });
+      const conversations = buildChatConversations(STATE.sessions, gate.actor, limit);
+      return res.json({ ok: true, conversations });
     }
 
-    // Generic event log
-    const events = (STATE.logs || []).slice(-limit).reverse().map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-    }));
+    const events = buildGenericEventLog(STATE.logs || [], gate.actor, limit, sessionOwnerLookup(STATE.sessions));
     return res.json({ ok: true, events });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -56147,11 +56262,13 @@ app.get("/api/system/adaptive-status", (_req, res) => {
 });
 // dtu_store). These are operational telemetry (repair cortex events, etc.)
 // and live in their own table so they don't pollute the DTU knowledge
-// substrate. Public endpoint so the operator dashboard can surface them.
+// substrate. Operator-only: gateLogAdmin. Payloads are redacted on read.
 //
 // Filters: ?subsystem=repair_cortex&severity=error&sinceMs=1700000000000&limit=200
 app.get("/api/system/operations-log", async (_req, res) => {
   try {
+    const gate = gateLogAdmin(_req);
+    if (!gate.ok) return sendGate(res, gate);
     // ES-module dynamic import — server.js uses ESM, not CommonJS.
     const { getOperationsLog } = await import("./lib/dtu-operations-log.js");
     const filters = {};
@@ -56161,12 +56278,12 @@ app.get("/api/system/operations-log", async (_req, res) => {
     if (_req.query.sinceMs) filters.sinceMs = Number(_req.query.sinceMs);
     if (_req.query.limit) filters.limit = Number(_req.query.limit);
     const rows = getOperationsLog(db, filters);
-    return res.json({
+    return res.json(redactLogValue({
       ok: true,
       count: rows.length,
       filters,
       entries: rows,
-    });
+    }));
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -60828,32 +60945,56 @@ app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) =
 // Phase CF9 — HLR reasoning trace (surface hlr-engine.js).
 app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
   const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
-  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+  const userId = req.user?.id || req.user?.userId || null;
+  const body = { ...(req.body || {}) };
+  if (userId) body.userId = userId;
+  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(body) });
 }));
 
-app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+app.get("/api/reasoning/traces", perEndpointRateLimit("read.default"), expressRateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX,
+  message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: _rateLimitKey,
+  skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+}), asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const m = await import("./emergent/hlr-engine.js");
   const limit = Number(req.query.limit) || 50;
   // Wave 7 / B6 — also surface the durable agent deliberation journal (mig 327): the
   // "what I was thinking" the awareness loop writes on each tier-3 wake (with the
   // attended quale + prediction-error surprise + the awareness-index correlate).
+  // NPC journal rows are operator telemetry, not the caller's reasoning.
   let agentTraces = [];
-  try {
-    const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
-    const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
-    agentTraces = (STATE?.db?.prepare(
-      `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
-       FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
-    ).all(...args)) || [];
-  } catch { /* agent_reasoning_traces optional */ }
-  res.json({ ok: true, traces: m.listTraces(limit), agentTraces, modes: Object.values(m.REASONING_MODES) });
+  if (isLogAdmin(gate.actor)) {
+    try {
+      const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
+      const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
+      agentTraces = (STATE?.db?.prepare(
+        `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
+         FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
+      ).all(...args)) || [];
+    } catch { /* agent_reasoning_traces optional */ }
+  }
+  res.json({
+    ok: true,
+    traces: projectReasoningTraces(m.listTraces(limit), gate.actor),
+    agentTraces: redactLogValue(agentTraces),
+    modes: Object.values(m.REASONING_MODES),
+  });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const { getReasoningTrace } = await import("./emergent/hlr-engine.js");
   const t = getReasoningTrace(req.params.traceId);
-  if (!t) return res.status(404).json({ ok: false, error: "no_trace" });
-  res.json({ ok: true, trace: t });
+  const access = reasoningTraceAccess(t, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, trace: redactLogValue(t) });
 }));
 
 // Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
@@ -61291,8 +61432,14 @@ app.get("/api/party-combat/:sessionId/state", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
-  const { listActionLog } = await import("./lib/party-combat.js");
-  res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const { listActionLog, getCombatState } = await import("./lib/party-combat.js");
+  const state = getCombatState(db, req.params.sessionId);
+  if (!state) return res.status(404).json({ ok: false, error: "no_session" });
+  const access = combatLogAccess(state.combatants, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, log: redactLogValue(listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100)) });
 }));
 
 // Phase DB9 — active session lookup for the fluid combat HUD.
@@ -63489,11 +63636,18 @@ app.get("/api/anon/identity", (req, res) => {
 });
 
 app.get("/api/anon/messages", (req, res) => {
-  // Anonymous messages stored in sessions
-  const sessionId = req.query.sessionId || req.cookies?.concord_anon;
+  const cookieSessionId = req.cookies?.concord_anon || null;
+  const querySessionId = req.query.sessionId ? String(req.query.sessionId) : null;
+  const sessionId = querySessionId || cookieSessionId;
   const session = sessionId ? STATE.sessions.get(sessionId) : null;
-  const messages = session?.messages || [];
-  res.json({ ok: true, messages: messages.slice(-50) });
+  const read = resolveAnonMessageRead({
+    session,
+    actor: actorFromReq(req),
+    cookieSessionId,
+    querySessionId,
+  });
+  if (read.status !== 200) return res.status(read.status).json({ ok: false, error: read.error });
+  res.json({ ok: true, messages: read.messages });
 });
 
 app.post("/api/anon/rotate", (req, res) => {
@@ -65699,7 +65853,11 @@ app.get("/api/rbac/org-lenses/:orgId", (req, res) => {
 });
 
 app.get("/api/rbac/audit-export/:orgId", (req, res) => {
-  try { res.json(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/rbac/metrics", (req, res) => {
@@ -65805,7 +65963,11 @@ app.get("/api/compliance/retention/:orgId", (req, res) => {
 });
 
 app.get("/api/compliance/log", (req, res) => {
-  try { res.json(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/compliance/status", (req, res) => {
@@ -65882,7 +66044,9 @@ app.get("/api/atlas/auto-promote-gate/:id", (req, res) => {
 });
 
 app.get("/api/atlas/write-guard/log", (req, res) => {
-  try { res.json({ ok: true, log: getWriteGuardLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getWriteGuardLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/atlas/write-guard/metrics", (req, res) => {
@@ -66001,7 +66165,9 @@ app.get("/api/atlas/invariants/metrics", (req, res) => {
 });
 
 app.get("/api/atlas/invariants/log", (req, res) => {
-  try { res.json({ ok: true, log: getInvariantLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getInvariantLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Atlas v2: Chat Loose Mode Endpoints ─────────────────────────────────────
@@ -66474,9 +66640,10 @@ app.post("/api/brain/wants/decay", (_req, res) => {
 
 // Per-brain health and stats endpoint.
 // getBrainStatus() is the single source of truth for mode/onlineCount/
-// avgResponseMs/embeddings. URLs inside it are internal (pod / docker
-// hostnames) and are returned only to admins — members get the same
-// status with those fields removed. See lib/brain-status-public.js.
+// avgResponseMs/embeddings. URLs and model names inside it are operator
+// diagnostics: anonymous callers get 401, members get the same health
+// fields with those stripped, admins get the raw object.
+// See lib/brain-status-public.js (stricter than PR #1098's URL-only redaction).
 mountBrainStatusRoute(app, () => ({ ...getBrainStatus(), llmReady: LLM_READY }));
 
 // Spontaneous message endpoints
@@ -66870,7 +67037,10 @@ app.post("/api/brain/entity/explore", asyncHandler(async (req, res) => {
 // Tracks consecutive failures per brain to avoid marking offline on a single timeout
 const _brainHealthFailures = {};
 const BRAIN_HEALTH_FAILURE_THRESHOLD = 3; // Only mark offline after 3 consecutive failures
-app.get("/api/brain/health", asyncHandler(async (_req, res) => {
+app.get("/api/brain/health", asyncHandler(async (req, res) => {
+  const _brainDenied = denyAnonymousBrainRead(req);
+  if (_brainDenied) return res.status(_brainDenied.status).json(_brainDenied.body);
+  const _sendBrainHealth = (body) => res.json(brainStatusForViewer(body, req.user));
   // CI / no-Ollama deployments set CONCORD_DISABLE_BRAINS=true. Skip the
   // 5×8 s parallel Ollama probes that would otherwise return useless
   // failure rows + leave the event loop holding 5 dead sockets during
@@ -66881,7 +67051,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
     for (const [name, brain] of Object.entries(BRAIN)) {
       health[name] = { online: false, healthy: false, model: brain.model, error: "brains_disabled" };
     }
-    return res.json({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
+    return _sendBrainHealth({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
   }
   const health = {};
   const probes = Object.entries(BRAIN).map(async ([name, brain]) => {
@@ -66946,7 +67116,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
   });
   await Promise.all(probes);
   const allHealthy = Object.values(health).every(r => r.online);
-  res.json({ ok: true, allHealthy, ...health, brains: health });
+  _sendBrainHealth({ ok: true, allHealthy, ...health, brains: health });
 }));
 
 // LLM Fallback health — shows active tiers and available fallback layers
@@ -67134,10 +67304,15 @@ app.get("/api/admin/backup/status", requireAuth(), requireRole("owner"), asyncHa
 
 // ---- Admin: Centralized Logs Endpoint ----
 app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  // requireAuth/requireRole no-op when AUTH_MODE=public. This handler is
+  // also shadowed by routes/domain.js (registered first). The gate stays
+  // so a reorder cannot reopen the buffer to a member.
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const logMod = await import("./logger.js");
     const { level, source, lens, since, search, limit } = req.query;
-    const logs = logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 });
+    const logs = redactLogValue(logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 }));
     res.json({ logs, total: logs.length });
   } catch {
     res.json({ logs: [], total: 0 });
@@ -67146,6 +67321,8 @@ app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(asy
 
 // ---- Admin: Log Stream (SSE) ----
 app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   let logMod;
   try { logMod = await import("./logger.js"); } catch { return res.status(500).end(); }
   startSSE(res);
@@ -67157,7 +67334,7 @@ app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHand
       const newLogs = buf.slice(lastIndex);
       if (newLogs.length > 0) {
         for (const entry of newLogs) {
-          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+          res.write(`data: ${JSON.stringify(redactLogValue(entry))}\n\n`);
         }
         lastIndex = buf.length;
       }
@@ -71577,9 +71754,12 @@ eventBus.on("dtu.composted", (evt) => {
 
 // Event Bus API routes
 app.get("/api/events/bus", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 100;
   const type = req.query.type;
-  res.json({ ok: true, events: eventBus.getHistory(limit, { type }), stats: eventBus.getStats() });
+  const history = eventBus.getHistory(10000, { type });
+  res.json({ ok: true, events: projectBusEvents(history, gate.actor, limit), stats: eventBus.getStats() });
 });
 
 app.get("/api/events/bus/stats", (_req, res) => {
@@ -71972,17 +72152,19 @@ function startTrace(trigger) {
 }
 
 app.get("/api/traces", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 50;
   const minDuration = parseInt(req.query.minDuration) || 0;
-  let traces = [...STATE._traces].reverse();
-  if (minDuration > 0) traces = traces.filter(t => (t.totalDuration || 0) >= minDuration);
-  res.json({ ok: true, traces: traces.slice(0, limit) });
+  const traces = projectTraces(STATE._traces, gate.actor, { limit, minDuration });
+  res.json({ ok: true, traces });
 });
 
 app.get("/api/traces/:id", (req, res) => {
-  const trace = STATE._traces.find(t => t.traceId === req.params.id);
-  if (!trace) return res.status(404).json({ ok: false, error: "Trace not found" });
-  res.json({ ok: true, trace });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const resolved = resolveTrace(STATE._traces, req.params.id, gate.actor);
+  res.status(resolved.status).json(resolved.body);
 });
 
 // ---------- #85: RATE LIMITER & COST GOVERNOR ----------
@@ -72040,9 +72222,9 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 }
 
 app.get("/api/rate-limits", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const limits = STATE._rateLimits.get(userId);
   const hourAgo = Date.now() - 60 * 60 * 1000;
   const recentCalls = limits ? limits.calls.filter(t => t > hourAgo).length : 0;
@@ -72050,11 +72232,11 @@ app.get("/api/rate-limits", (req, res) => {
 });
 
 app.get("/api/costs", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
-  res.json({ ok: true, ...account });
+  res.json({ ok: true, userId, ...redactLogValue(account) });
 });
 
 // ---------- #87: MIGRATION ENGINE ----------
@@ -73187,11 +73369,12 @@ app.post("/api/bridge/validate", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/bridge/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-  const action = req.query.action;
-  let log = STATE._bridge.log;
-  if (action) log = log.filter(e => e.action === action);
-  res.json({ ok: true, log: log.slice(-limit), total: log.length });
+  const out = projectBridgeLog(STATE._bridge?.log, gate.actor, { limit, action: req.query.action });
+  if (out.ok === false) return res.status(403).json(out);
+  res.json(out);
 });
 
 app.get("/api/bridge/organisms", (_req, res) => {
@@ -84920,7 +85103,7 @@ function autoClassifyDTU(dtu) {
  */
 function applyAutoTagging(dtu) {
   try {
-    if (!dtu || dtu._skipAutoTag) return;
+    if (dtuSkipsAutoTag(dtu)) return;
     const autoDomains = autoClassifyDTU(dtu);
     if (autoDomains.length === 0) return;
     const existing = new Set(dtu.tags || []);
@@ -84991,16 +85174,18 @@ async function retroTagAllDTUs() {
     let processed = 0;
 
     for (const dtu of dtus) {
-      // Auto-classify and merge tags
-      const domains = autoClassifyDTU(dtu);
-      if (domains.length > 0) {
-        const existing = new Set(dtu.tags || []);
-        const before = existing.size;
-        for (const d of domains) existing.add(d);
-        if (existing.size > before) {
-          dtu.tags = Array.from(existing);
-          dtu.updatedAt = new Date().toISOString();
-          tagged++;
+      // Authored DTUs that set skipAutoTag keep the tags they were saved with.
+      if (!dtuSkipsAutoTag(dtu)) {
+        const domains = autoClassifyDTU(dtu);
+        if (domains.length > 0) {
+          const existing = new Set(dtu.tags || []);
+          const before = existing.size;
+          for (const d of domains) existing.add(d);
+          if (existing.size > before) {
+            dtu.tags = Array.from(existing);
+            dtu.updatedAt = new Date().toISOString();
+            tagged++;
+          }
         }
       }
 
@@ -85842,7 +86027,9 @@ app.get("/api/search", (req, res) => {
 // ── Automated Backup System ──────────────────────────────────────────────────
 // BACKUP_DIR already declared at top-level (line ~4626)
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const _BACKUP_RETENTION_DAYS = 1; // 2026-09-05: keep newest only (disk pressure)
+// Dated YYYY-MM-DD copies to keep after a verified publish. Default 2 so a
+// same-day rewrite still leaves the previous day. CONCORD_DB_BACKUP_KEEP.
+const _BACKUP_RETENTION_DAYS = dbBackupKeepCount();
 
 async function runBackup() {
   try {
@@ -85914,26 +86101,49 @@ async function runBackup() {
     // page-by-page under a read transaction and yields a consistent, valid
     // database even under concurrent writes. Snapshot to a temp file, gzip
     // that, delete it.
+    // Gzip goes to concord.db.gz.tmp-<pid> in this directory, then fsync +
+    // gzip-test + rename onto concord.db.gz. createWriteStream on the final
+    // path truncated the only good copy for the whole multi-GB write.
+    let dbGzipVerified = false;
+    let dbSkip = null;
+    let gzipPath = null;
     try {
       const _db = STATE?.db || globalThis._concordDB;
-      const gzipPath = `${backupDir}/concord.db.gz`;
-      if (_db && typeof _db.backup === "function") {
-        const snapPath = `${backupDir}/.concord.db.snapshot`;
+      const finalGzipPath = `${backupDir}/concord.db.gz`;
+      gzipPath = `${backupDir}/concord.db.gz.tmp-${process.pid}`;
+      const disk = await assessDbBackupDisk(DB_PATH, backupDir);
+      if (!disk.ok) {
+        dbSkip = { skipped: true, reason: "low_disk", message: disk.message };
+        structuredLog("warn", "backup_db_skipped_low_disk", {
+          message: disk.message,
+          needBytes: disk.needBytes,
+          freeBytes: disk.freeBytes,
+          dbBytes: disk.dbBytes,
+          source: DB_PATH,
+        });
+        try {
+          await recordDbBackupRunStatus(BACKUP_DIR, {
+            result: "skipped",
+            reason: "low_disk",
+            message: disk.message,
+            needBytes: disk.needBytes,
+            freeBytes: disk.freeBytes,
+            dbBytes: disk.dbBytes,
+            at: new Date().toISOString(),
+          });
+        } catch (statusErr) {
+          structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+        }
+      } else if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot.tmp-${process.pid}`;
         // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
         // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room. The one-step copy still runs, but
-        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
-        // loop for up to 8.4s and the shedder 503'd login during warmup.
-        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
-        let freeBytes = Infinity;
-        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
-        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
-        if (freeBytes < needBytes) {
-          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
-        }
+        // honestly when there's no room (free < db × 1.3). The one-step copy
+        // still runs, but in a worker: on the main thread an ~8.9 GB snapshot
+        // blocked the loop for up to 8.4s and the shedder 503'd login during warmup.
         try {
           await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
@@ -85941,8 +86151,10 @@ async function runBackup() {
             zlib.createGzip({ level: 6 }),
             fs.createWriteStream(gzipPath),
           );
+          await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+          dbGzipVerified = true;
           const { size: sourceBytes } = await fs.promises.stat(snapPath);
-          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
           structuredLog("info", "backup_db_captured", {
             source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
           });
@@ -85957,8 +86169,10 @@ async function runBackup() {
           zlib.createGzip({ level: 6 }),
           fs.createWriteStream(gzipPath),
         );
+        await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+        dbGzipVerified = true;
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
-        const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+        const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
         structuredLog("info", "backup_db_captured", {
           source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
@@ -85969,28 +86183,76 @@ async function runBackup() {
       }
     } catch (e) {
       structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+      if (gzipPath) await fs.promises.rm(gzipPath, { force: true }).catch(() => {});
     }
 
-    // Keep the newest dated DB directories only. Do not readdir+sort the
-    // whole folder: JSON state backups live here too, and digit-leading
-    // YYYY-MM-DD names sort first, so retention 1 deleted the directory
-    // this run just wrote whenever any backup-*.json / auto-*.json existed.
-    try {
-      pruneDatedDbBackups(BACKUP_DIR, {
-        retentionDays: _BACKUP_RETENTION_DAYS,
-        protectName: timestamp,
-      });
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    // Keep the newest N dated DB directories only after the new gzip is
+    // verified. Do not readdir+sort the whole folder: JSON state backups
+    // live here too, and digit-leading YYYY-MM-DD names sort first, so the
+    // old retention deleted the directory this run just wrote whenever any
+    // backup-*.json / auto-*.json existed. backups-legacy is not a date name.
+    if (dbGzipVerified) {
+      try {
+        await recordDbBackupRunStatus(BACKUP_DIR, {
+          result: "ok",
+          reason: null,
+          message: null,
+          at: new Date().toISOString(),
+          filename: `${timestamp}/concord.db.gz`,
+        });
+      } catch (statusErr) {
+        structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+      }
+      try {
+        applyDbBackupRetention(BACKUP_DIR, {
+          keep: _BACKUP_RETENTION_DAYS,
+          protectName: timestamp,
+          verified: dbGzipVerified,
+        });
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
 
-    structuredLog("info", "backup_complete", { backupDir });
-    return { ok: true, path: backupDir, timestamp };
+    structuredLog("info", "backup_complete", { backupDir, dbVerified: dbGzipVerified, dbSkip: dbSkip?.reason ?? null });
+    return {
+      ok: true,
+      path: backupDir,
+      timestamp,
+      dbVerified: dbGzipVerified,
+      ...(dbSkip ? { skipped: true, reason: dbSkip.reason, message: dbSkip.message } : {}),
+    };
   } catch (e) {
     console.error("[Backup] Failed:", String(e?.message || e));
     return { ok: false, error: String(e?.message || e) };
   }
 }
 
-// Run backup on startup (delayed) and periodically
+// Scheduled backup stays on _BACKUP_INTERVAL_MS and always runs runBackup.
+// Boot does not: a deploy restart used to rewrite a 9GB gzip in place every
+// time. Skip when the newest verified snapshot is younger than
+// CONCORD_DB_BACKUP_STARTUP_INTERVAL_HOURS (default 6).
+async function _backupOnStartup() {
+  try {
+    await cleanStaleDbBackupTemps(BACKUP_DIR);
+  } catch (e) {
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) });
+  }
+  let decision = { skip: false, reason: "no_decision" };
+  try {
+    decision = await evaluateStartupBackup(BACKUP_DIR, { intervalMs: dbBackupStartupIntervalMs() });
+  } catch (e) {
+    decision = { skip: false, reason: "decision_failed", error: String(e?.message || e) };
+  }
+  if (decision.skip) {
+    // Do not overwrite a low_disk status: a young verified backup is why boot
+    // skipped, and the admin status should still show the last disk refusal
+    // until a backup actually succeeds.
+    structuredLog("info", "backup_startup_skipped", decision);
+    return { ok: true, skipped: true, reason: "fresh_verified_backup" };
+  }
+  structuredLog("info", "backup_startup_running", { reason: decision.reason || "due" });
+  return runBackup();
+}
+
 // `.catch` rather than try/catch: runBackup is async now, so a rejection is
 // NOT caught by a synchronous try block around the call — it would surface as
 // an unhandled rejection instead. runBackup already returns `{ok:false}` on
@@ -86001,7 +86263,14 @@ const _backupTick = () => {
       structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 };
-_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setTimeout(() => {
+  cleanStaleDbBackupTemps(BACKUP_DIR).catch((e) =>
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) }));
+}, 0));
+_unrefInTest(setTimeout(() => {
+  Promise.resolve(_backupOnStartup()).catch((e) =>
+    structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+}, 60000)); // 1 min after start, gated on the newest verified backup
 _unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {

@@ -607,6 +607,19 @@ export default function registerCodeActions(registerLensAction) {
    * return `{ supported: false }` so the caller can fall back to the broader
    * runner pipeline.
    */
+  registerLensAction("code", "exec-status", () => {
+    const enabled = codeExecEnabled();
+    return {
+      ok: true,
+      result: {
+        enabled,
+        reason: enabled
+          ? ""
+          : "Live code execution is disabled in this environment. Enable with CONCORD_CODE_EXEC_ENABLED=1 (node:vm is not a hardened sandbox).",
+      },
+    };
+  });
+
   registerLensAction("code", "exec", async (_ctx, _artifact, params = {}) => {
     // Accept `source` as an alias for `code` (the productivity notebook + some callers
     // use `source`). node:vm here is the accepted boundary for a personal JS notebook —

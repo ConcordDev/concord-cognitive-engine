@@ -20,19 +20,15 @@
 // and props.vehicle.frontalAreaFrom naming a cad-body node.
 
 import { registerSolver } from "../registry.js";
-import { readStlFile, sectionAreas, meshExtent } from "../../aero/stl-sections.js";
+import { cachedStlTriangles, sectionAreas, meshExtent } from "../../aero/stl-sections.js";
 import { dragBuildup, rearSlantDeg, ISA_SEA_LEVEL, BUILDUP_COEFFICIENTS, AERO_SOURCES, DRAG_BUILDUP_VERSION } from "../../aero/drag-buildup.js";
 import { solvePanels, PANEL2D_VERSION } from "../../aero/panel2d.js";
 
 export const AERO_FROM = "aero.drag-buildup";
-const STL_CACHE = new Map(); // sha256 -> triangles
 const STATIONS = 80;
 
 function trianglesOf(stl) {
-  if (stl.sha256 && STL_CACHE.has(stl.sha256)) return STL_CACHE.get(stl.sha256);
-  const t = readStlFile(stl.path);
-  if (stl.sha256) { STL_CACHE.set(stl.sha256, t); while (STL_CACHE.size > 4) STL_CACHE.delete(STL_CACHE.keys().next().value); }
-  return t;
+  return cachedStlTriangles(stl);
 }
 
 /** Top and bottom z of the cut x = c, from triangle-edge intersections (the section's vertical extent). */

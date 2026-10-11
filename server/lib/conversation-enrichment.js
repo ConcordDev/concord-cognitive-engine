@@ -16,6 +16,7 @@
  */
 
 import crypto from "crypto";
+import { applyPrivateOwner, realDtuOwnerId } from "./dtu-read-access.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ export function createOutputDTU(STATE, opts) {
       confidence: opts.confidence ?? null,
       workingSetDtuIds: (opts.workingSetDtuIds || []).slice(0, 20),
       responseLength: response.length,
+      userId: opts.userId || null,
     },
     lineage: { parents: [], children: [] },
     source: "chat-enrichment",
@@ -289,9 +291,10 @@ export function isAcceleratedPromotionDue(sess) {
  *
  * @param {Object} STATE - Global server state
  * @param {string} sessionId - Session identifier
+ * @param {string} [userId] - Requesting user. Stamped as owner when real.
  * @returns {{ ok: boolean, promoted?: number, megaCreated?: boolean, megaId?: string }}
  */
-export function acceleratedChatPromotion(STATE, sessionId) {
+export function acceleratedChatPromotion(STATE, sessionId, userId) {
   if (!STATE.shadowDtus || !STATE.dtus) {
     return { ok: true, promoted: 0, megaCreated: false };
   }
@@ -320,6 +323,13 @@ export function acceleratedChatPromotion(STATE, sessionId) {
       dtu.meta.promotedFrom = "shadow";
       dtu.meta.promotedAt = new Date().toISOString();
       dtu.meta.promotionReason = "chat_accelerated";
+
+      // Chat text leaving the shadow store is private. A missing user still
+      // promotes (callers assert the move) but the row stays owner-only,
+      // which with no owner means nobody can read it through the list gate.
+      const owner = realDtuOwnerId(userId) || realDtuOwnerId(dtu.machine?.userId);
+      applyPrivateOwner(dtu, owner);
+      if (owner && dtu.machine) dtu.machine.userId = owner;
 
       // Move from shadowDtus to dtus (the main substrate)
       STATE.dtus.set(id, dtu);
@@ -375,6 +385,7 @@ export function acceleratedChatPromotion(STATE, sessionId) {
       machine: {
         kind: "chat_mega",
         sessionId,
+        userId: realDtuOwnerId(userId),
         sourceCount: sessionRegulars.length,
         consolidatedAt: new Date().toISOString(),
         styleVector: (STATE.styleVectors && STATE.styleVectors.get(sessionId)) || null,
@@ -388,6 +399,7 @@ export function acceleratedChatPromotion(STATE, sessionId) {
       authority: { model: "consolidated", score: 0.9 },
       hash: crypto.createHash("sha256").update(megaId).digest("hex").slice(0, 16),
     };
+    applyPrivateOwner(megaDtu, userId);
 
     STATE.dtus.set(megaId, megaDtu);
     megaCreated = true;
@@ -502,6 +514,7 @@ export function forgeFromMessage(STATE, opts) {
     authority: { model: "user", score: 0.5 },
     hash: crypto.createHash("sha256").update(messageContent).digest("hex").slice(0, 16),
   };
+  applyPrivateOwner(dtu, opts.userId);
 
   // Add to main DTU store (not shadow)
   if (!STATE.dtus) STATE.dtus = new Map();

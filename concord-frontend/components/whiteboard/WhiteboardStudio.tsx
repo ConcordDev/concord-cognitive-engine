@@ -39,6 +39,7 @@ import { WhiteboardMoodboardPanel } from './WhiteboardMoodboardPanel';
 import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
 import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
+import { BoardOwnerMenu } from './BoardOwnerMenu';
 import {
   type BoardMode,
   type SketchTool as Tool,
@@ -879,6 +880,12 @@ export function WhiteboardStudio({
                     <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); exportCanvas(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Export PNG</button>
                     <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportSVG(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Export SVG</button>
                     <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportClipboardJSON(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Copy JSON</button>
+                    <BoardOwnerMenu
+                      boardId={selectedWbId}
+                      title={boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title)}
+                      onRenamed={() => { queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }); }}
+                      onDeleted={() => { setSelectedWbId(null); setShowModeMenu(false); queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); }}
+                    />
                   </>
                 )}
               </motion.div>
