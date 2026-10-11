@@ -413,12 +413,16 @@ export function AllianceWorkspace() {
   });
 
   useEffect(() => {
-    if (tab !== 'members' || !selAlliance || !isAdmin) {
-      setOutgoingInvites([]);
-      return;
-    }
-    loadOutgoingInvites(selAlliance);
-  }, [tab, selAlliance, isAdmin, loadOutgoingInvites]);
+    if (tab !== 'members' || !selAlliance || !isAdmin) return;
+    const allianceId = selAlliance;
+    let cancelled = false;
+    (async () => {
+      const r = await run<{ invites: Invite[] }>('invite-list', { allianceId });
+      if (cancelled || !r.ok || !r.result) return;
+      setOutgoingInvites((r.result.invites || []).filter((i) => i.status === 'pending' && i.allianceId === allianceId));
+    })();
+    return () => { cancelled = true; };
+  }, [tab, selAlliance, isAdmin]);
 
   const sendDm = () => guard('dm-send', async () => {
     if (!selDmPartner || !dmDraft.trim()) return;
@@ -898,10 +902,10 @@ export function AllianceWorkspace() {
                       </button>
                     </div>
                   )}
-                  {isAdmin && outgoingInvites.length > 0 && (
+                  {isAdmin && outgoingInvites.some((i) => i.allianceId === selAlliance) && (
                     <div className="space-y-1.5">
                       <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Pending invites</h5>
-                      {outgoingInvites.map((inv) => (
+                      {outgoingInvites.filter((i) => i.allianceId === selAlliance).map((inv) => (
                         <div key={inv.id} className="flex items-center gap-2 text-sm bg-lattice-deep p-2 rounded">
                           <span className="text-white">{inv.inviteeName || 'Member'}</span>
                           <span className="text-xs text-gray-400">{inv.role}</span>
