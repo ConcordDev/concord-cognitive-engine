@@ -57,7 +57,18 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.get("/api/dtus", asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);
-      const out = await runMacro("dtu","list",{ q:req.query.q, tier:req.query.tier || "any", limit:req.query.limit, offset:req.query.offset, scope: req.query.scope || null, mine: req.query.mine, owner: req.query.owner, domain: req.query.domain || null, kind: req.query.kind || null }, ctx);
+      const out = await runMacro("dtu","list",{
+        q: req.query.q || req.query.search || "",
+        tag: req.query.tag || req.query.tags || "",
+        tier: req.query.tier || "any",
+        limit: req.query.limit,
+        offset: req.query.offset,
+        scope: req.query.scope || null,
+        mine: req.query.mine,
+        owner: req.query.owner,
+        domain: req.query.domain || null,
+        kind: req.query.kind || null,
+      }, ctx);
       res.json(out);
     } catch (e) {
       const { status, clientMsg } = sanitizeMacroError(e, "dtu.list");

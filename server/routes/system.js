@@ -13,7 +13,8 @@ import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
 import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
-import { dtuMatchesQuery, shapePaginatedBody } from "../lib/dtu-list-source.js";
+import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
+import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -725,7 +726,9 @@ export default function registerSystemRoutes(app, {
     const tag = req.query.tag || null;
     const query = String(req.query.query || req.query.q || "").trim().toLowerCase();
     const scopeFilter = req.query.scope || null;
-    const userId = req.user?.id || null;
+    // Cookie auth sets req.user. The actor middleware (when it has already
+    // run) stamps userId and omits id. Either one is the signed-in owner.
+    const userId = viewerIdFromCtx(req);
 
     // Pass the viewer so the user's OWN private DTUs are visible (a bare
     // userVisibleDTUs() call hides every private DTU, including their own).
@@ -739,14 +742,11 @@ export default function registerSystemRoutes(app, {
       dtus = dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
       dtus = userId
-        ? dtus.filter(d => d.scope === "global" || !d.ownerId || d.ownerId === userId)
+        ? dtus.filter(d => d.scope === "global" || !dtuListedOwner(d) || dtuListedOwner(d) === userId)
         : dtus.filter(d => !d.scope || d.scope === "global");
     } else if (userId) {
       // "mine" (default + explicit scope=local/mine): the viewer's own DTUs only.
-      dtus = dtus.filter(d => {
-        const owner = d.ownerId || d.createdBy || d.authorId;
-        return owner === userId;
-      });
+      dtus = dtus.filter(d => dtuListedOwner(d) === userId);
     } else {
       // Anonymous: only global DTUs.
       dtus = dtus.filter(d => !d.scope || d.scope === "global");
@@ -755,6 +755,10 @@ export default function registerSystemRoutes(app, {
     if (tier) dtus = dtus.filter(d => d.tier === tier);
     if (tag) dtus = dtus.filter(d => (d.tags || []).includes(tag));
     if (query) dtus = dtus.filter(d => dtuMatchesQuery(d, query));
+    // Newest first so a DTU created seconds ago is on page 1 of My vault
+    // (the DTUs lens asks for offset 0 / limit 20). The visibility cache
+    // returns a shared array; filter already copied it.
+    dtus.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     const result = paginateResults(dtus, { page, pageSize });
     return res.json(shapePaginatedBody(result));
   });

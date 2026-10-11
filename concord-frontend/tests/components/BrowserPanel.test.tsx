@@ -93,8 +93,34 @@ describe('BrowserPanel', () => {
     expect(screen.getByText('No unit selected')).toBeTruthy();
     expect(screen.getByText('2020-01-02T03:04:05.000Z')).toBeTruthy();
     expect(paginated).toHaveBeenCalled();
-    const params = paginated.mock.calls[0][0] as { query?: string };
+    const params = paginated.mock.calls[0][0] as { query?: string; scope?: string };
     expect(params.query).toBe('helix');
+    expect(params.scope).toBe('mine');
+  });
+
+  it('loads My vault and renders a private DTU from the paginated list', async () => {
+    const privateRow = {
+      ...row,
+      id: 'dtu-private',
+      title: 'Owner search repro',
+      visibility: 'private',
+      scope: 'local',
+    };
+    paginated.mockResolvedValue({
+      data: {
+        ok: true,
+        dtus: [privateRow],
+        total: 1,
+        pagination: { total: 1, hasNext: false },
+      },
+    });
+    renderPanel();
+    expect(await screen.findByText('Owner search repro')).toBeTruthy();
+    const params = paginated.mock.calls[0][0] as { scope?: string; limit?: number; offset?: number; query?: string };
+    expect(params.scope).toBe('mine');
+    expect(params.limit).toBe(20);
+    expect(params.offset).toBe(0);
+    expect(params.query).toBeUndefined();
   });
 
   it('filters by tier, pages, switches to grid, and runs compute actions after a selection', async () => {
