@@ -200,6 +200,54 @@ describe("assembly of the library car", () => {
     assert.match(svg, /Sheet 3 of 3/);
     assert.ok(sheet.items.some((it) => it.t === "line" && it.pts.length > 4), "side cutaway has a profile");
   });
+
+  it("styles an EV skateboard first and keeps the hood low", () => {
+    const layout = doc.checks.find((c) => c.id === "powertrain-layout");
+    assert.equal(layout.status, "pass");
+    assert.equal(doc.surface.spec.layout, "ev_skateboard");
+    assert.match(layout.detail, /ev skateboard|floor battery/i);
+    assert.match(layout.detail, /range was not specified|Range was not specified/);
+    assert.match(layout.detail, /400 km/);
+    assert.match(layout.detail, /gasoline/);
+    for (const id of ["BATTERY", "MOTOR_FRONT", "MOTOR_REAR", "INVERTER", "COOLING"]) {
+      assert.ok(doc.components.some((c) => c.id === id), id);
+    }
+    for (const id of ["ENGINE", "RADIATOR", "TRANSMISSION", "FUEL_CELL"]) {
+      assert.equal(doc.components.some((c) => c.id === id), false, id);
+    }
+    const quality = doc.checks.find((c) => c.id === "design-quality");
+    assert.ok(quality);
+    assert.ok(quality.status === "info" || quality.status === "warn");
+    assert.equal(quality.status, "info");
+    assert.ok(quality.maxTurnDeg < 25, `turn ${quality.maxTurnDeg}`);
+    assert.ok(quality.ratios.hoodAtAxleM < 0.78, `hood ${quality.ratios.hoodAtAxleM}`);
+    assert.ok(quality.ratios.peakM > quality.ratios.hoodAtAxleM + 0.4, "the roof peaks above the hood");
+    const controls = Number(quality.detail.match(/^(\d+) styling controls/)?.[1]);
+    assert.ok(controls >= 20 && controls <= 40, quality.detail.slice(0, 40));
+    assert.deepEqual(doc.surface.spec.pushes, []);
+    assert.ok(doc.components.some((c) => c.id === "SEAT_1" && c.role === "seat"));
+    assert.ok(doc.components.some((c) => c.id === "OCC_SEAT_1_M95" && c.role === "occupant"));
+  });
+
+  it("raises the hood when the caller asks for the library front engine", () => {
+    const b = buildCarFromLibrary(BRIEF);
+    const fe = assemblyFromIr(b.ir, { layout: "front_engine", brief: BRIEF });
+    assert.equal(validateAssembly(fe).ok, true, (fe.validationErrors || []).join("; "));
+    const contain = fe.checks.find((c) => c.id === "containment");
+    assert.equal(contain.status, "pass", contain.detail);
+    const layout = fe.checks.find((c) => c.id === "powertrain-layout");
+    assert.match(layout.detail, /hood raised/);
+    assert.match(layout.detail, /engine/);
+    assert.match(layout.detail, /radiator/);
+    const quality = fe.checks.find((c) => c.id === "design-quality");
+    assert.equal(quality.status, "warn");
+    assert.ok(quality.ratios.hoodAtAxleM > doc.checks.find((c) => c.id === "design-quality").ratios.hoodAtAxleM);
+    assert.ok(fe.components.some((c) => c.id === "ENGINE"));
+    assert.ok(fe.components.some((c) => c.id === "RADIATOR"));
+    assert.equal(fe.components.some((c) => c.id === "BATTERY"), false);
+    const low = fe.checks.find((c) => c.id === "head-M95");
+    assert.equal(low.status, "pass");
+  });
 });
 
 describe("chat summary", () => {

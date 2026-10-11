@@ -95,7 +95,12 @@ if (view === "section") {
 
 const paintMat = engineering
   ? new THREE.MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true, transparent: true, opacity: 0.45, clippingPlanes: clip })
-  : new THREE.MeshPhysicalMaterial({ color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip });
+  : new THREE.MeshPhysicalMaterial({
+    color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip,
+    // Explode keeps the hierarchy shift. The shell is also translucent so the
+    // skateboard pack, which only moves a rank-2 step, is still visible inside it.
+    transparent: explode > 0, opacity: explode > 0 ? 0.34 : 1, depthWrite: explode === 0,
+  });
 const glassMat = new THREE.MeshPhysicalMaterial({
   color: 0x102028, metalness: 0, roughness: 0.04, transmission: engineering ? 0.15 : 0.48,
   thickness: 0.8, transparent: true, opacity: engineering ? 0.4 : 1, clippingPlanes: clip,
@@ -193,7 +198,8 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.05, 80);
-if (view === "section") camera.position.set(nose + 1.2, 1.15, 3.3);
+// Section camera sits on the clipped side (negative three Z, +vehicle Y) so the cut face is what we look at.
+if (view === "section") camera.position.set(nose + 0.6, 0.72, -2.6);
 else if (view === "exploded") camera.position.set(nose - 0.4, 1.7, 4.2);
 else if (view === "side") camera.position.set(0.2, 0.72, 7.2);
 else camera.position.set(nose - 1.8, 0.92, 2.6);

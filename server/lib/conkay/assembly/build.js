@@ -10,6 +10,7 @@ import { packageScene } from "../packaging/checks.js";
 import { obb, aabb, separation } from "../packaging/geometry.js";
 import { j941Envelope, J941_SOURCE } from "./j941.js";
 import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, partInsideEnvelope, sectionHalfWidth, resolveSpec } from "./surface.js";
+import { chooseLayout, styleControls, pushControls, powertrainForLayout, designQualityCheck } from "./style.js";
 import { ASSEMBLY_SCHEMA, COORDINATE_SYSTEM, validateAssembly } from "./schema.js";
 
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -50,7 +51,7 @@ function boxOf(c) {
  * bodyBBox: optional { min:[x,y,z], max } from cad.body
  * powerW: optional solved required power
  */
-export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
+export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null } = {}) {
   const nodes = new Map(ir.nodes.map((n) => [n.id, n]));
   const veh = nodes.get("VEH");
   const pkg = veh?.props?.vehicle?.packaging;
@@ -85,7 +86,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   const headZ = headTop(driver);
   const minInnerRoof = headZ == null ? null : headZ;
   const measuredRoof = bodyBBox ? bodyBBox.max[2] : null;
-  const roofZ = measuredRoof != null ? measuredRoof : (minInnerRoof != null ? minInnerRoof + skin + 0.02 : 1.25);
+  let roofZ = measuredRoof != null ? measuredRoof : (minInnerRoof != null ? minInnerRoof + skin + 0.02 : 1.25);
   const floorClear = bodyBBox ? bodyBBox.min[2] : Math.max(0.08, dc.floorZ - skin);
   const noseX = bodyBBox ? bodyBBox.min[0] : Math.min(frontAxleX - 0.85, ...(pkg.components || []).filter((c) => c.id === "RADIATOR").map((c) => (centers[c.node]?.x ?? frontAxleX) - (c.half?.[0] ?? 0.1) - 0.15));
   const tailX = bodyBBox ? bodyBBox.max[0] : rearAxleX + 0.85;
@@ -100,31 +101,101 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   const radP = rad && centers[rad.node];
   const eng = pkg.components?.find((c) => c.node === "ENGINE");
   const engP = eng && centers[eng.node];
-  const clearance = [];
-  for (const [comp, p] of [[rad, radP], [eng, engP]]) {
-    if (!comp?.half || !p) continue;
-    clearance.push({ x0: p.x - comp.half[0], x1: p.x + comp.half[0], z: p.z + comp.half[2], y: comp.half[1] });
-  }
   const driverHead = driver?.landmarks?.headTop;
   const rearHead = rearM?.landmarks?.headTop;
+  const layoutChoice = chooseLayout({
+    layout,
+    brief: brief || veh.props?.vehicle?.brief || ir.brief || "",
+  });
+  const archTop = (centers.TIRE_FL?.z ?? tyreR) + tyreR + 0.032;
+  // roofZ above is the head-clearance floor (or the kernel box). The styled
+  // peak may sit higher so the greenhouse is about half the body. A kernel
+  // bbox still caps it, which is what makes a short body fail the head check.
+  const roofCap = measuredRoof != null ? measuredRoof : Math.max(roofZ, beltZ * 1.5 + 0.02);
+  const glassH = Math.max(0.28, beltZ * 0.5);
+  const peakTarget = Math.min(roofCap, beltZ + glassH);
+  const hoodTarget = Math.min(peakTarget - 0.2, archTop + 0.02);
+  const cowlTarget = Math.min(beltZ - 0.03, hoodTarget + 0.05);
+  const headerTarget = Math.min(peakTarget - 0.04, cowlTarget + 0.46);
+  const kammTarget = Math.min(0.64, peakTarget - 0.18);
 
-  const spec = resolveSpec({
-    noseX, tailX, frontAxleX, rearAxleX, halfWidth, roofZ,
+  const draft = resolveSpec({
+    noseX, tailX, frontAxleX, rearAxleX, halfWidth,
+    roofZ: peakTarget,
     floorZ: floorClear, beltZ, bPillarX, cPillarX, aPillarBaseX,
     track, tyreRadius: tyreR, tyreHalfWidth: tyreW / 2,
     tyreCenterZ: centers.TIRE_FL?.z ?? tyreR,
-    noseTipZ: Math.max(0.22, floorClear + 0.1),
+    noseTipZ: 0.32,
     kammRatio: 0.45,
+    kammZ: kammTarget,
     ahpX: scene.ahp.x,
     headX: driverHead?.[0],
     rearHeadX: rearHead?.[0],
-    roofHoldX: rearAxleX,
     archGap: 0.032,
-    grilleHalfY: rad ? Math.min(rad.half[1], halfWidth * 0.62) : halfWidth * 0.32,
-    grilleHalfZ: 0.055,
-    grilleZ: Math.max(floorClear + 0.12, (radP?.z ?? 0.32) - (rad?.half?.[2] || 0.2) * 0.45),
-    clearance,
-    cowlZ: engP ? Math.max(beltZ - 0.12, engP.z + eng.half[2] - 0.025) : undefined,
+    tumblehomeDeg: 14,
+    beltRiseM: 0.032,
+    cowlZ: cowlTarget,
+    headerZ: headerTarget,
+    grilleHalfY: halfWidth * 0.22,
+    grilleHalfZ: 0.036,
+    grilleZ: floorClear + 0.09,
+    layout: layoutChoice.id,
+  });
+
+  const rearSeatBackX = rearM ? rearM.landmarks.hPoint[0] + 0.28 : scene.sgRPRear.x + 0.3;
+  const conflicts = [];
+  if (driverHead) conflicts.push({ x: driverHead[0], hx: 0.09, zTop: driverHead[1], zClear: 0.02, reason: "95th-percentile driver head", curve: "roof" });
+  if (rearHead) conflicts.push({ x: rearHead[0], hx: 0.09, zTop: rearHead[1], zClear: 0.02, reason: "95th-percentile rear head", curve: "roof" });
+  let evPack = null;
+  if (layoutChoice.id === "front_engine") {
+    for (const c of pkg.components || []) {
+      const p = centers[c.node];
+      if (!p || !c.half) continue;
+      const ahead = p.x < (draft.cowlX + 0.15);
+      conflicts.push({
+        x: p.x, hx: c.half[0], zTop: p.z + c.half[2], yHalf: c.half[1],
+        liftShoulder: true,
+        curve: ahead ? "hood" : "deck",
+        reason: `the library ${c.id.toLowerCase().replaceAll("_", " ")}`,
+      });
+    }
+  } else {
+    evPack = powertrainForLayout(layoutChoice.id, {
+      frontAxleX, rearAxleX, noseX, tailX, floorZ: floorClear, heelZ: dc.floorZ,
+      firewallX: pkg.firewallX, track, halfWidth, powerW, rearSeatBackX, tyreR,
+    });
+    for (const p of evPack.parts) {
+      conflicts.push({
+        x: p.placement.x, hx: p.half[0], zTop: p.placement.z + p.half[2],
+        yHalf: p.id === "BATTERY" ? null : p.half[1],
+        liftShoulder: p.id !== "BATTERY" && p.placement.z + p.half[2] > archTop,
+        curve: p.placement.x < draft.cowlX ? "hood" : "deck",
+        reason: p.name,
+      });
+    }
+  }
+  const skeleton = styleControls(draft, {
+    frontHeadX: driverHead?.[0],
+    frontHeadZ: driverHead?.[1],
+    rearHeadX: rearHead?.[0],
+    rearHeadZ: rearHead?.[1],
+  });
+  const pushed = pushControls(skeleton, conflicts, roofCap);
+  const peak = Math.max(...pushed.crown.map((c) => c.v), draft.floorZ + 0.2);
+  roofZ = Math.min(roofCap, peak);
+  const spec = resolveSpec({
+    ...draft,
+    roofZ,
+    crownKeys: pushed.crown,
+    planKeys: pushed.plan,
+    shoulderKeys: pushed.shoulder,
+    kammX: skeleton.kammX,
+    pushes: pushed.pushes,
+    layout: layoutChoice.id,
+    layoutReason: layoutChoice.reason,
+    roofHoldX: skeleton.crown.find((c) => c.id === "roof-peak")?.x ?? draft.headerX,
+    backlightX: (rearHead?.[0] ?? scene.sgRPRear.x) + 0.16,
+    openings: undefined,
   });
   const loft = loftBody(spec);
   const cowlX = spec.cowlX;
@@ -132,8 +203,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
 
   const components = [];
   const heightProvenance = measuredRoof != null
-    ? prov("calculated", "cad.body extents", "overall height is the kernel solid's max z; the viewer loft is fitted to that box and is not the B-rep")
-    : prov("calculated", "M95 head top + skin offset", "no kernel solid yet; the roof is the height the 95th-percentile male head needs, plus the skin offset");
+    ? prov("calculated", "cad.body extents", "overall height is capped by the kernel solid's max z; the loft is still the styling skeleton, not that B-rep")
+    : prov("calculated", "styling skeleton", "the roof peaks over the front occupants and falls as a fastback. Each head is cleared at its own station.");
 
   components.push(part({
     id: "BODY_SHELL", name: "Body loft", group: "exterior", role: "body",
@@ -144,8 +215,9 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       param("wheelbase", "Wheelbase", rearAxleX - frontAxleX, "m", prov("calculated", "rearAxleX − frontAxleX")),
       param("overallLength", "Overall length", tailX - noseX, "m", heightProvenance.state === "calculated" && measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "nose and tail stations")),
       param("overallWidth", "Overall width", halfWidth * 2, "m", measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "track + tyre + fender, capped at the body maxWidth design choice 1.95 m")),
-      param("overallHeight", "Overall height", roofZ, "m", { ...heightProvenance, note: `${heightProvenance.note || ""} The 95th-percentile male head sets this roof (about ${(roofZ).toFixed(2)} m). It stays at that height through the rear head, so the fastback is only the rear overhang.`.trim() }),
-      param("windshieldRake", "Windshield rake from vertical", spec.rakeDeg, "deg", prov("calculated", "rise from the low cowl to the header over tan(60°); pulled forward only if the header would pass the driver head")),
+      param("overallHeight", "Overall height", roofZ, "m", heightProvenance),
+      param("layout", "Powertrain layout", layoutChoice.id, "1", prov(layoutChoice.chosenBy === "caller" ? "assumed" : "calculated", "style.js chooseLayout", layoutChoice.reason)),
+      param("windshieldRake", "Windshield rake from vertical", spec.rakeDeg, "deg", prov("calculated", "rise from the cowl to the header over tan(60°); pulled forward only if the header would pass the driver head")),
       param("groundClearance", "Ground clearance", spec.floorZ, "m", measuredRoof ? prov("calculated", "cad.body min z") : prov("calculated", "floorZ minus the skin offset, floored at 80 mm")),
       param("beltZ", "Beltline", beltZ, "m", prov("calculated", "M95 acromion height (ANSUR II sitting)", "greenhouse base")),
       param("kammRatio", "Kamm area ratio", 0.45, "1", prov("assumed", "CAD_BODY_DEFAULTS kammAreaRatio", "design choice, not Kamm's 50 percent figure")),
@@ -221,24 +293,40 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     relationships: [], explode: { axis: "z", sign: -1, rank: 2 },
   }));
 
-  // Powertrain envelopes from the layout boxes.
-  for (const c of pkg.components || []) {
-    const p = centers[c.node];
-    if (!p) continue;
-    const vol = 8 * (c.half?.[0] || 0) * (c.half?.[1] || 0) * (c.half?.[2] || 0);
-    components.push(part({
-      id: c.id, name: c.id, group: "powertrain", role: c.node === "RADIATOR" ? "cooling" : "powertrain",
-      placement: { x: p.x, y: p.y, z: p.z }, half: c.half,
-      geometry: envelope(`bounding box of the library overall dimensions (${c.dims?.state || "unlabelled"}). Not a manufactured solid.`),
-      parameters: [
-        param("volume", "Envelope volume", vol * 1000, "L", prov("calculated", "8 × half-extents of the library box")),
-        ...(c.node === "ENGINE" && Number.isFinite(powerW) ? [param("requiredPower", "Required power at the brief speed", powerW, "W", prov("calculated", "vehicle.required-power", "aero drag plus rolling resistance at the required top speed"))] : []),
-      ],
-      relationships: c.node === "RADIATOR"
-        ? [{ kind: "constrained-by", target: "ENGINE", note: "ahead of the engine by the fan gap; face area is the library core, not resized to a heat-rejection model" }]
-        : [{ kind: "mounted-to", target: "BODY_SHELL", note: c.placement || "layout placement" }],
-      explode: { axis: "x", sign: -1, rank: 2 },
-    }));
+  // Powertrain. front_engine keeps the library boxes and lets them push the hood.
+  // Every other layout shows the sized motors, inverter, battery and cooler.
+  // The library mass tree is still the gasoline car either way.
+  if (layoutChoice.id === "front_engine") {
+    for (const c of pkg.components || []) {
+      const p = centers[c.node];
+      if (!p) continue;
+      const vol = 8 * (c.half?.[0] || 0) * (c.half?.[1] || 0) * (c.half?.[2] || 0);
+      components.push(part({
+        id: c.id, name: c.id, group: "powertrain", role: c.node === "RADIATOR" ? "cooling" : "powertrain",
+        placement: { x: p.x, y: p.y, z: p.z }, half: c.half,
+        geometry: envelope(`bounding box of the library overall dimensions (${c.dims?.state || "unlabelled"}). Not a manufactured solid. The hood and deck move only where this box clears the styling skeleton.`),
+        parameters: [
+          param("volume", "Envelope volume", vol * 1000, "L", prov("calculated", "8 × half-extents of the library box")),
+          ...(c.node === "ENGINE" && Number.isFinite(powerW) ? [param("requiredPower", "Required power at the brief speed", powerW, "W", prov("calculated", "vehicle.required-power", "aero drag plus rolling resistance at the required top speed"))] : []),
+        ],
+        relationships: c.node === "RADIATOR"
+          ? [{ kind: "constrained-by", target: "ENGINE", note: "ahead of the engine by the fan gap; face area is the library core, not resized to a heat-rejection model" }]
+          : [{ kind: "mounted-to", target: "BODY_SHELL", note: c.placement || "layout placement" }],
+        explode: { axis: "x", sign: -1, rank: 2 },
+      }));
+    }
+  } else if (evPack) {
+    for (const p of evPack.parts) {
+      const stateOf = (s) => (s === "sourced" ? "sourced" : s === "calculated" ? "calculated" : s === "estimated" ? "estimated" : "assumed");
+      components.push(part({
+        id: p.id, name: p.name, group: "powertrain", role: p.role,
+        placement: p.placement, half: p.half,
+        geometry: envelope(p.note),
+        parameters: (p.parameters || []).filter((row) => row[2] != null).map(([id, name, value, unit, state, source]) => param(id, name, value, unit, prov(stateOf(state), source))),
+        relationships: p.relationships,
+        explode: { axis: p.id === "BATTERY" ? "z" : "x", sign: p.id === "BATTERY" ? -1 : -1, rank: 2 },
+      }));
+    }
   }
 
   // Seats and manikins (M95 and F5 only, so the document stays small).
@@ -326,21 +414,25 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   });
   components.push(pedal("PEDAL_ACCEL", "Accelerator", -dc.frontSeatY + 0.06, "on the AHP / BOF line"));
   components.push(pedal("PEDAL_BRAKE", "Brake", -dc.frontSeatY - 0.02, "inboard of the accelerator; lateral offset is an allowance"));
-  components.push(pedal("PEDAL_CLUTCH", "Clutch", -dc.frontSeatY - 0.12, "the gearbox is a manual TKX, so a clutch pedal is placed. Lateral offset is an allowance."));
+  if (layoutChoice.id === "front_engine") {
+    components.push(pedal("PEDAL_CLUTCH", "Clutch", -dc.frontSeatY - 0.12, "the gearbox is a manual TKX, so a clutch pedal is placed. Lateral offset is an allowance."));
+  }
 
-  // Gear selector from the tub opening when the tub designed one.
-  const gear = openings?.service?.find((s) => s.id === "gear-lever");
-  const gx = gear ? (gear.x0 + gear.x1) / 2 : scene.sgRPFront.x - 0.15;
-  const gz = dc.floorZ + 0.28;
-  components.push(part({
-    id: "GEAR_SELECTOR", name: "Gear selector", group: "interior", role: "control",
-    placement: { x: gx, y: 0, z: gz },
-    half: [0.04, 0.04, 0.12],
-    geometry: envelope(gear ? "placed on the tub's gear-lever opening (a design choice; the TKX shifter dimension is not sourced)" : "no tub opening; placed ahead of the driver H-point on the tunnel centreline (assumed)"),
-    parameters: [param("x", "Selector x", gx, "m", gear ? prov("assumed", "OPENING_CHOICES.gearLeverOpening") : prov("assumed", "150 mm ahead of the front SgRP"))],
-    relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "through the tunnel top" }],
-    explode: { axis: "z", sign: 1, rank: 3 },
-  }));
+  // The library car is a manual. A skateboard has no gearbox, so no shifter is placed.
+  if (layoutChoice.id === "front_engine") {
+    const gear = openings?.service?.find((s) => s.id === "gear-lever");
+    const gx = gear ? (gear.x0 + gear.x1) / 2 : scene.sgRPFront.x - 0.15;
+    const gz = dc.floorZ + 0.28;
+    components.push(part({
+      id: "GEAR_SELECTOR", name: "Gear selector", group: "interior", role: "control",
+      placement: { x: gx, y: 0, z: gz },
+      half: [0.04, 0.04, 0.12],
+      geometry: envelope(gear ? "placed on the tub's gear-lever opening (a design choice; the TKX shifter dimension is not sourced)" : "no tub opening; placed ahead of the driver H-point on the tunnel centreline (assumed)"),
+      parameters: [param("x", "Selector x", gx, "m", gear ? prov("assumed", "OPENING_CHOICES.gearLeverOpening") : prov("assumed", "150 mm ahead of the front SgRP"))],
+      relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "through the tunnel top" }],
+      explode: { axis: "z", sign: 1, rank: 3 },
+    }));
+  }
 
   // Eyellipse.
   const eye = j941Envelope({
@@ -386,21 +478,26 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
 
   // Luggage and spare.
   const rearBack = rearM ? (rearM.landmarks.hPoint[0] + 0.25) : scene.sgRPRear.x + 0.3;
-  const trunkLen = Math.max(0, tailX - 0.08 - rearBack);
-  const trunkVol = trunkLen * (halfWidth * 1.4) * Math.max(0, roofZ * 0.45 - dc.floorZ);
+  const trunk = fitTrunk(spec, rearBack, tailX - 0.08, spec.floorZ);
+  const trunkVol = 8 * trunk.half[0] * trunk.half[1] * trunk.half[2];
   components.push(part({
     id: "TRUNK", name: "Trunk volume", group: "storage", role: "volume",
-    placement: { x: rearBack + trunkLen / 2, y: 0, z: dc.floorZ + Math.max(0.05, (roofZ * 0.45 - dc.floorZ) / 2) },
-    half: [trunkLen / 2, halfWidth * 0.7, Math.max(0.05, (roofZ * 0.45 - dc.floorZ) / 2)],
-    geometry: envelope("geometric box behind the rear seat back. Not an SAE J1100 luggage-block volume."),
-    parameters: [param("volume", "Volume", trunkVol * 1000, "L", prov("calculated", "length behind the rear back × 1.4 × half-width × height under the fastback"))],
+    placement: trunk.placement,
+    half: trunk.half,
+    geometry: envelope("box behind the rear seat back, shrunk until it sits under the fastback. Not an SAE J1100 luggage-block volume."),
+    parameters: [param("volume", "Volume", trunkVol * 1000, "L", prov("calculated", "largest box behind the rear back that boxInsideEnvelope accepts"))],
     relationships: [{ kind: "clears", target: "SEAT_3", note: "starts behind the rear seat back" }],
     explode: { axis: "x", sign: 1, rank: 3 },
   }));
   const firewall = pkg.firewallX || cowlX;
-  const radFront = radP ? radP.x - rad.half[0] : firewall;
-  const engFront = engP ? engP.x - eng.half[0] : firewall;
-  const frunk = fitFrunk(spec, noseX, Math.min(firewall, radFront, engFront), spec.floorZ);
+  const cool = components.find((c) => c.id === "COOLING" || c.id === "RADIATOR");
+  const noseUnit = components.find((c) => c.id === "MOTOR_FRONT" || c.id === "ENGINE");
+  const limitX = Math.min(
+    firewall,
+    cool ? cool.placement.x - cool.half[0] : firewall,
+    noseUnit ? noseUnit.placement.x - noseUnit.half[0] : firewall,
+  );
+  const frunk = fitFrunk(spec, noseX, limitX, spec.floorZ);
   const frunkVol = 8 * frunk.half[0] * frunk.half[1] * frunk.half[2];
   components.push(part({
     id: "FRUNK", name: "Frunk volume", group: "storage", role: "volume",
@@ -408,12 +505,12 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     half: frunk.half,
     geometry: envelope("box shrunk to the loft ahead of the radiator and the engine. Not an SAE J1100 luggage-block volume. Zero-ish when the powertrain fills the nose."),
     parameters: [param("volume", "Volume", Math.max(0, frunkVol) * 1000, "L", prov("calculated", "largest box ahead of the powertrain that boxInsideEnvelope accepts"))],
-    relationships: [{ kind: "clears", target: "ENGINE", note: "does not include the engine bay" }],
+    relationships: [{ kind: "clears", target: noseUnit?.id || cool?.id || "BODY_SHELL", note: "ahead of the nose powertrain" }],
     explode: { axis: "x", sign: -1, rank: 3 },
   }));
   components.push(part({
     id: "SPARE", name: "Spare tire", group: "storage", role: "spare",
-    placement: { x: rearBack + trunkLen / 2, y: 0, z: dc.floorZ + 0.05 },
+    placement: { x: trunk.placement.x, y: 0, z: dc.floorZ + 0.05 },
     half: [0, 0, 0],
     geometry: envelope("not specified by the design, so not placed"),
     parameters: [param("specified", "Specified", 0, "1", prov("assumed", "the brief does not ask for a spare"))],
@@ -432,10 +529,10 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       parameters: [
         param("x", "Station", d.placement.x, "m", prov("calculated", "on the skin spline")),
         param("z", "Height", d.placement.z, "m", prov("calculated", "on the skin spline")),
-        ...(d.id === "GRILLE" ? [param("width", "Opening width", d.half[1] * 2, "m", rad ? prov("calculated", "radiator face width, clipped to the bumper") : prov("estimated", "no radiator in the layout"))] : []),
+        ...(d.id === "GRILLE" ? [param("width", "Opening width", d.half[1] * 2, "m", prov("estimated", "lower intake on the tapered nose, not the full cooling-core face"))] : []),
       ],
-      relationships: d.id === "GRILLE" && rad
-        ? [{ kind: "aligned-to", target: "RADIATOR", note: "width follows the radiator face; the slot is recessed in the bumper" }]
+      relationships: d.id === "GRILLE" && cool
+        ? [{ kind: "aligned-to", target: cool.id, note: "lower intake ahead of the cooling core, recessed in the bumper" }]
         : [{ kind: "mounted-to", target: "BODY_SHELL", note: "on the skin, offset a few millimetres outboard" }],
       explode,
       mesh: d.mesh,
@@ -474,7 +571,10 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     }));
   }
 
-  const checks = fitChecks({ spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX, tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW });
+  const checks = fitChecks({
+    spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX,
+    tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack,
+  });
   const standards = standardsTable({ scene, dc, eye, roofZ, spec });
 
   const doc = {
@@ -482,8 +582,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     coordinateSystem: { ...COORDINATE_SYSTEM, frontAxleX: r4(frontAxleX) },
     verification: {
       statement: measuredRoof
-        ? "Geometric assembly. A shape that looks finished has not been manufactured or tested. Kernel solids are marked solid; every other part is a dimensioned envelope. The loft is fitted to the kernel bounding box and is not that solid. Each check is pass, warn or fail."
-        : "Geometric assembly. A shape that looks finished has not been manufactured or tested. The loft's length, width and height are the packaging stations (head clearance, track, overhangs), not a kernel solid. Each check is pass, warn or fail.",
+        ? "Geometric assembly. A shape that looks finished has not been manufactured or tested. Kernel solids are marked solid; every other part is a dimensioned envelope. The loft is fitted to the kernel bounding box and is not that solid. Each check is pass, warn, fail, or info."
+        : "Geometric assembly. A shape that looks finished has not been manufactured or tested. The loft's length, width and height come from the styling skeleton pinned to the package hard points, not a kernel solid. Each check is pass, warn, fail, or info.",
       verified: ["library component boxes", "J1100 dimensions from the H-points", "J941 eyellipse centroid", "fit checks listed here"],
       geometricOnly: ["viewer body loft", "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
     },
@@ -567,14 +667,41 @@ function fitChecks(ctx) {
   const seats = ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"].filter((id) => ctx.components.some((c) => c.id === id));
   add("four-seats", seats.length === 4 ? "pass" : "fail", `${seats.length} seat positions placed`, { seats });
 
-  // Powertrain vs cabin: engine rear face vs firewall / AHP.
+  // Powertrain vs cabin. A front engine is checked at the firewall. Motors are checked the same way when they sit ahead of it.
   const engine = ctx.components.find((c) => c.id === "ENGINE");
+  const wall = ctx.pkg.firewallX ?? ctx.scene.ahp.x;
   if (engine?.half) {
     const engineRear = engine.placement.x + engine.half[0];
-    const wall = ctx.pkg.firewallX ?? ctx.scene.ahp.x;
     const gap = wall - engineRear;
-    add("powertrain-cabin", gap >= 0 ? "pass" : "fail", `engine rear face ${mm(engineRear)} mm, firewall ${mm(wall)} mm, gap ${mm(gap)} mm`, { valueM: r4(gap) });
-  } else add("powertrain-cabin", "warn", "no engine envelope, powertrain-to-cabin not checked");
+    const lifts = (ctx.spec?.pushes || []).filter((p) => /engine|hood|radiator|deck|fuel/.test(p));
+    add("powertrain-cabin", gap >= 0 ? "pass" : "fail",
+      `engine rear face ${mm(engineRear)} mm, firewall ${mm(wall)} mm, gap ${mm(gap)} mm. ${lifts.join("; ") || "No hood push was required."}`,
+      { valueM: r4(gap) });
+  } else {
+    const motors = ctx.components.filter((c) => c.id.startsWith("MOTOR_"));
+    if (!motors.length) add("powertrain-cabin", "warn", "no drive unit, powertrain-to-cabin not checked");
+    else {
+      const ahead = motors.filter((m) => m.placement.x + m.half[0] > wall - 1e-6 && m.placement.x < wall);
+      const intruding = motors.find((m) => m.placement.x < wall && m.placement.x + m.half[0] > wall + 0.01);
+      if (intruding) add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`);
+      else add("powertrain-cabin", "pass",
+        `${motors.map((m) => m.id).join(" and ")} clear the firewall at ${mm(wall)} mm${ahead.length ? "" : ""}`,
+        { motors: motors.map((m) => m.id) });
+    }
+  }
+  const layoutId = ctx.layoutChoice?.id || ctx.spec?.layout || "ev_skateboard";
+  const pushes = ctx.spec?.pushes || [];
+  const shapePushes = pushes.filter((p) => /raised/.test(p));
+  const massNote = layoutId === "front_engine"
+    ? "The displayed powertrain is the library gasoline set. The hood and the fenders rise only where that set clears the styling skeleton."
+    : "The library mass tree is still the gasoline car. This assembly shows the sized motors, inverter, battery and cooler instead of that set.";
+  const energy = ctx.evPack?.energy;
+  const energyNote = energy
+    ? ` Range was not specified. Assumed ${energy.assumedRangeKm} km at ${energy.whPerKm} Wh/km would need ${energy.needKWh.toFixed(0)} kWh. The floor pack that fits is ${energy.fitKWh.toFixed(1)} kWh (${energy.rangeFitKm.toFixed(0)} km at that rate), ${(energy.thickM * 1000).toFixed(0)} mm thick.`
+    : "";
+  add("powertrain-layout", "pass",
+    `${ctx.layoutChoice?.reason || layoutId} ${massNote}${energyNote}${shapePushes.length ? ` ${shapePushes.join("; ")}.` : ""} ${(ctx.evPack?.notes || []).join(" ")}`.replace(/\s+/g, " ").trim(),
+    { layout: layoutId, pushes });
 
   // Wheels vs footwell at full steer.
   const lock = ctx.pkg.steeringLock?.innerDeg;
@@ -639,10 +766,20 @@ function fitChecks(ctx) {
     add("b-pillar", between ? "pass" : "warn", `B-pillar station ${mm(bx)} mm, front H ${mm(frontH)} mm, rear H ${mm(rearH)} mm`, { valueM: r4(bx) });
   }
 
-  if (!Number.isFinite(ctx.powerW)) add("cooling-power", "warn", "required power was not passed in, so the radiator is the library part and is not resized");
+  if (layoutId !== "front_engine") {
+    const installed = ctx.evPack?.installedW;
+    const powerNote = Number.isFinite(ctx.powerW)
+      ? `Solved required power is ${Math.round(ctx.powerW)} W.`
+      : "Required power was not passed in, so it is not compared with the motor peak.";
+    const short = Number.isFinite(ctx.powerW) && Number.isFinite(installed) && installed + 1 < ctx.powerW;
+    add("cooling-power", short ? "warn" : "warn",
+      `Cooling core is an assumed EV heat exchanger, not the library gasoline radiator and not a heat-rejection solve. Installed motor peak is ${installed ? Math.round(installed) : "unknown"} W. ${powerNote}${short ? " Installed peak is below the solved power." : ""}`,
+      { powerW: Number.isFinite(ctx.powerW) ? Math.round(ctx.powerW) : null, installedW: installed || null });
+  } else if (!Number.isFinite(ctx.powerW)) add("cooling-power", "warn", "required power was not passed in, so the radiator is the library part and is not resized");
   else add("cooling-power", "pass", `radiator stays the library core; required power at the brief speed is ${Math.round(ctx.powerW)} W (coolant-loop is a separate solver)`, { powerW: Math.round(ctx.powerW) });
 
   add("spare", "warn", "no spare tire is specified, so none is placed");
+  if (ctx.spec?.crownKeys) checks.push(designQualityCheck(ctx.spec));
   return checks;
 }
 
@@ -657,6 +794,31 @@ export function fitText(checks) {
   const status = fitStatus(checks);
   const bits = (checks || []).map((c) => `${c.id} ${c.status}`);
   return `Packaging fit: ${status}. ${bits.join("; ")}.`;
+}
+
+function fitTrunk(spec, rearBack, tailX, floorZ) {
+  let x0 = rearBack + 0.04;
+  let x1 = Math.max(x0 + 0.08, tailX);
+  let z1 = floorZ + 0.55;
+  let yHalf = Math.min((spec.halfWidth || 0.9) * 0.55, 0.55);
+  for (let i = 0; i < 60; i++) {
+    const z0 = floorZ + 0.02;
+    const placement = { x: (x0 + x1) / 2, y: 0, z: (z0 + z1) / 2 };
+    const half = [(x1 - x0) / 2, yHalf, (z1 - z0) / 2];
+    if (half[0] > 0.03 && half[1] > 0.02 && half[2] > 0.02 && boxInsideEnvelope(spec, placement, half, 0.04)) {
+      return { placement, half };
+    }
+    z1 -= 0.015;
+    yHalf *= 0.94;
+    if (z1 < z0 + 0.06) {
+      x0 += 0.04;
+      z1 = floorZ + 0.28;
+    }
+  }
+  const x = Math.min(tailX - 0.12, rearBack + 0.2);
+  const z = floorZ + 0.08;
+  const y = Math.max(0.04, Math.min(0.12, sectionHalfWidth(spec, x, z) - 0.04));
+  return { placement: { x, y: 0, z }, half: [0.06, y, 0.04] };
 }
 
 function fitFrunk(spec, noseX, limitX, floorZ) {

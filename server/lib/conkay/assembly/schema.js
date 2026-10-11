@@ -50,7 +50,7 @@ export function validateAssembly(doc) {
   }
   if (!Array.isArray(doc.checks)) errors.push("checks must be a list");
   for (const k of doc.checks || []) {
-    if (!["pass", "warn", "fail"].includes(k.status)) errors.push(`${k.id}: status must be pass, warn or fail`);
+    if (!["pass", "warn", "fail", "info"].includes(k.status)) errors.push(`${k.id}: status must be pass, warn, fail or info`);
   }
   return { ok: errors.length === 0, errors };
 }

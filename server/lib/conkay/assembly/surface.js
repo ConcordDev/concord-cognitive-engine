@@ -11,6 +11,8 @@
 // a lofted B-rep with arch and glass booleans is not what the viewer sections;
 // pythonocc-core is not installable from pip here. The loft is the solid.
 
+import { sampleSpline } from "./style.js";
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 export const SURFACE_CAP = Object.freeze({ triangles: 200_000, stations: 320, section: 96 });
@@ -136,7 +138,18 @@ function keysOf(spec) {
   const R = S.tyreRadius + S.archGap;
   const archTop = S.tyreCenterZ + R;
   const hw = S.halfWidth;
-  const kammX = tail - Math.min(0.16, (tail - rx) * 0.25);
+  const kammX = S.kammX || (tail - Math.min(0.16, (tail - rx) * 0.25));
+  if (Array.isArray(S.crownKeys) && S.crownKeys.length > 3 && Array.isArray(S.planKeys) && Array.isArray(S.shoulderKeys)) {
+    hit = {
+      kammX,
+      archTop,
+      crown: sampleSpline(S.crownKeys, 0.025),
+      shy: sampleSpline(S.planKeys, 0.025),
+      shz: sampleSpline(S.shoulderKeys, 0.025),
+    };
+    keyCache.set(spec, hit);
+    return hit;
+  }
   const kY = hw * Math.sqrt(clamp(S.kammRatio, 0.25, 0.75));
   const hoodAxle = Math.min(archTop - 0.035, S.cowlZ - 0.06);
   const bands = (Array.isArray(S.clearance) ? S.clearance : []).filter((b) => Number.isFinite(b.x0) && Number.isFinite(b.x1) && Number.isFinite(b.z));
@@ -200,15 +213,22 @@ function keysOf(spec) {
 
 function prof(spec, x) {
   const k = keysOf(spec);
-  const crownZ = clamp(pchip(k.crown, x), spec.floorZ + 0.02, spec.roofZ);
+  const cap = spec.roofZ;
+  const crownZ = clamp(pchip(k.crown, x), spec.floorZ + 0.02, cap);
   const shoulderY = Math.max(0.05, pchip(k.shy, x));
-  let shoulderZ = pchip(k.shz, x);
-  shoulderZ = clamp(shoulderZ, spec.floorZ + 0.05, crownZ - 0.008);
-  const railY = shoulderY * (x < spec.headerX ? 0.7 : 0.56);
-  const railZ = clamp(crownZ - 0.028, shoulderZ + 0.01, crownZ - 0.012);
-  const rockerY = clamp(Math.min(shoulderY * 0.7, spec.track / 2 - spec.tyreHalfWidth - 0.04), shoulderY * 0.42, shoulderY * 0.78);
+  let shoulderZ = Math.max(spec.floorZ + 0.05, pchip(k.shz, x));
+  const rise = clamp((x - (spec.cowlX || x)) / Math.max(0.4, (spec.rearAxleX || x) - (spec.cowlX || x)), 0, 1);
+  const belt = Math.min(spec.beltZ + (spec.beltRiseM ?? 0.032) * rise, Math.max(shoulderZ, crownZ) - 0.01);
+  const glassH = Math.max(0, crownZ - belt);
+  const tumble = ((spec.tumblehomeDeg ?? 14) * Math.PI) / 180;
+  const inset = glassH * Math.tan(tumble);
+  const railY = clamp(shoulderY - inset, shoulderY * 0.62, shoulderY * 0.96);
+  const railZ = shoulderZ > crownZ + 0.01
+    ? lerp(crownZ, shoulderZ, 0.5)
+    : clamp(crownZ - Math.min(0.02, glassH * 0.15), Math.min(shoulderZ, belt) + 0.008, crownZ - 0.006);
+  const rockerY = clamp(Math.min(shoulderY * 0.72, spec.track / 2 - spec.tyreHalfWidth - 0.03), shoulderY * 0.42, shoulderY * 0.82);
   const rockerZ = spec.floorZ + 0.042;
-  return { x, crownZ, shoulderY, shoulderZ, railY, railZ, rockerY, rockerZ, floorZ: spec.floorZ, beltZ: Math.min(spec.beltZ, shoulderZ) };
+  return { x, crownZ, shoulderY, shoulderZ, railY, railZ, rockerY, rockerZ, floorZ: spec.floorZ, beltZ: belt };
 }
 
 export function crownAt(spec, x) {
@@ -508,16 +528,19 @@ function sectionKnots(spec, x) {
   const tailT = clamp((x - spec.rearAxleX) / Math.max(1e-3, spec.tailX - spec.rearAxleX), 0, 1);
   const kick = 0.038 * noseT * noseT + 0.028 * tailT * tailT;
   const floorZ = p.floorZ + 0.012 + kick;
-  const beltZ = Math.min(p.beltZ, p.shoulderZ - 0.006);
+  const beltZ = Math.min(p.beltZ, p.shoulderZ - 0.004);
+  const railY = Math.min(p.railY, p.shoulderY * 0.98);
+  const railZ = Math.min(p.railZ, p.crownZ - 0.004);
   return [
     [0, p.crownZ],
-    [p.shoulderY * 0.58, p.crownZ - 0.004],
-    [p.shoulderY * 0.9, lerp(p.crownZ, p.shoulderZ, 0.42)],
+    [railY * 0.4, lerp(p.crownZ, railZ, 0.28)],
+    [railY, railZ],
+    [lerp(railY, p.shoulderY, 0.62), lerp(railZ, p.shoulderZ, 0.5)],
     [p.shoulderY, p.shoulderZ],
-    [p.shoulderY * 0.99, beltZ],
-    [lerp(p.shoulderY * 0.99, p.rockerY, 0.5), lerp(beltZ, p.rockerZ, 0.5)],
+    [p.shoulderY * 0.985, beltZ],
+    [lerp(p.shoulderY * 0.97, p.rockerY, 0.5), lerp(beltZ, p.rockerZ, 0.5)],
     [p.rockerY, p.rockerZ],
-    [p.rockerY * 0.8, floorZ + 0.016],
+    [p.rockerY * 0.72, floorZ + 0.016],
     [0, floorZ],
   ];
 }
@@ -626,13 +649,14 @@ function pointInArch(p, spec) {
 }
 
 function inGrilleOpening(spec, p) {
-  // A mouth on the front face, not a slot that runs aft along the hood.
-  if (p.x > spec.noseX + 0.28 || p.x < spec.noseX + 0.02 || p.z < spec.floorZ + 0.06) return false;
-  const pr = prof(spec, p.x);
-  const gy = Math.min(spec.grilleHalfY || pr.shoulderY * 0.45, Math.max(0.08, pr.shoulderY - 0.06));
-  const gz = spec.grilleHalfZ || 0.05;
-  const cz = spec.grilleZ || (spec.floorZ + 0.18);
-  if (!(gy > 0.06)) return false;
+  // Lower intake on the nose cap (the forward face). A sleek hood has no
+  // vertical bumper in the side loft, so the mouth is not a slot under the hood.
+  if (Math.abs(p.x - spec.noseX) > 0.012 || p.z < spec.floorZ + 0.03) return false;
+  const pr = prof(spec, spec.noseX);
+  const gy = Math.min(spec.grilleHalfY || pr.shoulderY * 0.5, Math.max(0.06, pr.shoulderY * 0.62));
+  const gz = Math.max(0.02, spec.grilleHalfZ || 0.04);
+  const cz = spec.grilleZ || (pr.floorZ + (pr.crownZ - pr.floorZ) * 0.32);
+  if (!(gy > 0.04)) return false;
   return (p.y / gy) ** 2 + ((p.z - cz) / gz) ** 2 < 1;
 }
 
@@ -643,7 +667,8 @@ function glassKind(spec, p) {
   const onSide = Math.abs(p.y) > pr.railY * 0.5 && p.z > pr.beltZ + 0.004 && p.z < pr.shoulderZ + 0.02;
   if (onSide && p.x > spec.headerX && p.x < spec.bPillarX - 0.03) return "side";
   if (onSide && p.x > spec.bPillarX + 0.03 && p.x < (spec.cPillarX || spec.rearAxleX) - 0.02) return "side";
-  if (p.x > spec.roofHoldX + 0.05 && p.x < k.kammX - 0.04 && p.s < 0.3 && p.z > pr.crownZ - 0.1) return "back";
+  const backX = spec.backlightX || Math.max(spec.roofHoldX, (spec.cPillarX || spec.rearAxleX));
+  if (p.x > backX && p.x < k.kammX - 0.04 && p.s < 0.22 && p.z > pr.crownZ - 0.09) return "back";
   return "";
 }
 
@@ -720,7 +745,7 @@ function centroidOf(pts) {
   return { x: c.x / n, y: c.y / n, z: c.z / n, s: c.s / n };
 }
 
-function addCap(bld, right, left, i, spec) {
+function addCap(bld, right, left, i, spec, grillePts) {
   const ns = right[i].length - 1;
   const loop = [];
   for (let j = 0; j <= ns; j++) loop.push(right[i][j]);
@@ -732,7 +757,24 @@ function addCap(bld, right, left, i, spec) {
   }
   const n = loop.length || 1;
   const c = bld.addPoint({ x: acc.x / n, y: acc.y / n, z: acc.z / n });
-  for (let k = 0; k < loop.length; k++) triOut(bld.mesh, c, loop[k], loop[(k + 1) % loop.length], spec);
+  const nose = i === 0 && grillePts;
+  const cuts = new Map();
+  for (let k = 0; k < loop.length; k++) {
+    const a = loop[k];
+    const b = loop[(k + 1) % loop.length];
+    if (!nose) {
+      triOut(bld.mesh, c, a, b, spec);
+      continue;
+    }
+    const split = splitQuad(
+      [v3(bld.mesh, c), v3(bld.mesh, a), v3(bld.mesh, b)],
+      [c, a, b],
+      (p) => inGrilleOpening(spec, p),
+      cuts,
+    );
+    for (const poly of split.out) fanIds(bld, poly, spec, null);
+    for (const poly of split.inn) for (const p of poly) grillePts.push(p);
+  }
 }
 
 function boundaryOnce(indices) {
@@ -877,12 +919,6 @@ function buildShell(spec) {
           for (const poly of arch.out) emitPoly(poly, null);
           continue;
         }
-        const grille = splitQuad(quadP, quadI, (p) => inGrilleOpening(spec, p), cuts);
-        if (grille.inn.length) {
-          for (const poly of grille.inn) for (const p of poly) grillePts.push(p);
-          for (const poly of grille.out) emitPoly(poly, null);
-          continue;
-        }
         const glass = splitQuad(quadP, quadI, (p) => glassKind(spec, p) !== "", cuts);
         if (glass.inn.length) {
           for (const poly of glass.inn) emitPoly(poly, glassTris);
@@ -896,8 +932,8 @@ function buildShell(spec) {
   };
   emit(right, ptsR);
   emit(left, ptsL);
-  addCap(bld, right, left, 0, spec);
-  addCap(bld, right, left, xs.length - 1, spec);
+  addCap(bld, right, left, 0, spec, grillePts);
+  addCap(bld, right, left, xs.length - 1, spec, null);
   const archWell = addArchLips(bld, spec);
   smoothNormals(bld.mesh, spec);
   const glass = glassFrom(bld.mesh, glassTris, spec);
