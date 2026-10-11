@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
@@ -22,12 +23,12 @@ import {
   computeProcessCompleteness,
   type BudgetSimulation,
 } from '@/lib/council/council-audit';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import {
-  Scale,
   Users,
   MessageSquare,
   Sparkles,
@@ -130,6 +131,8 @@ interface Proposal {
   type: ProposalType;
   status: ProposalStatus;
   sponsor: string;
+  authorId?: string;
+  authorName?: string;
   coSponsors: string[];
   createdAt: string;
   updatedAt: string;
@@ -141,7 +144,17 @@ interface Proposal {
   votingDeadline: string | null;
   votes: Record<string, VoteChoice>;
   quorumRequired: number;
+  eligible?: number;
+  votesCast?: number;
+  quorumMet?: boolean;
   tags: string[];
+}
+
+interface CouncilMember {
+  id: string;
+  userId: string;
+  name: string;
+  role?: string;
 }
 
 interface BudgetItem {
@@ -179,6 +192,7 @@ interface Committee {
 interface AuditEntry {
   id: string;
   timestamp: string;
+  authorId?: string;
   actor: string;
   action: string;
   target: string;
@@ -347,20 +361,51 @@ export default function CouncilLensPage() {
     lastUpdated,
   } = useRealtimeLens('council');
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const actorName = titleCaseDisplayName(user?.username) || user?.username || '';
 
-  // ----- Lens persistence (auto-seeds on first use, derives local data) -----
+  // Proposals, votes, members, and the audit log are one shared council.
+  // Budgets, stakeholders, committees, and debates stay on the owner's lens rows.
   const {
-    items: proposalLensItems,
-    isLoading: _proposalsLoading,
+    data: sharedCouncil,
     isError,
     error,
     refetch,
-    create: createProposalItem,
-    update: updateProposalItem,
-    remove: removeProposalItem,
-  } = useLensData<Record<string, unknown>>('council', 'proposal', {
-    seed: [],
+  } = useQuery({
+    queryKey: ['council', 'shared', user?.id || 'signed-out'],
+    queryFn: async () => {
+      const [proposalsRes, auditRes, membersRes] = await Promise.all([
+        lensRun<{ proposals?: Proposal[] }>('council', 'proposal-list', {}),
+        lensRun<{ entries?: AuditEntry[] }>('council', 'audit-list', {}),
+        lensRun<{ members?: CouncilMember[] }>('council', 'member-list', {}),
+      ]);
+      if (!proposalsRes.data.ok) {
+        throw new Error(proposalsRes.data.error || 'Could not load proposals');
+      }
+      return {
+        proposals: proposalsRes.data.result?.proposals || [],
+        audit: auditRes.data.result?.entries || [],
+        members: membersRes.data.result?.members || [],
+      };
+    },
   });
+
+  const reloadShared = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: ['council', 'shared'] });
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void (async () => {
+      const joined = await lensRun('council', 'member-join', {
+        authorName: actorName || user.username,
+      });
+      if (!cancelled && joined.data.ok) await reloadShared();
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.username, actorName, reloadShared]);
+
   const {
     items: budgetLensItems,
     create: createBudgetItem,
@@ -386,14 +431,6 @@ export default function CouncilLensPage() {
     seed: [],
   });
   const {
-    items: auditLensItems,
-    create: createAuditItem,
-    update: updateAuditItem,
-    remove: removeAuditItem,
-  } = useLensData<Record<string, unknown>>('council', 'audit', {
-    seed: [],
-  });
-  const {
     items: debateLensItems,
     create: createDebateItem,
     update: updateDebateItem,
@@ -402,11 +439,9 @@ export default function CouncilLensPage() {
     seed: [],
   });
 
-  // Derive typed arrays from lens items (backend data is the source of truth)
-  const proposals: Proposal[] = useMemo(
-    () => proposalLensItems.map((i) => ({ ...(i.data as unknown as Proposal), id: i.id })),
-    [proposalLensItems]
-  );
+  const proposals: Proposal[] = useMemo(() => sharedCouncil?.proposals ?? [], [sharedCouncil]);
+  const members: CouncilMember[] = useMemo(() => sharedCouncil?.members ?? [], [sharedCouncil]);
+  const auditLog: AuditEntry[] = useMemo(() => sharedCouncil?.audit ?? [], [sharedCouncil]);
   const budgetItems: BudgetItem[] = useMemo(
     () => budgetLensItems.map((i) => ({ ...(i.data as unknown as BudgetItem), id: i.id })),
     [budgetLensItems]
@@ -418,10 +453,6 @@ export default function CouncilLensPage() {
   const committees: Committee[] = useMemo(
     () => committeeLensItems.map((i) => ({ ...(i.data as unknown as Committee), id: i.id })),
     [committeeLensItems]
-  );
-  const auditLog: AuditEntry[] = useMemo(
-    () => auditLensItems.map((i) => ({ ...(i.data as unknown as AuditEntry), id: i.id })),
-    [auditLensItems]
   );
   const debates: DebateSession[] = useMemo(
     () => debateLensItems.map((i) => ({ ...(i.data as unknown as DebateSession), id: i.id })),
@@ -522,15 +553,16 @@ export default function CouncilLensPage() {
   const dashboardStats = useMemo(() => {
     const active = proposals.filter((p) => ['discussion', 'voting'].includes(p.status)).length;
     const pendingVotes = proposals.filter((p) => p.status === 'voting').length;
-    const totalVoters = stakeholders.filter((s) => s.votingWeight > 0).length;
-    const quorumMet = proposals
-      .filter((p) => p.status === 'voting')
-      .every((p) => Object.keys(p.votes).length >= p.quorumRequired);
+    const totalVoters = members.length;
+    const voting = proposals.filter((p) => p.status === 'voting');
+    const cast = voting.reduce((n, p) => n + (p.votesCast ?? Object.keys(p.votes || {}).length), 0);
+    // [].every() is true, so an empty voting set must not read as quorum met.
+    const quorumMet = totalVoters > 0 && cast > 0 && voting.length > 0 && voting.every((p) => p.quorumMet === true);
     const decided = proposals.filter((p) =>
       ['decided', 'implemented', 'rejected'].includes(p.status)
     ).length;
     return { active, pendingVotes, quorumMet, totalVoters, decided };
-  }, [proposals, stakeholders]);
+  }, [proposals, members]);
 
   const filteredProposals = useMemo(() => {
     let filtered = proposals;
@@ -572,14 +604,40 @@ export default function CouncilLensPage() {
   // ----- Audit Logger -----
   const addAuditEntry = useCallback(
     (entry: Omit<AuditEntry, 'id' | 'timestamp'>) => {
-      const auditEntry = { ...entry, id: `au-${Date.now()}`, timestamp: new Date().toISOString() };
-      createAuditItem({
-        title: entry.action,
-        data: auditEntry as unknown as Record<string, unknown>,
-      });
+      const actor = entry.actor && entry.actor.toLowerCase() !== 'council chair'
+        ? entry.actor
+        : (actorName || 'Member');
+      void lensRun('council', 'audit-append', {
+        actor,
+        authorName: actor,
+        action: entry.action,
+        target: entry.target,
+        details: entry.details,
+        category: entry.category,
+      }).then(() => reloadShared());
     },
-    [createAuditItem]
+    [actorName, reloadShared]
   );
+
+  const persistProposal = useCallback(async (proposal: Proposal) => {
+    await lensRun('council', 'proposal-update', {
+      id: proposal.id,
+      title: proposal.title,
+      description: proposal.description,
+      type: proposal.type,
+      status: proposal.status,
+      impactAssessment: proposal.impactAssessment,
+      tags: proposal.tags,
+      votingMethod: proposal.votingMethod,
+      votingDeadline: proposal.votingDeadline,
+      discussion: proposal.discussion,
+      amendments: proposal.amendments,
+      linkedBudgetItems: proposal.linkedBudgetItems,
+      coSponsors: proposal.coSponsors,
+      authorName: actorName || undefined,
+    });
+    await reloadShared();
+  }, [actorName, reloadShared]);
 
   // ----- Stakeholder name lookup -----
   const stakeholderName = useCallback(
@@ -589,50 +647,37 @@ export default function CouncilLensPage() {
     [stakeholders]
   );
 
+  const memberName = useCallback(
+    (id: string) => members.find((m) => m.userId === id || m.id === id)?.name || stakeholderName(id),
+    [members, stakeholderName]
+  );
+
   // ----- Actions -----
   const handleCreateProposal = useCallback(() => {
     if (!newProposal.title.trim()) return;
-    const p: Proposal = {
-      id: `prop-${Date.now()}`,
+    const tags = newProposal.tags.split(',').map((t) => t.trim()).filter(Boolean);
+    void lensRun('council', 'proposal-create', {
       title: newProposal.title,
       description: newProposal.description,
       type: newProposal.type,
-      status: 'draft',
-      sponsor: 's1',
-      coSponsors: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      discussion: [],
-      amendments: [],
       impactAssessment: newProposal.impactAssessment,
-      linkedBudgetItems: [],
+      tags,
       votingMethod: newProposal.votingMethod,
-      votingDeadline: null,
-      votes: {},
-      quorumRequired: 4,
-      tags: newProposal.tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-    };
-    createProposalItem({ title: p.title, data: p as unknown as Record<string, unknown> });
-    addAuditEntry({
-      actor: 'Council Chair',
-      action: 'Created proposal',
-      target: p.id,
-      details: p.title,
-      category: 'proposal',
+      authorName: actorName || undefined,
+    }).then((r) => {
+      if (!r.data.ok) return;
+      setShowCreateProposal(false);
+      setNewProposal({
+        title: '',
+        description: '',
+        type: 'policy',
+        impactAssessment: '',
+        tags: '',
+        votingMethod: 'simple_majority',
+      });
+      return reloadShared();
     });
-    setShowCreateProposal(false);
-    setNewProposal({
-      title: '',
-      description: '',
-      type: 'policy',
-      impactAssessment: '',
-      tags: '',
-      votingMethod: 'simple_majority',
-    });
-  }, [newProposal, addAuditEntry, createProposalItem]);
+  }, [newProposal, actorName, reloadShared]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -663,16 +708,16 @@ export default function CouncilLensPage() {
       if (idx < 0 || idx >= order.length - 1) return;
       const next = order[idx + 1];
       const updated = { ...p, status: next, updatedAt: new Date().toISOString() };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
+      void persistProposal(updated);
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: `Advanced to ${next}`,
         target: p.id,
         details: `${p.title} moved to ${next}`,
         category: 'proposal',
       });
     },
-    [proposals, addAuditEntry, updateProposalItem]
+    [proposals, addAuditEntry, persistProposal, actorName]
   );
 
   const handleRejectProposal = useCallback(
@@ -684,34 +729,27 @@ export default function CouncilLensPage() {
         status: 'rejected' as ProposalStatus,
         updatedAt: new Date().toISOString(),
       };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
+      void persistProposal(updated);
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: 'Rejected proposal',
         target: p.id,
         details: p.title,
         category: 'proposal',
       });
     },
-    [proposals, addAuditEntry, updateProposalItem]
+    [proposals, addAuditEntry, persistProposal, actorName]
   );
 
   const handleCastVote = useCallback(
-    (proposalId: string, stakeholderId: string, choice: VoteChoice) => {
-      const p = proposals.find((pr) => pr.id === proposalId);
-      if (!p) return;
-      const newVotes = { ...p.votes, [stakeholderId]: choice };
-      const updated = { ...p, votes: newVotes, updatedAt: new Date().toISOString() };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
-      addAuditEntry({
-        actor: stakeholderName(stakeholderId),
-        action: 'Voted',
-        target: p.id,
-        details: `Cast vote: ${choice.replace('_', ' ')}`,
-        category: 'vote',
-      });
+    (proposalId: string, choice: VoteChoice) => {
+      void lensRun('council', 'proposal-vote', {
+        id: proposalId,
+        choice,
+        authorName: actorName || undefined,
+      }).then(() => reloadShared());
     },
-    [proposals, addAuditEntry, stakeholderName, updateProposalItem]
+    [actorName, reloadShared]
   );
 
   const handleAddComment = useCallback(
@@ -721,7 +759,7 @@ export default function CouncilLensPage() {
       if (!p) return;
       const comment: DiscussionComment = {
         id: `dc-${Date.now()}`,
-        author: 's1',
+        author: actorName || user?.id || 'member',
         content: commentText,
         createdAt: new Date().toISOString(),
         type: 'comment',
@@ -731,10 +769,10 @@ export default function CouncilLensPage() {
         discussion: [...p.discussion, comment],
         updatedAt: new Date().toISOString(),
       };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
+      void persistProposal(updated);
       setCommentText('');
     },
-    [commentText, proposals, updateProposalItem]
+    [commentText, proposals, persistProposal, actorName, user?.id]
   );
 
   const handleAddAmendment = useCallback(
@@ -745,7 +783,7 @@ export default function CouncilLensPage() {
       const amendment: Amendment = {
         id: `am-${Date.now()}`,
         proposalId,
-        author: 's1',
+        author: actorName || user?.id || 'member',
         title: amendmentForm.title,
         description: amendmentForm.description,
         status: 'proposed',
@@ -756,9 +794,9 @@ export default function CouncilLensPage() {
         amendments: [...p.amendments, amendment],
         updatedAt: new Date().toISOString(),
       };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
+      void persistProposal(updated);
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: 'Proposed amendment',
         target: amendment.id,
         details: amendment.title,
@@ -767,7 +805,7 @@ export default function CouncilLensPage() {
       setAmendmentForm({ title: '', description: '' });
       setShowAmendmentForm(false);
     },
-    [amendmentForm, addAuditEntry, proposals, updateProposalItem]
+    [amendmentForm, addAuditEntry, proposals, persistProposal, actorName, user?.id]
   );
 
   const handleAcceptAmendment = useCallback(
@@ -781,16 +819,16 @@ export default function CouncilLensPage() {
         ),
         updatedAt: new Date().toISOString(),
       };
-      updateProposalItem(proposalId, { data: updated as unknown as Record<string, unknown> });
+      void persistProposal(updated);
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: 'Accepted amendment',
         target: amendmentId,
         details: 'Amendment accepted',
         category: 'amendment',
       });
     },
-    [proposals, addAuditEntry, updateProposalItem]
+    [proposals, addAuditEntry, persistProposal, actorName]
   );
 
   const handleCreateBudgetItem = useCallback(() => {
@@ -808,7 +846,7 @@ export default function CouncilLensPage() {
     };
     createBudgetItem({ title: item.description, data: item as unknown as Record<string, unknown> });
     addAuditEntry({
-      actor: 'Council Chair',
+      actor: actorName || 'Member',
       action: 'Submitted budget item',
       target: item.id,
       details: `${item.description} (${formatCurrency(item.amount)})`,
@@ -823,7 +861,7 @@ export default function CouncilLensPage() {
       justification: '',
       scenario: 'proposed',
     });
-  }, [newBudgetItem, addAuditEntry, createBudgetItem]);
+  }, [newBudgetItem, addAuditEntry, createBudgetItem, actorName]);
 
   const handleApproveBudgetItem = useCallback(
     (itemId: string, approved: boolean) => {
@@ -835,14 +873,14 @@ export default function CouncilLensPage() {
       };
       updateBudgetItem(itemId, { data: updated as unknown as Record<string, unknown> });
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: approved ? 'Approved budget item' : 'Rejected budget item',
         target: itemId,
         details: '',
         category: 'budget',
       });
     },
-    [budgetItems, addAuditEntry, updateBudgetItem]
+    [budgetItems, addAuditEntry, updateBudgetItem, actorName]
   );
 
   const handleCreateCommittee = useCallback(() => {
@@ -856,7 +894,7 @@ export default function CouncilLensPage() {
     };
     createCommitteeItem({ title: c.name, data: c as unknown as Record<string, unknown> });
     addAuditEntry({
-      actor: 'Council Chair',
+      actor: actorName || 'Member',
       action: 'Created committee',
       target: c.id,
       details: c.name,
@@ -864,7 +902,7 @@ export default function CouncilLensPage() {
     });
     setShowCreateCommittee(false);
     setNewCommittee({ name: '', description: '' });
-  }, [newCommittee, addAuditEntry, createCommitteeItem]);
+  }, [newCommittee, addAuditEntry, createCommitteeItem, actorName]);
 
   const handleDelegate = useCallback(
     (fromId: string, toId: string | null) => {
@@ -901,7 +939,7 @@ export default function CouncilLensPage() {
     };
     createDebateItem({ title: d.topic, data: d as unknown as Record<string, unknown> });
     addAuditEntry({
-      actor: 'Council Chair',
+      actor: actorName || 'Member',
       action: 'Started debate',
       target: d.id,
       details: d.topic,
@@ -913,7 +951,7 @@ export default function CouncilLensPage() {
     }
     setShowCreateDebate(false);
     setNewDebate({ topic: '', timePerSpeaker: 300 });
-  }, [newDebate, addAuditEntry, createDebateItem, debateMutation, dtus]);
+  }, [newDebate, addAuditEntry, createDebateItem, debateMutation, dtus, actorName]);
 
   const handleAddDebatePoint = useCallback(
     (debateId: string, type: 'point' | 'counterpoint' | 'motion') => {
@@ -922,12 +960,12 @@ export default function CouncilLensPage() {
       if (!d) return;
       const updated = {
         ...d,
-        points: [...d.points, { speaker: 'Council Chair', content: debatePointText, type }],
+        points: [...d.points, { speaker: actorName || 'Member', content: debatePointText, type }],
       };
       updateDebateItem(debateId, { data: updated as unknown as Record<string, unknown> });
       setDebatePointText('');
     },
-    [debatePointText, debates, updateDebateItem]
+    [debatePointText, debates, updateDebateItem, actorName]
   );
 
   const handleConcludeDebate = useCallback(
@@ -940,14 +978,14 @@ export default function CouncilLensPage() {
       const updated = { ...d, status: 'concluded' as const };
       updateDebateItem(debateId, { data: updated as unknown as Record<string, unknown> });
       addAuditEntry({
-        actor: 'Council Chair',
+        actor: actorName || 'Member',
         action: 'Concluded debate',
         target: debateId,
         details: d.synthesis ? 'Debate concluded' : 'Debate concluded — no synthesis generated',
         category: 'debate',
       });
     },
-    [debates, addAuditEntry, updateDebateItem]
+    [debates, addAuditEntry, updateDebateItem, actorName]
   );
 
   // Real synthesis — calls the council.debate macro (turn-taking stance +
@@ -985,15 +1023,9 @@ export default function CouncilLensPage() {
     [debates, runArtifact, updateDebateItem]
   );
 
-  // Calls the real council.simulate-budget macro (server/server.js:40272) —
-  // a variance-weighted low/high/expected budget projection over this
-  // proposal's linked budget items. The macro reads ONLY
-  // `artifact.data.budget` (it ignores its own `params` entirely), so the
-  // only way to feed it real data is to first PATCH the proposal artifact's
-  // stored `data.budget` field, then run the action so it reads what was
-  // just written. This write is safe: `budget` is not a field any other
-  // part of this page reads on a Proposal (line items live in
-  // `linkedBudgetItems`), so it can't corrupt anything else stored there.
+  // council.budget-simulate reads this proposal's linked budget lines and
+  // writes the projection back onto the shared proposal. The audit row is
+  // appended by that macro under the signed-in member's name.
   const handleSimulateBudget = useCallback(
     async (proposalId: string) => {
       const p = proposals.find((pr) => pr.id === proposalId);
@@ -1002,22 +1034,17 @@ export default function CouncilLensPage() {
       setSimulatingBudgetId(proposalId);
       setBudgetSimError(null);
       try {
-        await updateProposalItem(proposalId, {
-          data: { ...p, budget: input } as unknown as Record<string, unknown>,
+        const res = await lensRun<{ simulation?: BudgetSimulation }>('council', 'budget-simulate', {
+          id: proposalId,
+          budget: input,
+          authorName: actorName || undefined,
         });
-        const res = await runArtifact.mutateAsync({ id: proposalId, action: 'simulate-budget' });
-        const inner = (res as { result?: { simulation?: BudgetSimulation } })?.result;
-        if (inner?.simulation) {
-          setBudgetSimResults((prev) => ({ ...prev, [proposalId]: inner.simulation as BudgetSimulation }));
-          addAuditEntry({
-            actor: 'Council Chair',
-            action: 'Simulated budget',
-            target: proposalId,
-            details: `Projected ${formatCurrency(inner.simulation.projected)} across ${input.items.length} line item${input.items.length === 1 ? '' : 's'}`,
-            category: 'budget',
-          });
+        const simulation = res.data.result?.simulation;
+        if (res.data.ok && simulation) {
+          setBudgetSimResults((prev) => ({ ...prev, [proposalId]: simulation }));
+          await reloadShared();
         } else {
-          setBudgetSimError('Simulation did not return a result.');
+          setBudgetSimError(res.data.error || 'Simulation did not return a result.');
         }
       } catch (e) {
         console.error(`Budget simulation failed for ${proposalId}:`, e);
@@ -1026,7 +1053,7 @@ export default function CouncilLensPage() {
         setSimulatingBudgetId(null);
       }
     },
-    [proposals, budgetItems, updateProposalItem, runArtifact, addAuditEntry]
+    [proposals, budgetItems, actorName, reloadShared]
   );
 
   const handleExportAudit = useCallback(() => {
@@ -1091,8 +1118,8 @@ export default function CouncilLensPage() {
           <span className={ds.textMuted}>
             {total} vote{total !== 1 ? 's' : ''} cast
           </span>
-          <span className={cn(total >= quorum ? 'text-green-400' : 'text-yellow-400')}>
-            Quorum: {total}/{quorum} {total >= quorum ? '(met)' : '(not met)'}
+          <span className={cn(quorum > 0 && total >= quorum ? 'text-green-400' : 'text-yellow-400')}>
+            Quorum: {total}/{quorum} {quorum > 0 && total >= quorum ? '(met)' : '(not met)'}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1293,10 +1320,10 @@ export default function CouncilLensPage() {
     if (!selectedProposal) return null;
     const p = selectedProposal;
     const sc = STATUS_CONFIG[p.status];
-    const tally = getVoteTally(p.votes);
+    const tally = getVoteTally(p.votes || {});
     const voteTotal = Object.values(tally).reduce((s, n) => s + n, 0);
     const canVote = p.status === 'voting';
-    const votableStakeholders = stakeholders.filter((s) => s.votingWeight > 0 && !p.votes[s.id]);
+    const viewerIsMember = !!user?.id && members.some((m) => m.userId === user.id);
 
     return (
       <div className="space-y-4">
@@ -1329,22 +1356,28 @@ export default function CouncilLensPage() {
 
           <div className="flex items-center gap-6 text-xs text-gray-400 border-t border-lattice-border pt-3">
             <span>
-              Sponsor: <strong className="text-white">{stakeholderName(p.sponsor)}</strong>
+              Sponsor: <strong className="text-white">{p.authorName || memberName(p.sponsor)}</strong>
             </span>
             {p.coSponsors.length > 0 && (
               <span>Co-sponsors: {p.coSponsors.map((c) => stakeholderName(c)).join(', ')}</span>
             )}
             <span>Created: {formatDate(p.createdAt)}</span>
             <span>Updated: {formatDate(p.updatedAt)}</span>
-            <button
-              onClick={() => {
-                removeProposalItem(p.id);
-                setSelectedProposalId(null);
-              }}
-              className="ml-auto text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
-            >
-              <X className="w-3 h-3" /> Remove
-            </button>
+            {user?.id && p.authorId === user.id && (
+              <button
+                onClick={() => {
+                  void lensRun('council', 'proposal-delete', { id: p.id }).then((r) => {
+                    if (r.data.ok) {
+                      setSelectedProposalId(null);
+                      return reloadShared();
+                    }
+                  });
+                }}
+                className="ml-auto text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
+              >
+                <X className="w-3 h-3" /> Remove
+              </button>
+            )}
           </div>
 
           {/* Real-time Enhancement Toolbar */}
@@ -1398,12 +1431,16 @@ export default function CouncilLensPage() {
             <Vote className="w-4 h-4 text-yellow-400" />
             Vote Tally
           </h2>
-          <VoteTallyBar votes={p.votes} quorum={p.quorumRequired} />
+          <VoteTallyBar votes={p.votes || {}} quorum={p.quorumRequired} />
 
-          {canVote && votableStakeholders.length > 0 && (
+          {canVote && (
             <div className="mt-4 pt-4 border-t border-lattice-border">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-gray-300">Cast votes for remaining stakeholders:</p>
+                <p className="text-sm text-gray-300">
+                  {members.length} eligible {members.length === 1 ? 'voter' : 'voters'}
+                  {typeof p.votesCast === 'number' ? ` · ${p.votesCast} cast` : ''}
+                  {p.quorumMet ? ' · quorum met' : ' · quorum needed'}
+                </p>
                 <button
                   onClick={() => setAnonymousVoting(!anonymousVoting)}
                   className={cn(ds.btnGhost, 'text-xs')}
@@ -1416,20 +1453,26 @@ export default function CouncilLensPage() {
                   {anonymousVoting ? 'Anonymous' : 'Transparent'}
                 </button>
               </div>
-              {votableStakeholders.map((s) => (
-                <div key={s.id} className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className="text-xs text-gray-400 w-28 flex-shrink-0">{s.name}:</span>
+              {viewerIsMember ? (
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="text-xs text-gray-400 w-28 flex-shrink-0">{actorName || 'You'}:</span>
                   {VOTE_OPTIONS.map((v) => (
                     <button
                       key={v.value}
-                      onClick={() => handleCastVote(p.id, s.id, v.value)}
-                      className={cn(ds.btnSmall, 'text-[10px] px-2 py-1', `hover:${v.color}/30`)}
+                      onClick={() => handleCastVote(p.id, v.value)}
+                      className={cn(
+                        ds.btnSmall,
+                        'text-[10px] px-2 py-1',
+                        user?.id && p.votes?.[user.id] === v.value && 'ring-1 ring-white/40'
+                      )}
                     >
                       {v.label}
                     </button>
                   ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-xs text-gray-400">Sign in to cast your vote. Only council members are eligible.</p>
+              )}
             </div>
           )}
 
@@ -1445,7 +1488,7 @@ export default function CouncilLensPage() {
                       className="flex items-center gap-1.5 text-xs px-2 py-1 bg-lattice-elevated rounded-full"
                     >
                       <span className={cn('w-2 h-2 rounded-full', opt?.color)} />
-                      {stakeholderName(sid)}: {choice.replace(/_/g, ' ')}
+                      {memberName(sid)}: {choice.replace(/_/g, ' ')}
                     </span>
                   );
                 })}
@@ -2226,7 +2269,7 @@ export default function CouncilLensPage() {
                       onClick={() => {
                         removeBudgetItem(b.id);
                         addAuditEntry({
-                          actor: 'Council Chair',
+                          actor: actorName || 'Member',
                           action: 'Removed budget item',
                           target: b.id,
                           details: b.description,
@@ -2304,7 +2347,7 @@ export default function CouncilLensPage() {
                       onClick={() => {
                         removeBudgetItem(b.id);
                         addAuditEntry({
-                          actor: 'Council Chair',
+                          actor: actorName || 'Member',
                           action: 'Removed budget item',
                           target: b.id,
                           details: b.description,
@@ -2460,36 +2503,36 @@ export default function CouncilLensPage() {
                   >
                     {entry.category}
                   </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const newDetails = window.prompt(
-                        'Update audit details:',
-                        entry.details || ''
-                      );
-                      if (newDetails !== null) {
-                        updateAuditItem(entry.id, {
-                          data: { ...entry, details: newDetails } as unknown as Record<
-                            string,
-                            unknown
-                          >,
-                        });
-                      }
-                    }}
-                    className="text-gray-400 hover:text-white flex-shrink-0 ml-1"
-                    title="Edit details"
-                  >
-                    <PenLine className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeAuditItem(entry.id);
-                    }}
-                    className="text-red-400 hover:text-red-300 flex-shrink-0 ml-1"
-                  aria-label="Close">
-                    <X className="w-3 h-3" />
-                  </button>
+                  {user?.id && entry.authorId === user.id && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const newDetails = window.prompt(
+                            'Update audit details:',
+                            entry.details || ''
+                          );
+                          if (newDetails !== null) {
+                            void lensRun('council', 'audit-update', { id: entry.id, details: newDetails }).then(() => reloadShared());
+                          }
+                        }}
+                        className="text-gray-400 hover:text-white flex-shrink-0 ml-1"
+                        title="Edit details"
+                      >
+                        <PenLine className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void lensRun('council', 'audit-delete', { id: entry.id }).then(() => reloadShared());
+                        }}
+                        className="text-red-400 hover:text-red-300 flex-shrink-0 ml-1"
+                        aria-label="Close"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
               );
             })}
