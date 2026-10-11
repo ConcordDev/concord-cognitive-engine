@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dumbbell, Loader2, ExternalLink, ArrowUp, MessageSquare } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
 
 interface Post { id: string; title: string; permalink: string; author: string; score: number; num_comments: number; link_flair_text?: string; }
 
@@ -23,11 +24,10 @@ export function FitnessFeed() {
 
   const posts = useQuery({
     queryKey: ['reddit-fitness', sub, windowKey],
+    retry: false,
     queryFn: async () => {
-      const r = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}&limit=25`);
-      if (!r.ok) throw new Error(`reddit ${r.status}`);
-      const j = await r.json();
-      return (j?.data?.children || []).map((c: { data: Post }) => c.data) as Post[];
+      const listing = await fetchRedditListing({ sub, window: windowKey });
+      return Object.assign(listing.posts as Post[], { cached: listing.cached, stale: listing.stale });
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -42,7 +42,7 @@ export function FitnessFeed() {
         <div className="flex items-center gap-2">
           <Dumbbell className="h-5 w-5 text-lime-400" />
           <h2 className="text-sm font-semibold text-white">Real-world fitness feed</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit.com · top {windowKey}</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit.com · top {windowKey}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} />
         </div>
         <div className="flex items-center gap-2">
           <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SUBS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
@@ -52,7 +52,7 @@ export function FitnessFeed() {
           )}
         </div>
       </header>
-      {posts.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Reddit unreachable.</div>}
+      {posts.isError && <div role="status" className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Community feed unavailable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Posts</div><div className="mt-0.5 font-mono text-lg text-lime-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Upvotes</div><div className="mt-0.5 font-mono text-lg text-lime-300">{totalScore.toLocaleString()}</div></div>

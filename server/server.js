@@ -41047,6 +41047,12 @@ try { app.use("/api/studio", createStudioRouter({ db, requireAuth })); } catch (
 import createFeedRoutes from "./routes/feeds.js";
 try { app.use("/api/feeds", createFeedRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "feed_routes_skip", { error: e.message }); }
 
+// Lens community panels (reflection and the same Reddit listing pattern).
+// Allowlisted subreddit JSON only — see routes/reddit-listing.js. Not a
+// public-read path; the global auth middleware still applies.
+import { createRedditListingRouter } from "./routes/reddit-listing.js";
+try { app.use("/api/community", createRedditListingRouter()); } catch (e) { structuredLog("warn", "reddit_listing_routes_skip", { error: e.message }); }
+
 import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
 
