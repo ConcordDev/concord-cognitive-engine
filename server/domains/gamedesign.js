@@ -2494,18 +2494,22 @@ export default function registerGameDesignActions(registerLensAction) {
     if (!dtuId) return { ok: false, error: "dtuId required" };
     const fetched = await ctx.macro.run("dtu", "get", { id: dtuId });
     const dtu = fetched?.ok ? fetched.dtu : null;
-    // A missing id and a private id this caller cannot read are the same
-    // answer. dtu.get already returns "DTU not found" for both; do not
-    // consult STATE to tell them apart, and do not return the body. A
-    // distinct error would confirm the private id exists.
-    if (!dtu || !ctxMayReadDtu(ctx, dtu)) {
-      return { ok: false, error: "DTU not found" };
-    }
+    // Same object a missing id produces. Do not consult STATE, and do not
+    // return the body: a different status or error would confirm the id exists.
+    const miss = { ok: false, error: "DTU not found" };
+    if (!dtu || !ctxMayReadDtu(ctx, dtu)) return miss;
+    // A private row owned by someone else is the same miss, even if an
+    // inner read handed the body back. not_authorized is only for a DTU
+    // this caller can already read that scene-load still will not rebuild.
+    const owner = dtu.ownerId || dtu.author || dtu.userId || dtu.createdBy;
+    const privatelyHeld = dtu.visibility === "private"
+      || dtu.privacy === "private"
+      || dtu.privacy === "followers-only"
+      || dtu.scope === "user";
+    if (privatelyHeld && owner && owner !== userId) return miss;
     if (dtu.meta?.type !== GD_LEVEL_DESIGN_DTU_TYPE) {
       return { ok: false, error: "not_a_level_design_dtu" };
     }
-    // Reconstruct only for a DTU this caller can already read. A non-owner
-    // of a readable non-public snapshot still does not get a new level.
     if (dtu.ownerId && dtu.ownerId !== userId && dtu.visibility !== "public") {
       return { ok: false, error: "not_authorized" };
     }
