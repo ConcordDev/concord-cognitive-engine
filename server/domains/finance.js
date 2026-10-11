@@ -188,6 +188,23 @@ export default function registerFinanceActions(registerLensAction) {
   });
 
   /**
+   * net-worth-snapshot-delete — drop the caller's snapshot for one date.
+   * One row per date. Unknown date is an error, not a silent success.
+   */
+  registerLensAction("finance", "net-worth-snapshot-delete", (ctx, _artifact, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = String(params.date || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "date required" };
+    const list = state.snapshots.get(userId) || [];
+    const next = list.filter((s) => s.date !== date);
+    if (next.length === list.length) return { ok: false, error: "snapshot not found" };
+    state.snapshots.set(userId, next);
+    saveStateIfAvailable();
+    return { ok: true, result: { date, deleted: true, remaining: next.length } };
+  });
+
+  /**
    * investment-checkup — Empower-style allocation drift + concentration +
    * fee benchmarking + Health Score. Returns error if user has no holdings
    * (per "everything must be real" directive — no SAMPLE_PORTFOLIO).

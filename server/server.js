@@ -42,6 +42,8 @@ import {
   isLogAdmin,
   actorFromReq,
 } from "./lib/log-access.js";
+import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -25582,6 +25584,13 @@ register("dtu", "create", async (ctx, input) => {
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
   _beat("persisting");
+  if (input.skipAutoTag === true || meta?.skipAutoTag === true) {
+    dtu._skipAutoTag = true;
+    dtu.skipAutoTag = true;
+    if (!dtu.meta || typeof dtu.meta !== "object") dtu.meta = {};
+    dtu.meta.skipAutoTag = true;
+  }
+
   const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
@@ -55084,6 +55093,52 @@ register("whiteboard", "list", (ctx, _input) => {
   return { ok: true, whiteboards, count: whiteboards.length };
 });
 
+// Delete and rename are owner-only. A missing ownerId is not ownership:
+// legacy boards stay readable, but a stranger cannot remove them.
+function _wbCallerId(ctx) {
+  return ctx?.actor?.userId || ctx?.userId || null;
+}
+function _wbMutateGate(dtu, ctx) {
+  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found", status: 404 };
+  const owner = dtu.ownerId || null;
+  const caller = _wbCallerId(ctx);
+  if (!owner || !caller || owner !== caller) return { ok: false, error: "owner_required", status: 403 };
+  return null;
+}
+
+register("whiteboard", "rename", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  const next = String(input?.title || "").trim();
+  if (!next) return { ok: false, error: "title required", status: 400 };
+  const wb = dtu.machine.data || {};
+  wb.title = next;
+  wb.updatedAt = nowISO();
+  dtu.machine.data = wb;
+  dtu.title = `Whiteboard: ${next}`;
+  dtu.updatedAt = wb.updatedAt;
+  STATE.dtus.set(whiteboardId, dtu);
+  saveStateDebounced();
+  return { ok: true, whiteboard: wb };
+});
+
+register("whiteboard", "delete", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  STATE.dtus.delete(whiteboardId);
+  saveStateDebounced();
+  return { ok: true, deleted: true, id: whiteboardId };
+});
+
+function _wbHttp(res, result) {
+  const status = result && result.ok === false && Number.isInteger(result.status) ? result.status : 200;
+  return res.status(status).json(result);
+}
+
 app.post("/api/collab/session", asyncHandler(async (req, res) => res.json(await runMacro("collab", "createSession", req.body, makeCtx(req)))));
 app.post("/api/collab/join", asyncHandler(async (req, res) => res.json(await runMacro("collab", "join", req.body, makeCtx(req)))));
 app.post("/api/collab/edit", asyncHandler(async (req, res) => res.json(await runMacro("collab", "edit", req.body, makeCtx(req)))));
@@ -55094,6 +55149,8 @@ app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await r
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
 app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
 app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
+app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 5: Collaboration & Whiteboard" });
@@ -56017,7 +56074,7 @@ app.get("/api/events/paginated", (req, res) => {
 
     return res.json(finalizeActivityFeed(filtered, gate.actor, { limit, offset }));
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json(emptyEventsPage(String(e?.message || e), { limit, offset }));
   }
 });
 
@@ -85046,7 +85103,7 @@ function autoClassifyDTU(dtu) {
  */
 function applyAutoTagging(dtu) {
   try {
-    if (!dtu || dtu._skipAutoTag) return;
+    if (dtuSkipsAutoTag(dtu)) return;
     const autoDomains = autoClassifyDTU(dtu);
     if (autoDomains.length === 0) return;
     const existing = new Set(dtu.tags || []);
@@ -85117,16 +85174,18 @@ async function retroTagAllDTUs() {
     let processed = 0;
 
     for (const dtu of dtus) {
-      // Auto-classify and merge tags
-      const domains = autoClassifyDTU(dtu);
-      if (domains.length > 0) {
-        const existing = new Set(dtu.tags || []);
-        const before = existing.size;
-        for (const d of domains) existing.add(d);
-        if (existing.size > before) {
-          dtu.tags = Array.from(existing);
-          dtu.updatedAt = new Date().toISOString();
-          tagged++;
+      // Authored DTUs that set skipAutoTag keep the tags they were saved with.
+      if (!dtuSkipsAutoTag(dtu)) {
+        const domains = autoClassifyDTU(dtu);
+        if (domains.length > 0) {
+          const existing = new Set(dtu.tags || []);
+          const before = existing.size;
+          for (const d of domains) existing.add(d);
+          if (existing.size > before) {
+            dtu.tags = Array.from(existing);
+            dtu.updatedAt = new Date().toISOString();
+            tagged++;
+          }
         }
       }
 
