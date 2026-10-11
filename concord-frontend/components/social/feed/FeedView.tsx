@@ -59,7 +59,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     if (trendR.data?.ok && trendR.data.result) {
       const rows = (trendR.data.result.trending || []).flatMap((t) => {
         const tag = typeof t?.tag === 'string' ? t.tag.trim() : '';
-        if (!tag || tag === '[object Object]') return [];
+        if (!tag || tag.toLowerCase() === '[object object]') return [];
         return [{ ...t, tag }];
       });
       setTrending(rows);

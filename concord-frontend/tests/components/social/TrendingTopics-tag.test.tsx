@@ -33,7 +33,10 @@ describe('TrendingTopics tag normalization', () => {
             topics: [
               { tag: 'concord', count: 120 },
               { tag: '[object Object]', count: 90 },
+              { tag: '[object object]', count: 84 },
+              { tag: '  [OBJECT OBJECT]  ', count: 3 },
               { tag: { name: 'kept-topic' }, count: 4 },
+              { tag: { label: '[object object]' }, count: 1 },
               { tag: { unexpected: true }, count: 2 },
             ],
           },
@@ -43,7 +46,7 @@ describe('TrendingTopics tag normalization', () => {
     });
   });
 
-  it('renders real labels and drops the [object Object] entry', async () => {
+  it('renders real labels and drops [object Object] in any letter case', async () => {
     renderTopics();
     await waitFor(() => {
       expect(screen.getByText('concord')).toBeTruthy();

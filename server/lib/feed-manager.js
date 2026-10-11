@@ -24,6 +24,7 @@ import { feedAttribution } from "./source-attribution.js";
 import { browserEngine } from "./browser-engine.js";
 import { checkQualityGate, logRejectedDTU, pruneQualityLog } from "./ingest-quality.js";
 import { getDedupKey, hashDedupKey } from "./dedup-keys.js";
+import { normalizeTagList } from "./dtu-tags.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
@@ -641,6 +642,20 @@ function initHealth(feedId) {
   return h;
 }
 
+// Tags written onto a feed DTU. Object categories contribute their own
+// string name; they are never String()'d into "[object object]".
+export function feedDtuTags(feedSource, item) {
+  const _lensId = feedSource.lensId || feedSource.domain;
+  const raw = [
+    ...(feedSource.tags || []),
+    ...(Array.isArray(item.categories) ? item.categories.slice(0, 5) : []),
+    "feed",
+    "live",
+    ...(_lensId ? [`lens:${_lensId}`, _lensId] : []),
+  ];
+  return [...new Set(normalizeTagList(raw, (t) => String(t).toLowerCase().trim()))].slice(0, 15);
+}
+
 /**
  * Convert a parsed feed item into a DTU and commit it.
  * @param {object} item - Parsed feed item
@@ -654,15 +669,7 @@ async function commitFeedDTU(item, feedSource) {
   const now = new Date().toISOString();
   const dtuId = `feed_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
-  const _lensId = feedSource.lensId || feedSource.domain;
-  const tags = [
-    ...(feedSource.tags || []),
-    ...(Array.isArray(item.categories) ? item.categories.slice(0, 5) : []),
-    "feed",
-    "live",
-    ...(_lensId ? [`lens:${_lensId}`, _lensId] : []),
-  ].map(t => String(t).toLowerCase().trim()).filter(Boolean);
-  const uniqueTags = [...new Set(tags)].slice(0, 15);
+  const uniqueTags = feedDtuTags(feedSource, item);
 
   // Build universal source attribution
   const attribution = feedAttribution(feedSource, item);

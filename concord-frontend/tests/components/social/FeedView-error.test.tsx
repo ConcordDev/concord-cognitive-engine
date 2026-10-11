@@ -55,4 +55,32 @@ describe('FeedView feed failure', () => {
     expect(screen.getByText(/Write the first post/i)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('drops [object Object] and [object object] trending tags', async () => {
+    lensRunMock.mockImplementation(async (_domain: string, action: string) => {
+      if (action === 'feed') {
+        return { data: { ok: true, result: { posts: [] }, error: null } };
+      }
+      return {
+        data: {
+          ok: true,
+          result: {
+            trending: [
+              { tag: 'concord', posts: 3 },
+              { tag: '[object Object]', posts: 9 },
+              { tag: '[object object]', posts: 84 },
+            ],
+          },
+          error: null,
+        },
+      };
+    });
+
+    render(<FeedView currentUserId="user_a" username="ana" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /#concord/ })).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: /object object/i })).toBeNull();
+  });
 });
