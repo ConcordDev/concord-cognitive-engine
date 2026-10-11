@@ -199,6 +199,17 @@ const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
 const RETRY_BASE_DELAY_MS = 1000;
 
+// Lens-run refusals that are read-path noise, not a user action that just
+// failed. unknown_macro stays HTTP 200 (never hits the 4xx toast). The rest
+// are expected when a panel polls while logged out or the substrate is down.
+const QUIET_LENS_ERRORS = new Set([
+  'unknown_macro',
+  'no_actor',
+  'no_db',
+  'not_found',
+  'staking_unavailable',
+]);
+
 /** True when the server is shedding/warming (not a permission gate). */
 function isServiceWarmingOrOverloaded(error: AxiosError): boolean {
   return isServiceOverloadedPayload(error.response?.data);
@@ -299,6 +310,16 @@ api.interceptors.request.use(
         }
       }
     }
+    // Handler refusals on /api/lens/run are HTTP 4xx with {ok:false, error}.
+    // Resolve them so existing callers can read data.ok instead of throwing
+    // before the check. 5xx still rejects (and stays in the retry set).
+    if (
+      typeof config.url === 'string' &&
+      config.url.includes('/api/lens/run') &&
+      !config.validateStatus
+    ) {
+      config.validateStatus = (status) => status < 500;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -338,6 +359,26 @@ api.interceptors.response.use(
     const admittedMethod = (response.config?.method || 'get').toUpperCase();
     const wasRetried = Boolean((response.config as { _retried?: boolean } | undefined)?._retried);
     if (wasRetried || admittedMethod !== 'GET') clearServerBusy();
+
+    // A lens action that refused (insufficient balance, validation, authz)
+    // is a 4xx we deliberately resolved above. Surface it once. Quiet codes
+    // are read-path noise (logged-out list, unknown macro still on HTTP 200).
+    const lensUrl = response.config?.url || '';
+    const lensData = response.data as { ok?: boolean; error?: string } | undefined;
+    if (
+      typeof window !== 'undefined' &&
+      response.status >= 400 &&
+      lensUrl.includes('/api/lens/run') &&
+      lensData?.ok === false &&
+      typeof lensData.error === 'string' &&
+      !QUIET_LENS_ERRORS.has(lensData.error)
+    ) {
+      const store = useUIStore.getState();
+      const existingToastCount = store.toasts.filter((t) => t.type === 'error' || t.type === 'warning').length;
+      if (existingToastCount < 2) {
+        store.addToast({ type: 'error', message: lensData.error.replace(/_/g, ' ') });
+      }
+    }
 
     return response;
   },
@@ -655,7 +696,11 @@ export async function lensRun<T = any>(
     }
     return { data: { ok: !err, result: node as T, error: err } };
   } catch (e) {
-    return { data: { ok: false, result: null, error: e instanceof Error ? e.message : String(e) } };
+    const bodyErr = (e as { response?: { data?: { error?: unknown } } })?.response?.data?.error;
+    const message = typeof bodyErr === 'string' && bodyErr
+      ? bodyErr
+      : e instanceof Error ? e.message : String(e);
+    return { data: { ok: false, result: null, error: message } };
   }
 }
 
