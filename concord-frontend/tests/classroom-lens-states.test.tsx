@@ -74,7 +74,10 @@ const COHORTS_EMPTY = { ok: true, teaching: [], studying: [] };
 const COHORTS_POPULATED = {
   ok: true,
   teaching: [{ id: 12, name: 'Algebra I', rubric_dtu_id: null, created_at: 1735689600, enrolled: 3 }],
-  studying: [{ id: 34, name: 'Intro Biology', rubric_dtu_id: null, teacher_user_id: 'teacher-abc12345' }],
+  studying: [
+    { id: 34, name: 'Intro Biology', rubric_dtu_id: null, teacher_user_id: 'aaaaaaaa-teacher-id', teacher_display_name: 'Ada Lovelace' },
+    { id: 35, name: 'Office Hours', rubric_dtu_id: null, teacher_user_id: '496291b0deadbeef', teacher_display_name: null },
+  ],
 };
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -149,11 +152,17 @@ describe('classroom lens — four UX states', () => {
   it('POPULATED: renders the real teaching + studying cohort rows from the macro body', async () => {
     // @ts-expect-error test global
     global.fetch = vi.fn(() => jsonResponse(envelope(COHORTS_POPULATED)));
-    const { getByText } = render(<ClassroomPage />);
+    const { getByText, queryByText } = render(<ClassroomPage />);
     await waitFor(() => expect(getByText('Algebra I')).toBeInTheDocument());
     expect(getByText('Intro Biology')).toBeInTheDocument();
     // enrolled count from the row is rendered ("3 students")
     expect(getByText(/3 students/i)).toBeInTheDocument();
+    // a real display name replaces the raw teacher id; a missing name falls back to the id prefix
+    expect(getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(getByText('teacher 496291b0')).toBeInTheDocument();
+    expect(getByText('Office Hours')).toBeInTheDocument();
+    // the named teacher's raw id is not what the row shows
+    expect(queryByText('teacher aaaaaaaa')).toBeNull();
   });
 });
 
@@ -203,12 +212,91 @@ describe('classroom lens — create/submit flows read fields off the unwrapped r
       if (body.name === 'create_cohort') return jsonResponse(envelope({ ok: false, reason: 'missing_name' }));
       return jsonResponse(envelope(COHORTS_EMPTY));
     });
-    const { getByText, getByRole, getByPlaceholderText } = render(<ClassroomPage />);
+    const { getByText, getByRole, getByPlaceholderText, queryByText } = render(<ClassroomPage />);
     await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
 
     fireEvent.change(getByPlaceholderText('Cohort name'), { target: { value: 'X' } });
     await act(async () => { fireEvent.click(getByRole('button', { name: 'Create' })); });
 
     await waitFor(() => expect(getByText(/Failed: missing_name/)).toBeInTheDocument());
+    // refusal stays on the card and does not wipe what was typed
+    expect((getByPlaceholderText('Cohort name') as HTMLInputElement).value).toBe('X');
+    expect(queryByText(/Cohort #/)).toBeNull();
+  });
+
+  it('Enrol keeps the typed cohort id and shows the server refusal instead of ✓ Enrolled', async () => {
+    // @ts-expect-error test global
+    global.fetch = vi.fn((_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (body.name === 'enrol') {
+        expect(body.input).toEqual({ cohortId: 987654, studentUserId: 'victim-user' });
+        return jsonResponse(envelope({ ok: false, reason: 'cohort_not_found' }));
+      }
+      return jsonResponse(envelope(COHORTS_EMPTY));
+    });
+    const { getByText, getByRole, getAllByPlaceholderText, getByPlaceholderText, queryByText } = render(<ClassroomPage />);
+    await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
+
+    const cohort = getAllByPlaceholderText('Cohort id')[0] as HTMLInputElement;
+    const student = getByPlaceholderText('Student id (optional, self if blank)') as HTMLInputElement;
+    fireEvent.change(cohort, { target: { value: '987654' } });
+    fireEvent.change(student, { target: { value: 'victim-user' } });
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Enrol' })); });
+
+    await waitFor(() => expect(getByText(/Failed: cohort_not_found/)).toBeInTheDocument());
+    expect(queryByText('✓ Enrolled')).toBeNull();
+    expect(cohort.value).toBe('987654');
+    expect(student.value).toBe('victim-user');
+  });
+
+  it('Submit keeps the typed DTU id and shows the server refusal instead of a submission id', async () => {
+    // @ts-expect-error test global
+    global.fetch = vi.fn((_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (body.name === 'submit_homework') return jsonResponse(envelope({ ok: false, reason: 'dtu_not_found' }));
+      return jsonResponse(envelope(COHORTS_EMPTY));
+    });
+    const { getByText, getByRole, getAllByPlaceholderText, getByPlaceholderText, queryByText } = render(<ClassroomPage />);
+    await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
+
+    const cohort = getAllByPlaceholderText('Cohort id')[1] as HTMLInputElement;
+    const dtu = getByPlaceholderText('DTU id') as HTMLInputElement;
+    fireEvent.change(cohort, { target: { value: '12' } });
+    fireEvent.change(dtu, { target: { value: 'dtu_private_other' } });
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Submit' })); });
+
+    await waitFor(() => expect(getByText(/Failed: dtu_not_found/)).toBeInTheDocument());
+    expect(queryByText(/Submitted/)).toBeNull();
+    expect(cohort.value).toBe('12');
+    expect(dtu.value).toBe('dtu_private_other');
+  });
+
+  it('Archive and Leave show a server refusal and leave the cohort row in place', async () => {
+    // @ts-expect-error test global
+    global.fetch = vi.fn((_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (body.name === 'archive_cohort') {
+        expect(body.input).toEqual({ cohortId: 12 });
+        return jsonResponse(envelope({ ok: false, reason: 'not_teacher' }));
+      }
+      if (body.name === 'leave_cohort') {
+        expect(body.input).toEqual({ cohortId: 34 });
+        return jsonResponse(envelope({ ok: false, reason: 'not_enroled' }));
+      }
+      return jsonResponse(envelope(COHORTS_POPULATED));
+    });
+    const { getByText, getAllByRole, queryByText } = render(<ClassroomPage />);
+    await waitFor(() => expect(getByText('Algebra I')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Archive' })[0]); });
+    await waitFor(() => expect(getByText(/Failed: not_teacher/)).toBeInTheDocument());
+    expect(getByText('Algebra I')).toBeInTheDocument();
+    expect(queryByText(/Cohort archived/)).toBeNull();
+
+    // first studying row is Intro Biology (cohort 34)
+    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Leave' })[0]); });
+    await waitFor(() => expect(getByText(/Failed: not_enroled/)).toBeInTheDocument());
+    expect(getByText('Intro Biology')).toBeInTheDocument();
+    expect(queryByText(/Left the cohort/)).toBeNull();
   });
 });

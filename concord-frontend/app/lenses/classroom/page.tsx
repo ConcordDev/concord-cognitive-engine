@@ -30,7 +30,21 @@ interface Cohort {
   created_at: number;
   enrolled?: number;
   teacher_user_id?: string;
+  teacher_display_name?: string | null;
   enroled_at?: number;
+}
+
+type CohortCard = 'create' | 'enrol' | 'submit' | 'list';
+
+function teacherLabel(c: Cohort): string {
+  const named = c.teacher_display_name?.trim();
+  if (named) return named;
+  if (c.teacher_user_id) return `teacher ${c.teacher_user_id.slice(0, 8)}`;
+  return '';
+}
+
+function refusalText(r: { error?: string; reason?: string } | null): string {
+  return `Failed: ${r?.error || r?.reason || 'request failed'}`;
 }
 
 async function macro(domain: string, name: string, input: Record<string, unknown> = {}) {
@@ -92,6 +106,9 @@ export default function ClassroomPage() {
   const [enrolForm, setEnrolForm] = useState({ cohortId: '', studentUserId: '' });
   const [submitForm, setSubmitForm] = useState({ cohortId: '', dtuId: '' });
   const [status, setStatus] = useState<string | null>(null);
+  // A server refusal stays on the card that caused it. Success toasts clear;
+  // refusals do not, and the form fields stay so the attempt is visible.
+  const [cardRefusal, setCardRefusal] = useState<{ card: CohortCard; text: string } | null>(null);
   const [activeCohort, setActiveCohort] = useState<number | null>(null);
   // Honest load lifecycle: distinguish "still loading" and "load failed" from
   // a genuinely-empty cohort list. Without this, a swallowed fetch (macro()
@@ -116,47 +133,82 @@ export default function ClassroomPage() {
 
   useEffect(() => { void refresh(); }, []);
 
+  const noteOk = (text: string) => {
+    setCardRefusal(null);
+    setStatus(text);
+    window.setTimeout(() => setStatus((cur) => (cur === text ? null : cur)), 4000);
+  };
+  const noteRefusal = (card: CohortCard, r: { error?: string; reason?: string } | null) => {
+    setStatus(null);
+    setCardRefusal({ card, text: refusalText(r) });
+  };
+
   const create = async () => {
     if (!createForm.name) return;
     const r = await macro('classroom', 'create_cohort', createForm);
     if (r?.ok) {
-      setStatus(`✓ Cohort #${r.cohortId} created`);
+      noteOk(`✓ Cohort #${r.cohortId} created`);
       setCreateForm({ name: '', rubricDtuId: '' });
       await refresh();
-    } else { setStatus(`Failed: ${r?.error || r?.reason}`); }
-    window.setTimeout(() => setStatus(null), 4000);
+    } else noteRefusal('create', r);
   };
 
   const enrol = async () => {
     if (!enrolForm.cohortId) return;
     const r = await macro('classroom', 'enrol', { cohortId: Number(enrolForm.cohortId), studentUserId: enrolForm.studentUserId || undefined });
-    if (r?.ok) { setStatus('✓ Enrolled'); await refresh(); }
-    else { setStatus(`Failed: ${r?.error || r?.reason}`); }
-    window.setTimeout(() => setStatus(null), 4000);
+    if (r?.ok) { noteOk('✓ Enrolled'); await refresh(); }
+    else noteRefusal('enrol', r);
   };
 
   const submit = async () => {
     if (!submitForm.cohortId || !submitForm.dtuId) return;
     const r = await macro('classroom', 'submit_homework', { cohortId: Number(submitForm.cohortId), dtuId: submitForm.dtuId });
-    if (r?.ok) { setStatus(`✓ Submitted (#${r.submissionId})`); }
-    else { setStatus(`Failed: ${r?.error || r?.reason}`); }
-    window.setTimeout(() => setStatus(null), 4000);
+    if (r?.ok) noteOk(`✓ Submitted (#${r.submissionId})`);
+    else noteRefusal('submit', r);
+  };
+
+  const archive = async (cohortId: number) => {
+    const r = await macro('classroom', 'archive_cohort', { cohortId });
+    if (r?.ok) {
+      if (activeCohort === cohortId) setActiveCohort(null);
+      noteOk('✓ Cohort archived');
+      await refresh();
+    } else noteRefusal('list', r);
+  };
+
+  const leave = async (cohortId: number) => {
+    const r = await macro('classroom', 'leave_cohort', { cohortId });
+    if (r?.ok) {
+      if (activeCohort === cohortId) setActiveCohort(null);
+      noteOk('✓ Left the cohort');
+      await refresh();
+    } else noteRefusal('list', r);
   };
 
   const current = VIEWS.find((v) => v.id === view)!;
   const cardCls = 'rounded-2xl border border-white/10 bg-[#111] p-4';
-  const cohortRow = (c: Cohort, right: string) => (
-    <li key={c.id}>
+  const refusal = (card: CohortCard) => cardRefusal?.card === card
+    ? <p role="alert" className="text-[12px] leading-snug text-rose-300">{cardRefusal.text}</p>
+    : null;
+  const cohortRow = (c: Cohort, right: string, action: { label: string; onClick: () => void }) => (
+    <li key={c.id} className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => setActiveCohort(activeCohort === c.id ? null : c.id)}
         className={cn(
-          'flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors',
+          'flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors',
           activeCohort === c.id ? 'border-teal-400/40 bg-teal-400/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20',
         )}
       >
-        <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
-        <span className="text-zinc-500">{right}</span>
+        <span className="truncate text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
+        <span className="shrink-0 text-zinc-500">{right}</span>
+      </button>
+      <button
+        type="button"
+        onClick={action.onClick}
+        className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-zinc-300 hover:border-rose-400/40 hover:text-rose-100"
+      >
+        {action.label}
       </button>
     </li>
   );
@@ -225,6 +277,7 @@ export default function ClassroomPage() {
                 <input type="text" placeholder="Rubric DTU id (optional)" value={createForm.rubricDtuId}
                   onChange={(e) => setCreateForm({ ...createForm, rubricDtuId: e.target.value })} className={inputCls} />
                 <button onClick={create} disabled={!createForm.name} className={submitCls}>Create</button>
+                {refusal('create')}
               </section>
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Enrol</h2>
@@ -233,6 +286,7 @@ export default function ClassroomPage() {
                 <input type="text" placeholder="Student id (optional, self if blank)" value={enrolForm.studentUserId}
                   onChange={(e) => setEnrolForm({ ...enrolForm, studentUserId: e.target.value })} className={inputCls} />
                 <button onClick={enrol} disabled={!enrolForm.cohortId} className={submitCls}>Enrol</button>
+                {refusal('enrol')}
               </section>
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Submit homework</h2>
@@ -241,23 +295,25 @@ export default function ClassroomPage() {
                 <input type="text" placeholder="DTU id" value={submitForm.dtuId}
                   onChange={(e) => setSubmitForm({ ...submitForm, dtuId: e.target.value })} className={inputCls} />
                 <button onClick={submit} disabled={!submitForm.cohortId || !submitForm.dtuId} className={submitCls}>Submit</button>
+                {refusal('submit')}
               </section>
             </div>
 
             {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
+            {refusal('list')}
 
             <div className="grid gap-5 lg:grid-cols-2">
               <section className={cardCls}>
                 <h2 className="mb-3 text-[13px] font-medium text-zinc-300">Teaching</h2>
                 {loading || loadError ? null : teaching.length === 0
                   ? <p className="text-[13px] italic text-zinc-500">No cohorts you teach.</p>
-                  : <ul className="space-y-1.5">{teaching.map((c) => cohortRow(c, `${c.enrolled ?? 0} students`))}</ul>}
+                  : <ul className="space-y-1.5">{teaching.map((c) => cohortRow(c, `${c.enrolled ?? 0} students`, { label: 'Archive', onClick: () => void archive(c.id) }))}</ul>}
               </section>
               <section className={cardCls}>
                 <h2 className="mb-3 text-[13px] font-medium text-zinc-300">Studying</h2>
                 {loading || loadError ? null : studying.length === 0
                   ? <p className="text-[13px] italic text-zinc-500">No cohorts you are enrolled in.</p>
-                  : <ul className="space-y-1.5">{studying.map((c) => cohortRow(c, c.teacher_user_id ? `teacher ${c.teacher_user_id.slice(0, 8)}` : ''))}</ul>}
+                  : <ul className="space-y-1.5">{studying.map((c) => cohortRow(c, teacherLabel(c), { label: 'Leave', onClick: () => void leave(c.id) }))}</ul>}
               </section>
             </div>
           </div>
