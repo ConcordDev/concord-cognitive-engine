@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * AirQualityActionStack — AirNow / EJScreen-shape action surface for
- * the environment lens. Pulls a fresh AirNow reading by ZIP, then
+ * AirQualityActionStack — action surface for the environment lens.
+ * Pulls a fresh Open-Meteo air-quality reading by ZIP, then
  * exposes 5 real-backend actions on top of it.
  *
  *   1. Mint snapshot     → dtu.create with the live AQI obs + ZIP
@@ -16,9 +16,10 @@
  *                          adjust today's plans?"
  *   5. Copy CSV          → clipboard write of observation rows
  *
- * No seed data. Every action runs against the actual AirNow observation
+ * No seed data. Every action runs against the Open-Meteo observation
  * returned this session — if no fetch has happened yet, actions stay
- * disabled with a "load AQI first" hint.
+ * disabled with a "load AQI first" hint. Readings are modeled CAMS
+ * data, not EPA monitor readings.
  */
 
 import { useState } from 'react';
@@ -33,10 +34,12 @@ import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface AqiObservation {
-  dateObserved: string; hourObserved: number;
-  reportingArea: string; stateCode: string;
-  parameterName: string; aqi: number;
-  category?: string;
+  dateObserved: string; hourObserved: number | null;
+  reportingArea: string; stateCode: string | null;
+  parameterName: string; aqi: number | null;
+  category?: string | null;
+  value?: number | null;
+  unit?: string | null;
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -59,7 +62,8 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-function aqiAccent(aqi: number) {
+function aqiAccent(aqi: number | null) {
+  if (typeof aqi !== 'number') return null;
   if (aqi <= 50)  return { ring: 'ring-emerald-400/40', text: 'text-emerald-300', label: 'Good',                   accent: '#22c55e' };
   if (aqi <= 100) return { ring: 'ring-yellow-400/40',  text: 'text-yellow-300',  label: 'Moderate',               accent: '#eab308' };
   if (aqi <= 150) return { ring: 'ring-orange-400/40',  text: 'text-orange-300',  label: 'Unhealthy (sensitive)',  accent: '#f97316' };
@@ -98,9 +102,7 @@ export function AirQualityActionStack() {
     onError: (e) => { setObservations([]); setLoadError(pickMessage(e)); },
   });
 
-  const dominant = observations.length > 0
-    ? observations.reduce((max, o) => (o.aqi > max.aqi ? o : max), observations[0])
-    : null;
+  const dominant = observations.find((o) => typeof o.aqi === 'number') ?? null;
   const accent = dominant ? aqiAccent(dominant.aqi) : null;
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
@@ -108,14 +110,14 @@ export function AirQualityActionStack() {
 
   function buildSummary(): string {
     if (!observations.length) return '';
-    const rows = observations.map(o => `${o.parameterName} ${o.aqi} (${o.category ?? '—'})`).join(', ');
+    const rows = observations.map(o => `${o.parameterName} ${typeof o.aqi === 'number' ? o.aqi : `${o.value ?? '—'} ${o.unit ?? ''}`.trim()} (${o.category ?? '—'})`).join(', ');
     const where = `${observations[0].reportingArea}, ${observations[0].stateCode}`;
     const when = `${observations[0].dateObserved} ${observations[0].hourObserved}:00`;
     return `Air quality for ZIP ${zip} (${where}) at ${when}: ${rows}.`;
   }
 
   function buildGuidance(): string {
-    if (!dominant) return '';
+    if (!dominant || typeof dominant.aqi !== 'number') return '';
     const a = dominant.aqi;
     if (a <= 50)  return 'Air quality is good — no precautions needed.';
     if (a <= 100) return 'Air quality is moderate. Unusually sensitive people may consider reducing prolonged outdoor exertion.';
@@ -134,7 +136,7 @@ export function AirQualityActionStack() {
         name: 'create',
         input: withContentLicense({
           title: `AQI snapshot — ZIP ${zip} — ${dominant.parameterName} ${dominant.aqi}`,
-          tags: ['environment', 'aqi', 'epa-airnow', `zip:${zip}`, `param:${dominant.parameterName.toLowerCase()}`],
+          tags: ['environment', 'aqi', 'open-meteo', `zip:${zip}`, `param:${dominant.parameterName.toLowerCase()}`],
           source: 'environment:aqi:snapshot',
           meta: {
             visibility: 'private',
@@ -260,7 +262,7 @@ export function AirQualityActionStack() {
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
     { id: 'mint',    label: snapshotDtuId  ? 'Snapshot saved' : 'Mint snapshot',    desc: snapshotDtuId  ? `DTU ${snapshotDtuId.slice(0, 8)}…` : 'Private DTU + obs + tags',                       icon: Sparkles, accent: '#06b6d4', handler: actMint,    disabled: !dominant || !!snapshotDtuId },
-    { id: 'dm',      label: 'DM alert',                                              desc: dominant ? `DM the AirNow brief + guidance` : 'Load AQI first',                                          icon: Send,     accent: '#ec4899', handler: actDm,      disabled: !dominant },
+    { id: 'dm',      label: 'DM alert',                                              desc: dominant ? `DM the Open-Meteo brief + guidance` : 'Load AQI first',                                          icon: Send,     accent: '#ec4899', handler: actDm,      disabled: !dominant },
     { id: 'publish', label: publishedDtuId ? 'Report published' : 'Publish report', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public community DTU + federation flag',         icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !dominant || !!publishedDtuId },
     { id: 'agent',   label: 'Risk brief (agent)',                                    desc: 'Agent assesses today\'s plans against the reading',                                                     icon: Wand2,    accent: '#eab308', handler: actAgent,   disabled: !dominant },
     { id: 'csv',     label: 'Copy CSV',                                              desc: dominant ? `${observations.length} row${observations.length === 1 ? '' : 's'} → clipboard` : '—',         icon: FileDown, accent: '#3b82f6', handler: actCsv,     disabled: !dominant },
@@ -270,9 +272,9 @@ export function AirQualityActionStack() {
     <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
         <Wind className="h-4 w-4 text-cyan-400" />
-        <h3 className="text-sm font-semibold text-white">AirNow actions</h3>
+        <h3 className="text-sm font-semibold text-white">Air quality actions</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          airnow · live
+          open-meteo · live
         </span>
       </header>
 
@@ -305,7 +307,7 @@ export function AirQualityActionStack() {
               <span className={cn('text-xs font-semibold uppercase tracking-wider', accent.text)}>{accent.label}</span>
             </div>
             <span className="text-[10px] text-zinc-400 font-mono">
-              {dominant.reportingArea}, {dominant.stateCode}
+              {dominant.reportingArea}{dominant.stateCode ? `, ${dominant.stateCode}` : ''}
             </span>
           </div>
           <div className="mt-1 text-[11px] text-zinc-400">
@@ -315,7 +317,7 @@ export function AirQualityActionStack() {
             <div className="mt-2 flex flex-wrap gap-1.5">
               {observations.filter(o => o !== dominant).map(o => (
                 <span key={o.parameterName} className="rounded bg-zinc-800/80 px-2 py-0.5 text-[10px] text-zinc-300 font-mono">
-                  {o.parameterName} {o.aqi}
+                  {o.parameterName} {typeof o.aqi === 'number' ? o.aqi : `${o.value ?? '—'} ${o.unit ?? ''}`.trim()}
                 </span>
               ))}
             </div>

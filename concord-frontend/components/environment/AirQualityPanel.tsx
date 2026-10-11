@@ -1,39 +1,44 @@
 'use client';
 
 /**
- * AirQualityPanel — EPA AirNow real-time AQI by ZIP. REAL_FREE;
- * requires EPA_AIRNOW_API_KEY env var.
- *
- * Phase 11 (Item 9). Empty/missing-key/error states are honest.
- * AirNow is not called on mount. The ZIP field starts at 94110 only as
- * an editable example; the request goes out when the user clicks Load AQI.
+ * AirQualityPanel — current US AQI by ZIP from Open-Meteo (CAMS model).
+ * No API key. The request waits for Load AQI; the ZIP field starts at
+ * 94110 only as an editable example.
  */
 
 import { useState, useCallback, type FormEvent } from 'react';
-import { Wind, RefreshCw, AlertTriangle, KeyRound, ExternalLink } from 'lucide-react';
+import { Wind, RefreshCw, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Observation {
-  reportingArea?: string;
-  stateCode?: string;
+  reportingArea?: string | null;
+  stateCode?: string | null;
   parameter?: string;
-  aqi?: number;
-  category?: string;
-  dateObserved?: string;
-  hourObserved?: number;
+  parameterName?: string;
+  aqi?: number | null;
+  category?: string | null;
+  dateObserved?: string | null;
+  hourObserved?: number | null;
+  value?: number | null;
+  unit?: string | null;
+  pm2_5?: number | null;
+  pm10?: number | null;
+  ozone?: number | null;
+  no2?: number | null;
+  co?: number | null;
 }
 interface AQResponse {
   ok: boolean;
   source?: string;
+  sourceNote?: string;
   observations?: Observation[];
   reason?: string;
-  envVar?: string;
-  signupUrl?: string;
+  error?: string;
 }
 
-function aqiTone(aqi: number | undefined) {
-  if (aqi == null) return 'text-zinc-400';
+function aqiTone(aqi: number | null | undefined) {
+  if (typeof aqi !== 'number') return 'text-zinc-400';
   if (aqi <= 50) return 'text-emerald-300';
   if (aqi <= 100) return 'text-yellow-300';
   if (aqi <= 150) return 'text-orange-300';
@@ -42,8 +47,6 @@ function aqiTone(aqi: number | undefined) {
   return 'text-rose-500';
 }
 
-const AIRNOW_SIGNUP = 'https://docs.airnowapi.org/account/request/';
-
 function readAirQuality(
   data:
     | {
@@ -51,8 +54,6 @@ function readAirQuality(
         result?: unknown;
         error?: string | null;
         reason?: string;
-        envVar?: string;
-        signupUrl?: string;
         observations?: Observation[];
       }
     | null
@@ -62,18 +63,15 @@ function readAirQuality(
   const nested = data.result;
   if (nested && typeof nested === 'object') {
     const payload = nested as AQResponse;
-    if (payload.ok === true || payload.reason || payload.observations) return payload;
+    if (payload.ok === true || payload.reason || payload.observations) {
+      if (payload.ok === false) {
+        return { ok: false, reason: payload.reason || payload.error || 'unknown' };
+      }
+      return { ...payload, ok: true };
+    }
   }
-  if (data.reason === 'missing_api_key' || data.error === 'missing_api_key') {
-    return {
-      ok: false,
-      reason: 'missing_api_key',
-      envVar: data.envVar || 'EPA_AIRNOW_API_KEY',
-      signupUrl: data.signupUrl || AIRNOW_SIGNUP,
-    };
-  }
-  if (data.ok === false) return { ok: false, reason: data.error || 'unknown' };
-  if (data.observations) return data as AQResponse;
+  if (data.ok === false) return { ok: false, reason: data.reason || data.error || 'unknown' };
+  if (data.observations) return { ...(data as AQResponse), ok: data.ok !== false };
   return null;
 }
 
@@ -85,6 +83,14 @@ async function runMacro(input: Record<string, unknown>) {
     return null;
   }
 }
+
+const POLLUTANTS: Array<{ key: keyof Observation; label: string }> = [
+  { key: 'pm2_5', label: 'PM2.5' },
+  { key: 'pm10', label: 'PM10' },
+  { key: 'ozone', label: 'Ozone' },
+  { key: 'no2', label: 'NO2' },
+  { key: 'co', label: 'CO' },
+];
 
 export interface AirQualityPanelProps {
   className?: string;
@@ -110,6 +116,9 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
     void fetchData(z);
   }
 
+  const aqiRow = data?.observations?.find((o) => o.parameter === 'US AQI' || o.parameterName === 'US AQI')
+    ?? data?.observations?.find((o) => typeof o.aqi === 'number');
+
   return (
     <section
       className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}
@@ -117,7 +126,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Wind className="w-4 h-4 text-sky-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">Air quality · ZIP {zip}</h3>
-        <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
+        <span className="text-[10px] text-emerald-400 font-mono">Open-Meteo</span>
         <button
           type="button"
           onClick={() => void fetchData(zip)}
@@ -151,76 +160,64 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
 
       {!data && !loading && (
         <p className="px-3 py-6 text-xs text-zinc-400 text-center">
-          Load AQI to query EPA AirNow for this ZIP.
+          Load AQI to query Open-Meteo for this ZIP. Readings are modeled CAMS data, not EPA monitor readings.
         </p>
       )}
 
       {loading && !data && (
-        <p className="px-3 py-6 text-xs text-zinc-400 text-center">Querying AirNow…</p>
+        <p className="px-3 py-6 text-xs text-zinc-400 text-center">Querying Open-Meteo…</p>
       )}
 
-      {data && !data.ok && data.reason === 'missing_api_key' && (
-        <div className="px-3 py-4 text-xs space-y-2 bg-amber-500/5 border-y border-amber-500/20">
-          <div className="flex items-center gap-1.5 text-amber-300">
-            <KeyRound className="w-3.5 h-3.5" />{' '}
-            <span className="font-medium">API key required</span>
-          </div>
-          <p className="text-zinc-300">
-            Set <code className="text-amber-300 bg-zinc-900 px-1 rounded">{data.envVar}</code> in{' '}
-            <code className="text-zinc-300 bg-zinc-900 px-1 rounded">.env</code> to enable real
-            AirNow data.
-          </p>
-          {data.signupUrl && (
-            <a
-              href={data.signupUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200"
-            >
-              <ExternalLink className="w-3 h-3" /> Free signup
-            </a>
-          )}
-        </div>
-      )}
-
-      {data && !data.ok && data.reason !== 'missing_api_key' && (
+      {data && !data.ok && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> AirNow unreachable (
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Air quality unavailable (
           {data.reason || 'unknown'})
         </div>
       )}
 
-      {data?.ok && (data.observations?.length ?? 0) === 0 && !loading && (
+      {data?.ok && !aqiRow && !loading && (
         <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
-          No active monitors near that ZIP.
+          No air-quality reading for that ZIP.
         </div>
       )}
 
-      {data?.ok && data.observations && data.observations.length > 0 && (
-        <ul className="px-3 py-2 space-y-1.5">
-          {data.observations.slice(0, 5).map((o, i) => (
-            <li key={i} className="flex items-center justify-between text-xs">
-              <div>
-                <div className="font-medium text-zinc-200">
-                  {o.parameter} · {o.reportingArea}
-                </div>
-                <div className="text-[10px] text-zinc-400">
-                  {o.dateObserved} {o.hourObserved}:00
-                </div>
+      {data?.ok && aqiRow && (
+        <div className="px-3 py-2 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <div>
+              <div className="font-medium text-zinc-200">
+                US AQI · {aqiRow.reportingArea}
+                {aqiRow.stateCode ? `, ${aqiRow.stateCode}` : ''}
               </div>
-              <div className="text-right">
-                <div className={cn('text-xl font-bold tabular-nums', aqiTone(o.aqi))}>
-                  {o.aqi ?? '—'}
-                </div>
-                {o.category && <div className="text-[10px] text-zinc-400">{o.category}</div>}
+              <div className="text-[10px] text-zinc-400">
+                {aqiRow.dateObserved} {aqiRow.hourObserved != null ? `${aqiRow.hourObserved}:00` : ''}
               </div>
-            </li>
-          ))}
-        </ul>
+            </div>
+            <div className="text-right">
+              <div className={cn('text-xl font-bold tabular-nums', aqiTone(aqiRow.aqi))}>
+                {typeof aqiRow.aqi === 'number' ? aqiRow.aqi : '—'}
+              </div>
+              {aqiRow.category && <div className="text-[10px] text-zinc-400">{aqiRow.category}</div>}
+            </div>
+          </div>
+          <ul className="grid grid-cols-5 gap-1">
+            {POLLUTANTS.map(({ key, label }) => {
+              const value = aqiRow[key];
+              return (
+                <li key={key} className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-1 text-center">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+                  <div className="font-mono text-[11px] text-zinc-200">
+                    {typeof value === 'number' ? value : '—'}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
-        Source: US EPA AirNow · airnowapi.org
+        Source: Open-Meteo · modeled CAMS, not EPA monitor readings
       </footer>
     </section>
   );

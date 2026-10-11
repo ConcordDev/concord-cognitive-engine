@@ -1,12 +1,13 @@
 // server/domains/environment.js
 //
 // Pure-compute environmental helpers (population trend, compliance,
-// trail condition, diversion rate) plus real EPA Envirofacts and
-// USGS Water Services APIs (free, no key required).
+// trail condition, diversion rate) plus real EPA Envirofacts,
+// USGS Water Services, and Open-Meteo air quality (no key).
+
+import { loadAirQuality, nwsHeaders } from "../lib/keyless-atmosphere.js";
 
 const EPA_ENVIROFACTS = "https://data.epa.gov/efservice";
 const USGS_WATER = "https://waterservices.usgs.gov/nwis";
-const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation";
 
 export default function registerEnvironmentActions(registerLensAction) {
   registerLensAction("environment", "populationTrend", (_ctx, artifact, _params) => {
@@ -150,47 +151,20 @@ export default function registerEnvironmentActions(registerLensAction) {
   });
 
   /**
-   * airnow-current — Real AQI observations via AirNow API.
-   * Requires AIRNOW_API_KEY env (free at docs.airnowapi.org/account/request).
-   * params: { zipCode?: 5-digit, latitude?, longitude?, distance?: miles (default 25) }
+   * airnow-current — current US AQI + PM2.5/PM10/ozone/NO2/CO.
+   * Open-Meteo Air Quality (CAMS model, no key). The macro name is kept
+   * so existing panels keep calling it. A valid AIRNOW_API_KEY or
+   * EPA_AIRNOW_API_KEY attaches EPA monitor rows as result.secondary
+   * and never replaces the model reading.
+   * params: { zipCode?: 5-digit, latitude?, longitude? }
    */
   registerLensAction("environment", "airnow-current", async (_ctx, _artifact, params = {}) => {
-    const apiKey = process.env.AIRNOW_API_KEY;
-    if (!apiKey) return { ok: false, error: "AIRNOW_API_KEY required (free at docs.airnowapi.org/account/request)" };
-    const distance = Math.max(1, Math.min(100, Number(params.distance) || 25));
-    let url;
-    if (params.zipCode && /^\d{5}$/.test(String(params.zipCode))) {
-      url = `${AIRNOW_BASE}/zipCode/current/?format=application/json&zipCode=${params.zipCode}&distance=${distance}&API_KEY=${encodeURIComponent(apiKey)}`;
-    } else if (params.latitude != null && params.longitude != null) {
-      url = `${AIRNOW_BASE}/latLong/current/?format=application/json&latitude=${Number(params.latitude)}&longitude=${Number(params.longitude)}&distance=${distance}&API_KEY=${encodeURIComponent(apiKey)}`;
-    } else {
-      return { ok: false, error: "zipCode (5 digits) OR latitude+longitude required" };
+    const payload = await loadAirQuality(params || {});
+    if (!payload.ok) {
+      return { ok: false, error: payload.error || payload.reason, reason: payload.reason };
     }
-    try {
-      const r = await fetch(url);
-      if (r.status === 401) return { ok: false, error: "AIRNOW_API_KEY invalid" };
-      if (!r.ok) throw new Error(`airnow ${r.status}`);
-      const data = await r.json();
-      const observations = (data || []).map((o) => ({
-        dateObserved: o.DateObserved,
-        hourObserved: o.HourObserved,
-        localTimeZone: o.LocalTimeZone,
-        reportingArea: o.ReportingArea,
-        stateCode: o.StateCode,
-        latitude: o.Latitude,
-        longitude: o.Longitude,
-        parameterName: o.ParameterName,
-        aqi: o.AQI,
-        category: o.Category?.Name,
-        categoryNumber: o.Category?.Number,
-      }));
-      return {
-        ok: true,
-        result: { observations, count: observations.length, source: "epa-airnow" },
-      };
-    } catch (e) {
-      return { ok: false, error: `airnow unreachable: ${e instanceof Error ? e.message : String(e)}` };
-    }
+    const { ok: _ok, ...result } = payload;
+    return { ok: true, result };
   });
 
   // ─── Full-app parity: Watershed + Persefoni carbon accounting ──────
@@ -1100,7 +1074,7 @@ export default function registerEnvironmentActions(registerLensAction) {
     const seen = STATE.environmentLens.feedSeen;
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     try {
-      const r = await fetch("https://api.weather.gov/alerts/active?severity=Severe,Extreme&status=actual&message_type=alert", { headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/geo+json" } });
+      const r = await fetch("https://api.weather.gov/alerts/active?severity=Severe,Extreme&status=actual&message_type=alert", { headers: nwsHeaders() });
       if (!r.ok) return { ok: false, error: `nws ${r.status}` };
       const data = await r.json();
       const feats = (data.features || []).slice(0, limit);

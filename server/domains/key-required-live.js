@@ -12,26 +12,27 @@
 //                                       CPI, unemployment, fed funds...)
 //                                       env: FRED_API_KEY
 //
-//   environment.live_air_quality       EPA AirNow real-time AQI by ZIP
-//                                       env: EPA_AIRNOW_API_KEY
+//   environment.live_air_quality       Open-Meteo Air Quality (CAMS) by ZIP
+//                                       or lat/lon. No key. AirNow is an
+//                                       optional secondary when
+//                                       EPA_AIRNOW_API_KEY / AIRNOW_API_KEY
+//                                       is set and accepted.
 //
 //   travel.live_nps_parks              US National Parks Service parks
 //                                       by state code
 //                                       env: NPS_API_KEY
 //
-//   weather.live_forecast              OpenWeatherMap 5-day forecast
-//                                       (already wired via Open-Meteo
-//                                       for the no-key path)
-//                                       env: OPENWEATHERMAP_API_KEY
+//   weather.live_forecast              api.weather.gov for US points
+//                                       (no key). OpenWeatherMap is only
+//                                       a fallback for non-US points when
+//                                       OPENWEATHERMAP_API_KEY is set.
 //
-// All four return:
-//   { ok, source, fetchedAt, ...data }
-//      on success;
-//   { ok: false, reason: 'missing_api_key', envVar: 'X_API_KEY',
-//     signupUrl: 'https://...' }
-//      when the env var is missing;
-//   { ok: false, reason: 'upstream_unreachable', error: '...' }
-//      on network / non-2xx response.
+// FRED and NPS still return missing_api_key when their env var is unset.
+// Air quality and the US forecast do not: they call keyless public APIs
+// and return upstream_unreachable / timeout / unavailable_outside_us
+// instead of inventing a reading.
+
+import { loadAirQuality, loadUsWeather } from "../lib/keyless-atmosphere.js";
 
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -89,42 +90,10 @@ export default function registerKeyRequiredLiveMacros(register) {
     }
   }, { note: "live FRED economic series (requires FRED_API_KEY)" });
 
-  // ── EPA AirNow — real-time air quality ──────────────────────────────
+  // ── Open-Meteo air quality (keyless). AirNow is optional secondary.
   register("environment", "live_air_quality", async (_ctx, input = {}) => {
-    const apiKey = process.env.EPA_AIRNOW_API_KEY;
-    if (!apiKey) {
-      return missingKey(
-        "EPA_AIRNOW_API_KEY",
-        "https://docs.airnowapi.org/account/request/",
-      );
-    }
-    const zip = String(input.zipCode || input.zip || "94110");
-    const distance = Math.min(200, Math.max(5, Number(input.distance) || 25));
-    const url = `https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&zipCode=${encodeURIComponent(zip)}&distance=${distance}&API_KEY=${encodeURIComponent(apiKey)}`;
-    try {
-      const data = await fetchJsonWithTimeout(url);
-      const observations = Array.isArray(data) ? data : [];
-      return {
-        ok: true,
-        source: "EPA AirNow",
-        fetchedAt: Math.floor(Date.now() / 1000),
-        zipCode: zip,
-        observations: observations.map((o) => ({
-          reportingArea: o.ReportingArea,
-          stateCode: o.StateCode,
-          parameter: o.ParameterName,
-          aqi: o.AQI,
-          category: o.Category?.Name,
-          dateObserved: o.DateObserved,
-          hourObserved: o.HourObserved,
-          latitude: o.Latitude,
-          longitude: o.Longitude,
-        })),
-      };
-    } catch (e) {
-      return { ok: false, reason: "upstream_unreachable", error: String(e?.message || e) };
-    }
-  }, { note: "live EPA AirNow AQI by zip (requires EPA_AIRNOW_API_KEY)" });
+    return loadAirQuality(input || {});
+  }, { note: "Open-Meteo CAMS air quality by ZIP or lat/lon (no key)" });
 
   // ── NPS — US National Parks ─────────────────────────────────────────
   register("travel", "live_nps_parks", async (_ctx, input = {}) => {
@@ -164,48 +133,8 @@ export default function registerKeyRequiredLiveMacros(register) {
     }
   }, { note: "live NPS parks by state (requires NPS_API_KEY)" });
 
-  // ── OpenWeatherMap — 5-day forecast ─────────────────────────────────
+  // ── api.weather.gov for US points. OWM only outside the US, and only with a key.
   register("weather", "live_forecast", async (_ctx, input = {}) => {
-    const apiKey = process.env.OPENWEATHERMAP_API_KEY;
-    if (!apiKey) {
-      return missingKey(
-        "OPENWEATHERMAP_API_KEY",
-        "https://home.openweathermap.org/users/sign_up",
-      );
-    }
-    const city = String(input.city || input.q || "San Francisco");
-    const units = ["metric", "imperial", "standard"].includes(input.units)
-      ? input.units
-      : "metric";
-    const url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${encodeURIComponent(apiKey)}&units=${units}`;
-    try {
-      const data = await fetchJsonWithTimeout(url);
-      const list = Array.isArray(data?.list) ? data.list : [];
-      return {
-        ok: true,
-        source: "OpenWeatherMap",
-        fetchedAt: Math.floor(Date.now() / 1000),
-        city: data?.city?.name || city,
-        country: data?.city?.country || null,
-        units,
-        forecasts: list.slice(0, 40).map((row) => ({
-          dt: row.dt,
-          dtTxt: row.dt_txt,
-          temp: row.main?.temp,
-          feelsLike: row.main?.feels_like,
-          humidity: row.main?.humidity,
-          pressure: row.main?.pressure,
-          weather: row.weather?.[0]?.main,
-          description: row.weather?.[0]?.description,
-          icon: row.weather?.[0]?.icon,
-          windSpeed: row.wind?.speed,
-          windDeg: row.wind?.deg,
-          clouds: row.clouds?.all,
-          pop: row.pop,
-        })),
-      };
-    } catch (e) {
-      return { ok: false, reason: "upstream_unreachable", error: String(e?.message || e) };
-    }
-  }, { note: "live OpenWeatherMap 5-day forecast (requires OPENWEATHERMAP_API_KEY)" });
+    return loadUsWeather(input || {});
+  }, { note: "NWS forecast/hourly/observation/alerts for US points (no key)" });
 }

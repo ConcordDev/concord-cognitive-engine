@@ -1,9 +1,10 @@
 // Contract tests for server/domains/environment.js — pure-compute
-// helpers plus real EPA Envirofacts + USGS Water Services + AirNow.
+// helpers plus real EPA Envirofacts + USGS Water Services + Open-Meteo AQI.
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerEnvironmentActions from "../domains/environment.js";
+import { clearAtmosphereCache, setAtmosphereFetchForTests } from "../lib/keyless-atmosphere.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -21,6 +22,9 @@ beforeEach(() => {
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
   delete process.env.AIRNOW_API_KEY;
+  delete process.env.EPA_AIRNOW_API_KEY;
+  clearAtmosphereCache();
+  setAtmosphereFetchForTests(null);
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
@@ -133,53 +137,59 @@ describe("environment.usgs-water-realtime", () => {
 });
 
 describe("environment.airnow-current", () => {
-  it("rejects missing key", async () => {
-    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /AIRNOW_API_KEY/);
-  });
-
-  it("rejects missing location params", async () => {
-    process.env.AIRNOW_API_KEY = "test-key";
+  it("rejects a missing place without calling a keyed API", async () => {
     const r = await call("airnow-current", ctxA, {});
     assert.equal(r.ok, false);
-    assert.match(r.error, /zipCode.*latitude/);
+    assert.match(r.error, /zipCode/);
+    assert.equal(r.reason, "missing_location");
   });
 
-  it("hits AirNow zipCode endpoint + shapes the AQI list", async () => {
-    process.env.AIRNOW_API_KEY = "test-key";
-    let capturedUrl = "";
-    globalThis.fetch = async (url) => {
-      capturedUrl = url;
-      return {
-        ok: true,
-        json: async () => ([
-          {
-            DateObserved: "2026-05-16",
-            HourObserved: 14, LocalTimeZone: "PST",
-            ReportingArea: "Oakland", StateCode: "CA",
-            Latitude: 37.8, Longitude: -122.27,
-            ParameterName: "OZONE", AQI: 52, Category: { Name: "Moderate", Number: 2 },
-          },
-        ]),
-      };
-    };
+  it("geocodes a ZIP and returns Open-Meteo US AQI with no key", async () => {
+    const urls = [];
+    setAtmosphereFetchForTests(async (url) => {
+      urls.push(String(url));
+      if (String(url).includes("zippopotam.us/us/94110")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            places: [{ "place name": "San Francisco", "state abbreviation": "CA", latitude: "37.7509", longitude: "-122.4156" }],
+          }),
+        };
+      }
+      if (String(url).includes("air-quality-api.open-meteo.com")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            timezone_abbreviation: "PDT",
+            current: {
+              time: "2026-10-11T09:00",
+              us_aqi: 42,
+              pm2_5: 8.1,
+              pm10: 12.4,
+              ozone: 70,
+              nitrogen_dioxide: 11,
+              carbon_monoxide: 180,
+            },
+          }),
+        };
+      }
+      return { ok: false, status: 500, json: async () => ({}) };
+    });
     const r = await call("airnow-current", ctxA, { zipCode: "94110" });
     assert.equal(r.ok, true);
-    assert.match(capturedUrl, /airnowapi\.org\/aq\/observation\/zipCode\/current/);
-    assert.match(capturedUrl, /zipCode=94110/);
-    assert.match(capturedUrl, /API_KEY=test-key/);
-    assert.equal(r.result.observations[0].aqi, 52);
-    assert.equal(r.result.observations[0].category, "Moderate");
-    assert.equal(r.result.source, "epa-airnow");
-  });
-
-  it("surfaces 401 invalid-key clearly", async () => {
-    process.env.AIRNOW_API_KEY = "bad";
-    globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
-    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /invalid/);
+    assert.equal(r.result.source, "Open-Meteo");
+    assert.match(r.result.sourceNote, /CAMS/);
+    assert.equal(r.result.us_aqi, 42);
+    assert.equal(r.result.observations[0].aqi, 42);
+    assert.equal(r.result.observations[0].parameterName, "US AQI");
+    assert.equal(r.result.observations[0].category, "Good");
+    assert.equal(r.result.observations[0].pm2_5, 8.1);
+    assert.equal(r.result.secondary, undefined);
+    assert.ok(urls.some((u) => u.includes("zippopotam.us/us/94110")));
+    assert.ok(urls.some((u) => u.includes("air-quality-api.open-meteo.com")));
+    assert.equal(urls.some((u) => u.includes("airnow")), false);
   });
 });
 

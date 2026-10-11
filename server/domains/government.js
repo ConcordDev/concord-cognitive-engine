@@ -1,4 +1,5 @@
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
 
 export default function registerGovernmentActions(registerLensAction) {
@@ -219,7 +220,7 @@ export default function registerGovernmentActions(registerLensAction) {
     if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
     try {
       const url = `https://api.weather.gov/alerts/active?point=${lat},${lng}`;
-      const r = await fetchJsonGov(url, { "user-agent": "ConcordGovLens/1.0 (concord-os.org)" });
+      const r = await fetchJsonGov(url, nwsHeaders());
       const features = Array.isArray(r?.features) ? r.features : [];
       const alerts = features.slice(0, 20).map(f => {
         const p = f.properties || {};

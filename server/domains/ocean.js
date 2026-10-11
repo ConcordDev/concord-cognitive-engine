@@ -11,6 +11,7 @@
 // logbook export (GPX / CSV).
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 
 const NOAA_TIDES_BASE = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 const NOAA_MDAPI_BASE = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi";
@@ -305,7 +306,7 @@ export default function registerOceanActions(registerLensAction) {
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     try {
       const r = await fetch("https://api.weather.gov/alerts/active?region_type=marine&status=actual&message_type=alert", {
-        headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/geo+json" },
+        headers: nwsHeaders(),
       });
       if (!r.ok) return { ok: false, error: `nws ${r.status}` };
       const data = await r.json();

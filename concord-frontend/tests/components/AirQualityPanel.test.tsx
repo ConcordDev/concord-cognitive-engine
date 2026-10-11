@@ -1,9 +1,7 @@
 /**
- * AirQualityPanel must not call EPA AirNow on mount. Prod has no
- * EPA_AIRNOW_API_KEY, and a mount-time live_air_quality with the
- * hardcoded ZIP 94110 was logging HTTP 422 on every /lenses/environment
- * visit. The request waits for Load AQI, and a missing_api_key result
- * renders the honest needs-a-key state.
+ * AirQualityPanel stays click-to-load. Open-Meteo readings render as
+ * modeled CAMS data. A failure is an honest unavailable state, never
+ * an AirNow API-key wall.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
@@ -15,14 +13,32 @@ vi.mock('@/lib/api/client', () => ({
 
 import { AirQualityPanel } from '@/components/environment/AirQualityPanel';
 
-const MISSING_KEY = {
+const READING = {
   data: {
-    ok: false,
-    result: null,
-    error: 'missing_api_key',
-    reason: 'missing_api_key',
-    envVar: 'EPA_AIRNOW_API_KEY',
-    signupUrl: 'https://docs.airnowapi.org/account/request/',
+    ok: true,
+    result: {
+      ok: true,
+      source: 'Open-Meteo',
+      sourceNote: 'Modeled CAMS data, not EPA monitor readings',
+      observations: [
+        {
+          parameter: 'US AQI',
+          parameterName: 'US AQI',
+          aqi: 42,
+          category: 'Good',
+          reportingArea: 'San Francisco',
+          stateCode: 'CA',
+          dateObserved: '2026-10-11',
+          hourObserved: 9,
+          pm2_5: 8.1,
+          pm10: 12.4,
+          ozone: 68.2,
+          no2: 11.5,
+          co: 190,
+        },
+      ],
+    },
+    error: null,
   },
 };
 
@@ -31,15 +47,17 @@ describe('AirQualityPanel', () => {
     lensRun.mockReset();
   });
 
-  it('does not call live_air_quality until Load AQI, then renders a missing key', async () => {
-    lensRun.mockResolvedValue(MISSING_KEY);
+  it('does not call live_air_quality until Load AQI, then renders Open-Meteo', async () => {
+    lensRun.mockResolvedValue(READING);
     render(<AirQualityPanel />);
 
-    expect(screen.getByText(/Load AQI to query EPA AirNow/)).toBeInTheDocument();
+    expect(screen.getByText(/Load AQI to query Open-Meteo/)).toBeInTheDocument();
+    expect(screen.getByText(/modeled CAMS data, not EPA monitor readings/)).toBeInTheDocument();
     await act(async () => {
       await Promise.resolve();
     });
     expect(lensRun).not.toHaveBeenCalled();
+    expect(screen.queryByText('API key required')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Load AQI' }));
 
@@ -51,12 +69,27 @@ describe('AirQualityPanel', () => {
       name: 'live_air_quality',
       input: { zipCode: '94110' },
     });
-    expect(screen.getByText('API key required')).toBeInTheDocument();
-    expect(screen.getByText('EPA_AIRNOW_API_KEY')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Free signup/ })).toHaveAttribute(
-      'href',
-      'https://docs.airnowapi.org/account/request/'
-    );
-    expect(screen.queryByText(/AirNow unreachable/)).not.toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('Good')).toBeInTheDocument();
+    expect(screen.getByText('8.1')).toBeInTheDocument();
+    expect(screen.getByText('12.4')).toBeInTheDocument();
+    expect(screen.getByText('68.2')).toBeInTheDocument();
+    expect(screen.getByText(/US AQI · San Francisco, CA/)).toBeInTheDocument();
+    expect(screen.getByText(/Source: Open-Meteo/)).toBeInTheDocument();
+    expect(screen.queryByText('API key required')).not.toBeInTheDocument();
+    expect(screen.queryByText(/AirNow/)).not.toBeInTheDocument();
+  });
+
+  it('renders an honest unavailable state and does not invent an AQI', async () => {
+    lensRun.mockResolvedValue({
+      data: { ok: false, result: null, error: 'Open-Meteo air quality unreachable: HTTP 502' },
+    });
+    render(<AirQualityPanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Load AQI' }));
+    await waitFor(() => {
+      expect(screen.getByText(/Air quality unavailable/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/HTTP 502/)).toBeInTheDocument();
+    expect(screen.queryByText('API key required')).not.toBeInTheDocument();
   });
 });
