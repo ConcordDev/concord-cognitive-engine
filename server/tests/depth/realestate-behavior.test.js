@@ -21,6 +21,20 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx } from "./_harness.js";
 
+async function withProviderKeysUnset(fn) {
+  const keys = ["GREATSCHOOLS_API_KEY", "WALKSCORE_API_KEY", "GOOGLE_MAPS_API_KEY"];
+  const saved = keys.map((k) => [k, process.env[k]]);
+  for (const k of keys) delete process.env[k];
+  try {
+    return await fn();
+  } finally {
+    for (const [k, v] of saved) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
 describe("realestate — finance calc contracts (exact computed values)", () => {
   it("calc-mortgage: standard amortization M = P·r(1+r)^n/((1+r)^n−1) + PITI", async () => {
     const r = await lensRun("realestate", "calc-mortgage", {
@@ -322,17 +336,16 @@ describe("realestate — calculators + heuristics (wave 10 top-up)", () => {
     assert.equal(r.result.total, 0);
   });
 
-  it("school-ratings: deterministic seeded ratings, average = mean of three", async () => {
-    const r = await lensRun("realestate", "school-ratings", { params: { address: "742 Evergreen Terrace, Springfield" } });
-    assert.equal(r.result.schools.length, 3);
-    const ratings = r.result.schools.map((s) => s.rating);
-    // ratings are seeded in [3,10]
-    for (const rt of ratings) { assert.ok(rt >= 3 && rt <= 10); }
-    const expectedAvg = Math.round(((ratings[0] + ratings[1] + ratings[2]) / 3) * 10) / 10;
-    assert.equal(r.result.averageRating, expectedAvg);
-    // determinism: same address → identical ratings
-    const r2 = await lensRun("realestate", "school-ratings", { params: { address: "742 Evergreen Terrace, Springfield" } });
-    assert.deepEqual(r2.result.schools.map((s) => s.rating), ratings);
+  it("school-ratings: keys unset returns unavailable and no invented schools", async () => {
+    await withProviderKeysUnset(async () => {
+      const r = await lensRun("realestate", "school-ratings", { params: { address: "1 Main St, Albany, NY" } });
+      assert.equal(r.result.available, false);
+      assert.equal(r.result.reason, "greatschools_not_configured");
+      assert.equal(r.result.schools, undefined);
+      assert.equal(r.result.averageRating, undefined);
+      assert.equal(JSON.stringify(r).includes("Deterministic seeded"), false);
+      assert.doesNotMatch(JSON.stringify(r), /Elementary|Middle School|High School/);
+    });
   });
 
   it("school-ratings: rejects missing address", async () => {
@@ -341,30 +354,30 @@ describe("realestate — calculators + heuristics (wave 10 top-up)", () => {
     assert.match(r.result.error, /address required/);
   });
 
-  it("walk-score: deterministic 0..100 scores with banded descriptions", async () => {
-    const addr = "1 Market St, San Francisco";
-    const r = await lensRun("realestate", "walk-score", { params: { address: addr } });
-    for (const k of ["walkScore", "transitScore", "bikeScore"]) {
-      assert.ok(r.result[k] >= 0 && r.result[k] <= 100);
-    }
-    // description band matches the walk score deterministically
-    const w = r.result.walkScore;
-    const expected = w >= 90 ? "Walker's Paradise" : w >= 70 ? "Very Walkable" : w >= 50 ? "Somewhat Walkable" : w >= 25 ? "Car-Dependent" : "Car-Required";
-    assert.equal(r.result.walkDesc, expected);
-    // determinism
-    const r2 = await lensRun("realestate", "walk-score", { params: { address: addr } });
-    assert.equal(r2.result.walkScore, w);
+  it("walk-score: keys unset returns unavailable and no scores", async () => {
+    await withProviderKeysUnset(async () => {
+      const r = await lensRun("realestate", "walk-score", { params: { address: "1 Main St, Albany, NY" } });
+      assert.equal(r.result.available, false);
+      assert.equal(r.result.reason, "walkscore_not_configured");
+      assert.equal(r.result.walkScore, undefined);
+      assert.equal(r.result.transitScore, undefined);
+      assert.equal(r.result.bikeScore, undefined);
+      assert.equal(JSON.stringify(r).includes("Deterministic seeded"), false);
+    });
   });
 
-  it("commute-estimate: transit multiplier (1.8×) over drive base, rush hour = ×1.4", async () => {
-    const from = "Home, Austin";
-    const to = "Office, Austin";
-    const drive = await lensRun("realestate", "commute-estimate", { params: { from, to, mode: "drive" } });
-    const transit = await lensRun("realestate", "commute-estimate", { params: { from, to, mode: "transit" } });
-    // base minutes are seeded from the same from|to; transit = round(base × 1.8)
-    assert.equal(transit.result.minutes, Math.round(drive.result.minutes * 1.8));
-    assert.equal(drive.result.rushHourMinutes, Math.round(drive.result.minutes * 1.4));
-    assert.equal(drive.result.mode, "drive");
+  it("commute-estimate: keys unset returns unavailable and no minutes", async () => {
+    await withProviderKeysUnset(async () => {
+      const r = await lensRun("realestate", "commute-estimate", {
+        params: { from: "1 Main St, Albany, NY", to: "Times Square, New York, NY", mode: "drive" },
+      });
+      assert.equal(r.result.available, false);
+      assert.equal(r.result.reason, "routing_not_configured");
+      assert.equal(r.result.minutes, undefined);
+      assert.equal(r.result.rushHourMinutes, undefined);
+      assert.equal(r.result.distanceMi, undefined);
+      assert.equal(JSON.stringify(r).includes("Deterministic seeded"), false);
+    });
   });
 
   it("commute-estimate: rejects missing from/to", async () => {

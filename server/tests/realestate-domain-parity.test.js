@@ -1,4 +1,4 @@
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import registerActions from "../domains/realestate.js";
 
@@ -243,31 +243,160 @@ describe("realestate.avm-estimate (Zestimate-shape)", () => {
 });
 
 describe("realestate.school-ratings + walk-score + commute-estimate", () => {
-  it("school-ratings returns 3 schools with rating 3-10", () => {
-    const r = call("school-ratings", ctxA, { address: "123 Main St, Austin, TX" });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.schools.length, 3);
-    for (const s of r.result.schools) {
-      assert.ok(s.rating >= 3 && s.rating <= 10);
+  const PROVIDER_KEYS = ["GREATSCHOOLS_API_KEY", "WALKSCORE_API_KEY", "GOOGLE_MAPS_API_KEY"];
+  const savedKeys = {};
+  const ALBANY = "1 Main St, Albany, NY";
+
+  before(() => {
+    for (const k of PROVIDER_KEYS) savedKeys[k] = process.env[k];
+  });
+  beforeEach(() => {
+    for (const k of PROVIDER_KEYS) delete process.env[k];
+  });
+  after(() => {
+    for (const k of PROVIDER_KEYS) {
+      if (savedKeys[k] === undefined) delete process.env[k];
+      else process.env[k] = savedKeys[k];
     }
   });
-  it("walk-score returns 0-100 with descriptions", () => {
-    const r = call("walk-score", ctxA, { address: "123 Main St" });
+
+  function numbersIn(value, acc = []) {
+    if (typeof value === "number") acc.push(value);
+    else if (value && typeof value === "object") {
+      for (const v of Object.values(value)) numbersIn(v, acc);
+    }
+    return acc;
+  }
+
+  function assertUnavailable(r, reason) {
     assert.equal(r.ok, true);
-    assert.ok(r.result.walkScore >= 0 && r.result.walkScore <= 100);
-    assert.ok(typeof r.result.walkDesc === "string");
-    assert.ok(typeof r.result.transitDesc === "string");
-    assert.ok(typeof r.result.bikeDesc === "string");
+    assert.equal(r.result.available, false);
+    assert.equal(r.result.reason, reason);
+    assert.deepEqual(numbersIn(r.result), []);
+    assert.equal(r.result.schools, undefined);
+    assert.equal(r.result.walkScore, undefined);
+    assert.equal(r.result.transitScore, undefined);
+    assert.equal(r.result.bikeScore, undefined);
+    assert.equal(r.result.minutes, undefined);
+    assert.equal(r.result.rushHourMinutes, undefined);
+    assert.equal(r.result.distanceMi, undefined);
+    assert.equal(r.result.averageRating, undefined);
+    assert.doesNotMatch(JSON.stringify(r), /Elementary|Middle School|High School|Deterministic seeded/);
+  }
+
+  it("with keys unset, Albany address returns no ratings, scores, minutes, or invented school names", async () => {
+    const schools = await call("school-ratings", ctxA, { address: ALBANY });
+    const walk = await call("walk-score", ctxA, { address: ALBANY });
+    const commute = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square, New York, NY", mode: "drive" });
+    assertUnavailable(schools, "greatschools_not_configured");
+    assertUnavailable(walk, "walkscore_not_configured");
+    assertUnavailable(commute, "routing_not_configured");
   });
-  it("commute-estimate scales with mode", () => {
-    const drive = call("commute-estimate", ctxA, { from: "A", to: "B", mode: "drive" }).result.minutes;
-    const walk = call("commute-estimate", ctxA, { from: "A", to: "B", mode: "walk" }).result.minutes;
-    assert.ok(walk > drive);
+
+  it("no handler output contains 'Deterministic seeded'", async () => {
+    const schools = await call("school-ratings", ctxA, { address: ALBANY });
+    const walk = await call("walk-score", ctxA, { address: ALBANY });
+    const commute = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square", mode: "transit" });
+    for (const r of [schools, walk, commute]) {
+      assert.equal(JSON.stringify(r).includes("Deterministic seeded"), false);
+    }
   });
-  it("address-input determinism (same address → same scores)", () => {
-    const r1 = call("walk-score", ctxA, { address: "123 Main" });
-    const r2 = call("walk-score", ctxA, { address: "123 Main" });
-    assert.equal(r1.result.walkScore, r2.result.walkScore);
+
+  it("school-ratings still rejects a missing address", async () => {
+    const r = await call("school-ratings", ctxA, { address: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /address required/);
+  });
+
+  it("commute-estimate still rejects missing from/to", async () => {
+    const r = await call("commute-estimate", ctxA, { from: "A", to: "" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /from and to required/);
+  });
+
+  it("school-ratings with a key returns only the provider's schools", async () => {
+    process.env.GREATSCHOOLS_API_KEY = "gs-test";
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("geocoding.geo.census.gov")) {
+        return { ok: true, json: async () => ({ result: { addressMatches: [{ coordinates: { x: -73.7562, y: 42.6526 } }] } }) };
+      }
+      if (u.includes("gs-api.greatschools.org")) {
+        assert.match(u, /lat=42\.6526/);
+        return {
+          ok: true,
+          json: async () => ({
+            schools: [{
+              name: "Albany High School",
+              "level-codes": "h",
+              rating: "7",
+              distance: 1.25,
+              "district-name": "City School District of Albany",
+            }],
+          }),
+        };
+      }
+      throw new Error(`unexpected ${u}`);
+    };
+    const r = await call("school-ratings", ctxA, { address: ALBANY });
+    assert.equal(r.result.available, true);
+    assert.equal(r.result.schools.length, 1);
+    assert.equal(r.result.schools[0].name, "Albany High School");
+    assert.equal(r.result.schools[0].rating, 7);
+    assert.equal(r.result.districtName, "City School District of Albany");
+    assert.equal(JSON.stringify(r).includes("Deterministic seeded"), false);
+    assert.doesNotMatch(JSON.stringify(r), /St Elementary/);
+  });
+
+  it("walk-score with a key returns the provider scores and does not invent the rest", async () => {
+    process.env.WALKSCORE_API_KEY = "ws-test";
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("geocoding.geo.census.gov")) {
+        return { ok: true, json: async () => ({ result: { addressMatches: [{ coordinates: { x: -73.75, y: 42.65 } }] } }) };
+      }
+      if (u.includes("api.walkscore.com")) {
+        assert.match(u, /wsapikey=ws-test/);
+        return { ok: true, json: async () => ({ status: 1, walkscore: 91, description: "Walker's Paradise" }) };
+      }
+      throw new Error(`unexpected ${u}`);
+    };
+    const r = await call("walk-score", ctxA, { address: ALBANY });
+    assert.equal(r.result.available, true);
+    assert.equal(r.result.walkScore, 91);
+    assert.equal(r.result.walkDesc, "Walker's Paradise");
+    assert.equal(r.result.transitScore, undefined);
+    assert.equal(r.result.bikeScore, undefined);
+  });
+
+  it("commute-estimate with a key converts Distance Matrix seconds and metres only", async () => {
+    process.env.GOOGLE_MAPS_API_KEY = "gm-test";
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      assert.match(u, /maps\.googleapis\.com\/maps\/api\/distancematrix/);
+      assert.match(u, /key=gm-test/);
+      assert.match(u, /mode=driving/);
+      return {
+        ok: true,
+        json: async () => ({
+          status: "OK",
+          rows: [{ elements: [{ status: "OK", duration: { value: 1800 }, distance: { value: 16093.44 } }] }],
+        }),
+      };
+    };
+    const r = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square, New York, NY", mode: "drive" });
+    assert.equal(r.result.available, true);
+    assert.equal(r.result.minutes, 30);
+    assert.equal(r.result.distanceMi, 10);
+    assert.equal(r.result.rushHourMinutes, undefined);
+    assert.equal(r.result.mode, "drive");
+  });
+
+  it("a configured key that gets no route does not fall back to a seeded commute", async () => {
+    process.env.GOOGLE_MAPS_API_KEY = "gm-test";
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ status: "OK", rows: [{ elements: [{ status: "ZERO_RESULTS" }] }] }) });
+    const r = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square", mode: "drive" });
+    assertUnavailable(r, "routing_unavailable");
   });
 });
 
