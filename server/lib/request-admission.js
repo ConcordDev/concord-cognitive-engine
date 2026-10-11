@@ -49,7 +49,10 @@ const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 
 const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
-const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep)(\?|$|\/)/;
+// The public ConKay demo (routes/conkay-demo.js): materials, beam, sweep, and
+// the results page's precomputed design snapshots (designs, read from disk).
+// Reserved lane, not an exemption: it still sheds at the PROTECTED bar.
+const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep|designs)(\?|$|\/)/;
 
 // Authenticated interactive work: chat and lens run. Never an instant 503.
 const _INTERACTIVE_PATH_RE = /^\/api\/(?:lens\/run|chat-agent(?:\/|$|\?)|chat(?:\/|$|\?))/;

@@ -1,0 +1,2399 @@
+{
+ "showcaseVersion": "1.0.0",
+ "id": "methanol-water",
+ "title": "Methanol-water, 40 vol%",
+ "kind": "mixture",
+ "pipeline": "mixtureReport (PubChem + NIST WebBook, recorded responses)",
+ "brief": "methanol-water, 40 vol% methanol at 293.15 K, 101325 Pa (volume fractions of the pure liquids measured separately at the stated temperature, before mixing)",
+ "headline": {
+  "verdict": "computed_with_unknowns",
+  "status": "WARN",
+  "computed": 10,
+  "unknown": 6,
+  "pendingReview": 33
+ },
+ "disclaimers": [
+  "Responses are the recorded PubChem / NIST WebBook fetches (hash-checked), replayed offline.",
+  "The mixture density is not the ideal-mixing value: the excess volume is unknown from these sources and needs a measurement."
+ ],
+ "caveats": [
+  "State: 293.15 K and 101325 Pa only; every pure-component value is NIST's at exactly this state.",
+  "Composition basis: volume fractions of the pure liquids measured separately at the stated temperature, before mixing.",
+  "methanol: phase at the state \"liquid\"; NIST normal boiling point 337.632 K.",
+  "water: phase at the state \"liquid\"; NIST normal boiling point 373.1243 K.",
+  "The ideal-mixing values are a model with no excess volume or heat capacity; they are reported under their own subject and are not the mixture's properties.",
+  "PubChem values are contributed records: kept with their contributor and location, cross-checked, never averaged; disagreements are queued for review."
+ ],
+ "failures": [],
+ "checks": [
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref17-1-1-1",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref17-1-1-1",
+   "status": "PASS",
+   "method": "PubChem value (if read as g/cm3) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 792,
+     "capacity": 791.01,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.125
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref17-1-1-1",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref17-1-1-1",
+   "status": "PASS",
+   "method": "PubChem value (if read as relative density to water at 4 °C (999.97 kg/m3)) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 791.976,
+     "capacity": 791.01,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.122
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref64-2-1-1",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref64-2-1-1",
+   "status": "PASS",
+   "method": "PubChem value (relative density x water density at 277.15 K (999.97 kg/m3)) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 809.976,
+     "capacity": 809.73,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.03
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref64-2-1-2",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref64-2-1-2",
+   "status": "PASS",
+   "method": "PubChem value (relative density x water density at 277.15 K (999.97 kg/m3)) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 786.576,
+     "capacity": 786.33,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.031
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref113-5-1-1",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref113-5-1-1",
+   "status": "PASS",
+   "method": "PubChem value (if read as g/cm3) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 791.4,
+     "capacity": 791.01,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.049
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:methanol:density:pubchem-ref113-5-1-1",
+   "solver": "density cross-check",
+   "target": "claim:methanol:density:pubchem-ref113-5-1-1",
+   "status": "PASS",
+   "method": "PubChem value (if read as relative density to water at 4 °C (999.97 kg/m3)) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 791.376,
+     "capacity": 791.01,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": 0.046
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  },
+  {
+   "runId": "crosscheck:claim:water:density:pubchem-ref98-2-1-1",
+   "solver": "density cross-check",
+   "target": "claim:water:density:pubchem-ref98-2-1-1",
+   "status": "WARN",
+   "method": "PubChem value (density as printed) vs NIST reference",
+   "reason": null,
+   "margins": [
+    {
+     "check": "relative difference",
+     "demand": 995,
+     "capacity": 997.05,
+     "unit": "kg/m3",
+     "utilization": null,
+     "marginPct": -0.206
+    }
+   ],
+   "failures": [],
+   "warnings": []
+  }
+ ],
+ "checkCounts": {
+  "PASS": 6,
+  "WARN": 1,
+  "FAIL": 0,
+  "NOT_COMPUTED": 0,
+  "ERROR": 0
+ },
+ "values": [
+  {
+   "id": "claim:methanol:molar-mass:pubchem",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "molar mass",
+   "subject": "methanol",
+   "statement": null,
+   "value": 32.042,
+   "unit": "g/mol",
+   "range": {
+    "low": 32.0415,
+    "high": 32.0425
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 computed properties",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/887/property/MolecularFormula,MolecularWeight,IUPACName,InChI,InChIKey,ConnectivitySMILES/JSON",
+    "locator": "PUG REST property table (computed by PubChem)",
+    "quote": "CH4O; MW 32.042; OKKJLVBELUTLKV-UHFFFAOYSA-N",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "PubChem computed molecular weight",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-density:nist-273.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 809.73,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 1 (T = 273.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 809.73 at 273.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:specific-heat-capacity:nist-273.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 2401,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 1 (T = 273.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 2.4010 at 273.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:dynamic-viscosity:nist-273.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.000806,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 1 (T = 273.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.00080596 at 273.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Xiang, Laesecke and Huber, J. Phys. Chem. Ref. Data 35(4):1597-1620, 2006",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-thermal-conductivity:nist-273.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.20496,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 1 (T = 273.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.20496 at 273.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Sykioti, Assael, Huber and Perkins, J. Phys. Chem. Ref. Data 42, 043101, 2013",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-density:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 791.01,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 2 (T = 293.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 791.01 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:specific-heat-capacity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 2504.6,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 2 (T = 293.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 2.5046 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:dynamic-viscosity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.000585,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 2 (T = 293.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.00058530 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Xiang, Laesecke and Huber, J. Phys. Chem. Ref. Data 35(4):1597-1620, 2006",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-thermal-conductivity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.20116,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 2 (T = 293.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.20116 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Sykioti, Assael, Huber and Perkins, J. Phys. Chem. Ref. Data 42, 043101, 2013",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-density:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 786.33,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 3 (T = 298.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 786.33 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:specific-heat-capacity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 2534.5,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 3 (T = 298.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 2.5345 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:dynamic-viscosity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.000544,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 3 (T = 298.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.00054371 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Xiang, Laesecke and Huber, J. Phys. Chem. Ref. Data 35(4):1597-1620, 2006",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:liquid-thermal-conductivity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.20021,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 3 (T = 298.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.20021 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.; Sykioti, Assael, Huber and Perkins, J. Phys. Chem. Ref. Data 42, 043101, 2013",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:normal-boiling-point:nist",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.632,
+   "unit": "K",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: methanol, additional fluid properties",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Load&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "results page, \"Additional fluid properties\" > Normal boiling point",
+    "quote": "Normal boiling point 337.632 K",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) additional fluid properties, from: de Reuck, K.M. and Craven, R.J.B., \"Methanol, International Thermodynamic Tables of the Fluid State-12,\" IUPAC, Blackwell Scientific Publications, London, 1993.",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref17-1-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "number 0.792 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "subject": "methanol",
+   "statement": "number 0.792 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 1 (reference 17: CAMEO Chemicals, 3874)",
+    "quote": "0.792 at 68 °F (USCG, 1999) - Less dense than water; will float",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": "unit_not_stated"
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref64-2-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "relative density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.81,
+   "unit": "1",
+   "range": {
+    "low": 0.81,
+    "high": 0.8101
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 2 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "0.8100 at 0 °C/4 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref64-2-1-2",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "relative density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.7866,
+   "unit": "1",
+   "range": {
+    "low": 0.7866,
+    "high": 0.7867
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 2 part 2 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "0.7866 at 25 °C/4 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref75-3-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "relative density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 0.79,
+   "unit": "1",
+   "range": {
+    "low": 0.785,
+    "high": 0.795
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by ILO-WHO International Chemical Safety Cards (ICSCs))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 3 (reference 75: ILO-WHO International Chemical Safety Cards (ICSCs), 0057)",
+    "quote": "Relative density (water = 1): 0.79",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by ILO-WHO International Chemical Safety Cards (ICSCs)",
+   "note": "missing conditions: temperature, reference_temperature"
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref112-4-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "number 0.79 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "subject": "methanol",
+   "statement": "number 0.79 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by Occupational Safety and Health Administration (OSHA))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 4 (reference 112: Occupational Safety and Health Administration (OSHA), 474)",
+    "quote": "0.79",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Occupational Safety and Health Administration (OSHA)",
+   "note": "unit_not_stated"
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref113-5-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "number 0.7914 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "subject": "methanol",
+   "statement": "number 0.7914 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by PAC Chemical Database, U.S. Department of Energy)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 5 (reference 113: PAC Chemical Database, U.S. Department of Energy, 67-56-1)",
+    "quote": "0.7914 @ 20°C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by PAC Chemical Database, U.S. Department of Energy",
+   "note": "unit_not_stated"
+  },
+  {
+   "id": "claim:methanol:density:pubchem-ref144-6-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "number 0.79 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "subject": "methanol",
+   "statement": "number 0.79 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by The National Institute for Occupational Safety and Health (NIOSH))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 6 (reference 144: The National Institute for Occupational Safety and Health (NIOSH), npgd0397)",
+    "quote": "0.79",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by The National Institute for Occupational Safety and Health (NIOSH)",
+   "note": "unit_not_stated"
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref17-1-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.761111,
+   "unit": "K",
+   "range": {
+    "low": 337.7333,
+    "high": 337.7889
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 1 (reference 17: CAMEO Chemicals, 3874)",
+    "quote": "148.3 °F at 760 mmHg (NTP, 1992)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref64-2-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.85,
+   "unit": "K",
+   "range": {
+    "low": 337.8,
+    "high": 337.9
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 2 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "64.7 °C at 760 mm Hg",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref65-3-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": null,
+   "unit": "K",
+   "range": {
+    "low": 337.15,
+    "high": 338.15
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by Human Metabolome Database (HMDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 3 (reference 65: Human Metabolome Database (HMDB), HMDB0001875)",
+    "quote": "64.00 to 65.00 °C. @ 760.00 mm Hg",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Human Metabolome Database (HMDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref75-4-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 338.15,
+   "unit": "K",
+   "range": {
+    "low": 337.65,
+    "high": 338.65
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by ILO-WHO International Chemical Safety Cards (ICSCs))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 4 (reference 75: ILO-WHO International Chemical Safety Cards (ICSCs), 0057)",
+    "quote": "65 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by ILO-WHO International Chemical Safety Cards (ICSCs)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref112-5-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.038889,
+   "unit": "K",
+   "range": {
+    "low": 336.7611,
+    "high": 337.3167
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by Occupational Safety and Health Administration (OSHA))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 5 (reference 112: Occupational Safety and Health Administration (OSHA), 474)",
+    "quote": "147 °F",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Occupational Safety and Health Administration (OSHA)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref113-6-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.75,
+   "unit": "K",
+   "range": {
+    "low": 337.7,
+    "high": 337.8
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by PAC Chemical Database, U.S. Department of Energy)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 6 (reference 113: PAC Chemical Database, U.S. Department of Energy, 67-56-1)",
+    "quote": "64.6 °C @760 [mm Hg]",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by PAC Chemical Database, U.S. Department of Energy",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:boiling-point:pubchem-ref144-7-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 337.038889,
+   "unit": "K",
+   "range": {
+    "low": 336.7611,
+    "high": 337.3167
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Boiling Point (contributed by The National Institute for Occupational Safety and Health (NIOSH))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 887 > \"Boiling Point\" > Information 7 (reference 144: The National Institute for Occupational Safety and Health (NIOSH), npgd0397)",
+    "quote": "147 °F",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by The National Institute for Occupational Safety and Health (NIOSH)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref17-1-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 284.261111,
+   "unit": "K",
+   "range": {
+    "low": 283.9833,
+    "high": 284.5389
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 1 (reference 17: CAMEO Chemicals, 3874)",
+    "quote": "52 °F (NTP, 1992)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref18-2-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 284.261111,
+   "unit": "K",
+   "range": {
+    "low": 283.9833,
+    "high": 284.5389
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 2 (reference 18: CAMEO Chemicals, 22331)",
+    "quote": "52 °F (NFPA, 2010)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref62-3-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 285.372222,
+   "unit": "K",
+   "range": {
+    "low": 285.0944,
+    "high": 285.65
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by Haz-Map, Information on Hazardous Chemicals and Occupational Diseases)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 3 (reference 62: Haz-Map, Information on Hazardous Chemicals and Occupational Diseases, hz13)",
+    "quote": "54 °F",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Haz-Map, Information on Hazardous Chemicals and Occupational Diseases",
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref64-4-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 282.85,
+   "unit": "K",
+   "range": {
+    "low": 282.8,
+    "high": 282.9
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 4 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "9.7 °C (49.5 °F) - closed cup",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref64-5-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 288.75,
+   "unit": "K",
+   "range": {
+    "low": 288.7,
+    "high": 288.8
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 5 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "15.6 °C (open cup) /from table/",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref64-6-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 284.261111,
+   "unit": "K",
+   "range": {
+    "low": 283.9833,
+    "high": 284.5389
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 6 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "52 °F (11 °C) (closed cup)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref75-7-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 282.15,
+   "unit": "K",
+   "range": {
+    "low": 281.65,
+    "high": 282.65
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by ILO-WHO International Chemical Safety Cards (ICSCs))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 7 (reference 75: ILO-WHO International Chemical Safety Cards (ICSCs), 0057)",
+    "quote": "9 °C c.c.",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by ILO-WHO International Chemical Safety Cards (ICSCs)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref112-8-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 284.261111,
+   "unit": "K",
+   "range": {
+    "low": 283.9833,
+    "high": 284.5389
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by Occupational Safety and Health Administration (OSHA))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 8 (reference 112: Occupational Safety and Health Administration (OSHA), 474)",
+    "quote": "52 °F",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Occupational Safety and Health Administration (OSHA)",
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:methanol:flash-point:pubchem-ref144-9-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "flash point",
+   "subject": "methanol",
+   "statement": null,
+   "value": 284.261111,
+   "unit": "K",
+   "range": {
+    "low": 283.9833,
+    "high": 284.5389
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 — Flash Point (contributed by The National Institute for Occupational Safety and Health (NIOSH))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Flash%20Point",
+    "locator": "PUG View CID 887 > \"Flash Point\" > Information 9 (reference 144: The National Institute for Occupational Safety and Health (NIOSH), npgd0397)",
+    "quote": "52 °F",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by The National Institute for Occupational Safety and Health (NIOSH)",
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:oxidane:molar-mass:pubchem",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "molar mass",
+   "subject": "oxidane",
+   "statement": null,
+   "value": 18.015,
+   "unit": "g/mol",
+   "range": {
+    "low": 18.0145,
+    "high": 18.0155
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 computed properties",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/962/property/MolecularFormula,MolecularWeight,IUPACName,InChI,InChIKey,ConnectivitySMILES/JSON",
+    "locator": "PUG REST property table (computed by PubChem)",
+    "quote": "H2O; MW 18.015; XLYOFNOQVPJJNP-UHFFFAOYSA-N",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "PubChem computed molecular weight",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-density:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 998.21,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 293.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 998.21 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:specific-heat-capacity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "water",
+   "statement": null,
+   "value": 4184.1,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 293.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 4.1841 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:dynamic-viscosity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.001002,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 293.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.0010016 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-thermal-conductivity:nist-293.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.59801,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 293.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.59801 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-density:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 997.05,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 2 (T = 298.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 997.05 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:specific-heat-capacity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "water",
+   "statement": null,
+   "value": 4181.3,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 2 (T = 298.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 4.1813 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:dynamic-viscosity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.00089,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 2 (T = 298.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.00089002 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-thermal-conductivity:nist-298.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.60652,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 2 (T = 298.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.60652 at 298.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:normal-boiling-point:nist",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "water",
+   "statement": null,
+   "value": 373.1243,
+   "unit": "K",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: water, additional fluid properties",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Load&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "results page, \"Additional fluid properties\" > Normal boiling point",
+    "quote": "Normal boiling point 373.1243 K",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) additional fluid properties, from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-density:nist-277.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 999.97,
+   "unit": "kg/m3",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=277.15&TLow=277.15&TInc=1&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 277.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 999.97 at 277.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:specific-heat-capacity:nist-277.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "specific heat capacity",
+   "subject": "water",
+   "statement": null,
+   "value": 4207.5,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=277.15&TLow=277.15&TInc=1&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 277.15 K), column \"Cp (J/g*K)\"",
+    "quote": "Cp (J/g*K) = 4.2075 at 277.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:dynamic-viscosity:nist-277.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "dynamic viscosity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.001567,
+   "unit": "Pa.s",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=277.15&TLow=277.15&TInc=1&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 277.15 K), column \"Viscosity (Pa*s)\"",
+    "quote": "Viscosity (Pa*s) = 0.0015673 at 277.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:liquid-thermal-conductivity:nist-277.15k",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid thermal conductivity",
+   "subject": "water",
+   "statement": null,
+   "value": 0.56547,
+   "unit": "W/(m.K)",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=277.15&TLow=277.15&TInc=1&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 277.15 K), column \"Therm. Cond. (W/m*K)\"",
+    "quote": "Therm. Cond. (W/m*K) = 0.56547 at 277.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) fluid properties computed from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:normal-boiling-point:nist",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "water",
+   "statement": null,
+   "value": 373.1243,
+   "unit": "K",
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: water, additional fluid properties",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Load&ID=C7732185&Type=IsoBar&P=0.101325&THigh=277.15&TLow=277.15&TInc=1&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "results page, \"Additional fluid properties\" > Normal boiling point",
+    "quote": "Normal boiling point 373.1243 K",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "NIST WebBook (SRD 69) additional fluid properties, from: Wagner, W.; Pruss, A., The IAPWS Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance for General and Scientific Use, J. Phys. Chem. Ref. Data, 2002, 31, 2, 387-535 (IAPWS R6-95, revised 2016)",
+   "note": null
+  },
+  {
+   "id": "claim:water:density:pubchem-ref18-1-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "number 1 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "subject": "water",
+   "statement": "number 1 with no unit and no water reference stated (could be a density in g/cm3 or a relative density)",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 1 (reference 18: CAMEO Chemicals, 30024)",
+    "quote": "1",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": "unit_not_stated"
+  },
+  {
+   "id": "claim:water:density:pubchem-ref98-2-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 995,
+   "unit": "kg/m3",
+   "range": {
+    "low": 994.95,
+    "high": 995.05
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 2 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "0.9950 g/cu cm at 25 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:water:density:pubchem-ref98-5-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 1000,
+   "unit": "kg/m3",
+   "range": {
+    "low": 999.9995,
+    "high": 1000.0005
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 5 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "Expands on freezing. Temp of max density 3.98 °C. density: 1.000000g/mL at 3.98 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:water:density:pubchem-ref98-5-1-2",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "density of another phase (ice); not a liquid density",
+   "subject": "water",
+   "statement": "density of another phase (ice); not a liquid density",
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 5 part 2 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "0.917 g/cc at 0 °C (ice)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": "other_phase"
+  },
+  {
+   "id": "claim:water:density:pubchem-ref98-5-1-3",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "relative density",
+   "subject": "water",
+   "statement": null,
+   "value": 0.999868,
+   "unit": "1",
+   "range": {
+    "low": 0.9999,
+    "high": 0.9999
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 5 part 3 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "0.999868 at 0 °C/4 °C (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": null
+  },
+  {
+   "id": "claim:water:boiling-point:pubchem-ref18-1-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "water",
+   "statement": null,
+   "value": 373.15,
+   "unit": "K",
+   "range": {
+    "low": 372.8722,
+    "high": 373.4278
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Boiling Point (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 962 > \"Boiling Point\" > Information 1 (reference 18: CAMEO Chemicals, 30024)",
+    "quote": "212 °F at 760 mmHg",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by CAMEO Chemicals",
+   "note": null
+  },
+  {
+   "id": "claim:water:boiling-point:pubchem-ref98-3-1-1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "normal boiling point",
+   "subject": "water",
+   "statement": null,
+   "value": 373.124,
+   "unit": "K",
+   "range": {
+    "low": 373.1235,
+    "high": 373.1245
+   },
+   "status": "sourced",
+   "statusLabel": "sourced",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 — Boiling Point (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Boiling%20Point",
+    "locator": "PUG View CID 962 > \"Boiling Point\" > Information 3 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "99.974 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "as printed by Hazardous Substances Data Bank (HSDB)",
+   "note": "missing conditions: pressure"
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref17-1-1-1:1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 792,
+   "unit": "kg/m3",
+   "range": {
+    "low": 791.5,
+    "high": 792.5
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 1 (reference 17: CAMEO Chemicals, 3874)",
+    "quote": "0.792 at 68 °F (USCG, 1999) - Less dense than water; will float",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "if read as g/cm3; compared with claim:methanol:liquid-density:nist-293.15k",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref17-1-1-1:2",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 791.97624,
+   "unit": "kg/m3",
+   "range": {
+    "low": 791.4763,
+    "high": 792.4762
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by CAMEO Chemicals)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 1 (reference 17: CAMEO Chemicals, 3874)",
+    "quote": "0.792 at 68 °F (USCG, 1999) - Less dense than water; will float",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "if read as relative density to water at 4 °C (999.97 kg/m3); compared with claim:methanol:liquid-density:nist-293.15k",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref64-2-1-1:1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 809.9757,
+   "unit": "kg/m3",
+   "range": {
+    "low": 809.9249,
+    "high": 810.0265
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 2 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "0.8100 at 0 °C/4 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "relative density x water density at 277.15 K (999.97 kg/m3); compared with claim:methanol:liquid-density:nist-273.15k",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref64-2-1-2:1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 786.576402,
+   "unit": "kg/m3",
+   "range": {
+    "low": 786.5256,
+    "high": 786.6272
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 2 part 2 (reference 64: Hazardous Substances Data Bank (HSDB), 93)",
+    "quote": "0.7866 at 25 °C/4 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "relative density x water density at 277.15 K (999.97 kg/m3); compared with claim:methanol:liquid-density:nist-298.15k",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref113-5-1-1:1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 791.4,
+   "unit": "kg/m3",
+   "range": {
+    "low": 791.35,
+    "high": 791.45
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by PAC Chemical Database, U.S. Department of Energy)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 5 (reference 113: PAC Chemical Database, U.S. Department of Energy, 67-56-1)",
+    "quote": "0.7914 @ 20°C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "if read as g/cm3; compared with claim:methanol:liquid-density:nist-293.15k",
+   "note": null
+  },
+  {
+   "id": "claim:methanol:density-check:pubchem-ref113-5-1-1:2",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "methanol",
+   "statement": null,
+   "value": 791.376258,
+   "unit": "kg/m3",
+   "range": {
+    "low": 791.3263,
+    "high": 791.4263
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 887 — Density (contributed by PAC Chemical Database, U.S. Department of Energy)",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/887/JSON?heading=Density",
+    "locator": "PUG View CID 887 > \"Density\" > Information 5 (reference 113: PAC Chemical Database, U.S. Department of Energy, 67-56-1)",
+    "quote": "0.7914 @ 20°C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "if read as relative density to water at 4 °C (999.97 kg/m3); compared with claim:methanol:liquid-density:nist-293.15k",
+   "note": null
+  },
+  {
+   "id": "claim:water:density-check:pubchem-ref98-2-1-1:1",
+   "group": "Pure components (PubChem / NIST)",
+   "name": "liquid density",
+   "subject": "water",
+   "statement": null,
+   "value": 995,
+   "unit": "kg/m3",
+   "range": {
+    "low": 994.95,
+    "high": 995.05
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "partially_supported",
+   "source": {
+    "title": "PubChem CID 962 — Density (contributed by Hazardous Substances Data Bank (HSDB))",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/962/JSON?heading=Density",
+    "locator": "PUG View CID 962 > \"Density\" > Information 2 (reference 98: Hazardous Substances Data Bank (HSDB), 8183)",
+    "quote": "0.9950 g/cu cm at 25 °C",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "density as printed; compared with claim:water:liquid-density:nist-298.15k",
+   "note": "disagrees_with_reference"
+  },
+  {
+   "id": "claim:methanol-water-40vol:mass-fraction:methanol",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:mass-fraction:methanol",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 0.345672,
+   "unit": "1",
+   "range": {
+    "low": 0.3454,
+    "high": 0.3459
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of methanol",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C67561&Type=IsoBar&P=0.101325&THigh=333.15&TLow=273.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C67561 P=0.101325 MPa, row 2 (T = 293.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 791.01 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "w_i = phi_i rho_i / sum(phi_j rho_j) (volume fractions of the unmixed liquids)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:mole-fraction:methanol",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:mole-fraction:methanol",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 0.229001,
+   "unit": "1",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 887 computed properties",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/887/property/MolecularFormula,MolecularWeight,IUPACName,InChI,InChIKey,ConnectivitySMILES/JSON",
+    "locator": "PUG REST property table (computed by PubChem)",
+    "quote": "CH4O; MW 32.042; OKKJLVBELUTLKV-UHFFFAOYSA-N",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "x_i = (w_i / M_i) / sum(w_j / M_j)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:mass-fraction:water",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:mass-fraction:water",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 0.654328,
+   "unit": "1",
+   "range": {
+    "low": 0.6541,
+    "high": 0.6546
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "NIST Chemistry WebBook, SRD 69: isobaric properties of water",
+    "url": "https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=IsoBar&P=0.101325&THigh=333.15&TLow=278.15&TInc=5&Digits=5&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=kg%2Fm3&HUnit=kJ%2Fkg&WUnit=m%2Fs&VisUnit=Pa*s&STUnit=N%2Fm",
+    "locator": "fluid.cgi isobar ID=C7732185 P=0.101325 MPa, row 1 (T = 293.15 K), column \"Density (kg/m3)\"",
+    "quote": "Density (kg/m3) = 998.21 at 293.15 K, 0.10132 MPa (liquid)",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "w_i = phi_i rho_i / sum(phi_j rho_j) (volume fractions of the unmixed liquids)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:mole-fraction:water",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:mole-fraction:water",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 0.770999,
+   "unit": "1",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "PubChem CID 962 computed properties",
+    "url": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/962/property/MolecularFormula,MolecularWeight,IUPACName,InChI,InChIKey,ConnectivitySMILES/JSON",
+    "locator": "PUG REST property table (computed by PubChem)",
+    "quote": "H2O; MW 18.015; XLYOFNOQVPJJNP-UHFFFAOYSA-N",
+    "retrieved": "2026-10-09"
+   },
+   "sourceRole": "evidence",
+   "method": "x_i = (w_i / M_i) / sum(w_j / M_j)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:molar-mass",
+   "group": "Computed for the mixture",
+   "name": "molar mass",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 21.227196,
+   "unit": "g/mol",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "mixture molar mass",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "M = sum(x_i M_i)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:atoms-c",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:atoms-c",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 0.229001,
+   "unit": "mol/mol",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "atom balance",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "sum over components of x_i x (atoms of the element in formula i)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:atoms-h",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:atoms-h",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 2.458002,
+   "unit": "mol/mol",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "atom balance",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "sum over components of x_i x (atoms of the element in formula i)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:atoms-o",
+   "group": "Computed for the mixture",
+   "name": "claim:methanol-water-40vol:atoms-o",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": 1,
+   "unit": "mol/mol",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "atom balance",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "sum over components of x_i x (atoms of the element in formula i)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:ideal-density",
+   "group": "Computed for the mixture",
+   "name": "liquid density",
+   "subject": "methanol-water, 40 vol% methanol (ideal-mixing model)",
+   "statement": null,
+   "value": 915.33,
+   "unit": "kg/m3",
+   "range": {
+    "low": 915.013,
+    "high": 915.647
+   },
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "ideal-mixing density",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "rho_ideal = sum(phi_i rho_i) = total mass / total unmixed volume (additive volumes)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:ideal-cp",
+   "group": "Computed for the mixture",
+   "name": "specific heat capacity",
+   "subject": "methanol-water, 40 vol% methanol (ideal-mixing model)",
+   "statement": null,
+   "value": 3603.543787,
+   "unit": "J/(kg.K)",
+   "range": null,
+   "status": "computed",
+   "statusLabel": "computed",
+   "support": "supported",
+   "source": {
+    "title": "ideal-mixing heat capacity",
+    "url": null,
+    "locator": null,
+    "quote": null,
+    "retrieved": null
+   },
+   "sourceRole": "evidence",
+   "method": "cp_ideal = sum(w_i cp_i)",
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:liquid-density",
+   "group": "Unknown for the mixture",
+   "name": "liquid density",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:specific-heat-capacity",
+   "group": "Unknown for the mixture",
+   "name": "specific heat capacity",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:dynamic-viscosity",
+   "group": "Unknown for the mixture",
+   "name": "dynamic viscosity",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:liquid-thermal-conductivity",
+   "group": "Unknown for the mixture",
+   "name": "liquid thermal conductivity",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": null
+  },
+  {
+   "id": "claim:methanol-water-40vol:flash-point",
+   "group": "Unknown for the mixture",
+   "name": "flash point",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": "missing conditions: method"
+  },
+  {
+   "id": "claim:methanol-water-40vol:normal-boiling-point",
+   "group": "Unknown for the mixture",
+   "name": "normal boiling point",
+   "subject": "methanol-water, 40 vol% methanol",
+   "statement": null,
+   "value": null,
+   "unit": null,
+   "range": null,
+   "status": "unknown",
+   "statusLabel": "unknown",
+   "support": "unsupported",
+   "source": null,
+   "sourceRole": null,
+   "method": null,
+   "note": null
+  }
+ ],
+ "mass": null,
+ "drawings": [],
+ "model3d": null,
+ "physicalTests": [
+  "liquid density: density of the liquid by digital density meter at the stated temperature [[object Object]] — the excess volume on mixing is not known from these sources, so the mixture's density is not the ideal-mixing value",
+  "specific heat capacity: specific heat capacity by DSC over the stated temperature range (sealed pans for a volatile liquid) [[object Object]] — the excess heat capacity is not known from these sources",
+  "dynamic viscosity: kinematic viscosity at the stated temperature, times the measured density for dynamic viscosity [[object Object]] — no mixing rule for viscosity is validated here for this mixture",
+  "liquid thermal conductivity: transient hot wire; the standard's scope is engine coolants and related fluids, so the laboratory confirms it applies [[object Object]] — no mixing rule for thermal conductivity is validated here for this mixture",
+  "flash point: closed-cup flash point (Tag) of the exact liquid [[object Object]] — a mixture's flash point is not the mole- or mass-weighted pure values; only a test establishes it",
+  "normal boiling point: distillation range at the stated pressure (initial boiling point and range; not an equilibrium bubble point) [[object Object]] — vapour-liquid equilibrium is not modelled: the mixture's bubble point is not computed"
+ ],
+ "reviewQueue": [
+  {
+   "id": "review-001",
+   "kind": "unit_not_stated",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "\"0.792 at 68 °F (USCG, 1999) - Less dense than water; will float\": no unit or reference is stated; it is kept as printed, not converted"
+  },
+  {
+   "id": "review-002",
+   "kind": "unit_not_stated",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "\"0.79\": no unit or reference is stated; it is kept as printed, not converted"
+  },
+  {
+   "id": "review-003",
+   "kind": "unit_not_stated",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "\"0.7914 @ 20°C\": no unit or reference is stated; it is kept as printed, not converted"
+  },
+  {
+   "id": "review-004",
+   "kind": "unit_not_stated",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "\"0.79\": no unit or reference is stated; it is kept as printed, not converted"
+  },
+  {
+   "id": "review-005",
+   "kind": "identifier_conflict",
+   "subject": "oxidane",
+   "decision": "pending_human_review",
+   "reason": "contributors disagree on the CAS number: 7732-18-5 (17), 117318-92-0 (1), 17778-80-2 (1); 7732-18-5 is the majority and is used, the others need review"
+  },
+  {
+   "id": "review-006",
+   "kind": "unit_not_stated",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "\"1\": no unit or reference is stated; it is kept as printed, not converted"
+  },
+  {
+   "id": "review-007",
+   "kind": "not_read_table",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "the value is in a PubChem table this connector does not read"
+  },
+  {
+   "id": "review-008",
+   "kind": "other_phase",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "\"0.917 g/cc at 0 °C (ice)\" is for the ice phase: kept as printed, not compared with liquid values"
+  },
+  {
+   "id": "review-009",
+   "kind": "different_substance",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "\"Weight of sea water: approximately 63.93 lb/cu ft at 15 °C\" is about sea water, not water: not used as a claim about water"
+  },
+  {
+   "id": "review-010",
+   "kind": "different_substance",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "\"density of sea water: approximately 1.025 g/cu cm at 25 °C\" is about sea water, not water: not used as a claim about water"
+  },
+  {
+   "id": "review-011",
+   "kind": "not_read_table",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "the value is in a PubChem table this connector does not read"
+  },
+  {
+   "id": "review-012",
+   "kind": "unit_not_stated",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "\"100\": a number with no unit; kept as printed, not converted"
+  },
+  {
+   "id": "review-013",
+   "kind": "not_checkable",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "no temperature stated: cannot be compared with a reference value"
+  },
+  {
+   "id": "review-014",
+   "kind": "not_checkable",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "no temperature stated: cannot be compared with a reference value"
+  },
+  {
+   "id": "review-015",
+   "kind": "not_checkable",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "no temperature stated: cannot be compared with a reference value"
+  },
+  {
+   "id": "review-016",
+   "kind": "not_checkable",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "no temperature stated: cannot be compared with a reference value"
+  },
+  {
+   "id": "review-017",
+   "kind": "disagrees_with_reference",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "density as printed: 995.00 kg/m3 vs NIST 997.05 kg/m3 at 298.15 K (-0.206 %), outside their combined uncertainty"
+  },
+  {
+   "id": "review-018",
+   "kind": "not_checkable",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "no reference density at 277.13 K"
+  },
+  {
+   "id": "review-019",
+   "kind": "not_checkable",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "no reference density at 273.15 K"
+  },
+  {
+   "id": "review-020",
+   "kind": "conflict",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "5 values for normal_boiling_point at the same state do not all agree within their stated uncertainty / printed precision (span 337.15 to 338.15 K; 4 disagreeing pair(s))"
+  },
+  {
+   "id": "review-021",
+   "kind": "conflict",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "3 values for flash_point (closed cup) at the same state do not all agree within their stated uncertainty / printed precision (span 281.65 to 284.54 K; 3 disagreeing pair(s))"
+  },
+  {
+   "id": "review-022",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: temperature, reference_temperature"
+  },
+  {
+   "id": "review-023",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  },
+  {
+   "id": "review-024",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  },
+  {
+   "id": "review-025",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  },
+  {
+   "id": "review-026",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: method"
+  },
+  {
+   "id": "review-027",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: method"
+  },
+  {
+   "id": "review-028",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: method"
+  },
+  {
+   "id": "review-029",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: method"
+  },
+  {
+   "id": "review-030",
+   "kind": "missing_conditions",
+   "subject": "methanol",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: method"
+  },
+  {
+   "id": "review-031",
+   "kind": "missing_conditions",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  },
+  {
+   "id": "review-032",
+   "kind": "missing_conditions",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  },
+  {
+   "id": "review-033",
+   "kind": "missing_conditions",
+   "subject": "water",
+   "decision": "pending_human_review",
+   "reason": "the source does not state: pressure"
+  }
+ ],
+ "statuses": [
+  "sourced",
+  "measured",
+  "computed",
+  "estimated",
+  "design",
+  "unknown"
+ ],
+ "statusMeaning": {
+  "sourced": "taken from a cited document (data sheet, standard, public record)",
+  "measured": "a third-party measurement, cited",
+  "computed": "computed by a ConKay solver from the inputs shown",
+  "estimated": "an estimate with a stated method and range",
+  "design": "a design choice or requirement input, not a claim about the world",
+  "unknown": "not known: no source, or not computed"
+ },
+ "files": [],
+ "snapshotSha256": "5cbf7b5ba79f5ccd2b359f0980792ae1880259466eb50dc62db00e3cd8f88db7"
+}

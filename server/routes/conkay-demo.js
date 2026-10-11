@@ -10,6 +10,7 @@
 
 import express from "express";
 import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/engineering.js";
+import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
 
 const DIM_KEYS = ["length", "height", "flangeWidth", "flangeThickness", "webThickness"];
 
@@ -55,6 +56,31 @@ export default function createConkayDemoRouter({ rateLimit }) {
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
+  });
+
+  // ConKay results page (lib/conkay/showcase): precomputed snapshots of the
+  // showcase designs, read from disk. Nothing is solved here; a file is served
+  // only if the snapshot lists it and its hash still matches.
+  router.get("/designs", limit, (_req, res) => {
+    res.json({ ok: true, designs: listSnapshots() });
+  });
+
+  router.get("/designs/:id", limit, (req, res) => {
+    const snap = loadSnapshot(String(req.params.id));
+    if (!snap) return res.status(404).json({ ok: false, error: "no such showcase design" });
+    res.json({ ok: true, design: snap });
+  });
+
+  router.get("/designs/:id/files/:name", limit, (req, res) => {
+    const f = loadSnapshotFile(String(req.params.id), String(req.params.name));
+    if (!f) return res.status(404).json({ ok: false, error: "no such file" });
+    res.setHeader("Content-Type", f.contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    res.setHeader("ETag", `"${f.sha256}"`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // SVGs are drawn by ConKay, but never let one run script in this origin.
+    if (f.contentType === "image/svg+xml") res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    res.send(f.data);
   });
 
   return router;

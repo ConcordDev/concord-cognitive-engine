@@ -46,7 +46,7 @@ export function retryWaitMs(res: { headers?: { get?: (k: string) => string | nul
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-async function getJson(path: string, onRetry?: OnDemoRetry): Promise<{ status: number; body: Record<string, unknown> | null }> {
+export async function getDemoJson(path: string, onRetry?: OnDemoRetry): Promise<{ status: number; body: Record<string, unknown> | null }> {
   for (let attempt = 1; ; attempt++) {
     const res = await fetch(path, { credentials: 'omit', headers: { accept: 'application/json' } });
     let body: Record<string, unknown> | null = null;
@@ -58,7 +58,7 @@ async function getJson(path: string, onRetry?: OnDemoRetry): Promise<{ status: n
   }
 }
 
-function failure(status: number, body: Record<string, unknown> | null, fallback: string): { error: string } {
+export function demoFailure(status: number, body: Record<string, unknown> | null, fallback: string): { error: string } {
   if (status === 429) return { error: 'Too many solves from this connection. Wait a minute and try again.' };
   if (status === 503) {
     return { error: body?.code === 'service_warming'
@@ -76,15 +76,15 @@ export function retryNotice(r: DemoRetry): string {
 }
 
 export async function fetchDemoMaterials(onRetry?: OnDemoRetry): Promise<Material[] | { error: string }> {
-  const { status, body } = await getJson('/api/conkay/demo/materials', onRetry);
-  if (status !== 200 || !body?.ok || !Array.isArray(body.materials)) return failure(status, body, 'Could not load materials.');
+  const { status, body } = await getDemoJson('/api/conkay/demo/materials', onRetry);
+  if (status !== 200 || !body?.ok || !Array.isArray(body.materials)) return demoFailure(status, body, 'Could not load materials.');
   return body.materials as Material[];
 }
 
 export async function solveDemoBeam(inputs: StudyInputs, onRetry?: OnDemoRetry): Promise<BeamStudyResult | { error: string }> {
-  const { status, body } = await getJson(`/api/conkay/demo/beam?${beamQuery(inputs)}`, onRetry);
+  const { status, body } = await getDemoJson(`/api/conkay/demo/beam?${beamQuery(inputs)}`, onRetry);
   const r = body?.result as Record<string, unknown> | undefined;
-  if (status !== 200 || !body?.ok || !r || !Number.isFinite(r.maxStressMPa)) return failure(status, body, 'The solver returned no result.');
+  if (status !== 200 || !body?.ok || !r || !Number.isFinite(r.maxStressMPa)) return demoFailure(status, body, 'The solver returned no result.');
   return {
     ...(r as unknown as BeamStudyResult),
     jobId: null,
@@ -110,9 +110,9 @@ export async function sweepDemoBeam(
   const q = beamQuery(inputs);
   q.set('param', param);
   q.set('values', values.join(','));
-  const { status, body } = await getJson(`/api/conkay/demo/sweep?${q}`, onRetry);
+  const { status, body } = await getDemoJson(`/api/conkay/demo/sweep?${q}`, onRetry);
   const r = body?.result as DemoSweep | undefined;
-  if (status !== 200 || !body?.ok || !r || !Array.isArray(r.rows)) return failure(status, body, 'The sweep returned nothing.');
+  if (status !== 200 || !body?.ok || !r || !Array.isArray(r.rows)) return demoFailure(status, body, 'The sweep returned nothing.');
   return r;
 }
 

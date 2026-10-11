@@ -148,6 +148,10 @@ const PUBLIC_PATHS = new Set([
   // /api/conkay/demo/* routes and saves nothing. Logged-out visits to
   // /lenses/conkay are sent here instead of to /login (see below).
   '/conkay/demo',
+  // ConKay results page: read-only, precomputed showcase snapshots served by
+  // the same GET-only /api/conkay/demo/designs* routes. /conkay/designs/<id>
+  // is covered by PUBLIC_PREFIXES below.
+  '/conkay/designs',
   '/login',
   '/register',
   '/signup',         // alias → /register
@@ -174,6 +178,7 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 const PUBLIC_PREFIXES = [
+  '/conkay/designs/',
   '/api/',
   '/socket.io',
   '/_next/',
