@@ -34,6 +34,9 @@ describe('NativeWorldPlayer', () => {
       'CONCORD_GATEWAY_URL=' + encodeURIComponent('ws://127.0.0.1:5050/unity-ws'),
     );
     expect(iframe.getAttribute('allow')).toContain('pointer-lock');
+    // Gateway path is dev chrome. Vitest is not NODE_ENV=development.
+    expect(screen.queryByTestId('unity-ws-dev-badge')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\/unity-ws/)).not.toBeInTheDocument();
   });
 
   it('does not mount Three.js children when the export is missing', async () => {

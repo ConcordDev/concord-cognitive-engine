@@ -201,6 +201,20 @@ describe('Auth Middleware', () => {
       expect(csp).toContain('frame-ancestors');
     });
 
+    it('does not allow the Cloudflare Web Analytics beacon', () => {
+      // docs/PRIVACY_POLICY.md: no analytics, no web beacons, no third-party
+      // scripts. The edge may still try to inject static.cloudflareinsights.com;
+      // this policy must keep refusing it. 'strict-dynamic' would ignore a
+      // host allowlist for that parser-inserted tag anyway.
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      const csp = response.headers.get('Content-Security-Policy') || '';
+      expect(csp).not.toMatch(/cloudflareinsights\.com/);
+      const scriptSrc = csp.split(';').find((d) => d.trim().startsWith('script-src')) || '';
+      const connectSrc = csp.split(';').find((d) => d.trim().startsWith('connect-src')) || '';
+      expect(scriptSrc).not.toMatch(/cloudflareinsights/);
+      expect(connectSrc).not.toMatch(/cloudflareinsights/);
+    });
+
     it('covers the two verified external iframe destinations via frame-src', () => {
       const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
       const csp = response.headers.get('Content-Security-Policy');
