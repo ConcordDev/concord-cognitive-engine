@@ -6,7 +6,7 @@
  */
 
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -53,6 +53,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
+import { artDtuTitle, filterArtDtus } from '@/lib/art/art-dtus';
 
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
@@ -350,12 +351,49 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
 
   // DTU context (v3.0 artifact support)
   const {
-    contextDTUs, hyperDTUs, megaDTUs, regularDTUs, domainDTUs,
-    tierDistribution, publishToMarketplace: publishDTU,
-    isLoading: dtusLoading, refetch: refetchDTUs,
-  } = useLensDTUs({ lens: 'art' });
+    contextDTUs, hyperDTUs, megaDTUs, regularDTUs,
+    publishToMarketplace: publishDTU,
+    refetch: refetchDTUs,
+  } = useLensDTUs({ lens: 'art', crossDomain: false });
 
-  const imageArtifacts = contextDTUs.filter((d: DTU) => d.artifact?.type?.startsWith('image/'));
+  // context.query still scores other domains. The rail is labeled Art DTUs,
+  // so only art domain / artwork kind rows are shown.
+  const artHyperDTUs = useMemo(() => filterArtDtus(hyperDTUs), [hyperDTUs]);
+  const artMegaDTUs = useMemo(() => filterArtDtus(megaDTUs), [megaDTUs]);
+  const artRegularDTUs = useMemo(() => filterArtDtus(regularDTUs), [regularDTUs]);
+  const artTierDistribution = useMemo(() => ({
+    hyper: artHyperDTUs.length,
+    mega: artMegaDTUs.length,
+    regular: artRegularDTUs.length,
+    total: artHyperDTUs.length + artMegaDTUs.length + artRegularDTUs.length,
+  }), [artHyperDTUs, artMegaDTUs, artRegularDTUs]);
+
+  const imageArtifacts = useMemo(
+    () => filterArtDtus(contextDTUs).filter((d) => String(d.artifact?.type || '').startsWith('image/')),
+    [contextDTUs],
+  );
+
+  const [myArtError, setMyArtError] = useState<string | null>(null);
+  const { data: myArtPieces = [] } = useQuery({
+    queryKey: ['my-art-dtus'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/dtus', { params: { mine: 'true', domain: 'art', limit: 100 } });
+      const rows = Array.isArray(data?.dtus) ? data.dtus : [];
+      return filterArtDtus(rows as DTU[]);
+    },
+  });
+
+  const deleteMyArtPiece = useCallback(async (id: string) => {
+    setMyArtError(null);
+    try {
+      await api.delete(`/api/dtus/${id}`);
+      await queryClient.invalidateQueries({ queryKey: ['my-art-dtus'] });
+      refetchDTUs();
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      setMyArtError(ax.response?.data?.error || ax.response?.data?.message || ax.message || 'Could not delete this piece.');
+    }
+  }, [queryClient, refetchDTUs]);
 
   const uploadMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiHelpers.artistry.assets.create(data as { type: string; title?: string; description?: string; tags?: string[]; genre?: string; bpm?: number; key?: string; ownerId?: string; metadata?: Record<string, unknown> }),
@@ -855,6 +893,9 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
         </div>
       </div>
 
+      {myArtError && (
+        <p role="alert" className="text-sm text-rose-400">{myArtError}</p>
+      )}
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <button
           onClick={() => void ('canvas')}
@@ -863,6 +904,21 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
           <Plus className="w-8 h-8 text-gray-400" />
           <span className="text-xs text-gray-400">New Artwork</span>
         </button>
+        {myArtPieces.map((piece) => (
+          <div key={piece.id} data-testid="my-art-piece" className="aspect-square rounded-xl bg-white/5 border border-white/10 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center p-2">
+              <span className="text-sm font-medium text-center">{artDtuTitle(piece)}</span>
+            </div>
+            <button
+              type="button"
+              aria-label={`Delete ${artDtuTitle(piece)}`}
+              onClick={() => void deleteMyArtPiece(String(piece.id))}
+              className="absolute bottom-2 right-2 px-2 py-1 text-[11px] rounded bg-black/60 text-rose-300 hover:bg-black/80"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
         {(artAssets as ArtAsset[]).filter((a: ArtAsset) => a.type === 'artwork').map((art: ArtAsset) => (
           <div key={art.id} className="aspect-square rounded-xl bg-white/5 border border-white/10 overflow-hidden group relative cursor-pointer hover:border-neon-pink/30">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
@@ -919,12 +975,15 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
         </div>
         {/* DTU Context Sidebar */}
         <aside className="w-72 shrink-0 hidden xl:block border-l border-white/10 bg-black/20 overflow-y-auto p-4 space-y-4">
-          <ArtifactUploader lens="art" acceptTypes="image/*" multi compact onUploadComplete={() => refetchDTUs()} />
+          <ArtifactUploader lens="art" acceptTypes="image/*" multi compact onUploadComplete={() => {
+            refetchDTUs();
+            void queryClient.invalidateQueries({ queryKey: ['my-art-dtus'] });
+          }} />
           <LensContextPanel
-            hyperDTUs={hyperDTUs}
-            megaDTUs={megaDTUs}
-            regularDTUs={regularDTUs}
-            tierDistribution={tierDistribution}
+            hyperDTUs={artHyperDTUs}
+            megaDTUs={artMegaDTUs}
+            regularDTUs={artRegularDTUs}
+            tierDistribution={artTierDistribution}
             onPublish={(dtu) => publishDTU({ dtuId: dtu.id })}
             title="Art DTUs"
             className="!bg-transparent !border-0 !p-0"

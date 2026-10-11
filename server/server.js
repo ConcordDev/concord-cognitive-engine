@@ -91,6 +91,10 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu } from "./lib/dtu-read-access.js";
+import { validateMimeType } from "./lib/upload-mime.js";
+import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
+import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
+import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
@@ -25967,6 +25971,14 @@ register("dtu", "list", async (ctx, input) => {
   // never other users' published DTUs. Used by the dashboard "My Activity"
   // chart so the creation rhythm is the signed-in user's, not the global feed.
   const mineOnly = input.mine === true || input.mine === "true" || input.owner === "me";
+  const domainWant = input.domain ? String(input.domain) : "";
+  const kindWant = input.kind ? String(input.kind).toLowerCase() : "";
+  const narrowListedDtus = (rows) => {
+    let out = rows;
+    if (domainWant) out = out.filter((d) => dtuMatchesDomain(d, domainWant));
+    if (kindWant) out = out.filter((d) => dtuKind(d) === kindWant);
+    return out;
+  };
 
   // Concurrency Refactor Phase 3: run the visibility filter in the Rust sidecar
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
@@ -25995,7 +26007,7 @@ register("dtu", "list", async (ctx, input) => {
           now: Date.now(),
         });
         if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
-          const items = r.dtus;
+          const items = narrowListedDtus(r.dtus);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
@@ -26062,6 +26074,7 @@ register("dtu", "list", async (ctx, input) => {
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
   if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
+  items = narrowListedDtus(items);
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -46912,76 +46925,17 @@ app.get("/api/feedback-review", asyncHandler(async (req, res) => {
 }));
 
 // ── Artifact API Endpoints ──
-app.post("/api/artifact/upload", async (req, res) => {
-  try {
-    // Storage quota gate. Artifact uploads are the byte-heavy path —
-    // cooking and combat DTUs are tiny, but a single audio/video can
-    // be hundreds of MB. The 5 GiB baseline + earned expansion is
-    // enforced here. Anonymous uploads are not permitted (no user to
-    // bill bytes against).
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
-
-    const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
-    if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
-
-    // Handle raw body or multipart
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const buffer = Buffer.concat(chunks);
-
-    // Quota check before write. Must come AFTER reading the body so we
-    // know the actual byte count, but BEFORE storeArtifact so we don't
-    // commit to disk just to fail.
-    try {
-      assertHasSpaceFor(db, userId, buffer.length);
-    } catch (e) {
-      if (e?.code === "quota_exceeded") return res.status(413).json(e.payload);
-      throw e;
-    }
-
-    const contentType = req.headers["content-type"] || "application/octet-stream";
-    const filename = req.headers["x-filename"] || `upload_${Date.now()}`;
-    const domain = req.headers["x-domain"] || "general";
-    const title = req.headers["x-title"] || filename;
-
-    // MIME allowlist + magic bytes validation
-    const mimeCheck = validateMimeType(contentType, buffer);
-    if (!mimeCheck.ok) return res.status(400).json({ ok: false, error: mimeCheck.error });
-
-    const dtuId = uid("artifact");
-    const artifactRef = await artifactMod.storeArtifact(dtuId, buffer, contentType, filename);
-
-    const dtu = {
-      id: dtuId,
-      tier: "regular",
-      scope: "local",
-      domain: artifactMod.inferDomainFromType(contentType) || domain,
-      human: { summary: title, bullets: [] },
-      core: { definitions: [], claims: [], examples: [] },
-      machine: { kind: artifactMod.inferKindFromType(contentType), verifier: { format: contentType, sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
-      artifact: artifactRef,
-      lineage: { parents: [], children: [] },
-      authority: { score: 0.5 },
-      meta: { createdBy: userId, lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
-    };
-
-    STATE.dtus.set(dtuId, dtu);
-    // Record byte delta for the user. Best-effort — counter drift won't
-    // crash the upload pipeline if it happens.
-    recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
-    // Surface thumbnail URL when one was synchronously generated
-    // (currently: video → ffmpeg frame extraction; falsy otherwise).
-    const hasThumb = !!artifactRef.thumbnail && typeof artifactRef.thumbnail === "string" && contentType.startsWith("video/");
-    res.json({
-      ok: true,
-      dtuId,
-      artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes },
-      thumbnailUrl: hasThumb ? `/api/artifact/${dtuId}/thumbnail` : null,
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: String(err?.message || err) });
-  }
+// Raw file body (Content-Type: file MIME, x-filename / x-title / x-domain)
+// or multipart/form-data. Both land in the same owner-stamped DTU path.
+mountArtifactUploadRoutes(app, {
+  db,
+  STATE,
+  uid,
+  assertHasSpaceFor,
+  recordStorageDelta,
+  STORAGE_REASONS,
+  validateMimeType,
+  saveState: () => { try { saveStateDebounced(); } catch { /* best-effort */ } },
 });
 
 // Thumbnail/poster bytes for an artifact. Currently populated for
@@ -47025,6 +46979,21 @@ app.get("/api/artifact/:dtuId/stream", async (req, res) => {
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
     if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
 
+    // Priced art: non-licensees get a watermarked preview, never the original.
+    if (!viewerHasFullArtAccess(dtu, req.user?.id || null, db)) {
+      const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
+      if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+      const gated = await bytesForViewer({
+        dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+      });
+      if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
+
     const stream = artifactMod.retrieveArtifactStream(dtu.artifact);
     if (!stream) return res.status(404).json({ ok: false, error: "file_not_found" });
 
@@ -47062,6 +47031,18 @@ app.get("/api/artifact/:dtuId/download", async (req, res) => {
 
     const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
     if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+
+    const gated = await bytesForViewer({
+      dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+    });
+    if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+    if (gated.access === "preview") {
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
 
     res.setHeader("Content-Type", dtu.artifact.type);
     res.setHeader("Content-Disposition", `attachment; filename="${dtu.artifact.filename}"`);
@@ -83193,49 +83174,7 @@ function ensureArtistryState() {
   return STATE.artistry;
 }
 
-// ── File Upload MIME Allowlist & Magic Bytes ────────────────────────────────
-
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
-  'video/mp4', 'video/webm',
-  'application/pdf',
-  'text/plain', 'text/markdown', 'text/csv',
-  'application/json',
-  'application/octet-stream', // fallback for unknown binary
-]);
-
-const MAGIC_BYTES = {
-  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
-  'image/png': [[0x89, 0x50, 0x4E, 0x47]],
-  'image/gif': [[0x47, 0x49, 0x46, 0x38]],
-  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF
-  'audio/mpeg': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 + ID3
-  'audio/ogg': [[0x4F, 0x67, 0x67, 0x53]],
-  'audio/flac': [[0x66, 0x4C, 0x61, 0x43]],
-  'video/mp4': [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
-  'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
-};
-
-function validateMimeType(mimeType, dataOrBuffer) {
-  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-    return { ok: false, error: `File type not allowed: ${mimeType}` };
-  }
-  // Check magic bytes if we have rules for this type
-  const rules = MAGIC_BYTES[mimeType];
-  if (rules && dataOrBuffer) {
-    const buf = typeof dataOrBuffer === 'string'
-      ? Buffer.from(dataOrBuffer.slice(0, 100), 'base64')
-      : (Buffer.isBuffer(dataOrBuffer) ? dataOrBuffer.slice(0, 100) : null);
-    if (buf && buf.length >= 2) {
-      const matches = rules.some(magic => magic.every((byte, i) => i < buf.length && buf[i] === byte));
-      if (!matches) {
-        return { ok: false, error: 'File content does not match declared type' };
-      }
-    }
-  }
-  return { ok: true };
-}
+// MIME allowlist lives in server/lib/upload-mime.js.
 
 // ── Blob Storage Engine ─────────────────────────────────────────────────────
 
