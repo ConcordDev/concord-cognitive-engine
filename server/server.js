@@ -29379,15 +29379,17 @@ ${_operatorV6Block}` : "";
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
   // An outage notice is not knowledge — don't mint a DTU from it.
   try {
-    if (!_aiUnavailable) createOutputDTU(STATE, {
-      sessionId,
-      response: finalReply,
-      entityId: null,
-      brain: llmUsed ? "conscious" : "local",
-      confidence: llmUsed ? 0.8 : 0.5,
-      workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
-      userId: ctx?.actor?.userId || null,
-    });
+    if (!_aiUnavailable) {
+      createOutputDTU(STATE, {
+        sessionId,
+        response: finalReply,
+        entityId: null,
+        brain: llmUsed ? "conscious" : "local",
+        confidence: llmUsed ? 0.8 : 0.5,
+        workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+        userId: ctx?.actor?.userId || null,
+      });
+    }
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
   try {
