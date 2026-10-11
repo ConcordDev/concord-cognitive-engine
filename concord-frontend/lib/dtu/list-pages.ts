@@ -83,7 +83,7 @@ export async function listAllDtuPages(
   };
 }
 
-export function sortDtusNewest<T extends { createdAt?: string }>(rows: T[]): T[] {
+export function sortDtusNewest<T extends { createdAt?: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 }
 
