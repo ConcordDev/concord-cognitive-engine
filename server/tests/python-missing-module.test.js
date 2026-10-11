@@ -26,6 +26,20 @@ describe("detectScientificImports", () => {
   it("ignores modules other than numpy and sympy", () => {
     assert.deepEqual(detectScientificImports("import json\nimport math"), []);
   });
+
+  it("finishes a pathological unclosed string quickly", () => {
+    // A quote plus a long run of backslashes is the ReDoS shape of the old
+    // `(?:\\.|[^'\\n])*` stripper. Linear scan must still see a real import
+    // on the next line and must not hang.
+    const started = Date.now();
+    const slash = "\\".repeat(100_000);
+    assert.deepEqual(detectScientificImports("'" + slash + "\nimport numpy"), ["numpy"]);
+    assert.deepEqual(detectScientificImports('"' + slash + "\nimport sympy"), ["sympy"]);
+    assert.deepEqual(detectScientificImports("'''" + "x".repeat(100_000)), []);
+    assert.deepEqual(detectScientificImports('"""' + "y".repeat(100_000)), []);
+    const elapsed = Date.now() - started;
+    assert.ok(elapsed < 2000, `pathological import scan took ${elapsed}ms`);
+  });
 });
 
 describe("runPython missing numpy/sympy", () => {

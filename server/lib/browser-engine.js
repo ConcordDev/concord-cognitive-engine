@@ -685,26 +685,165 @@ function safeCodePoint(n) {
   try { return String.fromCodePoint(n); } catch { return ""; }
 }
 
+const _SKIP_HTML = new Set(["script", "style", "noscript", "head"]);
+const _BLOCK_HTML = new Set(["br", "p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "tr", "blockquote", "section", "article"]);
+
+function isHtmlSpace(c) {
+  return c === " " || c === "\n" || c === "\r" || c === "\t" || c === "\f";
+}
+
+function isHtmlNameChar(c) {
+  const code = c.charCodeAt(0);
+  return (code >= 48 && code <= 57)
+    || (code >= 65 && code <= 90)
+    || (code >= 97 && code <= 122)
+    || c === ":" || c === "-" || c === "_";
+}
+
+/**
+ * One tag starting at `src[start] === "<"`.
+ * Closing names may have whitespace before `>` (`</script >`, `</SCRIPT>`).
+ * Returns null when `<` is not a tag so the caller keeps that character.
+ * An unclosed `<...` with no `>` is literal text through EOF (still one pass).
+ */
+function readHtmlTag(src, start) {
+  const n = src.length;
+  let i = start + 1;
+  if (i >= n) return null;
+  const lead = src[i];
+  if (lead === "!" || lead === "?") {
+    const end = src.indexOf(">", i);
+    if (end < 0) return { literal: true, end: n };
+    return { decl: true, end: end + 1 };
+  }
+  let closing = false;
+  if (lead === "/") {
+    closing = true;
+    i += 1;
+  }
+  while (i < n && isHtmlSpace(src[i])) i += 1;
+  const nameStart = i;
+  while (i < n && isHtmlNameChar(src[i])) i += 1;
+  if (i === nameStart) return null;
+  const name = src.slice(nameStart, i);
+  let quote = "";
+  let closed = false;
+  let selfClosing = false;
+  while (i < n) {
+    const c = src[i];
+    if (quote) {
+      if (c === quote) quote = "";
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      i += 1;
+      continue;
+    }
+    if (c === "/") {
+      selfClosing = true;
+      i += 1;
+      continue;
+    }
+    if (c === ">") {
+      closed = true;
+      i += 1;
+      break;
+    }
+    if (!isHtmlSpace(c)) selfClosing = false;
+    i += 1;
+  }
+  if (!closed) return { literal: true, end: n };
+  return { name, closing, selfClosing, end: i };
+}
+
 /**
  * Readable text from a raw HTML document. Drops script/style/head chrome
- * and decodes the common entities. No DOM parser — this is the Chromium-less path.
+ * and decodes the common entities. Single left-to-right pass — tag names
+ * are case-insensitive and a closing tag may have whitespace before `>`.
  */
 export function extractReadableText(html) {
   const src = String(html || "");
-  const titleMatch = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(src);
-  const title = titleMatch
-    ? decodeHtmlEntities(titleMatch[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()
-    : "";
-  const text = decodeHtmlEntities(
-    src
-      .replace(/<!--[\s\S]*?-->/g, " ")
-      .replace(/<head[\s\S]*?<\/head>/gi, " ")
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-      .replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li|\/tr|\/blockquote|\/section|\/article)\b[^>]*>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-  )
+  const n = src.length;
+  const textParts = [];
+  const titleParts = [];
+  let skip = "";
+  let inTitle = false;
+  let i = 0;
+
+  const pushText = (s) => {
+    if (s && !skip) textParts.push(s);
+  };
+  const pushTitle = (s) => {
+    if (s && inTitle) titleParts.push(s);
+  };
+
+  while (i < n) {
+    const lt = src.indexOf("<", i);
+    if (lt < 0) {
+      const rest = src.slice(i);
+      pushText(rest);
+      pushTitle(rest);
+      break;
+    }
+    if (lt > i) {
+      const chunk = src.slice(i, lt);
+      pushText(chunk);
+      pushTitle(chunk);
+    }
+    if (src.startsWith("<!--", lt)) {
+      const end = src.indexOf("-->", lt + 4);
+      i = end < 0 ? n : end + 3;
+      pushText(" ");
+      continue;
+    }
+    const tag = readHtmlTag(src, lt);
+    if (!tag) {
+      pushText("<");
+      pushTitle("<");
+      i = lt + 1;
+      continue;
+    }
+    if (tag.literal) {
+      const rest = src.slice(lt);
+      pushText(rest);
+      pushTitle(rest);
+      break;
+    }
+    i = tag.end;
+    if (tag.decl) {
+      pushText(" ");
+      continue;
+    }
+    const name = tag.name.toLowerCase();
+    const headStructure = skip === "head" && (name === "title" || name === "head");
+    if (skip && !headStructure) {
+      if (tag.closing && name === skip) {
+        skip = "";
+        pushText(" ");
+      }
+      continue;
+    }
+    if (tag.closing) {
+      if (name === "title") inTitle = false;
+      if (name === "head") skip = "";
+      pushText(_BLOCK_HTML.has(name) ? "\n" : " ");
+      continue;
+    }
+    if (name === "title") {
+      inTitle = true;
+      continue;
+    }
+    if (!tag.selfClosing && _SKIP_HTML.has(name)) {
+      skip = name;
+      continue;
+    }
+    pushText(name === "br" ? "\n" : " ");
+  }
+
+  const title = decodeHtmlEntities(titleParts.join("")).replace(/\s+/g, " ").trim();
+  const text = decodeHtmlEntities(textParts.join(""))
     .replace(/[ \t]+\n/g, "\n")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
@@ -745,8 +884,17 @@ async function readBodyCapped(res, maxBytes) {
  * The result is labeled as a fetch fallback (not a JS-rendered page).
  */
 export async function fetchHtmlFallback(url, options = {}) {
-  const timeoutMs = Number(options.timeout) > 0 ? Number(options.timeout) : FETCH_FALLBACK_TIMEOUT_MS;
-  const maxBytes = Number(options.maxBytes) > 0 ? Number(options.maxBytes) : FETCH_FALLBACK_MAX_BYTES;
+  // options.timeout / options.maxBytes are caller-controlled. An unbounded
+  // timer delay or read limit is resource exhaustion — both sit under the
+  // module ceilings (10s, 1.5MB).
+  let timeoutMs = Number(options.timeout);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > FETCH_FALLBACK_TIMEOUT_MS) {
+    timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
+  }
+  let maxBytes = Math.floor(Number(options.maxBytes));
+  if (!Number.isFinite(maxBytes) || maxBytes <= 0 || maxBytes > FETCH_FALLBACK_MAX_BYTES) {
+    maxBytes = FETCH_FALLBACK_MAX_BYTES;
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {

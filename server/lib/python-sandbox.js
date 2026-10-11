@@ -301,13 +301,62 @@ async function resolveRequestedPackages(packages) {
  */
 const _SCIENTIFIC_IMPORTS = Object.freeze(["numpy", "sympy"]);
 
+/**
+ * Drop comments and string literals in one left-to-right pass.
+ * The previous quote regexes (`(?:\\.|[^'\n])*`) backtracked exponentially
+ * on a quote followed by a long run of backslashes. Placeholders keep
+ * surrounding tokens from gluing together: a triple-quoted block becomes a
+ * newline, a single-line string becomes `''` or `""`.
+ */
 function stripPythonNonCode(code) {
-  return String(code || "")
-    .replace(/'''[\s\S]*?'''/g, "\n")
-    .replace(/"""[\s\S]*?"""/g, "\n")
-    .replace(/'(?:\\.|[^'\n])*'/g, "''")
-    .replace(/"(?:\\.|[^"\n])*"/g, '""')
-    .replace(/#[^\n]*/g, "");
+  const src = String(code || "");
+  const n = src.length;
+  const out = [];
+  let i = 0;
+  while (i < n) {
+    const c = src[i];
+    if (c === "#") {
+      i += 1;
+      while (i < n && src[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c !== "'" && c !== '"') {
+      out.push(c);
+      i += 1;
+      continue;
+    }
+    const q = c;
+    if (src[i + 1] === q && src[i + 2] === q) {
+      i += 3;
+      while (i < n) {
+        if (src[i] === "\\" && i + 1 < n) {
+          i += 2;
+          continue;
+        }
+        if (src[i] === q && src[i + 1] === q && src[i + 2] === q) {
+          i += 3;
+          break;
+        }
+        i += 1;
+      }
+      out.push("\n");
+      continue;
+    }
+    i += 1;
+    while (i < n && src[i] !== "\n") {
+      if (src[i] === "\\" && i + 1 < n && src[i + 1] !== "\n") {
+        i += 2;
+        continue;
+      }
+      if (src[i] === q) {
+        i += 1;
+        break;
+      }
+      i += 1;
+    }
+    out.push(q === "'" ? "''" : '""');
+  }
+  return out.join("");
 }
 
 /**

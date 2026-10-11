@@ -42,6 +42,22 @@ describe("extractReadableText", () => {
     assert.match(text, /Second ! line/);
     assert.doesNotMatch(text, /secret|color:red|<p>|style/);
   });
+
+  it("drops script and style when the closing tag is uppercase or has space before >", () => {
+    const html = [
+      "<TITLE>Case</TITLE>",
+      "<body>",
+      "<SCRIPT>window.secret = 1</ScRiPt >",
+      "<p>Visible</p>",
+      "<style>color:red</STYLE >",
+      "<script>hidden</script>",
+      "</body>",
+    ].join("");
+    const { title, text } = extractReadableText(html);
+    assert.equal(title, "Case");
+    assert.match(text, /Visible/);
+    assert.doesNotMatch(text, /secret|hidden|color:red/i);
+  });
 });
 
 describe("fetchHtmlFallback", () => {
@@ -115,6 +131,45 @@ describe("fetchHtmlFallback", () => {
     assert.equal(page.ok, false);
     assert.equal(page.label, "fetch fallback");
     assert.match(page.error, /private|reserved|metadata|blocked/i);
+  });
+
+  it("caps a huge timeout and maxBytes at the fallback ceilings", async () => {
+    const originalSetTimeout = global.setTimeout;
+    const delays = [];
+    global.setTimeout = (fn, delay, ...rest) => {
+      if (typeof delay === "number") delays.push(delay);
+      const capped = typeof delay === "number" ? Math.min(delay, 40) : delay;
+      return originalSetTimeout(fn, capped, ...rest);
+    };
+    try {
+      const stalled = await fetchHtmlFallback("https://example.com/stall", {
+        timeout: 1e15,
+        fetchImpl: (_url, init) => new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => {
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+      });
+      assert.equal(stalled.ok, false);
+      assert.match(stalled.error, /timeout after 10000ms/);
+      assert.ok(delays.includes(10_000), `armed delays were ${delays.join(",")}`);
+      assert.ok(delays.every((d) => d <= 10_000), `unbounded delay in ${delays.join(",")}`);
+    } finally {
+      global.setTimeout = originalSetTimeout;
+    }
+
+    const big = `B`.repeat(1_600_000);
+    const page = await fetchHtmlFallback("https://example.com/huge", {
+      timeout: 1e15,
+      maxBytes: 1e15,
+      fetchImpl: async () => new Response(big, { status: 200 }),
+    });
+    assert.equal(page.ok, true);
+    assert.equal(page.truncated, true);
+    assert.ok(page.html.length <= 1_500_000, `kept ${page.html.length} chars`);
+    assert.ok(page.html.length > 1_000_000, `kept only ${page.html.length} chars`);
   });
 });
 
