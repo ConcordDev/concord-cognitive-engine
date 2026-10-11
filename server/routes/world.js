@@ -108,6 +108,8 @@ import {
   listOrganizations,
   joinOrganization,
   leaveOrganization,
+  getOrgsForUser,
+  projectPublicOrganization,
   createParty,
   joinParty,
   leaveParty,
@@ -198,6 +200,31 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
      
     // eslint-disable-next-line no-restricted-syntax
     return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null; // safe: target-identifier
+  }
+
+  // Auth middleware stores the account id on req.user.id. Some callers
+  // still put it on req.user.userId. The list must not trust a body field
+  // to decide whose membership to reveal.
+  function _viewerIds(req) {
+    return [req.user?.id, req.user?.userId, req.actor?.userId].filter(Boolean);
+  }
+
+  function _membershipByOrg(db, req) {
+    const mine = new Map();
+    for (const id of _viewerIds(req)) {
+      for (const membership of getOrgsForUser(db, id)) {
+        if (!mine.has(membership.orgId)) mine.set(membership.orgId, membership.role);
+      }
+    }
+    return mine;
+  }
+
+  function _projectOrgForViewer(org, req, membershipRole) {
+    const pub = projectPublicOrganization(org);
+    if (!pub) return null;
+    if (membershipRole) pub.myRole = membershipRole;
+    if (org.leaderId && _viewerIds(req).includes(org.leaderId)) pub.viewerIsLeader = true;
+    return pub;
   }
 
   const auth = (req, res, next) => {
@@ -294,20 +321,28 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   // ── Organizations ────────────────────────────────────────────────────────
 
-  router.get("/orgs", wrap((_req, res) => {
-    const orgs = listOrganizations(db);
+  router.get("/orgs", wrap((req, res) => {
+    const mine = _membershipByOrg(db, req);
+    const orgs = listOrganizations(db)
+      .map((org) => _projectOrgForViewer(org, req, mine.get(org.id)))
+      .filter(Boolean);
     res.json({ ok: true, organizations: orgs, count: orgs.length });
   }));
 
   router.post("/orgs", auth, wrap((req, res) => {
-    const org = createOrganization(db, { ...req.body, leaderId: _userId(req) });
+    // Prefer the authenticated account. GuildPanel also sends leaderId in
+    // the body for the no-session path; never let that body value override
+    // a real session, and never replace a provided leader with null.
+    const leaderId = req.user?.id || req.user?.userId || req.actor?.userId || req.body?.leaderId || req.body?.userId || null;
+    const org = createOrganization(db, { ...req.body, leaderId });
     res.status(201).json({ ok: true, organization: org });
   }));
 
   router.get("/orgs/:id", wrap((req, res) => {
     const org = getOrganization(db, req.params.id);
     if (!org) return res.status(404).json({ ok: false, error: "Organization not found" });
-    res.json({ ok: true, organization: org });
+    const membershipRole = _membershipByOrg(db, req).get(org.id) || null;
+    res.json({ ok: true, organization: _projectOrgForViewer(org, req, membershipRole) });
   }));
 
   router.post("/orgs/:id/join", auth, wrap((req, res) => {

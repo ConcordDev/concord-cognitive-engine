@@ -1,7 +1,10 @@
 // server/domains/supplychain.js
+import { randomBytes } from "crypto";
+import { up as ensureScOrgAuthSchema } from "../migrations/475_supplychain_org_access.js";
 import {
   createOrganization, getOrganization, joinOrganization, leaveOrganization,
   setMemberRole, getOrgMembers, getOrgsForUser, listOrganizations,
+  projectPublicOrganization,
 } from "../lib/world-organizations.js";
 
 export default function registerSupplychainActions(registerLensAction) {
@@ -49,18 +52,17 @@ export default function registerSupplychainActions(registerLensAction) {
   // orgId" implemented as a key-namespace on the existing Map rather than a
   // second set of Maps — same storage shape, one membership source).
   //
-  // SC role is DERIVED from the org role rather than stored as a separate
-  // field. Two designs were considered: (a) an explicit per-member `scRole`
-  // living in this domain's own state, or (b) deriving it from the org role
-  // that `world-organizations.js` already tracks. (b) was chosen: (a) would
-  // create two sources of truth for "what can this member do" that could
-  // drift (e.g. an officer demoted to member whose shadow scRole silently
-  // stays "planner"), and `world-organizations.js` already exposes a real
-  // 4-tier role ladder (leader/officer/member/apprentice) that maps cleanly
-  // onto the 3-tier planner/buyer/analyst split with no loss of intent:
-  //   leader / officer -> planner  (full read+write: demand/inventory/work-orders/network)
-  //   member            -> buyer   (read+write: suppliers/shipments/purchasing; read elsewhere)
-  //   apprentice        -> analyst (read-only across every view)
+  // SC role is stored on sc_org_grants and kept in step with the org role
+  // ladder when a planner changes it (orgSetRole). A bare org_members row
+  // is not enough: guild/world/EMS joins share that table and must not
+  // open this firm's shipments. The leader (world_organizations.leader_id)
+  // is the one implicit grant, because orgCreate inserts them itself.
+  //   leader / officer -> planner  (full read+write)
+  //   member           -> buyer    (shipments/purchasing write; only after promotion)
+  //   apprentice       -> analyst  (read-only; the role an approval grants)
+  // Self-join does not write org_members or a grant. It writes a pending
+  // request. orgApprove (or a single-use orgInvite) then joins them as
+  // apprentice / analyst. A planner promotes with orgSetRole.
   const ORG_ROLE_TO_SC_ROLE = { leader: "planner", officer: "planner", member: "buyer", apprentice: "analyst" };
   // Reverse mapping used only by orgSetRole so a caller can request an SC
   // role by its supplychain name. "planner" maps to "officer" (the highest
@@ -69,25 +71,154 @@ export default function registerSupplychainActions(registerLensAction) {
   const SC_ROLE_TO_ORG_ROLE = { planner: "officer", buyer: "member", analyst: "apprentice" };
   const PLANNER_ONLY_WRITE = ["planner"];
   const PLANNER_OR_BUYER_WRITE = ["planner", "buyer"];
+  const SC_ROLES = new Set(["planner", "buyer", "analyst"]);
+  const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  const _scAuthReady = new WeakSet();
+
+  function ensureScAuth(db) {
+    if (!db || typeof db.exec !== "function") return false;
+    if (_scAuthReady.has(db)) return true;
+    try {
+      ensureScOrgAuthSchema(db);
+      _scAuthReady.add(db);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function readGrant(db, orgId, userId) {
+    if (!db || !orgId || !userId || !ensureScAuth(db)) return null;
+    try {
+      return db.prepare(
+        `SELECT sc_role AS scRole, org_role AS orgRole FROM sc_org_grants WHERE org_id = ? AND user_id = ?`
+      ).get(orgId, userId) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function readAllGrants(db, orgId) {
+    const map = new Map();
+    if (!db || !orgId || !ensureScAuth(db)) return map;
+    try {
+      const rows = db.prepare(
+        `SELECT user_id AS userId, sc_role AS scRole, org_role AS orgRole FROM sc_org_grants WHERE org_id = ?`
+      ).all(orgId);
+      for (const row of rows) map.set(row.userId, row);
+    } catch { /* empty map: fail closed */ }
+    return map;
+  }
+
+  function writeGrant(db, orgId, userId, scRole, orgRole, grantedBy) {
+    if (!ensureScAuth(db)) return false;
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO sc_org_grants (org_id, user_id, sc_role, org_role, granted_by, granted_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(org_id, user_id) DO UPDATE SET
+        sc_role = excluded.sc_role,
+        org_role = excluded.org_role,
+        granted_by = excluded.granted_by,
+        granted_at = excluded.granted_at
+    `).run(orgId, userId, scRole, orgRole, grantedBy || null, now);
+    return true;
+  }
+
+  function clearScAccess(db, orgId, userId) {
+    if (!ensureScAuth(db)) return;
+    try {
+      db.prepare(`DELETE FROM sc_org_grants WHERE org_id = ? AND user_id = ?`).run(orgId, userId);
+      db.prepare(`DELETE FROM sc_org_join_requests WHERE org_id = ? AND user_id = ?`).run(orgId, userId);
+    } catch { /* leave already succeeded; a stale grant is repaired on the next read */ }
+  }
+
+  function upsertPending(db, orgId, userId) {
+    if (!ensureScAuth(db)) return { ok: false, error: "join_unavailable" };
+    const now = new Date().toISOString();
+    const existing = db.prepare(
+      `SELECT status, created_at AS createdAt FROM sc_org_join_requests WHERE org_id = ? AND user_id = ?`
+    ).get(orgId, userId);
+    if (!existing) {
+      db.prepare(
+        `INSERT INTO sc_org_join_requests (org_id, user_id, status, created_at) VALUES (?, ?, 'pending', ?)`
+      ).run(orgId, userId, now);
+      return { ok: true, status: "pending", pending: true, createdAt: now };
+    }
+    if (existing.status === "pending") {
+      return { ok: true, status: "pending", pending: true, createdAt: existing.createdAt };
+    }
+    db.prepare(
+      `UPDATE sc_org_join_requests SET status = 'pending', created_at = ?, resolved_at = NULL, resolved_by = NULL WHERE org_id = ? AND user_id = ?`
+    ).run(now, orgId, userId);
+    return { ok: true, status: "pending", pending: true, createdAt: now };
+  }
+
+  function resolveRequest(db, orgId, userId, status, actorId) {
+    if (!ensureScAuth(db)) return;
+    db.prepare(
+      `UPDATE sc_org_join_requests SET status = ?, resolved_at = ?, resolved_by = ? WHERE org_id = ? AND user_id = ?`
+    ).run(status, new Date().toISOString(), actorId, orgId, userId);
+  }
+
+  function listPending(db, orgId) {
+    if (!ensureScAuth(db)) return [];
+    try {
+      return db.prepare(
+        `SELECT user_id AS userId, created_at AS createdAt FROM sc_org_join_requests WHERE org_id = ? AND status = 'pending' ORDER BY created_at ASC`
+      ).all(orgId);
+    } catch {
+      return [];
+    }
+  }
+
+  // Approval and invite redemption both land here. The granted org role is
+  // always apprentice (analyst). A requested "member"/"officer" is ignored.
+  function grantAnalyst(db, orgId, userId, actorId) {
+    const org = getOrganization(db, orgId);
+    if (!org) return { ok: false, error: "org_not_found" };
+    if (org.leaderId === userId || readGrant(db, orgId, userId)) return { ok: false, error: "already_member" };
+    const existing = getOrgMembers(db, orgId).find((m) => m.userId === userId);
+    if (!existing) {
+      const joined = joinOrganization(db, orgId, userId, "apprentice");
+      if (!joined.ok) return joined;
+    } else if (existing.role !== "apprentice") {
+      const demoted = setMemberRole(db, orgId, userId, "apprentice", actorId);
+      if (!demoted.ok) return demoted;
+    }
+    if (!writeGrant(db, orgId, userId, "analyst", "apprentice", actorId)) {
+      return { ok: false, error: "join_unavailable" };
+    }
+    return { ok: true, role: "apprentice", scRole: "analyst", status: "approved" };
+  }
 
   /**
    * Resolves the storage key + SC role for a macro call.
    * - No orgId -> legacy per-user scope, unchanged behavior, role:null.
-   * - orgId supplied -> verifies real membership via world-organizations.js,
-   *   derives the SC role from the org role, and (when `writeRoles` is
-   *   given) rejects roles not in that list.
+   * - orgId supplied -> leader, or a row in sc_org_grants. A pending
+   *   request and a bare org_members row (open guild/world join) are
+   *   not_a_member. writeRoles rejects analyst, and rejects buyer on
+   *   planner-only macros.
    */
   function scScope(ctx, params, writeRoles) {
     const userId = scActor(ctx);
     const orgId = params?.orgId ? scClean(params.orgId, 100) : null;
     if (!orgId) return { ok: true, key: userId, scope: "user", role: null };
-    if (!getOrganization(ctx?.db, orgId)) return { ok: false, error: "org_not_found" };
-    const members = getOrgMembers(ctx?.db, orgId);
-    const membership = members.find(m => m.userId === userId);
-    if (!membership) return { ok: false, error: "not_a_member" };
-    const scRole = ORG_ROLE_TO_SC_ROLE[membership.role] || "analyst";
+    const org = getOrganization(ctx?.db, orgId);
+    if (!org) return { ok: false, error: "org_not_found" };
+    let scRole = null;
+    let orgRole = null;
+    if (org.leaderId === userId) {
+      scRole = "planner";
+      orgRole = "leader";
+    } else {
+      const grant = readGrant(ctx?.db, orgId, userId);
+      if (!grant) return { ok: false, error: "not_a_member" };
+      scRole = SC_ROLES.has(grant.scRole) ? grant.scRole : "analyst";
+      orgRole = grant.orgRole || "apprentice";
+    }
     if (writeRoles && !writeRoles.includes(scRole)) return { ok: false, error: "insufficient_role" };
-    return { ok: true, key: `org:${orgId}`, scope: "org", role: scRole, orgRole: membership.role };
+    return { ok: true, key: `org:${orgId}`, scope: "org", role: scRole, orgRole };
   }
 
   // Deterministic geo-coordinate lookup for common shipment hubs so the
@@ -684,11 +815,11 @@ export default function registerSupplychainActions(registerLensAction) {
   });
 
   // ── 9. Org lifecycle — planner/buyer/analyst collaboration ───────────
-  // Thin wrappers over world-organizations.js; supplychain owns none of the
-  // roster state, only the SC-role interpretation of it (see ORG_ROLE_TO_SC_ROLE
-  // above). Only "firm" and "department" org types are offered here — those
-  // are the types world-organizations.js documents for business-shaped orgs;
-  // other org types (guild/crew/studio/...) are the domain of other lenses.
+  // Firm/department rows still live in world-organizations.js. Supply-chain
+  // access does not: orgJoin records a pending request, orgApprove or a
+  // planner invite writes an analyst grant, and orgSetRole is what turns
+  // that into a buyer or planner. Only "firm" and "department" are offered
+  // here. Guilds and the other social types stay on the world join route.
   const SC_ORG_TYPES = new Set(["firm", "department"]);
 
   registerLensAction("supplychain", "orgCreate", (ctx, _artifact, params) => {
@@ -713,14 +844,78 @@ export default function registerSupplychainActions(registerLensAction) {
       const userId = scActor(ctx);
       const orgId = scClean(params?.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      // Never let a joiner grant themselves a privileged org role — only
-      // "member" or "apprentice" are self-selectable on join. Promotion to
-      // officer/leader (SC "planner") requires an existing planner to call
-      // orgSetRole.
-      const requested = params?.role === "apprentice" ? "apprentice" : "member";
-      const res = joinOrganization(ctx?.db, orgId, userId, requested);
-      if (!res.ok) return res;
-      return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
+      const org = getOrganization(ctx?.db, orgId);
+      if (!org) return { ok: false, error: "org_not_found" };
+      if (!SC_ORG_TYPES.has(org.type)) return { ok: false, error: "not_a_supplychain_org" };
+      if (org.leaderId === userId || readGrant(ctx?.db, orgId, userId)) {
+        return { ok: false, error: "already_member" };
+      }
+      // A planner-minted token is a pre-approval. It still grants analyst
+      // only. A missing or spent token does not fall through into a join.
+      const inviteToken = params?.inviteToken ? scClean(params.inviteToken, 80) : "";
+      if (inviteToken) {
+        if (!ensureScAuth(ctx?.db)) return { ok: false, error: "join_unavailable" };
+        const invite = ctx.db.prepare(
+          `SELECT token, created_by AS createdBy, expires_at AS expiresAt, consumed_at AS consumedAt
+           FROM sc_org_invites WHERE token = ? AND org_id = ?`
+        ).get(inviteToken, orgId);
+        if (!invite || invite.consumedAt) return { ok: false, error: "invalid_invite" };
+        if (invite.expiresAt <= new Date().toISOString()) return { ok: false, error: "invite_expired" };
+        const granted = grantAnalyst(ctx.db, orgId, userId, invite.createdBy);
+        if (!granted.ok) return granted;
+        ctx.db.prepare(
+          `UPDATE sc_org_invites SET consumed_by = ?, consumed_at = ? WHERE token = ?`
+        ).run(userId, new Date().toISOString(), inviteToken);
+        resolveRequest(ctx.db, orgId, userId, "approved", invite.createdBy);
+        return { ok: true, result: { status: "approved", role: granted.role, scRole: granted.scRole } };
+      }
+      // Requested role is ignored. Nobody becomes a member, buyer, or
+      // planner by asking. A planner approves the pending row.
+      const pending = upsertPending(ctx.db, orgId, userId);
+      if (!pending.ok) return pending;
+      return { ok: true, result: { status: "pending", pending: true, createdAt: pending.createdAt } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgApprove", (ctx, _artifact, params) => {
+    try {
+      const actorId = scActor(ctx);
+      const orgId = scClean(params?.orgId, 100);
+      const targetUserId = scClean(params?.targetUserId, 200);
+      if (!orgId || !targetUserId) return { ok: false, error: "orgId_and_targetUserId_required" };
+      const scope = scScope(ctx, { orgId }, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      const org = getOrganization(ctx?.db, orgId);
+      if (!org || !SC_ORG_TYPES.has(org.type)) return { ok: false, error: "not_a_supplychain_org" };
+      if (!ensureScAuth(ctx?.db)) return { ok: false, error: "join_unavailable" };
+      const pending = ctx.db.prepare(
+        `SELECT status FROM sc_org_join_requests WHERE org_id = ? AND user_id = ?`
+      ).get(orgId, targetUserId);
+      if (!pending || pending.status !== "pending") return { ok: false, error: "no_pending_request" };
+      const granted = grantAnalyst(ctx.db, orgId, targetUserId, actorId);
+      if (!granted.ok) return granted;
+      resolveRequest(ctx.db, orgId, targetUserId, "approved", actorId);
+      return { ok: true, result: { status: "approved", role: granted.role, scRole: granted.scRole } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("supplychain", "orgInvite", (ctx, _artifact, params) => {
+    try {
+      const actorId = scActor(ctx);
+      const orgId = scClean(params?.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      const scope = scScope(ctx, { orgId }, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
+      const org = getOrganization(ctx?.db, orgId);
+      if (!org || !SC_ORG_TYPES.has(org.type)) return { ok: false, error: "not_a_supplychain_org" };
+      if (!ensureScAuth(ctx?.db)) return { ok: false, error: "join_unavailable" };
+      const token = randomBytes(24).toString("hex");
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + INVITE_TTL_MS).toISOString();
+      ctx.db.prepare(
+        `INSERT INTO sc_org_invites (token, org_id, created_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?)`
+      ).run(token, orgId, actorId, now.toISOString(), expiresAt);
+      return { ok: true, result: { token, orgId, expiresAt } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -729,7 +924,9 @@ export default function registerSupplychainActions(registerLensAction) {
       const userId = scActor(ctx);
       const orgId = scClean(params?.orgId, 100);
       if (!orgId) return { ok: false, error: "orgId_required" };
-      return leaveOrganization(ctx?.db, orgId, userId);
+      const res = leaveOrganization(ctx?.db, orgId, userId);
+      if (res.ok) clearScAccess(ctx?.db, orgId, userId);
+      return res;
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -740,8 +937,17 @@ export default function registerSupplychainActions(registerLensAction) {
       const scope = scScope(ctx, { orgId }, null);
       if (!scope.ok) return scope;
       const org = getOrganization(ctx?.db, orgId);
-      const members = getOrgMembers(ctx?.db, orgId).map(m => ({ ...m, scRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" }));
-      return { ok: true, result: { organization: org, members, myRole: scope.role, myOrgRole: scope.orgRole } };
+      const grants = readAllGrants(ctx?.db, orgId);
+      const members = getOrgMembers(ctx?.db, orgId)
+        .filter((m) => m.userId === org?.leaderId || grants.has(m.userId))
+        .map((m) => {
+          if (m.userId === org?.leaderId) return { ...m, scRole: "planner" };
+          const grant = grants.get(m.userId);
+          return { ...m, role: grant.orgRole || m.role, scRole: grant.scRole || "analyst" };
+        });
+      // Requester ids are visible to planners, who have to approve them.
+      const pending = scope.role === "planner" ? listPending(ctx?.db, orgId) : [];
+      return { ok: true, result: { organization: org, members, pending, myRole: scope.role, myOrgRole: scope.orgRole } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -751,17 +957,19 @@ export default function registerSupplychainActions(registerLensAction) {
       const orgId = scClean(params?.orgId, 100);
       const targetUserId = scClean(params?.targetUserId, 200);
       if (!orgId || !targetUserId) return { ok: false, error: "orgId_and_targetUserId_required" };
+      const scope = scScope(ctx, { orgId }, PLANNER_ONLY_WRITE);
+      if (!scope.ok) return scope;
       // Accept either a native org role (leader/officer/member/apprentice)
-      // or a supplychain-facing SC role name (planner/buyer/analyst) for
-      // frontend convenience; SC_ROLE_TO_ORG_ROLE resolves the latter.
+      // or a supplychain-facing SC role name (planner/buyer/analyst).
       const requested = params?.role;
       const newRole = SC_ROLE_TO_ORG_ROLE[requested] || requested;
-      // setMemberRole() itself enforces "only leader/officer may change
-      // roles" (world-organizations.js) — i.e. only the planner class. We
-      // don't duplicate that gate here, only translate the role name.
       const res = setMemberRole(ctx?.db, orgId, targetUserId, newRole, actorId);
       if (!res.ok) return res;
-      return { ok: true, result: { role: res.role, scRole: ORG_ROLE_TO_SC_ROLE[res.role] || "analyst" } };
+      const scRole = ORG_ROLE_TO_SC_ROLE[res.role] || "analyst";
+      if (!writeGrant(ctx?.db, orgId, targetUserId, scRole, res.role, actorId)) {
+        return { ok: false, error: "join_unavailable" };
+      }
+      return { ok: true, result: { role: res.role, scRole } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -771,7 +979,16 @@ export default function registerSupplychainActions(registerLensAction) {
       const memberships = getOrgsForUser(ctx?.db, userId);
       const orgs = memberships.map(m => {
         const org = getOrganization(ctx?.db, m.orgId);
-        return org ? { ...org, myRole: m.role, myScRole: ORG_ROLE_TO_SC_ROLE[m.role] || "analyst" } : null;
+        if (!org) return null;
+        const isLeader = org.leaderId === userId;
+        const grant = readGrant(ctx?.db, m.orgId, userId);
+        if (!isLeader && !grant) return null;
+        const scRole = isLeader ? "planner" : (SC_ROLES.has(grant.scRole) ? grant.scRole : "analyst");
+        return {
+          ...projectPublicOrganization(org),
+          myRole: isLeader ? "leader" : (grant.orgRole || m.role),
+          myScRole: scRole,
+        };
       }).filter(Boolean);
       return { ok: true, result: { organizations: orgs } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -781,7 +998,9 @@ export default function registerSupplychainActions(registerLensAction) {
     try {
       const type = SC_ORG_TYPES.has(params?.type) ? params.type : undefined;
       const orgs = listOrganizations(ctx?.db, { type, districtId: params?.districtId, limit: Math.min(scNum(params?.limit, 50), 100) })
-        .filter(o => SC_ORG_TYPES.has(o.type));
+        .filter(o => SC_ORG_TYPES.has(o.type))
+        .map(projectPublicOrganization)
+        .filter(Boolean);
       return { ok: true, result: { organizations: orgs } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });

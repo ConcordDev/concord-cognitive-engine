@@ -299,6 +299,23 @@ export function listOrganizations(db, { type, districtId, limit = 50 } = {}) {
   });
 }
 
+/**
+ * Fields safe to hand to someone who is not already a member of the org.
+ * Omits leaderId and every other user id, plus treasury and revenueSplit.
+ * Callers that already proved membership can still return the full row.
+ */
+export function projectPublicOrganization(org) {
+  if (!org || typeof org !== "object") return null;
+  return {
+    id: org.id,
+    name: org.name,
+    type: org.type,
+    description: org.description || "",
+    memberCount: Number(org.memberCount) || 0,
+    createdAt: org.createdAt ?? null,
+  };
+}
+
 export function contributeToTreasury(db, orgId, amount, userId) {
   if (!db) return { ok: false, error: "db_required" };
   const org = _readOrgRow(db, orgId);

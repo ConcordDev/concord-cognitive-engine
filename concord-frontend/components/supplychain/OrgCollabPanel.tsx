@@ -9,8 +9,9 @@
  * has a real org/roster/role primitive (createOrganization / joinOrganization
  * / setMemberRole / getOrgMembers). This panel is the frontend surface for
  * the additive `supplychain.org*` macros that reuse it (see
- * server/domains/supplychain.js). SC role is DERIVED from the org's own
- * 4-tier role ladder:
+ * server/domains/supplychain.js). A self-join is a pending request. A
+ * planner approves it, and the approved member is a read-only analyst
+ * until that planner promotes them. The org role ladder still maps:
  *   leader / officer -> planner  (full read+write: demand/inventory/work-orders/network)
  *   member            -> buyer   (read+write: suppliers/shipments/purchasing)
  *   apprentice        -> analyst (read-only across every view)
@@ -38,12 +39,15 @@ type ScRole = 'planner' | 'buyer' | 'analyst';
 type OrgRole = 'leader' | 'officer' | 'member' | 'apprentice';
 
 interface OrgSummary {
-  id: string; name: string; type: string; leaderId: string;
-  memberCount: number; myRole?: OrgRole; myScRole?: ScRole;
+  id: string; name: string; type: string; leaderId?: string;
+  memberCount: number; description?: string; createdAt?: string;
+  myRole?: OrgRole; myScRole?: ScRole;
 }
 interface OrgMember { userId: string; role: OrgRole; scRole: ScRole }
+interface PendingRequest { userId: string; createdAt?: string }
 interface OrgMembersResult {
-  organization: OrgSummary; members: OrgMember[]; myRole: ScRole | null; myOrgRole: OrgRole;
+  organization: OrgSummary; members: OrgMember[]; pending?: PendingRequest[];
+  myRole: ScRole | null; myOrgRole: OrgRole;
 }
 interface ShipmentSummary { inTransit: number; delivered: number; delayed: number; shipments: { id: string; reference: string }[] }
 interface WorkOrderSummary { openValue: number; overdueCount: number; workOrders: { id: string; poNumber: string; stage: string }[] }
@@ -112,8 +116,13 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
     if (!joinId.trim()) { notify({ kind: 'err', text: 'Enter an org ID to join.' }); return; }
     setBusy(true);
     try {
-      const res = await run<{ role: OrgRole; scRole: ScRole }>('orgJoin', { orgId: joinId.trim() });
-      notify({ kind: 'ok', text: `Joined as ${res ? SC_ROLE_META[res.scRole].label : 'a member'}.` });
+      const res = await run<{ status?: string; pending?: boolean; scRole?: ScRole }>('orgJoin', { orgId: joinId.trim() });
+      if (res?.status === 'pending' || res?.pending) {
+        notify({ kind: 'ok', text: 'Request sent. A planner approves membership before any shipment is visible. Approved members start as read-only analysts.' });
+        setJoinId('');
+        return;
+      }
+      notify({ kind: 'ok', text: `Joined as ${res?.scRole ? SC_ROLE_META[res.scRole].label : 'a member'}.` });
       setJoinId('');
       onDone();
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
@@ -167,7 +176,7 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
         <div className="flex gap-2">
           <input className={INPUT} value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="org_... (ask your planner for the ID)" />
           <button onClick={join} disabled={busy} className={cn(BTN, 'bg-blue-600 text-white hover:bg-blue-500 whitespace-nowrap')}>
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} Join as buyer
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />} Request access
           </button>
         </div>
       )}
@@ -222,6 +231,15 @@ function OrgWorkspace({
   const myScRole = detail?.myRole ?? null;
   const canWritePlanner = myScRole === 'planner';
   const canWriteBuyer = myScRole === 'planner' || myScRole === 'buyer';
+
+  const approveRequest = async (targetUserId: string) => {
+    setBusy(true);
+    try {
+      await run('orgApprove', { orgId: org.id, targetUserId });
+      notify({ kind: 'ok', text: `Approved ${targetUserId} as a read-only analyst.` });
+      await load();
+    } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
 
   const applyRole = async (targetUserId: string) => {
     const role = roleEdits[targetUserId];
@@ -325,6 +343,24 @@ function OrgWorkspace({
           })}
         </div>
       </div>
+
+      {canWritePlanner && (detail.pending?.length ?? 0) > 0 && (
+        <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5">
+          <div className="flex items-center gap-1.5 mb-1.5"><UserPlus className="w-3.5 h-3.5 text-amber-300" /><span className={LABEL}>Pending requests</span></div>
+          <div className="space-y-1">
+            {detail.pending!.map((p) => (
+              <div key={p.userId} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
+                <span className="text-[10px] font-mono text-zinc-300 truncate">{p.userId}</span>
+                <button onClick={() => approveRequest(p.userId)} disabled={busy}
+                  className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500')}
+                  aria-label={`Approve ${p.userId}`}>
+                  <Check className="w-3.5 h-3.5" /> Approve as analyst
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Shared workspace summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
