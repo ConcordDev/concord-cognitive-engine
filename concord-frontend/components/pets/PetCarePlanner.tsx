@@ -27,6 +27,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2, Wand2, Syringe, Utensils, Pill, Receipt, Plus, Trash2 } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { ErrorState } from '@/components/ui';
 
@@ -80,7 +81,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
   const [medError, setMedError] = useState<string | null>(null);
   const [costResult, setCostResult] = useState<CostResult | null>(null);
   const [costRows, setCostRows] = useState<Array<{ date: string; category: string; amount: string }>>([
-    { date: new Date().toISOString().slice(0, 10), category: 'Vet', amount: '' },
+    { date: calendarDateKey(), category: 'Vet', amount: '' },
   ]);
 
   const speciesKey = (species || 'dog').toLowerCase();
@@ -134,7 +135,7 @@ export function PetCarePlanner({ petId, petName, species, weightKg, ageYears }: 
     },
   });
 
-  const addCostRow = () => setCostRows((rows) => [...rows, { date: new Date().toISOString().slice(0, 10), category: 'Vet', amount: '' }]);
+  const addCostRow = () => setCostRows((rows) => [...rows, { date: calendarDateKey(), category: 'Vet', amount: '' }]);
   const removeCostRow = (i: number) => setCostRows((rows) => rows.filter((_, idx) => idx !== i));
   const updateCostRow = (i: number, patch: Partial<{ date: string; category: string; amount: string }>) =>
     setCostRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));

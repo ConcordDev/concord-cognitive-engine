@@ -120,6 +120,9 @@ const getFrequencyDataMock = vi.fn(() => new Uint8Array(64).fill(128));
 vi.mock('@/lib/music/player', () => ({
   getPlayer: () => ({
     on: () => () => {},
+    getCurrentTime: () => 0,
+    getDuration: () => 0,
+    getPlaybackState: () => 'stopped',
     getCrossfadeSeconds: () => 0,
     hasActiveTrack: () => false,
     isCrossfading: () => false,

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Search, Trash2, BookMarked, MapPin, CloudSun } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { RfEntryDetailModal } from './RfEntryDetailModal';
@@ -81,6 +82,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
   const addEntry = async () => {
     if (!form.text.trim()) { setError('Write something before saving.'); return; }
     const r = await lensRun('reflection', 'entry-create', {
+      date: calendarDateKey(),
       journalId: activeJournal || undefined,
       title: form.title.trim(),
       text: form.text.trim(),

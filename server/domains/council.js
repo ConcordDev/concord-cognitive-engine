@@ -171,29 +171,177 @@ export default function registerCouncilActions(registerLensAction) {
   // action-item tracking, quorum enforcement, document packet, ranked-choice
   // tabulation, decision archive. Parity targets: Loomio + Convene.
   //
-  // All state lives in globalThis._concordSTATE.councilLens, per-user scoped.
+  // One shared council. Meetings, actions, decisions, proposals, votes,
+  // members, and the audit log live under the "_shared" key. Older per-user
+  // buckets are folded in (authorId kept) and left in place — the fold is
+  // idempotent and does not delete the source arrays.
   // ─────────────────────────────────────────────────────────────────────────
+
+  const C_SHARED = "_shared";
+  const C_VOTE_CHOICES = ["strongly_support", "support", "abstain", "oppose", "strongly_oppose", "block"];
+  const C_VOTE_FOR = new Set(["strongly_support", "support", "for", "yes", "approve"]);
+  const C_VOTE_AGAINST = new Set(["oppose", "strongly_oppose", "block", "against", "no"]);
+  const C_PROPOSAL_TYPES = ["policy", "budget", "amendment", "resolution", "motion"];
+  const C_PROPOSAL_STATUSES = ["draft", "discussion", "voting", "decided", "implemented", "rejected"];
+  const C_VOTING_METHODS = ["simple_majority", "supermajority", "ranked_choice", "approval", "consent"];
+  const C_AUDIT_CATEGORIES = ["vote", "proposal", "amendment", "budget", "stakeholder", "debate"];
 
   function getCouncilState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.councilLens) {
-      STATE.councilLens = {
-        meetings: new Map(),   // userId -> Array<meeting>
-        actions: new Map(),    // userId -> Array<actionItem>
-        decisions: new Map(),  // userId -> Array<decisionRecord>
-      };
-    }
+    if (!STATE.councilLens) STATE.councilLens = {};
     const s = STATE.councilLens;
-    if (!s.meetings) s.meetings = new Map();
-    if (!s.actions) s.actions = new Map();
-    if (!s.decisions) s.decisions = new Map();
+    for (const k of ["meetings", "actions", "decisions", "proposals", "audit", "members"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    if (!Array.isArray(s.foldedIds)) s.foldedIds = [];
+    migrateCouncilShared(s);
     return s;
   }
   function cUid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
-  function cList(map, userId) {
-    if (!map.has(userId)) map.set(userId, []);
-    return map.get(userId);
+  // Signed-in actors only. "anon" is the missing-user fallback, not a member.
+  function cUser(ctx) {
+    const id = ctx?.actor?.userId || ctx?.userId || "";
+    if (!id || id === "anon") return null;
+    return String(id);
+  }
+  function cShared(map) {
+    if (!map.has(C_SHARED)) map.set(C_SHARED, []);
+    return map.get(C_SHARED);
+  }
+  // Every read/write goes to the shared list. The userId argument remains so
+  // existing call sites stay stable; it is not a partition key.
+  function cList(map, _userId) {
+    return cShared(map);
+  }
+  function cOneOf(value, allowed, fallback) {
+    const v = String(value || "");
+    return allowed.includes(v) ? v : fallback;
+  }
+  function cActorName(ctx, params) {
+    const raw = params?.authorName || params?.actorName || params?.displayName
+      || ctx?.actor?.displayName || ctx?.actor?.username || "";
+    const name = String(raw).trim().slice(0, 80);
+    if (name && name.toLowerCase() !== "council chair") return name;
+    return cUser(ctx) || cUid(ctx);
+  }
+  function cCopyItem(item, authorId) {
+    const copy = { ...item, authorId: item.authorId || authorId };
+    for (const k of ["agenda", "attendees", "packet", "tags", "discussion", "amendments", "coSponsors", "linkedBudgetItems"]) {
+      if (Array.isArray(item[k])) copy[k] = item[k].map((x) => (x && typeof x === "object" ? { ...x } : x));
+    }
+    if (item.voters && typeof item.voters === "object" && !Array.isArray(item.voters)) {
+      copy.voters = { ...item.voters };
+    }
+    if (item.votes && typeof item.votes === "object" && !Array.isArray(item.votes)) {
+      copy.votes = { ...item.votes };
+      if (!copy.voters) copy.voters = { ...item.votes };
+    }
+    return copy;
+  }
+  // Fold per-user buckets into "_shared". Source arrays are not removed.
+  // foldedIds remembers every id already considered so a later delete from
+  // the shared list is not resurrected on the next read.
+  function migrateCouncilShared(s) {
+    const folded = new Set(s.foldedIds);
+    const remember = (mark) => {
+      if (folded.has(mark)) return;
+      folded.add(mark);
+      s.foldedIds.push(mark);
+    };
+    const fold = (map, bucket) => {
+      const shared = cShared(map);
+      const seen = new Set(shared.map((x) => x && x.id).filter(Boolean));
+      for (const [key, arr] of map.entries()) {
+        if (key === C_SHARED || !Array.isArray(arr)) continue;
+        for (const item of arr) {
+          if (!item || typeof item !== "object" || !item.id) continue;
+          const mark = `${bucket}:${item.id}`;
+          if (seen.has(item.id) || folded.has(mark)) {
+            remember(mark);
+            continue;
+          }
+          shared.push(cCopyItem(item, key));
+          seen.add(item.id);
+          remember(mark);
+        }
+      }
+    };
+    fold(s.meetings, "meetings");
+    fold(s.actions, "actions");
+    fold(s.decisions, "decisions");
+    fold(s.proposals, "proposals");
+    fold(s.audit, "audit");
+    fold(s.members, "members");
+  }
+  function cIsMember(s, userId) {
+    return cShared(s.members).some((m) => m && (m.userId === userId || m.id === userId));
+  }
+  function cEnsureMember(s, userId, name) {
+    const list = cShared(s.members);
+    let member = list.find((m) => m && (m.userId === userId || m.id === userId));
+    if (!member) {
+      member = { id: userId, userId, name: name || userId, role: "member", joinedAt: cNow() };
+      list.push(member);
+    } else if (name && name !== userId) {
+      member.name = name;
+      member.userId = member.userId || userId;
+    }
+    return member;
+  }
+  function cProposalQuorum(s, proposal) {
+    const eligible = cShared(s.members).length;
+    const required = eligible > 0 ? Math.floor(eligible / 2) + 1 : 0;
+    const voters = proposal?.voters && typeof proposal.voters === "object" && !Array.isArray(proposal.voters)
+      ? proposal.voters : {};
+    const votesCast = Object.keys(voters).length;
+    const tally = { for: 0, against: 0, abstain: 0 };
+    for (const choice of Object.values(voters)) {
+      const c = String(choice);
+      if (C_VOTE_FOR.has(c)) tally.for += 1;
+      else if (C_VOTE_AGAINST.has(c)) tally.against += 1;
+      else tally.abstain += 1;
+    }
+    // Zero eligible members, a zero threshold, or zero ballots is never "met".
+    const quorumMet = eligible > 0 && required > 0 && votesCast > 0 && votesCast >= required;
+    return { eligible, votesCast, required, quorumMet, tally };
+  }
+  function cPublicProposal(s, proposal) {
+    const q = cProposalQuorum(s, proposal);
+    const votes = { ...(proposal.voters || {}) };
+    return {
+      ...proposal,
+      votes,
+      voters: votes,
+      quorumRequired: q.required,
+      eligible: q.eligible,
+      votesCast: q.votesCast,
+      quorumMet: q.quorumMet,
+      tally: q.tally,
+      discussion: Array.isArray(proposal.discussion) ? proposal.discussion : [],
+      amendments: Array.isArray(proposal.amendments) ? proposal.amendments : [],
+      tags: Array.isArray(proposal.tags) ? proposal.tags : [],
+      coSponsors: Array.isArray(proposal.coSponsors) ? proposal.coSponsors : [],
+      linkedBudgetItems: Array.isArray(proposal.linkedBudgetItems) ? proposal.linkedBudgetItems : [],
+    };
+  }
+  function cAppendAudit(s, ctx, fields) {
+    const entry = {
+      id: cNextId("aud"),
+      timestamp: cNow(),
+      authorId: cUser(ctx),
+      actor: cActorName(ctx, fields),
+      action: String(fields.action || "Noted").trim().slice(0, 160) || "Noted",
+      target: String(fields.target || "").slice(0, 200),
+      details: String(fields.details || "").slice(0, 500),
+      category: cOneOf(fields.category, C_AUDIT_CATEGORIES, "proposal"),
+    };
+    cShared(s.audit).push(entry);
+    return entry;
+  }
+  function cNeedUser(ctx) {
+    if (!cUser(ctx)) return { ok: false, error: "sign in required" };
+    return null;
   }
   function cNextId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -226,6 +374,7 @@ export default function registerCouncilActions(registerLensAction) {
     const meeting = {
       id: cNextId("mtg"),
       title,
+      authorId: cUid(ctx),
       scheduledAt,
       location: String(params.location || "").trim(),
       description: String(params.description || "").trim(),
@@ -269,6 +418,9 @@ export default function registerCouncilActions(registerLensAction) {
     const list = cList(s.meetings, userId);
     const idx = list.findIndex(m => m.id === params.id);
     if (idx < 0) return { ok: false, error: "meeting not found" };
+    if (list[idx].authorId && list[idx].authorId !== userId) {
+      return { ok: false, error: "only the author can delete" };
+    }
     list.splice(idx, 1);
     cSave();
     return { ok: true, result: { deleted: params.id } };
@@ -428,7 +580,10 @@ export default function registerCouncilActions(registerLensAction) {
     if (!m) return { ok: false, error: "meeting not found" };
     const present = m.attendees.filter(a => a.present).length;
     const required = m.quorumThreshold;
-    const met = required <= 0 ? m.attendees.length > 0 : present >= required;
+    // A threshold of 0, or nobody present, is never "met" — including the
+    // old `required <= 0 && attendees.length > 0` path that reported Met
+    // with zero voters.
+    const met = required > 0 && present > 0 && present >= required;
     return {
       ok: true,
       result: {
@@ -503,6 +658,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!description) return { ok: false, error: "description required" };
     const action = {
       id: cNextId("act"),
+      authorId: cUid(ctx),
       description,
       owner: String(params.owner || "").trim(),
       dueDate: String(params.dueDate || "").trim(),
@@ -536,9 +692,13 @@ export default function registerCouncilActions(registerLensAction) {
   registerLensAction("council", "action-delete", (ctx, _a, params = {}) => {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const list = cList(s.actions, cUid(ctx));
+    const userId = cUid(ctx);
+    const list = cList(s.actions, userId);
     const idx = list.findIndex(x => x.id === params.id);
     if (idx < 0) return { ok: false, error: "action not found" };
+    if (list[idx].authorId && list[idx].authorId !== userId) {
+      return { ok: false, error: "only the author can delete" };
+    }
     list.splice(idx, 1);
     cSave();
     return { ok: true, result: { deleted: params.id } };
@@ -561,6 +721,7 @@ export default function registerCouncilActions(registerLensAction) {
     a.updatedAt = cNow();
     const carried = {
       id: cNextId("act"),
+      authorId: userId,
       description: a.description,
       owner: String(params.owner ?? a.owner),
       dueDate: String(params.dueDate ?? a.dueDate),
@@ -651,6 +812,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!title) return { ok: false, error: "title required" };
     const record = {
       id: cNextId("dec"),
+      authorId: cUid(ctx),
       title,
       summary: String(params.summary || "").trim(),
       outcome: String(params.outcome || "decided").trim(), // passed | rejected | tabled | decided
@@ -689,11 +851,290 @@ export default function registerCouncilActions(registerLensAction) {
   registerLensAction("council", "decision-delete", (ctx, _a, params = {}) => {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const list = cList(s.decisions, cUid(ctx));
+    const userId = cUid(ctx);
+    const list = cList(s.decisions, userId);
     const idx = list.findIndex(d => d.id === params.id);
     if (idx < 0) return { ok: false, error: "decision not found" };
+    if (list[idx].authorId && list[idx].authorId !== userId) {
+      return { ok: false, error: "only the author can delete" };
+    }
     list.splice(idx, 1);
     cSave();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Shared proposals, members, votes, audit ──
+  // Eligible voters are council members (real accounts), not a fabricated
+  // stakeholder weight. Quorum is a majority of current members and is never
+  // met when nobody has voted.
+
+  registerLensAction("council", "member-list", (ctx, _a, _params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return { ok: true, result: { members: [], total: 0, signedIn: false } };
+    const members = cShared(s.members).slice();
+    return { ok: true, result: { members, total: members.length, signedIn: true } };
+  });
+
+  registerLensAction("council", "member-join", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const member = cEnsureMember(s, userId, cActorName(ctx, params));
+    cSave();
+    return { ok: true, result: { member, total: cShared(s.members).length } };
+  });
+
+  registerLensAction("council", "proposal-create", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const authorId = cUser(ctx);
+    const authorName = cActorName(ctx, params);
+    cEnsureMember(s, authorId, authorName);
+    const tags = Array.isArray(params.tags)
+      ? params.tags.map((t) => String(t).trim()).filter(Boolean)
+      : String(params.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+    const proposal = {
+      id: cNextId("prop"),
+      title,
+      description: String(params.description || "").trim(),
+      type: cOneOf(params.type, C_PROPOSAL_TYPES, "policy"),
+      status: "draft",
+      authorId,
+      authorName,
+      sponsor: authorName,
+      coSponsors: [],
+      createdAt: cNow(),
+      updatedAt: cNow(),
+      discussion: [],
+      amendments: [],
+      impactAssessment: String(params.impactAssessment || "").trim(),
+      linkedBudgetItems: [],
+      votingMethod: cOneOf(params.votingMethod, C_VOTING_METHODS, "simple_majority"),
+      votingDeadline: params.votingDeadline ? String(params.votingDeadline) : null,
+      voters: {},
+      tags,
+    };
+    cShared(s.proposals).push(proposal);
+    cAppendAudit(s, ctx, {
+      authorName,
+      action: "Created proposal",
+      target: proposal.id,
+      details: proposal.title,
+      category: "proposal",
+    });
+    cSave();
+    return { ok: true, result: { proposal: cPublicProposal(s, proposal) } };
+  });
+
+  registerLensAction("council", "proposal-list", (ctx, _a, _params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!cUser(ctx)) return { ok: true, result: { proposals: [], total: 0, signedIn: false } };
+    const proposals = cShared(s.proposals).slice()
+      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
+      .map((p) => cPublicProposal(s, p));
+    return { ok: true, result: { proposals, total: proposals.length, signedIn: true } };
+  });
+
+  function findProposal(s, id) {
+    if (!id) return null;
+    return cShared(s.proposals).find((p) => p.id === id) || null;
+  }
+
+  registerLensAction("council", "proposal-update", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const p = findProposal(s, params.id);
+    if (!p) return { ok: false, error: "proposal not found" };
+    if (params.title !== undefined) {
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      p.title = title;
+    }
+    if (params.description !== undefined) p.description = String(params.description);
+    if (params.type !== undefined) p.type = cOneOf(params.type, C_PROPOSAL_TYPES, p.type);
+    if (params.status !== undefined && C_PROPOSAL_STATUSES.includes(params.status)) p.status = params.status;
+    if (params.impactAssessment !== undefined) p.impactAssessment = String(params.impactAssessment);
+    if (params.votingMethod !== undefined) p.votingMethod = cOneOf(params.votingMethod, C_VOTING_METHODS, p.votingMethod);
+    if (params.votingDeadline !== undefined) p.votingDeadline = params.votingDeadline ? String(params.votingDeadline) : null;
+    if (Array.isArray(params.tags)) p.tags = params.tags.map((t) => String(t).trim()).filter(Boolean);
+    if (Array.isArray(params.discussion)) p.discussion = params.discussion;
+    if (Array.isArray(params.amendments)) p.amendments = params.amendments;
+    if (Array.isArray(params.linkedBudgetItems)) p.linkedBudgetItems = params.linkedBudgetItems;
+    if (Array.isArray(params.coSponsors)) p.coSponsors = params.coSponsors;
+    if (params.budget && typeof params.budget === "object") p.budget = params.budget;
+    // Votes and authorship stay server-owned. A client blob cannot rewrite them.
+    p.updatedAt = cNow();
+    cSave();
+    return { ok: true, result: { proposal: cPublicProposal(s, p) } };
+  });
+
+  registerLensAction("council", "proposal-vote", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const p = findProposal(s, params.id);
+    if (!p) return { ok: false, error: "proposal not found" };
+    if (!cIsMember(s, userId)) return { ok: false, error: "not eligible" };
+    const choice = String(params.choice || params.vote || "").trim();
+    if (!C_VOTE_CHOICES.includes(choice)) return { ok: false, error: "vote invalid" };
+    if (!p.voters || typeof p.voters !== "object" || Array.isArray(p.voters)) p.voters = {};
+    p.voters[userId] = choice;
+    p.updatedAt = cNow();
+    const quorum = cProposalQuorum(s, p);
+    cAppendAudit(s, ctx, {
+      authorName: cActorName(ctx, params),
+      action: "Voted",
+      target: p.id,
+      details: choice.replace(/_/g, " "),
+      category: "vote",
+    });
+    cSave();
+    return { ok: true, result: { proposal: cPublicProposal(s, p), quorum } };
+  });
+
+  registerLensAction("council", "proposal-delete", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const list = cShared(s.proposals);
+    const idx = list.findIndex((p) => p.id === params.id);
+    if (idx < 0) return { ok: false, error: "proposal not found" };
+    if (list[idx].authorId !== userId) return { ok: false, error: "only the author can delete" };
+    list.splice(idx, 1);
+    cSave();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("council", "audit-append", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const action = String(params.action || "").trim();
+    if (!action) return { ok: false, error: "action required" };
+    const entry = cAppendAudit(s, ctx, params);
+    cSave();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("council", "audit-list", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!cUser(ctx)) return { ok: true, result: { entries: [], total: 0, signedIn: false } };
+    let entries = cShared(s.audit).slice();
+    if (params.category && params.category !== "all") {
+      entries = entries.filter((e) => e.category === params.category);
+    }
+    entries.sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+    return { ok: true, result: { entries, total: entries.length, signedIn: true } };
+  });
+
+  registerLensAction("council", "audit-update", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const entry = cShared(s.audit).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "audit entry not found" };
+    if (entry.authorId !== userId) return { ok: false, error: "only the author can edit" };
+    if (params.details !== undefined) entry.details = String(params.details).slice(0, 500);
+    cSave();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("council", "audit-delete", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const list = cShared(s.audit);
+    const idx = list.findIndex((e) => e.id === params.id);
+    if (idx < 0) return { ok: false, error: "audit entry not found" };
+    if (list[idx].authorId !== userId) return { ok: false, error: "only the author can delete" };
+    list.splice(idx, 1);
+    cSave();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("council", "budget-simulate", (ctx, _a, params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const p = findProposal(s, params.id);
+    if (!p) return { ok: false, error: "proposal not found" };
+    const budget = (params.budget && typeof params.budget === "object") ? params.budget : (p.budget || { total: 0, items: [] });
+    const items = Array.isArray(budget.items) ? budget.items : [];
+    const itemBreakdown = items.map((item) => {
+      const amount = Number(item.amount || item.cost || 0) || 0;
+      const variance = Number(item.variance || item.uncertainty || 0.15) || 0.15;
+      const low = amount * (1 - variance);
+      const high = amount * (1 + variance);
+      const expected = amount * (1 + variance * 0.1);
+      return {
+        name: item.name || item.label,
+        budgeted: amount,
+        low: Math.round(low),
+        high: Math.round(high),
+        expected: Math.round(expected),
+        variance,
+      };
+    });
+    const totalBudgeted = items.reduce((sum, i) => sum + (Number(i.amount || i.cost || 0) || 0), 0) || Number(budget.total) || 0;
+    const totalExpected = itemBreakdown.reduce((sum, i) => sum + i.expected, 0) || totalBudgeted;
+    const totalLow = itemBreakdown.reduce((sum, i) => sum + i.low, 0) || Math.round(totalBudgeted * 0.85);
+    const totalHigh = itemBreakdown.reduce((sum, i) => sum + i.high, 0) || Math.round(totalBudgeted * 1.15);
+    const overBudgetRisk = totalBudgeted > 0 ? Math.round(((totalHigh - totalBudgeted) / totalBudgeted) * 100) / 100 : 0;
+    const risks = [];
+    if (overBudgetRisk > 0.2) risks.push("high_cost_overrun_risk");
+    if (items.some((i) => (Number(i.variance) || 0.15) > 0.3)) risks.push("high_variance_items_present");
+    if (items.length === 0) risks.push("no_line_items_for_analysis");
+    const voters = p.voters && typeof p.voters === "object" ? p.voters : {};
+    const voteValues = Object.values(voters);
+    const approvalRate = voteValues.length > 0
+      ? voteValues.filter((v) => C_VOTE_FOR.has(String(v))).length / voteValues.length
+      : null;
+    const confidence = items.length > 0
+      ? Math.round(Math.max(0.3, 1 - items.reduce((sum, i) => sum + (Number(i.variance || i.uncertainty) || 0.15), 0) / items.length) * 100) / 100
+      : 0.5;
+    const simulation = {
+      projected: totalExpected,
+      totalBudgeted,
+      range: { low: totalLow, high: totalHigh },
+      confidence,
+      overBudgetRisk,
+      risks,
+      approvalRate,
+      itemBreakdown,
+      simulatedAt: cNow(),
+    };
+    p.budget = budget;
+    p.budgetSimulation = simulation;
+    p.updatedAt = cNow();
+    cAppendAudit(s, ctx, {
+      action: "Simulated budget",
+      target: p.id,
+      details: `Projected ${totalExpected}`,
+      category: "budget",
+    });
+    cSave();
+    return { ok: true, result: { simulation, proposal: cPublicProposal(s, p) } };
   });
 }

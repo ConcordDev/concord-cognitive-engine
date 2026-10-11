@@ -14,8 +14,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { dtuCreatedAt, dtuFullContent } from '@/lib/dtu/display';
 import { useUIStore } from '@/store/ui';
 import type { DTU } from '@/lib/api/generated-types';
 import { useOfflineFirstDTU } from '@/hooks/useOfflineFirst';
@@ -45,6 +46,7 @@ import {
   FileType,
   ArrowUpCircle,
   Bot,
+  Pencil,
 } from 'lucide-react';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { TierBadge, TierBadgeDetail, TierPromotionTimeline } from './TierBadge';
@@ -131,8 +133,13 @@ const DTU_SOURCE_STYLES: Record<string, { bg: string }> = {
 };
 
 function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'content' | 'lineage' | 'metadata'>('content');
   const [showPromote, setShowPromote] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ title: '', summary: '', content: '', tags: '' });
 
   // Offline-first: instantly show cached DTU from IndexedDB while server refreshes
   const {
@@ -387,6 +394,26 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                 Open in ConKay
               </Link>
             )}
+            {dtu && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft({
+                    title: dtu.title || '',
+                    summary: (typeof dtu.summary === 'string' ? dtu.summary : '') || (typeof dtu.human?.summary === 'string' ? dtu.human.summary : ''),
+                    content: dtuFullContent(dtu),
+                    tags: (dtu.tags || []).join(', '),
+                  });
+                  setEditError(null);
+                  setEditing(true);
+                  setActiveTab('content');
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-400/15 text-teal-200 hover:bg-teal-400/25 transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
             <button
               onClick={handleShareUrl}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 transition-colors"
@@ -449,7 +476,60 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
             </div>
           ) : (
             <>
-              {activeTab === 'content' && (
+              {activeTab === 'content' && editing && (
+                <form
+                  className="space-y-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSaving(true);
+                    setEditError(null);
+                    try {
+                      const res = await apiHelpers.dtus.update(dtuId, {
+                        title: draft.title,
+                        summary: draft.summary,
+                        content: draft.content,
+                        tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
+                      });
+                      const body = res.data as { ok?: boolean; error?: string };
+                      if (body?.ok === false) {
+                        setEditError(body.error || 'Save failed');
+                        return;
+                      }
+                      await queryClient.invalidateQueries({ queryKey: ['dtu-detail', dtuId] });
+                      await queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
+                      setEditing(false);
+                    } catch (err) {
+                      setEditError(err instanceof Error ? err.message : 'Save failed');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  <label className="block text-xs text-gray-400">
+                    Title
+                    <input aria-label="Title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} className="mt-1 w-full rounded border border-white/10 bg-black px-2 py-1.5 text-sm text-white" />
+                  </label>
+                  <label className="block text-xs text-gray-400">
+                    Summary
+                    <textarea aria-label="Summary" value={draft.summary} onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))} className="mt-1 w-full rounded border border-white/10 bg-black px-2 py-1.5 text-sm text-white" rows={2} />
+                  </label>
+                  <label className="block text-xs text-gray-400">
+                    Content
+                    <textarea aria-label="Content" value={draft.content} onChange={(e) => setDraft((d) => ({ ...d, content: e.target.value }))} className="mt-1 w-full rounded border border-white/10 bg-black px-2 py-1.5 text-sm text-white" rows={6} />
+                  </label>
+                  <label className="block text-xs text-gray-400">
+                    Tags
+                    <input aria-label="Tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1 w-full rounded border border-white/10 bg-black px-2 py-1.5 text-sm text-white" />
+                  </label>
+                  {editError && <p role="alert" className="text-xs text-red-400">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={saving} className="rounded bg-teal-400 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+                    <button type="button" onClick={() => setEditing(false)} className="rounded border border-white/10 px-3 py-1.5 text-xs text-gray-300">Cancel</button>
+                  </div>
+                </form>
+              )}
+
+              {activeTab === 'content' && !editing && (
                 <div className="space-y-4">
                   {/* Title */}
                   {dtu.title && dtu.title !== dtu.summary && (
@@ -592,7 +672,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     </h3>
                     <div className="bg-lattice-deep p-4 rounded-lg">
                       <p className="text-gray-200 whitespace-pre-wrap text-sm">
-                        {dtu.content || '(No content)'}
+                        {dtuFullContent(dtu) || '(No content)'}
                       </p>
                     </div>
                   </div>
@@ -696,7 +776,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                   <div className="flex items-center gap-4 text-sm text-gray-400 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {new Date(dtu.timestamp).toLocaleString()}
+                      {dtuCreatedAt(dtu)?.toLocaleString() ?? ''}
                     </span>
                     {dtu.ownerId && <span className="text-gray-400">Creator: {dtu.ownerId}</span>}
                     {dtu.resonance !== undefined && (
@@ -1009,7 +1089,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                         ['Domain', dtu.domain],
                         ['Owner', dtu.ownerId],
                         ['Global', dtu.isGlobal ? 'Yes' : 'No'],
-                        ['Created', dtu.timestamp],
+                        ['Created', dtuCreatedAt(dtu)?.toISOString() ?? dtu.timestamp],
                         ['Updated', dtu.updatedAt],
                         ['Resonance', dtu.resonance?.toFixed(3)],
                         ['Coherence', dtu.coherence?.toFixed(3)],

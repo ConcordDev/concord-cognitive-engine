@@ -85,7 +85,8 @@ export default function StakingPage() {
       );
       bumpRefresh();
     } else {
-      setStatus(`Failed: ${r.data?.error || 'unknown'}`);
+      const code = String(r.data?.error || 'unknown').replace(/_/g, ' ');
+      setStatus(`Failed: ${code}`);
     }
     window.setTimeout(() => setStatus(null), 5000);
   };

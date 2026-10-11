@@ -29,3 +29,14 @@ export interface EmergentRole {
 }
 
 export type BridgeView = 'activity' | 'organisms' | 'debates' | 'lifecycle' | 'emergents' | 'federation' | 'actions';
+
+/** Member catalogs: organisms, debates, births, emergents. */
+export type CatalogStatus = 'loading' | 'ready' | 'unavailable';
+
+/**
+ * GET /api/bridge/log. `pending` until the viewer's role is known.
+ * `operator-only` when that role cannot read the dump. `ready` is a
+ * successful read (including a real empty log). `unavailable` is a
+ * failed read — never painted as zero events.
+ */
+export type BridgeLogAccess = 'pending' | 'operator-only' | 'ready' | 'unavailable';

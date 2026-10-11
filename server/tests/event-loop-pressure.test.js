@@ -5,7 +5,9 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   getCurrentLagMs,
+  getSustainedLagMs,
   isUnderPressure,
+  recordLagWindow,
   _setLagMsForTest,
   stopEventLoopPressureMonitor,
 } from "../lib/event-loop-pressure.js";
@@ -39,6 +41,18 @@ describe("event-loop-pressure primitive", () => {
     assert.equal(isUnderPressure(), true);
     stopEventLoopPressureMonitor();
     assert.equal(getCurrentLagMs(), 0);
+    assert.equal(isUnderPressure(), false);
+    assert.equal(getSustainedLagMs(), 0);
+  });
+
+  it("sustained lag is the rolling mean of window p99s, not the single max", () => {
+    stopEventLoopPressureMonitor();
+    recordLagWindow({ maxMs: 900, p99Ms: 20 });
+    recordLagWindow({ maxMs: 40, p99Ms: 30 });
+    recordLagWindow({ maxMs: 50, p99Ms: 40 });
+    // The latest max is a spike; the admission signal is the p99 mean.
+    assert.equal(getCurrentLagMs(), 50);
+    assert.equal(Math.round(getSustainedLagMs()), 30);
     assert.equal(isUnderPressure(), false);
   });
 });

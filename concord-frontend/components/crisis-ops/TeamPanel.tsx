@@ -9,13 +9,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Users, Loader2, UserPlus, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { crisisRefusal } from '@/components/crisis-ops/refusal';
 
 interface TeamMember {
   id: string;
   responder: string;
   role: string;
-  assignedBy: string;
   assignedAt: number;
+  assignedByName: string | null;
+  assignedByIsMe: boolean;
+  canUnassign: boolean;
 }
 interface TeamResult {
   crisisId: string;
@@ -40,6 +43,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('responder');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,16 +57,20 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
   const assign = useCallback(async () => {
     if (!name.trim()) return;
     setBusy(true);
+    setError(null);
     const r = await lensRun('crisis', 'assign', {
       crisisId, responder: name.trim(), role,
     });
     if (r.data?.ok) { setName(''); await load(); }
+    else setError(crisisRefusal(r.data?.error) || 'Assignment failed.');
     setBusy(false);
   }, [crisisId, name, role, load]);
 
   const unassign = useCallback(async (entryId: string) => {
+    setError(null);
     const r = await lensRun('crisis', 'unassign', { crisisId, entryId });
     if (r.data?.ok) await load();
+    else setError(crisisRefusal(r.data?.error) || 'Removal failed.');
   }, [crisisId, load]);
 
   const roles = team?.roles || Object.keys(ROLE_LABEL);
@@ -104,6 +112,12 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
         </button>
       </div>
 
+      {error && (
+        <p role="alert" className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">
+          {error}
+        </p>
+      )}
+
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading roster…
@@ -129,15 +143,25 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
                     key={m.id}
                     className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-zinc-200"
                   >
-                    <span className="truncate">{m.responder}</span>
-                    <button
-                      type="button"
-                      onClick={() => unassign(m.id)}
-                      className="rounded p-0.5 text-zinc-400 hover:bg-rose-600/30 hover:text-rose-200"
-                      aria-label="Remove"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    <span className="min-w-0 truncate">
+                      {m.responder}
+                      {(m.assignedByName || m.assignedByIsMe) && (
+                        <span className="ml-2 text-[10px] text-zinc-500">
+                          assigned by {m.assignedByName || 'you'}
+                          {m.assignedByName && m.assignedByIsMe ? ' (you)' : ''}
+                        </span>
+                      )}
+                    </span>
+                    {m.canUnassign !== false && (
+                      <button
+                        type="button"
+                        onClick={() => unassign(m.id)}
+                        className="rounded p-0.5 text-zinc-400 hover:bg-rose-600/30 hover:text-rose-200"
+                        aria-label="Remove"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

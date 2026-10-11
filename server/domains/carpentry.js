@@ -800,9 +800,9 @@ export default function registerCarpentryActions(registerLensAction) {
       if (!s) return { ok: false, error: "STATE unavailable" };
       const share = livePortal(s, params.token);
       if (!share) return { ok: false, error: "portal not found or expired" };
-      if (share.status !== "open") return { ok: false, error: `estimate already ${share.status}` };
       const decision = ["approved", "declined"].includes(params.decision) ? params.decision : null;
       if (!decision) return { ok: false, error: "decision must be 'approved' or 'declined'" };
+      if (share.status !== "open") return { ok: false, error: `estimate already ${share.status}` };
       share.clientDecision = {
         decision,
         signedBy: cpClean(params.signedBy, 160) || share.client,

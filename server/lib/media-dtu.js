@@ -14,6 +14,13 @@
  */
 
 import { randomUUID } from "node:crypto";
+import {
+  mediaDatabase,
+  persistMediaIndex,
+  deleteMediaIndex,
+  loadMediaIndex,
+  loadAllMediaIndex,
+} from "./media-index-store.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -126,6 +133,10 @@ export function createMediaDTU(STATE, params) {
     tags = [],
     privacy = "public",
     tier = "regular",
+    previewStart = 0,
+    previewDuration = 0,
+    tiers = [],
+    licensedUserIds = [],
   } = params;
 
   // Validate
@@ -171,9 +182,20 @@ export function createMediaDTU(STATE, params) {
     fileSize,
     originalFilename,
     privacy,
+    previewStart: Math.max(0, Number(previewStart) || 0),
+    previewDuration: Math.max(0, Number(previewDuration) || 0),
+    tiers: Array.isArray(tiers) ? tiers : [],
+    licensedUserIds: Array.isArray(licensedUserIds) ? licensedUserIds : [],
+    // Pricing and preview survive a restart with the rest of the row.
+    // Absent values stay null; they do not change who can read the media.
+    priceCc: finiteOrNull(params.priceCc ?? params.price),
+    currency: params.currency ? String(params.currency) : null,
+    previewUrl: params.previewUrl ? String(params.previewUrl) : null,
+    previewStartMs: finiteOrNull(params.previewStartMs),
+    previewSeconds: finiteOrNull(params.previewSeconds),
 
     // Thumbnail
-    thumbnail: null,
+    thumbnail: params.thumbnail || null,
 
     // HLS streaming
     hlsManifest: null,
@@ -236,7 +258,70 @@ export function createMediaDTU(STATE, params) {
   media.storageStats.hotTierSize += fileSize;
   media.metrics.totalUploads++;
 
+  rememberMedia(STATE, mediaDTU);
   return { ok: true, mediaDTU };
+}
+
+function finiteOrNull(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function rememberMedia(STATE, dtu) {
+  try {
+    const db = mediaDatabase(STATE);
+    if (db) persistMediaIndex(db, dtu);
+  } catch {
+    // The in-memory row is already the live object. A database miss must
+    // not fail the upload; the persistence test reads the table back.
+  }
+}
+
+function recallMedia(STATE, mediaId) {
+  const db = mediaDatabase(STATE);
+  if (!db) return null;
+  let dtu;
+  try {
+    dtu = loadMediaIndex(db, mediaId);
+  } catch {
+    return null;
+  }
+  if (!dtu) return null;
+  const media = getMediaState(STATE);
+  media.mediaDTUs.set(dtu.id, dtu);
+  if (!media.views.has(dtu.id)) media.views.set(dtu.id, new Set());
+  if (!media.likes.has(dtu.id)) media.likes.set(dtu.id, new Set());
+  if (!media.comments.has(dtu.id)) media.comments.set(dtu.id, []);
+  if (STATE.dtus) STATE.dtus.set(dtu.id, dtu);
+  return dtu;
+}
+
+/**
+ * Fill the in-memory map from SQLite. Boot calls this after migrations.
+ * A later get still loads one row on a cache miss if this did not run.
+ */
+export function hydrateMediaIndex(STATE) {
+  const db = mediaDatabase(STATE);
+  if (!db) return { ok: true, loaded: 0 };
+  let rows;
+  try {
+    rows = loadAllMediaIndex(db);
+  } catch {
+    return { ok: false, loaded: 0 };
+  }
+  const media = getMediaState(STATE);
+  let loaded = 0;
+  for (const dtu of rows) {
+    if (!dtu?.id || media.mediaDTUs.has(dtu.id)) continue;
+    media.mediaDTUs.set(dtu.id, dtu);
+    if (!media.views.has(dtu.id)) media.views.set(dtu.id, new Set());
+    if (!media.likes.has(dtu.id)) media.likes.set(dtu.id, new Set());
+    if (!media.comments.has(dtu.id)) media.comments.set(dtu.id, []);
+    if (STATE.dtus && !STATE.dtus.has(dtu.id)) STATE.dtus.set(dtu.id, dtu);
+    loaded++;
+  }
+  return { ok: true, loaded };
 }
 
 /**
@@ -244,7 +329,7 @@ export function createMediaDTU(STATE, params) {
  */
 export function getMediaDTU(STATE, mediaId) {
   const media = getMediaState(STATE);
-  const dtu = media.mediaDTUs.get(mediaId);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
   if (!dtu) return { ok: false, error: "Media not found" };
 
   // Update engagement counts
@@ -269,7 +354,10 @@ export function storeMediaBlob(STATE, mediaId, buffer) {
   const dtu = media.mediaDTUs.get(mediaId);
   if (dtu) {
     dtu.fileSize = buffer.length;
+    if (dtu.storageRef) dtu.storageRef.size = buffer.length;
     dtu.transcodeStatus = "ready"; // mark as ready since we have the actual data
+    dtu.updatedAt = new Date().toISOString();
+    rememberMedia(STATE, dtu);
   }
   media.storageStats.totalSize += buffer.length;
   media.storageStats.hotTierSize += buffer.length;
@@ -330,9 +418,65 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 }
 
 /**
+ * Positive duration stored on a media DTU, in whole seconds.
+ * 0 when the row is missing or the probe never landed.
+ */
+export function readMediaDurationSec(STATE, mediaId) {
+  if (!STATE || !mediaId) return 0;
+  const fromMedia = STATE._media?.mediaDTUs?.get?.(mediaId);
+  const fromDtu = STATE.dtus?.get?.(mediaId);
+  const n = Number(fromMedia?.duration ?? fromDtu?.duration);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(1, Math.round(n));
+}
+
+/**
+ * System write of privacy + matching scope. Podcast draft episodes call
+ * this so an upload that landed as public stops being readable the moment
+ * it is attached to an unpublished episode. Author check is the caller's
+ * job — episode-add already requires the creator.
+ */
+export function setMediaPrivacy(STATE, mediaId, privacy) {
+  if (!STATE || !mediaId) return { ok: false, error: "Media not found" };
+  if (privacy !== "public" && privacy !== "private" && privacy !== "followers-only") {
+    return { ok: false, error: "invalid privacy" };
+  }
+  const dtu = STATE._media?.mediaDTUs?.get?.(mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  dtu.privacy = privacy;
+  dtu.scope = privacy === "public" ? "global" : "user";
+  dtu.updatedAt = new Date().toISOString();
+  if (STATE.dtus?.set) STATE.dtus.set(mediaId, dtu);
+  return { ok: true, mediaDTU: dtu };
+}
+
+/**
+ * Media referenced by a draft or scheduled podcast episode stays private
+ * until that episode is published, even if the upload's own privacy flag
+ * is still "public". The episode creator and the media author can read it.
+ */
+function draftMediaHiddenFromViewer(STATE, mediaDTU, viewerId) {
+  const episodes = STATE?.podcastLens?.episodes;
+  if (!mediaDTU || !episodes || typeof episodes.values !== "function") return false;
+  for (const list of episodes.values()) {
+    if (!Array.isArray(list)) continue;
+    for (const ep of list) {
+      if (!ep || ep.mediaId !== mediaDTU.id) continue;
+      if (ep.status !== "draft" && ep.status !== "scheduled") continue;
+      if (viewerId && (viewerId === ep.createdBy || viewerId === mediaDTU.author)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Get a media DTU AND enforce viewer access in one call. Preferred
  * entry point for route handlers — returns 404 / 403 shaped results
  * so the caller can't accidentally forget the access check.
+ *
+ * Draft and scheduled podcast audio is hidden from everyone except the
+ * episode creator and the media author until the episode is published.
  *
  * @param {object} STATE
  * @param {string} mediaId
@@ -342,6 +486,11 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 export function getMediaDTUForViewer(STATE, mediaId, viewerId) {
   const result = getMediaDTU(STATE, mediaId);
   if (!result.ok) return { ok: false, status: 404, error: "Media not found" };
+
+  if (draftMediaHiddenFromViewer(STATE, result.mediaDTU, viewerId)) {
+    const status = !viewerId ? 401 : 404;
+    return { ok: false, status, error: "Private content" };
+  }
 
   const access = canAccessMediaDTU(STATE, result.mediaDTU, viewerId);
   if (!access.allowed) {
@@ -375,11 +524,11 @@ export function getMediaBlobForViewer(STATE, mediaId, viewerId) {
  */
 export function updateMediaDTU(STATE, mediaId, authorId, updates) {
   const media = getMediaState(STATE);
-  const dtu = media.mediaDTUs.get(mediaId);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
   if (!dtu) return { ok: false, error: "Media not found" };
   if (dtu.author !== authorId) return { ok: false, error: "Not authorized to update this media" };
 
-  const allowed = ["title", "description", "tags", "privacy", "tier", "thumbnail"];
+  const allowed = ["title", "description", "tags", "privacy", "tier", "thumbnail", "priceCc", "currency", "previewUrl", "previewStartMs", "previewSeconds"];
   for (const key of allowed) {
     if (updates[key] !== undefined) {
       dtu[key] = updates[key];
@@ -397,6 +546,7 @@ export function updateMediaDTU(STATE, mediaId, authorId, updates) {
     STATE.dtus.set(mediaId, dtu);
   }
 
+  rememberMedia(STATE, dtu);
   return { ok: true, mediaDTU: dtu };
 }
 
@@ -405,7 +555,7 @@ export function updateMediaDTU(STATE, mediaId, authorId, updates) {
  */
 export function deleteMediaDTU(STATE, mediaId, authorId) {
   const media = getMediaState(STATE);
-  const dtu = media.mediaDTUs.get(mediaId);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
   if (!dtu) return { ok: false, error: "Media not found" };
   if (dtu.author !== authorId) return { ok: false, error: "Not authorized to delete this media" };
 
@@ -427,6 +577,11 @@ export function deleteMediaDTU(STATE, mediaId, authorId) {
   if (STATE.dtus) {
     STATE.dtus.delete(mediaId);
   }
+
+  try {
+    const db = mediaDatabase(STATE);
+    if (db) deleteMediaIndex(db, mediaId);
+  } catch { /* in-memory delete already happened */ }
 
   return { ok: true, mediaId };
 }
@@ -644,6 +799,7 @@ export function generateThumbnail(STATE, mediaId) {
   const thumbnailPath = `thumbnails/${dtu.mediaType}/${mediaId}.jpg`;
   dtu.thumbnail = thumbnailPath;
   dtu.updatedAt = new Date().toISOString();
+  rememberMedia(STATE, dtu);
 
   return { ok: true, mediaId, thumbnail: thumbnailPath };
 }
@@ -719,6 +875,7 @@ export function moveStorageTier(STATE, mediaId, targetTier) {
   dtu.storageRef.tier = targetTier;
   dtu.storageRef.path = `media/${targetTier}/${dtu.mediaType}/${mediaId}`;
   dtu.updatedAt = new Date().toISOString();
+  rememberMedia(STATE, dtu);
 
   return { ok: true, mediaId, tier: targetTier, changed: true };
 }

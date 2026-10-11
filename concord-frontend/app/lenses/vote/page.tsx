@@ -7,6 +7,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoteFeed } from '@/components/vote/VoteFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { GovernanceWorkbench } from '@/components/vote/GovernanceWorkbench';
 import { BallotAnalysisLab } from '@/components/vote/BallotAnalysisLab';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -146,9 +147,11 @@ export default function VoteLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
 
-      <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
-        <VoteFeed />
-      </section>
+      <CommunityRedditSlot>
+        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
+          <VoteFeed />
+        </section>
+      </CommunityRedditSlot>
       <SessionRail lensId="vote" hideWhenEmpty className="mt-4" />
       </NorthStarFrame>
     </LensShell>

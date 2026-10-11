@@ -10,26 +10,31 @@
 // / example dialogue from scratch, talk to it in-lens, publish it to a
 // browseable marketplace, rate it, and revise it with installer notify.
 //
-// Persistence: per-process Maps hung off globalThis._concordSTATE so a
-// user's personas + chats survive across requests within the process.
-// No DB schema is added; no migrations. Every value returned is real
-// (user input or deterministic computation) — no seed/mock/demo data.
+// Persistence: per-user Maps on globalThis._concordSTATE._personas, which
+// is in LENS_STATE_KEYS, so authored personas, in-lens chats, and ratings
+// survive a restart. Caps: 500 personas per author, 1000 chats per user,
+// 200 turns per chat, 30 revisions. No new table and no migration. Every
+// value returned is real (user input or deterministic computation) — no
+// seed/mock/demo data.
 
 import crypto from "node:crypto";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 // ---- store ---------------------------------------------------------------
 
+const PERSONA_CAP = 500;
+const CHAT_CAP = 1000;
+
 function store() {
   const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
-  if (!STATE._personas) {
-    STATE._personas = {
-      personas: new Map(),   // personaId -> persona record
-      chats: new Map(),      // chatId    -> { personaId, userId, turns[] }
-      ratings: new Map(),    // `${personaId}:${userId}` -> rating record
-    };
+  if (!STATE._personas || typeof STATE._personas !== "object" || Array.isArray(STATE._personas) || STATE._personas instanceof Map) {
+    STATE._personas = {};
   }
-  return STATE._personas;
+  const s = STATE._personas;
+  if (!(s.personas instanceof Map)) s.personas = new Map(); // personaId -> persona record
+  if (!(s.chats instanceof Map)) s.chats = new Map();       // chatId -> { personaId, userId, turns[] }
+  if (!(s.ratings instanceof Map)) s.ratings = new Map();   // `${personaId}:${userId}` -> rating record
+  return s;
 }
 
 function uid(prefix) {
@@ -185,6 +190,11 @@ export default function registerPersonasActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "name_required" };
+      let owned = 0;
+      for (const existing of store().personas.values()) {
+        if (existing.authorUserId === userId) owned += 1;
+      }
+      if (owned >= PERSONA_CAP) return { ok: false, error: "persona_cap" };
       const id = uid("persona");
       const ts = now();
       const persona = {
@@ -378,6 +388,11 @@ export default function registerPersonasActions(registerLensAction) {
       if (!p.published && p.authorUserId !== userId) {
         return { ok: false, error: "not_visible" };
       }
+      let openChats = 0;
+      for (const existing of store().chats.values()) {
+        if (existing.userId === userId) openChats += 1;
+      }
+      if (openChats >= CHAT_CAP) return { ok: false, error: "chat_cap" };
       const chatId = uid("chat");
       const greetTurn = { role: "persona", text: p.greeting, at: now(), basis: "greeting" };
       store().chats.set(chatId, {
