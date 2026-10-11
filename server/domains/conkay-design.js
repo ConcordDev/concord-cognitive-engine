@@ -22,6 +22,9 @@ import { openDesign, listSolvers } from "../lib/conkay/index.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
 import { compileBrief } from "../lib/conkay/compiler/architectures.js";
+// Registers bracket.plate before any design is opened. Kept off index.js so
+// this solver does not collide with in-flight ConKay solver PRs.
+import "../lib/conkay/physics/solvers/bracket-plate.js";
 import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 
 const SESSION_CACHE_MAX = 64;
@@ -114,10 +117,18 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     const brief = String(params?.brief || "").slice(0, 4000);
     if (!brief.trim()) return { ok: false, error: "send a brief" };
     const c = compileBrief(brief);
-    if (c.error) return { ok: false, error: c.error, parsed: c.parsed };
+    if (c.error) return { ok: false, error: c.error, parsed: c.parsed, ...(c.supportedParts ? { supportedParts: c.supportedParts } : {}) };
     const opened = await actions.open(ctx, artifact, { ir: c.ir });
-    if (!opened.ok) return opened;
-    return { ok: true, result: { ...opened.result, architecture: c.architecture, parsed: c.parsed, unmapped: c.unmapped } };
+    const solvedFields = c.solve ? {
+      assumed: c.assumed, assumptions: c.assumptions, solve: c.solve, mesh: c.mesh,
+    } : {};
+    if (!opened.ok) {
+      if (c.solve && /sign in|no database/i.test(String(opened.error || ""))) {
+        return { ok: true, result: { architecture: c.architecture, parsed: c.parsed, ...solvedFields, saved: false, saveError: opened.error } };
+      }
+      return opened;
+    }
+    return { ok: true, result: { ...opened.result, architecture: c.architecture, parsed: c.parsed, unmapped: c.unmapped, ...solvedFields, saved: true } };
   });
 
   registerLensAction("conkay_design", "car-acceptance", async (_ctx, _artifact, params) => {
