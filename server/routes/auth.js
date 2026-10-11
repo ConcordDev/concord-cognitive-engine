@@ -296,7 +296,10 @@ export default function createAuthRouter({
   router.post("/login", authRateLimitMiddleware, validate("userLogin"), async (req, res) => {
     // Defense-in-depth: per-IP AND per-account rate limiting so NAT
     // doesn't defeat the IP bucket and a botnet can't target one account.
-    const ip = req.ip || req.connection.remoteAddress;
+    // req.ip is the trusted client address (lib/trusted-client-ip.js):
+    // forwarded headers count only from a loopback peer. Do not read
+    // X-Forwarded-For or CF-Connecting-IP here — a direct client can spoof them.
+    const ip = req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || "unknown";
     if (!checkLoginRateLimit(ip)) {
       return res.status(429).json({ ok: false, error: "Too many login attempts. Try again in 15 minutes." });
     }

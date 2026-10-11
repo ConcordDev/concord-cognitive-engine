@@ -20,6 +20,14 @@ env:
 permissions:
   contents: read
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   playthrough:
     name: Per-world walkthrough
@@ -109,11 +117,10 @@ jobs:
       # then let playwright manage the server.
       - name: Build frontend (production)
         working-directory: ./concord-frontend
+        run: npm run build
         env:
           # Test-only build: skip copying the LFS Unity player (see scripts/sync-unity-web-to-standalone.mjs).
           CONCORD_SKIP_UNITY_WEB: '1'
-        run: npm run build
-        env:
           NEXT_PUBLIC_API_URL: http://localhost:5050
           # Default Node heap (~3.8GB) OOMs the Next.js prod compile
           # of the 200+-lens codebase + Sentry webpack passes; matches

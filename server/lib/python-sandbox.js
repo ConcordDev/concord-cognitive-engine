@@ -299,16 +299,119 @@ async function resolveRequestedPackages(packages) {
  *   never falls back to a live fetch.
  * @returns {Promise<{ok: boolean, stdout: string, stderr: string, result: string|null, images?: Array<{mime:string, dataB64:string}>, error?: string, missing?: string[]}>}
  */
+const _SCIENTIFIC_IMPORTS = Object.freeze(["numpy", "sympy"]);
+
+/**
+ * Drop comments and string literals in one left-to-right pass.
+ * The previous quote regexes (`(?:\\.|[^'\n])*`) backtracked exponentially
+ * on a quote followed by a long run of backslashes. Placeholders keep
+ * surrounding tokens from gluing together: a triple-quoted block becomes a
+ * newline, a single-line string becomes `''` or `""`.
+ */
+function stripPythonNonCode(code) {
+  const src = String(code || "");
+  const n = src.length;
+  const out = [];
+  let i = 0;
+  while (i < n) {
+    const c = src[i];
+    if (c === "#") {
+      i += 1;
+      while (i < n && src[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c !== "'" && c !== '"') {
+      out.push(c);
+      i += 1;
+      continue;
+    }
+    const q = c;
+    if (src[i + 1] === q && src[i + 2] === q) {
+      i += 3;
+      while (i < n) {
+        if (src[i] === "\\" && i + 1 < n) {
+          i += 2;
+          continue;
+        }
+        if (src[i] === q && src[i + 1] === q && src[i + 2] === q) {
+          i += 3;
+          break;
+        }
+        i += 1;
+      }
+      out.push("\n");
+      continue;
+    }
+    i += 1;
+    while (i < n && src[i] !== "\n") {
+      if (src[i] === "\\" && i + 1 < n && src[i + 1] !== "\n") {
+        i += 2;
+        continue;
+      }
+      if (src[i] === q) {
+        i += 1;
+        break;
+      }
+      i += 1;
+    }
+    out.push(q === "'" ? "''" : '""');
+  }
+  return out.join("");
+}
+
+/**
+ * Top-level numpy/sympy imports in user code (`import numpy as np`,
+ * `from sympy import symbols`). Strings and comments are ignored.
+ * @param {string} code
+ * @returns {string[]}
+ */
+export function detectScientificImports(code) {
+  const src = stripPythonNonCode(code);
+  const found = new Set();
+  const consider = (raw) => {
+    const top = String(raw || "").split(".")[0];
+    if (_SCIENTIFIC_IMPORTS.includes(top)) found.add(top);
+  };
+  for (const m of src.matchAll(/(?:^|\n)\s*import\s+([^\n]+)/g)) {
+    for (const part of m[1].split(",")) {
+      const name = part.trim().split(/\s+/)[0];
+      if (name) consider(name);
+    }
+  }
+  for (const m of src.matchAll(/(?:^|\n)\s*from\s+([A-Za-z_][\w.]*)\s+import\b/g)) {
+    consider(m[1]);
+  }
+  return [...found];
+}
+
 export async function runPython(code, opts = {}) {
-  const packages = Array.isArray(opts.packages) ? opts.packages : [];
+  const requested = Array.isArray(opts.packages) ? opts.packages.map(String) : [];
+  // An `import numpy` / `import sympy` with the module not vendored used to
+  // boot Pyodide and come back as a micropip/loadPackage essay. Resolve the
+  // import up front and fail with the module name instead.
+  const imported = detectScientificImports(code);
+  const packages = [...new Set([...requested, ...imported])];
   const pkgResolution = await resolveRequestedPackages(packages);
   if (!pkgResolution.ok) {
     // No worker spawned — a doomed-to-fail request shouldn't pay the ~2s
     // cold-load cost, and the failure should be immediate and legible.
+    // An imported numpy/sympy that we cannot load (wheel absent, or the
+    // Pyodide lockfile itself missing) must name that module. A raw
+    // "Cannot find module 'pyodide/package.json'" is not that error.
+    let error = pkgResolution.error;
+    let missing = pkgResolution.missing;
+    const lockUnreadable = typeof error === "string" && error.startsWith("pyodide_lockfile_unreadable");
+    if (imported.length && (error === "python_package_not_vendored" || lockUnreadable)) {
+      missing = [...new Set([...imported, ...(Array.isArray(missing) ? missing : [])])];
+      error = "python_package_not_vendored";
+    }
+    const stderr = Array.isArray(missing) && missing.length
+      ? `Missing Python module: ${missing.join(", ")}.`
+      : "";
     return {
-      ok: false, stdout: "", stderr: "", result: null,
-      error: pkgResolution.error,
-      ...(pkgResolution.missing ? { missing: pkgResolution.missing } : {}),
+      ok: false, stdout: "", stderr, result: null,
+      error,
+      ...(missing ? { missing } : {}),
       ...(pkgResolution.unknown ? { unknown: pkgResolution.unknown } : {}),
     };
   }

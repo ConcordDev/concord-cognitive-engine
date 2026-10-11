@@ -118,15 +118,82 @@ function _validateToolCall(call) {
 //     integrate() makes `typeof expression === "string"` false and it
 //     silently returns 0. Adapt the common symbolic shapes to positionals.
 const _SYMBOLIC_MODS = new Set(["symbolic", "symbolic-math", "symbolicmath"]);
+
+function finiteLimit(v) {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Definite-integral bounds from the shapes models actually emit. Absent → indefinite. */
+function readDefiniteLimits(input) {
+  if (!input || typeof input !== "object") return null;
+  let lower = input.lower ?? input.from ?? input.lowerLimit ?? input.lower_bound;
+  let upper = input.upper ?? input.to ?? input.upperLimit ?? input.upper_bound;
+  const boxed = input.limits ?? input.bounds ?? input.range ?? input.interval ?? null;
+  if (Array.isArray(boxed) && boxed.length >= 2) {
+    lower = boxed[0];
+    upper = boxed[1];
+  } else if (boxed && typeof boxed === "object") {
+    lower = boxed.lower ?? boxed.from ?? boxed.start ?? lower;
+    upper = boxed.upper ?? boxed.to ?? boxed.end ?? upper;
+  }
+  const lo = finiteLimit(lower);
+  const hi = finiteLimit(upper);
+  if (lo == null || hi == null) return null;
+  return { lower: lo, upper: hi };
+}
+
+/** "x**2 from 0 to 3" / "integrate x^2 from 0 to 3" → expression plus bounds. */
+function splitIntegralPhrase(expr) {
+  const stripped = String(expr).trim().replace(/^\s*integrate\s+/i, "");
+  const m = stripped.match(/^(.*?)(?:\s+d[a-zA-Z])?\s+from\s+([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s+to\s+([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*(?:d[a-zA-Z])?\s*$/i);
+  if (!m || !m[1].trim()) return { expr: String(expr), fromPhrase: null };
+  const lower = Number(m[2]);
+  const upper = Number(m[3]);
+  if (!Number.isFinite(lower) || !Number.isFinite(upper)) return { expr: String(expr), fromPhrase: null };
+  return { expr: m[1].trim(), fromPhrase: { lower, upper } };
+}
+
+function definiteIntegral(mod, fn, expr, variable, limits) {
+  const antideriv = fn(expr, variable);
+  let hi;
+  let lo;
+  try {
+    hi = mod.evaluate(antideriv, { [variable]: limits.upper });
+    lo = mod.evaluate(antideriv, { [variable]: limits.lower });
+  } catch (err) {
+    throw new Error(`definite integral could not be evaluated: ${err?.message || err}`);
+  }
+  if (!Number.isFinite(hi) || !Number.isFinite(lo)) {
+    throw new Error(`definite integral of "${expr}" from ${limits.lower} to ${limits.upper} could not be evaluated`);
+  }
+  return {
+    value: hi - lo,
+    definite: true,
+    lower: limits.lower,
+    upper: limits.upper,
+    variable,
+    antiderivative: typeof mod.stringify === "function" ? mod.stringify(antideriv) : undefined,
+  };
+}
+
 export function invokeCompute(mod, modName, fnName, input) {
   const fn = mod[fnName];
   if (_SYMBOLIC_MODS.has(String(modName).toLowerCase()) && input && typeof input === "object" && !Array.isArray(input)) {
-    const expr = input.expression ?? input.expr ?? input.equation ?? input.value ?? input.input;
+    const rawExpr = input.expression ?? input.expr ?? input.equation ?? input.value ?? input.input;
     const variable = input.variable ?? input.var ?? input.withRespectTo ?? input.wrt ?? "x";
-    if (typeof expr === "string") {
-      if (fnName === "evaluate") return fn(expr, input.assignment ?? input.values ?? {});
-      if (fnName === "substitute") return fn(expr, variable, input.replacement ?? input.with);
-      return fn(expr, variable);
+    if (typeof rawExpr === "string") {
+      if (fnName === "evaluate") return fn(rawExpr, input.assignment ?? input.values ?? {});
+      if (fnName === "substitute") return fn(rawExpr, variable, input.replacement ?? input.with);
+      if (fnName === "integrate") {
+        const peeled = splitIntegralPhrase(rawExpr);
+        const limits = readDefiniteLimits(input) || peeled.fromPhrase;
+        const expr = peeled.fromPhrase ? peeled.expr : rawExpr;
+        if (limits) return definiteIntegral(mod, fn, expr, variable, limits);
+        return fn(expr, variable);
+      }
+      return fn(rawExpr, variable);
     }
   }
   if (typeof input === "string") return fn(input);
@@ -347,11 +414,13 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ? await resolved.handler(ctx, null, actionInput)
           : await runMacro("code", "exec", actionInput, ctx);
         if (!r?.ok) {
+          const missing = Array.isArray(r?.result?.missing) ? r.result.missing : null;
+          const baseError = r?.error || "run_python failed";
           return {
             tool: call.tool, ok: false,
-            error: r?.error || "run_python failed",
+            error: missing?.length ? `${baseError}: missing module ${missing.join(", ")}` : baseError,
             stderr: (r?.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
-            ...(r?.result?.missing ? { missing: r.result.missing } : {}),
+            ...(missing ? { missing } : {}),
             ...(r?.result?.unknown ? { unknown: r.result.unknown } : {}),
           };
         }
@@ -383,22 +452,29 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         if (_parsedScheme !== "http:" && _parsedScheme !== "https:") {
           return { tool: call.tool, ok: false, error: "browse_url requires a valid http(s) URL" };
         }
+        let _browseTimer;
         try {
           const { getBrowserEngine } = await import("./browser-engine.js");
           const eng = getBrowserEngine();
           const page = await Promise.race([
             eng.fetchRenderedPage(url, { selector }),
             new Promise((_, rej) => {
-              setTimeout(() => rej(new Error("timeout")), 15_000);
+              _browseTimer = setTimeout(() => rej(new Error("timeout")), 15_000);
             }),
           ]);
+          if (!page || page.ok === false) {
+            return { tool: call.tool, ok: false, url, error: page?.error || "browse_url failed" };
+          }
           return {
             tool: call.tool, ok: true, url,
             title: page?.title || "",
             text: (page?.text || page?.content || "").slice(0, 4000),
+            ...(page.fallback ? { fallback: page.fallback, label: page.label || "fetch fallback" } : {}),
           };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `browse_url failed: ${err?.message}` };
+        } finally {
+          clearTimeout(_browseTimer);
         }
       }
       case "run_lens_action": {
@@ -817,7 +893,10 @@ export function formatToolResults(results) {
       if (r.imageCount) parts.push(`${r.imageCount} figure(s) generated — attached as artifact(s), do not re-describe them from imagination.`);
       return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
     }
-    if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
+    if (r.tool === "browse_url") {
+      const via = r.fallback ? " (fetch fallback)" : "";
+      return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}]${via} title="${r.title}"\n${t}`);
+    }
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "list_lens_actions") {
       // Don't dump the full action manifest into the model — too much token

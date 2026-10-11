@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "crypto";
+import { gateLogRead, sendGate, isLogAdmin, redactLogValue } from "./lib/log-access.js";
 import { createStorageAdapter } from "./storage/index.js";
 
 const storage = createStorageAdapter();
@@ -929,6 +930,10 @@ export function registerDurableEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   app.get("/api/events/log", (req, res) => {
+    // Shadowed by the earlier server.js handler. Kept fail-closed so a
+    // registration reorder cannot dump every events row again.
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     try {
       const { type, limit = 100, offset = 0 } = req.query;
       let where = "";
@@ -937,11 +942,15 @@ export function registerDurableEndpoints(app, db) {
         where = "WHERE type = ?";
         params.push(type);
       }
+      if (!isLogAdmin(gate.actor)) {
+        where = where ? `${where} AND actor_user_id = ?` : "WHERE actor_user_id = ?";
+        params.push(gate.actor.userId);
+      }
       const total = db.prepare(`SELECT COUNT(*) as c FROM events ${where}`).get(...params)?.c || 0;
       const events = db
         .prepare(`SELECT * FROM events ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
         .all(...params, Number(limit), Number(offset));
-      res.json({ ok: true, events, total });
+      res.json({ ok: true, events: redactLogValue(events), total });
     } catch (e) {
       sendDbError(res, e, "durable");
     }

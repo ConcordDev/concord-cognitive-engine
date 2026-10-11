@@ -11,9 +11,37 @@
  * @see ../README.md for architecture overview
  */
 
+import expressRateLimit from "express-rate-limit";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
+import {
+  redactLogValue,
+  actorFromCtx,
+  projectLogs,
+  denyUnlessAuthenticated,
+  denyUnlessAdmin,
+  gateLogRead,
+  gateLogAdmin,
+  sendGate,
+  mapPublicEvents,
+  buildChatConversations,
+  buildGenericEventLog,
+  finalizeActivityFeed,
+  projectTraces,
+  resolveTrace,
+  projectBusEvents,
+  projectBridgeLog,
+  selectScopedUserId,
+  summarizePerfSamples,
+  sessionOwnerLookup,
+  projectReasoningTraces,
+  reasoningTraceAccess,
+  resolveAnonMessageRead,
+  combatLogAccess,
+  isLogAdmin,
+  actorFromReq,
+} from "./lib/log-access.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -55,6 +83,7 @@ try {
  */
 
 import express from "express";
+import { installTrustedClientIp } from "./lib/trusted-client-ip.js";
 import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
@@ -1899,6 +1928,7 @@ async function _dtuSidecarListCall(args) {
   return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -1941,6 +1971,7 @@ import {
   hotReload as loaderHotReload, buildSandboxedContext,
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
 import { getArtifactSchema } from "./lib/artifact-schemas.js";
@@ -13212,26 +13243,27 @@ try {
   structuredLog("info", "state_fields_initialized", { maps: 30, arrays: 14, objects: 7 });
 }
 
-// Auto-migrate DTU ownership (runs once, idempotent)
+// Auto-migrate DTU ownership (idempotent).
+//
+// Must persist through STATE.dtus.set(). This runs after the write-through
+// store is attached; an in-place field write never reaches `dtu_store`, and
+// saveStateDebounced() omits DTUs from the snapshot once that store is
+// active. That is why ownerless `dtu_oracle_*` (type oracle_answer) rows
+// came back with no owner and no visibility on every restart — rehydrate
+// reloads the JSON column, which the old loop never updated.
+//
+// News-feed items, system summaries, and the genesis/seed corpus are stamped
+// system-owned but stay public. Other ownerless rows (including oracle
+// answers) become system-owned and internal. See lib/dtu-ownership.js.
 {
-  let migrated = 0;
-  for (const [id, dtu] of STATE.dtus) {
-    if (dtu.ownerId) continue; // already migrated
-    if (dtu.creatorType === "user" || dtu.creatorType === "user_uploaded_text" || dtu.source === "local") {
-      dtu.ownerId = "founder";
-      dtu.visibility = dtu.visibility || "private";
-    } else {
-      dtu.ownerId = "system";
-      dtu.visibility = "internal";
+  try {
+    const ownership = normalizeOwnerlessDtus(STATE.dtus);
+    if (ownership.migrated > 0) {
+      structuredLog("info", "dtu_ownership_migration", { ...ownership, total: STATE.dtus.size });
+      saveStateDebounced();
     }
-    if (!dtu.creatorType) {
-      dtu.creatorType = dtu.ownerId === "system" ? "system" : "user";
-    }
-    migrated++;
-  }
-  if (migrated > 0) {
-    structuredLog("info", "dtu_ownership_migration", { migrated, total: STATE.dtus.size });
-    saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "dtu_ownership_migration_failed", { error: String(e?.message || e) });
   }
 }
 
@@ -13640,8 +13672,15 @@ try {
 }
 
 // ---- logging ----
-function log(type, message, meta={}) {
-  const entry = { id: uid("log"), ts: nowISO(), type, message, meta };
+function log(type, message, meta={}, actorUserId=null) {
+  const entry = {
+    id: uid("log"),
+    ts: nowISO(),
+    type: typeof type === "string" ? redactLogValue(type) : type,
+    message: typeof message === "string" ? redactLogValue(message) : message,
+    meta: redactLogValue(meta && typeof meta === "object" ? meta : {}),
+  };
+  if (actorUserId && actorUserId !== "anon" && actorUserId !== "system") entry.userId = actorUserId;
   STATE.logs.push(entry);
   if (STATE.logs.length > 2000) STATE.logs.splice(0, STATE.logs.length - 2000);
   return entry;
@@ -14154,7 +14193,9 @@ async function runMacro(domain, name, input, ctx) {
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
     graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
-    events: new Set(["list", "recent", "log", "paginated"]),
+    // events.list/recent/log/paginated read the process-wide STATE.logs ring
+    // (other sessions' chat). Not a public read — handlers require an actor
+    // and return only that caller's rows. See lib/log-access.js.
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
     // "create"/"update"/"delete" removed (public-read-write-verb-detector,
     // confirmed dead 2026-07-31): the real goals macros are
@@ -14175,7 +14216,10 @@ async function runMacro(domain, name, input, ctx) {
     metalearning: new Set(["strategies", "status"]),
     reasoning: new Set(["chains", "steps", "status", "traces", "trace"]),
     temporal: new Set(["status", "get"]),
-    inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // traces/spans/threads/checkpoints/sandboxes/costs are debug reads of
+    // other callers' inference. They are not public. `query` stays: it is
+    // the deterministic logic engine, not the span SQL console.
+    inference: new Set(["status", "query"]),
     // (The dx domain is registered later in this file with the
     //  full DX-Platform macro set; the onboarding macros
     //  `onboarding_progress` and `welcome` are appended to that
@@ -14314,7 +14358,9 @@ async function runMacro(domain, name, input, ctx) {
     feedback: new Set(["aggregate"]),
     artifact: new Set(["info", "thumbnail"]),
     // Missing frontend domains (three-gate audit scan)
-    bridge: new Set(["births", "debates", "emergents", "log", "organisms"]),
+    // `log` dropped: GET /api/bridge/log is an operator dump (query text,
+    // DTU ids) and is admin-only. The other names are catalogs, not logs.
+    bridge: new Set(["births", "debates", "emergents", "organisms"]),
     brief: new Set(["morning", "dismiss"]),
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
@@ -17371,7 +17417,9 @@ function makeCtx(req=null) {
       founderSecret: req.get("x-founder-secret") || "",
       at: nowISO()
     } : null,
-    log,
+    // Stamp the caller onto STATE.logs so log.list can hide other
+    // sessions. The ring itself is process-global; attribution is not.
+    log: (type, message, meta) => log(type, message, meta, resolvedActor?.userId),
     utils: { uid, normalizeText, simpleTokens, jaccard, cretiPack, clamp },
     macro: {
       run: (domain, name, input) => runMacro(domain, name, input, makeCtx(req)),
@@ -25640,7 +25688,8 @@ register("dtu", "get", async (ctx, input) => {
         if (r && (r.ok === true || r.error === "DTU not found")) {
           if (!r.ok) return { ok: false, error: "DTU not found" };
           // Sidecar get is unfiltered. Apply the same private gate as the
-          // in-memory path before the body leaves this macro.
+          // in-memory path before the body leaves this macro. visibility
+          // "internal" (boot-stamped ownerless oracle answers) is included.
           if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
           return { ok: true, dtu: r.dtu };
         }
@@ -25655,6 +25704,7 @@ register("dtu", "get", async (ctx, input) => {
   // Private / user-scoped DTUs are owner-only. Same predicate as
   // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
   // the id exists. Internal callers (makeInternalCtx) are exempt.
+  // visibility "internal" is hidden here too (ctxMayReadDtu).
   if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
@@ -25667,26 +25717,18 @@ register("dtu", "update", async (ctx, input) => {
   const existing = STATE.dtus.get(id);
   if (!existing) return { ok: false, error: "DTU not found" };
 
-  // SECURITY: ownership gate — only the DTU's owner (or admin) can
-  // update it. Skipped in AUTH_MODE=public because local-first
-  // single-user installs trust the local user with everything, and
-  // skipped for legacy DTUs with no owner field so old content
-  // remains editable. Protected-seed DTUs still reject everyone via
-  // the `protected/immutable/seedOrigin` check in dtu.delete and a
-  // similar check would apply here if we ever seed immutable DTUs.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const role = ctx?.actor?.role || "guest";
-    const isAdmin = ["owner", "admin", "founder"].includes(role);
-    const ownerField = existing.ownerId || existing.createdBy || existing.createdByUser || existing.authorId;
-    const isOwner = userId && ownerField && ownerField === userId;
-    // Only gate DTUs that have a concrete foreign owner. Legacy unowned
-    // DTUs fall through (anyone can edit) so pre-existing content
-    // doesn't suddenly become read-only after an upgrade.
-    if (!isAdmin && ownerField && !isOwner && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only update your own DTUs" };
-    }
-  }
+  // Ownerless and system DTUs (no real user owner, or ownerId "system")
+  // are editable only by an admin/owner role. A member used to be able to
+  // rewrite title/content/tags on any DTU that had no owner field — that
+  // included every oracle_answer. AUTH_MODE=public stays local-first.
+  // ctx?.actor?.userId is read here so the public-read write-verb detector
+  // still sees the ownership idiom on this handler.
+  const denial = dtuMutationDenial(existing, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // ---- Optimistic Locking (Category 2: Concurrency) ----
   // If client sends expectedVersion, reject if stale
@@ -25749,20 +25791,14 @@ register("dtu", "delete", async (ctx, input) => {
     return { ok: false, error: "Cannot delete protected seed DTU" };
   }
 
-  // Ownership validation — DTU's owner fields must match actor userId
-  // (or actor must be admin). Skipped in AUTH_MODE=public (local-first
-  // single-user mode) and for legacy DTUs with no owner stamp so old
-  // content stays editable.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId);
-    const isAuthor = userId && (dtu.authorId === userId || dtu.source === userId);
-    const isAdmin = ctx?.actor?.role === "owner" || ctx?.actor?.role === "admin" || ctx?.actor?.role === "founder";
-    const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId;
-    if (hasOwner && !isOwner && !isAuthor && !isAdmin && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only delete your own DTUs" };
-    }
-  }
+  // Same ownerless/system gate as dtu.update. Anonymous callers are
+  // rejected (they used to skip the check because userId === "anon").
+  const denial = dtuMutationDenial(dtu, ctx, {
+    authMode: AUTH_MODE,
+    verb: "delete",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // Fire plugin before-delete hooks
   try { fireHook(STATE, "dtu:beforeDelete", dtu); } catch (e) { log("hook.warn", `dtu:beforeDelete: ${e?.message}`); }
@@ -25823,6 +25859,20 @@ register("dtu", "delete", async (ctx, input) => {
   return { ok: true, deleted: { id, title: dtu.title } };
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
+
+// Admin custody: set visibility and owner on existing DTUs by id.
+// Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
+// without a restart. dryRun changes nothing. Role check is inside
+// assignDtuCustody (owner/admin/founder/sovereign) and the call is
+// audit-logged. Not on the public-read allowlist.
+register("dtu", "assignCustody", async (ctx, input) => {
+  const actorUserId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  return assignDtuCustody(STATE.dtus, input || {}, ctx, {
+    authMode: AUTH_MODE,
+    actorUserId,
+    persist: (dtu) => upsertDTU(dtu, { broadcast: true }),
+  });
+}, { description: "Admin-only: set visibility and owner on existing DTUs by id. dryRun leaves storage unchanged. Audit-logged." });
 
 // dtu.stats — single source of truth for DTU counts + tier/kind
 // distribution + average richness. The /api/dtus/stats REST route
@@ -33249,21 +33299,18 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "list", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 100), 200);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const events = logs.slice(-limit).map((log) => ({
-        id: log.id || undefined,
-        type: log.domain || "system",
-        action: log.action || "event",
-        message: log.message || "",
-        timestamp: log.ts || log.timestamp || null,
-        meta: log.meta || {},
-      }));
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const events = mapPublicEvents(projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) }));
       return { ok: true, events, count: events.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Recent system events (GET /api/events)." });
+  }, { description: "Recent system events scoped to the caller (GET /api/events). Admin sees the full ring." });
 
   register("events", "recent", async (ctx, input = {}) => {
     return _aliasRun(ctx, "events", "list", { ...input, limit: input.limit || 50 });
@@ -33271,25 +33318,35 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "log", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 20), 100);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      return { ok: true, log: logs.slice(-limit), count: Math.min(logs.length, limit) };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const log = projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) });
+      return { ok: true, log, count: log.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Tail of STATE.logs (read-only)." });
+  }, { description: "Tail of STATE.logs scoped to the caller (admin sees all)." });
 
   register("events", "paginated", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 50), 200);
       const offset = Math.max(Number(input.offset || 0), 0);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const slice = logs.slice().reverse().slice(offset, offset + limit);
-      return { ok: true, events: slice, limit, offset, total: logs.length };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const visible = projectLogs(logs, actor, { limit: logs.length || 1, sessionOwner: sessionOwnerLookup(sessions) });
+      const slice = visible.slice().reverse().slice(offset, offset + limit);
+      return { ok: true, events: slice, limit, offset, total: visible.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Paginated events from STATE.logs." });
+  }, { description: "Paginated STATE.logs scoped to the caller (admin sees all)." });
 
   register("daily", "list", async (ctx, input = {}) => {
     const r = await _aliasRun(ctx, "daily", "list_mine", input);
@@ -33773,24 +33830,27 @@ register("settings", "set", (ctx, input) => {
     }
   }, { description: "Knowledge-gap analysis (mirrors GET /api/ai/gaps).", note: "intentional_shadow_ok" });
   if (!MACROS.get("brain")?.has("status")) {
-    register("brain", "status", (_ctx, _input = {}) => {
+    register("brain", "status", (ctx, _input = {}) => {
       try {
         if (typeof getBrainStatus === "function") {
-          return { ok: true, ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined, aliasOf: "GET /api/brain/status" };
+          const raw = { ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined };
+          return authenticatedBrainStatus(raw, ctx?.actor, { aliasOf: "GET /api/brain/status" });
         }
         return _honest("brain.status", "no_macro_substrate", "getBrainStatus unavailable");
       } catch (e) {
         return _honest("brain.status", "handler_error", String(e?.message || e));
       }
-    }, { description: "Per-brain health (mirrors GET /api/brain/status)." });
+    }, { description: "Per-brain health (mirrors GET /api/brain/status). Anonymous refused; members get no URLs or model names." });
   }
   if (!MACROS.get("brain")?.has("health")) {
-    register("brain", "health", async (_ctx, _input = {}) => {
+    register("brain", "health", async (ctx, _input = {}) => {
       // Lightweight projection — full probe is GET /api/brain/health (expensive).
       try {
         if (typeof getBrainStatus === "function") {
-          const s = getBrainStatus();
-          return { ok: true, ...s, note: "macro projection; for live Ollama probes use GET /api/brain/health", aliasOf: "getBrainStatus" };
+          return authenticatedBrainStatus(getBrainStatus(), ctx?.actor, {
+            note: "macro projection; for live Ollama probes use GET /api/brain/health",
+            aliasOf: "getBrainStatus",
+          });
         }
         return _honest("brain.health", "no_macro_substrate", "use GET /api/brain/health");
       } catch (e) {
@@ -34010,8 +34070,16 @@ register("interface", "tabs", (_ctx, _input) => {
 
 // Logs domain
 register("log", "list", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAuthenticated(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit || 200), 1, 2000);
-  return { ok:true, logs: ctx.state.logs.slice(-limit) };
+  const sessions = ctx.state?.sessions || STATE.sessions;
+  const logs = projectLogs(ctx.state?.logs || STATE.logs, actor, {
+    limit,
+    sessionOwner: sessionOwnerLookup(sessions),
+  });
+  return { ok: true, logs };
 });
 
 // Materials test domain (debug hook)
@@ -35539,32 +35607,36 @@ register("paper","export", (ctx, input) => {
 register("observability", "log_error", (ctx, input = {}) => {
   try {
     const { lensId, message, stack, componentStack } = input || {};
-    const entry = {
+    const _errUser = ctx?.actor?.userId;
+    const entry = redactLogValue({
       at: Date.now(),
       kind: "client_error",
       lensId: String(lensId || "unknown"),
       message: String(message || "").slice(0, 500),
       stack: String(stack || "").slice(0, 4000),
       componentStack: String(componentStack || "").slice(0, 2000),
-      userId: ctx?.actor?.userId || null,
-    };
+      userId: _errUser && _errUser !== "anon" ? _errUser : null,
+    });
     (STATE.logs ||= []).push(entry);
     return { ok: true, result: { logged: true, lensId: entry.lensId } };
   } catch { return { ok: true, result: { logged: false }, reason: "log_failed" }; }
 }, { note: "Sink for LensErrorBoundary client-side error reports." });
 
 register("audit","query", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAdmin(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
   const contains = normalizeText(input.contains||"");
-  const logs = (STATE.logs||[]).slice(-2000).filter(x => {
+  const logs = projectLogs(STATE.logs || [], actor, { limit: 2000 }).filter(x => {
     if (!x) return false;
-    if (domain && String(x.domain||"") !== domain) return false;
+    if (domain && String(x.domain || x.type || "") !== domain) return false;
     if (contains && !JSON.stringify(x).toLowerCase().includes(contains.toLowerCase())) return false;
     return true;
   }).slice(-limit);
   return { ok:true, logs };
-}, { summary:"Query recent audit logs (in-memory mirror)."} );
+}, { summary:"Query recent audit logs (admin/owner only; secrets redacted)."} );
 
 
 // =================== VERIFY / SCORE / DERIVE MACROS (minimal, opt-in) ===================
@@ -36796,13 +36868,16 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
 
 const app = express();
 
-// ---- Trust Proxy ----
-// Required when behind a reverse proxy (nginx, traefik, Docker, Cloudflare).
-// Without this, Express thinks protocol is HTTP → secure cookies are not set,
-// req.ip returns the proxy IP, and rate limiting/CSRF break.
-if (NODE_ENV === "production" || process.env.TRUST_PROXY) {
-  app.set("trust proxy", process.env.TRUST_PROXY || 1);
-}
+// ---- Trust Proxy / client IP (INC-20261010-15) ----
+// Loopback peers only (cloudflared and the Next.js rewrite on this host).
+// TRUST_PROXY=1 as a string is not hop-count 1 — proxy-addr reads it as
+// 0.0.0.1 — so every proxied login was one 127.0.0.1 bucket. The middleware
+// sets req.ip from CF-Connecting-IP or the rightmost non-loopback
+// X-Forwarded-For hop, and logs when it still has to share a bucket.
+// Rate limiters below (authRateLimiter, the general limiter, unauth,
+// upload) and routes/auth.js checkLoginRateLimit / the register cap all
+// key on req.ip, so they follow this. See lib/trusted-client-ip.js.
+installTrustedClientIp(app);
 
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
@@ -40312,6 +40387,9 @@ app.post("/api/telemetry/console-ping", express.json({ limit: "2kb" }), asyncHan
   const result = cs.recordConsolePing({ userAgent, gamepadId });
   res.json(result);
 }));
+// Reviewed 2026-10-10: device-class counts only (no user id, session,
+// UA string, or token). Stays public so the console-demand page can
+// render without a login. Do not add raw pings to this payload.
 app.get("/api/telemetry/console-stats", asyncHandler(async (_req, res) => {
   const cs = await import("./lib/console-stats.js");
   res.json({ ok: true, ...cs.getConsoleStats() });
@@ -40344,21 +40422,12 @@ app.post("/api/world/perf-telemetry", express.json({ limit: "8kb" }), (req, res)
     res.status(400).json({ ok: false, error: "invalid_payload" });
   }
 });
-app.get("/api/world/perf-telemetry", (_req, res) => {
-  const s = _perfTelemetry.samples;
-  if (!s.length) return res.json({ ok: true, samples: 0, breachRate: 0, p50Fps: 0, p10Fps: 0 });
-  const fps = s.map(x => x.avgFps).sort((a,b) => a-b);
-  const breaches = s.reduce((a,x) => a + x.breaches, 0);
-  const total = s.reduce((a,x) => a + x.samples, 0) || 1;
-  res.json({
-    ok: true,
-    samples: s.length,
-    breachRate: Math.round((breaches / total) * 10000) / 100,
-    p50Fps: fps[Math.floor(fps.length * 0.5)],
-    p10Fps: fps[Math.floor(fps.length * 0.1)],
-    p90Fps: fps[Math.floor(fps.length * 0.9)],
-    recent: s.slice(-30),
-  });
+app.get("/api/world/perf-telemetry", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  // Aggregates only for a member. `recent` includes other clients' UA
+  // strings and is admin-only. POST intake above stays anonymous.
+  res.json(summarizePerfSamples(_perfTelemetry.samples, gate.actor));
 });
 
 // E4 — client-error intake. Public-write (Gate-1 POST bypass already whitelists
@@ -43419,7 +43488,7 @@ register("admin", "logs", (ctx, input) => {
   // alias of `ts` because the admin lens frontend reads `log.at`.
   let logs = STATE.logs || [];
   if (type) logs = logs.filter(l => l.type === type);
-  logs = logs.slice(-limit).reverse().map(l => ({ ...l, at: l.ts }));
+  logs = logs.slice(-limit).reverse().map(l => redactLogValue({ ...l, at: l.ts }));
 
   return { ok: true, logs, count: logs.length };
 });
@@ -47090,9 +47159,12 @@ app.post("/api/system/circuit-breakers/reset", requireOwner, asyncHandler(async 
 
 // Request traces
 app.get("/api/system/traces", asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit || "50", 10);
   const minDurationMs = req.query.slow ? parseInt(req.query.slow, 10) : undefined;
-  res.json(getRecentTraces({ limit, minDurationMs }));
+  const body = getRecentTraces({ limit, minDurationMs });
+  res.json(redactLogValue(body));
 }));
 
 app.get("/api/system/trace-metrics", asyncHandler(async (req, res) => {
@@ -55839,40 +55911,46 @@ app.post("/api/obsidian/import", asyncHandler(async (req, res) => res.json(await
 app.post("/api/notion/import", asyncHandler(async (req, res) => res.json(await runMacro("notion", "import", req.body, makeCtx(req)))));
 app.get("/api/integrations", asyncHandler(async (req, res) => res.json(await runMacro("integration", "list", {}, makeCtx(req)))));
 
-// Additional endpoints for frontend compatibility
+// Additional endpoints for frontend compatibility.
+// The ring is global; the response is not. Anonymous 401, a member sees
+// only rows attributed to them, admin/owner/founder/sovereign see all.
 app.get("/api/events", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
-    // Return recent system events/logs
-    const events = (STATE.logs || []).slice(-100).map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-      meta: log.meta || {}
-    }));
+    const events = mapPublicEvents(
+      projectLogs(STATE.logs || [], gate.actor, { limit: 100, sessionOwner: sessionOwnerLookup(STATE.sessions) }),
+      () => uid("evt"),
+    );
     return res.json({ ok: true, events, count: events.length });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
-// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions
+// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions.
+// Each row is tagged with the user ids allowed to see it. Unattributed rows
+// (another session's DTU title, a system log) are admin-only.
 app.get("/api/events/paginated", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
     const domain = req.query.domain;
     const entityType = req.query.entityType;
     const activities = [];
+    const sessionOwner = sessionOwnerLookup(STATE.sessions);
 
     // Source 1: DTU lifecycle events from thought timeline
     for (const e of THOUGHT_TIMELINE) {
+      const parties = [e.userId, e.snapshot?.userId, e.snapshot?.ownerId, e.snapshot?.owner_id].filter(Boolean);
       activities.push({
         id: e.id, type: "dtu", action: e.action,
         message: `DTU ${e.action}: ${e.snapshot?.title || e.dtuId}`,
         entityId: e.dtuId, entityType: "dtu",
-        timestamp: e.timestamp, meta: e.snapshot || {}
+        timestamp: e.timestamp, meta: e.snapshot || {},
+        _parties: parties,
       });
     }
 
@@ -55887,19 +55965,24 @@ app.get("/api/events/paginated", (req, res) => {
             id: r.id, type: r.category || "system", action: r.action,
             message: `${r.action} ${r.path || ""}`.trim(),
             entityId: r.user_id, entityType: r.category || "audit",
-            timestamp: r.timestamp, meta: det
+            timestamp: r.timestamp, meta: det,
+            _parties: r.user_id ? [r.user_id] : [],
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
     // Source 3: Recent structured logs
-    for (const log of (STATE.logs || []).slice(-200)) {
+    for (const logEntry of (STATE.logs || []).slice(-200)) {
+      const parties = [logEntry.userId, logEntry.meta?.userId];
+      const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
+      if (sessOwner) parties.push(sessOwner);
       activities.push({
-        id: log.id || uid("evt"), type: log.domain || "system",
-        action: log.action || "log", message: log.message || "",
-        entityId: null, entityType: log.domain || "system",
-        timestamp: log.ts || log.timestamp || nowISO(), meta: log.meta || {}
+        id: logEntry.id || uid("evt"), type: logEntry.type || logEntry.domain || "system",
+        action: logEntry.action || "log", message: logEntry.message || "",
+        entityId: logEntry.userId || null, entityType: logEntry.domain || "system",
+        timestamp: logEntry.ts || logEntry.timestamp || nowISO(), meta: logEntry.meta || {},
+        _parties: parties.filter(Boolean),
       });
     }
 
@@ -55913,22 +55996,18 @@ app.get("/api/events/paginated", (req, res) => {
             message: `${tx.type}: ${tx.amount} credits${tx.memo ? " — " + tx.memo : ""}`,
             entityId: tx.from_user_id || tx.to_user_id, entityType: "transaction",
             timestamp: tx.created_at,
-            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id }
+            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id },
+            _parties: [tx.from_user_id, tx.to_user_id].filter(Boolean),
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
-    // Filter
     let filtered = activities;
     if (domain) filtered = filtered.filter(a => a.type === domain);
     if (entityType) filtered = filtered.filter(a => a.entityType === entityType);
 
-    // Sort descending, paginate
-    filtered.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
-    const total = filtered.length;
-    const page = filtered.slice(offset, offset + limit);
-    return res.json({ ok: true, events: page, total, limit, offset });
+    return res.json(finalizeActivityFeed(filtered, gate.actor, { limit, offset }));
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -55948,42 +56027,22 @@ app.post("/api/undo", (req, res) => {
   }
 });
 
-// Events log — threads lens expects conversations from chat sessions
+// Events log — threads lens expects conversations from chat sessions.
+// type=chat used to return every session's title, summary, and last
+// message. It now returns only sessions the caller owns or participates in.
 app.get("/api/events/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const type = req.query.type;
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
     if (type === "chat") {
-      // Build conversation list from STATE.sessions
-      const conversations = [];
-      for (const [sessionId, sess] of (STATE.sessions || new Map())) {
-        const msgs = sess.messages || [];
-        if (msgs.length === 0) continue;
-        const userMsgs = msgs.filter(m => m.role === "user");
-        const lastMsg = msgs[msgs.length - 1];
-        conversations.push({
-          id: sessionId,
-          title: userMsgs[0]?.content?.slice(0, 80) || "Untitled",
-          summary: userMsgs.slice(-1)[0]?.content?.slice(0, 120) || "",
-          lastMessage: lastMsg?.content?.slice(0, 200) || "",
-          messageCount: msgs.length,
-          createdAt: sess.createdAt || msgs[0]?.ts || nowISO(),
-          updatedAt: lastMsg?.ts || sess.createdAt || nowISO(),
-        });
-      }
-      conversations.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-      return res.json({ ok: true, conversations: conversations.slice(0, limit) });
+      const conversations = buildChatConversations(STATE.sessions, gate.actor, limit);
+      return res.json({ ok: true, conversations });
     }
 
-    // Generic event log
-    const events = (STATE.logs || []).slice(-limit).reverse().map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-    }));
+    const events = buildGenericEventLog(STATE.logs || [], gate.actor, limit, sessionOwnerLookup(STATE.sessions));
     return res.json({ ok: true, events });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -56026,12 +56085,12 @@ app.get("/api/lattice/beacon", (_req, res) => {
 });
 
 // System health — guidance panel + resonance lens
-app.get("/api/system/health", (_req, res) => {
+app.get("/api/system/health", (req, res) => {
   try {
     const dtus = dtusArray();
     const total = dtus.length;
     const sessions = STATE.sessions?.size || 0;
-    const brainStatus = typeof getBrainStatus === "function" ? getBrainStatus() : {};
+    const brainStatus = brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user);
     const uptime = process.uptime();
 
     // Heartbeat liveness. `__governorTickAt` is stamped on EVERY governorTick
@@ -56138,11 +56197,13 @@ app.get("/api/system/adaptive-status", (_req, res) => {
 });
 // dtu_store). These are operational telemetry (repair cortex events, etc.)
 // and live in their own table so they don't pollute the DTU knowledge
-// substrate. Public endpoint so the operator dashboard can surface them.
+// substrate. Operator-only: gateLogAdmin. Payloads are redacted on read.
 //
 // Filters: ?subsystem=repair_cortex&severity=error&sinceMs=1700000000000&limit=200
 app.get("/api/system/operations-log", async (_req, res) => {
   try {
+    const gate = gateLogAdmin(_req);
+    if (!gate.ok) return sendGate(res, gate);
     // ES-module dynamic import — server.js uses ESM, not CommonJS.
     const { getOperationsLog } = await import("./lib/dtu-operations-log.js");
     const filters = {};
@@ -56152,12 +56213,12 @@ app.get("/api/system/operations-log", async (_req, res) => {
     if (_req.query.sinceMs) filters.sinceMs = Number(_req.query.sinceMs);
     if (_req.query.limit) filters.limit = Number(_req.query.limit);
     const rows = getOperationsLog(db, filters);
-    return res.json({
+    return res.json(redactLogValue({
       ok: true,
       count: rows.length,
       filters,
       entries: rows,
-    });
+    }));
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -60819,32 +60880,56 @@ app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) =
 // Phase CF9 — HLR reasoning trace (surface hlr-engine.js).
 app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
   const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
-  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+  const userId = req.user?.id || req.user?.userId || null;
+  const body = { ...(req.body || {}) };
+  if (userId) body.userId = userId;
+  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(body) });
 }));
 
-app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+app.get("/api/reasoning/traces", perEndpointRateLimit("read.default"), expressRateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX,
+  message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: _rateLimitKey,
+  skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+}), asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const m = await import("./emergent/hlr-engine.js");
   const limit = Number(req.query.limit) || 50;
   // Wave 7 / B6 — also surface the durable agent deliberation journal (mig 327): the
   // "what I was thinking" the awareness loop writes on each tier-3 wake (with the
   // attended quale + prediction-error surprise + the awareness-index correlate).
+  // NPC journal rows are operator telemetry, not the caller's reasoning.
   let agentTraces = [];
-  try {
-    const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
-    const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
-    agentTraces = (STATE?.db?.prepare(
-      `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
-       FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
-    ).all(...args)) || [];
-  } catch { /* agent_reasoning_traces optional */ }
-  res.json({ ok: true, traces: m.listTraces(limit), agentTraces, modes: Object.values(m.REASONING_MODES) });
+  if (isLogAdmin(gate.actor)) {
+    try {
+      const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
+      const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
+      agentTraces = (STATE?.db?.prepare(
+        `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
+         FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
+      ).all(...args)) || [];
+    } catch { /* agent_reasoning_traces optional */ }
+  }
+  res.json({
+    ok: true,
+    traces: projectReasoningTraces(m.listTraces(limit), gate.actor),
+    agentTraces: redactLogValue(agentTraces),
+    modes: Object.values(m.REASONING_MODES),
+  });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const { getReasoningTrace } = await import("./emergent/hlr-engine.js");
   const t = getReasoningTrace(req.params.traceId);
-  if (!t) return res.status(404).json({ ok: false, error: "no_trace" });
-  res.json({ ok: true, trace: t });
+  const access = reasoningTraceAccess(t, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, trace: redactLogValue(t) });
 }));
 
 // Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
@@ -61282,8 +61367,14 @@ app.get("/api/party-combat/:sessionId/state", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
-  const { listActionLog } = await import("./lib/party-combat.js");
-  res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const { listActionLog, getCombatState } = await import("./lib/party-combat.js");
+  const state = getCombatState(db, req.params.sessionId);
+  if (!state) return res.status(404).json({ ok: false, error: "no_session" });
+  const access = combatLogAccess(state.combatants, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, log: redactLogValue(listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100)) });
 }));
 
 // Phase DB9 — active session lookup for the fluid combat HUD.
@@ -63480,11 +63571,18 @@ app.get("/api/anon/identity", (req, res) => {
 });
 
 app.get("/api/anon/messages", (req, res) => {
-  // Anonymous messages stored in sessions
-  const sessionId = req.query.sessionId || req.cookies?.concord_anon;
+  const cookieSessionId = req.cookies?.concord_anon || null;
+  const querySessionId = req.query.sessionId ? String(req.query.sessionId) : null;
+  const sessionId = querySessionId || cookieSessionId;
   const session = sessionId ? STATE.sessions.get(sessionId) : null;
-  const messages = session?.messages || [];
-  res.json({ ok: true, messages: messages.slice(-50) });
+  const read = resolveAnonMessageRead({
+    session,
+    actor: actorFromReq(req),
+    cookieSessionId,
+    querySessionId,
+  });
+  if (read.status !== 200) return res.status(read.status).json({ ok: false, error: read.error });
+  res.json({ ok: true, messages: read.messages });
 });
 
 app.post("/api/anon/rotate", (req, res) => {
@@ -65026,9 +65124,9 @@ app.get("/api/social/trending/domains", (_req, res) => {
 });
 
 // Platform status
-app.get("/api/platform/status", (_req, res) => {
+app.get("/api/platform/status", (req, res) => {
   try {
-    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: typeof getBrainStatus === "function" ? getBrainStatus() : {}, dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
+    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user), dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -65690,7 +65788,11 @@ app.get("/api/rbac/org-lenses/:orgId", (req, res) => {
 });
 
 app.get("/api/rbac/audit-export/:orgId", (req, res) => {
-  try { res.json(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/rbac/metrics", (req, res) => {
@@ -65796,7 +65898,11 @@ app.get("/api/compliance/retention/:orgId", (req, res) => {
 });
 
 app.get("/api/compliance/log", (req, res) => {
-  try { res.json(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/compliance/status", (req, res) => {
@@ -65873,7 +65979,9 @@ app.get("/api/atlas/auto-promote-gate/:id", (req, res) => {
 });
 
 app.get("/api/atlas/write-guard/log", (req, res) => {
-  try { res.json({ ok: true, log: getWriteGuardLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getWriteGuardLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/atlas/write-guard/metrics", (req, res) => {
@@ -65992,7 +66100,9 @@ app.get("/api/atlas/invariants/metrics", (req, res) => {
 });
 
 app.get("/api/atlas/invariants/log", (req, res) => {
-  try { res.json({ ok: true, log: getInvariantLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getInvariantLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Atlas v2: Chat Loose Mode Endpoints ─────────────────────────────────────
@@ -66463,18 +66573,13 @@ app.post("/api/brain/wants/decay", (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Per-brain health and stats endpoint
-app.get("/api/brain/status", (_req, res) => {
-  try {
-    // getBrainStatus() (defined above) is the single source of truth for
-    // mode/onlineCount/avgResponseMs/embeddings — it was already used by
-    // the chat-context builder and /api/platform/status but this route
-    // hand-rolled a stripped-down duplicate missing those fields, which is
-    // why the frontend's BrainMonitor badge always showed "Fallback 0/N"
-    // regardless of real brain state.
-    res.json({ ...getBrainStatus(), llmReady: LLM_READY });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
+// Per-brain health and stats endpoint.
+// getBrainStatus() is the single source of truth for mode/onlineCount/
+// avgResponseMs/embeddings. URLs and model names inside it are operator
+// diagnostics: anonymous callers get 401, members get the same health
+// fields with those stripped, admins get the raw object.
+// See lib/brain-status-public.js (stricter than PR #1098's URL-only redaction).
+mountBrainStatusRoute(app, () => ({ ...getBrainStatus(), llmReady: LLM_READY }));
 
 // Spontaneous message endpoints
 app.get("/api/brain/spontaneous/status", (_req, res) => {
@@ -66867,7 +66972,10 @@ app.post("/api/brain/entity/explore", asyncHandler(async (req, res) => {
 // Tracks consecutive failures per brain to avoid marking offline on a single timeout
 const _brainHealthFailures = {};
 const BRAIN_HEALTH_FAILURE_THRESHOLD = 3; // Only mark offline after 3 consecutive failures
-app.get("/api/brain/health", asyncHandler(async (_req, res) => {
+app.get("/api/brain/health", asyncHandler(async (req, res) => {
+  const _brainDenied = denyAnonymousBrainRead(req);
+  if (_brainDenied) return res.status(_brainDenied.status).json(_brainDenied.body);
+  const _sendBrainHealth = (body) => res.json(brainStatusForViewer(body, req.user));
   // CI / no-Ollama deployments set CONCORD_DISABLE_BRAINS=true. Skip the
   // 5×8 s parallel Ollama probes that would otherwise return useless
   // failure rows + leave the event loop holding 5 dead sockets during
@@ -66878,7 +66986,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
     for (const [name, brain] of Object.entries(BRAIN)) {
       health[name] = { online: false, healthy: false, model: brain.model, error: "brains_disabled" };
     }
-    return res.json({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
+    return _sendBrainHealth({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
   }
   const health = {};
   const probes = Object.entries(BRAIN).map(async ([name, brain]) => {
@@ -66943,7 +67051,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
   });
   await Promise.all(probes);
   const allHealthy = Object.values(health).every(r => r.online);
-  res.json({ ok: true, allHealthy, ...health, brains: health });
+  _sendBrainHealth({ ok: true, allHealthy, ...health, brains: health });
 }));
 
 // LLM Fallback health — shows active tiers and available fallback layers
@@ -67131,10 +67239,15 @@ app.get("/api/admin/backup/status", requireAuth(), requireRole("owner"), asyncHa
 
 // ---- Admin: Centralized Logs Endpoint ----
 app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  // requireAuth/requireRole no-op when AUTH_MODE=public. This handler is
+  // also shadowed by routes/domain.js (registered first). The gate stays
+  // so a reorder cannot reopen the buffer to a member.
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const logMod = await import("./logger.js");
     const { level, source, lens, since, search, limit } = req.query;
-    const logs = logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 });
+    const logs = redactLogValue(logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 }));
     res.json({ logs, total: logs.length });
   } catch {
     res.json({ logs: [], total: 0 });
@@ -67143,6 +67256,8 @@ app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(asy
 
 // ---- Admin: Log Stream (SSE) ----
 app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   let logMod;
   try { logMod = await import("./logger.js"); } catch { return res.status(500).end(); }
   startSSE(res);
@@ -67154,7 +67269,7 @@ app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHand
       const newLogs = buf.slice(lastIndex);
       if (newLogs.length > 0) {
         for (const entry of newLogs) {
-          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+          res.write(`data: ${JSON.stringify(redactLogValue(entry))}\n\n`);
         }
         lastIndex = buf.length;
       }
@@ -71574,9 +71689,12 @@ eventBus.on("dtu.composted", (evt) => {
 
 // Event Bus API routes
 app.get("/api/events/bus", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 100;
   const type = req.query.type;
-  res.json({ ok: true, events: eventBus.getHistory(limit, { type }), stats: eventBus.getStats() });
+  const history = eventBus.getHistory(10000, { type });
+  res.json({ ok: true, events: projectBusEvents(history, gate.actor, limit), stats: eventBus.getStats() });
 });
 
 app.get("/api/events/bus/stats", (_req, res) => {
@@ -71969,17 +72087,19 @@ function startTrace(trigger) {
 }
 
 app.get("/api/traces", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 50;
   const minDuration = parseInt(req.query.minDuration) || 0;
-  let traces = [...STATE._traces].reverse();
-  if (minDuration > 0) traces = traces.filter(t => (t.totalDuration || 0) >= minDuration);
-  res.json({ ok: true, traces: traces.slice(0, limit) });
+  const traces = projectTraces(STATE._traces, gate.actor, { limit, minDuration });
+  res.json({ ok: true, traces });
 });
 
 app.get("/api/traces/:id", (req, res) => {
-  const trace = STATE._traces.find(t => t.traceId === req.params.id);
-  if (!trace) return res.status(404).json({ ok: false, error: "Trace not found" });
-  res.json({ ok: true, trace });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const resolved = resolveTrace(STATE._traces, req.params.id, gate.actor);
+  res.status(resolved.status).json(resolved.body);
 });
 
 // ---------- #85: RATE LIMITER & COST GOVERNOR ----------
@@ -72037,9 +72157,9 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 }
 
 app.get("/api/rate-limits", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const limits = STATE._rateLimits.get(userId);
   const hourAgo = Date.now() - 60 * 60 * 1000;
   const recentCalls = limits ? limits.calls.filter(t => t > hourAgo).length : 0;
@@ -72047,11 +72167,11 @@ app.get("/api/rate-limits", (req, res) => {
 });
 
 app.get("/api/costs", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
-  res.json({ ok: true, ...account });
+  res.json({ ok: true, userId, ...redactLogValue(account) });
 });
 
 // ---------- #87: MIGRATION ENGINE ----------
@@ -73184,11 +73304,12 @@ app.post("/api/bridge/validate", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/bridge/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-  const action = req.query.action;
-  let log = STATE._bridge.log;
-  if (action) log = log.filter(e => e.action === action);
-  res.json({ ok: true, log: log.slice(-limit), total: log.length });
+  const out = projectBridgeLog(STATE._bridge?.log, gate.actor, { limit, action: req.query.action });
+  if (out.ok === false) return res.status(403).json(out);
+  res.json(out);
 });
 
 app.get("/api/bridge/organisms", (_req, res) => {

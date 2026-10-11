@@ -31,7 +31,7 @@ export function BrainsPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status={brain.enabled ? 'green' : 'red'} />
               <span className="text-sm font-medium text-white capitalize">{name}</span>
-              <span className="text-[10px] text-gray-400">{brain.model}</span>
+              {brain.model ? <span className="text-[10px] text-gray-400">{brain.model}</span> : null}
             </div>
           </div>
           <p className="text-xs text-gray-400 mb-2">{brain.role}</p>
