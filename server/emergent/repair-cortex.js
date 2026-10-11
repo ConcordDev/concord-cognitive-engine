@@ -38,12 +38,48 @@ import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
 import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.js";
+import {
+  configureObservationStore,
+  noteObservation,
+  flushObservations,
+  stopObservationFlushTimer,
+  getObservationStatus,
+  resetObservationsForTest,
+} from "../lib/repair-observation-store.js";
 
 // Maintenance A — durable Repair Memory. When a db is configured, learned
 // patterns mirror to mig-030 repair_knowledge so the cortex's learning survives
 // a restart. Default null = pure in-memory (today's behaviour).
 let _persistDb = null;
-export function configureRepairPersistence(db) { _persistDb = db || null; }
+export function configureRepairPersistence(db) {
+  _persistDb = db || null;
+  // Load durable signature counts in the same boot hook as repair memory.
+  // A missing table or a closed handle must not stop the cortex from starting.
+  try { configureObservationStore(_persistDb); }
+  catch { /* observation counts are optional */ }
+}
+
+/** One coalesced write of dirty signature counts. Never throws. */
+export function flushRepairObservations() {
+  try { return flushObservations(); }
+  catch { return { ok: false, flushed: 0 }; }
+}
+
+/** Stop the interval flush. Called from graceful shutdown before db.close. */
+export function stopRepairObservationFlush() {
+  try { stopObservationFlushTimer(); }
+  catch { /* timer cleanup is best-effort */ }
+}
+
+export function getRepairObservationStatus() {
+  try { return getObservationStatus(); }
+  catch { return { ok: true, size: 0, pending: 0, entries: [] }; }
+}
+
+/** Test-only. Drops in-memory counts so a reopened database can rehydrate them. */
+export function _resetRepairObservationsForTest() {
+  resetObservationsForTest();
+}
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 // Sprint 32 — Route repair audit trail through dtu_operations_log instead of
 // STATE.dtus. The old behavior wrote every repair event as a DTU, polluting
@@ -331,6 +367,11 @@ const _errorAccumulator = new Map();
  */
 export function observe(error, context = "unknown") {
   try {
+    // Durable signature: first sighting logs once; repeats only bump memory.
+    // Isolated so a store failure cannot skip the in-memory accumulator.
+    try { noteObservation(error, context); }
+    catch { /* signature path never breaks observe() */ }
+
     const key = hashPattern(`${context}:${error?.message || error}`);
 
     const existing = _errorAccumulator.get(key);
@@ -4291,6 +4332,10 @@ export function stopRepairLoop() {
   }
   _repairLoopTimer = null;
   stopGuardian();
+  // Persist counts before the loop is considered stopped. Shutdown calls
+  // this while the database is still open, then flushes once more.
+  try { flushObservations(); }
+  catch { /* shutdown flush is best-effort */ }
   return { ok: true };
 }
 
@@ -4327,6 +4372,7 @@ export function getFullRepairStatus() {
       },
       memory: getRepairMemoryStats(),
       accumulator: getErrorAccumulator(),
+      observations: getRepairObservationStatus(),
       guardian: getGuardianStatus(),
       executors: Object.entries(EXECUTORS).map(([name, ex]) => ({
         name,
