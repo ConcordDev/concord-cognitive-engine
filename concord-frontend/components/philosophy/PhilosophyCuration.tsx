@@ -27,10 +27,10 @@ import { cn } from '@/lib/utils';
 /*  Shared types                                                       */
 /* ------------------------------------------------------------------ */
 
-interface ChannelMeta { id: string; title: string; description: string; blockCount: number; public?: boolean }
+interface ChannelMeta { id: string; title: string; description: string; blockCount: number; public?: boolean; role?: 'owner' | 'collaborator' }
 interface GridBlock {
   id: string; kind: string; content: string; imageUrl: string | null;
-  source: string | null; channelCount: number; createdAt: string;
+  source: string | null; channelCount: number; createdAt: string; canDelete?: boolean;
 }
 interface PublicChannel {
   id: string; title: string; description: string; ownerId: string;
@@ -52,10 +52,11 @@ interface GraphResult {
 }
 interface DebatePost {
   id: string; stance: string; body: string; targetPremise: string | null;
-  author: string; createdAt: string;
+  authorName?: string | null; mine?: boolean; createdAt: string;
 }
 interface DebateThread {
-  id: string; title: string; claim: string; branch: string; author: string;
+  id: string; title: string; claim: string; branch: string;
+  authorName?: string | null; mine?: boolean; public?: boolean;
   status: string; posts: DebatePost[]; resolution?: string | null; postCount?: number; createdAt: string;
 }
 interface SearchChannelResult { id: string; title: string; description: string; createdAt: string }
@@ -238,9 +239,11 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
               <div className="p-2">
                 <div className="flex items-start gap-1">
                   <p className="flex-1 text-[11px] text-zinc-300 line-clamp-2">{b.content}</p>
-                  <button aria-label="Delete" onClick={() => del(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {b.canDelete !== false && (
+                    <button aria-label="Delete" onClick={() => del(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
                 {b.channelCount > 1 && (
                   <p className="text-[9px] text-amber-400 mt-1">in {b.channelCount} channels</p>
@@ -496,6 +499,9 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
   const [isPublic, setIsPublic] = useState(false);
   const [newUser, setNewUser] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const selected = channels.find((c) => c.id === channelId);
+  const isOwner = selected?.role !== 'collaborator';
 
   useEffect(() => {
     if (!channelId && channels.length > 0) setChannelId(channels[0].id);
@@ -511,11 +517,13 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
   useEffect(() => { void load(channelId); }, [channelId, load]);
 
   async function add() {
-    if (!channelId || !newUser.trim()) return;
+    if (!channelId || !newUser.trim() || !isOwner) return;
     setBusy(true);
+    setError('');
     const r = await lensRun('philosophy', 'channel-collaborator-add', { id: channelId, userId: newUser.trim() });
     setBusy(false);
     if (r.data.ok) { setNewUser(''); await load(channelId); }
+    else setError(r.data.error || 'Could not add collaborator');
   }
   async function remove(userId: string) {
     await lensRun('philosophy', 'channel-collaborator-remove', { id: channelId, userId });
@@ -545,33 +553,44 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
           <p className="text-xs font-semibold text-zinc-200">Visibility</p>
           <p className="text-[10px] text-zinc-400">{isPublic ? 'Public — listed in Discover' : 'Private — only you and collaborators'}</p>
         </div>
-        <button
-          onClick={togglePublish}
-          className={cn(
-            'px-3 py-1 text-xs rounded font-semibold',
-            isPublic ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200',
-          )}
-        >
-          {isPublic ? 'Public' : 'Make public'}
-        </button>
+        {isOwner ? (
+          <button
+            onClick={togglePublish}
+            className={cn(
+              'px-3 py-1 text-xs rounded font-semibold',
+              isPublic ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200',
+            )}
+          >
+            {isPublic ? 'Public' : 'Make public'}
+          </button>
+        ) : (
+          <span className="text-[10px] text-zinc-500">{isPublic ? 'Public' : 'Private'}</span>
+        )}
       </div>
+
+      {!isOwner && (
+        <p className="text-[11px] text-zinc-400">Only the channel owner can publish, delete this channel, or manage collaborators.</p>
+      )}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
         <p className="text-xs font-semibold text-zinc-200">Collaborators</p>
-        <div className="flex gap-1.5">
-          <input
-            value={newUser} onChange={(e) => setNewUser(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
-            placeholder="Collaborator user id"
-            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
-          />
-          <button
-            onClick={add} disabled={busy || !newUser.trim()}
-            className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
-          >
-            Add
-          </button>
-        </div>
+        {isOwner && (
+          <div className="flex gap-1.5">
+            <input
+              value={newUser} onChange={(e) => { setNewUser(e.target.value); setError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
+              placeholder="Collaborator user id"
+              className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+            />
+            <button
+              onClick={add} disabled={busy || !newUser.trim()}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
+        )}
+        {error && <p className="text-[11px] text-rose-400">{error}</p>}
         {collaborators.length === 0 ? (
           <p className="text-[10px] text-zinc-400 italic">No collaborators yet.</p>
         ) : (
@@ -580,7 +599,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
               <li key={u} className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1">
                 <Users className="w-3 h-3 text-amber-400" />
                 <span className="flex-1 text-[11px] text-zinc-200">{u}</span>
-                <button aria-label="Delete" onClick={() => remove(u)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                {isOwner && <button aria-label="Delete" onClick={() => remove(u)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>}
               </li>
             ))}
           </ul>
@@ -896,14 +915,20 @@ const STANCE_TONE: Record<string, string> = {
 };
 const BRANCHES = ['ethics', 'epistemology', 'metaphysics', 'logic', 'aesthetics', 'political', 'other'];
 
+function debateByline(row: { mine?: boolean; authorName?: string | null }) {
+  if (row.mine) return 'you';
+  return row.authorName || '';
+}
+
 function DebateTab() {
   const [threads, setThreads] = useState<DebateThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<{ thread: DebateThread; tally: Record<string, number> } | null>(null);
   const [showNew, setShowNew] = useState(false);
-  const [draft, setDraft] = useState({ title: '', claim: '', branch: 'ethics' });
+  const [draft, setDraft] = useState({ title: '', claim: '', branch: 'ethics', public: false });
   const [post, setPost] = useState({ stance: 'support', body: '', targetPremise: '' });
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -914,6 +939,7 @@ function DebateTab() {
   useEffect(() => { void loadList(); }, [loadList]);
 
   const openThread = useCallback(async (id: string) => {
+    setConfirmDelete(false);
     const r = await lensRun('philosophy', 'debate-detail', { id });
     if (r.data.ok) {
       const res = r.data.result as { thread: DebateThread; tally: Record<string, number> };
@@ -925,11 +951,11 @@ function DebateTab() {
     if (!draft.title.trim() || !draft.claim.trim()) return;
     setBusy(true);
     const r = await lensRun('philosophy', 'debate-create', {
-      title: draft.title.trim(), claim: draft.claim.trim(), branch: draft.branch,
+      title: draft.title.trim(), claim: draft.claim.trim(), branch: draft.branch, public: draft.public,
     });
     setBusy(false);
     if (r.data.ok) {
-      setDraft({ title: '', claim: '', branch: 'ethics' });
+      setDraft({ title: '', claim: '', branch: 'ethics', public: false });
       setShowNew(false);
       await loadList();
       const t = (r.data.result as { thread: DebateThread })?.thread;
@@ -951,15 +977,32 @@ function DebateTab() {
     }
   }
   async function resolve(status: 'open' | 'resolved') {
-    if (!open) return;
+    if (!open?.thread.mine) return;
     const r = await lensRun('philosophy', 'debate-resolve', { id: open.thread.id, status });
     if (r.data.ok) { await openThread(open.thread.id); await loadList(); }
+  }
+  async function togglePublic() {
+    if (!open?.thread.mine) return;
+    const next = open.thread.public !== true;
+    const r = await lensRun('philosophy', 'debate-publish', { id: open.thread.id, public: next });
+    if (r.data.ok) { await openThread(open.thread.id); await loadList(); }
+  }
+  async function removeThread() {
+    if (!open?.thread.mine) return;
+    setBusy(true);
+    const r = await lensRun('philosophy', 'debate-delete', { id: open.thread.id });
+    setBusy(false);
+    if (r.data.ok) {
+      setOpen(null);
+      setConfirmDelete(false);
+      await loadList();
+    }
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] text-zinc-400">Collaborative premise critique — anyone can post support / object / rebut / clarify.</p>
+        <p className="text-[11px] text-zinc-400">Private unless you mark a debate public. Support, object, rebut, or clarify.</p>
         <button
           onClick={() => setShowNew((s) => !s)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold inline-flex items-center gap-1"
@@ -980,6 +1023,15 @@ function DebateTab() {
             placeholder="Central claim under debate"
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 h-16 resize-none"
           />
+          <label className="flex items-start gap-2 text-[11px] text-zinc-300">
+            <input
+              type="checkbox"
+              checked={draft.public}
+              onChange={(e) => setDraft({ ...draft, public: e.target.checked })}
+              className="mt-0.5"
+            />
+            <span>Public: any signed-in user can read and reply</span>
+          </label>
           <div className="flex gap-1.5">
             <select
               value={draft.branch} onChange={(e) => setDraft({ ...draft, branch: e.target.value })}
@@ -1014,7 +1066,10 @@ function DebateTab() {
                 <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-zinc-400">
                   <span>{t.branch}</span>
                   <span>·</span>
+                  <span>{t.public === true ? 'public' : 'private'}</span>
+                  <span>·</span>
                   <span>{t.postCount ?? t.posts?.length ?? 0} posts</span>
+                  {debateByline(t) && <span>· {debateByline(t)}</span>}
                   {t.status === 'resolved' && <span className="text-emerald-400">· resolved</span>}
                 </div>
               </button>
@@ -1026,13 +1081,28 @@ function DebateTab() {
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
             <h4 className="text-sm font-bold text-zinc-100">{open.thread.title}</h4>
             <p className="text-[11px] text-zinc-400 italic mt-0.5">{open.thread.claim}</p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
+              {open.thread.public === true ? 'public' : 'private'}
+              {debateByline(open.thread) ? ` · ${debateByline(open.thread)}` : ''}
+            </p>
+            {open.thread.mine && (
+              <label className="mt-1.5 flex items-start gap-2 text-[11px] text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={open.thread.public === true}
+                  onChange={() => { void togglePublic(); }}
+                  className="mt-0.5"
+                />
+                <span>Public: any signed-in user can read and reply</span>
+              </label>
+            )}
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               {(['support', 'object', 'rebut', 'clarify'] as const).map((s) => (
                 <span key={s} className={cn('text-[9px] px-1.5 py-0.5 rounded border', STANCE_TONE[s])}>
                   {s} {open.tally[s] || 0}
                 </span>
               ))}
-              {open.thread.status === 'resolved' ? (
+              {open.thread.mine && (open.thread.status === 'resolved' ? (
                 <button onClick={() => resolve('open')} className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200">
                   Reopen
                 </button>
@@ -1040,7 +1110,21 @@ function DebateTab() {
                 <button onClick={() => resolve('resolved')} className="ml-auto text-[10px] text-emerald-400 hover:text-emerald-300">
                   Mark resolved
                 </button>
-              )}
+              ))}
+              {open.thread.mine && (confirmDelete ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  <button onClick={() => { void removeThread(); }} disabled={busy} className="text-[10px] text-rose-300 hover:text-rose-200">
+                    Confirm delete
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)} className="text-[10px] text-zinc-400 hover:text-zinc-200">
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} className="ml-auto text-[10px] text-rose-400 hover:text-rose-300">
+                  Delete debate
+                </button>
+              ))}
             </div>
 
             <div className="space-y-1.5 mt-2 max-h-72 overflow-y-auto">
@@ -1051,7 +1135,7 @@ function DebateTab() {
                   <div key={p.id} className={cn('rounded-lg border p-2', STANCE_TONE[p.stance] || STANCE_TONE.clarify)}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-[9px] uppercase font-bold">{p.stance}</span>
-                      <span className="text-[9px] text-zinc-400">{p.author}</span>
+                      {debateByline(p) && <span className="text-[9px] text-zinc-400">{debateByline(p)}</span>}
                     </div>
                     {p.targetPremise && (
                       <p className="text-[10px] text-zinc-400 mb-0.5">re: {p.targetPremise}</p>
