@@ -55,6 +55,7 @@ try {
  */
 
 import express from "express";
+import { installTrustedClientIp } from "./lib/trusted-client-ip.js";
 import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
@@ -36803,13 +36804,16 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
 
 const app = express();
 
-// ---- Trust Proxy ----
-// Required when behind a reverse proxy (nginx, traefik, Docker, Cloudflare).
-// Without this, Express thinks protocol is HTTP → secure cookies are not set,
-// req.ip returns the proxy IP, and rate limiting/CSRF break.
-if (NODE_ENV === "production" || process.env.TRUST_PROXY) {
-  app.set("trust proxy", process.env.TRUST_PROXY || 1);
-}
+// ---- Trust Proxy / client IP (INC-20261010-15) ----
+// Loopback peers only (cloudflared and the Next.js rewrite on this host).
+// TRUST_PROXY=1 as a string is not hop-count 1 — proxy-addr reads it as
+// 0.0.0.1 — so every proxied login was one 127.0.0.1 bucket. The middleware
+// sets req.ip from CF-Connecting-IP or the rightmost non-loopback
+// X-Forwarded-For hop, and logs when it still has to share a bucket.
+// Rate limiters below (authRateLimiter, the general limiter, unauth,
+// upload) and routes/auth.js checkLoginRateLimit / the register cap all
+// key on req.ip, so they follow this. See lib/trusted-client-ip.js.
+installTrustedClientIp(app);
 
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
