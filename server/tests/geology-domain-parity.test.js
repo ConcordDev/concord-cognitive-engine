@@ -140,12 +140,115 @@ describe("geology.usgs-seismic-hazard (DESIGNMAPS ASCE 7-22)", () => {
       riskCategory: 2, siteClass: "D",
     });
     assert.equal(r.ok, true);
-    assert.match(capturedUrl, /asce7-22\.json/);
+    assert.match(capturedUrl, /\/ws\/building-codes\/asce7-22\/calculate/);
+    assert.match(capturedUrl, /riskCategory=II/);
     assert.match(capturedUrl, /latitude=37\.78/);
     assert.match(capturedUrl, /siteClass=D/);
     assert.equal(r.result.ss, 2.106);
+    assert.equal(r.result.sds, 1.404);
+    assert.equal(r.result.sd1, 0.815);
     assert.equal(r.result.sdc, "D");
+    assert.equal(r.result.pga, 0.847);
     assert.equal(r.result.source, "usgs-designmaps-asce7-22");
+  });
+
+  it("parses the calculate-service shape (no top-level pga; Sds/Sd1 from response.data)", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          request: { status: "success", parameters: { riskCategory: "II" } },
+          response: {
+            data: {
+              pgam: 0.59, sms: 1.74, sm1: 1.76,
+              sds: 1.16, sd1: 1.17, sdc: "D",
+              ss: 1.57, s1: 0.6, tl: 12,
+              underlyingData: { pgauh: 0.83, pga84th: 0.59 },
+            },
+          },
+        }),
+      };
+    };
+    const r = await call("usgs-seismic-hazard", ctxA, {
+      latitude: 37.7749, longitude: -122.4194,
+      riskCategory: 2, siteClass: "D",
+    });
+    assert.equal(r.ok, true);
+    assert.match(String(capturedUrl), /https:\/\/earthquake\.usgs\.gov\/ws\/building-codes\/asce7-22\/calculate/);
+    assert.match(String(capturedUrl), /riskCategory=II/);
+    assert.equal(r.result.sds, 1.16);
+    assert.equal(r.result.sd1, 1.17);
+    assert.equal(r.result.pga, 0.83);
+    assert.equal(r.result.fa, null);
+    assert.equal(r.result.fv, null);
+    assert.equal(r.result.riskCategory, "II");
+  });
+
+  it("accepts CalcPanel artifact-shaped input (coords on artifact, not params)", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          response: { data: { sds: 1.16, sd1: 1.17, ss: 1.57, s1: 0.6, sdc: "D", pgam: 0.59 } },
+        }),
+      };
+    };
+    // The panel posts { input: { artifact: { latitude, ... } } }. Dispatch does
+    // not peel that (no artifact.data), so the handler's params are the wrapper.
+    const r = await call("usgs-seismic-hazard", ctxA, {
+      artifact: { latitude: 37.7749, longitude: -122.4194, riskCategory: 2, siteClass: "D" },
+    });
+    assert.equal(r.ok, true);
+    assert.match(String(capturedUrl), /building-codes\/asce7-22\/calculate/);
+    assert.match(String(capturedUrl), /latitude=37\.7749/);
+    assert.match(String(capturedUrl), /riskCategory=II/);
+    assert.match(String(capturedUrl), /siteClass=D/);
+    assert.equal(r.result.sds, 1.16);
+    assert.equal(r.result.sd1, 1.17);
+  });
+
+  it("accepts artifact.data coordinates the way seismicRisk does", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          response: { data: { sds: 0.9, sd1: 0.4, sdc: "C" } },
+        }),
+      };
+    };
+    const r = await call(
+      "usgs-seismic-hazard",
+      ctxA,
+      { data: { latitude: 40.01, longitude: -105.27, riskCategory: "III", siteClass: "C" } },
+      {},
+    );
+    assert.equal(r.ok, true);
+    assert.match(String(capturedUrl), /latitude=40\.01/);
+    assert.match(String(capturedUrl), /riskCategory=III/);
+    assert.match(String(capturedUrl), /siteClass=C/);
+    assert.equal(r.result.sds, 0.9);
+    assert.equal(r.result.sd1, 0.4);
+  });
+
+  it("surfaces a USGS 422 validation detail instead of a generic unreachable error", async () => {
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 422,
+      json: async () => ({ detail: [{ msg: "Input should be 'I', 'II', 'III', 'IV' or 'N'", input: "2" }] }),
+    });
+    const r = await call("usgs-seismic-hazard", ctxA, { latitude: 37.78, longitude: -122.42, riskCategory: 2 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /USGS rejected the lookup/);
+    assert.match(r.error, /Input should be 'I'/);
   });
 
   it("returns clear error on USGS 400 (outside coverage)", async () => {
