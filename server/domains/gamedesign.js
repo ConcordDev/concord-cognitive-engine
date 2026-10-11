@@ -2492,8 +2492,19 @@ export default function registerGameDesignActions(registerLensAction) {
     const dtuId = params.dtuId ? String(params.dtuId) : "";
     if (!dtuId) return { ok: false, error: "dtuId required" };
     const fetched = await ctx.macro.run("dtu", "get", { id: dtuId });
-    if (!fetched?.ok) return { ok: false, error: fetched?.error || "dtu not found" };
-    const dtu = fetched.dtu;
+    let dtu = fetched?.ok ? fetched.dtu : null;
+    if (!dtu) {
+      // dtu.get answers "DTU not found" for a private row the caller may
+      // not read, so a miss does not confirm the id. This action has its
+      // own ownership error and must not reconstruct the level. If the
+      // row is in the store and this user is not the owner, say so.
+      const raw = ctx.state?.dtus?.get?.(dtuId);
+      const owner = raw?.ownerId || raw?.author || raw?.userId || raw?.createdBy;
+      if (raw && owner && owner !== userId && raw.visibility !== "public" && raw.visibility !== "published") {
+        return { ok: false, error: "not_authorized" };
+      }
+      return { ok: false, error: fetched?.error || "dtu not found" };
+    }
     if (dtu.meta?.type !== GD_LEVEL_DESIGN_DTU_TYPE) {
       return { ok: false, error: "not_a_level_design_dtu" };
     }

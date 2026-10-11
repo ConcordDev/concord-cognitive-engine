@@ -281,10 +281,16 @@ const REVIEWED = {
 };
 
 function walk(dir, out = []) {
-  for (const e of readdirSync(dir)) {
-    if (e === "node_modules" || e === "tests" || e === "migrations" || e === ".git") continue;
+  let entries;
+  try { entries = readdirSync(dir); }
+  catch (err) { if (err && err.code === "ENOENT") return out; throw err; }
+  for (const e of entries) {
+    // data/ holds runtime artifacts another test may delete mid-scan.
+    if (e === "node_modules" || e === "tests" || e === "migrations" || e === ".git" || e === "data") continue;
     const p = path.join(dir, e);
-    const st = statSync(p);
+    let st;
+    try { st = statSync(p); }
+    catch (err) { if (err && err.code === "ENOENT") continue; throw err; }
     if (st.isDirectory()) walk(p, out);
     else if (e.endsWith(".js")) out.push(p);
   }
