@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Flame, Loader2, CheckCircle2, Trophy, Target, LogOut } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 interface Challenge {
   slug: string;
@@ -99,7 +100,7 @@ export function EcoChallenges() {
     [load],
   );
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
   const enrolledSlugs = new Set((mine?.enrollments || []).map((e) => e.slug));
   const available = catalog.filter((c) => !enrolledSlugs.has(c.slug));
 

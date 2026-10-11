@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, Plus, Loader2, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Inspection { id: string; permitId: string; kind: string; date: string; inspectorName: string; timeSlot: string; status: string; result: string | null; notes: string }
@@ -12,7 +13,7 @@ export function InspectionsPanel() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ permitId: '', kind: 'framing', date: new Date().toISOString().slice(0, 10), inspectorName: '', timeSlot: 'morning' });
+  const [form, setForm] = useState({ permitId: '', kind: 'framing', date: calendarDateKey(), inspectorName: '', timeSlot: 'morning' });
 
   useEffect(() => { refresh(); }, []);
 

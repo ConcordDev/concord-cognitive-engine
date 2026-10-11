@@ -9,6 +9,75 @@ import cloudflareChat, { DEFAULT_VISION_MODEL } from "./cloudflare-ai-provider.j
 
 const DEFAULT_PROMPT = "Describe this image in detail. Extract key entities, topics, any visible text, and overall context.";
 
+/**
+ * Classify a base64 payload (or data URL) as image / audio / video / unknown.
+ * Vision must not accept audio — a .wav dropped on "Analyze with Vision"
+ * is audio even when the picker filter is bypassed.
+ */
+export function sniffEncodedMedia(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return "empty";
+  const dataUrl = /^data:([^;,]+)/i.exec(raw);
+  if (dataUrl) {
+    const mime = dataUrl[1].toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+  }
+  const b64 = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
+  let buf;
+  try { buf = Buffer.from(b64, "base64"); } catch { return "unknown"; }
+  if (!buf || buf.length < 12) return "unknown";
+  const ascii = (a, b) => buf.toString("ascii", a, b);
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WAVE") return "audio";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "AVI ") return "video";
+  if (buf[0] === 0x89 && ascii(1, 4) === "PNG") return "image";
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return "image";
+  if (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a") return "image";
+  if (ascii(0, 2) === "BM") return "image";
+  if (ascii(0, 4) === "OggS") return "audio";
+  if (ascii(0, 4) === "fLaC") return "audio";
+  if (ascii(0, 3) === "ID3") return "audio";
+  if (buf[0] === 0xFF && (buf[1] & 0xE0) === 0xE0) return "audio";
+  if (buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3) return "audio";
+  if (ascii(4, 8) === "ftyp") {
+    const brand = ascii(8, 12).toLowerCase();
+    if (brand === "avif" || brand === "avis") return "image";
+    if (brand.startsWith("m4a") || brand === "mp4a") return "audio";
+    return "video";
+  }
+  const head = buf.subarray(0, Math.min(buf.length, 256)).toString("utf8").trim().toLowerCase();
+  if (head.startsWith("<svg") || (head.startsWith("<?xml") && head.includes("<svg"))) return "image";
+  return "unknown";
+}
+
+/**
+ * Gate for POST /api/chat vision uploads. Audio (and anything that is not
+ * an image) is rejected before an LLM reply can be produced.
+ * @returns {{ ok: true } | { ok: false, status: number, error: string }}
+ */
+export function visionImageGate(body) {
+  const mode = String(body?.mode || "").trim().toLowerCase();
+  const images = [];
+  if (Array.isArray(body?.images)) {
+    for (const img of body.images) {
+      if (img != null && String(img).length) images.push(String(img));
+    }
+  }
+  if (typeof body?.imageB64 === "string" && body.imageB64) images.push(body.imageB64);
+  if (typeof body?.imageBase64 === "string" && body.imageBase64) images.push(body.imageBase64);
+  if (mode !== "vision" && images.length === 0) return { ok: true };
+  if (images.length === 0) return { ok: false, status: 400, error: "vision requires an image" };
+  for (const img of images) {
+    const kind = sniffEncodedMedia(img);
+    if (kind !== "image") {
+      return { ok: false, status: 415, error: `vision accepts images only (got ${kind})` };
+    }
+  }
+  return { ok: true };
+}
+
 function visionProvider() {
   return String(process.env.BRAIN_VISION_PROVIDER || "").toLowerCase().trim();
 }
@@ -28,6 +97,10 @@ function isCloudflareVision() {
  * @returns {Promise<{ok: boolean, content?: string, source?: string, error?: string, model?: string}>}
  */
 export async function callVision(imageB64, prompt = DEFAULT_PROMPT, opts = {}) {
+  const kind = sniffEncodedMedia(imageB64);
+  if (kind === "audio" || kind === "video") {
+    return { ok: false, error: `vision accepts images only (got ${kind})`, status: 415 };
+  }
   const brain = BRAIN_CONFIG.multimodal;
   const timeoutMs = opts.timeoutMs || brain.timeout || 120000;
 

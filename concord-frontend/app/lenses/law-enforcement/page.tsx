@@ -14,6 +14,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
 import { LawEnforcementOverviewPanel } from '@/components/law-enforcement/LawEnforcementOverviewPanel';
@@ -37,10 +39,11 @@ export default function LawEnforcementLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<ModeTab>('Overview');
+  const modeTabs = omitCommunityRedditViews(MODE_TABS, ['Field Notes']);
 
   useLensCommand(
     [
-      ...MODE_TABS.map((tab, i) => ({
+      ...modeTabs.map((tab, i) => ({
         id: `tab-${tab.id}`,
         keys: String(i + 1),
         description: `Switch to ${tab.label}`,
@@ -63,7 +66,7 @@ export default function LawEnforcementLensPage() {
         crumb="Law Enforcement"
         title={`${current.title}${mode === 'Overview' && who ? `, ${who}` : ''}`}
         subtitle="Dispatch, evidence chain-of-custody, roster, crime mapping, warrants and reports."
-        tabs={MODE_TABS.map((t, i) => ({ id: t.id, label: t.label, keys: String(i + 1), hint: t.hint, icon: t.icon }))}
+        tabs={modeTabs.map((t, i) => ({ id: t.id, label: t.label, keys: String(i + 1), hint: t.hint, icon: t.icon }))}
         activeTab={mode}
         onTab={(id) => setMode(id as ModeTab)}
         cta={{ label: 'Open a case', icon: FolderPlus, onClick: () => setMode('Cases'), title: 'Open a case (N)' }}
@@ -77,9 +80,11 @@ export default function LawEnforcementLensPage() {
           </PipingProvider>
         )}
         {mode === 'Field Notes' && (
-          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <PoliceFeed />
-          </section>
+          <CommunityRedditSlot>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <PoliceFeed />
+            </section>
+          </CommunityRedditSlot>
         )}
       </NorthStarFrame>
     </LensShell>

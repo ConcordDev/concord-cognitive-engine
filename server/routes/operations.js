@@ -8,6 +8,7 @@
 import fs from "fs";
 import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, ingestUrlSchema, ingestTextSchema, ingestSchema, ingestSubmitSchema, researchRunSchema, harnessRunSchema, apiKeyCreateSchema } from "../lib/validators/mutation-schemas.js";
+import { ctxMayReadDtu, dtuFromStoreRow } from "../lib/dtu-read-access.js";
 
 // Security audit 2026-07-30: the real user's role decides the ingest tier —
 // see the /api/ingest/submit route below for why a client-supplied tier is
@@ -43,6 +44,26 @@ export default function registerOperationRoutes(app, {
   _kernelTick,
   _uiJson
 }) {
+
+  // By-id attachment and archive reads. Same owner-only predicate as
+  // GET /api/dtus/:id. A hidden DTU uses the missing-row error so the
+  // response does not confirm the id.
+  function denyIfDtuHidden(req, res, id) {
+    const mem = STATE?.dtus?.get?.(id);
+    if (mem && !ctxMayReadDtu(req, mem)) {
+      res.status(404).json({ ok: false, error: "dtu_not_found" });
+      return true;
+    }
+    if (mem) return false;
+    try {
+      const row = makeCtx(req).db?.prepare("SELECT * FROM dtu_store WHERE id = ?").get(id);
+      if (row && !ctxMayReadDtu(req, dtuFromStoreRow(row))) {
+        res.status(404).json({ ok: false, error: "dtu_not_found" });
+        return true;
+      }
+    } catch { /* table missing — leave the existing path */ }
+    return false;
+  }
 
   // Organs + Growth endpoints
   app.get("/api/organs", (req, res) => {
@@ -1117,6 +1138,7 @@ export default function registerOperationRoutes(app, {
   app.get('/api/dtus/:id/attachments', async (req, res) => {
     try {
       const { id } = req.params;
+      if (denyIfDtuHidden(req, res, id)) return;
       const ctx = makeCtx(req);
       const { db } = ctx;
       if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
@@ -1134,6 +1156,7 @@ export default function registerOperationRoutes(app, {
   app.get('/api/dtus/:id/attachment/:sha256', async (req, res) => {
     try {
       const { id, sha256 } = req.params;
+      if (denyIfDtuHidden(req, res, id)) return;
       const ctx = makeCtx(req);
       const { db } = ctx;
       if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
@@ -1153,12 +1176,16 @@ export default function registerOperationRoutes(app, {
   app.get('/api/dtus/:id/export.dtu', async (req, res) => {
     try {
       const { id } = req.params;
+      if (denyIfDtuHidden(req, res, id)) return;
       const ctx = makeCtx(req);
       const { db } = ctx;
       if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
 
       const dtu = db.prepare('SELECT * FROM dtu_store WHERE id = ?').get(id);
       if (!dtu) return res.status(404).json({ ok: false, error: 'dtu_not_found' });
+      if (!ctxMayReadDtu(req, dtuFromStoreRow(dtu))) {
+        return res.status(404).json({ ok: false, error: 'dtu_not_found' });
+      }
 
       const { packDtu } = await import('../lib/dtu-archive-v2.js');
       const { listAttachments } = await import('../lib/dtu-attachment.js');

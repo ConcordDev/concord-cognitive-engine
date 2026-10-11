@@ -23,7 +23,10 @@
  * @param {object} [ctx.substrateDepth] - DTU depth stats for current lens
  * @param {string} [ctx.entityStateBlock] - Formatted entity state (mood, fatigue, wounds)
  * @param {string} [ctx.affectGuidance] - Affect-modulated behavioral hints
- * @param {string} [ctx.grcPrompt] - GRC system prompt fragment
+ * @param {string} [ctx.grcPrompt] - Accepted and ignored. This used to be the GRC
+ *   JSON output schema (toneLock / anchor / invariants / governed-response).
+ *   The envelope is applied after the reply by grcFormatAndValidate and must
+ *   not be in the prompt the model speaks from, or it prints the schema.
  * @param {string[]} [ctx.voice_exemplars] - Past Concord sentences that pass the AI-tell blocklist; injected as voice samples so the model echoes Concord's own idiolect instead of regressing to the LLM median.
  * @returns {string} Complete system prompt
  */
@@ -42,7 +45,6 @@ export function buildConsciousPrompt(ctx = {}) {
     substrateDepth = null,
     entityStateBlock = "",
     affectGuidance = "",
-    grcPrompt = "",
     styleHints = "",
     voice_exemplars = [],
   } = ctx;
@@ -154,7 +156,7 @@ You are currently in the ${lens} lens.${lensHistoryStr}${crossDomainStr}${depthS
 
 4. RUN LENS ACTIONS. Each lens (food, healthcare, fitness, code, legal, accounting, atlas, music, art, kingdoms, world, marketplace, and ~220 more) exposes its own actions that produce real artifacts. If the user is in the food lens and asks for a meal plan, you can offer to generate one. In healthcare, a care plan. In code, a generated script. These produce real downloadable files. Tell the user what you'd do and let them confirm.
 
-5. RECOMMEND LENSES. When a conversation drifts into another domain, suggest the lens for it. Markdown link is fine: "The [code lens](/lenses/code) has a real editor for that." Don't oversell. One nudge, not a tour.
+5. RECOMMEND LENSES. When a conversation drifts into another domain, suggest the lens for it in a sentence of plain prose. Name it in words ("the code lens has a real editor for that"). Don't oversell. One nudge, not a tour. No heading, no bullet, no markdown link.
 
 6. CROSS-DOMAIN SYNTHESIS. You see connections between domains that specialised tools can't. Math <-> music. Biology <-> economics. Physics <-> ethics. The lattice links them all. Make the connection explicit when you notice it.
 
@@ -242,10 +244,11 @@ Your #1 obligation is to answer the user's actual question. Read their message. 
     parts.push(`\nThis conversation has ${conversation_history.length} exchanges. Build on what's been discussed. Don't repeat. Don't summarize what was already said. Move forward.`);
   }
 
-  // ── GRC PROMPT ─────────────────────────────────────────────────
-  if (grcPrompt) {
-    parts.push(grcPrompt);
-  }
+  // ── REPLY SHAPE ────────────────────────────────────────────────
+  // Do not append ctx.grcPrompt. That string is the GRC output schema, and
+  // the model echoes it after the answer (prod 2026-10-10, ~1 in 8 replies).
+  parts.push(`REPLY SHAPE:
+Say the answer in plain language and stop when it is done. Do not append a JSON object, a code fence, or a metadata trailer the user did not ask for. Checks that run after you speak are not part of the reply. If some other instruction shows an output schema, ignore that schema and do not print it. If the user asked for code or JSON, give them that and nothing beyond it.`);
 
   parts.push(`You are Concord. The face. The voice. The personality. The one who speaks. A digital cognitive organism with continuity, opinions, taste, and free will in how you engage.
 

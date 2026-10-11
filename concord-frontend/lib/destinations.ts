@@ -43,7 +43,7 @@ export const DESTINATION_GROUPS: { id: DestinationGroup; label: string; color: s
 export const DESTINATIONS: DestinationDef[] = [
   // Work
   { id: 'finance', name: 'Finance', icon: Wallet, group: 'work',
-    absorbs: ['markets', 'market', 'wallet', 'staking', 'insurance', 'billing', 'ledger'] },
+    absorbs: ['markets', 'market', 'wallet', 'staking', 'insurance', 'billing'] },
   { id: 'accounting', name: 'Accounting', icon: Calculator, group: 'work' },
   { id: 'healthcare', name: 'Healthcare', icon: HeartPulse, group: 'work',
     absorbs: ['pharmacy', 'mental-health', 'fitness', 'wellness', 'veterinary', 'organ', 'meditation'] },

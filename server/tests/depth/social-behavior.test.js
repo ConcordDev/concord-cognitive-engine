@@ -268,6 +268,19 @@ describe("social — input validation rejections", () => {
   let ctx;
   before(async () => { ctx = await depthCtx("social-validation"); });
 
+  it("deletePost removes the author's post and rejects someone else", async () => {
+    const other = await depthCtx("social-delete-other");
+    const post = (await lensRun("social", "createPost", { params: { body: "delete me please" } }, ctx)).result.post;
+    const denied = await lensRun("social", "deletePost", { params: { postId: post.id } }, other);
+    assert.equal(denied.result.ok, false);
+    assert.match(denied.result.error, /only the author/);
+    const gone = await lensRun("social", "deletePost", { params: { postId: post.id } }, ctx);
+    assert.equal(gone.ok, true);
+    assert.equal(gone.result.deleted, true);
+    const feed = await lensRun("social", "feed", {}, ctx);
+    assert.equal(feed.result.posts.some((p) => p.id === post.id), false);
+  });
+
   it("createPost: rejects an empty post (no body/media/poll/quote)", async () => {
     const bad = await lensRun("social", "createPost", { params: {} }, ctx);
     assert.equal(bad.result.ok, false);

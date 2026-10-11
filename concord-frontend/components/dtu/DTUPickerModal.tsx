@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api/client';
+import { dtuOwnerId } from '@/lib/dtu/origin';
 import { emitEvent } from '@/lib/realtime/event-bus';
 import { TierBadge } from './TierBadge';
 import { Search, X, Loader2, Package } from 'lucide-react';
@@ -11,6 +14,9 @@ import { cn } from '@/lib/utils';
 import type { DTU } from '@/lib/api/generated-types';
 
 type FilterMode = 'user' | 'purchased' | 'all';
+type PickerScope = 'context' | 'mine';
+
+const EMPTY_DTUS: DTU[] = [];
 
 interface DTUPickerModalProps {
   onClose: () => void;
@@ -18,6 +24,11 @@ interface DTUPickerModalProps {
   lens?: string;
   title?: string;
   filter?: FilterMode;
+  /**
+   * `mine` lists GET /api/dtus/paginated?scope=mine (the viewer's own DTUs).
+   * `context` (default) keeps the shared lens library for cite/mail/mesh.
+   */
+  scope?: PickerScope;
 }
 
 export function DTUPickerModal({
@@ -26,16 +37,40 @@ export function DTUPickerModal({
   lens,
   title = 'Insert DTU',
   filter = 'all',
+  scope = 'context',
 }: DTUPickerModalProps) {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterMode>(filter);
   const { user } = useAuth();
-  const { contextDTUs, isLoading } = useLensDTUs({ lens: lens || 'studio' });
+  const userId = user?.id;
+  const mineQuery = useQuery({
+    queryKey: ['dtu-picker', 'mine', lens || 'studio'],
+    enabled: scope === 'mine',
+    queryFn: async () => {
+      const res = await api.get<{ dtus?: DTU[]; items?: DTU[] }>('/api/dtus/paginated', {
+        params: { scope: 'mine', limit: 100, offset: 0 },
+      });
+      return res.data?.dtus || res.data?.items || [];
+    },
+  });
+  const { contextDTUs, isLoading: contextLoading } = useLensDTUs({
+    lens: lens || 'studio',
+    enabled: scope !== 'mine',
+  });
+  const mineRows = mineQuery.data;
+  const source = useMemo(
+    () => (scope === 'mine' ? (mineRows ?? EMPTY_DTUS) : (contextDTUs ?? EMPTY_DTUS)),
+    [scope, mineRows, contextDTUs],
+  );
+  const isLoading = scope === 'mine' ? mineQuery.isLoading : contextLoading;
 
   const filtered = useMemo(() => {
-    const base = (contextDTUs || []).filter((d) => {
+    const owned = scope === 'mine' && userId
+      ? source.filter((d) => dtuOwnerId(d) === userId)
+      : source;
+    const base = owned.filter((d) => {
       if (activeFilter === 'user') {
-        return d.ownerId === user?.id || d.meta?.createdBy === user?.id;
+        return d.ownerId === userId || d.meta?.createdBy === userId;
       }
       if (activeFilter === 'purchased') {
         return !!(d.meta as Record<string, unknown> | undefined)?.purchasedFrom;
@@ -50,7 +85,7 @@ export function DTUPickerModal({
         d.domain?.toLowerCase().includes(q) ||
         d.tags?.some((t) => t.toLowerCase().includes(q))
     );
-  }, [contextDTUs, activeFilter, user?.id, search]);
+  }, [source, scope, activeFilter, userId, search]);
 
   function handleSelect(dtu: DTU) {
     emitEvent('dtu:selected', { dtu, lens });
@@ -120,7 +155,9 @@ export function DTUPickerModal({
               <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">No DTUs found.</div>
+            <div className="py-8 text-center text-sm text-gray-400">
+              {scope === 'mine' ? 'No notes of yours yet.' : 'No DTUs found.'}
+            </div>
           ) : (
             filtered.map((dtu) => (
               <button

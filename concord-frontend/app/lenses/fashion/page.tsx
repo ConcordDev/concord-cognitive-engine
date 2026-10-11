@@ -17,6 +17,7 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { FashionClosetSection, type FashionTabId } from '@/components/fashion/FashionClosetSection';
 import { FashionFeed } from '@/components/fashion/FashionFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -83,10 +84,12 @@ export default function FashionLensPage() {
 
         <section className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <LensFeedButton domain="fashion" label="Met Museum costume archive" />
-          <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-100">Fashion community chatter (Reddit)</h2>
-            <FashionFeed />
-          </div>
+          <CommunityRedditSlot>
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h2 className="mb-3 text-sm font-semibold text-zinc-100">Fashion community chatter (Reddit)</h2>
+              <FashionFeed />
+            </div>
+          </CommunityRedditSlot>
         </section>
       </NorthStarFrame>
     </LensShell>

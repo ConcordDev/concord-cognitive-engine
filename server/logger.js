@@ -8,6 +8,17 @@
 
 const LOG_BUFFER_MAX = 10000;
 const logBuffer = [];
+let _onErrorLog = null;
+let _inErrorObserver = false;
+
+/**
+ * Error/fatal lines are forwarded to the repair cortex. The flag stops
+ * observe()'s own logging from re-entering this hook.
+ * @param {Function|null} fn
+ */
+export function setErrorLogObserver(fn) {
+  _onErrorLog = typeof fn === "function" ? fn : null;
+}
 
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
@@ -123,6 +134,13 @@ function log(level, source, message, meta = {}) {
   if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}${tail}`);
   else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}${tail}`);
   else console.log(`${prefix} ${safeMessage}${tail}`);
+
+  if ((level === "error" || level === "fatal") && _onErrorLog && !_inErrorObserver) {
+    _inErrorObserver = true;
+    try { _onErrorLog(level, safeSource, safeMessage, safeMeta); }
+    catch { /* observer must never break logging */ }
+    finally { _inErrorObserver = false; }
+  }
 }
 
 /**

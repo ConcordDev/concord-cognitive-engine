@@ -13,6 +13,7 @@
 // trigger a skill; free-form questions go to the brain.
 
 import { LENS_REGISTRY } from '@/lib/lens-registry';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 export interface ConKayVizSpec {
   type: 'metrics' | 'series' | 'bars' | 'graph';
@@ -203,10 +204,10 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        const key = calendarDateKey(d);
         buckets.push({
           x: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-          y: dtus.filter((x) => (x.createdAt || '').slice(0, 10) === key).length,
+          y: dtus.filter((x) => x.createdAt && calendarDateKey(new Date(x.createdAt)) === key).length,
         });
       }
       const total14 = buckets.reduce((s, b) => s + b.y, 0);

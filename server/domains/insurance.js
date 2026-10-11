@@ -49,6 +49,15 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// Snapshot bounds for inheritPacts and insAms. Creates reject before the
+// row is stored. Premium totals and payout splits are not rewritten;
+// installment history only drops the oldest rows past INSTALLMENT_CAP.
+export const PACT_CAP = 200;
+export const INSTALLMENT_CAP = 240;
+export const AMS_LIST_CAP = 200;
+export const STATEMENT_LINE_CAP = 200;
+export const FNOL_TIMELINE_CAP = 200;
+
 export default function registerInsuranceActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
@@ -535,6 +544,12 @@ export default function registerInsuranceActions(register) {
   const insNow = () => new Date().toISOString();
   const insAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const insListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  function pushCapped(map, userId, row) {
+    const arr = insListB(map, userId);
+    if (arr.length >= AMS_LIST_CAP) return false;
+    arr.push(row);
+    return true;
+  }
   const insNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const insClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const insDay = (v) => insClean(v, 10).slice(0, 10);
@@ -1227,7 +1242,9 @@ export default function registerInsuranceActions(register) {
       premiumPaidSparks: freq === "upfront" ? premiumSparks : 0,
       nextPremiumDueAt: freq === "upfront" ? null : now + intervalDays * PACT_DAY,
     };
-    pactBucket(s.pacts, userId).push(pact);
+    const written = pactBucket(s.pacts, userId);
+    if (written.length >= PACT_CAP) return { ok: false, error: "pact_cap" };
+    written.push(pact);
     saveInsState();
     return { ok: true, result: { pact } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1316,6 +1333,9 @@ export default function registerInsuranceActions(register) {
     pact.premiumPaidSparks = (pact.premiumPaidSparks || 0) + pact.premiumSparks;
     pact.premiumInstallments = pact.premiumInstallments || [];
     pact.premiumInstallments.push({ amountSparks: pact.premiumSparks, paidAt: pactNow() });
+    if (pact.premiumInstallments.length > INSTALLMENT_CAP) {
+      pact.premiumInstallments.splice(0, pact.premiumInstallments.length - INSTALLMENT_CAP);
+    }
     const intervalDays = pact.premiumFrequency === "weekly" ? 7 : 30;
     pact.nextPremiumDueAt = pactNow() + intervalDays * PACT_DAY;
     saveInsState();
@@ -1573,7 +1593,7 @@ export default function registerInsuranceActions(register) {
       claimsServiceScore: Math.max(0, Math.min(10, insNum(params.claimsServiceScore))),
       createdAt: insNow(),
     };
-    insListB(s.carriers, insAid(ctx)).push(carrier);
+    if (!pushCapped(s.carriers, insAid(ctx), carrier)) return { ok: false, error: "carrier_cap" };
     saveInsState();
     return { ok: true, result: { carrier } };
   });
@@ -1688,6 +1708,10 @@ export default function registerInsuranceActions(register) {
         createdAt: insNow(),
       });
     }
+    if (pipeline.length > AMS_LIST_CAP) {
+      pipeline.sort((a, b) => a.daysUntil - b.daysUntil);
+      pipeline.length = AMS_LIST_CAP;
+    }
     s.renewalPipeline.set(userId, pipeline);
     saveInsState();
     return {
@@ -1776,7 +1800,7 @@ export default function registerInsuranceActions(register) {
       timeline: [{ at: insNow(), event: "FNOL received", actor: "intake" }],
     };
     if (assigned) fnol.timeline.push({ at: insNow(), event: `Routed to ${assigned} (${queue})`, actor: "router" });
-    insListB(s.fnol, userId).push(fnol);
+    if (!pushCapped(s.fnol, userId, fnol)) return { ok: false, error: "fnol_cap" };
     saveInsState();
     return { ok: true, result: { fnol } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1813,6 +1837,9 @@ export default function registerInsuranceActions(register) {
       fnol.status = params.status;
       fnol.timeline.push({ at: insNow(), event: `Status → ${params.status}`, actor: "adjuster" });
     }
+    if (fnol.timeline.length > FNOL_TIMELINE_CAP) {
+      fnol.timeline.splice(0, fnol.timeline.length - FNOL_TIMELINE_CAP);
+    }
     saveInsState();
     return { ok: true, result: { fnol } };
   });
@@ -1824,6 +1851,7 @@ export default function registerInsuranceActions(register) {
     if (!carrier) return { ok: false, error: "carrier required" };
     const lines = Array.isArray(params.lines) ? params.lines : [];
     if (!lines.length) return { ok: false, error: "statement lines required" };
+    if (lines.length > STATEMENT_LINE_CAP) return { ok: false, error: "statement_line_cap" };
     const norm = lines.map((l) => ({
       policyNumber: insClean(l.policyNumber, 60),
       premium: Math.max(0, insNum(l.premium)),
@@ -1837,7 +1865,7 @@ export default function registerInsuranceActions(register) {
       importedAt: insNow(),
       reconciled: false,
     };
-    insListB(s.statements, insAid(ctx)).push(statement);
+    if (!pushCapped(s.statements, insAid(ctx), statement)) return { ok: false, error: "statement_cap" };
     saveInsState();
     return { ok: true, result: { statement } };
   });
@@ -1949,7 +1977,7 @@ export default function registerInsuranceActions(register) {
       issuedAt: insNow(),
       revoked: false,
     };
-    insListB(s.certificates, userId).push(cert);
+    if (!pushCapped(s.certificates, userId, cert)) return { ok: false, error: "certificate_cap" };
     saveInsState();
     return { ok: true, result: { certificate: cert } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -2112,7 +2140,7 @@ export default function registerInsuranceActions(register) {
       createdAt: insNow(),
       audit: [{ at: insNow(), event: "Envelope created; awaiting signatures (signers are not emailed)" }],
     };
-    insListB(s.envelopes, userId).push(envelope);
+    if (!pushCapped(s.envelopes, userId, envelope)) return { ok: false, error: "envelope_cap" };
     saveInsState();
     return { ok: true, result: { envelope } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

@@ -1,7 +1,9 @@
 // Contract tests for server/domains/anon.js — the privacy-analytics
-// macros plus the real X25519 + AES-256-GCM E2E pseudonymous messaging
-// substrate (identity, safety numbers, group conversations, sealed
-// sender, server-side ephemeral sweeping, disappearing defaults).
+// macros plus pseudonymous messaging (identity, safety numbers, group
+// conversations, sealed sender, server-side ephemeral sweeping,
+// disappearing defaults). The default path stores ciphertext but Concord
+// holds both private keys and sendMessage receives plaintext. Client-held
+// keys are covered in anon-client-e2e.test.js.
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -20,6 +22,7 @@ before(() => { registerAnonActions(register); });
 // Fresh substrate state between tests.
 beforeEach(() => {
   globalThis._concordSTATE = {};
+  delete process.env.CONCORD_ANON_CLIENT_E2E;
 });
 
 const ctxA = { actor: { userId: "anon_user_a" }, userId: "anon_user_a" };
@@ -137,8 +140,8 @@ describe("anon — verified key exchange / safety numbers", () => {
   });
 });
 
-describe("anon — E2E encrypted direct conversations", () => {
-  it("round-trips an encrypted message — plaintext never stored", () => {
+describe("anon — server-sealed direct conversations", () => {
+  it("round-trips a server-sealed message — plaintext is not stored", () => {
     const a = call("identity", ctxA, null, {}).result;
     const b = call("identity", ctxB, null, {}).result;
     const conv = call("startConversation", ctxA, null, { peerAnonIds: [b.anonId] });
