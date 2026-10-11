@@ -888,15 +888,23 @@ export async function fetchHtmlFallback(url, options = {}) {
   // timer delay or read limit is resource exhaustion — both sit under the
   // module ceilings (10s, 1.5MB).
   let timeoutMs = Number(options.timeout);
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > FETCH_FALLBACK_TIMEOUT_MS) {
-    timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
-  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
   let maxBytes = Math.floor(Number(options.maxBytes));
   if (!Number.isFinite(maxBytes) || maxBytes <= 0 || maxBytes > FETCH_FALLBACK_MAX_BYTES) {
     maxBytes = FETCH_FALLBACK_MAX_BYTES;
   }
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  // The timer delay is a resource-exhaustion sink. The call that receives a
+  // caller-supplied number sits in the true branch of `< ceiling`; the other
+  // branch passes the constant. An assignment after `>` is not enough — the
+  // use has to be in the checked branch.
+  let timer;
+  if (timeoutMs < FETCH_FALLBACK_TIMEOUT_MS) {
+    timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  } else {
+    timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
+    timer = setTimeout(() => ctrl.abort(), FETCH_FALLBACK_TIMEOUT_MS);
+  }
   try {
     const res = await fetchPublicUrl(url, {
       signal: ctrl.signal,
