@@ -8,6 +8,7 @@
 // Exact for the mesh (a polyhedron); the mesh's chordal deviation from the
 // B-rep is the error. Works with holes and several loops (wheel wells).
 
+// @sync-fs-ok: readStlFile feeds the synchronous aero solver (aero-drag.js run()). One read per content hash, then a 4-entry cache. The solver contract is sync, so this load cannot move to fs.promises without making the whole solve async.
 import fs from "node:fs";
 
 /** Triangles [[a, b, c], ...] of a binary STL buffer (vertices only; normals recomputed from the winding). */
