@@ -10,8 +10,17 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useState } from 'react';
 import { Box, Download, FileText, Loader2 } from 'lucide-react';
-import { designFileUrl, formatBytes, type DesignDrawing, type DesignModel3d } from '@/lib/conkay/designs-api';
+import { designFileUrl, formatBytes, type DesignDrawing, type DesignModel3d, type DesignSnapshot } from '@/lib/conkay/designs-api';
 import { PANEL } from './design-styles';
+
+const AssemblyView = dynamic(() => import('./AssemblyViewer').then((m) => m.AssemblyViewer), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-sm text-slate-400">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Loading assembly…
+    </div>
+  ),
+});
 
 const StlViewer = dynamic(() => import('./StlViewer'), {
   ssr: false,
@@ -22,7 +31,7 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
   ),
 });
 
-export function DrawingsPanel({ designId, drawings, model3d }: { designId: string; drawings: DesignDrawing[]; model3d: DesignModel3d | null }) {
+export function DrawingsPanel({ designId, drawings, model3d, assembly = null }: { designId: string; drawings: DesignDrawing[]; model3d: DesignModel3d | null; assembly?: DesignSnapshot['assembly'] }) {
   const sheets = drawings.flatMap((d) => d.files.filter((f) => f.kind === 'svg').map((f) => ({ ...f, drawing: d })));
   const [sheet, setSheet] = useState(0);
   const [show3d, setShow3d] = useState(false);
@@ -30,7 +39,7 @@ export function DrawingsPanel({ designId, drawings, model3d }: { designId: strin
   const onModelError = useCallback((m: string) => setModelError(m), []);
   const current = sheets[sheet];
 
-  if (!sheets.length && !model3d) {
+  if (!sheets.length && !model3d && !assembly) {
     return (
       <section className={PANEL} aria-label="Drawings">
         <h2 className="text-sm font-semibold">Drawings</h2>
@@ -79,6 +88,12 @@ export function DrawingsPanel({ designId, drawings, model3d }: { designId: strin
             </span>
           </figcaption>
         </figure>
+      )}
+      {assembly && (
+        <div className="rounded-xl border border-white/10 bg-[#0c1218] p-2">
+          <h3 className="mb-2 text-xs font-medium text-slate-300">Assembly</h3>
+          <AssemblyView assembly={assembly} />
+        </div>
       )}
       {model3d && (
         <div className="flex flex-col gap-2">

@@ -72,7 +72,20 @@ function DesignBody({ d }: { d: DesignSnapshot }) {
         </div>
       </section>
 
-      <DrawingsPanel designId={d.id} drawings={d.drawings} model3d={d.model3d} />
+      <DrawingsPanel designId={d.id} drawings={d.drawings} model3d={d.model3d} assembly={d.assembly} />
+      {d.assembly?.checks && (
+        <section className={PANEL} aria-label="Packaging fit">
+          <h2 className="text-sm font-semibold">Packaging fit</h2>
+          <p className="mt-1 text-[11px] text-slate-400">{d.assembly.verification?.statement}</p>
+          <ul className="mt-2 space-y-1 text-xs">
+            {d.assembly.checks.map((c) => (
+              <li key={c.id} className={c.status === 'fail' ? 'text-rose-300' : c.status === 'warn' ? 'text-amber-200' : 'text-emerald-200'}>
+                <span className="font-medium uppercase">{c.status}</span> {c.id} — {c.detail}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <div className="flex min-w-0 flex-col gap-4">

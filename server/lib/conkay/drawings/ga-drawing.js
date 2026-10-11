@@ -86,6 +86,7 @@ export function titleBlock(items, t, [W]) {
  *          dims: { id: { valueM, basis } }, dimRows: [...], bom: [...], notes: [...] }
  */
 export function buildGaSheets(input) {
+  const sheetCount = input.sheet3 ? 3 : 2;
   const k = 1000 / input.scale; // sheet mm per model metre
   const [W, H] = SHEET_A3;
   const { min, max } = input.body;
@@ -156,14 +157,20 @@ export function buildGaSheets(input) {
     "choice or derivation, S = sourced (cited). Values and bases: sheet 2.",
     "Hidden-line projection of the B-rep body (OpenCascade polygonal HLR); edges within the",
     `tessellation deflection (${input.toleranceText}). Tyres and axles: phantom / centre lines.`,
-    "Outer skin only: no doors, glazing openings, closures or structure. Front view: hidden lines omitted.",
+    input.cutaway?.length
+      ? "Cutaway lines (thin) are the assembly projection: occupants, openings, controls and powertrain envelopes."
+      : "Outer skin only: no doors, glazing openings, closures or structure. Front view: hidden lines omitted.",
     "Revision = hash of the model this sheet was generated from. Any change to the body,",
     "layout or BOM gives a new revision; a sheet whose revision differs from the model's",
     "current one is superseded.",
     ...input.notes.slice(0, 2),
   ];
   n1.forEach((s, i) => text(s1, nx, ny + 48 - i * 4.2, fitText(s, 2.3, 178), 2.3));
-  titleBlock(s1, { ...input, sheet: "1 of 2" }, SHEET_A3);
+  for (const c of input.cutaway || []) {
+    const pts = (c.pts || []).map(side);
+    if (pts.length > 1) line(s1, pts, c.style || "thin", c.w);
+  }
+  titleBlock(s1, { ...input, sheet: `1 of ${sheetCount}` }, SHEET_A3);
 
   // ---- sheet 2: BOM, dimension table, notes
   const s2 = [];
@@ -210,7 +217,82 @@ export function buildGaSheets(input) {
     y -= 4;
     if (y < BORDER + 52) break;
   }
-  titleBlock(s2, { ...input, sheet: "2 of 2" }, SHEET_A3);
+  titleBlock(s2, { ...input, sheet: `2 of ${sheetCount}` }, SHEET_A3);
 
-  return [{ size: SHEET_A3, items: s1 }, { size: SHEET_A3, items: s2 }];
+  const sheets = [{ size: SHEET_A3, items: s1 }, { size: SHEET_A3, items: s2 }];
+  if (input.sheet3) sheets.push(input.sheet3);
+  return sheets;
+}
+
+/**
+ * Sheet 3, projected from the assembly (not from the kernel solid).
+ * Side cutaway, plan of the seat H-points, and the dimension / fit table.
+ * meta: { scale, number, revision, modelHash, status, generated, model, title }
+ */
+export function buildPackagingSheet(assembly, meta) {
+  const k = 1000 / meta.scale;
+  const [W, H] = SHEET_A3;
+  const b = assembly.surface.mesh.bounds;
+  const items = [];
+  items.push({ t: "rect", x: BORDER, y: BORDER, w: W - 2 * BORDER, h: H - 2 * BORDER, lw: 0.7 });
+  const X0 = 28, G = 168;
+  const side = ([x, z]) => [X0 + (x - b.min[0]) * k, G + z * k];
+  const stations = assembly.surface.mesh.stations || [];
+  if (stations.length > 1) {
+    const roof = stations.map((st) => side([st.x, st.roofZ]));
+    const floor = [...stations].reverse().map((st) => side([st.x, st.floorZ]));
+    line(items, [...roof, ...floor, roof[0]], "solid");
+    const belt = stations.map((st) => side([st.x, st.beltZ]));
+    line(items, belt, "thin");
+  }
+  text(items, X0, G + (b.max[2] - 0) * k + 8, "SIDE CUTAWAY (assembly projection, left side)", 2.8, "start", true);
+  for (const c of assembly.components) {
+    if (c.mesh?.outline) line(items, c.mesh.outline.map((p) => side(p)), "thin");
+    if (!c.half || !["occupant", "seat", "control", "powertrain", "cooling", "vision", "volume"].includes(c.role)) continue;
+    if (c.id === "SPARE") continue;
+    const x0 = c.placement.x - c.half[0], x1 = c.placement.x + c.half[0];
+    const z0 = c.placement.z - c.half[2], z1 = c.placement.z + c.half[2];
+    line(items, [side([x0, z0]), side([x1, z0]), side([x1, z1]), side([x0, z1]), side([x0, z0])], "thin");
+  }
+  const front = assembly.components.find((c) => c.id === "AXLE_FRONT");
+  const rear = assembly.components.find((c) => c.id === "AXLE_REAR");
+  const wbM = rear && front ? rear.placement.x - front.placement.x : null;
+  if (wbM != null) {
+    const a = side([front.placement.x, 0])[0], b2 = side([rear.placement.x, 0])[0];
+    dimH(items, a, b2, G, G - 10, `${Math.round(wbM * 1000)} D`);
+  }
+  // plan of the H-points
+  const PY = 78;
+  const plan = ([x, y]) => [X0 + (x - b.min[0]) * k, PY + y * k];
+  text(items, X0, PY + 28, "PLAN - SEAT H-POINTS (assembly)", 2.8, "start", true);
+  line(items, [plan([b.min[0], 0]), plan([b.max[0], 0])], "centre");
+  for (const c of assembly.components.filter((c) => c.role === "occupant" || c.role === "seat")) {
+    const p = plan([c.placement.x, c.placement.y]);
+    items.push({ t: "circle", cx: p[0], cy: p[1], r: c.role === "occupant" ? 1.6 : 2.4, style: "thin" });
+    text(items, p[0] + 2, p[1] + 1, c.id, 1.8);
+  }
+  // table
+  let y = H - BORDER - 8;
+  const x0 = 250;
+  text(items, x0, y, "PACKAGING DIMENSIONS AND FIT", 3, "start", true);
+  y -= 5;
+  for (const row of assembly.standards || []) {
+    text(items, x0, y, fitText(`${row.id}  ${row.valueMm} ${row.unit}  ${row.state}  ${row.standard}`, 2, 155), 2);
+    y -= 3.6;
+  }
+  y -= 2;
+  text(items, x0, y, "FIT CHECKS", 2.8, "start", true);
+  y -= 4.5;
+  for (const c of assembly.checks || []) {
+    text(items, x0, y, fitText(`${c.status.toUpperCase()}  ${c.id}  ${c.detail || ""}`, 1.9, 155), 1.9);
+    y -= 3.4;
+    if (y < BORDER + 52) break;
+  }
+  text(items, x0, BORDER + 50, "Projected from the assembly. Envelopes are not kernel solids.", 1.8);
+  titleBlock(items, { ...meta, sheet: "3 of 3", title: meta.title || "Packaging and occupant layout" }, SHEET_A3);
+  return {
+    size: SHEET_A3,
+    items,
+    projected: { wheelbaseMm: wbM == null ? null : Math.round(wbM * 1000) },
+  };
 }

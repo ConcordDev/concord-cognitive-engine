@@ -37,6 +37,7 @@ import "./physics/solvers/tub-fit.js";
 import "./physics/solvers/aero-drag.js";
 import "./physics/solvers/aero-shape.js";
 import "./physics/solvers/ga-drawing.js";
+import "./physics/solvers/vehicle-assembly.js";
 import "./physics/solvers/assembly-ga-drawing.js";
 import "./physics/solvers/packaging.js";
 import "./physics/solvers/vehicle-acceptance.js";

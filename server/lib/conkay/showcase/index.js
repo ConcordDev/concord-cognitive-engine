@@ -204,7 +204,7 @@ export async function buildCarSnapshot() {
     snapshot: {
       id: "car", brief: CAR_BRIEF,
       headline: { verdict: rep.verdict, status: rep.status, topSpeed: ts.mph != null ? { mph: r(ts.mph, 1), kmh: r(ts.kmh, 1), status: ts.status, basis: ts.basis } : null },
-      disclaimers: [SCREENING_DISCLAIMER, "Aerodynamics is a component drag build-up and 2D panel screening, not CFD or wind-tunnel data.", "Torsional stiffness assumes rigid joints."],
+      disclaimers: [SCREENING_DISCLAIMER, "Aerodynamics is a component drag build-up and 2D panel screening, not CFD or wind-tunnel data.", "Torsional stiffness is a range: the main solve uses rigid joints (an upper bound). Bond-line springs are computed from the sourced adhesive moduli, and joint-wall distortion is bounded at the EN 1993-1-8 rigid-joint limit (an estimate for this bonded aluminium tub, not a measured stiffness)."],
       caveats: rep.caveats || [], failures: rep.failures || [],
       checks, checkCounts: countStatuses(checks), perPartRuns: countStatuses(perPart.map(checkRow)),
       values, mass: massSummary({
