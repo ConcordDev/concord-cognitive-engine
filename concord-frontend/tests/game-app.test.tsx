@@ -17,7 +17,26 @@ vi.mock('@tanstack/react-query', () => ({
   },
   useMutation: () => ({ mutate: vi.fn() }),
 }));
-vi.mock('@/lib/hooks/use-lens-data', () => ({ useLensData: () => ({ create: vi.fn(async () => ({})), update: vi.fn(async () => ({})) }) }));
+vi.mock('@/lib/hooks/use-lens-data', () => ({
+  useLensData: () => ({
+    items: [{
+      id: 'lart_q1',
+      title: 'Quest',
+      ownerId: 'u1',
+      data: { name: 'Quest', description: 'Do it', xpReward: 100, difficulty: 'medium', type: 'challenge', status: 'available', icon: '🎯' },
+      meta: { status: 'active', visibility: 'private', tags: ['challenge'] },
+      createdAt: '',
+      updatedAt: '',
+      version: 1,
+    }],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    create: vi.fn(async () => ({ ok: true })),
+    update: vi.fn(async () => ({ ok: true })),
+  }),
+}));
 vi.mock('@/lib/api/client', () => ({ api: { get: vi.fn(), post: vi.fn(async () => ({ data: {} })) } }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: vi.fn() }));
 vi.mock('@/hooks/useLensCommand', () => ({

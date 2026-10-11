@@ -176,8 +176,20 @@ function casSimplify(node) {
     if (isNum(a, 0) || isNum(b, 0)) return N.num(0);
     if (isNum(a, 1)) return b;
     if (isNum(b, 1)) return a;
-    if (isNum(a, -1)) return casSimplify(N.neg(b));
-    if (isNum(b, -1)) return casSimplify(N.neg(a));
+    // Unary minus. N.neg(x) is exactly (-1)*x, so casSimplify(N.neg(b))
+    // recurses forever. Fold (-1)*(c*expr) → (-c)*expr, otherwise keep
+    // the canonical (-1)*expr node.
+    if (isNum(a, -1)) {
+      if (b.k === "num") return N.num(-b.v);
+      if (b.k === "op" && b.op === "*" && b.a.k === "num") {
+        return casSimplify(N.mul(N.num(-b.a.v), b.b));
+      }
+      return { k: "op", op: "*", a, b };
+    }
+    if (isNum(b, -1)) {
+      if (a.k === "num") return N.num(-a.v);
+      return casSimplify(N.mul(N.num(-1), a));
+    }
     // x * x → x^2
     if (casEqual(a, b)) return N.pow(a, N.num(2));
     // fold coefficient: num * (num * x) → (num*num) * x
@@ -196,7 +208,115 @@ function casSimplify(node) {
     if (isNum(a, 1)) return N.num(1);
     if (isNum(a, 0)) return N.num(0);
   }
-  return { k: "op", op, a, b };
+  const simplified = { k: "op", op, a, b };
+  if (op === "+" || op === "-") return casCollectLikeTerms(simplified);
+  return simplified;
+}
+
+// Combine coefficients of identical summands (2x + 3x → 5x, x - x → 0).
+// Returns `node` unchanged when nothing shares a key, so unrelated sums
+// keep their original shape. Algebraically equivalent; never introduces NaN.
+function casCollectLikeTerms(node) {
+  const flat = [];
+  casFlattenSum(node, 1, flat);
+  if (flat.length < 2) return node;
+
+  const groups = [];
+  const index = new Map();
+  let merged = false;
+  for (const { sign, term } of flat) {
+    const parts = casTermParts(term);
+    if (!parts) return node;
+    const signed = casSnapInt(sign * parts.coeff);
+    if (!Number.isFinite(signed)) return node;
+    const prev = index.get(parts.key);
+    if (prev !== undefined) {
+      groups[prev].coeff = casSnapInt(groups[prev].coeff + signed);
+      merged = true;
+    } else {
+      index.set(parts.key, groups.length);
+      groups.push({ coeff: signed, rest: parts.rest });
+    }
+  }
+  if (!merged) return node;
+
+  const alive = groups.filter((g) => Math.abs(g.coeff) > 1e-9);
+  if (alive.length === 0) return N.num(0);
+
+  let acc = null;
+  for (const g of alive) {
+    const negative = g.coeff < 0;
+    const magnitude = casCoeffTerm(Math.abs(g.coeff), g.rest);
+    if (!acc) acc = negative ? casCoeffTerm(g.coeff, g.rest) : magnitude;
+    else if (negative) acc = { k: "op", op: "-", a: acc, b: magnitude };
+    else acc = { k: "op", op: "+", a: acc, b: magnitude };
+  }
+  return acc;
+}
+
+function casFlattenSum(node, sign, out) {
+  if (node && node.k === "op" && node.op === "+") {
+    casFlattenSum(node.a, sign, out);
+    casFlattenSum(node.b, sign, out);
+    return;
+  }
+  if (node && node.k === "op" && node.op === "-") {
+    casFlattenSum(node.a, sign, out);
+    casFlattenSum(node.b, -sign, out);
+    return;
+  }
+  out.push({ sign, term: node });
+}
+
+function casSnapInt(v) {
+  if (!Number.isFinite(v)) return v;
+  const n = Math.round(v);
+  return Math.abs(v - n) < 1e-9 ? n : v;
+}
+
+// Pull a numeric coefficient out of a product. null rest = pure constant.
+function casTermParts(node) {
+  const { coeff, factors } = casSplitProduct(node);
+  if (!Number.isFinite(coeff)) return null;
+  if (factors.length === 0) return { coeff, key: "1", rest: null };
+  const key = factors.map(casStructKey).sort().join("*");
+  let rest = factors[0];
+  for (let i = 1; i < factors.length; i++) rest = { k: "op", op: "*", a: rest, b: factors[i] };
+  return { coeff, key, rest };
+}
+
+function casSplitProduct(node) {
+  if (!node) return { coeff: 1, factors: [] };
+  if (node.k === "num") return { coeff: node.v, factors: [] };
+  if (node.k === "op" && node.op === "*") {
+    const L = casSplitProduct(node.a);
+    const R = casSplitProduct(node.b);
+    return { coeff: L.coeff * R.coeff, factors: L.factors.concat(R.factors) };
+  }
+  return { coeff: 1, factors: [node] };
+}
+
+function casStructKey(node) {
+  if (!node) return "?";
+  if (node.k === "num") return `n:${node.v}`;
+  if (node.k === "sym") return `s:${node.name}`;
+  if (node.k === "fn") return `f:${node.fn}(${casStructKey(node.arg)})`;
+  if (node.k === "op") {
+    const ka = casStructKey(node.a);
+    const kb = casStructKey(node.b);
+    if (node.op === "*" || node.op === "+") {
+      return ka <= kb ? `${node.op}(${ka},${kb})` : `${node.op}(${kb},${ka})`;
+    }
+    return `${node.op}(${ka},${kb})`;
+  }
+  return "?";
+}
+
+function casCoeffTerm(coeff, rest) {
+  const c = casSnapInt(coeff);
+  if (!rest) return N.num(c);
+  if (Math.abs(c - 1) < 1e-12) return rest;
+  return { k: "op", op: "*", a: N.num(c), b: rest };
 }
 
 function casEqual(x, y) {
@@ -228,8 +348,13 @@ function casToString(node) {
     if (child.k === "num" && child.v < 0) return `(${str})`;
     return str;
   };
-  // -1 * x → -x
-  if (node.op === "*" && isNum(node.a, -1)) return `-${wrap(node.b, "r")}`;
+  // (-c) * x → -c * x, and -1 * x → -x
+  if (node.op === "*" && node.a.k === "num" && node.a.v < 0) {
+    const mag = -node.a.v;
+    const body = wrap(node.b, "r");
+    if (Math.abs(mag - 1) < 1e-12) return `-${body}`;
+    return `-${casToString(N.num(mag))} * ${body}`;
+  }
   return `${wrap(node.a, "l")} ${node.op} ${wrap(node.b, "r")}`;
 }
 
@@ -413,7 +538,8 @@ const casRound = (v) => Math.round(v * 1e9) / 1e9;
 function getMathState() {
   const STATE = globalThis._concordSTATE;
   if (!STATE) return null;
-  if (!STATE.mathCAS) STATE.mathCAS = new Map(); // userId → { history:[] }
+  // mathCAS is in LENS_STATE_KEYS. History is already capped at 200 per user.
+  if (!(STATE.mathCAS instanceof Map)) STATE.mathCAS = new Map(); // userId → { history:[] }
   return STATE.mathCAS;
 }
 function mathUserId(ctx) {

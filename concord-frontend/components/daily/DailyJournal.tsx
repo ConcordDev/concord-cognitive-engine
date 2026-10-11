@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BookHeart, Sparkles, Search, Trash2, Loader2, CalendarHeart, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Entry {
@@ -34,8 +35,8 @@ export function DailyJournal() {
   const refresh = useCallback(async () => {
     const [el, otd, d, p, mt] = await Promise.all([
       lensRun('daily', 'entry-list', {}),
-      lensRun('daily', 'on-this-day', {}),
-      lensRun('daily', 'daily-dashboard', {}),
+      lensRun('daily', 'on-this-day', { date: calendarDateKey() }),
+      lensRun('daily', 'daily-dashboard', { today: calendarDateKey() }),
       lensRun('daily', 'prompt-today', {}),
       lensRun('daily', 'mood-trend', {}),
     ]);
@@ -51,6 +52,7 @@ export function DailyJournal() {
   async function saveEntry() {
     if (!draft.body.trim()) return;
     await lensRun('daily', 'entry-create', {
+      date: calendarDateKey(),
       body: draft.body.trim(), mood: draft.mood,
       tags: draft.tags.split(',').map(t => t.trim()).filter(Boolean),
     });

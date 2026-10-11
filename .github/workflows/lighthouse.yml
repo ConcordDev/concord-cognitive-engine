@@ -16,18 +16,25 @@ env:
 permissions:
   contents: read
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lighthouse:
     name: Lighthouse Performance Audit
     runs-on: ubuntu-latest
-    needs: []
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'

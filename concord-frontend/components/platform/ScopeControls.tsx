@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { SCOPE_PAGE_SIZE, scopeDtuQuery } from '@/lib/dtu/list-pages';
 import {
   Globe,
   Store,
@@ -147,6 +148,11 @@ function DTUCard({
 
 function ScopeControls() {
   const [activeScope, setActiveScope] = useState<ScopeFilter>('all');
+  const [page, setPage] = useState(0);
+  const selectScope = (scope: ScopeFilter) => {
+    setActiveScope(scope);
+    setPage(0);
+  };
 
   const { data: metricsRes } = useQuery({
     queryKey: ['scope-metrics'],
@@ -155,18 +161,18 @@ function ScopeControls() {
   });
 
   const { data: dtusRes, isLoading } = useQuery({
-    queryKey: ['scope-dtus', activeScope],
+    queryKey: ['scope-dtus', activeScope, page],
     queryFn: () => {
-      if (activeScope === 'all') return apiHelpers.dtus.list();
-      if (activeScope === 'local' || activeScope === 'global') {
-        return apiHelpers.dtus.list({ scope: activeScope });
-      }
-      return apiHelpers.scope.dtus(activeScope);
+      const q = scopeDtuQuery(activeScope, page);
+      if (q.via === 'dtus') return apiHelpers.dtus.list(q.params);
+      return apiHelpers.scope.dtus(q.scope, q.params);
     },
+    placeholderData: keepPreviousData,
     refetchInterval: 30000,
   });
 
   const metrics = metricsRes?.data;
+  const listBody = dtusRes?.data;
   const dtus: Array<{
     id: string;
     title: string;
@@ -174,7 +180,9 @@ function ScopeControls() {
     tier?: string;
     tags?: string[];
     createdAt?: string;
-  }> = dtusRes?.data?.dtus || dtusRes?.data || [];
+  }> = Array.isArray(listBody?.dtus) ? listBody.dtus : Array.isArray(listBody) ? listBody : [];
+  const reportedTotal = Number(listBody?.total);
+  const pageIsFullSet = page === 0 && Number.isFinite(reportedTotal) && dtus.length >= reportedTotal;
 
   const scopeCounts: Record<string, number> = {
     global: 0,
@@ -182,19 +190,24 @@ function ScopeControls() {
     local: 0,
   };
 
-  // Count from metrics or from the DTU list
-  if (metrics?.globalCount !== undefined) {
+  // Metrics are the distribution. A single page is not: counting it would
+  // report 50 when the filter matches more.
+  const haveMetrics = metrics?.globalCount !== undefined;
+  if (haveMetrics) {
     scopeCounts.global = metrics.globalCount;
     scopeCounts.marketplace = metrics.marketplaceCount ?? 0;
     scopeCounts.local = metrics.localCount ?? 0;
-  } else if (Array.isArray(dtus)) {
+  } else if (pageIsFullSet) {
     for (const d of dtus) {
       const s = d.scope || 'local';
       if (scopeCounts[s] !== undefined) scopeCounts[s]++;
     }
   }
 
-  const totalDtus = scopeCounts.global + scopeCounts.marketplace + scopeCounts.local;
+  const counted = scopeCounts.global + scopeCounts.marketplace + scopeCounts.local;
+  const totalDtus = haveMetrics || pageIsFullSet
+    ? counted
+    : (Number.isFinite(reportedTotal) ? reportedTotal : counted);
 
   return (
     <div className="space-y-6">
@@ -250,7 +263,7 @@ function ScopeControls() {
             return (
               <button
                 key={scope}
-                onClick={() => setActiveScope(isActive ? 'all' : (scope as ScopeFilter))}
+                onClick={() => selectScope(isActive ? 'all' : (scope as ScopeFilter))}
                 className={`text-left p-4 rounded-lg border transition-colors ${
                   isActive
                     ? `bg-${meta.color}/10 border-${meta.color}/30`
@@ -280,7 +293,7 @@ function ScopeControls() {
         {['all', 'global', 'marketplace', 'local'].map((s) => (
           <button
             key={s}
-            onClick={() => setActiveScope(s as ScopeFilter)}
+            onClick={() => selectScope(s as ScopeFilter)}
             className={`text-xs px-3 py-1 rounded-full transition-colors ${
               activeScope === s
                 ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20'
@@ -301,10 +314,35 @@ function ScopeControls() {
             ))}
           </div>
         ) : Array.isArray(dtus) && dtus.length > 0 ? (
-          dtus.slice(0, 50).map((dtu) => <DTUCard key={dtu.id} dtu={dtu} />)
+          dtus.map((dtu) => <DTUCard key={dtu.id} dtu={dtu} />)
         ) : (
           <div className="text-center py-12 text-gray-400 text-sm">
             No DTUs in {activeScope === 'all' ? 'the lattice' : `${activeScope} scope`}
+          </div>
+        )}
+        {Number.isFinite(reportedTotal) && reportedTotal > SCOPE_PAGE_SIZE && (
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-gray-400">
+              {page * SCOPE_PAGE_SIZE + 1}–{page * SCOPE_PAGE_SIZE + dtus.length} of {reportedTotal}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className="text-xs px-3 py-1 rounded-full border border-lattice-border text-gray-300 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={(page + 1) * SCOPE_PAGE_SIZE >= reportedTotal}
+                onClick={() => setPage((p) => p + 1)}
+                className="text-xs px-3 py-1 rounded-full border border-lattice-border text-gray-300 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -19,6 +19,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { lensRun } from '@/lib/api/client';
 
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
@@ -515,6 +516,7 @@ beforeEach(() => {
   apiPut.mockReset().mockResolvedValue({ data: {} });
   feedbackFn.mockReset().mockResolvedValue({ data: {} });
   forgeFn.mockReset().mockResolvedValue({ data: { dtu: { id: 'dtu-9', title: 'Forged insight' } } });
+  vi.mocked(lensRun).mockReset().mockResolvedValue({ data: { ok: true, result: {} } });
   lensDeleteFn.mockReset().mockResolvedValue({ data: {} });
   cogStatusFn.mockReset().mockResolvedValue({ data: { llm: { enabled: true } } });
   runArtifactMutateAsync.mockReset();
@@ -693,6 +695,55 @@ describe('ChatWorkspacePanel — sending', () => {
     expect(await screen.findByText('Buffered fallback reply')).toBeInTheDocument();
     const chatCall = apiPost.mock.calls.find((c) => c[0] === '/api/chat');
     expect(chatCall![1]).toMatchObject({ message: 'hello?', mode: 'overview' });
+  });
+
+  it('shows an in-app notice when the brain is unavailable, not a fabricated answer', async () => {
+    const notice = 'AI is temporarily unavailable — your message was saved, try again shortly.';
+    fetchHandler = async (url) => {
+      if (url === '/api/chat/stream') {
+        return sseResponse([
+          { chunk: 'Based on what I know, here is a fake answer about OK.' },
+          {
+            done: true,
+            out: {
+              ok: false,
+              code: 'ai_unavailable',
+              llmUsed: false,
+              notice,
+              reply: notice,
+              retrieval: { kind: 'stored_notes', label: 'Stored notes', items: ['A real stored note'] },
+            },
+          },
+        ]);
+      }
+      return jsonResponse({ ok: false });
+    };
+    renderPanel();
+    send('Reply with just the word OK.');
+    const banner = await within(thread()).findByTestId('ai-unavailable-notice');
+    expect(banner).toHaveTextContent(notice);
+    expect(banner).toHaveTextContent('Stored notes');
+    expect(banner).toHaveTextContent('A real stored note');
+    expect(within(thread()).queryByText(/Based on what I know/)).not.toBeInTheDocument();
+    expect(banner.className).not.toMatch(/red-/);
+  });
+
+  it('shows the same notice when the buffered chat body carries ai_unavailable', async () => {
+    const notice = 'AI is temporarily unavailable — your message was saved, try again shortly.';
+    fetchHandler = async (url) => {
+      if (url === '/api/chat/stream') throw new TypeError('stream down');
+      return jsonResponse({ ok: false });
+    };
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === '/api/chat') {
+        return { data: { ok: false, code: 'ai_unavailable', llmUsed: false, notice, reply: notice } };
+      }
+      return { data: {} };
+    });
+    renderPanel();
+    send('hello');
+    expect(await within(thread()).findByTestId('ai-unavailable-notice')).toHaveTextContent(notice);
+    expect(within(thread()).queryByText(/Error:/)).not.toBeInTheDocument();
   });
 
   it('shows an honest "no answer" reply when the backend returns nothing usable', async () => {
@@ -1130,7 +1181,37 @@ describe('ChatWorkspacePanel — message actions', () => {
     await screen.findByText('It is four.');
     fireEvent.click(screen.getByLabelText('Forge to DTU'));
     expect(await screen.findByText('Forged to DTU: Forged insight')).toBeInTheDocument();
-    expect(forgeFn).toHaveBeenCalledWith({ content: 'It is four.', tags: ['chat-forged'], source: 'chat-lens' });
+    expect(forgeFn).toHaveBeenCalledWith({
+      content: 'It is four.',
+      prompt: 'It is four.',
+      tags: ['chat-forged'],
+      source: 'chat-lens',
+    });
+    expect(screen.getByRole('button', { name: 'Draft in Thread' })).toBeDisabled();
+    expect(await screen.findByText(/read-back did not return it/)).toBeInTheDocument();
+  });
+
+  it('Draft in Thread cites the forged DTU after it reads back', async () => {
+    vi.mocked(lensRun).mockImplementation(async (domain: string, action: string, input?: { id?: string; citedDtuId?: string }) => {
+      if (domain === 'dtu' && action === 'get') {
+        return { data: { ok: true, result: { dtu: { id: input?.id } } } };
+      }
+      return {
+        data: {
+          ok: true,
+          result: { draft: { id: 'th_9', status: 'draft', citedDtuId: input?.citedDtuId } },
+        },
+      };
+    });
+    renderPanel();
+    await screen.findByText('It is four.');
+    fireEvent.click(screen.getByLabelText('Forge to DTU'));
+    const draft = await screen.findByRole('button', { name: 'Draft in Thread' });
+    await waitFor(() => expect(draft).toBeEnabled());
+    fireEvent.click(draft);
+    expect(await screen.findByText(/Drafted in Thread as th_9/)).toBeInTheDocument();
+    const call = vi.mocked(lensRun).mock.calls.find((c) => c[0] === 'thread');
+    expect(call?.[2]).toMatchObject({ citedDtuId: 'dtu-9' });
   });
 
   it('a failed forge raises an error toast', async () => {

@@ -547,10 +547,15 @@ export function recordEvent(type, data = {}) {
     // Check for era transition triggered by this event
     const eraResult = checkEraTransitionInternal();
 
-    // Every 20 events trigger a background lore synthesis
+    // Every 20 events trigger a background lore synthesis. Skipped on a
+    // low-memory host — the synthesis is an LLM pass, not user-facing.
     if (_civilizationTick % 20 === 0) {
-      import("../routes/world-narrative.js")
-        .then(m => m.buildLore("concordia-hub"))
+      import("../lib/host-profile.js")
+        .then((host) => {
+          if (host.shouldPauseHeavyBackground()) return null;
+          return import("../routes/world-narrative.js");
+        })
+        .then((m) => m?.buildLore?.("concordia-hub"))
         .catch(() => {}); // fire-and-forget; errors logged inside buildLore
     }
 

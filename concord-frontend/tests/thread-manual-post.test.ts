@@ -31,8 +31,12 @@ describe('thread manual post sentence', () => {
       postedManually: true,
     });
     expect(String((call?.input.human as { summary: string }).summary)).toContain('Concord did not send it.');
-    expect(call?.input.meta).toMatchObject({ createdFrom: 'thread', delivered: false, postedManually: true });
+    expect(String((call?.input.human as { summary: string }).summary)).toContain('Lights at dusk.');
+    expect(call?.input.visibility).toBe('private');
+    expect(call?.input.meta).toMatchObject({ visibility: 'private', createdFrom: 'thread', delivered: false, postedManually: true });
     const unposted = draftDtuCall({ id: 'th_2', content: 'Still writing.', status: 'draft' });
+    expect(unposted?.input.visibility).toBe('private');
+    expect(String((unposted?.input.human as { summary: string }).summary)).toContain('Still writing.');
     expect(String((unposted?.input.human as { summary: string }).summary)).toContain('Not posted.');
     expect(String((unposted?.input.human as { summary: string }).summary)).not.toContain('Concord did not send it.');
     const send = sendDraftDtuToTimelineCall({

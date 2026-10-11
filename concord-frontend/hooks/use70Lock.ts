@@ -62,10 +62,12 @@ export function use70Lock() {
     data: status,
     isLoading,
     error,
+    refetch,
   } = useQuery<SovereigntyStatusResponse>({
     queryKey: ['sovereignty-status'],
     queryFn: () => api.get('/api/sovereignty/status').then((r) => r.data),
     refetchInterval: 60000, // Check every minute
+    retry: false,
   });
 
   // Trigger manual audit
@@ -111,9 +113,11 @@ export function use70Lock() {
     lockColor: getLockColor(status?.sovereigntyPct ?? 0),
     invariantSummary,
 
-    // Loading state
+    // Loading state. `error` is set when the status read failed — callers
+    // must not render the 0% / unlocked numeric defaults as if they were data.
     isLoading,
     error,
+    refetchStatus: refetch,
 
     // Actions
     runAudit: auditMutation.mutate,

@@ -15,11 +15,50 @@ import { showToast } from '@/components/common/Toasts';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MediaUpload } from '@/components/media/MediaUpload';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { probeAudioFileDuration } from '@/lib/podcast/probe-audio-duration';
 import { useMyPodcastShow } from './useMyPodcastShow';
-import { formatDuration, type PodcastEpisode } from './types';
+import { formatDuration } from './types';
+
+const UPLOAD_AUDIO_FIRST = 'Upload the audio first';
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+async function uploadAudioBlob(blob: Blob, opts: { title: string; filename: string; durationHint: number }) {
+  const probed = opts.durationHint > 0 ? opts.durationHint : await probeAudioFileDuration(blob);
+  const mimeType = (blob.type || 'audio/webm').split(';')[0] || 'audio/webm';
+  const r = await api.post('/api/media/upload', {
+    title: opts.title,
+    mediaType: 'audio',
+    mimeType,
+    fileSize: blob.size,
+    originalFilename: opts.filename,
+    duration: probed > 0 ? probed : undefined,
+    tags: ['podcast'],
+    privacy: 'private',
+    tier: 'regular',
+    data: await blobToBase64(blob),
+  });
+  const body = r.data as { mediaDTU?: { id?: string; duration?: number }; id?: string; error?: string } | undefined;
+  const mediaDTU = body?.mediaDTU;
+  const mediaId = mediaDTU?.id ?? body?.id;
+  const serverDur = Number(mediaDTU?.duration);
+  const duration = serverDur > 0 ? Math.round(serverDur) : probed;
+  if (!mediaId) {
+    throw new Error(body?.error || UPLOAD_AUDIO_FIRST);
+  }
+  return { mediaId: String(mediaId), duration };
+}
 
 export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
-  const { createEpisode } = useMyPodcastShow();
+  const { createEpisode, episodes } = useMyPodcastShow();
 
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -28,6 +67,10 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
   const [formCoverArt, setFormCoverArt] = useState<string | null>(null);
   const [formMediaId, setFormMediaId] = useState<string | null>(null);
   const [formDuration, setFormDuration] = useState(0);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const pendingFileRef = useRef<File | null>(null);
+  const episodeNumDirty = useRef(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -50,6 +93,15 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (episodeNumDirty.current) return;
+    const max = episodes.reduce((m, e) => {
+      if ((e.seasonNumber || 1) !== formSeasonNum) return m;
+      return Math.max(m, Number(e.episodeNumber) || 0);
+    }, 0);
+    setFormEpisodeNum(max + 1);
+  }, [episodes, formSeasonNum]);
 
   const handleStartRecording = useCallback(async () => {
     setMicError(null);
@@ -124,34 +176,17 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
     if (!recordedBlob) return;
     setUploadingRecording(true);
     try {
-      const arrayBuffer = await recordedBlob.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      const CHUNK = 0x8000;
-      for (let i = 0; i < bytes.length; i += CHUNK) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-      }
-      const base64Data = btoa(binary);
-      const mimeType = recordedBlob.type.split(';')[0] || 'audio/webm';
-      const r = await api.post('/api/media/upload', {
+      const uploaded = await uploadAudioBlob(recordedBlob, {
         title: formTitle.trim() || `Recording ${new Date().toLocaleString()}`,
-        mediaType: 'audio',
-        mimeType,
-        fileSize: recordedBlob.size,
-        originalFilename: `recording-${Date.now()}.webm`,
-        duration: recordingTime,
-        tags: ['podcast', 'recording'],
-        privacy: 'private',
-        tier: 'regular',
-        data: base64Data,
+        filename: `recording-${Date.now()}.webm`,
+        durationHint: recordingTime,
       });
-      const mediaId = r.data?.mediaDTU?.id ?? r.data?.id;
-      if (!mediaId) throw new Error(r.data?.error || 'Upload returned no media id');
-      setFormDuration(recordingTime);
-      setFormMediaId(mediaId);
-      showToast('success', `Recording uploaded (${formatDuration(recordingTime)})`);
+      setFormDuration(uploaded.duration > 0 ? uploaded.duration : recordingTime);
+      setFormMediaId(uploaded.mediaId);
+      showToast('success', `Recording uploaded (${formatDuration(uploaded.duration || recordingTime)})`);
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Recording upload failed');
+      const message = err instanceof Error ? err.message : 'Recording upload failed';
+      showToast('error', message);
     } finally {
       setUploadingRecording(false);
     }
@@ -174,32 +209,93 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
     { lensId: 'podcast' },
   );
 
+  const handlePendingFile = useCallback((file: File | null) => {
+    pendingFileRef.current = file;
+    if (!file) return;
+    probeAudioFileDuration(file).then((sec) => {
+      if (sec > 0 && pendingFileRef.current === file) setFormDuration(sec);
+    });
+  }, []);
+
   const handleCreateEpisode = useCallback(async () => {
-    if (!formTitle.trim()) return;
-    const episodeData = {
-      title: formTitle,
-      description: formDescription,
-      episodeNumber: formEpisodeNum,
-      seasonNumber: formSeasonNum,
-      coverArtUrl: formCoverArt,
-      mediaId: formMediaId,
-      audioUrl: formMediaId ? `/api/media/${formMediaId}/stream` : null,
-      durationSec: formDuration,
-      status: 'draft' as const,
-      tags: [] as string[],
-    };
+    if (creating) return;
+    if (!formTitle.trim()) {
+      setCreateError('Episode title is required');
+      showToast('error', 'Episode title is required');
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    let mediaId = formMediaId;
+    let durationSec = formDuration;
+    const pending = pendingFileRef.current;
     try {
-      await createEpisode(episodeData as unknown as PodcastEpisode);
+      if (!mediaId && (pending || recordedBlob)) {
+        try {
+          const uploaded = pending
+            ? await uploadAudioBlob(pending, {
+              title: formTitle.trim(),
+              filename: pending.name || 'episode-audio',
+              durationHint: durationSec,
+            })
+            : await uploadAudioBlob(recordedBlob as Blob, {
+              title: formTitle.trim() || `Recording ${new Date().toLocaleString()}`,
+              filename: `recording-${Date.now()}.webm`,
+              durationHint: recordingTime || durationSec,
+            });
+          mediaId = uploaded.mediaId;
+          if (uploaded.duration > 0) durationSec = uploaded.duration;
+          setFormMediaId(mediaId);
+          setFormDuration(durationSec);
+          pendingFileRef.current = null;
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : '';
+          const message = !detail || detail === UPLOAD_AUDIO_FIRST
+            ? UPLOAD_AUDIO_FIRST
+            : `${UPLOAD_AUDIO_FIRST} — ${detail}`;
+          setCreateError(message);
+          showToast('error', message);
+          return;
+        }
+      }
+      if ((pending || recordedBlob) && !mediaId) {
+        setCreateError(UPLOAD_AUDIO_FIRST);
+        showToast('error', UPLOAD_AUDIO_FIRST);
+        return;
+      }
+      const created = await createEpisode({
+        title: formTitle,
+        description: formDescription,
+        episodeNumber: formEpisodeNum,
+        seasonNumber: formSeasonNum,
+        coverArtUrl: formCoverArt,
+        mediaId,
+        audioUrl: mediaId ? `/api/media/${mediaId}/stream` : null,
+        durationSec,
+        status: 'draft',
+        tags: [],
+      });
+      episodeNumDirty.current = false;
       setFormTitle('');
       setFormDescription('');
-      setFormEpisodeNum(formEpisodeNum + 1);
+      setFormEpisodeNum((created.episodeNumber && created.episodeNumber > 0 ? created.episodeNumber : formEpisodeNum) + 1);
       setFormCoverArt(null);
       setFormMediaId(null);
+      setFormDuration(0);
+      pendingFileRef.current = null;
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      setRecordedBlob(null);
+      setRecordedUrl(null);
+      setRecordingTime(0);
       onCreated?.();
     } catch (err) {
-      console.error('Failed to create episode:', err instanceof Error ? err.message : err);
+      const message = err instanceof Error ? err.message : 'Could not create episode';
+      setCreateError(message);
+      showToast('error', message);
+    } finally {
+      setCreating(false);
     }
-  }, [formTitle, formDescription, formEpisodeNum, formSeasonNum, formCoverArt, formMediaId, formDuration, createEpisode, onCreated]);
+  }, [creating, formTitle, formDescription, formEpisodeNum, formSeasonNum, formCoverArt, formMediaId, formDuration, recordedBlob, recordedUrl, recordingTime, createEpisode, onCreated]);
 
   const handleAudioUpload = useCallback((_data: unknown, _file: File) => {
     const uploadData = _data as Record<string, unknown>;
@@ -243,8 +339,9 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
           <label className="text-xs text-gray-400 mb-1 block">Episode Number</label>
           <input
             type="number"
+            aria-label="Episode Number"
             value={formEpisodeNum}
-            onChange={(e) => setFormEpisodeNum(parseInt(e.target.value) || 1)}
+            onChange={(e) => { episodeNumDirty.current = true; setFormEpisodeNum(parseInt(e.target.value) || 1); }}
             min={1}
             className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-purple-400/50"
           />
@@ -274,6 +371,7 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
         ) : (
           <MediaUpload
             defaultMediaType="audio"
+            onPendingFileChange={handlePendingFile}
             onUploadComplete={(media) => handleAudioUpload(media, new File([], 'audio'))}
           />
         )}
@@ -381,12 +479,18 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
         />
       </div>
 
+      {createError && (
+        <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
+          {createError}
+        </p>
+      )}
+
       <button
         onClick={handleCreateEpisode}
-        disabled={!formTitle.trim()}
+        disabled={!formTitle.trim() || creating}
         className="w-full py-3 rounded-xl bg-purple-400/20 text-purple-400 font-medium hover:bg-purple-400/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
-        Create Episode
+        {creating ? 'Creating…' : 'Create Episode'}
       </button>
     </div>
   );

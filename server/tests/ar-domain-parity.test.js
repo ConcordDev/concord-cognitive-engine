@@ -117,6 +117,26 @@ describe("ar.sceneSave / sceneList / sceneGet / sceneDelete", () => {
   it("sceneGet errors on missing id", () => {
     assert.equal(call("sceneGet", ctxA, {}, {}).ok, false);
   });
+
+  it("deletes when the list id is sent as id", () => {
+    const id = call("sceneSave", ctxA, {}, { scene: sampleScene }).result.scene.id;
+    const del = call("sceneDelete", ctxA, {}, { id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    assert.equal(del.result.sceneId, id);
+    assert.equal(call("sceneList", ctxA, {}, {}).result.count, 0);
+    assert.equal(call("sceneGet", ctxA, {}, { sceneId: id }).ok, false);
+  });
+
+  it("refuses another account's delete and leaves the scene", () => {
+    const id = call("sceneSave", ctxA, {}, { scene: sampleScene }).result.scene.id;
+    const del = call("sceneDelete", ctxB, {}, { id, sceneId: id });
+    assert.equal(del.ok, false);
+    assert.match(String(del.error), /not found/);
+    const still = call("sceneGet", ctxA, {}, { sceneId: id });
+    assert.equal(still.ok, true);
+    assert.equal(still.result.scene.id, id);
+  });
 });
 
 describe("ar.behaviorValidate", () => {

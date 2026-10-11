@@ -16,13 +16,14 @@ import { PostCard } from './PostCard';
 interface HashtagPageProps {
   tag: string;
   username: string;
+  currentUserId?: string;
   onBack: () => void;
   onOpenHashtag: (tag: string) => void;
   onOpenDetail: (postId: string) => void;
   onQuote: (post: SocialPost) => void;
 }
 
-export function HashtagPage({ tag, username, onBack, onOpenHashtag, onOpenDetail, onQuote }: HashtagPageProps) {
+export function HashtagPage({ tag, username, currentUserId, onBack, onOpenHashtag, onOpenDetail, onQuote }: HashtagPageProps) {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [contributors, setContributors] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,7 @@ export function HashtagPage({ tag, username, onBack, onOpenHashtag, onOpenDetail
               key={p.id}
               post={p}
               username={username}
+              currentUserId={currentUserId}
               onChanged={load}
               onQuote={onQuote}
               onOpenHashtag={onOpenHashtag}

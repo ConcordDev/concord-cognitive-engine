@@ -37,6 +37,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default function createAccountLifecycleRouter({ db, requireAuth, adminOnly }) {
   const router = express.Router();
 
+  // Mounted at /api/account. Paths in this file must not repeat that prefix.
+  // The /account/* twins are aliases for the doubled /api/account/account/*
+  // URLs that already shipped, so old clients keep working.
+  const both = (path) => [path, `/account${path}`];
+
   // All routes require auth unless noted
   const auth = typeof requireAuth === "function" ? requireAuth() : (_req, _res, next) => next();
 
@@ -87,7 +92,7 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
 
   // ── Account Deletion ─────────────────────────────────────────────────
 
-  router.post("/account/delete", auth, (req, res) => {
+  router.post(both("/delete"), auth, (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
@@ -108,7 +113,7 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
     res.status(result.ok ? 200 : 400).json(result);
   });
 
-  router.post("/account/cancel-deletion", auth, (req, res) => {
+  router.post(both("/cancel-deletion"), auth, (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
@@ -118,7 +123,27 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
 
   // ── Data Export ──────────────────────────────────────────────────────
 
-  router.get("/account/export", auth, (req, res) => {
+  router.get(both("/deletion"), auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+    try {
+      const row = db.prepare(
+        "SELECT status, balance_at_request, forfeit_date, requested_at FROM account_deletion_requests WHERE user_id = ? AND status = 'scheduled'"
+      ).get(userId);
+      if (!row) return res.json({ ok: true, scheduled: false });
+      return res.json({
+        ok: true,
+        scheduled: true,
+        balance: row.balance_at_request,
+        forfeitDate: row.forfeit_date,
+        requestedAt: row.requested_at,
+      });
+    } catch {
+      return res.json({ ok: true, scheduled: false });
+    }
+  });
+
+  router.get(both("/export"), auth, (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
@@ -137,7 +162,7 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
   // when both accounts authenticate via different providers. Caller is the
   // "survivor" account; sourceUserId is the account whose data gets reassigned.
 
-  router.post("/account/merge", auth, (req, res) => {
+  router.post(both("/merge"), auth, (req, res) => {
     const survivorUserId = req.user?.id;
     if (!survivorUserId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
@@ -169,7 +194,7 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
   // Issue a merge token after the source account authenticates. The user
   // requests it from the source-account session, then pastes the token into
   // their survivor session to confirm the merge.
-  router.post("/account/merge-token", auth, (req, res) => {
+  router.post(both("/merge-token"), auth, (req, res) => {
     const sourceUserId = req.user?.id;
     if (!sourceUserId) return res.status(401).json({ ok: false, error: "unauthorized" });
     try {

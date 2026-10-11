@@ -1,3 +1,5 @@
+import { trySendShutdownError } from "./shutdown-http.js";
+
 /**
  * Concord Cognitive Engine — Custom Error Hierarchy
  *
@@ -143,6 +145,10 @@ export class ServerError extends ConcordError {
  */
 export function concordErrorHandler(err, req, res, _next) {
   if (res.headersSent) return;
+
+  // Closed SQLite, or a write refused because shutdown already sealed it,
+  // is a restart — 503 shutting_down, never a 500.
+  if (trySendShutdownError(err, res)) return;
 
   if (err instanceof ConcordError) {
     return res.status(err.statusCode).json(err.toJSON());

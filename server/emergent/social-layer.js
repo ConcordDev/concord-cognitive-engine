@@ -5,6 +5,8 @@
  * cited-by counters, trending DTUs, discovery loops.
  */
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 
 // ── Realtime emit hookup (Phase 11, Item 4) ─────────────────────────────
 //
@@ -148,7 +150,15 @@ export function getProfile(STATE, userId) {
   profile.stats.publicDtuCount = publicDtuCount;
   profile.stats.citationCount = citationCount;
 
-  return { ok: true, profile };
+  const who = publicIdentity(userId, profile);
+  return {
+    ok: true,
+    profile: {
+      ...profile,
+      displayName: who.displayName || profile.displayName,
+      username: who.username,
+    },
+  };
 }
 
 export function listProfiles(STATE, options = {}) {
@@ -224,7 +234,8 @@ export function getFollowers(STATE, userId, limit = 50) {
   const followerSet = social.followers.get(userId) || new Set();
   const followers = Array.from(followerSet).slice(0, limit).map(id => {
     const profile = social.profiles.get(id);
-    return { userId: id, displayName: profile?.displayName || id };
+    const who = publicIdentity(id, profile);
+    return { userId: id, displayName: who.displayName || "Member", username: who.username };
   });
   return { ok: true, userId, followers, total: followerSet.size };
 }
@@ -234,7 +245,8 @@ export function getFollowing(STATE, userId, limit = 50) {
   const followSet = social.follows.get(userId) || new Set();
   const following = Array.from(followSet).slice(0, limit).map(id => {
     const profile = social.profiles.get(id);
-    return { userId: id, displayName: profile?.displayName || id };
+    const who = publicIdentity(id, profile);
+    return { userId: id, displayName: who.displayName || "Member", username: who.username };
   });
   return { ok: true, userId, following, total: followSet.size };
 }
@@ -514,14 +526,18 @@ export function discoverUsers(STATE, userId, limit = 10) {
 
   return {
     ok: true,
-    suggestions: candidates.slice(0, limit).map(c => ({
+    suggestions: candidates.slice(0, limit).map(c => {
+      const who = publicIdentity(c.userId, c.profile);
+      return {
       userId: c.userId,
-      displayName: c.profile.displayName,
+      displayName: who.displayName || c.profile.displayName,
+      username: who.username,
       bio: c.profile.bio,
       followerCount: c.profile.stats?.followerCount || 0,
       citationCount: c.profile.stats?.citationCount || 0,
       matchScore: c.score,
-    })),
+    };
+    }),
   };
 }
 
@@ -534,7 +550,50 @@ export function getSocialMetrics(STATE) {
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
-export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility }) {
+// Audience is who on THIS instance may read the post. It is separate from
+// federationVisibility, which only decides whether the post leaves the
+// instance. `local` / unset stays public here (don't federate, don't hide).
+// An explicit privacy or visibility field wins over the federation flag.
+function resolveAudience({ privacy, visibility, federationVisibility } = {}) {
+  const explicit = privacy != null ? privacy : visibility;
+  if (explicit === "public" || explicit === "followers" || explicit === "private") return explicit;
+  if (explicit === "only-me" || explicit === "only_me") return "private";
+  if (federationVisibility === "followers") return "followers";
+  if (federationVisibility === "private") return "private";
+  return "public";
+}
+
+function postAudience(post) {
+  return (post && post.privacy) || "public";
+}
+
+function followsAuthor(social, viewerId, authorId) {
+  if (!viewerId || !authorId) return false;
+  const set = social.follows.get(viewerId);
+  return !!(set && set.has(authorId));
+}
+
+// Explore is a public surface: the author does not see their own private
+// or followers-only posts there. Everywhere else the owner always sees
+// their own post, followers-only requires a follow, and private is hidden
+// so a miss is indistinguishable from "not found".
+function postVisibleTo(social, post, viewerId, { surface } = {}) {
+  if (!post) return false;
+  const audience = postAudience(post);
+  if (surface === "explore") return audience === "public";
+  if (viewerId && post.userId === viewerId) return true;
+  if (audience === "private") return false;
+  if (audience === "followers") return followsAuthor(social, viewerId, post.userId);
+  return true;
+}
+
+function requireVisiblePost(social, postId, viewerId) {
+  const post = social.posts.get(postId);
+  if (!post || !postVisibleTo(social, post, viewerId)) return null;
+  return post;
+}
+
+export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility, privacy, visibility }) {
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
@@ -545,7 +604,8 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
   // Defaults to 'local'. Server-side fanout to the federation outbox
   // only happens when visibility !== 'local' AND the federation
   // dispatcher is wired (CONCORD_ACTIVITYPUB=true).
-  const visibility = ['local', 'followers', 'public'].includes(federationVisibility) ? federationVisibility : 'local';
+  const fedVisibility = ['local', 'followers', 'public'].includes(federationVisibility) ? federationVisibility : 'local';
+  const audience = resolveAudience({ privacy, visibility, federationVisibility: fedVisibility });
   const post = {
     id,
     userId,
@@ -570,11 +630,13 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     threadParentId: null,
     threadPosition: 0,
     groupId: null,
-    federationVisibility: visibility,
-    apActivityId: visibility !== 'local' ? `concord:post:${id}` : null,
+    privacy: audience,
+    federationVisibility: fedVisibility,
+    apActivityId: fedVisibility !== 'local' ? `concord:post:${id}` : null,
   };
 
   social.posts.set(id, post);
+  persistSocialPostRow(post);
 
   // Create mention notifications
   if (post.mentionedUsers.length) {
@@ -586,7 +648,7 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
   // Federation outbox fanout (best-effort). Caller in server.js sets
   // _federationDispatcher with (post) → enqueue rows. Wrapped in
   // try/catch so an outbox-write failure never breaks createPost.
-  if (visibility !== 'local' && typeof _federationDispatcher === 'function') {
+  if (fedVisibility !== 'local' && typeof _federationDispatcher === 'function') {
     try { _federationDispatcher(post); }
     catch (_e) { /* substrate stays consistent */ }
   }
@@ -605,6 +667,30 @@ export function setFederationDispatcher(fn) {
   _federationDispatcher = typeof fn === 'function' ? fn : null;
 }
 
+function persistSocialPostRow(post) {
+  const db = globalThis._concordSTATE?.db;
+  if (!db || typeof db.prepare !== "function" || !post?.id) return;
+  try {
+    const created = Number.isFinite(Date.parse(post.createdAt))
+      ? Math.floor(Date.parse(post.createdAt) / 1000)
+      : Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT OR REPLACE INTO social_posts (id, user_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+    ).run(post.id, post.userId, post.userId, post.content || "", created);
+  } catch { /* social_posts may be absent */ }
+}
+
+function publicIdentity(userId, profile) {
+  const idn = lookupUserIdentity(globalThis._concordSTATE?.db, userId);
+  const profileName = profile?.displayName && profile.displayName !== userId ? profile.displayName : null;
+  const username = idn.username && idn.username !== userId ? idn.username : null;
+  const displayName = profileName
+    || (idn.displayName && idn.displayName !== userId ? idn.displayName : null)
+    || username
+    || null;
+  return { username, displayName };
+}
+
 function serializePost(post) {
   const reactions = {};
   if (post.reactions) {
@@ -612,9 +698,14 @@ function serializePost(post) {
       reactions[type] = users.size;
     }
   }
+  const who = publicIdentity(post.userId, null);
+  const storedHandle = post.username && post.username !== post.userId ? post.username : null;
+  const storedName = post.displayName && post.displayName !== post.userId ? post.displayName : null;
   return {
     id: post.id,
     userId: post.userId,
+    username: storedHandle || who.username,
+    displayName: storedName || who.displayName || storedHandle || who.username,
     content: post.content,
     title: post.title,
     mediaType: post.mediaType,
@@ -636,32 +727,33 @@ function serializePost(post) {
     threadParentId: post.threadParentId,
     threadPosition: post.threadPosition,
     groupId: post.groupId,
+    privacy: post.privacy || "public",
     federationVisibility: post.federationVisibility || 'local',
     apActivityId: post.apActivityId || null,
   };
 }
 
-export function getPost(STATE, postId) {
+export function getPost(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
   return { ok: true, post: serializePost(post) };
 }
 
 export function deletePost(STATE, { userId, postId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (post.userId !== userId) return { ok: false, error: "Only owner can delete" };
   social.posts.delete(postId);
   return { ok: true, postId };
 }
 
-export function getUserPosts(STATE, userId, { limit = 30, offset = 0 } = {}) {
+export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
   const social = getSocialState(STATE);
   const posts = [];
   for (const post of social.posts.values()) {
-    if (post.userId === userId) posts.push(post);
+    if (post.userId === userId && postVisibleTo(social, post, viewerId)) posts.push(post);
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: posts.slice(offset, offset + limit).map(serializePost), total: posts.length };
@@ -674,7 +766,7 @@ const VALID_REACTIONS = new Set(["like", "fire", "heart", "mind-blown", "useful"
 export function addReaction(STATE, { userId, postId, type }) {
   const social = getSocialState(STATE);
   if (!VALID_REACTIONS.has(type)) return { ok: false, error: "Invalid reaction type" };
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
 
   if (!post.reactions.has(type)) post.reactions.set(type, new Set());
@@ -693,7 +785,7 @@ export function addReaction(STATE, { userId, postId, type }) {
 
 export function getReactions(STATE, postId, currentUserId) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, currentUserId);
   if (!post) return { ok: false, error: "Post not found" };
 
   const reactions = {};
@@ -708,7 +800,7 @@ export function getReactions(STATE, postId, currentUserId) {
 export function addComment(STATE, { userId, postId, content, parentCommentId, mentionedUsers }) {
   const social = getSocialState(STATE);
   if (!content) return { ok: false, error: "content required" };
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
 
   const comment = {
@@ -744,7 +836,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
 
 export function deleteComment(STATE, { userId, postId, commentId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
 
   function removeFrom(arr) {
@@ -763,9 +855,9 @@ export function deleteComment(STATE, { userId, postId, commentId }) {
   return { ok: true, commentId };
 }
 
-export function getComments(STATE, postId, { limit = 50 } = {}) {
+export function getComments(STATE, postId, { limit = 50, viewerId = null } = {}) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
 
   function serializeComment(c) {
@@ -778,7 +870,7 @@ export function getComments(STATE, postId, { limit = 50 } = {}) {
 
 export function sharePost(STATE, { userId, postId, commentary }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
 
   const share = { userId, commentary: commentary || "", timestamp: new Date().toISOString() };
@@ -790,9 +882,9 @@ export function sharePost(STATE, { userId, postId, commentary }) {
   return { ok: true, share };
 }
 
-export function getShares(STATE, postId) {
+export function getShares(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
   return { ok: true, shares: post.shares, total: post.shares.length };
 }
@@ -801,7 +893,7 @@ export function getShares(STATE, postId) {
 
 export function bookmarkPost(STATE, { userId, postId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
 
   const toggled = post.bookmarks.has(userId);
@@ -814,7 +906,7 @@ export function getUserBookmarks(STATE, userId, { limit = 30, offset = 0 } = {})
   const social = getSocialState(STATE);
   const bookmarked = [];
   for (const post of social.posts.values()) {
-    if (post.bookmarks.has(userId)) bookmarked.push(post);
+    if (post.bookmarks.has(userId) && postVisibleTo(social, post, userId)) bookmarked.push(post);
   }
   bookmarked.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: bookmarked.slice(offset, offset + limit).map(serializePost), total: bookmarked.length };
@@ -849,6 +941,7 @@ export function getForYouFeed(STATE, userId, { limit = 30, offset = 0 } = {}) {
   const scored = [];
   for (const post of social.posts.values()) {
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
+    if (!postVisibleTo(social, post, userId)) continue;
     const engagement = getEngagementScore(post);
     const recency = getRecencyBoost(post.createdAt);
     let interestOverlap = 1;
@@ -857,10 +950,10 @@ export function getForYouFeed(STATE, userId, { limit = 30, offset = 0 } = {}) {
       for (const t of post.tags) if (interestTags.has(t)) overlap++;
       interestOverlap = 1 + overlap;
     }
-    scored.push({ post, score: engagement * recency * interestOverlap });
+    scored.push({ post, score: (engagement + 1) * recency * interestOverlap });
   }
 
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score || new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime());
   return { ok: true, posts: scored.slice(offset, offset + limit).map(s => ({ ...serializePost(s.post), score: Math.round(s.score * 100) / 100 })), total: scored.length };
 }
 
@@ -873,6 +966,7 @@ export function getFollowingFeed(STATE, userId, { limit = 30, offset = 0 } = {})
   for (const post of social.posts.values()) {
     if (!followSet.has(post.userId)) continue;
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
+    if (!postVisibleTo(social, post, userId)) continue;
     posts.push(post);
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -887,9 +981,11 @@ export function getExploreFeed(STATE, { limit = 30, offset = 0, topic } = {}) {
   for (const post of social.posts.values()) {
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
     if (topic && !post.tags.includes(topic)) continue;
-    scored.push({ post, score: getEngagementScore(post) * getRecencyBoost(post.createdAt) });
+    if (!postVisibleTo(social, post, null, { surface: "explore" })) continue;
+    const recency = getRecencyBoost(post.createdAt);
+    scored.push({ post, score: (getEngagementScore(post) + 1) * recency });
   }
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score || new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime());
   return { ok: true, posts: scored.slice(offset, offset + limit).map(s => ({ ...serializePost(s.post), score: Math.round(s.score * 100) / 100 })), total: scored.length };
 }
 
@@ -1102,6 +1198,7 @@ export function getActiveStories(STATE, userId) {
     if (!post.expiresAt) continue;
     if (new Date(post.expiresAt).getTime() < now) continue;
     if (!followSet.has(post.userId) && post.userId !== userId) continue;
+    if (!postVisibleTo(social, post, userId)) continue;
     stories.push(serializePost(post));
   }
 
@@ -1133,7 +1230,7 @@ function noteViewer(post, userId) {
 
 export function viewStory(STATE, { userId, storyId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(storyId);
+  const post = requireVisiblePost(social, storyId, userId);
   if (!post) return { ok: false, error: "Story not found" };
   post.viewCount++;
   const uniqueViewCount = noteViewer(post, userId);
@@ -1144,7 +1241,7 @@ export function viewStory(STATE, { userId, storyId }) {
 
 export function votePoll(STATE, { userId, postId, optionIndex }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (!post.pollOptions) return { ok: false, error: "Post has no poll" };
   if (optionIndex < 0 || optionIndex >= post.pollOptions.length) return { ok: false, error: "Invalid option index" };
@@ -1156,9 +1253,9 @@ export function votePoll(STATE, { userId, postId, optionIndex }) {
   return { ok: true, postId, optionIndex };
 }
 
-export function getPollResults(STATE, postId) {
+export function getPollResults(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
   if (!post.pollOptions) return { ok: false, error: "Post has no poll" };
 
@@ -1176,6 +1273,7 @@ export function getTrendingTopics(STATE, { limit = 20 } = {}) {
 
   for (const post of social.posts.values()) {
     if (new Date(post.createdAt).getTime() < cutoff) continue;
+    if (postAudience(post) !== "public") continue;
     for (const tag of post.tags) {
       tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
     }
@@ -1185,13 +1283,15 @@ export function getTrendingTopics(STATE, { limit = 20 } = {}) {
   return { ok: true, topics: sorted.map(([topic, count]) => ({ topic, count })) };
 }
 
-export function getPostsByTopic(STATE, topic, { limit = 30, offset = 0 } = {}) {
+export function getPostsByTopic(STATE, topic, { limit = 30, offset = 0, viewerId = null } = {}) {
   const social = getSocialState(STATE);
   const now = Date.now();
   const posts = [];
   for (const post of social.posts.values()) {
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
-    if (post.tags.includes(topic)) posts.push(post);
+    if (!post.tags.includes(topic)) continue;
+    if (!postVisibleTo(social, post, viewerId)) continue;
+    posts.push(post);
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: posts.slice(offset, offset + limit).map(serializePost), total: posts.length };
@@ -1249,7 +1349,7 @@ export function getGroupFeed(STATE, groupId, { limit = 30, offset = 0 } = {}) {
   const posts = [];
   for (const pid of group.postIds) {
     const post = social.posts.get(pid);
-    if (post) posts.push(post);
+    if (post && postAudience(post) === "public") posts.push(post);
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: posts.slice(offset, offset + limit).map(serializePost), total: posts.length };
@@ -1293,7 +1393,7 @@ export function getGroupMembers(STATE, groupId) {
 
 // ── Creator Analytics ────────────────────────────────────────────────────
 
-export function getCreatorAnalytics(STATE, userId) {
+export function getCreatorAnalytics(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
   let totalReach = 0;
   let totalEngagement = 0;
@@ -1305,6 +1405,7 @@ export function getCreatorAnalytics(STATE, userId) {
 
   for (const post of social.posts.values()) {
     if (post.userId !== userId) continue;
+    if (!postVisibleTo(social, post, viewerId)) continue;
     totalPosts++;
     totalReach += post.viewCount;
 
@@ -1347,9 +1448,9 @@ export function getCreatorAnalytics(STATE, userId) {
   };
 }
 
-export function getPostAnalytics(STATE, postId) {
+export function getPostAnalytics(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
 
   let reactionCount = 0;
@@ -1418,15 +1519,17 @@ export function tagListing(STATE, { postId, listingId }) {
   return { ok: true, postId, listingId };
 }
 
-export function getPostSales(STATE, postId) {
+export function getPostSales(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
+  if (!requireVisiblePost(social, postId, viewerId)) return { ok: false, error: "Post not found" };
   const clicks = social.postClicks.get(postId) || 0;
   const listings = social.postListings.get(postId);
   return { ok: true, postId, clicks, linkedListings: listings ? Array.from(listings) : [] };
 }
 
-export function getPostEarnings(STATE, postId) {
+export function getPostEarnings(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
+  if (!requireVisiblePost(social, postId, viewerId)) return { ok: false, error: "Post not found" };
   const earnings = social.postEarnings.get(postId) || 0;
   return { ok: true, postId, earnings };
 }
@@ -1435,7 +1538,7 @@ export function getPostEarnings(STATE, postId) {
 
 export function pinPost(STATE, { userId, postId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (post.userId !== userId) return { ok: false, error: "Only owner can pin" };
 
@@ -1452,18 +1555,18 @@ export function pinPost(STATE, { userId, postId }) {
 
 export function unpinPost(STATE, { userId, postId }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (post.userId !== userId) return { ok: false, error: "Only owner can unpin" };
   post.isPinned = false;
   return { ok: true, postId };
 }
 
-export function getPinnedPosts(STATE, userId) {
+export function getPinnedPosts(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
   const pinned = [];
   for (const post of social.posts.values()) {
-    if (post.userId === userId && post.isPinned) pinned.push(serializePost(post));
+    if (post.userId === userId && post.isPinned && postVisibleTo(social, post, viewerId)) pinned.push(serializePost(post));
   }
   return { ok: true, posts: pinned };
 }
@@ -1472,7 +1575,7 @@ export function getPinnedPosts(STATE, userId) {
 
 export function recordWatchTime(STATE, { userId, postId, durationMs }) {
   const social = getSocialState(STATE);
-  const post = social.posts.get(postId);
+  const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   post.watchTimeMs += (durationMs || 0);
   post.viewCount++;

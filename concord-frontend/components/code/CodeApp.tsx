@@ -6,7 +6,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Blocks, Flame, Loader2, Play, Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { lensRun } from '@/lib/api/client';
+import { parseExecStatus, publishExecStatus } from '@/components/code/codeExecGate';
+import { Blocks, Flame, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -15,15 +18,19 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { CodeProjectProvider } from '@/components/code/CodeProjectContext';
 import { CodeEditorWorkspacePanel } from '@/components/code/CodeEditorWorkspacePanel';
-import { CodeAdvancedPanel } from '@/components/code/CodeAdvancedPanel';
-import { GithubTrending } from '@/components/code/GithubTrending';
-import { CodeActionPanel } from '@/components/code/CodeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
+
+// These three views are closed until the user opens them. Loading them
+// with the editor pulls yjs and the review workbench into the code-lens
+// chunk even though the default screen never mounts them.
+const CodeAdvancedPanel = dynamic(() => import('@/components/code/CodeAdvancedPanel').then((m) => m.CodeAdvancedPanel));
+const GithubTrending = dynamic(() => import('@/components/code/GithubTrending').then((m) => m.GithubTrending));
+const CodeActionPanel = dynamic(() => import('@/components/code/CodeActionPanel').then((m) => m.CodeActionPanel));
 
 type CodeExtras = 'none' | 'advanced' | 'trending' | 'actions';
 
@@ -38,12 +45,16 @@ export default function CodeApp() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [extras, setExtras] = useState<CodeExtras>('none');
-  const [running, setRunning] = useState(false);
 
+  // The editor's Run button is the only one. This publishes the server
+  // gate (code.exec-status) so that button can say execution is disabled.
   useEffect(() => {
-    const onState = (e: Event) => setRunning(Boolean((e as CustomEvent<{ running?: boolean }>).detail?.running));
-    window.addEventListener('concord:code-run-state', onState);
-    return () => window.removeEventListener('concord:code-run-state', onState);
+    let live = true;
+    void lensRun('code', 'exec-status', {}).then((r) => {
+      if (!live) return;
+      publishExecStatus(parseExecStatus(r.data));
+    });
+    return () => { live = false; };
   }, []);
 
   useLensCommand(
@@ -127,17 +138,6 @@ export default function CodeApp() {
           <div className="min-h-[70vh] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
             <CodeEditorWorkspacePanel onOpenExtras={() => setExtras('advanced')} />
           </div>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('concord:code-run'))}
-            disabled={running}
-            title="Run the active file (⌘ Enter)"
-            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
-          >
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {running ? 'Running…' : 'Run'}
-          </button>
 
           <div className="mt-5">
             {extras === 'advanced' && <CodeAdvancedPanel />}
