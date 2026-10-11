@@ -253,6 +253,77 @@ const egId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36
 const egList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
 const egClean = (v, max = 120) => String(v == null ? '' : v).trim().slice(0, max);
 
+// Display name for a part kind when the caller did not name it. A box in
+// the ConKay workspace is a bracket; an i-beam is a beam. Keep this in step
+// with concord-frontend/lib/conkay/model-export.ts#designTypeName.
+function designTypeName(kind) {
+  const k = String(kind || '').trim().toLowerCase();
+  switch (k) {
+    case 'i-beam':
+    case 'ibeam':
+    case 'w-beam':
+    case 'wide-flange':
+      return 'I-beam';
+    case 'beam':
+      return 'Beam';
+    case 'box':
+    case 'bracket':
+    case 'angle':
+    case 'gusset':
+      return 'Bracket';
+    case 'cylinder':
+    case 'rod':
+      return 'Cylinder';
+    case 'tube':
+    case 'rect-tube':
+    case 'pipe':
+      return 'Tube';
+    case 'sphere':
+      return 'Sphere';
+    default:
+      if (!k) return 'Part';
+      return k.charAt(0).toUpperCase() + k.slice(1);
+  }
+}
+
+function uniquePartName(parts, name, exceptId) {
+  const taken = new Set(
+    (parts || []).filter((p) => p && p.id !== exceptId && p.name).map((p) => p.name),
+  );
+  const base = String(name || '').trim() || 'Part';
+  if (!taken.has(base)) return base.slice(0, 80);
+  const stem = base.replace(/ \d+$/, '').slice(0, 76);
+  let n = 2;
+  while (taken.has(`${stem} ${n}`)) n += 1;
+  return `${stem} ${n}`.slice(0, 80);
+}
+
+function egJsonObject(value, max) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  try {
+    const json = JSON.stringify(value);
+    if (json.length > max) return null;
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/** The part with this id, in whichever user's list holds it. */
+function egFindPart(s, id) {
+  if (!id || !(s?.parts instanceof Map)) return null;
+  for (const [userId, list] of s.parts.entries()) {
+    if (!Array.isArray(list)) continue;
+    const part = list.find((p) => p && p.id === id);
+    if (part) return { userId, part, parts: list };
+  }
+  return null;
+}
+
+function egNotOwner() {
+  return { ok: false, status: 403, error: 'forbidden: not the owner of this part' };
+}
+
 // Low/moderate/high/overstressed banding for a utilization ratio — same
 // thresholds (0.4 / 0.75 / 1.0) the runFEA action's own inline `contour`
 // computation uses below, factored out here (read-only, no behavior change
@@ -1651,7 +1722,10 @@ export default function registerEngineeringActions(registerLensAction) {
     }
   });
 
-  // ─── savePart / listParts / deletePart — parametric part store ───────────
+  // ─── savePart / listParts / deletePart / renamePart — parametric part store
+  // Ownership is the user id on the list key. deletePart and renamePart
+  // refuse another account's id with status 403 (HTTP 403 via
+  // httpErrorFromLensAction). A missing id is not a 403.
   registerLensAction('engineering', 'savePart', (ctx, artifact, params) => {
     try {
       const s = engState();
@@ -1666,13 +1740,37 @@ export default function registerEngineeringActions(registerLensAction) {
         data.params || data,
         mat ? mat.density : parseFloat(data.density) || 7850,
       );
+      const requestedId = egClean(data.id, 80);
+      const id = requestedId && parts.find((p) => p.id === requestedId) ? requestedId : egId('part');
+      const designType = egClean(data.designType || geom.kind, 40) || geom.kind;
+      let name = egClean(data.name, 80);
+      // The workspace used to send this placeholder for every save.
+      if (!name || name.toLowerCase() === 'i-beam study') name = designTypeName(designType);
+      name = uniquePartName(parts, name, id);
+      let results = null;
+      if (data.results != null) {
+        results = egJsonObject(data.results, 20000);
+        if (!results) return { ok: false, error: 'results must be a JSON object under 20KB' };
+      }
+      const solverVersion = typeof data.solverVersion === 'string' && data.solverVersion.trim()
+        ? egClean(data.solverVersion, 80)
+        : null;
+      let study = null;
+      if (data.study != null) {
+        study = egJsonObject(data.study, 8000);
+        if (!study) return { ok: false, error: 'study must be a JSON object under 8KB' };
+      }
       const part = {
-        id: data.id && parts.find((p) => p.id === data.id) ? data.id : egId('part'),
-        name: egClean(data.name || 'Part', 80),
+        id,
+        name,
         kind: geom.kind,
-        params: data.params || {},
+        designType,
+        params: data.params && typeof data.params === 'object' && !Array.isArray(data.params) ? data.params : {},
         material: matId || null,
         geometry: geom,
+        results,
+        solverVersion,
+        study,
         updatedAt: new Date().toISOString(),
       };
       const idx = parts.findIndex((p) => p.id === part.id);
@@ -1701,11 +1799,42 @@ export default function registerEngineeringActions(registerLensAction) {
       const s = engState();
       if (!s) return { ok: false, error: 'state unavailable' };
       const id = params?.id || artifact?.data?.id;
-      const parts = egList(s.parts, egActor(ctx));
-      const next = parts.filter((p) => p.id !== id);
-      s.parts.set(egActor(ctx), next);
+      const userId = egActor(ctx);
+      if (!id) {
+        const parts = egList(s.parts, userId);
+        return { ok: true, result: { deleted: 0, count: parts.length } };
+      }
+      const found = egFindPart(s, id);
+      if (!found) {
+        const parts = egList(s.parts, userId);
+        return { ok: true, result: { deleted: 0, count: parts.length } };
+      }
+      if (found.userId !== userId) return egNotOwner();
+      const next = found.parts.filter((p) => p.id !== id);
+      s.parts.set(userId, next);
       persist();
-      return { ok: true, result: { deleted: parts.length - next.length, count: next.length } };
+      return { ok: true, result: { deleted: 1, count: next.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction('engineering', 'renamePart', (ctx, artifact, params) => {
+    try {
+      const s = engState();
+      if (!s) return { ok: false, error: 'state unavailable' };
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const id = data.id;
+      const name = egClean(data.name, 80);
+      if (!id || !name) return { ok: false, error: 'id and name required' };
+      const userId = egActor(ctx);
+      const found = egFindPart(s, id);
+      if (!found) return { ok: false, error: 'part not found' };
+      if (found.userId !== userId) return egNotOwner();
+      found.part.name = name;
+      found.part.updatedAt = new Date().toISOString();
+      persist();
+      return { ok: true, result: { part: found.part } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

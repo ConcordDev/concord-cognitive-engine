@@ -523,6 +523,8 @@ api.interceptors.response.use(
           const code = data?.code;
           if (code === 'CSRF_FAILED') {
             store.addToast({ type: 'warning', message: 'Session security token expired. Refresh the page and try again.' });
+          } else if (code === 'not_owner') {
+            store.addToast({ type: 'error', message: 'That belongs to another account.' });
           } else if (code === 'PERMISSION_DENIED' && data?.permission) {
             store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
           } else if (!isBackgroundFetch) {
