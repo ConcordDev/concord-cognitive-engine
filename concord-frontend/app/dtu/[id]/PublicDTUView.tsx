@@ -110,12 +110,27 @@ function SimplifiedLineageTree({ nodes }: { nodes: LineageNode[] }) {
   );
 }
 
-export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
+export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
+  // The page is rendered on the server without the session cookie, so a
+  // private DTU the owner just published looks missing. Read it again
+  // with the session before saying it is gone.
+  const ownerRead = useQuery({
+    queryKey: ['dtu-by-id', dtuId],
+    queryFn: async () => {
+      const res = await api.get(`/api/dtus/${encodeURIComponent(dtuId)}`);
+      const body = res.data as { ok?: boolean; dtu?: PublicDTUViewProps['dtu'] };
+      if (body?.ok === false) return null;
+      return body?.dtu ?? null;
+    },
+    enabled: !seeded && Boolean(dtuId),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const dtu = seeded || ownerRead.data || null;
+
   // Fetch lineage client-side (optional enhancement)
   const {
     data: lineageData,
-    isLoading: lineageLoading,
-    isError: lineageError,
   } = useQuery({
     queryKey: ['dtu-lineage-public', dtuId],
     queryFn: async () => {
@@ -127,6 +142,18 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
     retry: false,
   });
 
+  if (!seeded && ownerRead.isLoading) {
+    return (
+      <div className="min-h-screen bg-lattice-void">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-pulse">
+          <div className="h-8 bg-lattice-surface rounded-lg w-1/3" />
+          <div className="h-12 bg-lattice-surface rounded-lg w-2/3" />
+          <div className="h-48 bg-lattice-surface rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
   if (!dtu) {
     return (
       <div className="min-h-screen bg-lattice-void flex items-center justify-center">
@@ -135,40 +162,6 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
           <h1 className="text-2xl font-bold text-white">DTU Not Found</h1>
           <p className="text-gray-400">
             This thought unit doesn&apos;t exist or may have been archived.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
-          >
-            Go to Concord OS
-            <ExternalLink className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (lineageLoading) {
-    return (
-      <div className="min-h-screen bg-lattice-void">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-pulse">
-          <div className="h-8 bg-lattice-surface rounded-lg w-1/3" />
-          <div className="h-12 bg-lattice-surface rounded-lg w-2/3" />
-          <div className="h-48 bg-lattice-surface rounded-xl" />
-          <div className="h-24 bg-lattice-surface rounded-xl" />
-        </div>
-      </div>
-    );
-  }
-
-  if (lineageError) {
-    return (
-      <div className="min-h-screen bg-lattice-void flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md px-6">
-          <Ghost className="w-16 h-16 text-red-500 mx-auto" />
-          <h1 className="text-2xl font-bold text-white">Failed to Load Lineage</h1>
-          <p className="text-gray-400">
-            Could not fetch lineage data for this DTU. Please try again later.
           </p>
           <Link
             href="/"

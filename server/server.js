@@ -25532,6 +25532,11 @@ register("dtu", "create", async (ctx, input) => {
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
+    // Detail view and dtu.get read `content`. A caller that passed a body
+    // expects that exact string back, not only the notes side channel.
+    if (dtu.content == null) {
+      dtu.content = typeof input.content === "string" ? input.content : rawText;
+    }
   }
 
   // User-initiated direct writes get a lower council threshold (1
