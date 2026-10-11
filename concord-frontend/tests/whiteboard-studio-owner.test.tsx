@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const deleteMock = vi.fn();
 const patchMock = vi.fn();
 const updateMock = vi.fn();
+const createArtifactMock = vi.fn(async () => ({ id: 'art_1' }));
+const createBoardMock = vi.fn(() => Promise.resolve({ data: { ok: true, dtuId: 'wb_new' } }));
+const getBoardMock = vi.fn();
 
 const elements = [
   { id: 'r', type: 'rectangle', x: 10, y: 10, width: 80, height: 40, stroke: '#fff', fill: '#fff', strokeWidth: 2 },
@@ -27,7 +30,7 @@ vi.mock('@/lib/hooks/use-lens-data', () => ({
     error: null,
     refetch: vi.fn(),
     items: [],
-    create: vi.fn(async () => ({ id: 'art_1' })),
+    create: (...args: unknown[]) => createArtifactMock(...args),
   }),
 }));
 
@@ -43,10 +46,8 @@ vi.mock('@/lib/api/client', () => ({
   apiHelpers: {
     whiteboard: {
       list: () => Promise.resolve({ data: { whiteboards: [{ id: 'wb_1', title: 'Whiteboard: Plan', elementCount: elements.length }] } }),
-      get: () => Promise.resolve({
-        data: { ok: true, whiteboard: { id: 'wb_1', title: 'Plan', elements, createdAt: '2026-10-01', updatedAt: '2026-10-02' } },
-      }),
-      create: () => Promise.resolve({ data: { ok: true, dtuId: 'wb_new' } }),
+      get: (...args: unknown[]) => getBoardMock(...args),
+      create: (...args: unknown[]) => createBoardMock(...args),
       update: (...args: unknown[]) => updateMock(...args),
     },
     dtus: { paginated: () => Promise.resolve({ data: { dtus: [{ id: 'dtu_1', title: 'Linked', tier: 'regular', tags: ['note'] }] } }) },
@@ -107,9 +108,16 @@ beforeEach(() => {
   deleteMock.mockReset();
   patchMock.mockReset();
   updateMock.mockReset();
+  createArtifactMock.mockClear();
+  createBoardMock.mockClear();
+  getBoardMock.mockReset();
   updateMock.mockResolvedValue({ data: { ok: true } });
   deleteMock.mockResolvedValue({ data: { ok: true, deleted: true } });
   patchMock.mockResolvedValue({ data: { ok: true } });
+  getBoardMock.mockResolvedValue({
+    data: { ok: true, whiteboard: { id: 'wb_1', title: 'Plan', elements, createdAt: '2026-10-01', updatedAt: '2026-10-02' } },
+  });
+  createBoardMock.mockResolvedValue({ data: { ok: true, dtuId: 'wb_new' } });
   HTMLCanvasElement.prototype.getContext = (() => fake2d()) as unknown as HTMLCanvasElement['getContext'];
   HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,xx';
   HTMLCanvasElement.prototype.getBoundingClientRect = () => ({
@@ -138,6 +146,22 @@ function renderStudio() {
 }
 
 describe('WhiteboardStudio owner actions', () => {
+  it('creates a board through the whiteboard API and does not write a second artifact', async () => {
+    renderStudio();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New board' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'New board' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create board' }));
+    await waitFor(() => expect(createBoardMock).toHaveBeenCalledWith({ title: 'Fresh', linkedDtus: [] }));
+    expect(createArtifactMock).not.toHaveBeenCalled();
+  });
+
+  it('stays on the board when a read comes back 404', async () => {
+    getBoardMock.mockRejectedValue(Object.assign(new Error('missing'), { response: { status: 404 } }));
+    renderStudio();
+    await waitFor(() => expect(screen.getByText(/Sketch it, Ramaj/)).toBeTruthy());
+    expect(screen.queryByText('missing')).toBeNull();
+  });
+
   it('opens a saved board, renames it, and deletes it', async () => {
     renderStudio();
     await waitFor(() => expect(screen.getByRole('button', { name: /Plan/ })).toBeTruthy());

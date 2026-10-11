@@ -2134,6 +2134,7 @@ import { initializeManifests, getManifestStats, registerUserLens, registerEmerge
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
+import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
@@ -55101,10 +55102,104 @@ register("collab", "unlock", (ctx, input) => {
 // Whiteboards are owner-scoped: list/get/update only see the caller's boards.
 // Boards created before ownerId was recorded have none and stay reachable.
 const _wbVisible = (dtu, ctx) => !dtu.ownerId || dtu.ownerId === ctx?.actor?.userId;
+const _wbMissing = () => ({ ok: false, error: "Whiteboard not found", status: 404 });
+
+// The canvas is the whiteboard DTU. A lens artifact (type board) is only a
+// catalog shadow so GET /api/lens/whiteboard?type=board stays in step with
+// rename and delete. The shadow stores whiteboardId; it does not copy elements.
+function _wbAttachMirror(ctx, whiteboard) {
+  const ownerId = ctx?.actor?.userId || "anon";
+  const now = whiteboard.createdAt || nowISO();
+  const id = uid("lart");
+  const artifact = {
+    id,
+    domain: "whiteboard",
+    type: "board",
+    ownerId,
+    title: whiteboard.title,
+    data: {
+      whiteboardId: whiteboard.id,
+      linkedDtus: Array.isArray(whiteboard.linkedDtus) ? whiteboard.linkedDtus : [],
+      createdAt: now,
+      elementCount: 0,
+    },
+    meta: {
+      tags: [],
+      status: "draft",
+      visibility: "private",
+      scope: "local",
+      consent: { publishToMarketplace: false, shareToFeed: false, allowCitations: false, allowAiTraining: false },
+    },
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  };
+  STATE.lensArtifacts.set(id, artifact);
+  _lensDomainIndexAdd("whiteboard", id);
+  whiteboard.artifactId = id;
+  return artifact;
+}
+
+function _wbPushShadow(shadows, seen, artifact, ownerId) {
+  if (!artifact || !artifact.id || seen.has(artifact.id)) return;
+  if (artifact.domain !== "whiteboard" || artifact.type !== "board") return;
+  if (ownerId && artifact.ownerId && artifact.ownerId !== ownerId) return;
+  seen.add(artifact.id);
+  shadows.push(artifact);
+}
+
+// Linked shadows (data.whiteboardId or the id stored on the board) plus, when
+// the title still matches, the single unlinked shadow the old studio wrote.
+function _wbCollectShadows(dtu, legacyTitle) {
+  const ownerId = dtu?.ownerId || null;
+  const whiteboardId = dtu?.machine?.data?.id || dtu?.id;
+  const shadows = [];
+  const seen = new Set();
+  const hinted = dtu?.machine?.data?.artifactId;
+  if (hinted) _wbPushShadow(shadows, seen, STATE.lensArtifacts.get(hinted), ownerId);
+  for (const artifact of _lensDomainArtifacts("whiteboard")) {
+    if (artifact?.data?.whiteboardId === whiteboardId) _wbPushShadow(shadows, seen, artifact, ownerId);
+  }
+  const legacy = pickLegacyShadow(_lensDomainArtifacts("whiteboard"), { ownerId, title: legacyTitle });
+  _wbPushShadow(shadows, seen, legacy, ownerId);
+  return shadows;
+}
+
+function _wbWriteShadow(artifact, title, whiteboardId, linkedDtus, when) {
+  const prev = artifact.data && typeof artifact.data === "object" ? artifact.data : {};
+  const nextLinked = Array.isArray(linkedDtus) ? linkedDtus : (Array.isArray(prev.linkedDtus) ? prev.linkedDtus : []);
+  const sameLinks = JSON.stringify(prev.linkedDtus || []) === JSON.stringify(nextLinked);
+  if (artifact.title === title && prev.whiteboardId === whiteboardId && sameLinks) return;
+  artifact.title = title;
+  artifact.data = {
+    ...prev,
+    whiteboardId,
+    linkedDtus: nextLinked,
+    elementCount: Array.isArray(prev.elements) ? prev.elements.length : (prev.elementCount || 0),
+  };
+  artifact.updatedAt = when;
+  artifact.version = (artifact.version || 1) + 1;
+  STATE.lensArtifacts.set(artifact.id, artifact);
+}
+
+function _wbDropShadow(artifact) {
+  STATE.lensArtifacts.delete(artifact.id);
+  _lensDomainIndexRemove(artifact.domain || "whiteboard", artifact.id);
+}
+
+function _wbSyncShadows(dtu, legacyTitle) {
+  const wb = dtu?.machine?.data || {};
+  const when = wb.updatedAt || nowISO();
+  for (const artifact of _wbCollectShadows(dtu, legacyTitle)) {
+    _wbWriteShadow(artifact, wb.title || artifact.title, wb.id || dtu.id, wb.linkedDtus, when);
+  }
+}
 
 register("whiteboard", "create", (ctx, input) => {
   const { title, linkedDtus } = input;
   const whiteboard = { id: uid("wb"), title: title || "Untitled Whiteboard", elements: [], linkedDtus: linkedDtus || [], collaborators: [], createdAt: nowISO(), updatedAt: nowISO() };
+  try { _wbAttachMirror(ctx, whiteboard); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_mirror_failed", { id: whiteboard.id, error: String(e?.message || e) }); }
   const wbDtu = {
     id: whiteboard.id,
     title: `Whiteboard: ${whiteboard.title}`,
@@ -55126,13 +55221,15 @@ register("whiteboard", "create", (ctx, input) => {
 register("whiteboard", "update", (ctx, input) => {
   const { whiteboardId, elements, linkedDtus } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   const wb = dtu.machine.data;
   if (elements) wb.elements = elements;
   if (linkedDtus) { wb.linkedDtus = linkedDtus; dtu.lineage.parents = linkedDtus; }
   wb.updatedAt = nowISO();
   dtu.updatedAt = nowISO();
   STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, wb.title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
   realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
   return { ok: true, whiteboard: wb };
@@ -55141,11 +55238,14 @@ register("whiteboard", "update", (ctx, input) => {
 register("whiteboard", "get", (ctx, input) => {
   const { whiteboardId } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   return { ok: true, whiteboard: dtu.machine.data, linkedDtus: dtu.lineage?.parents || [] };
 });
 
 register("whiteboard", "list", (ctx, _input) => {
+  // `title` is the DTU title ("Whiteboard: <name>") so the knowledge object
+  // stays labeled. GET /api/whiteboard/:id returns machine.data.title, the
+  // raw name. The studio strips the prefix when it renders the list.
   const whiteboards = dtusArray()
     .filter(d => d.machine?.kind === "whiteboard" && _wbVisible(d, ctx))
     .map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt, updatedAt: d.updatedAt || d.createdAt }))
@@ -55174,12 +55274,15 @@ register("whiteboard", "rename", (ctx, input) => {
   const next = String(input?.title || "").trim();
   if (!next) return { ok: false, error: "title required", status: 400 };
   const wb = dtu.machine.data || {};
+  const previous = wb.title;
   wb.title = next;
   wb.updatedAt = nowISO();
   dtu.machine.data = wb;
   dtu.title = `Whiteboard: ${next}`;
   dtu.updatedAt = wb.updatedAt;
   STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, previous); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_rename_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
   return { ok: true, whiteboard: wb };
 });
@@ -55189,7 +55292,15 @@ register("whiteboard", "delete", (ctx, input) => {
   const dtu = STATE.dtus.get(whiteboardId);
   const denied = _wbMutateGate(dtu, ctx);
   if (denied) return denied;
+  const title = dtu.machine?.data?.title;
+  let shadows = [];
+  try { shadows = _wbCollectShadows(dtu, title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   STATE.dtus.delete(whiteboardId);
+  for (const artifact of shadows) {
+    try { _wbDropShadow(artifact); }
+    catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: artifact?.id, error: String(e?.message || e) }); }
+  }
   saveStateDebounced();
   return { ok: true, deleted: true, id: whiteboardId };
 });
@@ -55207,8 +55318,8 @@ app.get("/api/collab/sessions", asyncHandler(async (req, res) => res.json(await 
 app.post("/api/collab/lock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "lock", req.body, makeCtx(req)))));
 app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "unlock", req.body, makeCtx(req)))));
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
-app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
-app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
+app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
 app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
