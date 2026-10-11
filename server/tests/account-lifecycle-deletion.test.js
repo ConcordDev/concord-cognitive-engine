@@ -35,7 +35,10 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
 import {
+  cancelAccountDeletion,
+  DELETION_GRACE_DAYS,
   executeAccountDeletion,
+  processScheduledDeletions,
   requestAccountDeletion,
 } from "../lib/account-lifecycle.js";
 
@@ -419,10 +422,34 @@ describe("requestAccountDeletion — 90-day balance-forfeit path is unchanged by
     assert.equal(db.prepare("SELECT COUNT(*) c FROM users WHERE id = ?").get(USER).c, 1, "user must not be deleted while a withdrawal is pending");
   });
 
-  it("deletes immediately when balance is zero — and applies the same fixed pipeline", () => {
+  it("schedules a cancellable grace window when balance is zero — does not delete immediately", () => {
     const result = requestAccountDeletion(db, USER);
     assert.equal(result.ok, true);
-    assert.equal(result.deletedImmediately, true);
+    assert.equal(result.scheduled, true);
+    assert.equal(result.deletedImmediately, undefined);
+    assert.equal(result.graceDays, DELETION_GRACE_DAYS);
+    assert.equal(db.prepare("SELECT COUNT(*) c FROM users WHERE id = ?").get(USER).c, 1, "the user row must survive the request");
+
+    const forfeitDays = Math.round((new Date(result.forfeitDate).getTime() - Date.now()) / 86400000);
+    assert.equal(forfeitDays, DELETION_GRACE_DAYS);
+
+    const adr = db.prepare("SELECT status FROM account_deletion_requests WHERE user_id = ?").get(USER);
+    assert.equal(adr.status, "scheduled");
+
+    const cancelled = cancelAccountDeletion(db, USER);
+    assert.equal(cancelled.ok, true);
+    assert.equal(cancelled.cancelled, true);
+    assert.equal(db.prepare("SELECT status FROM account_deletion_requests WHERE user_id = ?").get(USER).status, "cancelled");
+    assert.equal(db.prepare("SELECT COUNT(*) c FROM users WHERE id = ?").get(USER).c, 1);
+  });
+
+  it("deletes only after the grace date, via the scheduled sweep", () => {
+    const result = requestAccountDeletion(db, USER);
+    assert.equal(result.scheduled, true);
+    db.prepare("UPDATE account_deletion_requests SET forfeit_date = ? WHERE user_id = ?")
+      .run("2000-01-01 00:00:00.000", USER);
+    const processed = processScheduledDeletions(db);
+    assert.equal(processed.processed, 1);
     assert.equal(db.prepare("SELECT COUNT(*) c FROM users WHERE id = ?").get(USER).c, 0);
   });
 });

@@ -151,6 +151,10 @@ export function fromAxiosError(error: unknown): ConcordError {
   }
 
   const { status, data } = axiosErr.response;
+  const body = data as { error?: string; code?: string; message?: string; reason?: string } | undefined;
+  if (status === 503 && (body?.reason === 'shutting_down' || body?.code === 'shutting_down')) {
+    return new ServerError('Server restarting, try again.', 503);
+  }
   const msg = data?.error || data?.message || axiosErr.message || 'Unknown error';
 
   switch (status) {

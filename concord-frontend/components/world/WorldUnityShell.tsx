@@ -20,7 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
-import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
+import { buildUnityIframeSearch, showUnityGatewayDevBadge } from '@/lib/unity-iframe-config';
 
 const WorldOsSurface = dynamic(() => import('@/components/world/WorldOsSurface'), {
   ssr: false,
@@ -142,13 +142,17 @@ export default function WorldUnityShell() {
     setPanel('advanced');
   }, []);
 
+  const devGatewayBadge = showUnityGatewayDevBadge();
   const chromeHint = useMemo(() => {
     if (status === 'checking') return 'Locating Unity WebGL…';
     if (status === 'missing') {
-      return 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws';
+      return devGatewayBadge
+        ? 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws'
+        : 'Unity WebGL export is not built';
     }
-    return 'Unity WebGL · /unity-ws';
-  }, [status]);
+    // Ready: the gateway path is dev chrome. Players get the viewport, not a badge.
+    return devGatewayBadge ? 'Unity WebGL · /unity-ws' : '';
+  }, [status, devGatewayBadge]);
 
   if (panel === 'advanced') {
     return (
@@ -205,17 +209,20 @@ export default function WorldUnityShell() {
 
         {/* Minimal always-available chrome */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-between p-3">
-          <div
-            className="pointer-events-none rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-widest text-amber-200/90 backdrop-blur"
-            aria-hidden={status !== 'ready'}
-          >
-            {chromeHint}
-          </div>
+          {chromeHint ? (
+            <div
+              data-testid={status === 'ready' ? 'unity-ws-dev-badge' : undefined}
+              className="pointer-events-none rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-widest text-amber-200/90 backdrop-blur"
+              aria-hidden={status !== 'ready'}
+            >
+              {chromeHint}
+            </div>
+          ) : null}
           <button
             type="button"
             data-testid="world-unity-menu-btn"
             onClick={() => setPanel((p) => (p === 'menu' ? null : 'menu'))}
-            className="pointer-events-auto rounded-lg border border-white/15 bg-black/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur hover:bg-white/10"
+            className="pointer-events-auto ml-auto rounded-lg border border-white/15 bg-black/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur hover:bg-white/10"
           >
             Menu
           </button>

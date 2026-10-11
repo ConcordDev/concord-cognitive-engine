@@ -16,6 +16,32 @@ interface TrendingTopic {
   category?: string;
 }
 
+const LABEL_KEYS = ['tag', 'topic', 'name', 'label', 'text', 'value'] as const;
+
+function isObjectCoercionTag(value: string): boolean {
+  return value.trim().toLowerCase() === '[object object]';
+}
+
+/** A topic row is a string label. Objects are not stringified into "[object Object]". */
+function readableTag(tag: unknown): string | null {
+  if (typeof tag === 'string') {
+    const s = tag.trim();
+    if (!s || isObjectCoercionTag(s)) return null;
+    return s;
+  }
+  if (typeof tag === 'number' && Number.isFinite(tag)) return String(tag);
+  if (tag && typeof tag === 'object') {
+    const rec = tag as Record<string, unknown>;
+    for (const key of LABEL_KEYS) {
+      const v = rec[key];
+      if (typeof v !== 'string') continue;
+      const s = v.trim();
+      if (s && !isObjectCoercionTag(s)) return s;
+    }
+  }
+  return null;
+}
+
 interface TrendingTopicsProps {
   onTopicClick?: (tag: string) => void;
   className?: string;
@@ -73,7 +99,14 @@ function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps) {
     );
   }
 
-  if (!topics || topics.length === 0) {
+  const rows = (topics || []).flatMap((topic) => {
+    const tag = readableTag(topic.tag);
+    if (!tag) return [];
+    const count = Number(topic.count);
+    return [{ ...topic, tag, count: Number.isFinite(count) ? count : 0 }];
+  });
+
+  if (rows.length === 0) {
     return (
       <div className={cn('text-center py-8', className)}>
         <Hash className="w-8 h-8 text-gray-600 mx-auto mb-2" />
@@ -92,7 +125,7 @@ function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps) {
 
       {/* Topic list */}
       <div className="space-y-1.5">
-        {topics.map((topic, idx) => (
+        {rows.map((topic, idx) => (
           <motion.button
             key={topic.tag}
             initial={{ opacity: 0, x: -10 }}

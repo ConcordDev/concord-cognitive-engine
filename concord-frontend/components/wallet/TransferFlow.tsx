@@ -31,10 +31,14 @@ export function TransferFlow({
   onSuccess: () => void;
 }) {
   const [recipientId, setRecipientId] = useState('');
+  const [resolved, setResolved] = useState<{ id: string; displayName: string } | null>(null);
+  const [recipientError, setRecipientError] = useState('');
+  const [resolving, setResolving] = useState(false);
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<Step>('input');
   const [errorMessage, setErrorMessage] = useState('');
   const transferAbortRef = useRef<AbortController | null>(null);
+  const resolveSeq = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -45,10 +49,49 @@ export function TransferFlow({
   const parsedAmount = parseInt(amount, 10) || 0;
   const fee = Math.ceil(parsedAmount * TRANSFER_FEE_RATE * 100) / 100;
   const netAmount = Math.round((parsedAmount - fee) * 100) / 100;
-  const isValid = parsedAmount > 0 && parsedAmount <= balance && recipientId.trim().length > 0;
+  const overBalance = parsedAmount > balance;
+  const detailsReady = parsedAmount > 0 && !overBalance && recipientId.trim().length > 0;
+  const sendLabel = overBalance
+    ? `Insufficient balance (${balance.toLocaleString()} CC available)`
+    : detailsReady
+      ? `Send ${parsedAmount.toLocaleString()} CC`
+      : 'Enter transfer details';
+
+  const handleContinue = async () => {
+    if (!detailsReady || resolving) return;
+    const query = recipientId.trim();
+    const seq = ++resolveSeq.current;
+    setResolving(true);
+    setRecipientError('');
+    try {
+      const res = await api.get('/api/economy/resolve-recipient', {
+        params: { q: query },
+      });
+      if (seq !== resolveSeq.current) return;
+      const data = res.data as {
+        ok?: boolean;
+        user?: { id?: string; displayName?: string };
+      };
+      const user = data?.user;
+      if (!data?.ok || !user?.id || !user.displayName) {
+        setRecipientError('Unknown user');
+        setResolved(null);
+        return;
+      }
+      setResolved({ id: user.id, displayName: user.displayName });
+      setStep('confirm');
+    } catch (err: unknown) {
+      if (seq !== resolveSeq.current) return;
+      const code = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setResolved(null);
+      setRecipientError(code === 'unknown_user' ? 'Unknown user' : 'Could not look up that recipient.');
+    } finally {
+      if (seq === resolveSeq.current) setResolving(false);
+    }
+  };
 
   const handleTransfer = async () => {
-    if (!isValid) return;
+    if (!detailsReady || !resolved) return;
     transferAbortRef.current?.abort();
     const abortController = new AbortController();
     transferAbortRef.current = abortController;
@@ -56,7 +99,7 @@ export function TransferFlow({
     try {
       const res = await api.post(
         '/api/economy/transfer',
-        { to: recipientId.trim(), amount: parsedAmount },
+        { to: resolved.id, amount: parsedAmount },
         { signal: abortController.signal },
       );
       const data = res.data as { ok?: boolean; error?: string };
@@ -93,21 +136,37 @@ export function TransferFlow({
           </div>
 
           <div>
-            <label className={ds.label}>Recipient user ID</label>
+            <label className={ds.label} htmlFor="wallet-transfer-recipient">Recipient</label>
             <input
+              id="wallet-transfer-recipient"
               type="text"
               value={recipientId}
-              onChange={(e) => setRecipientId(e.target.value)}
-              placeholder="Enter user ID"
+              onChange={(e) => {
+                resolveSeq.current += 1;
+                setRecipientId(e.target.value);
+                setResolved(null);
+                setRecipientError('');
+                setResolving(false);
+              }}
+              placeholder="@username or email"
+              autoComplete="off"
+              aria-invalid={recipientError ? true : undefined}
+              aria-describedby={recipientError ? 'wallet-transfer-recipient-error' : undefined}
               className={cn(ds.input, 'font-mono')}
             />
+            {recipientError && (
+              <p id="wallet-transfer-recipient-error" className="text-xs text-red-400 mt-1" role="alert">
+                {recipientError}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className={ds.label}>Amount</label>
+            <label className={ds.label} htmlFor="wallet-transfer-amount">Amount</label>
             <div className="relative">
               <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="wallet-transfer-amount"
                 type="text"
                 inputMode="numeric"
                 value={amount}
@@ -119,7 +178,7 @@ export function TransferFlow({
             <p className="text-xs text-gray-400 mt-1">Available: {balance.toLocaleString()} CC</p>
           </div>
 
-          {parsedAmount > 0 && isValid && (
+          {parsedAmount > 0 && detailsReady && (
             <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Amount</span>
@@ -143,18 +202,19 @@ export function TransferFlow({
 
           <button
             type="button"
-            onClick={() => setStep('confirm')}
-            disabled={!isValid}
+            onClick={handleContinue}
+            disabled={!detailsReady || resolving}
+            aria-busy={resolving || undefined}
             className={cn(
               ds.btnBase,
               'w-full px-6 py-3',
-              isValid
+              detailsReady && !resolving
                 ? 'bg-[var(--lens-accent)]/20 text-[var(--lens-accent)] border border-[var(--lens-accent)]/50 hover:bg-[var(--lens-accent)]/30'
                 : 'bg-lattice-elevated text-gray-400 cursor-not-allowed',
             )}
           >
-            <Send className="w-5 h-5" />
-            {isValid ? `Send ${parsedAmount.toLocaleString()} CC` : 'Enter transfer details'}
+            {resolving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {resolving ? 'Looking up recipient' : sendLabel}
           </button>
         </div>
       )}
@@ -173,7 +233,7 @@ export function TransferFlow({
           <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">To</span>
-              <span className="font-mono text-white truncate max-w-[200px]">{recipientId}</span>
+              <span className="text-white truncate max-w-[220px]">{resolved?.displayName}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">Amount</span>
@@ -224,7 +284,7 @@ export function TransferFlow({
             <span className="font-mono font-bold" style={{ color: 'var(--lens-accent)' }}>
               {netAmount.toFixed(2)} CC
             </span>{' '}
-            sent to <span className="text-white font-mono">{recipientId}</span>
+            sent to <span className="text-white">{resolved?.displayName}</span>
           </p>
           <button
             type="button"
@@ -232,6 +292,8 @@ export function TransferFlow({
               setStep('input');
               setAmount('');
               setRecipientId('');
+              setResolved(null);
+              setRecipientError('');
               onClose?.();
             }}
             className={cn(ds.btnPrimary, 'mt-4')}

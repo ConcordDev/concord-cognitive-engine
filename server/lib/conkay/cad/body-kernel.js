@@ -21,6 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requestKernel, rememberKernel, runPythonKernel } from "./kernel-queue.js";
+import { readStlFile } from "../aero/stl-sections.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const BODY_SCRIPT = path.join(HERE, "conkay_body_occ.py");
@@ -83,6 +84,13 @@ export function requestHash(request) {
 
 const keyOf = (hash) => `body:${hash}:${kernelPythonPath()}`;
 
+/** Park the body's STL triangles before the sync aero solver can see the kernel result. */
+async function preloadBodyStl(result) {
+  const stl = result?.files?.stl;
+  if (!stl?.path) return;
+  try { await readStlFile(stl.path, { sha256: stl.sha256 }); } catch { /* cachedStlTriangles rethrows; aero reports notComputed */ }
+}
+
 /**
  * Run a kernel command asynchronously. request = { command, ... } (no outDir: set here for "body").
  * noCache: always run the kernel, into a fresh temporary directory (determinism checks).
@@ -97,11 +105,17 @@ export async function runBodyKernelAsync(request, { timeoutMs = 1800000, noCache
   const dir = useCache ? path.join(bodyCacheDir(), hash) : await fsp.mkdtemp(path.join(os.tmpdir(), `conkay-cad-body-${hash}-`));
   const cached = path.join(dir, "result.json");
   if (useCache) {
-    try { const r = JSON.parse(await fsp.readFile(cached, "utf8")); rememberKernel(keyOf(hash), r); return r; } catch { /* not cached: run */ }
+    try {
+      const r = JSON.parse(await fsp.readFile(cached, "utf8"));
+      await preloadBodyStl(r);
+      rememberKernel(keyOf(hash), r);
+      return r;
+    } catch { /* not cached, or result.json unreadable: run */ }
   }
   const full = request.command === "body" ? { ...request, outDir: dir } : request;
   const out = await runPythonKernel({ python, script: BODY_SCRIPT, input: full, timeoutMs });
   out.requestHash = hash;
+  if (out.ok) await preloadBodyStl(out);
   if (noCache) return out;
   if (out.ok) {
     if (useCache && await ensurePrivateDir(dir)) {

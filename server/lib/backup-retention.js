@@ -17,6 +17,24 @@ import path from "node:path";
 /** Date directories runBackup creates: `new Date().toISOString().split("T")[0]`. */
 export const DATED_DB_DIR_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Dotfile so JSON rotation (which skips dot-names) and dated-dir pruning
+ * (which only deletes YYYY-MM-DD directories) both leave it alone.
+ * Sibling folders such as backups-legacy are never this path.
+ */
+export const DB_BACKUP_RUN_STATUS_FILE = ".db-backup-status.json";
+
+export async function readDbBackupRunStatus(backupDir) {
+  try {
+    const raw = await fs.promises.readFile(path.join(backupDir, DB_BACKUP_RUN_STATUS_FILE), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 function readEntries(backupDir) {
   try {
     return fs.readdirSync(backupDir, { withFileTypes: true });
@@ -134,11 +152,15 @@ export async function summarizeDatedDbBackups(backupDir, now = Date.now()) {
   const last = listed[0] || null;
   const hoursSinceBackup = last ? (now - last.mtimeMs) / 3600000 : Infinity;
   const finite = Number.isFinite(hoursSinceBackup);
+  const lastRun = await readDbBackupRunStatus(backupDir);
+  const skippedLowDisk = !!(lastRun && lastRun.result === "skipped" && lastRun.reason === "low_disk");
   return {
     totalBackups: listed.length,
     lastBackup: last ? last.date : null,
     hoursSinceLastBackup: finite ? Math.round(hoursSinceBackup) : Infinity,
     healthy: finite && hoursSinceBackup < 26,
     backups: listed.slice(0, 7).map(({ filename, size, date, mtime }) => ({ filename, size, date, mtime })),
+    lastRun,
+    skippedLowDisk,
   };
 }

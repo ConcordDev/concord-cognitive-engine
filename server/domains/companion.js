@@ -17,16 +17,21 @@
 // receive a notification. No migrations — STATE-backed for the mutable bits,
 // real DB reads for the activity feed.
 //
-// Per-user scope via ctx.actor.userId.
+// Per-user scope via ctx.actor.userId. The notification inbox and push
+// preferences live on STATE.companionNotifications / companionPushPrefs /
+// _companionNotifSeq, all in LENS_STATE_KEYS, so they survive a restart.
+// The inbox keeps the newest 200 notifications.
 
 export default function registerCompanionActions(registerLensAction) {
   // ── STATE plumbing ───────────────────────────────────────────────
   function store() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
     const STATE = globalThis._concordSTATE;
-    STATE.companionNotifications ??= new Map(); // userId -> Array<Notification>
-    STATE.companionPushPrefs ??= new Map();     // userId -> { [key]: boolean }
-    if (typeof STATE._companionNotifSeq !== "number") STATE._companionNotifSeq = 0;
+    if (!(STATE.companionNotifications instanceof Map)) STATE.companionNotifications = new Map();
+    if (!(STATE.companionPushPrefs instanceof Map)) STATE.companionPushPrefs = new Map();
+    if (typeof STATE._companionNotifSeq !== "number" || !Number.isFinite(STATE._companionNotifSeq)) {
+      STATE._companionNotifSeq = 0;
+    }
     return STATE;
   }
   function save() {

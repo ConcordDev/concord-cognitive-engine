@@ -11,6 +11,7 @@ import { useCallback, useState } from 'react';
 import { CornerDownRight, Loader2, Send, MessageSquare } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import type { SocialReply } from './types';
+import { authorLabel } from './authorLabel';
 
 function relTime(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
@@ -44,11 +45,15 @@ function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps
     if (r.data?.ok) { setBody(''); setOpen(false); onChanged(); }
   }, [body, postId, reply.id, username, onChanged]);
 
+  const who = authorLabel(reply.userId, reply.username, reply.displayName);
+
   return (
     <div style={{ marginLeft: depth > 0 ? 14 : 0 }} className={depth > 0 ? 'border-l border-zinc-800 pl-2.5' : ''}>
       <div className="py-1.5">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-xs font-medium text-zinc-200">@{reply.username}</span>
+          <span className="text-xs font-medium text-zinc-200">
+            {who.name}{who.handle && who.handle !== who.name ? ` @${who.handle}` : ''}
+          </span>
           <span className="text-[10px] text-zinc-400">{relTime(reply.createdAt)}</span>
         </div>
         <p className="text-xs text-zinc-300 leading-snug">{reply.body}</p>

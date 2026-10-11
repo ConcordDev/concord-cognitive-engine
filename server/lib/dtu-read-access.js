@@ -50,6 +50,13 @@ export function viewerIdFromCtx(ctx) {
 /** True when this caller may receive the DTU's content. */
 export function ctxMayReadDtu(ctx, dtu) {
   if (ctx?.internal === true || ctx?.actor?.internal === true) return true;
+  // Boot normalization stamps ownerless oracle answers (and other
+  // non-public system rows) visibility "internal". Lists already drop
+  // those. By-id reads must too, or the id is still a public oracle.
+  // A server-internal caller above is exempt; an HTTP request is not.
+  // Public system content (news, genesis, summaries) stays visibility
+  // "public" and is unaffected.
+  if (dtu?.visibility === "internal") return false;
   return !privateDtuHiddenFrom(dtu, viewerIdFromCtx(ctx));
 }
 
@@ -60,6 +67,59 @@ export function ctxMayReadDtu(ctx, dtu) {
  * in-memory scope. Visibility / privacy / owner are filled only when the
  * stored object lacks them.
  */
+/**
+ * Ids that are not a person. Stamping one of these as ownerId makes the
+ * chat consent filter treat the DTU as world-readable (`anon` / `system` /
+ * `founder`) or leaves it ownerless (`anonymous`).
+ */
+const NOT_AN_OWNER = new Set(["anon", "anonymous", "system", "founder"]);
+
+/** A real requesting user, or null when the id is missing or a placeholder. */
+export function realDtuOwnerId(userId) {
+  if (typeof userId !== "string") return null;
+  const id = userId.trim();
+  if (!id || NOT_AN_OWNER.has(id)) return null;
+  return id;
+}
+
+/**
+ * Owner + private stamp for a DTU that captures someone's prompt.
+ * Null when there is no real user — callers must not persist in that case
+ * if the row would otherwise be anonymous-readable.
+ */
+export function privateOwnerStamp(userId) {
+  const owner = realDtuOwnerId(userId);
+  if (!owner) return null;
+  return {
+    ownerId: owner,
+    author: owner,
+    userId: owner,
+    createdBy: owner,
+    visibility: "private",
+    privacy: "private",
+    scope: "user",
+  };
+}
+
+/**
+ * Mark `dtu` private. A real user id also becomes the owner. An existing
+ * non-global scope (for example forge `local`) is left alone so list-scope
+ * tests keep their contract. Returns false when no real owner was applied.
+ */
+export function applyPrivateOwner(dtu, userId) {
+  if (!dtu || typeof dtu !== "object") return false;
+  dtu.visibility = "private";
+  dtu.privacy = "private";
+  if (!dtu.scope || dtu.scope === "global") dtu.scope = "user";
+  const owner = realDtuOwnerId(userId);
+  if (!owner) return false;
+  dtu.ownerId = owner;
+  dtu.author = owner;
+  dtu.userId = owner;
+  dtu.createdBy = owner;
+  return true;
+}
+
 export function dtuFromStoreRow(row) {
   if (!row || typeof row !== "object") return null;
   let obj = null;

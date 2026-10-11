@@ -24,11 +24,14 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { solvePanels, velocityAt, signedArea } from "../lib/conkay/aero/panel2d.js";
 import { cfTurbulent, cfSchoenherr, cfLaminar, dragBuildup, rearSlantDeg, BUILDUP_COEFFICIENTS, ISA_SEA_LEVEL } from "../lib/conkay/aero/drag-buildup.js";
-import { sectionAreas, meshChecks } from "../lib/conkay/aero/stl-sections.js";
+import { sectionAreas, meshChecks, readStlFile, cachedStlTriangles } from "../lib/conkay/aero/stl-sections.js";
+import fsp from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { profilePolygon } from "../lib/conkay/physics/solvers/aero-drag.js";
 import { buildCarFromLibrary, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import { openDesign } from "../lib/conkay/index.js";
-import { kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
+import { resolveKernelPython } from "../lib/conkay/cad/body-kernel.js";
 
 const rel = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.abs(b), `${msg}: ${a} vs ${b} (rel ${(Math.abs(a - b) / Math.abs(b)).toExponential(2)})`);
 
@@ -186,6 +189,21 @@ describe("STL cross-sections (divergence theorem)", () => {
     const m = sphereMesh(1);
     for (const s of sectionAreas(m, [-0.6, -0.2, 0, 0.3, 0.7])) rel(s.area, Math.PI * (1 - s.x ** 2), 3e-3, `x ${s.x}`);
   });
+  it("reads a binary STL off the event loop and serves those triangles from memory", async () => {
+    const buf = Buffer.alloc(84 + 50);
+    buf.writeUInt32LE(1, 80);
+    const o = 84 + 12;
+    [0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((v, i) => buf.writeFloatLE(v, o + i * 4));
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "conkay-stl-"));
+    const file = path.join(dir, "one.stl");
+    await fsp.writeFile(file, buf);
+    const tris = await readStlFile(file, { sha256: "stl-async-pin" });
+    assert.equal(tris.length, 1);
+    assert.deepEqual(tris[0][1], [1, 0, 0]);
+    assert.deepEqual(cachedStlTriangles({ sha256: "stl-async-pin" }), tris);
+    assert.deepEqual(cachedStlTriangles({ path: file }), tris);
+    assert.throws(() => cachedStlTriangles({ sha256: "stl-not-loaded", path: "/no/such.stl" }), /not loaded/);
+  });
 });
 
 describe("the library car: Cd from its CAD body", () => {
@@ -201,7 +219,10 @@ describe("the library car: Cd from its CAD body", () => {
 
   let s = null, skip = null;
   before(async () => {
-    if (!(await kernelPythonPath())) { skip = "no OCC kernel Python"; return; }
+    // kernelPythonPath() always returns a string (configured path, unchecked).
+    // The suite only runs these two cases when that binary is actually there;
+    // CI does not install cadquery-ocp. The assertions are unchanged when it is.
+    if (!(await resolveKernelPython())) { skip = "no OCC kernel Python"; return; }
     s = (await carAcceptanceAsync(BRIEF)).session;
   });
 

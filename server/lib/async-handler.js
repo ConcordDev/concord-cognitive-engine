@@ -16,6 +16,7 @@
  */
 
 import { ConcordError } from "./errors.js";
+import { trySendShutdownError } from "./shutdown-http.js";
 
 /**
  * Wrap an async Express route handler so rejected promises flow to next(err).
@@ -41,6 +42,18 @@ export function createErrorMiddleware(structuredLog) {
   return (err, req, res, _next) => {
     // If headers already sent, delegate to Express default handler
     if (res.headersSent) {
+      return;
+    }
+
+    if (trySendShutdownError(err, res)) {
+      try {
+        structuredLog("warn", "shutdown_request_after_close", {
+          requestId: req.id,
+          method: req.method,
+          path: req.path,
+          error: String(err?.message || err),
+        });
+      } catch { /* logging must not turn a 503 into an unhandled throw */ }
       return;
     }
 

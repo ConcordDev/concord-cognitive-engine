@@ -23,6 +23,11 @@
 //       → handler(ctx, { domain, data: input }, input)
 // Either way `params` carries the call input, so handlers read from `params`.
 
+// Per-account snapshot bounds. Checked before the row is stored.
+// Price, quantity, and order total math are unchanged.
+export const SERVICE_LISTING_CAP = 200;
+export const SERVICE_ORDER_CAP = 200;
+
 export default function registerServiceMarketActions(registerLensAction) {
   /* ---- STATE-backed stores (no migrations) ------------------------------ */
   function smStore() {
@@ -34,6 +39,11 @@ export default function registerServiceMarketActions(registerLensAction) {
   }
   const actorId = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const smId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const countWhere = (map, field, id) => {
+    let n = 0;
+    for (const row of map.values()) if (row?.[field] === id) n += 1;
+    return n;
+  };
 
   // Order status state machine. A status may only advance to a declared next
   // status (or be cancelled from any non-terminal status).
@@ -76,6 +86,9 @@ export default function registerServiceMarketActions(registerLensAction) {
         status: "active",
         createdAt: new Date().toISOString(),
       };
+      if (countWhere(STATE.serviceListings, "provider", provider) >= SERVICE_LISTING_CAP) {
+        return { ok: false, error: "listing_cap" };
+      }
       STATE.serviceListings.set(listing.id, listing);
       return { ok: true, result: { listing } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -165,6 +178,9 @@ export default function registerServiceMarketActions(registerLensAction) {
         review: null,
         createdAt: new Date().toISOString(),
       };
+      if (countWhere(STATE.serviceOrders, "buyer", buyer) >= SERVICE_ORDER_CAP) {
+        return { ok: false, error: "order_cap" };
+      }
       STATE.serviceOrders.set(order.id, order);
       return { ok: true, result: { order } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

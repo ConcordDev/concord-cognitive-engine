@@ -13,6 +13,22 @@ export function EmptyCard({ icon, message, hint }: { icon: ReactNode; message: s
   );
 }
 
+export function StatusCard({ icon, message, hint }: { icon: ReactNode; message: string; hint: string }) {
+  return (
+    <div role="status">
+      <EmptyCard icon={icon} message={message} hint={hint} />
+    </div>
+  );
+}
+
+export function UnavailableCard({ icon, message, hint }: { icon: ReactNode; message: string; hint: string }) {
+  return (
+    <div role="alert">
+      <EmptyCard icon={icon} message={message} hint={hint} />
+    </div>
+  );
+}
+
 export function VerdictBadge({ verdict }: { verdict: string }) {
   const colors: Record<string, string> = {
     accept: 'bg-green-500/20 text-green-400',

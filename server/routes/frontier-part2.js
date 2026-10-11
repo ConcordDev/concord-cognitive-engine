@@ -52,27 +52,100 @@ const certificates = new LruMap();    // key: `${userId}:${pathId}`
 const federationInstances = new LruMap();
 const syncLogs = new LruMap();        // key: instanceId -> array of log entries
 
-// ── Seed data ─────────────────────────────────────────────────────────────────
+// ── Marketplace seed fingerprint ──────────────────────────────────────────────
+// seedMarketplace() used to insert these five userId:"system" listings on
+// every boot. They rendered as purchasable "Anonymous" items. The seed is
+// gone. Cleanup matches this exact title set AND userId/owner "system", so a
+// real user's listing is never removed — even if they reused a title.
 
-function seedMarketplace() {
-  const seeds = [
-    { title: "DTU Validator Pro", description: "Enterprise-grade DTU validation service", category: "validation", price: 29, tier: "standard" },
-    { title: "NPC Dialog Engine", description: "AI-powered NPC dialog generation", category: "ai", price: 49, tier: "professional" },
-    { title: "Terrain Generator HD", description: "High-definition procedural terrain generation", category: "procgen", price: 19, tier: "basic" },
-    { title: "Real-time Sync Plus", description: "Low-latency real-time synchronization infrastructure", category: "infrastructure", price: 39, tier: "professional" },
-    { title: "Physics Sandbox Pro", description: "Advanced physics simulation sandbox", category: "simulation", price: 59, tier: "enterprise" },
-  ];
-  for (const s of seeds) {
-    const id = crypto.randomUUID();
-    marketplaceListings.set(id, {
-      id,
-      userId: "system",
-      ...s,
-      rating: 0,
-      reviewCount: 0,
-      createdAt: new Date().toISOString(),
-    });
+export const SEEDED_SYSTEM_LISTING_TITLES = Object.freeze([
+  "DTU Validator Pro",
+  "NPC Dialog Engine",
+  "Terrain Generator HD",
+  "Real-time Sync Plus",
+  "Physics Sandbox Pro",
+]);
+
+const SEEDED_SYSTEM_LISTING_TITLE_SET = new Set(SEEDED_SYSTEM_LISTING_TITLES);
+
+export function isSeededSystemListing(listing) {
+  if (!listing || listing.userId !== "system") return false;
+  if (listing.seedSource === "seedMarketplace") return true;
+  return SEEDED_SYSTEM_LISTING_TITLE_SET.has(listing.title);
+}
+
+export function isSystemListingOwner(listing) {
+  if (!listing) return false;
+  const owner = listing.userId ?? listing.owner_user_id ?? listing.user_id ?? null;
+  if (owner === "system") return true;
+  // No real owner recorded — the seller slot is the retired demo id.
+  const seller = listing.seller_id ?? listing.sellerId ?? null;
+  return (owner == null || owner === "") && seller === "system";
+}
+
+/**
+ * Remove only the demo listings seedMarketplace() used to insert.
+ * Dry-run unless apply is true. Listings owned by anyone other than
+ * "system" are left in place, including ones that share a seed title.
+ * @param {{ apply?: boolean }} [opts]
+ */
+export function purgeSeededSystemListings({ apply = false } = {}) {
+  const removed = [];
+  for (const [id, listing] of marketplaceListings) {
+    if (!isSeededSystemListing(listing)) continue;
+    removed.push({ id, title: listing.title, userId: listing.userId });
+    if (apply) marketplaceListings.delete(id);
   }
+  return { removed, applied: !!apply };
+}
+
+/**
+ * Same predicate against the durable marketplace_listings table.
+ * Matches owner_user_id = 'system', or a null owner with seller_id = 'system'.
+ * A row with a real owner_user_id is never deleted.
+ * @param {import("better-sqlite3").Database | null | undefined} db
+ * @param {{ apply?: boolean }} [opts]
+ */
+export function purgeSeededSystemMarketplaceRows(db, { apply = false } = {}) {
+  if (!db) return { removed: [], applied: false, skipped: "no_db" };
+  let table;
+  try {
+    table = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marketplace_listings'"
+    ).get();
+  } catch (err) {
+    return { removed: [], applied: false, skipped: "unreadable", error: err.message };
+  }
+  if (!table) return { removed: [], applied: false, skipped: "no_table" };
+
+  const cols = new Set(db.prepare("PRAGMA table_info(marketplace_listings)").all().map((c) => c.name));
+  if (!cols.has("title") || !cols.has("id")) {
+    return { removed: [], applied: false, skipped: "no_title" };
+  }
+  const ownerCol = cols.has("owner_user_id") ? "owner_user_id" : null;
+  const sellerCol = cols.has("seller_id") ? "seller_id" : null;
+  const ownerPred = [];
+  if (ownerCol) ownerPred.push(`${ownerCol} = 'system'`);
+  if (sellerCol && ownerCol) ownerPred.push(`(${ownerCol} IS NULL AND ${sellerCol} = 'system')`);
+  else if (sellerCol) ownerPred.push(`${sellerCol} = 'system'`);
+  if (ownerPred.length === 0) return { removed: [], applied: false, skipped: "no_owner_column" };
+
+  const titles = [...SEEDED_SYSTEM_LISTING_TITLES];
+  const placeholders = titles.map(() => "?").join(", ");
+  const where = `title IN (${placeholders}) AND (${ownerPred.join(" OR ")})`;
+  const rows = db.prepare(`SELECT id, title FROM marketplace_listings WHERE ${where}`).all(...titles);
+  if (apply && rows.length > 0) {
+    const del = db.prepare(`DELETE FROM marketplace_listings WHERE id = ? AND ${where}`);
+    const tx = db.transaction((ids) => {
+      for (const id of ids) del.run(id, ...titles);
+    });
+    tx(rows.map((r) => r.id));
+  }
+  return {
+    removed: rows.map((r) => ({ id: r.id, title: r.title, userId: "system" })),
+    applied: !!apply,
+    skipped: null,
+  };
 }
 
 function seedLearningPaths() {
@@ -119,7 +192,9 @@ function seedFederation() {
   }
 }
 
-seedMarketplace();
+// Demo marketplace listings are not seeded. Purge any that a previous
+// process image left in this module's map (no-op on a fresh boot).
+purgeSeededSystemListings({ apply: true });
 seedLearningPaths();
 seedFederation();
 
@@ -128,10 +203,20 @@ seedFederation();
 /**
  * @param {object} [opts]
  * @param {Function} [opts.requireAuth] - Auth middleware
+ * @param {import("better-sqlite3").Database} [opts.db] - When present, boot
+ *   also deletes persisted seed rows (owner/seller "system" + seed titles).
  * @returns {Router}
  */
-export default function createFrontierRoutesPart2({ requireAuth } = {}) {
+export default function createFrontierRoutesPart2({ requireAuth, db } = {}) {
   const router = Router();
+  purgeSeededSystemListings({ apply: true });
+  if (db) {
+    try {
+      purgeSeededSystemMarketplaceRows(db, { apply: true });
+    } catch (err) {
+      logger.warn?.("[frontier-part2] seed listing cleanup skipped:", err.message);
+    }
+  }
 
   function _userId(req) {
      
@@ -231,7 +316,9 @@ export default function createFrontierRoutesPart2({ requireAuth } = {}) {
 
   router.get("/marketplace/listings", wrap((req, res) => {
     const { category } = req.query;
-    let listings = [...marketplaceListings.values()];
+    // userId "system" is the retired demo seed. Never advertise those rows
+    // as purchasable, even if one is inserted after boot.
+    let listings = [...marketplaceListings.values()].filter((l) => !isSystemListingOwner(l));
     if (category) {
       listings = listings.filter(l => l.category === category);
     }
@@ -262,7 +349,7 @@ export default function createFrontierRoutesPart2({ requireAuth } = {}) {
 
   router.get("/marketplace/listings/:id", wrap((req, res) => {
     const listing = marketplaceListings.get(req.params.id);
-    if (!listing) throw new Error("Listing not found");
+    if (!listing || isSystemListingOwner(listing)) throw new Error("Listing not found");
     const reviews = [...marketplaceReviews.values()].filter(r => r.listingId === listing.id);
     res.json({ ok: true, listing, reviews });
   }));
@@ -271,7 +358,18 @@ export default function createFrontierRoutesPart2({ requireAuth } = {}) {
     const { userId, listingId } = req.body;
     if (!userId || !listingId) throw new Error("userId and listingId are required");
     const listing = marketplaceListings.get(listingId);
-    if (!listing) throw new Error("Listing not found");
+    if (!listing) {
+      res.status(404).json({ ok: false, error: "Listing not found", reason: "listing_not_found" });
+      return;
+    }
+    if (isSystemListingOwner(listing)) {
+      res.status(403).json({
+        ok: false,
+        error: "system listings cannot be purchased",
+        reason: "system_listing",
+      });
+      return;
+    }
     const id = crypto.randomUUID();
     const order = {
       id,

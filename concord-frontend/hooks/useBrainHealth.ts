@@ -26,7 +26,14 @@ interface BrainState {
 
 interface BrainHealthStatus {
   mode: string;
+  /** Enabled brains in the payload's brain list. Meaningful only after hasSnapshot. */
   onlineCount: number;
+  /** Keys in the payload's brain list. Null until a status payload has arrived. */
+  totalCount: number | null;
+  /** True only after GET /api/brain/status returned a body. The initial zeros are not a measurement. */
+  hasSnapshot: boolean;
+  /** Every brain the status payload listed. The online fraction is counted from this, not a fixed set of four. */
+  fleet: Record<string, BrainState>;
   conscious: BrainState | null;
   subconscious: BrainState | null;
   utility: BrainState | null;
@@ -44,15 +51,53 @@ const offlineBrain: BrainState = {
   stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
 };
 
-export function useBrainHealth() {
-  const [brainStatus, setBrainStatus] = useState<BrainHealthStatus>({
+function emptyStatus(): BrainHealthStatus {
+  return {
     mode: 'unknown',
     onlineCount: 0,
+    totalCount: null,
+    hasSnapshot: false,
+    fleet: {},
     conscious: null,
     subconscious: null,
     utility: null,
     repair: null,
-  });
+  };
+}
+
+/** Brains actually present on a status payload. Enabled/online are copied from that entry, not assumed. */
+export function projectBrainFleet(raw: unknown): Record<string, BrainState> {
+  if (!raw || typeof raw !== 'object') return {};
+  const fleet: Record<string, BrainState> = {};
+  for (const [name, brain] of Object.entries(raw as Record<string, Partial<BrainState> & { stats?: Partial<BrainStats> }>)) {
+    if (!brain || typeof brain !== 'object') continue;
+    const enabled = Boolean(brain.enabled);
+    const stats: Partial<BrainStats> =
+      brain.stats && typeof brain.stats === 'object' ? brain.stats : {};
+    fleet[name] = {
+      online: enabled || Boolean(brain.online),
+      enabled,
+      model: typeof brain.model === 'string' ? brain.model : '',
+      role: typeof brain.role === 'string' ? brain.role : '',
+      avgResponseMs: Number(brain.avgResponseMs) || 0,
+      stats: {
+        requests: Number(stats.requests) || 0,
+        totalMs: Number(stats.totalMs) || 0,
+        dtusGenerated: Number(stats.dtusGenerated) || 0,
+        errors: Number(stats.errors) || 0,
+        lastCallAt: stats.lastCallAt ?? null,
+      },
+    };
+  }
+  return fleet;
+}
+
+function namedOrOffline(fleet: Record<string, BrainState>, name: string): BrainState {
+  return fleet[name] ?? offlineBrain;
+}
+
+export function useBrainHealth() {
+  const [brainStatus, setBrainStatus] = useState<BrainHealthStatus>(emptyStatus);
   const [isLoading, setIsLoading] = useState(true);
 
   const check = useCallback(async () => {
@@ -62,44 +107,28 @@ export function useBrainHealth() {
       });
       if (res.ok) {
         const data = await res.json();
-        const brains = data.brains || {};
+        const fleet = projectBrainFleet(data?.brains);
+        const names = Object.keys(fleet);
         setBrainStatus({
-          mode: data.mode || 'fallback',
-          onlineCount: data.onlineCount || 0,
-          conscious: brains.conscious ? { ...brains.conscious, online: brains.conscious.enabled } : offlineBrain,
-          subconscious: brains.subconscious ? { ...brains.subconscious, online: brains.subconscious.enabled } : offlineBrain,
-          utility: brains.utility ? { ...brains.utility, online: brains.utility.enabled } : offlineBrain,
-          repair: brains.repair ? { ...brains.repair, online: brains.repair.enabled } : offlineBrain,
+          mode: typeof data?.mode === 'string' && data.mode ? data.mode : 'fallback',
+          onlineCount: names.filter((name) => fleet[name].enabled || fleet[name].online).length,
+          totalCount: names.length,
+          hasSnapshot: true,
+          fleet,
+          conscious: namedOrOffline(fleet, 'conscious'),
+          subconscious: namedOrOffline(fleet, 'subconscious'),
+          utility: namedOrOffline(fleet, 'utility'),
+          repair: namedOrOffline(fleet, 'repair'),
         });
       } else {
         // Transient admission/shed 503s are common under load. Do NOT sticky-mark
         // every brain offline — that painted a permanent yellow GracefulFallback
         // strip even while chat could still send. Keep last-known-good status.
-        setBrainStatus((prev) => {
-          if (prev.conscious || prev.utility || prev.subconscious || prev.repair) return prev;
-          return {
-            mode: 'unknown',
-            onlineCount: 0,
-            conscious: null,
-            subconscious: null,
-            utility: null,
-            repair: null,
-          };
-        });
+        setBrainStatus((prev) => (prev.hasSnapshot ? prev : emptyStatus()));
       }
     } catch {
       // Network blip / aborted poll — preserve last-known-good; never sticky all-offline.
-      setBrainStatus((prev) => {
-        if (prev.conscious || prev.utility || prev.subconscious || prev.repair) return prev;
-        return {
-          mode: 'unknown',
-          onlineCount: 0,
-          conscious: null,
-          subconscious: null,
-          utility: null,
-          repair: null,
-        };
-      });
+      setBrainStatus((prev) => (prev.hasSnapshot ? prev : emptyStatus()));
     } finally {
       setIsLoading(false);
     }

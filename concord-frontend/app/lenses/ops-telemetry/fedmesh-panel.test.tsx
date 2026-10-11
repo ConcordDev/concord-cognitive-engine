@@ -20,6 +20,18 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+// The page waits for /api/auth/me and mounts the console only for an
+// operator. These cases exercise the federation card, so the viewer is
+// an admin whose session has already resolved.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1', username: 'tester', email: 'tester@test.local', role: 'admin' },
+    isLoading: false,
+    isAuthenticated: true,
+    logout: async () => {},
+    refresh: async () => {},
+  }),
+}));
 vi.mock('@/components/admin/LivenessPanel', () => ({ LivenessPanel: () => null }));
 
 import OpsTelemetryPage from './page';

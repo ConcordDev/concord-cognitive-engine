@@ -10,8 +10,7 @@ import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Lightbulb, Plus, Search, Database, ArrowRight, Brain,
   X, RefreshCw,
@@ -63,8 +62,6 @@ export function FactsPanel() {
   const [selectedFact, setSelectedFact] = useState<Fact | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const bridge = useLensBridge('commonsense', 'fact');
 
   const { data: factsData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['commonsense-facts'],
@@ -169,13 +166,6 @@ export function FactsPanel() {
       .slice(0, 10)
       .map(([subj, count]) => ({ subject: subj, count }));
   }, [rawFacts]);
-
-  useEffect(() => {
-    bridge.syncList(rawFacts, (f) => {
-      const fact = f as Record<string, unknown>;
-      return { title: `${fact.subject} ${fact.relation} ${fact.object}`, data: fact };
-    });
-  }, [rawFacts, bridge]);
 
   const handleCopyFact = useCallback((f: Fact) => {
     const text = `${f.subject} ${f.relation} ${f.object}`;

@@ -58,6 +58,12 @@ function tokenize(input) {
       i = j;
       continue;
     }
+    // `**` is power, the same operator as `^` (Python / JS exponent).
+    if (c === '*' && s[i + 1] === '*') {
+      tokens.push({ type: '^' });
+      i += 2;
+      continue;
+    }
     if ('+-*/^()'.includes(c)) {
       tokens.push({ type: c });
       i++;
