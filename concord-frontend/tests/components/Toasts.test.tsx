@@ -48,6 +48,16 @@ describe('Toasts', () => {
     expect(region.children).toHaveLength(0);
   });
 
+  it('renders an Open link next to the DTU id', () => {
+    mockUIStoreState.toasts = [
+      { id: 'toast-1', type: 'success', message: 'Private DTU dtu_field_notes', href: '/dtu/dtu_field_notes', linkLabel: 'Open' },
+    ];
+
+    render(<Toasts />);
+    expect(screen.getByText('Private DTU dtu_field_notes')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/dtu/dtu_field_notes');
+  });
+
   it('renders a success toast', () => {
     mockUIStoreState.toasts = [
       { id: 'toast-1', type: 'success', message: 'Item saved successfully' },

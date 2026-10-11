@@ -5,6 +5,9 @@ export interface Toast {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
   duration?: number;
+  /** Same-origin path. Rendered as a link next to the message. */
+  href?: string;
+  linkLabel?: string;
 }
 
 export interface ToastSlice {
