@@ -4,6 +4,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerEnvironmentActions from "../domains/environment.js";
+import { shapeLensRunHttp } from "../lib/lens-run-http.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -21,6 +22,7 @@ beforeEach(() => {
   globalThis._concordSaveStateDebounced = () => {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
   delete process.env.AIRNOW_API_KEY;
+  delete process.env.EPA_AIRNOW_API_KEY;
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
@@ -133,10 +135,22 @@ describe("environment.usgs-water-realtime", () => {
 });
 
 describe("environment.airnow-current", () => {
-  it("rejects missing key", async () => {
+  it("returns the missing_api_key envelope when neither AirNow env var is set", async () => {
+    let called = false;
+    globalThis.fetch = async () => { called = true; throw new Error("should not fetch"); };
     const r = await call("airnow-current", ctxA, { zipCode: "94110" });
+    assert.equal(called, false);
     assert.equal(r.ok, false);
-    assert.match(r.error, /AIRNOW_API_KEY/);
+    assert.equal(r.reason, "missing_api_key");
+    assert.equal(r.envVar, "EPA_AIRNOW_API_KEY");
+    assert.match(r.signupUrl, /docs\.airnowapi\.org/);
+    assert.equal(r.result, undefined);
+    const shaped = shapeLensRunHttp(r);
+    assert.equal(shaped.status, 200);
+    assert.equal(shaped.body.ok, false);
+    assert.equal(shaped.body.error, "missing_api_key");
+    assert.equal(shaped.body.reason, "missing_api_key");
+    assert.equal(shaped.body.observations, undefined);
   });
 
   it("rejects missing location params", async () => {
@@ -174,12 +188,67 @@ describe("environment.airnow-current", () => {
     assert.equal(r.result.source, "epa-airnow");
   });
 
-  it("surfaces 401 invalid-key clearly", async () => {
-    process.env.AIRNOW_API_KEY = "bad";
-    globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
+  it("maps a rejected AIRNOW_API_KEY alias to the missing_api_key envelope", async () => {
+    process.env.AIRNOW_API_KEY = "rejected-on-prod";
+    globalThis.fetch = async () => ({ ok: false, status: 401 });
     const r = await call("airnow-current", ctxA, { zipCode: "94110" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /invalid/);
+    assert.equal(r.reason, "missing_api_key");
+    assert.equal(r.envVar, "EPA_AIRNOW_API_KEY");
+    assert.equal(r.result, undefined);
+    const shaped = shapeLensRunHttp(r);
+    assert.equal(shaped.status, 200);
+    assert.equal(shaped.body.error, "missing_api_key");
+    assert.equal(shaped.body.observations, undefined);
+  });
+
+  it("maps an AirNow body that rejects the key to the same envelope", async () => {
+    process.env.EPA_AIRNOW_API_KEY = "bad";
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 400,
+      text: async () => "Invalid API key",
+    });
+    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
+    assert.equal(r.reason, "missing_api_key");
+    assert.equal(shapeLensRunHttp(r).status, 200);
+  });
+
+  it("prefers EPA_AIRNOW_API_KEY over the AIRNOW_API_KEY alias", async () => {
+    process.env.EPA_AIRNOW_API_KEY = "epa-key";
+    process.env.AIRNOW_API_KEY = "alias-key";
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url);
+      return { ok: true, json: async () => [] };
+    };
+    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
+    assert.equal(r.ok, true);
+    assert.match(capturedUrl, /API_KEY=epa-key/);
+    assert.doesNotMatch(capturedUrl, /alias-key/);
+  });
+
+  it("uses the alias when the canonical key is blank", async () => {
+    process.env.EPA_AIRNOW_API_KEY = "   ";
+    process.env.AIRNOW_API_KEY = "alias-key";
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url);
+      return { ok: true, json: async () => [] };
+    };
+    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
+    assert.equal(r.ok, true);
+    assert.match(capturedUrl, /API_KEY=alias-key/);
+  });
+
+  it("does not relabel a non-auth AirNow failure as a missing key", async () => {
+    process.env.EPA_AIRNOW_API_KEY = "test-key";
+    globalThis.fetch = async () => ({ ok: false, status: 502, text: async () => "bad gateway" });
+    const r = await call("airnow-current", ctxA, { zipCode: "94110" });
+    assert.equal(r.ok, false);
+    assert.notEqual(r.reason, "missing_api_key");
+    assert.match(r.error, /unreachable/);
+    assert.match(r.error, /502/);
   });
 });
 

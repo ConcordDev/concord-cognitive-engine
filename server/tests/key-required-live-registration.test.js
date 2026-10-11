@@ -44,10 +44,67 @@ test('finance.live_fred_series returns missing_api_key when FRED_API_KEY unset',
 
 test('environment.live_air_quality returns missing_api_key envelope', async () => {
   delete process.env.EPA_AIRNOW_API_KEY;
-  const r = await seen.get('environment.live_air_quality').fn({}, {});
-  assert.equal(r.ok, false);
-  assert.equal(r.envVar, 'EPA_AIRNOW_API_KEY');
-  assert.match(r.signupUrl, /airnow/);
+  delete process.env.AIRNOW_API_KEY;
+  let called = false;
+  const prev = globalThis.fetch;
+  globalThis.fetch = async () => { called = true; throw new Error('should not fetch'); };
+  try {
+    const r = await seen.get('environment.live_air_quality').fn({}, {});
+    assert.equal(called, false);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'missing_api_key');
+    assert.equal(r.envVar, 'EPA_AIRNOW_API_KEY');
+    assert.match(r.signupUrl, /airnow/);
+    assert.equal(r.observations, undefined);
+    const shaped = shapeLensRunHttp(r);
+    assert.equal(shaped.status, 200);
+    assert.equal(shaped.body.error, 'missing_api_key');
+  } finally {
+    globalThis.fetch = prev;
+  }
+});
+
+test('environment.live_air_quality maps a rejected key to the missing_api_key envelope', async () => {
+  process.env.EPA_AIRNOW_API_KEY = 'rejected-key';
+  delete process.env.AIRNOW_API_KEY;
+  const prev = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: false, status: 401 });
+  try {
+    const raw = await seen.get('environment.live_air_quality').fn({}, { zipCode: '94110' });
+    const shaped = shapeLensRunHttp(raw);
+    assert.equal(raw.ok, false);
+    assert.equal(raw.reason, 'missing_api_key');
+    assert.equal(raw.envVar, 'EPA_AIRNOW_API_KEY');
+    assert.equal(raw.observations, undefined);
+    assert.equal(shaped.status, 200);
+    assert.equal(shaped.body.ok, false);
+    assert.equal(shaped.body.error, 'missing_api_key');
+    assert.equal(shaped.body.reason, 'missing_api_key');
+  } finally {
+    globalThis.fetch = prev;
+    delete process.env.EPA_AIRNOW_API_KEY;
+  }
+});
+
+test('environment.live_air_quality accepts AIRNOW_API_KEY when EPA_AIRNOW_API_KEY is unset', async () => {
+  delete process.env.EPA_AIRNOW_API_KEY;
+  process.env.AIRNOW_API_KEY = 'alias-key';
+  const prev = globalThis.fetch;
+  let url = '';
+  globalThis.fetch = async (u) => {
+    url = String(u);
+    return { ok: true, status: 200, json: async () => [] };
+  };
+  try {
+    const r = await seen.get('environment.live_air_quality').fn({}, { zipCode: '10001' });
+    assert.equal(r.ok, true);
+    assert.match(url, /API_KEY=alias-key/);
+    assert.match(url, /zipCode=10001/);
+    assert.deepEqual(r.observations, []);
+  } finally {
+    globalThis.fetch = prev;
+    delete process.env.AIRNOW_API_KEY;
+  }
 });
 
 test('travel.live_nps_parks returns missing_api_key envelope', async () => {
@@ -69,6 +126,7 @@ test('weather.live_forecast returns missing_api_key envelope', async () => {
 test('missing_api_key shapes to HTTP 200 with the honest envelope, not 422', async () => {
   delete process.env.FRED_API_KEY;
   delete process.env.EPA_AIRNOW_API_KEY;
+  delete process.env.AIRNOW_API_KEY;
   delete process.env.NPS_API_KEY;
   delete process.env.OPENWEATHERMAP_API_KEY;
   const cases = [
@@ -97,6 +155,7 @@ test('missing_api_key shapes to HTTP 200 with the honest envelope, not 422', asy
 test('missing-key envelope is never fake — no observations/forecasts/parks/series', async () => {
   delete process.env.FRED_API_KEY;
   delete process.env.EPA_AIRNOW_API_KEY;
+  delete process.env.AIRNOW_API_KEY;
   delete process.env.NPS_API_KEY;
   delete process.env.OPENWEATHERMAP_API_KEY;
   const results = await Promise.all([

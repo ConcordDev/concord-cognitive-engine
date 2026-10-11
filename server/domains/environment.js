@@ -4,6 +4,8 @@
 // trail condition, diversion rate) plus real EPA Envirofacts and
 // USGS Water Services APIs (free, no key required).
 
+import { airNowKeyRefusal, fetchAirNow, resolveAirNowApiKey } from "../lib/airnow-key.js";
+
 const EPA_ENVIROFACTS = "https://data.epa.gov/efservice";
 const USGS_WATER = "https://waterservices.usgs.gov/nwis";
 const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation";
@@ -151,12 +153,14 @@ export default function registerEnvironmentActions(registerLensAction) {
 
   /**
    * airnow-current — Real AQI observations via AirNow API.
-   * Requires AIRNOW_API_KEY env (free at docs.airnowapi.org/account/request).
+   * Key: EPA_AIRNOW_API_KEY, with AIRNOW_API_KEY as a legacy alias
+   * (free at docs.airnowapi.org/account/request). A missing or rejected
+   * key returns the missing_api_key envelope (HTTP 200), never a raw 400.
    * params: { zipCode?: 5-digit, latitude?, longitude?, distance?: miles (default 25) }
    */
   registerLensAction("environment", "airnow-current", async (_ctx, _artifact, params = {}) => {
-    const apiKey = process.env.AIRNOW_API_KEY;
-    if (!apiKey) return { ok: false, error: "AIRNOW_API_KEY required (free at docs.airnowapi.org/account/request)" };
+    const apiKey = resolveAirNowApiKey();
+    if (!apiKey) return airNowKeyRefusal();
     const distance = Math.max(1, Math.min(100, Number(params.distance) || 25));
     let url;
     if (params.zipCode && /^\d{5}$/.test(String(params.zipCode))) {
@@ -166,12 +170,14 @@ export default function registerEnvironmentActions(registerLensAction) {
     } else {
       return { ok: false, error: "zipCode (5 digits) OR latitude+longitude required" };
     }
+    const fetched = await fetchAirNow(url);
+    if (fetched.kind === "auth") return airNowKeyRefusal();
+    if (fetched.kind === "error") {
+      return { ok: false, error: `airnow unreachable: ${fetched.error}` };
+    }
     try {
-      const r = await fetch(url);
-      if (r.status === 401) return { ok: false, error: "AIRNOW_API_KEY invalid" };
-      if (!r.ok) throw new Error(`airnow ${r.status}`);
-      const data = await r.json();
-      const observations = (data || []).map((o) => ({
+      const data = fetched.data;
+      const observations = (Array.isArray(data) ? data : []).map((o) => ({
         dateObserved: o.DateObserved,
         hourObserved: o.HourObserved,
         localTimeZone: o.LocalTimeZone,

@@ -14,6 +14,7 @@
 //
 //   environment.live_air_quality       EPA AirNow real-time AQI by ZIP
 //                                       env: EPA_AIRNOW_API_KEY
+//                                       (AIRNOW_API_KEY is a legacy alias)
 //
 //   travel.live_nps_parks              US National Parks Service parks
 //                                       by state code
@@ -31,7 +32,11 @@
 //     signupUrl: 'https://...' }
 //      when the env var is missing;
 //   { ok: false, reason: 'upstream_unreachable', error: '...' }
-//      on network / non-2xx response.
+//      on network / non-auth non-2xx response.
+//   AirNow auth refusals (401/403, or a body that says the key was
+//   rejected) use the missing_api_key envelope above, same as an unset key.
+
+import { airNowKeyRefusal, fetchAirNow, resolveAirNowApiKey } from "../lib/airnow-key.js";
 
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -91,40 +96,36 @@ export default function registerKeyRequiredLiveMacros(register) {
 
   // ── EPA AirNow — real-time air quality ──────────────────────────────
   register("environment", "live_air_quality", async (_ctx, input = {}) => {
-    const apiKey = process.env.EPA_AIRNOW_API_KEY;
-    if (!apiKey) {
-      return missingKey(
-        "EPA_AIRNOW_API_KEY",
-        "https://docs.airnowapi.org/account/request/",
-      );
-    }
+    const apiKey = resolveAirNowApiKey();
+    if (!apiKey) return airNowKeyRefusal();
     const zip = String(input.zipCode || input.zip || "94110");
     const distance = Math.min(200, Math.max(5, Number(input.distance) || 25));
     const url = `https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&zipCode=${encodeURIComponent(zip)}&distance=${distance}&API_KEY=${encodeURIComponent(apiKey)}`;
-    try {
-      const data = await fetchJsonWithTimeout(url);
-      const observations = Array.isArray(data) ? data : [];
-      return {
-        ok: true,
-        source: "EPA AirNow",
-        fetchedAt: Math.floor(Date.now() / 1000),
-        zipCode: zip,
-        observations: observations.map((o) => ({
-          reportingArea: o.ReportingArea,
-          stateCode: o.StateCode,
-          parameter: o.ParameterName,
-          aqi: o.AQI,
-          category: o.Category?.Name,
-          dateObserved: o.DateObserved,
-          hourObserved: o.HourObserved,
-          latitude: o.Latitude,
-          longitude: o.Longitude,
-        })),
-      };
-    } catch (e) {
-      return { ok: false, reason: "upstream_unreachable", error: String(e?.message || e) };
+    const fetched = await fetchAirNow(url);
+    if (fetched.kind === "auth") return airNowKeyRefusal();
+    if (fetched.kind === "error") {
+      return { ok: false, reason: "upstream_unreachable", error: fetched.error };
     }
-  }, { note: "live EPA AirNow AQI by zip (requires EPA_AIRNOW_API_KEY)" });
+    const data = fetched.data;
+    const observations = Array.isArray(data) ? data : [];
+    return {
+      ok: true,
+      source: "EPA AirNow",
+      fetchedAt: Math.floor(Date.now() / 1000),
+      zipCode: zip,
+      observations: observations.map((o) => ({
+        reportingArea: o.ReportingArea,
+        stateCode: o.StateCode,
+        parameter: o.ParameterName,
+        aqi: o.AQI,
+        category: o.Category?.Name,
+        dateObserved: o.DateObserved,
+        hourObserved: o.HourObserved,
+        latitude: o.Latitude,
+        longitude: o.Longitude,
+      })),
+    };
+  }, { note: "live EPA AirNow AQI by zip (EPA_AIRNOW_API_KEY, AIRNOW_API_KEY alias)" });
 
   // ── NPS — US National Parks ─────────────────────────────────────────
   register("travel", "live_nps_parks", async (_ctx, input = {}) => {

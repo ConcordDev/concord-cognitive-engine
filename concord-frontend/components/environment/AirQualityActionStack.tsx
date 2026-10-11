@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { airNowFailureFromThrown, airNowPanelFailure } from '@/components/environment/airnowFailure';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -39,7 +40,7 @@ interface AqiObservation {
   category?: string;
 }
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('environment', action, { input });
@@ -82,8 +83,20 @@ export function AirQualityActionStack() {
   const [householdContext, setHouseholdContext] = useState('');
 
   const aqiMutation = useMutation({
-    mutationFn: async () => callMacro<{ observations: AqiObservation[] }>('airnow-current', { zipCode: zip }),
+    mutationFn: async (): Promise<MacroEnvelope<{ observations: AqiObservation[] }>> => {
+      try {
+        return await callMacro<{ observations: AqiObservation[] }>('airnow-current', { zipCode: zip });
+      } catch (e) {
+        return airNowFailureFromThrown(e);
+      }
+    },
     onSuccess: (env) => {
+      const failure = airNowPanelFailure(env);
+      if (failure) {
+        setObservations([]);
+        setLoadError(failure);
+        return;
+      }
       if (env.ok && env.result) {
         setObservations(env.result.observations);
         setLoadError(null);
@@ -95,7 +108,10 @@ export function AirQualityActionStack() {
         setLoadError(env.error || 'no AQI data returned');
       }
     },
-    onError: (e) => { setObservations([]); setLoadError(pickMessage(e)); },
+    onError: (e) => {
+      setObservations([]);
+      setLoadError(airNowPanelFailure(airNowFailureFromThrown(e)) || pickMessage(e));
+    },
   });
 
   const dominant = observations.length > 0
@@ -292,7 +308,7 @@ export function AirQualityActionStack() {
       </div>
 
       {loadError && (
-        <div className="px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30 text-[11px] text-red-300">
+        <div role="alert" className="px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30 text-[11px] text-red-300">
           {loadError}
         </div>
       )}

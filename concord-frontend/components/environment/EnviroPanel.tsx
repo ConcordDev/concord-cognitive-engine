@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import { Leaf, Loader2, Wind, Droplets, Biohazard, Thermometer, KeyRound, ExternalLink } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { airNowFailureFromThrown, airNowPanelFailure } from '@/components/environment/airnowFailure';
 
 interface AqiObservation {
   dateObserved: string; hourObserved: number;
@@ -24,16 +25,16 @@ interface AqiObservation {
   category?: string;
 }
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('environment', action, { input });
-  const data = (r as { data?: { ok: boolean; result?: T } }).data;
+  const data = (r as { data?: MacroEnvelope<T> }).data;
   if (!data) return { ok: false, error: 'empty response' };
   if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
     return data.result as MacroEnvelope<T>;
   }
-  return data as MacroEnvelope<T>;
+  return data;
 }
 
 function aqiColor(aqi: number) {
@@ -51,10 +52,31 @@ export function EnviroPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const aqiMutation = useMutation({
-    mutationFn: async () => callMacro<{ observations: AqiObservation[] }>('airnow-current', { zipCode: zip }),
+    mutationFn: async (): Promise<MacroEnvelope<{ observations: AqiObservation[] }>> => {
+      try {
+        return await callMacro<{ observations: AqiObservation[] }>('airnow-current', { zipCode: zip });
+      } catch (e) {
+        return airNowFailureFromThrown(e);
+      }
+    },
     onSuccess: (env) => {
-      if (env.ok && env.result) { setObservations(env.result.observations); setError(null); }
-      else { setObservations([]); setError(env.error || 'no AQI data'); }
+      const failure = airNowPanelFailure(env);
+      if (failure) {
+        setObservations([]);
+        setError(failure);
+        return;
+      }
+      if (env.ok && env.result?.observations) {
+        setObservations(env.result.observations);
+        setError(null);
+        return;
+      }
+      setObservations([]);
+      setError(null);
+    },
+    onError: (e) => {
+      setObservations([]);
+      setError(airNowPanelFailure(airNowFailureFromThrown(e)));
     },
   });
 
@@ -77,7 +99,11 @@ export function EnviroPanel() {
             {aqiMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Load AQI'}
           </button>
         </div>
-        {error && <div className="text-[11px] text-red-300">{error}</div>}
+        {error && (
+          <div role="alert" className="text-[11px] text-red-300">
+            {error}
+          </div>
+        )}
         {observations.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5">
             {observations.map((o, i) => (
