@@ -71,7 +71,7 @@ interface LensShellProps {
   /** Persistent chat rail — enable the cross-lens conversation panel */
   enableChatRail?: boolean;
 
-  /** ConnectiveTissueBar — show DTU economy bar (tip, publish, bounty, fork, search) */
+  /** ConnectiveTissueBar — search and bounty. Publish, tip, and fork appear only when this shell is given a real payload or target. */
   enableConnectiveTissue?: boolean;
 
   /** Data loading states */
@@ -178,7 +178,7 @@ export function LensShell({
         </div>
       )}
 
-      {/* Connective Tissue — cross-lens DTU economy bar */}
+      {/* Search and bounty. Publish, tip, and fork stay hidden: this shell has no document or target. */}
       {enableConnectiveTissue && (
         <ConnectiveTissueBar lensId={domain} />
       )}

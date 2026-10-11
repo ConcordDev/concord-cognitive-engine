@@ -15,6 +15,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import ShipmentTracker from '@/components/logistics/ShipmentTracker';
 import RouteOptimizer from '@/components/logistics/RouteOptimizer';
 import WarehouseInventory from '@/components/logistics/WarehouseInventory';
@@ -142,9 +143,11 @@ export default function LogisticsLensPage() {
           <ActivityFeedPanel />
         </div>
 
-        <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
-          <LogisticsChatter />
-        </section>
+        <CommunityRedditSlot>
+          <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">
+            <LogisticsChatter />
+          </section>
+        </CommunityRedditSlot>
       </NorthStarFrame>
 
       <MobileTabBar

@@ -3,8 +3,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { EstateChatter } from '@/components/inheritance/EstateChatter';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 export function DiscussionPanel() {
+  if (!isCommunityRedditEnabled()) return null;
+  return <DiscussionPanelBody />;
+}
+
+function DiscussionPanelBody() {
   const [showEstateChatter, setShowEstateChatter] = useState(false);
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

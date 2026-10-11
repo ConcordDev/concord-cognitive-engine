@@ -515,34 +515,59 @@ describe("chat — voice / share / image surfaces (wave 17 top-up)", () => {
 // intentionally NOT asserted here — they call the cognitive brains and would
 // egress; only their deterministic guard branches are exercised.
 describe("chat — tool discovery (register family)", () => {
-  let runMacro, ctx;
-  before(async () => { ({ runMacro, ctx } = await macroRuntime("chat-tools")); });
+  let runMacro, ctx, STATE;
+  before(async () => { ({ runMacro, ctx, STATE } = await macroRuntime("chat-tools")); });
 
-  it("chat.tools lists the fixed tool catalog with the run_compute keys", async () => {
+  it("chat.tools lists the chat prompt's tools and the agent loop's tools", async () => {
     const r = await runMacro("chat", "tools", {}, ctx);
     assert.equal(r.ok, true);
     const names = r.tools.map((t) => t.name);
-    // The five built-in tools are always present regardless of opt-in state.
+    // The five tools chat.respond injects for every caller.
     assert.ok(names.includes("web_search"));
     assert.ok(names.includes("create_dtu"));
     assert.ok(names.includes("run_compute"));
     assert.ok(names.includes("browse_url"));
     assert.ok(names.includes("run_lens_action"));
-    // run_compute is the only tool that does NOT require opt-in.
+    // run_compute is the only chat tool that does NOT require opt-in.
     const runCompute = r.tools.find((t) => t.name === "run_compute");
     assert.equal(runCompute.requiresOptIn, false);
-    // Compute keys are advertised for discovery.
     assert.ok(r.computeKeys.includes("chemistry.balanceReaction"));
     assert.ok(r.computeKeys.includes("math.differentiate"));
+    // The agent loop's set is reported on its own path, not collapsed into
+    // the five-tool chat list.
+    const agentNames = r.paths.agent.tools.map((t) => t.name);
+    assert.ok(agentNames.includes("run_python"));
+    assert.ok(agentNames.includes("mcp_call"));
+    assert.ok(agentNames.includes("browser_act"));
+    assert.ok(agentNames.length >= 19);
   });
 
-  it("chat.tools is unavailable until both the global flag and session opt-in are set", async () => {
+  it("chat.tools availability follows injection, not session opt-in", async () => {
     const r = await runMacro("chat", "tools", {}, ctx);
     assert.equal(r.ok, true);
-    // available === globalEnabled && sessionOptIn — a fresh internal ctx has
-    // neither, so the catalog is listed but not yet active.
-    assert.equal(r.available, r.globalEnabled && r.sessionOptIn);
-    assert.equal(r.available, false);
+    // chat.respond injects tools when toolsEnabled !== false and opts the
+    // session in itself. A fresh ctx has no toolsOptIn; that must not
+    // report the chat path as unavailable.
+    assert.equal(r.sessionOptIn, false);
+    assert.equal(r.paths.chat.gatedBySessionOptIn, false);
+    assert.equal(r.available, STATE.__chicken3?.toolsEnabled !== false);
+    assert.equal(r.paths.chat.available, r.available);
+    assert.equal(r.paths.agent.available, true);
+    assert.equal(r.paths.agent.gatedByToolsEnabled, false);
+
+    const prev = STATE.__chicken3.toolsEnabled;
+    STATE.__chicken3.toolsEnabled = false;
+    try {
+      const off = await runMacro("chat", "tools", {}, ctx);
+      assert.equal(off.available, false);
+      assert.equal(off.paths.chat.available, false);
+      assert.equal(off.paths.chat.tools.every((t) => t.available === false), true);
+      // The agent loop does not read this flag.
+      assert.equal(off.paths.agent.available, true);
+      assert.equal(off.paths.agent.tools.every((t) => t.available === true), true);
+    } finally {
+      STATE.__chicken3.toolsEnabled = prev;
+    }
   });
 });
 

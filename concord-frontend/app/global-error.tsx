@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { reportClientError } from '@/hooks/useBugContext';
+import { useReportRouteError } from '@/lib/use-report-route-error';
 
 export default function GlobalError({
   error,
@@ -11,6 +12,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportRouteError(error, 'global');
   // E4 — global-error renders OUTSIDE Providers (it catches errors in the root
   // layout itself), so the window listeners there never fire for it. Report
   // here directly. This is the white-screen class — the highest-value signal.

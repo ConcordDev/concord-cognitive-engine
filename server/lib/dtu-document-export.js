@@ -25,21 +25,73 @@ function scalarEntries(obj) {
   return Object.entries(obj || {}).filter(([, v]) => v !== null && v !== undefined && typeof v !== "object");
 }
 
+function spanClaimsMm(text) {
+  const out = [];
+  const re = /(\d+(?:\.\d+)?)\s*(mm|cm|m|ft|feet|foot)\b/gi;
+  let m;
+  while ((m = re.exec(String(text || "")))) {
+    const n = Number(m[1]);
+    const u = m[2].toLowerCase();
+    if (u === "mm") out.push(n);
+    else if (u === "cm") out.push(n * 10);
+    else if (u === "m") out.push(n * 1000);
+    else out.push(n * 304.8);
+  }
+  return out;
+}
+
+function conflictsWithSpan(text, lengthMm) {
+  return spanClaimsMm(text).some((mm) => Math.abs(mm - lengthMm) > 1);
+}
+
+/**
+ * A kept beam study's PDF/markdown must quote the solved span, load and
+ * stress. A title or summary that names a different span (the prompt) is
+ * dropped so the file cannot say "4 m" while the numbers are the 1.2 m run.
+ */
+export function beamStudySolvedCopy(dtu) {
+  const m = dtu?.machine;
+  const lengthMm = Number(m?.dims?.length);
+  if (m?.kind !== "conkay_beam_study" || !Number.isFinite(lengthMm)) return null;
+  const loadN = Number(m.loadN);
+  const bits = [`Solved span ${lengthMm} mm.`];
+  if (Number.isFinite(loadN)) bits.push(`Solved load ${loadN} N.`);
+  if (m.support) bits.push(`Support ${m.support}.`);
+  if (m.dims.height != null) bits.push(`Section depth ${m.dims.height} mm.`);
+  if (Number.isFinite(Number(m.maxStressMPa))) bits.push(`Max stress ${m.maxStressMPa} MPa.`);
+  if (Number.isFinite(Number(m.maxDeflectionMm))) bits.push(`Max deflection ${m.maxDeflectionMm} mm.`);
+  if (Number.isFinite(Number(m.utilization))) bits.push(`Utilization ${m.utilization}.`);
+  if (typeof m.pass === "boolean") bits.push(m.pass ? "Passes yield." : "Exceeds yield.");
+  return {
+    lengthMm,
+    title: `Solved beam study: ${lengthMm} mm span`,
+    text: bits.join(" "),
+  };
+}
+
 /**
  * Build the same {sections, pageInfo} shape lib/renderers/pdf-renderer.js's
  * renderPDF() expects, from a DTU's human/core/machine layers.
  */
 export function dtuToPdfSections(dtu) {
   const sections = [];
-  sections.push({ type: "title", text: dtu.title || "Untitled" });
+  const solved = beamStudySolvedCopy(dtu);
+  const title = solved ? solved.title : (dtu.title || "Untitled");
+  sections.push({ type: "title", text: title });
   sections.push({ type: "subtitle", text: `${dtu.domain || "concord"} — created ${dtu.createdAt || ""}` });
   if (dtu.tags?.length) {
     sections.push({ type: "meta", fields: [{ label: "Tags", value: dtu.tags.join(", ") }] });
   }
 
-  if (dtu.human?.summary) {
+  if (solved) {
+    sections.push({ type: "heading", text: "Solved parameters" });
+    sections.push({ type: "text", text: solved.text });
+  }
+  const summary = dtu.human?.summary;
+  const summaryConflicts = solved && conflictsWithSpan(summary, solved.lengthMm);
+  if (summary && !summaryConflicts) {
     sections.push({ type: "heading", text: "Summary" });
-    sections.push({ type: "text", text: dtu.human.summary });
+    sections.push({ type: "text", text: summary });
   }
   if (dtu.human?.bullets?.length) {
     sections.push({ type: "list", items: dtu.human.bullets });
@@ -52,8 +104,12 @@ export function dtuToPdfSections(dtu) {
   for (const [key, label] of coreSections) {
     const arr = dtu.core?.[key];
     if (arr?.length) {
+      const items = arr
+        .map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v)))
+        .filter((v) => !(solved && conflictsWithSpan(v, solved.lengthMm)));
+      if (!items.length) continue;
       sections.push({ type: "heading", text: label });
-      sections.push({ type: "list", items: arr.map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v))) });
+      sections.push({ type: "list", items });
     }
   }
 
@@ -63,17 +119,20 @@ export function dtuToPdfSections(dtu) {
     sections.push({ type: "table", headers: ["Field", "Value"], rows: machineScalars.map(([k, v]) => [k, String(v)]) });
   }
 
-  return { sections, pageInfo: { title: dtu.title, domain: dtu.domain || "concord", generatedAt: new Date().toISOString() } };
+  return { sections, pageInfo: { title, domain: dtu.domain || "concord", generatedAt: new Date().toISOString() } };
 }
 
 export function dtuToMarkdown(dtu) {
   const lines = [];
-  lines.push(`# ${dtu.title || "Untitled"}`);
+  const solved = beamStudySolvedCopy(dtu);
+  lines.push(`# ${solved ? solved.title : (dtu.title || "Untitled")}`);
   lines.push(`**Domain:** ${dtu.domain || "concord"} | **Created:** ${dtu.createdAt || ""}`);
   if (dtu.tags?.length) lines.push(`**Tags:** ${dtu.tags.join(", ")}`);
   lines.push("");
-  if (dtu.human?.summary) {
-    lines.push("## Summary", "", dtu.human.summary, "");
+  if (solved) lines.push("## Solved parameters", "", solved.text, "");
+  const summary = dtu.human?.summary;
+  if (summary && !(solved && conflictsWithSpan(summary, solved.lengthMm))) {
+    lines.push("## Summary", "", summary, "");
   }
   if (dtu.human?.bullets?.length) {
     for (const b of dtu.human.bullets) lines.push(`- ${b}`);
@@ -86,8 +145,12 @@ export function dtuToMarkdown(dtu) {
   for (const [key, label] of coreSections) {
     const arr = dtu.core?.[key];
     if (arr?.length) {
+      const items = arr
+        .map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v)))
+        .filter((v) => !(solved && conflictsWithSpan(v, solved.lengthMm)));
+      if (!items.length) continue;
       lines.push(`## ${label}`, "");
-      for (const v of arr) lines.push(`- ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+      for (const v of items) lines.push(`- ${v}`);
       lines.push("");
     }
   }

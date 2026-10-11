@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Syringe, Plus, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Patient { id: string; mrn?: string; firstName?: string; lastName?: string }
@@ -62,7 +63,7 @@ export function ImmunizationsPanel({ className }: { className?: string }) {
     try {
       const r = await lensRun({
         domain: 'healthcare', action: 'immunizations-add',
-        input: { patientId, vaccine: vaccine.trim(), administeredAt: date || new Date().toISOString().slice(0, 10) },
+        input: { patientId, vaccine: vaccine.trim(), administeredAt: date || calendarDateKey() },
       });
       if (r?.data?.error) setError(String(r.data.error));
       else { setVaccine(''); setDate(''); await loadRecords(patientId); }

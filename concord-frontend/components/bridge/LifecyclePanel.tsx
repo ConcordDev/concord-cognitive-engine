@@ -1,10 +1,14 @@
 'use client';
 
 import { Baby, CheckCircle2, XCircle } from 'lucide-react';
-import type { BirthCert } from './types';
-import { EmptyCard } from './bridge-helpers';
+import type { BirthCert, CatalogStatus } from './types';
+import { EmptyCard, UnavailableCard } from './bridge-helpers';
 
-export function LifecyclePanel({ births }: { births: BirthCert[] }) {
+export function LifecyclePanel({ births, status }: { births: BirthCert[]; status: CatalogStatus }) {
+  if (status === 'unavailable') {
+    return <UnavailableCard icon={<Baby />} message="Lifecycle unavailable" hint="Birth records could not be loaded. This is not a count of zero ceremonies." />;
+  }
+  if (status !== 'ready') return null;
   if (births.length === 0) return <EmptyCard icon={<Baby />} message="No organism lifecycle events" hint="When a DTU swarm crosses the awakening threshold, a birth ceremony convenes all nine emergent agents." />;
 
   return (

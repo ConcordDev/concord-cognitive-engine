@@ -22,6 +22,26 @@ import apiKeyAuth from './api-key-auth.js';
 export const JSON_MAX_DEPTH = Number(process.env.CONCORD_JSON_MAX_DEPTH) || 32;
 
 /**
+ * Per-route JSON body caps. First matching prefix wins. Anything else is 10mb.
+ */
+export const BODY_LIMITS = {
+  '/api/chat': '256kb',
+  '/api/ask': '256kb',
+  '/api/chat/stream': '256kb',
+  '/api/chat/feedback': '16kb',
+  '/api/auth/register': '16kb',
+  '/api/auth/login': '16kb',
+  '/api/auth/change-password': '4kb',
+  '/api/shared-session': '64kb',
+  '/api/repair/frontend-error': '16kb',
+};
+
+export function bodyLimitForUrl(url) {
+  const matched = Object.entries(BODY_LIMITS).find(([prefix]) => String(url || "").startsWith(prefix));
+  return matched ? matched[1] : "10mb";
+}
+
+/**
  * Iterative (no-recursion) depth check on an already-parsed value. Walks the
  * object/array graph with an explicit stack so the GUARD itself can't be the
  * thing that blows the stack. Returns true when nesting stays within `max`.
@@ -155,22 +175,9 @@ export default function configureMiddleware(app, deps) {
   if (compression) app.use(compression());
 
   // ---- Body Parsing (per-endpoint size limits) ----
-  // Strict limits for chatty endpoints; generous for bulk operations
-  const BODY_LIMITS = {
-    '/api/chat': '256kb',
-    '/api/ask': '256kb',
-    '/api/chat/stream': '256kb',
-    '/api/chat/feedback': '16kb',
-    '/api/auth/register': '16kb',
-    '/api/auth/login': '16kb',
-    '/api/auth/change-password': '4kb',
-    '/api/shared-session': '64kb',
-  };
-
+  // Strict limits for chatty endpoints; generous for bulk operations.
   app.use((req, res, next) => {
-    // Find most specific matching route prefix
-    const matchedLimit = Object.entries(BODY_LIMITS).find(([prefix]) => req.url.startsWith(prefix));
-    const limit = matchedLimit ? matchedLimit[1] : '10mb';
+    const limit = bodyLimitForUrl(req.url);
     // Accept the Fediverse Content-Type for federation inbox POSTs.
     // Default express.json() only parses application/json; Mastodon &
     // friends send application/activity+json (and the historical

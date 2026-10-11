@@ -12,20 +12,26 @@
 //              clearance to the inner face of the skin (OCC: corner
 //              classification + BRepExtrema distance to the outer shell, minus
 //              the skin thickness; cad/tub_fit_occ.py).
-// FAIL on any interference or any part outside the skin. Door apertures,
-// glazing openings and service access are not in the model: not checked.
+//   openings   (when the tub carries them, structural/car-openings.js) each
+//              occupant's egress line through its door aperture, no credited
+//              sheet or member across a glazing opening, the service cut-outs
+//              inside the firewall sheet and clear of each other; the clear
+//              height over the H-point vs the seated head top is a warning
+//              (no aperture requirement sourced; real entry involves ducking).
+// FAIL on any interference, any part outside the skin, or a failed opening check.
 
 import { registerSolver } from "../registry.js";
 import { cadBodyRequest } from "./cad-body.js";
 import { tubPackagingFit, tubPartBox } from "../../structural/car-tub.js";
 import { bounds } from "../../packaging/geometry.js";
 import { runTubFitKernel } from "../../cad/tub-fit-kernel.js";
+import { checkOpenings } from "../../structural/car-openings.js";
 
 const mm = (m) => Math.round(m * 1e4) / 10;
 
 export const tubFit = registerSolver({
   id: "package.tub-fit",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "packaging.structure",
   domains: ["packaging.structure"],
   fidelity: 2,
@@ -67,6 +73,17 @@ export const tubFit = registerSolver({
       margins.push({ check: `${r.part}: clearance to packaging envelopes (closest ${r.against}) ≥ 0`, demand: 0, capacity: r.minClearanceM, unit: "m" });
       if (r.minClearanceM < 0) failures.push(`${r.part} interferes with ${r.against} by ${mm(-r.minClearanceM)} mm`);
     }
+    const chassis = [...ctx.graph.nodes.values()].find((n) => n.props?.tubOpenings);
+    const openings = chassis ? ctx.get(chassis.id, "props.tubOpenings") : null;
+    let openingRows = null;
+    const warnings = [];
+    if (openings) {
+      const oc = checkOpenings(openings, ctx.get(chassis.id, "props.frameModel"), q.scene.scenarios);
+      openingRows = oc.rows;
+      failures.push(...oc.failures);
+      warnings.push(...oc.warnings);
+      margins.push(...oc.margins);
+    }
     for (const r of k.rows) {
       if (!r.inside) failures.push(`${r.id} is outside the CAD body (${r.cornersOutside} corners outside, distance ${r.distanceM} m)`);
       else {
@@ -83,11 +100,16 @@ export const tubFit = registerSolver({
         kernel: { value: k.kernel },
         minEnvelopeClearanceM: { value: Math.min(...rows.map((r) => r.minClearanceM)), unit: "m" },
         minSkinClearanceM: { value: Math.min(...k.rows.map((r) => (r.inside ? r.clearanceM : -Infinity))), unit: "m" },
+        ...(openings ? {
+          openings: { value: { doors: openings.doors, glazing: openings.glazing, service: openings.service, cutouts: openings.cutouts }, note: "designed openings (structural/car-openings.js): door apertures as side-view outlines (x, z) in m, glazing openings by their corner nodes, service cut-outs" },
+          openingChecks: { value: openingRows, note: "egress through each door aperture (clearances to the pillars, clear height over the H-point vs the seated head top), glazing kept clear of credited structure, service cut-outs' edge distances" },
+        } : {}),
       },
-      margins, failures,
+      margins, failures, warnings,
       covers: [veh, ...parts.map((p) => p.id)],
       assumptions: [
-        "Envelopes are the packaging model's boxes (occupant percentiles F5/F95/M95 in every seat, seat envelopes, components, tyre sweep) and each occupant's vertical egress line; door apertures, glazing openings, service access and the driveshaft (no envelope in the library) are not checked.",
+        "Envelopes are the packaging model's boxes (occupant percentiles F5/F95/M95 in every seat, seat envelopes, components, tyre sweep) and each occupant's vertical egress line; the driveshaft (no envelope in the library) is not checked.",
+        openings ? "Openings are checked against the structure and the egress lines; the skin is not trimmed at them, and door hinges, latches, seals and the doors themselves are not designed." : "Door apertures, glazing openings and service access are not designed: not checked.",
         "The skin is a uniform thickness inward of the CAD body's outer surface.",
       ],
     };

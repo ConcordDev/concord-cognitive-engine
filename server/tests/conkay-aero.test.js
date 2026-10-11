@@ -24,11 +24,15 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { solvePanels, velocityAt, signedArea } from "../lib/conkay/aero/panel2d.js";
 import { cfTurbulent, cfSchoenherr, cfLaminar, dragBuildup, rearSlantDeg, BUILDUP_COEFFICIENTS, ISA_SEA_LEVEL } from "../lib/conkay/aero/drag-buildup.js";
-import { sectionAreas, meshChecks } from "../lib/conkay/aero/stl-sections.js";
+import { sectionAreas, meshChecks, readStlFile, cachedStlTriangles } from "../lib/conkay/aero/stl-sections.js";
+import { ahmedBenchmark, ahmedBaseCp25, ahmedFrictionCheck, hoernerAhmedBase, calibratedDrag, AHMED_GANT_25, AHMED_LIENHART_25 } from "../lib/conkay/aero/calibrated-drag.js";
+import fsp from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { profilePolygon } from "../lib/conkay/physics/solvers/aero-drag.js";
 import { buildCarFromLibrary, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import { openDesign } from "../lib/conkay/index.js";
-import { kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
+import { resolveKernelPython } from "../lib/conkay/cad/body-kernel.js";
 
 const rel = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.abs(b), `${msg}: ${a} vs ${b} (rel ${(Math.abs(a - b) / Math.abs(b)).toExponential(2)})`);
 
@@ -186,6 +190,21 @@ describe("STL cross-sections (divergence theorem)", () => {
     const m = sphereMesh(1);
     for (const s of sectionAreas(m, [-0.6, -0.2, 0, 0.3, 0.7])) rel(s.area, Math.PI * (1 - s.x ** 2), 3e-3, `x ${s.x}`);
   });
+  it("reads a binary STL off the event loop and serves those triangles from memory", async () => {
+    const buf = Buffer.alloc(84 + 50);
+    buf.writeUInt32LE(1, 80);
+    const o = 84 + 12;
+    [0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((v, i) => buf.writeFloatLE(v, o + i * 4));
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "conkay-stl-"));
+    const file = path.join(dir, "one.stl");
+    await fsp.writeFile(file, buf);
+    const tris = await readStlFile(file, { sha256: "stl-async-pin" });
+    assert.equal(tris.length, 1);
+    assert.deepEqual(tris[0][1], [1, 0, 0]);
+    assert.deepEqual(cachedStlTriangles({ sha256: "stl-async-pin" }), tris);
+    assert.deepEqual(cachedStlTriangles({ path: file }), tris);
+    assert.throws(() => cachedStlTriangles({ sha256: "stl-not-loaded", path: "/no/such.stl" }), /not loaded/);
+  });
 });
 
 describe("the library car: Cd from its CAD body", () => {
@@ -201,8 +220,17 @@ describe("the library car: Cd from its CAD body", () => {
 
   let s = null, skip = null;
   before(async () => {
-    if (!(await kernelPythonPath())) { skip = "no OCC kernel Python"; return; }
+    // kernelPythonPath() always returns a string (configured path, unchecked).
+    // The suite only runs these two cases when that binary is actually there;
+    // CI does not install cadquery-ocp. The assertions are unchanged when it is.
+    if (!(await resolveKernelPython())) { skip = "no OCC kernel Python"; return; }
     s = (await carAcceptanceAsync(BRIEF)).session;
+    const body = s.result("cad.body@BODY_SHELL");
+    const drag = s.result("aero.drag-buildup@VEH");
+    const why = [body?.reason, body?.error, drag?.reason].filter(Boolean).join(" ");
+    if (!body || /no Python with OCP|unavailable/i.test(why)) {
+      skip = why || "OCC kernel did not compute the body";
+    }
   });
 
   it("computes a Cd range from the solid and re-runs top speed on it (needs the OCC kernel)", (t) => {
@@ -213,6 +241,9 @@ describe("the library car: Cd from its CAD body", () => {
     const cd = a.outputs.dragCoefficient.value;
     assert.ok(cd.low > 0.05 && cd.low < cd.centre && cd.centre < cd.high && cd.high < 0.6, JSON.stringify(cd));
     rel(cd.centre, Math.sqrt(cd.low * cd.high), 1e-12, "centre");
+    const prev = a.outputs.previousEnvelope.value;
+    assert.ok(cd.high - cd.low < prev.high - prev.low, `1.1 width ${cd.high - cd.low} vs 1.0 width ${prev.high - prev.low}`);
+    assert.equal(a.outputs.ahmedBenchmark.value.containsTarget, true);
     // the geometry it used is the kernel's
     const cad = s.result("cad.body@BODY_SHELL");
     assert.equal(a.inputs.frontalAreaM2.value, cad.outputs.frontalArea.value);
@@ -242,5 +273,46 @@ describe("the library car: Cd from its CAD body", () => {
       assert.ok(signedArea(p) < 0, k);
       assert.deepEqual(p[0], k === "upper" ? [4, 1.1] : [4, 0.15]);
     }
+  });
+});
+
+describe("calibrated drag build-up 1.1, benchmarked on the Ahmed body", () => {
+  it("25 deg Ahmed: Gant's 0.285 sits inside the band, and the band is narrower than the 1.0 envelope", () => {
+    const b = ahmedBenchmark();
+    assert.ok(b.low.cd <= AHMED_GANT_25.total && AHMED_GANT_25.total <= b.high.cd, JSON.stringify(b));
+    rel(b.low.base, AHMED_GANT_25.base, 1e-9, "base low is Gant's 0.070");
+    rel(b.high.base, AHMED_LIENHART_25.base, 1e-9, "base high is Lienhart's 0.116");
+    rel(b.low.slant, AHMED_GANT_25.slant, 1e-12, "slant low");
+    rel(b.high.slant, AHMED_LIENHART_25.slant, 1e-12, "slant high");
+    rel(b.high.friction, AHMED_GANT_25.friction, 1e-12, "friction high is the residual");
+    const fr = ahmedFrictionCheck();
+    const cp = ahmedBaseCp25();
+    const v1a = dragBuildup(
+      { lengthM: 1.044, wettedAreaM2: fr.wettedBoxM2, frontalAreaM2: fr.frontalAreaM2, baseAreaM2: cp.Ab, rearSlantDeg: 25 },
+      { speedMs: b.speedMs, ...ISA_SEA_LEVEL },
+    );
+    assert.ok(b.high.cd - b.low.cd < (v1a.high.cd - v1a.low.cd) / 2, `v2 ${b.high.cd - b.low.cd} vs v1 ${v1a.high.cd - v1a.low.cd}`);
+  });
+  it("Guilmineau's 25 deg base pressure sits between Gant and Lienhart; Hoerner K=0.10 does not", () => {
+    const cp = ahmedBaseCp25();
+    assert.ok(cp.guilmineau > cp.gant && cp.guilmineau < cp.lienhart, JSON.stringify(cp));
+    const h029 = hoernerAhmedBase(0.029);
+    const h10 = hoernerAhmedBase(0.10);
+    assert.ok(h029.cd > AHMED_GANT_25.base && h029.cd < AHMED_LIENHART_25.base, `K=0.029 base Cd ${h029.cd}`);
+    assert.ok(h10.cd > AHMED_LIENHART_25.base * 2, `K=0.10 base Cd ${h10.cd} is not an Ahmed base`);
+  });
+  it("a slant past 25 deg is out of range; at 12.5 deg no slant increment is added", () => {
+    const flow = { speedMs: 30, ...ISA_SEA_LEVEL };
+    const geom = { lengthM: 4, wettedAreaM2: 20, frontalAreaM2: 2, baseAreaM2: 0.4, rearSlantDeg: 30 };
+    assert.equal(calibratedDrag(geom, flow).inRange, false);
+    const low = calibratedDrag({ ...geom, rearSlantDeg: 12.5 }, flow);
+    assert.equal(low.low.slant, 0);
+    assert.equal(low.high.slant, 0);
+    assert.ok(low.flags.some((f) => /12\.5/.test(f) || /12.5/.test(f)));
+  });
+  it("flat-plate friction on the Ahmed box is 15 to 25 % below Ahmed's residual friction", () => {
+    const fr = ahmedFrictionCheck();
+    const d = (fr.flatCd - fr.residualCd) / fr.residualCd;
+    assert.ok(d > -0.25 && d < -0.15, `${d}`);
   });
 });

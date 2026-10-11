@@ -9,7 +9,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { motion } from 'framer-motion';
 import {
   GitMerge, Plus, ArrowRight, Database, Search, Zap,
@@ -122,11 +121,6 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
   const [showHistory, setShowHistory] = useState(true);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
-  // --- Lens Bridge --- (syncs real engine status into a real artifact;
-  // UniversalActions below reads bridge.selectedId from this real sync,
-  // never from an auto-created blank placeholder)
-  const bridge = useLensBridge('inference', 'snapshot');
-
   const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['inference-status'],
     queryFn: () => apiHelpers.inference.status().then((r) => r.data),
@@ -234,13 +228,6 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
   });
 
   const statusInfo = useMemo(() => status?.status || status || {}, [status]);
-
-  // Bridge inference status into lens artifacts
-  useEffect(() => {
-    if (Object.keys(statusInfo).length > 0) {
-      bridge.sync(statusInfo as Record<string, unknown>, 'Inference Engine Status');
-    }
-  }, [statusInfo, bridge]);
 
   const avgLatency = useMemo(() => {
     if (inferenceHistory.length === 0) return 0;

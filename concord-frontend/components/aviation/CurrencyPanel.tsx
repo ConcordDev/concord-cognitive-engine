@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Award, Plus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Status {
@@ -26,7 +27,7 @@ const KINDS = [
 export function CurrencyPanel() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ kind: 'flight_review', date: new Date().toISOString().slice(0, 10), cfi: '', notes: '' });
+  const [form, setForm] = useState({ kind: 'flight_review', date: calendarDateKey(), cfi: '', notes: '' });
 
   useEffect(() => { refresh(); }, []);
 

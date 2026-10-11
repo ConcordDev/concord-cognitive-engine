@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { Calculator, Loader2, Play, Plus, Trash2, Receipt } from 'lucide-react';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { DataTable, EmptyState, StatTile, StatTileGrid } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import { ds } from '@/lib/design-system';
@@ -50,7 +51,7 @@ let seq = 0;
 const newKey = () => `te_${Date.now()}_${seq++}`;
 
 const blankEntry = (): TimeEntry => ({
-  key: newKey(), attorney: '', hours: '', rate: '', date: new Date().toISOString().slice(0, 10), description: '', category: 'general', billable: true,
+  key: newKey(), attorney: '', hours: '', rate: '', date: calendarDateKey(), description: '', category: 'general', billable: true,
 });
 
 export function BillingCalculator() {

@@ -15,6 +15,8 @@ import {
   Trash2, FolderInput, Tag, Check, Archive, BookOpen, ExternalLink,
   Clock, ShieldCheck,
 } from 'lucide-react';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { savedItemKeepRecord } from '@/components/lens/recordKeep';
 import type { SavedItem, SavedFolder, SavedKind, SavedState } from './types';
 
 // milliseconds -> m:ss (or h:mm:ss past an hour), for the clip-timecode badge.
@@ -57,6 +59,7 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
 
   const Icon = KIND_ICON[item.kind] ?? Bookmark;
   const folder = folders.find((f) => f.id === item.folderId) ?? null;
+  const kept = savedItemKeepRecord(item);
 
   function saveEdits() {
     const tags = tagDraft.split(',').map((t) => t.trim()).filter(Boolean);
@@ -200,6 +203,10 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
           </div>
         </div>
       )}
+
+      <div className="pt-1">
+        <KeepRecordActions saveLabel="Save as DTU" key={kept?.body} record={kept} />
+      </div>
 
       <div className="flex items-center gap-2 flex-wrap pt-1">
         <button

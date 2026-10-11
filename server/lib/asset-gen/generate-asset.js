@@ -33,6 +33,7 @@ import {
   generateShieldMesh, generateShieldMeshWithNormals,
 } from "./parametric-mesh.js";
 import { massProperties } from "./mass-properties.js";
+import { swordMassBreakdown } from "./sword-mass.js";
 import { packGLB } from "../evo-asset/glb-bridge.js";
 import { registerAsset, appendVersion, promoteVersion } from "../evo-asset/registry.js";
 import { submitAssetCandidateToGate } from "../evo-asset/quality-gate-bridge.js";
@@ -142,6 +143,7 @@ function ensureDir(dir) {
  * @param {number} [opts.safetyFactor]     forwarded to optimizeToPass / structuralCheck
  * @param {number} [opts.thickenFactor]    forwarded to optimizeToPass
  * @param {string} [opts.useCase]          forwarded to structuralCheck; defaults to the archetype's own defaultUseCase (see fea-gate.js's USE_CASES)
+ * @param {object} [opts.partMaterials]    sword only: per-part materials for massBreakdown (blade, guard, pommel, tang, grip)
  * @returns {Promise<{
  *   ok: true, archetype: string, glbPath: string, massProps: object,
  *   feaResult: object, params: object, history: Array
@@ -226,6 +228,20 @@ export async function generateValidatedAsset(opts = {}) {
     return { ok: false, reason: "mass_properties_failed", error: err?.message, params: optResult.params };
   }
 
+  // A sword is not one solid of one material: weigh it per part (steel
+  // blade, guard, pommel and tang, wooden grip) and give its point of
+  // balance, with the arming-sword reference check. massProps (single
+  // material, whole mesh) is kept for the other archetypes and for callers
+  // that read it.
+  let massBreakdown = null;
+  if (archetype === "sword") {
+    try {
+      massBreakdown = swordMassBreakdown(optResult.params, opts.partMaterials || {});
+    } catch (err) {
+      massBreakdown = { error: err?.message };
+    }
+  }
+
   const dir = outDir || GENERATED_ASSET_DIR;
   ensureDir(dir);
   const paramsHash = crypto.createHash("sha1").update(JSON.stringify(optResult.params)).digest("hex").slice(0, 10);
@@ -248,6 +264,7 @@ export async function generateValidatedAsset(opts = {}) {
     material: mat,
     glbPath,
     massProps,
+    ...(massBreakdown ? { massBreakdown } : {}),
     feaResult: optResult.check,
     params: optResult.params,
     history: optResult.history,

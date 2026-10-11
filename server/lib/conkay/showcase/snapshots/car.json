@@ -22,7 +22,7 @@
  ],
  "caveats": [
   "The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
-  "The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.19006044550065382 is computed (screening range): aero.drag-buildup centre of 0.107..0.338 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+  "The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.14542277462919667 is computed (screening range): aero.drag-buildup centre of 0.099..0.214 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
   "The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
   "The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
   "REQ_mass passes on a lower-bound mass.",
@@ -52,11 +52,11 @@
    "margins": [
     {
      "check": "weighs 2,500 lb: mass ≤ max",
-     "demand": 1032.228,
+     "demand": 1035.0366,
      "capacity": 1133.9809,
      "unit": "kg",
-     "utilization": 0.9103,
-     "marginPct": 9.86
+     "utilization": 0.9127,
+     "marginPct": 9.56
     }
    ],
    "failures": [],
@@ -106,761 +106,769 @@
    "runId": "structure.frame@CHASSIS",
    "solver": "structure.frame",
    "target": "CHASSIS",
-   "status": "PASS",
+   "status": "WARN",
    "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
    "reason": null,
    "margins": [
     {
      "check": "bending: rail-fL1 von Mises ≤ Fy / 1",
-     "demand": 1596934.4571,
+     "demand": 1600281.012,
      "capacity": 276000000,
      "unit": "Pa",
      "utilization": 0.0058,
-     "marginPct": 17183.11
+     "marginPct": 17146.97
     },
     {
      "check": "bending: rail-fL2 von Mises ≤ Fy / 1",
-     "demand": 13271083.5141,
+     "demand": 13297597.736,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0481,
-     "marginPct": 1979.71
+     "utilization": 0.0482,
+     "marginPct": 1975.56
     },
     {
      "check": "bending: sill-L1 von Mises ≤ Fy / 1",
-     "demand": 11921434.0159,
+     "demand": 11406459.2192,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0432,
-     "marginPct": 2215.16
+     "utilization": 0.0413,
+     "marginPct": 2319.68
     },
     {
      "check": "bending: sill-L2 von Mises ≤ Fy / 1",
-     "demand": 12569951.3201,
+     "demand": 12079646.1019,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0455,
-     "marginPct": 2095.71
+     "utilization": 0.0438,
+     "marginPct": 2184.84
     },
     {
      "check": "bending: sill-L3 von Mises ≤ Fy / 1",
-     "demand": 13156466.5004,
+     "demand": 12661570.534,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0477,
-     "marginPct": 1997.83
+     "utilization": 0.0459,
+     "marginPct": 2079.82
     },
     {
      "check": "bending: sill-L4 von Mises ≤ Fy / 1",
-     "demand": 13135476.1117,
+     "demand": 12623258.5741,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0476,
-     "marginPct": 2001.18
+     "utilization": 0.0457,
+     "marginPct": 2086.44
     },
     {
      "check": "bending: kick-L1 von Mises ≤ Fy / 1",
-     "demand": 20110129.7686,
+     "demand": 18841906.5693,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0729,
-     "marginPct": 1272.44
+     "utilization": 0.0683,
+     "marginPct": 1364.82
     },
     {
      "check": "bending: kick-L2 von Mises ≤ Fy / 1",
-     "demand": 11277317.2678,
+     "demand": 10021374.1238,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0409,
-     "marginPct": 2347.39
+     "utilization": 0.0363,
+     "marginPct": 2654.11
     },
     {
      "check": "bending: kick-L3 von Mises ≤ Fy / 1",
-     "demand": 10630139.7034,
+     "demand": 9645644.3637,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0385,
-     "marginPct": 2496.39
+     "utilization": 0.0349,
+     "marginPct": 2761.4
     },
     {
      "check": "bending: qtr-L1 von Mises ≤ Fy / 1",
-     "demand": 2586755.8873,
+     "demand": 2622816.2529,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0094,
-     "marginPct": 10569.74
+     "utilization": 0.0095,
+     "marginPct": 10423.04
     },
     {
      "check": "bending: qtr-L2 von Mises ≤ Fy / 1",
-     "demand": 4374599.9559,
+     "demand": 4513406.7733,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0158,
-     "marginPct": 6209.15
+     "utilization": 0.0164,
+     "marginPct": 6015.11
     },
     {
      "check": "bending: qtr-L3 von Mises ≤ Fy / 1",
-     "demand": 1283718.4518,
+     "demand": 1312628.4839,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0047,
-     "marginPct": 21400.04
+     "utilization": 0.0048,
+     "marginPct": 20926.51
     },
     {
      "check": "bending: fw-post-L von Mises ≤ Fy / 1",
-     "demand": 31369058.8142,
+     "demand": 24716663.276,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1137,
-     "marginPct": 779.85
+     "utilization": 0.0896,
+     "marginPct": 1016.66
     },
     {
      "check": "bending: rail-fR1 von Mises ≤ Fy / 1",
-     "demand": 1596934.4571,
+     "demand": 1600281.012,
      "capacity": 276000000,
      "unit": "Pa",
      "utilization": 0.0058,
-     "marginPct": 17183.11
+     "marginPct": 17146.97
     },
     {
      "check": "bending: rail-fR2 von Mises ≤ Fy / 1",
-     "demand": 13271083.5141,
+     "demand": 13300191.3747,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0481,
-     "marginPct": 1979.71
+     "utilization": 0.0482,
+     "marginPct": 1975.16
     },
     {
      "check": "bending: sill-R1 von Mises ≤ Fy / 1",
-     "demand": 11921434.0159,
+     "demand": 11407692.2456,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0432,
-     "marginPct": 2215.16
+     "utilization": 0.0413,
+     "marginPct": 2319.42
     },
     {
      "check": "bending: sill-R2 von Mises ≤ Fy / 1",
-     "demand": 12569951.3201,
+     "demand": 12079423.1439,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0455,
-     "marginPct": 2095.71
+     "utilization": 0.0438,
+     "marginPct": 2184.88
     },
     {
      "check": "bending: sill-R3 von Mises ≤ Fy / 1",
-     "demand": 13156466.5004,
+     "demand": 12661639.361,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0477,
-     "marginPct": 1997.83
+     "utilization": 0.0459,
+     "marginPct": 2079.81
     },
     {
      "check": "bending: sill-R4 von Mises ≤ Fy / 1",
-     "demand": 13135476.1117,
+     "demand": 12623097.338,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0476,
-     "marginPct": 2001.18
+     "utilization": 0.0457,
+     "marginPct": 2086.47
     },
     {
      "check": "bending: kick-R1 von Mises ≤ Fy / 1",
-     "demand": 20110129.7686,
+     "demand": 18841803.5952,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0729,
-     "marginPct": 1272.44
+     "utilization": 0.0683,
+     "marginPct": 1364.83
     },
     {
      "check": "bending: kick-R2 von Mises ≤ Fy / 1",
-     "demand": 11277317.2678,
+     "demand": 10021713.4652,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0409,
-     "marginPct": 2347.39
+     "utilization": 0.0363,
+     "marginPct": 2654.02
     },
     {
      "check": "bending: kick-R3 von Mises ≤ Fy / 1",
-     "demand": 10630139.7034,
+     "demand": 9644093.2444,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0385,
-     "marginPct": 2496.39
+     "utilization": 0.0349,
+     "marginPct": 2761.86
     },
     {
      "check": "bending: qtr-R1 von Mises ≤ Fy / 1",
-     "demand": 2586755.8873,
+     "demand": 2622243.7376,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0094,
-     "marginPct": 10569.74
+     "utilization": 0.0095,
+     "marginPct": 10425.34
     },
     {
      "check": "bending: qtr-R2 von Mises ≤ Fy / 1",
-     "demand": 4374599.9559,
+     "demand": 4513060.4663,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0158,
-     "marginPct": 6209.15
+     "utilization": 0.0164,
+     "marginPct": 6015.58
     },
     {
      "check": "bending: qtr-R3 von Mises ≤ Fy / 1",
-     "demand": 1283718.4518,
+     "demand": 1312706.1892,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0047,
-     "marginPct": 21400.04
+     "utilization": 0.0048,
+     "marginPct": 20925.27
     },
     {
      "check": "bending: fw-post-R von Mises ≤ Fy / 1",
-     "demand": 31369058.8142,
+     "demand": 24803217.9252,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1137,
-     "marginPct": 779.85
+     "utilization": 0.0899,
+     "marginPct": 1012.76
     },
     {
      "check": "bending: fw-lower-L1 von Mises ≤ Fy / 1",
-     "demand": 8987446.2411,
+     "demand": 9097429.8541,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0326,
-     "marginPct": 2970.95
+     "utilization": 0.033,
+     "marginPct": 2933.82
     },
     {
      "check": "bending: fw-lower-L2 von Mises ≤ Fy / 1",
-     "demand": 3074490.5918,
+     "demand": 3031887.3611,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0111,
-     "marginPct": 8877.1
+     "utilization": 0.011,
+     "marginPct": 9003.24
     },
     {
      "check": "bending: fw-lower-R1 von Mises ≤ Fy / 1",
-     "demand": 8987446.2411,
+     "demand": 9100896.1594,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0326,
-     "marginPct": 2970.95
+     "utilization": 0.033,
+     "marginPct": 2932.67
     },
     {
      "check": "bending: fw-lower-R2 von Mises ≤ Fy / 1",
-     "demand": 3074490.5918,
+     "demand": 3028879.9146,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0111,
-     "marginPct": 8877.1
+     "utilization": 0.011,
+     "marginPct": 9012.28
     },
     {
      "check": "bending: scuttle-L1 von Mises ≤ Fy / 1",
-     "demand": 11108500.0423,
+     "demand": 12995681.8839,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0402,
-     "marginPct": 2384.58
+     "utilization": 0.0471,
+     "marginPct": 2023.78
     },
     {
      "check": "bending: scuttle-L2 von Mises ≤ Fy / 1",
-     "demand": 11391941.5415,
+     "demand": 10009142.1935,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0413,
-     "marginPct": 2322.77
+     "utilization": 0.0363,
+     "marginPct": 2657.48
     },
     {
      "check": "bending: scuttle-R1 von Mises ≤ Fy / 1",
-     "demand": 11108500.0423,
+     "demand": 13036249.2618,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0402,
-     "marginPct": 2384.58
+     "utilization": 0.0472,
+     "marginPct": 2017.17
     },
     {
      "check": "bending: scuttle-R2 von Mises ≤ Fy / 1",
-     "demand": 11391941.5415,
+     "demand": 10050353.7012,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0413,
-     "marginPct": 2322.77
+     "utilization": 0.0364,
+     "marginPct": 2646.17
     },
     {
      "check": "bending: fw-cpost-1 von Mises ≤ Fy / 1",
-     "demand": 23462576.0923,
+     "demand": 22221431.8269,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.085,
-     "marginPct": 1076.34
+     "utilization": 0.0805,
+     "marginPct": 1142.04
     },
     {
      "check": "bending: fw-cpost-2 von Mises ≤ Fy / 1",
-     "demand": 23272234.9287,
+     "demand": 20523552.4096,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0843,
-     "marginPct": 1085.96
+     "utilization": 0.0744,
+     "marginPct": 1244.8
     },
     {
      "check": "bending: tunnel-f1 von Mises ≤ Fy / 1",
-     "demand": 246423.2662,
+     "demand": 146697.6554,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0009,
-     "marginPct": 111902.41
+     "utilization": 0.0005,
+     "marginPct": 188042.07
+    },
+    {
+     "check": "bending: tunnel-f1-open von Mises ≤ Fy / 1",
+     "demand": 167618.3966,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0006,
+     "marginPct": 164559.73
     },
     {
      "check": "bending: tunnel-f2 von Mises ≤ Fy / 1",
-     "demand": 74257.3416,
+     "demand": 94722.7256,
      "capacity": 276000000,
      "unit": "Pa",
      "utilization": 0.0003,
-     "marginPct": 371580.42
+     "marginPct": 291276.75
     },
     {
      "check": "bending: tunnel-r1 von Mises ≤ Fy / 1",
-     "demand": 798983.6619,
+     "demand": 708685.4402,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0029,
-     "marginPct": 34443.89
+     "utilization": 0.0026,
+     "marginPct": 38845.35
     },
     {
      "check": "bending: tunnel-r2 von Mises ≤ Fy / 1",
-     "demand": 1009109.4773,
+     "demand": 850602.0864,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0037,
-     "marginPct": 27250.85
+     "utilization": 0.0031,
+     "marginPct": 32347.6
     },
     {
      "check": "bending: seat-cross-L von Mises ≤ Fy / 1",
-     "demand": 1779449.3992,
+     "demand": 1500395.7399,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0064,
-     "marginPct": 15410.42
+     "utilization": 0.0054,
+     "marginPct": 18295.15
     },
     {
      "check": "bending: seat-cross-R von Mises ≤ Fy / 1",
-     "demand": 1779449.3992,
+     "demand": 1501705.6889,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0064,
-     "marginPct": 15410.42
+     "utilization": 0.0054,
+     "marginPct": 18279.1
     },
     {
      "check": "bending: heel-L von Mises ≤ Fy / 1",
-     "demand": 5365399.2987,
+     "demand": 4903008.3497,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0194,
-     "marginPct": 5044.07
+     "utilization": 0.0178,
+     "marginPct": 5529.2
     },
     {
      "check": "bending: heel-R von Mises ≤ Fy / 1",
-     "demand": 5365399.2987,
+     "demand": 4903122.4776,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0194,
-     "marginPct": 5044.07
+     "utilization": 0.0178,
+     "marginPct": 5529.07
     },
     {
      "check": "bending: rear-bulkhead-L von Mises ≤ Fy / 1",
-     "demand": 777365.6961,
+     "demand": 650220.4445,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0028,
-     "marginPct": 35404.53
+     "utilization": 0.0024,
+     "marginPct": 42347.14
     },
     {
      "check": "bending: rear-bulkhead-R von Mises ≤ Fy / 1",
-     "demand": 777365.6961,
+     "demand": 650190.1871,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0028,
-     "marginPct": 35404.53
+     "utilization": 0.0024,
+     "marginPct": 42349.12
     },
     {
      "check": "bending: rear-cross-L von Mises ≤ Fy / 1",
-     "demand": 308764.8078,
+     "demand": 340987.2427,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0011,
-     "marginPct": 89288.43
+     "utilization": 0.0012,
+     "marginPct": 80841.44
     },
     {
      "check": "bending: rear-cross-R von Mises ≤ Fy / 1",
-     "demand": 308764.8078,
+     "demand": 341112.0647,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0011,
-     "marginPct": 89288.43
+     "utilization": 0.0012,
+     "marginPct": 80811.83
     },
     {
      "check": "bending: a-pillar-L von Mises ≤ Fy / 1",
-     "demand": 10981576.4704,
+     "demand": 10163191.5109,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0398,
-     "marginPct": 2413.3
+     "utilization": 0.0368,
+     "marginPct": 2615.68
     },
     {
      "check": "bending: roof-rail-L von Mises ≤ Fy / 1",
-     "demand": 15375643.511,
+     "demand": 13744203.1982,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0557,
-     "marginPct": 1695.05
+     "utilization": 0.0498,
+     "marginPct": 1908.12
     },
     {
      "check": "bending: b-post-L von Mises ≤ Fy / 1",
-     "demand": 18103924.0221,
+     "demand": 17796295.2225,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0656,
-     "marginPct": 1424.53
+     "utilization": 0.0645,
+     "marginPct": 1450.88
     },
     {
      "check": "bending: roof-rail-r-L von Mises ≤ Fy / 1",
-     "demand": 27342974.9167,
+     "demand": 25457422.3014,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0991,
-     "marginPct": 909.4
+     "utilization": 0.0922,
+     "marginPct": 984.16
     },
     {
      "check": "bending: c-post-L von Mises ≤ Fy / 1",
-     "demand": 29977352.6875,
+     "demand": 27664861.8403,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1086,
-     "marginPct": 820.7
+     "utilization": 0.1002,
+     "marginPct": 897.66
     },
     {
      "check": "bending: a-pillar-R von Mises ≤ Fy / 1",
-     "demand": 10981576.4704,
+     "demand": 10162017.4958,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0398,
-     "marginPct": 2413.3
+     "utilization": 0.0368,
+     "marginPct": 2616
     },
     {
      "check": "bending: roof-rail-R von Mises ≤ Fy / 1",
-     "demand": 15375643.511,
+     "demand": 13746177.1754,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0557,
-     "marginPct": 1695.05
+     "utilization": 0.0498,
+     "marginPct": 1907.83
     },
     {
      "check": "bending: b-post-R von Mises ≤ Fy / 1",
-     "demand": 18103924.0221,
+     "demand": 17798191.092,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0656,
-     "marginPct": 1424.53
+     "utilization": 0.0645,
+     "marginPct": 1450.72
     },
     {
      "check": "bending: roof-rail-r-R von Mises ≤ Fy / 1",
-     "demand": 27342974.9167,
+     "demand": 25454710.0204,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0991,
-     "marginPct": 909.4
+     "utilization": 0.0922,
+     "marginPct": 984.28
     },
     {
      "check": "bending: c-post-R von Mises ≤ Fy / 1",
-     "demand": 29977352.6875,
+     "demand": 27663470.2273,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1086,
-     "marginPct": 820.7
+     "utilization": 0.1002,
+     "marginPct": 897.71
     },
     {
      "check": "bending: roof-bow-L von Mises ≤ Fy / 1",
-     "demand": 2736003.6178,
+     "demand": 2300810.6113,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0099,
-     "marginPct": 9987.71
+     "utilization": 0.0083,
+     "marginPct": 11895.77
     },
     {
      "check": "bending: roof-bow-R von Mises ≤ Fy / 1",
-     "demand": 2736003.6178,
+     "demand": 2296419.794,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0099,
-     "marginPct": 9987.71
+     "utilization": 0.0083,
+     "marginPct": 11918.71
     },
     {
      "check": "bending: ws-header-L von Mises ≤ Fy / 1",
-     "demand": 1172562.2536,
+     "demand": 1354152.9649,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0042,
-     "marginPct": 23438.2
+     "utilization": 0.0049,
+     "marginPct": 20281.74
     },
     {
      "check": "bending: ws-header-R von Mises ≤ Fy / 1",
-     "demand": 1172562.2536,
+     "demand": 1354399.4072,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0042,
-     "marginPct": 23438.2
+     "utilization": 0.0049,
+     "marginPct": 20278.04
     },
     {
      "check": "bending: panel roof-L shear ≤ Fy/√3 / 1",
-     "demand": 136747.7851,
+     "demand": 161978.0612,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0009,
-     "marginPct": 116427.43
+     "utilization": 0.001,
+     "marginPct": 98276.7
     },
     {
      "check": "bending: panel roof-L shear ≤ elastic shear buckling τcr (k_s 6.54)",
-     "demand": 136747.7851,
+     "demand": 161978.0612,
      "capacity": 3459536.8434,
      "unit": "Pa",
-     "utilization": 0.0395,
-     "marginPct": 2429.87
+     "utilization": 0.0468,
+     "marginPct": 2035.81
     },
     {
      "check": "bending: panel roof-R shear ≤ Fy/√3 / 1",
-     "demand": 136747.7851,
+     "demand": 161972.6017,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0009,
-     "marginPct": 116427.43
+     "utilization": 0.001,
+     "marginPct": 98280.02
     },
     {
      "check": "bending: panel roof-R shear ≤ elastic shear buckling τcr (k_s 6.54)",
-     "demand": 136747.7851,
+     "demand": 161972.6017,
      "capacity": 3459536.8434,
      "unit": "Pa",
-     "utilization": 0.0395,
-     "marginPct": 2429.87
+     "utilization": 0.0468,
+     "marginPct": 2035.88
     },
     {
      "check": "bending: panel floor-L1 shear ≤ Fy/√3 / 1",
-     "demand": 293031.2401,
+     "demand": 263492.1346,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0018,
-     "marginPct": 54279.42
+     "utilization": 0.0017,
+     "marginPct": 60375.69
     },
     {
      "check": "bending: panel floor-L1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
-     "demand": 293031.2401,
+     "demand": 263492.1346,
      "capacity": 7678696.0599,
      "unit": "Pa",
-     "utilization": 0.0382,
-     "marginPct": 2520.44
+     "utilization": 0.0343,
+     "marginPct": 2814.2
     },
     {
      "check": "bending: panel floor-L2 shear ≤ Fy/√3 / 1",
-     "demand": 552493.4704,
+     "demand": 508485.7287,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0035,
-     "marginPct": 28741.73
+     "utilization": 0.0032,
+     "marginPct": 31237.89
     },
     {
      "check": "bending: panel floor-L2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
-     "demand": 552493.4704,
+     "demand": 508485.7287,
      "capacity": 214650711.7604,
      "unit": "Pa",
-     "utilization": 0.0026,
-     "marginPct": 38751.27
+     "utilization": 0.0024,
+     "marginPct": 42113.71
     },
     {
      "check": "bending: panel floor-L3 shear ≤ Fy/√3 / 1",
-     "demand": 1042059.8426,
+     "demand": 977165.7165,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0065,
-     "marginPct": 15191.7
+     "utilization": 0.0061,
+     "marginPct": 16207.23
     },
     {
      "check": "bending: panel floor-L3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
-     "demand": 1042059.8426,
+     "demand": 977165.7165,
      "capacity": 42763235.5484,
      "unit": "Pa",
-     "utilization": 0.0244,
-     "marginPct": 4003.72
+     "utilization": 0.0229,
+     "marginPct": 4276.25
     },
     {
      "check": "bending: panel floor-L4 shear ≤ Fy/√3 / 1",
-     "demand": 45194.4908,
+     "demand": 62431.3052,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0003,
-     "marginPct": 352484.29
+     "utilization": 0.0004,
+     "marginPct": 255138.42
     },
     {
      "check": "bending: panel floor-L4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
-     "demand": 45194.4908,
+     "demand": 62431.3052,
      "capacity": 5161108.4215,
      "unit": "Pa",
-     "utilization": 0.0088,
-     "marginPct": 11319.77
+     "utilization": 0.0121,
+     "marginPct": 8166.86
     },
     {
      "check": "bending: panel floor-L5 shear ≤ Fy/√3 / 1",
-     "demand": 274454.4485,
+     "demand": 253801.4082,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0017,
-     "marginPct": 57960.15
+     "utilization": 0.0016,
+     "marginPct": 62684.79
     },
     {
      "check": "bending: panel floor-L5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
-     "demand": 274454.4485,
+     "demand": 253801.4082,
      "capacity": 17103243.3465,
      "unit": "Pa",
-     "utilization": 0.016,
-     "marginPct": 6131.72
+     "utilization": 0.0148,
+     "marginPct": 6638.83
     },
     {
      "check": "bending: panel rear-floor-L shear ≤ Fy/√3 / 1",
-     "demand": 481064.6918,
+     "demand": 387290.0939,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.003,
-     "marginPct": 33024.17
+     "utilization": 0.0024,
+     "marginPct": 41044.53
     },
     {
      "check": "bending: panel rear-floor-L shear ≤ elastic shear buckling τcr (k_s 8.70)",
-     "demand": 481064.6918,
+     "demand": 387290.0939,
      "capacity": 6853140.6111,
      "unit": "Pa",
-     "utilization": 0.0702,
-     "marginPct": 1324.58
+     "utilization": 0.0565,
+     "marginPct": 1669.51
     },
     {
      "check": "bending: panel firewall-L shear ≤ Fy/√3 / 1",
-     "demand": 1058726.5017,
+     "demand": 1027639.8967,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0066,
-     "marginPct": 14950.98
+     "utilization": 0.0064,
+     "marginPct": 15406.28
     },
     {
      "check": "bending: panel firewall-L shear ≤ elastic shear buckling τcr (k_s 6.57)",
-     "demand": 1058726.5017,
+     "demand": 1027639.8967,
      "capacity": 10994544.9018,
      "unit": "Pa",
-     "utilization": 0.0963,
-     "marginPct": 938.47
+     "utilization": 0.0935,
+     "marginPct": 969.88
     },
     {
      "check": "bending: panel floor-R1 shear ≤ Fy/√3 / 1",
-     "demand": 293031.2401,
-     "capacity": 159348674.2963,
-     "unit": "Pa",
-     "utilization": 0.0018,
-     "marginPct": 54279.42
-    },
-    {
-     "check": "bending: panel floor-R1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
-     "demand": 293031.2401,
-     "capacity": 7678696.0599,
-     "unit": "Pa",
-     "utilization": 0.0382,
-     "marginPct": 2520.44
-    },
-    {
-     "check": "bending: panel floor-R2 shear ≤ Fy/√3 / 1",
-     "demand": 552493.4704,
-     "capacity": 159348674.2963,
-     "unit": "Pa",
-     "utilization": 0.0035,
-     "marginPct": 28741.73
-    },
-    {
-     "check": "bending: panel floor-R2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
-     "demand": 552493.4704,
-     "capacity": 214650711.7604,
-     "unit": "Pa",
-     "utilization": 0.0026,
-     "marginPct": 38751.27
-    },
-    {
-     "check": "bending: panel floor-R3 shear ≤ Fy/√3 / 1",
-     "demand": 1042059.8426,
-     "capacity": 159348674.2963,
-     "unit": "Pa",
-     "utilization": 0.0065,
-     "marginPct": 15191.7
-    },
-    {
-     "check": "bending: panel floor-R3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
-     "demand": 1042059.8426,
-     "capacity": 42763235.5484,
-     "unit": "Pa",
-     "utilization": 0.0244,
-     "marginPct": 4003.72
-    },
-    {
-     "check": "bending: panel floor-R4 shear ≤ Fy/√3 / 1",
-     "demand": 45194.4908,
-     "capacity": 159348674.2963,
-     "unit": "Pa",
-     "utilization": 0.0003,
-     "marginPct": 352484.29
-    },
-    {
-     "check": "bending: panel floor-R4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
-     "demand": 45194.4908,
-     "capacity": 5161108.4215,
-     "unit": "Pa",
-     "utilization": 0.0088,
-     "marginPct": 11319.77
-    },
-    {
-     "check": "bending: panel floor-R5 shear ≤ Fy/√3 / 1",
-     "demand": 274454.4485,
+     "demand": 263590.4682,
      "capacity": 159348674.2963,
      "unit": "Pa",
      "utilization": 0.0017,
-     "marginPct": 57960.15
+     "marginPct": 60353.12
+    },
+    {
+     "check": "bending: panel floor-R1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
+     "demand": 263590.4682,
+     "capacity": 7678696.0599,
+     "unit": "Pa",
+     "utilization": 0.0343,
+     "marginPct": 2813.12
+    },
+    {
+     "check": "bending: panel floor-R2 shear ≤ Fy/√3 / 1",
+     "demand": 508273.85,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0032,
+     "marginPct": 31250.95
+    },
+    {
+     "check": "bending: panel floor-R2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
+     "demand": 508273.85,
+     "capacity": 214650711.7604,
+     "unit": "Pa",
+     "utilization": 0.0024,
+     "marginPct": 42131.31
+    },
+    {
+     "check": "bending: panel floor-R3 shear ≤ Fy/√3 / 1",
+     "demand": 977445.4707,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0061,
+     "marginPct": 16202.56
+    },
+    {
+     "check": "bending: panel floor-R3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
+     "demand": 977445.4707,
+     "capacity": 42763235.5484,
+     "unit": "Pa",
+     "utilization": 0.0229,
+     "marginPct": 4275
+    },
+    {
+     "check": "bending: panel floor-R4 shear ≤ Fy/√3 / 1",
+     "demand": 62441.8597,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0004,
+     "marginPct": 255095.27
+    },
+    {
+     "check": "bending: panel floor-R4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
+     "demand": 62441.8597,
+     "capacity": 5161108.4215,
+     "unit": "Pa",
+     "utilization": 0.0121,
+     "marginPct": 8165.46
+    },
+    {
+     "check": "bending: panel floor-R5 shear ≤ Fy/√3 / 1",
+     "demand": 253505.7895,
+     "capacity": 159348674.2963,
+     "unit": "Pa",
+     "utilization": 0.0016,
+     "marginPct": 62758
     },
     {
      "check": "bending: panel floor-R5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
-     "demand": 274454.4485,
+     "demand": 253505.7895,
      "capacity": 17103243.3465,
      "unit": "Pa",
-     "utilization": 0.016,
-     "marginPct": 6131.72
+     "utilization": 0.0148,
+     "marginPct": 6646.69
     },
     {
      "check": "bending: panel rear-floor-R shear ≤ Fy/√3 / 1",
-     "demand": 481064.6918,
+     "demand": 387327.969,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.003,
-     "marginPct": 33024.17
+     "utilization": 0.0024,
+     "marginPct": 41040.5
     },
     {
      "check": "bending: panel rear-floor-R shear ≤ elastic shear buckling τcr (k_s 8.70)",
-     "demand": 481064.6918,
+     "demand": 387327.969,
      "capacity": 6853140.6111,
      "unit": "Pa",
-     "utilization": 0.0702,
-     "marginPct": 1324.58
+     "utilization": 0.0565,
+     "marginPct": 1669.34
     },
     {
      "check": "bending: panel firewall-R shear ≤ Fy/√3 / 1",
-     "demand": 1058726.5017,
+     "demand": 1014400.2819,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0066,
-     "marginPct": 14950.98
+     "utilization": 0.0064,
+     "marginPct": 15608.66
     },
     {
      "check": "bending: panel firewall-R shear ≤ elastic shear buckling τcr (k_s 6.57)",
-     "demand": 1058726.5017,
+     "demand": 1014400.2819,
      "capacity": 10994544.9018,
      "unit": "Pa",
-     "utilization": 0.0963,
-     "marginPct": 938.47
+     "utilization": 0.0923,
+     "marginPct": 983.85
     },
     {
      "check": "kerb-twist: rail-fL1 von Mises ≤ Fy / 1",
@@ -868,103 +876,103 @@
      "capacity": 276000000,
      "unit": "Pa",
      "utilization": 0,
-     "marginPct": 192277983130571900
+     "marginPct": 201420952698104300
     },
     {
      "check": "kerb-twist: rail-fL2 von Mises ≤ Fy / 1",
-     "demand": 20866617.5704,
+     "demand": 20906792.8684,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0756,
-     "marginPct": 1222.69
+     "utilization": 0.0757,
+     "marginPct": 1220.15
     },
     {
      "check": "kerb-twist: sill-L1 von Mises ≤ Fy / 1",
-     "demand": 11510127.5394,
+     "demand": 10865651.7926,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0417,
-     "marginPct": 2297.89
+     "utilization": 0.0394,
+     "marginPct": 2440.11
     },
     {
      "check": "kerb-twist: sill-L2 von Mises ≤ Fy / 1",
-     "demand": 8220855.5404,
+     "demand": 6981582.3829,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0298,
-     "marginPct": 3257.31
+     "utilization": 0.0253,
+     "marginPct": 3853.26
     },
     {
      "check": "kerb-twist: sill-L3 von Mises ≤ Fy / 1",
-     "demand": 7663489.1235,
+     "demand": 6633652.5701,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0278,
-     "marginPct": 3501.49
+     "utilization": 0.024,
+     "marginPct": 4060.6
     },
     {
      "check": "kerb-twist: sill-L4 von Mises ≤ Fy / 1",
-     "demand": 7142969.7225,
+     "demand": 6147247.0018,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0259,
-     "marginPct": 3763.94
+     "utilization": 0.0223,
+     "marginPct": 4389.81
     },
     {
      "check": "kerb-twist: kick-L1 von Mises ≤ Fy / 1",
-     "demand": 11724126.0747,
+     "demand": 10317589.4753,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0425,
-     "marginPct": 2254.12
+     "utilization": 0.0374,
+     "marginPct": 2575.04
     },
     {
      "check": "kerb-twist: kick-L2 von Mises ≤ Fy / 1",
-     "demand": 9210665.6074,
+     "demand": 7821547.9733,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0334,
-     "marginPct": 2896.53
+     "utilization": 0.0283,
+     "marginPct": 3428.71
     },
     {
      "check": "kerb-twist: kick-L3 von Mises ≤ Fy / 1",
-     "demand": 14401392.1911,
+     "demand": 13419265.3738,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0522,
-     "marginPct": 1816.48
+     "utilization": 0.0486,
+     "marginPct": 1956.74
     },
     {
      "check": "kerb-twist: qtr-L1 von Mises ≤ Fy / 1",
-     "demand": 7360311.94,
+     "demand": 6956484.5317,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0267,
-     "marginPct": 3649.84
+     "utilization": 0.0252,
+     "marginPct": 3867.52
     },
     {
      "check": "kerb-twist: qtr-L2 von Mises ≤ Fy / 1",
-     "demand": 6666370.1948,
+     "demand": 6098621.5612,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0242,
-     "marginPct": 4040.18
+     "utilization": 0.0221,
+     "marginPct": 4425.61
     },
     {
      "check": "kerb-twist: qtr-L3 von Mises ≤ Fy / 1",
-     "demand": 7565817.8495,
+     "demand": 7147268.7881,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0274,
-     "marginPct": 3547.99
+     "utilization": 0.0259,
+     "marginPct": 3761.61
     },
     {
      "check": "kerb-twist: fw-post-L von Mises ≤ Fy / 1",
-     "demand": 40941627.4462,
+     "demand": 33630413.0352,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1483,
-     "marginPct": 574.13
+     "utilization": 0.1218,
+     "marginPct": 720.69
     },
     {
      "check": "kerb-twist: rail-fR1 von Mises ≤ Fy / 1",
@@ -972,659 +980,726 @@
      "capacity": 276000000,
      "unit": "Pa",
      "utilization": 0,
-     "marginPct": 10663937816039156
+     "marginPct": 12089386539492900
     },
     {
      "check": "kerb-twist: rail-fR2 von Mises ≤ Fy / 1",
-     "demand": 20866617.5704,
+     "demand": 20906792.8684,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0756,
-     "marginPct": 1222.69
+     "utilization": 0.0757,
+     "marginPct": 1220.15
     },
     {
      "check": "kerb-twist: sill-R1 von Mises ≤ Fy / 1",
-     "demand": 11510127.5394,
+     "demand": 10866348.1452,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0417,
-     "marginPct": 2297.89
+     "utilization": 0.0394,
+     "marginPct": 2439.95
     },
     {
      "check": "kerb-twist: sill-R2 von Mises ≤ Fy / 1",
-     "demand": 8220855.5404,
+     "demand": 6982866.6572,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0298,
-     "marginPct": 3257.31
+     "utilization": 0.0253,
+     "marginPct": 3852.53
     },
     {
      "check": "kerb-twist: sill-R3 von Mises ≤ Fy / 1",
-     "demand": 7663489.1236,
+     "demand": 6633723.4845,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0278,
-     "marginPct": 3501.49
+     "utilization": 0.024,
+     "marginPct": 4060.56
     },
     {
      "check": "kerb-twist: sill-R4 von Mises ≤ Fy / 1",
-     "demand": 7142969.7226,
+     "demand": 6148290.0476,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0259,
-     "marginPct": 3763.94
+     "utilization": 0.0223,
+     "marginPct": 4389.05
     },
     {
      "check": "kerb-twist: kick-R1 von Mises ≤ Fy / 1",
-     "demand": 11724126.0747,
+     "demand": 10321921.6436,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0425,
-     "marginPct": 2254.12
+     "utilization": 0.0374,
+     "marginPct": 2573.92
     },
     {
      "check": "kerb-twist: kick-R2 von Mises ≤ Fy / 1",
-     "demand": 9210665.6074,
+     "demand": 7824096.5982,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0334,
-     "marginPct": 2896.53
+     "utilization": 0.0283,
+     "marginPct": 3427.56
     },
     {
      "check": "kerb-twist: kick-R3 von Mises ≤ Fy / 1",
-     "demand": 14401392.1911,
+     "demand": 13420701.7514,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0522,
-     "marginPct": 1816.48
+     "utilization": 0.0486,
+     "marginPct": 1956.52
     },
     {
      "check": "kerb-twist: qtr-R1 von Mises ≤ Fy / 1",
-     "demand": 7360311.94,
+     "demand": 6957285.8548,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0267,
-     "marginPct": 3649.84
+     "utilization": 0.0252,
+     "marginPct": 3867.06
     },
     {
      "check": "kerb-twist: qtr-R2 von Mises ≤ Fy / 1",
-     "demand": 6666370.1948,
+     "demand": 6098710.3308,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0242,
-     "marginPct": 4040.18
+     "utilization": 0.0221,
+     "marginPct": 4425.55
     },
     {
      "check": "kerb-twist: qtr-R3 von Mises ≤ Fy / 1",
-     "demand": 7565817.8495,
+     "demand": 7147402.0647,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0274,
-     "marginPct": 3547.99
+     "utilization": 0.0259,
+     "marginPct": 3761.54
     },
     {
      "check": "kerb-twist: fw-post-R von Mises ≤ Fy / 1",
-     "demand": 40941627.4462,
+     "demand": 33553619.0321,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1483,
-     "marginPct": 574.13
+     "utilization": 0.1216,
+     "marginPct": 722.56
     },
     {
      "check": "kerb-twist: fw-lower-L1 von Mises ≤ Fy / 1",
-     "demand": 5056316.5907,
+     "demand": 4933180.7461,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0183,
-     "marginPct": 5358.52
+     "utilization": 0.0179,
+     "marginPct": 5494.77
     },
     {
      "check": "kerb-twist: fw-lower-L2 von Mises ≤ Fy / 1",
-     "demand": 16196665.0504,
+     "demand": 15153002.8518,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0587,
-     "marginPct": 1604.05
+     "utilization": 0.0549,
+     "marginPct": 1721.42
     },
     {
      "check": "kerb-twist: fw-lower-R1 von Mises ≤ Fy / 1",
-     "demand": 5056316.5907,
+     "demand": 4908604.8247,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0183,
-     "marginPct": 5358.52
+     "utilization": 0.0178,
+     "marginPct": 5522.78
     },
     {
      "check": "kerb-twist: fw-lower-R2 von Mises ≤ Fy / 1",
-     "demand": 16196665.0504,
+     "demand": 15166695.7947,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0587,
-     "marginPct": 1604.05
+     "utilization": 0.055,
+     "marginPct": 1719.78
     },
     {
      "check": "kerb-twist: scuttle-L1 von Mises ≤ Fy / 1",
-     "demand": 23803761.1126,
+     "demand": 26981195.6491,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0862,
-     "marginPct": 1059.48
+     "utilization": 0.0978,
+     "marginPct": 922.93
     },
     {
      "check": "kerb-twist: scuttle-L2 von Mises ≤ Fy / 1",
-     "demand": 11355713.433,
+     "demand": 11827172.2763,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0411,
-     "marginPct": 2330.49
+     "utilization": 0.0429,
+     "marginPct": 2233.61
     },
     {
      "check": "kerb-twist: scuttle-R1 von Mises ≤ Fy / 1",
-     "demand": 23803761.1127,
+     "demand": 26933938.8727,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0862,
-     "marginPct": 1059.48
+     "utilization": 0.0976,
+     "marginPct": 924.73
     },
     {
      "check": "kerb-twist: scuttle-R2 von Mises ≤ Fy / 1",
-     "demand": 11355713.433,
+     "demand": 11894165.6396,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0411,
-     "marginPct": 2330.49
+     "utilization": 0.0431,
+     "marginPct": 2220.47
     },
     {
      "check": "kerb-twist: fw-cpost-1 von Mises ≤ Fy / 1",
-     "demand": 19703628.6214,
+     "demand": 3114250.2065,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0714,
-     "marginPct": 1300.76
+     "utilization": 0.0113,
+     "marginPct": 8762.49
     },
     {
      "check": "kerb-twist: fw-cpost-2 von Mises ≤ Fy / 1",
-     "demand": 10212613.0308,
+     "demand": 3551853.3577,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.037,
-     "marginPct": 2602.54
+     "utilization": 0.0129,
+     "marginPct": 7670.59
     },
     {
      "check": "kerb-twist: tunnel-f1 von Mises ≤ Fy / 1",
-     "demand": 1871974.8553,
+     "demand": 31679.268,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0068,
-     "marginPct": 14643.79
+     "utilization": 0.0001,
+     "marginPct": 871132.25
+    },
+    {
+     "check": "kerb-twist: tunnel-f1-open von Mises ≤ Fy / 1",
+     "demand": 4458552.5147,
+     "capacity": 276000000,
+     "unit": "Pa",
+     "utilization": 0.0162,
+     "marginPct": 6090.35
     },
     {
      "check": "kerb-twist: tunnel-f2 von Mises ≤ Fy / 1",
-     "demand": 495608.7159,
+     "demand": 216554.9227,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0018,
-     "marginPct": 55589.09
+     "utilization": 0.0008,
+     "marginPct": 127350.35
     },
     {
      "check": "kerb-twist: tunnel-r1 von Mises ≤ Fy / 1",
-     "demand": 479045.8738,
+     "demand": 443433.5398,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0017,
-     "marginPct": 57514.52
+     "utilization": 0.0016,
+     "marginPct": 62141.57
     },
     {
      "check": "kerb-twist: tunnel-r2 von Mises ≤ Fy / 1",
-     "demand": 520682.4385,
+     "demand": 425336.313,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0019,
-     "marginPct": 52907.36
+     "utilization": 0.0015,
+     "marginPct": 64789.83
     },
     {
      "check": "kerb-twist: seat-cross-L von Mises ≤ Fy / 1",
-     "demand": 11632570.0508,
+     "demand": 4701163.2125,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0421,
-     "marginPct": 2272.65
+     "utilization": 0.017,
+     "marginPct": 5770.89
     },
     {
      "check": "kerb-twist: seat-cross-R von Mises ≤ Fy / 1",
-     "demand": 11632570.051,
+     "demand": 4704714.868,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0421,
-     "marginPct": 2272.65
+     "utilization": 0.017,
+     "marginPct": 5766.46
     },
     {
      "check": "kerb-twist: heel-L von Mises ≤ Fy / 1",
-     "demand": 11352643.8191,
+     "demand": 11447857.3414,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0411,
-     "marginPct": 2331.15
+     "utilization": 0.0415,
+     "marginPct": 2310.93
     },
     {
      "check": "kerb-twist: heel-R von Mises ≤ Fy / 1",
-     "demand": 11352643.8191,
+     "demand": 11450203.1986,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0411,
-     "marginPct": 2331.15
+     "utilization": 0.0415,
+     "marginPct": 2310.44
     },
     {
      "check": "kerb-twist: rear-bulkhead-L von Mises ≤ Fy / 1",
-     "demand": 5380847.4737,
+     "demand": 5582867.8524,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0195,
-     "marginPct": 5029.3
+     "utilization": 0.0202,
+     "marginPct": 4843.7
     },
     {
      "check": "kerb-twist: rear-bulkhead-R von Mises ≤ Fy / 1",
-     "demand": 5380847.4737,
+     "demand": 5583423.2836,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0195,
-     "marginPct": 5029.3
+     "utilization": 0.0202,
+     "marginPct": 4843.2
     },
     {
      "check": "kerb-twist: rear-cross-L von Mises ≤ Fy / 1",
-     "demand": 14755099.8048,
+     "demand": 13793459.8747,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0535,
-     "marginPct": 1770.54
+     "utilization": 0.05,
+     "marginPct": 1900.95
     },
     {
      "check": "kerb-twist: rear-cross-R von Mises ≤ Fy / 1",
-     "demand": 14755099.8048,
+     "demand": 13793597.8238,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0535,
-     "marginPct": 1770.54
+     "utilization": 0.05,
+     "marginPct": 1900.93
     },
     {
      "check": "kerb-twist: a-pillar-L von Mises ≤ Fy / 1",
-     "demand": 31890161.2753,
+     "demand": 29006820.8345,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1155,
-     "marginPct": 765.47
+     "utilization": 0.1051,
+     "marginPct": 851.5
     },
     {
      "check": "kerb-twist: roof-rail-L von Mises ≤ Fy / 1",
-     "demand": 19050206.4055,
+     "demand": 18560331.0978,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.069,
-     "marginPct": 1348.8
+     "utilization": 0.0672,
+     "marginPct": 1387.04
     },
     {
      "check": "kerb-twist: b-post-L von Mises ≤ Fy / 1",
-     "demand": 32584377.3789,
+     "demand": 29270636.9326,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1181,
-     "marginPct": 747.03
+     "utilization": 0.1061,
+     "marginPct": 842.92
     },
     {
      "check": "kerb-twist: roof-rail-r-L von Mises ≤ Fy / 1",
-     "demand": 26220898.2864,
+     "demand": 24226550.3173,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.095,
-     "marginPct": 952.6
+     "utilization": 0.0878,
+     "marginPct": 1039.25
     },
     {
      "check": "kerb-twist: c-post-L von Mises ≤ Fy / 1",
-     "demand": 33643894.5372,
+     "demand": 32003364.1225,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1219,
-     "marginPct": 720.36
+     "utilization": 0.116,
+     "marginPct": 762.41
     },
     {
      "check": "kerb-twist: a-pillar-R von Mises ≤ Fy / 1",
-     "demand": 31890161.2753,
+     "demand": 29011237.7129,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1155,
-     "marginPct": 765.47
+     "utilization": 0.1051,
+     "marginPct": 851.36
     },
     {
      "check": "kerb-twist: roof-rail-R von Mises ≤ Fy / 1",
-     "demand": 19050206.4055,
+     "demand": 18560761.3215,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.069,
-     "marginPct": 1348.8
+     "utilization": 0.0672,
+     "marginPct": 1387.01
     },
     {
      "check": "kerb-twist: b-post-R von Mises ≤ Fy / 1",
-     "demand": 32584377.379,
+     "demand": 29268431.3187,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1181,
-     "marginPct": 747.03
+     "utilization": 0.106,
+     "marginPct": 843
     },
     {
      "check": "kerb-twist: roof-rail-r-R von Mises ≤ Fy / 1",
-     "demand": 26220898.2864,
+     "demand": 24226942.4231,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.095,
-     "marginPct": 952.6
+     "utilization": 0.0878,
+     "marginPct": 1039.23
     },
     {
      "check": "kerb-twist: c-post-R von Mises ≤ Fy / 1",
-     "demand": 33643894.5372,
+     "demand": 32003582.4454,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1219,
-     "marginPct": 720.36
+     "utilization": 0.116,
+     "marginPct": 762.4
     },
     {
      "check": "kerb-twist: roof-bow-L von Mises ≤ Fy / 1",
-     "demand": 28661807.9916,
+     "demand": 27852701.4373,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1038,
-     "marginPct": 862.95
+     "utilization": 0.1009,
+     "marginPct": 890.93
     },
     {
      "check": "kerb-twist: roof-bow-R von Mises ≤ Fy / 1",
-     "demand": 28661807.9916,
+     "demand": 27852361.1323,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.1038,
-     "marginPct": 862.95
+     "utilization": 0.1009,
+     "marginPct": 890.94
     },
     {
      "check": "kerb-twist: ws-header-L von Mises ≤ Fy / 1",
-     "demand": 21869362.4758,
+     "demand": 21479759.1024,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0792,
-     "marginPct": 1162.04
+     "utilization": 0.0778,
+     "marginPct": 1184.93
     },
     {
      "check": "kerb-twist: ws-header-R von Mises ≤ Fy / 1",
-     "demand": 21869362.4758,
+     "demand": 21479130.9626,
      "capacity": 276000000,
      "unit": "Pa",
-     "utilization": 0.0792,
-     "marginPct": 1162.04
+     "utilization": 0.0778,
+     "marginPct": 1184.97
     },
     {
      "check": "kerb-twist: panel roof-L shear ≤ Fy/√3 / 1",
-     "demand": 2350701.1835,
+     "demand": 2671373.1627,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0148,
-     "marginPct": 6678.77
+     "utilization": 0.0168,
+     "marginPct": 5865.05
     },
     {
      "check": "kerb-twist: panel roof-L shear ≤ elastic shear buckling τcr (k_s 6.54)",
-     "demand": 2350701.1835,
+     "demand": 2671373.1627,
      "capacity": 3459536.8434,
      "unit": "Pa",
-     "utilization": 0.6795,
-     "marginPct": 47.17
+     "utilization": 0.7722,
+     "marginPct": 29.5
     },
     {
      "check": "kerb-twist: panel roof-R shear ≤ Fy/√3 / 1",
-     "demand": 2350701.1835,
+     "demand": 2671360.9637,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0148,
-     "marginPct": 6678.77
+     "utilization": 0.0168,
+     "marginPct": 5865.07
     },
     {
      "check": "kerb-twist: panel roof-R shear ≤ elastic shear buckling τcr (k_s 6.54)",
-     "demand": 2350701.1835,
+     "demand": 2671360.9637,
      "capacity": 3459536.8434,
      "unit": "Pa",
-     "utilization": 0.6795,
-     "marginPct": 47.17
+     "utilization": 0.7722,
+     "marginPct": 29.5
     },
     {
      "check": "kerb-twist: panel floor-L1 shear ≤ Fy/√3 / 1",
-     "demand": 542314.5938,
+     "demand": 691317.8346,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0034,
-     "marginPct": 29283.07
+     "utilization": 0.0043,
+     "marginPct": 22949.99
     },
     {
      "check": "kerb-twist: panel floor-L1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
-     "demand": 542314.5938,
+     "demand": 691317.8346,
      "capacity": 7678696.0599,
      "unit": "Pa",
-     "utilization": 0.0706,
-     "marginPct": 1315.91
+     "utilization": 0.09,
+     "marginPct": 1010.73
     },
     {
      "check": "kerb-twist: panel floor-L2 shear ≤ Fy/√3 / 1",
-     "demand": 744542.5078,
+     "demand": 864632.3873,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0047,
-     "marginPct": 21302.23
+     "utilization": 0.0054,
+     "marginPct": 18329.64
     },
     {
      "check": "kerb-twist: panel floor-L2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
-     "demand": 744542.5078,
+     "demand": 864632.3873,
      "capacity": 214650711.7604,
      "unit": "Pa",
-     "utilization": 0.0035,
-     "marginPct": 28729.88
+     "utilization": 0.004,
+     "marginPct": 24725.66
     },
     {
      "check": "kerb-twist: panel floor-L3 shear ≤ Fy/√3 / 1",
-     "demand": 831358.3786,
+     "demand": 1009706.7395,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0052,
-     "marginPct": 19067.27
+     "utilization": 0.0063,
+     "marginPct": 15681.68
     },
     {
      "check": "kerb-twist: panel floor-L3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
-     "demand": 831358.3786,
+     "demand": 1009706.7395,
      "capacity": 42763235.5484,
      "unit": "Pa",
-     "utilization": 0.0194,
-     "marginPct": 5043.78
+     "utilization": 0.0236,
+     "marginPct": 4135.21
     },
     {
      "check": "kerb-twist: panel floor-L4 shear ≤ Fy/√3 / 1",
-     "demand": 1084241.719,
+     "demand": 1219996.1503,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0068,
-     "marginPct": 14596.78
+     "utilization": 0.0077,
+     "marginPct": 12961.41
     },
     {
      "check": "kerb-twist: panel floor-L4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
-     "demand": 1084241.719,
+     "demand": 1219996.1503,
      "capacity": 5161108.4215,
      "unit": "Pa",
-     "utilization": 0.2101,
-     "marginPct": 376.01
+     "utilization": 0.2364,
+     "marginPct": 323.04
     },
     {
      "check": "kerb-twist: panel floor-L5 shear ≤ Fy/√3 / 1",
-     "demand": 966129.5555,
+     "demand": 1112397.971,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0061,
-     "marginPct": 16393.51
+     "utilization": 0.007,
+     "marginPct": 14224.79
     },
     {
      "check": "kerb-twist: panel floor-L5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
-     "demand": 966129.5555,
+     "demand": 1112397.971,
      "capacity": 17103243.3465,
      "unit": "Pa",
-     "utilization": 0.0565,
-     "marginPct": 1670.28
+     "utilization": 0.065,
+     "marginPct": 1437.51
     },
     {
      "check": "kerb-twist: panel rear-floor-L shear ≤ Fy/√3 / 1",
-     "demand": 1309039.8308,
+     "demand": 1130527.683,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0082,
-     "marginPct": 12072.94
+     "utilization": 0.0071,
+     "marginPct": 13995.07
     },
     {
      "check": "kerb-twist: panel rear-floor-L shear ≤ elastic shear buckling τcr (k_s 8.70)",
-     "demand": 1309039.8308,
+     "demand": 1130527.683,
      "capacity": 6853140.6111,
      "unit": "Pa",
-     "utilization": 0.191,
-     "marginPct": 423.52
+     "utilization": 0.165,
+     "marginPct": 506.19
     },
     {
      "check": "kerb-twist: panel firewall-L shear ≤ Fy/√3 / 1",
-     "demand": 1372920.8309,
+     "demand": 1162915.8645,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0086,
-     "marginPct": 11506.55
+     "utilization": 0.0073,
+     "marginPct": 13602.51
     },
     {
      "check": "kerb-twist: panel firewall-L shear ≤ elastic shear buckling τcr (k_s 6.57)",
-     "demand": 1372920.8309,
+     "demand": 1162915.8645,
      "capacity": 10994544.9018,
      "unit": "Pa",
-     "utilization": 0.1249,
-     "marginPct": 700.81
+     "utilization": 0.1058,
+     "marginPct": 845.43
     },
     {
      "check": "kerb-twist: panel floor-R1 shear ≤ Fy/√3 / 1",
-     "demand": 542314.5938,
+     "demand": 690761.933,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0034,
-     "marginPct": 29283.07
+     "utilization": 0.0043,
+     "marginPct": 22968.54
     },
     {
      "check": "kerb-twist: panel floor-R1 shear ≤ elastic shear buckling τcr (k_s 7.25)",
-     "demand": 542314.5938,
+     "demand": 690761.933,
      "capacity": 7678696.0599,
      "unit": "Pa",
-     "utilization": 0.0706,
-     "marginPct": 1315.91
+     "utilization": 0.09,
+     "marginPct": 1011.63
     },
     {
      "check": "kerb-twist: panel floor-R2 shear ≤ Fy/√3 / 1",
-     "demand": 744542.5078,
+     "demand": 866953.3492,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0047,
-     "marginPct": 21302.23
+     "utilization": 0.0054,
+     "marginPct": 18280.31
     },
     {
      "check": "kerb-twist: panel floor-R2 shear ≤ elastic shear buckling τcr (k_s 5.40)",
-     "demand": 744542.5078,
+     "demand": 866953.3492,
      "capacity": 214650711.7604,
      "unit": "Pa",
-     "utilization": 0.0035,
-     "marginPct": 28729.88
+     "utilization": 0.004,
+     "marginPct": 24659.2
     },
     {
      "check": "kerb-twist: panel floor-R3 shear ≤ Fy/√3 / 1",
-     "demand": 831358.3786,
+     "demand": 1010280.326,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0052,
-     "marginPct": 19067.27
+     "utilization": 0.0063,
+     "marginPct": 15672.72
     },
     {
      "check": "kerb-twist: panel floor-R3 shear ≤ elastic shear buckling τcr (k_s 5.62)",
-     "demand": 831358.3786,
+     "demand": 1010280.326,
      "capacity": 42763235.5484,
      "unit": "Pa",
-     "utilization": 0.0194,
-     "marginPct": 5043.78
+     "utilization": 0.0236,
+     "marginPct": 4132.81
     },
     {
      "check": "kerb-twist: panel floor-R4 shear ≤ Fy/√3 / 1",
-     "demand": 1084241.719,
+     "demand": 1220144.0062,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0068,
-     "marginPct": 14596.78
+     "utilization": 0.0077,
+     "marginPct": 12959.83
     },
     {
      "check": "kerb-twist: panel floor-R4 shear ≤ elastic shear buckling τcr (k_s 8.84)",
-     "demand": 1084241.719,
+     "demand": 1220144.0062,
      "capacity": 5161108.4215,
      "unit": "Pa",
-     "utilization": 0.2101,
-     "marginPct": 376.01
+     "utilization": 0.2364,
+     "marginPct": 322.99
     },
     {
      "check": "kerb-twist: panel floor-R5 shear ≤ Fy/√3 / 1",
-     "demand": 966129.5555,
+     "demand": 1112467.1008,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0061,
-     "marginPct": 16393.51
+     "utilization": 0.007,
+     "marginPct": 14223.9
     },
     {
      "check": "kerb-twist: panel floor-R5 shear ≤ elastic shear buckling τcr (k_s 6.14)",
-     "demand": 966129.5555,
+     "demand": 1112467.1008,
      "capacity": 17103243.3465,
      "unit": "Pa",
-     "utilization": 0.0565,
-     "marginPct": 1670.28
+     "utilization": 0.065,
+     "marginPct": 1437.42
     },
     {
      "check": "kerb-twist: panel rear-floor-R shear ≤ Fy/√3 / 1",
-     "demand": 1309039.8308,
+     "demand": 1130956.2143,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0082,
-     "marginPct": 12072.94
+     "utilization": 0.0071,
+     "marginPct": 13989.73
     },
     {
      "check": "kerb-twist: panel rear-floor-R shear ≤ elastic shear buckling τcr (k_s 8.70)",
-     "demand": 1309039.8308,
+     "demand": 1130956.2143,
      "capacity": 6853140.6111,
      "unit": "Pa",
-     "utilization": 0.191,
-     "marginPct": 423.52
+     "utilization": 0.165,
+     "marginPct": 505.96
     },
     {
      "check": "kerb-twist: panel firewall-R shear ≤ Fy/√3 / 1",
-     "demand": 1372920.8309,
+     "demand": 1108382.4965,
      "capacity": 159348674.2963,
      "unit": "Pa",
-     "utilization": 0.0086,
-     "marginPct": 11506.55
+     "utilization": 0.007,
+     "marginPct": 14276.69
     },
     {
      "check": "kerb-twist: panel firewall-R shear ≤ elastic shear buckling τcr (k_s 6.57)",
-     "demand": 1372920.8309,
+     "demand": 1108382.4965,
      "capacity": 10994544.9018,
      "unit": "Pa",
-     "utilization": 0.1249,
-     "marginPct": 700.81
+     "utilization": 0.1008,
+     "marginPct": 891.95
     },
     {
-     "check": "stiffness torsional ≥ target 10,800 N·m/deg (low end of the cited sports-car range: Lotus Elise bonded extruded aluminium tub, 10,800 N·m/deg (Lotus 2011 press pack); high end Lamborghini Aventador CFRP monocoque, 35,000 N·m/deg; test methods not published, so a screening target)",
+     "check": "stiffness torsional ≥ target 10,800 N·m/deg (low end of the cited sports-car range: Lotus Elise bonded extruded aluminium tub, 10,800 N·m/deg (Lotus 2011 press pack); high end Lamborghini Aventador CFRP monocoque, 35,000 N·m/deg; test methods not published, so a screening target) [rigid joints: the upper bound]",
      "demand": 618794.4187,
-     "capacity": 629793.5908,
+     "capacity": 700262.6662,
      "unit": "N·m/rad",
-     "utilization": 0.9825,
-     "marginPct": 1.78
+     "utilization": 0.8837,
+     "marginPct": 13.17
+    },
+    {
+     "check": "stiffness torsional ≥ target 10,800 N·m/deg at the lowest computed joint scenario (bond line, soft end (E 1.0 GPa, nu 0.40, 0.5 mm); computed)",
+     "demand": 618794.4187,
+     "capacity": 680296.7846,
+     "unit": "N·m/rad",
+     "utilization": 0.9096,
+     "marginPct": 9.94
     }
    ],
    "failures": [],
-   "warnings": []
+   "warnings": [
+    "stiffness torsional: estimated joint-wall bound 7659.3 N·m/deg (soft bond line + every joint at the EN 1993-1-8 rigid boundary k_b = 8 (the low bound); estimated) is below the target 10,800 N·m/deg. EN 1993-1-8 k_b classifies steel building joints and is used here only as a bound on joint-wall distortion, which is not computed for this bonded aluminium tub. It is not a capacity and does not fail the check. The joints need a test or shell FE."
+   ]
+  },
+  {
+   "runId": "structure.crush-paths@CHASSIS",
+   "solver": "structure.crush-paths",
+   "target": "CHASSIS",
+   "status": "WARN",
+   "method": "Wierzbicki and Abramowicz 1983 mean crush force on the existing rectangular rails, compared with ½mv² at the FMVSS 208 barrier speeds. Not a crash test and not a shell model.",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "fmvss-208-s5.1.1-48: kinetic energy of kerb (1035.0366119675004 kg) at 48 km/h is 92003 J. Both front rails at the 1983 mean force over the pre-axle length sum to 61155 J, short of that kinetic energy.",
+    "fmvss-208-s5.1.1-56: kinetic energy of kerb (1035.0366119675004 kg) at 56 km/h is 125227 J. Both front rails at the 1983 mean force over the pre-axle length sum to 61155 J, short of that kinetic energy.",
+    "fmvss-208-s5.1.1-48: kinetic energy of brief-max (1133.980925 kg) at 48 km/h is 100798 J. Both front rails at the 1983 mean force over the pre-axle length sum to 61155 J, short of that kinetic energy.",
+    "fmvss-208-s5.1.1-56: kinetic energy of brief-max (1133.980925 kg) at 56 km/h is 137198 J. Both front rails at the 1983 mean force over the pre-axle length sum to 61155 J, short of that kinetic energy.",
+    "No crash box was added. The front path is the existing front-rail section ahead of the axle node.",
+    "σ0 is the library yield of the tub's material, not a measured flow stress. The 1983 Fig. 8 reduced experiments with ultimate stress. Ultimate is reported and not used."
+   ]
+  },
+  {
+   "runId": "structure.hardpoints@CHASSIS",
+   "solver": "structure.hardpoints",
+   "target": "CHASSIS",
+   "status": "WARN",
+   "method": "list the tub axle-line nodes and the members that meet them; split the static axle loads evenly. S550 arm coordinates are not published and are not invented.",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "The S550 suspension records publish no hardpoint dimensions. Control arms, radius arms, strut towers and subframe mounts are not given coordinates.",
+    "The tub holds these four axle-line nodes as rigid supports. Springs are not in the frame: the library spring rate is not published.",
+    "The static load is the support reaction in a level, no-aero balance. It is not a measured link load."
+   ]
+  },
+  {
+   "runId": "fluid.cooling-opening@RADIATOR",
+   "solver": "fluid.cooling-opening",
+   "target": "RADIATOR",
+   "status": "WARN",
+   "method": "opening area = sourced radiator core face; air temperature rise from Q = rho * V_fan * cp * dT with dry air at 300 K (Incropera Table A.4) and the coolant-loop heat load. Not a heat-exchanger rating.",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "The opening area is the sourced core face. It is not a grille sized to a pressure drop: no grille loss coefficient is published.",
+    "The conduction solver is not used. It needs a wall thickness, a conductivity and a convection coefficient. The radiator listing publishes none of those, and its heat rejection is unpublished, so a fin model would be an invented wall.",
+    "The air temperature rise is the rise that would carry the estimated coolant heat if the core transferred all of it at the published fan flow. It is not a measured or predicted exit temperature.",
+    "Dry-air properties are Table A.4 at 300 K. The coolant screen's design temperature is 90 °C on the liquid side. The two states are not the same fluid."
+   ]
   },
   {
    "runId": "vehicle.top-speed@VEH",
@@ -1647,11 +1722,11 @@
    "margins": [
     {
      "check": "installed power ≥ power to reach the required top speed",
-     "demand": 151233.7348,
+     "demand": 118814.6096,
      "capacity": 343021.9,
      "unit": "W",
-     "utilization": 0.4409,
-     "marginPct": 126.82
+     "utilization": 0.3464,
+     "marginPct": 188.7
     }
    ],
    "failures": [],
@@ -1678,7 +1753,7 @@
    "margins": [],
    "failures": [],
    "warnings": [
-    "Top gear runs out of revs at 224 mph, below the 240 mph the power allows: the top speed is gear-limited."
+    "Top gear runs out of revs at 224 mph, below the 261 mph the power allows: the top speed is gear-limited."
    ]
   },
   {
@@ -1799,35 +1874,35 @@
    "margins": [
     {
      "check": "TIRE_FL (front) static load ≤ load index 97",
-     "demand": 3398.8183,
+     "demand": 3405.3622,
      "capacity": 7158.8545,
      "unit": "N",
-     "utilization": 0.4748,
-     "marginPct": 110.63
+     "utilization": 0.4757,
+     "marginPct": 110.22
     },
     {
      "check": "TIRE_FR (front) static load ≤ load index 97",
-     "demand": 3398.8183,
+     "demand": 3405.3622,
      "capacity": 7158.8545,
      "unit": "N",
-     "utilization": 0.4748,
-     "marginPct": 110.63
+     "utilization": 0.4757,
+     "marginPct": 110.22
     },
     {
      "check": "TIRE_RL (rear) static load ≤ load index 97",
-     "demand": 3172.7552,
+     "demand": 3179.9828,
      "capacity": 7158.8545,
      "unit": "N",
-     "utilization": 0.4432,
-     "marginPct": 125.64
+     "utilization": 0.4442,
+     "marginPct": 125.12
     },
     {
      "check": "TIRE_RR (rear) static load ≤ load index 97",
-     "demand": 3172.7552,
+     "demand": 3179.9828,
      "capacity": 7158.8545,
      "unit": "N",
-     "utilization": 0.4432,
-     "marginPct": 125.64
+     "utilization": 0.4442,
+     "marginPct": 125.12
     }
    ],
    "failures": [],
@@ -1865,10 +1940,27 @@
    "warnings": []
   },
   {
+   "runId": "cad.design-surface@VEH",
+   "solver": "cad.design-surface",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "Door and glazing lines from the tub openings; lamp slots bounded by the nose-tip height and the belt line; wheel arches at the tyre radius plus the body's arch clearance; conflicts with the styling reference recorded and not applied",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "rear-doors-b-pillar: the styling reference was not copied. The image is a two-door coupe. No B-pillar shows in the side glass.",
+    "wheel-size: the styling reference was not copied. The image shows wheels that fill the arches. No diameter can be read from it.",
+    "roof-height: the styling reference was not copied. The image shows a low, long greenhouse. No roof height can be read from it.",
+    "nose-length: the styling reference was not copied. The image shows a long hood.",
+    "glasshouse: the styling reference was not copied. The image has one side glass, unbroken by a pillar."
+   ]
+  },
+  {
    "runId": "package.tub-fit@VEH",
    "solver": "package.tub-fit",
    "target": "VEH",
-   "status": "PASS",
+   "status": "WARN",
    "method": "separating-axis test of each tub part's walls against the packaging envelopes and egress lines; OpenCascade classification + BRepExtrema distance of each part's box to the CAD body's outer shell, minus the skin thickness",
    "reason": null,
    "margins": [
@@ -2035,7 +2127,7 @@
     {
      "check": "TUB_A_PILLAR_L: clearance to packaging envelopes (closest egress:SEAT_2:F5) ≥ 0",
      "demand": 0,
-     "capacity": 0.1035,
+     "capacity": 0.103,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2051,7 +2143,7 @@
     {
      "check": "TUB_B_POST_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:F95:thighR) ≥ 0",
      "demand": 0,
-     "capacity": 0.0076,
+     "capacity": 0.0026,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2059,7 +2151,7 @@
     {
      "check": "TUB_ROOF_RAIL_R_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:M95:head) ≥ 0",
      "demand": 0,
-     "capacity": 0.0229,
+     "capacity": 0.0179,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2067,7 +2159,7 @@
     {
      "check": "TUB_C_POST_L: clearance to packaging envelopes (closest SEAT_4:SEAT_4:M95:head) ≥ 0",
      "demand": 0,
-     "capacity": 0.0322,
+     "capacity": 0.0273,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2091,7 +2183,7 @@
     {
      "check": "TUB_B_POST_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:F95:thighL) ≥ 0",
      "demand": 0,
-     "capacity": 0.0076,
+     "capacity": 0.0026,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2099,7 +2191,7 @@
     {
      "check": "TUB_ROOF_RAIL_R_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:M95:head) ≥ 0",
      "demand": 0,
-     "capacity": 0.0229,
+     "capacity": 0.0179,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2107,7 +2199,7 @@
     {
      "check": "TUB_C_POST_R: clearance to packaging envelopes (closest SEAT_3:SEAT_3:M95:head) ≥ 0",
      "demand": 0,
-     "capacity": 0.0322,
+     "capacity": 0.0273,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2115,7 +2207,7 @@
     {
      "check": "TUB_ROOF_BOW: clearance to packaging envelopes (closest SEAT_1:back@M95) ≥ 0",
      "demand": 0,
-     "capacity": 0.1194,
+     "capacity": 0.1144,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2123,7 +2215,7 @@
     {
      "check": "TUB_WS_HEADER: clearance to packaging envelopes (closest egress:SEAT_1:F5) ≥ 0",
      "demand": 0,
-     "capacity": 0.0854,
+     "capacity": 0.0804,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2177,6 +2269,142 @@
      "marginPct": null
     },
     {
+     "check": "SEAT_1 F5: egress line inside door-front-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.7791,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_2 F5: egress line inside door-front-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.7791,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_3 F5: egress line inside door-rear-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_4 F5: egress line inside door-rear-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_1 F95: egress line inside door-front-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.686,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_2 F95: egress line inside door-front-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.686,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_3 F95: egress line inside door-rear-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_4 F95: egress line inside door-rear-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_1 M95: egress line inside door-front-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.6297,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_2 M95: egress line inside door-front-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.6297,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_3 M95: egress line inside door-rear-R (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "SEAT_4 M95: egress line inside door-rear-L (clearance to the nearer pillar ≥ 0)",
+     "demand": 0,
+     "capacity": 0.1286,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "steering-column: inside the firewall sheet, clear of the lower cross, scuttle and posts",
+     "demand": 0,
+     "capacity": 0.025,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "brake-pushrod: inside the firewall sheet, clear of the lower cross, scuttle and posts",
+     "demand": 0,
+     "capacity": 0.03,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "clutch-pushrod: inside the firewall sheet, clear of the lower cross, scuttle and posts",
+     "demand": 0,
+     "capacity": 0.0525,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "loom-R: inside the firewall sheet, clear of the lower cross, scuttle and posts",
+     "demand": 0,
+     "capacity": 0.015,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
+     "check": "loom-L: inside the firewall sheet, clear of the lower cross, scuttle and posts",
+     "demand": 0,
+     "capacity": 0.015,
+     "unit": "m",
+     "utilization": 0,
+     "marginPct": null
+    },
+    {
      "check": "TUB_RAIL_FL: clearance to the skin's inner face ≥ 0",
      "demand": 0,
      "capacity": 0.0075,
@@ -2187,7 +2415,7 @@
     {
      "check": "TUB_SILL_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0226,
+     "capacity": 0.0227,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2227,7 +2455,7 @@
     {
      "check": "TUB_SILL_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0226,
+     "capacity": 0.0227,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2315,7 +2543,7 @@
     {
      "check": "TUB_REAR_BULKHEAD: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0314,
+     "capacity": 0.0313,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2323,7 +2551,7 @@
     {
      "check": "TUB_REAR_CROSS: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0848,
+     "capacity": 0.0856,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2331,7 +2559,7 @@
     {
      "check": "TUB_A_PILLAR_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0049,
+     "capacity": 0.0022,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2339,7 +2567,7 @@
     {
      "check": "TUB_ROOF_RAIL_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0072,
+     "capacity": 0.005,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2347,7 +2575,7 @@
     {
      "check": "TUB_B_POST_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0344,
+     "capacity": 0.0314,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2355,7 +2583,7 @@
     {
      "check": "TUB_ROOF_RAIL_R_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0066,
+     "capacity": 0.0043,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2363,7 +2591,7 @@
     {
      "check": "TUB_C_POST_L: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0233,
+     "capacity": 0.0184,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2371,7 +2599,7 @@
     {
      "check": "TUB_A_PILLAR_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0049,
+     "capacity": 0.0022,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2379,7 +2607,7 @@
     {
      "check": "TUB_ROOF_RAIL_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0072,
+     "capacity": 0.005,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2387,7 +2615,7 @@
     {
      "check": "TUB_B_POST_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0344,
+     "capacity": 0.0314,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2395,7 +2623,7 @@
     {
      "check": "TUB_ROOF_RAIL_R_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0066,
+     "capacity": 0.0043,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2403,7 +2631,7 @@
     {
      "check": "TUB_C_POST_R: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0233,
+     "capacity": 0.0184,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2411,7 +2639,7 @@
     {
      "check": "TUB_ROOF_BOW: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0191,
+     "capacity": 0.0188,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2419,7 +2647,7 @@
     {
      "check": "TUB_WS_HEADER: clearance to the skin's inner face ≥ 0",
      "demand": 0,
-     "capacity": 0.0195,
+     "capacity": 0.0177,
      "unit": "m",
      "utilization": 0,
      "marginPct": null
@@ -2474,19 +2702,42 @@
     }
    ],
    "failures": [],
-   "warnings": []
+   "warnings": [
+    "SEAT_1 F95: door-front-R clears 705 mm over the H-point at the roof rail, the seated head top is 746 mm: entry needs a 41 mm duck (no aperture requirement sourced; real entry involves ducking)",
+    "SEAT_2 F95: door-front-L clears 705 mm over the H-point at the roof rail, the seated head top is 746 mm: entry needs a 41 mm duck (no aperture requirement sourced; real entry involves ducking)",
+    "SEAT_1 M95: door-front-R clears 711 mm over the H-point at the roof rail, the seated head top is 799 mm: entry needs a 88 mm duck (no aperture requirement sourced; real entry involves ducking)",
+    "SEAT_2 M95: door-front-L clears 711 mm over the H-point at the roof rail, the seated head top is 799 mm: entry needs a 88 mm duck (no aperture requirement sourced; real entry involves ducking)",
+    "SEAT_3 M95: door-rear-R clears 771 mm over the H-point at the roof rail, the seated head top is 799 mm: entry needs a 28 mm duck (no aperture requirement sourced; real entry involves ducking)",
+    "SEAT_4 M95: door-rear-L clears 771 mm over the H-point at the roof rail, the seated head top is 799 mm: entry needs a 28 mm duck (no aperture requirement sourced; real entry involves ducking)"
+   ]
   },
   {
    "runId": "aero.drag-buildup@VEH",
    "solver": "aero.drag-buildup",
    "target": "VEH",
    "status": "WARN",
-   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground effect for the section lift sign. Not CFD, not a wind-tunnel value.",
+   "method": "calibrated component drag build-up (1.1) on the CAD solid: flat-plate friction, Ahmed 25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, slant bound from those 25 deg readings, cooling 0.003..0.017, wheel share 0.20..0.30. The 1.0 Hoerner/reentry envelope is computed on the same geometry and reported beside it, not used as the Cd. 2D Hess-Smith panel method in ground effect for the s",
    "reason": null,
    "margins": [],
    "failures": [],
    "warnings": [
-    "screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation"
+    "screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation",
+    "rear slant 12.2 deg <= 12.5: no slant increment. Gant: Ahmed's total drag falls from 0 to 15 deg. A component figure at this angle was not read, so the omitted slant drag is unknown."
+   ]
+  },
+  {
+   "runId": "aero.shape@VEH",
+   "solver": "aero.shape",
+   "target": "VEH",
+   "status": "WARN",
+   "method": "Compare the v1 drag build-up of this solid with the kamm-ratio 0.5 solid: base area, base term, and the low, centre and high Cd. A reduction counts only while the rear slant stays at or below Ahmed's 12.5 deg onset, so the slant term stays 0. Section lift is the existing 2D panel sign. Not CFD. The reported Cd is the calibrated build-up (1.1); this check re-evaluates v1 on the same areas and slant",
+   "reason": null,
+   "margins": [],
+   "failures": [],
+   "warnings": [
+    "screening comparison of two v1 build-ups, not CFD and not a wind-tunnel value",
+    "Kamm's cited truncation is 50 percent. This face ratio is 0.45.",
+    "the 2D section-lift sign is indeterminate (the two Kutta corners disagree). No 3D lift coefficient is computed."
    ]
   },
   {
@@ -2535,7 +2786,7 @@
    "failures": [],
    "warnings": [
     "caveat: The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
-    "caveat: The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.19006044550065382 is computed (screening range): aero.drag-buildup centre of 0.107..0.338 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+    "caveat: The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.14542277462919667 is computed (screening range): aero.drag-buildup centre of 0.099..0.214 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
     "caveat: The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
     "caveat: The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
     "caveat: REQ_mass passes on a lower-bound mass.",
@@ -2544,8 +2795,8 @@
   }
  ],
  "checkCounts": {
-  "PASS": 15,
-  "WARN": 4,
+  "PASS": 13,
+  "WARN": 11,
   "FAIL": 0,
   "NOT_COMPUTED": 0,
   "ERROR": 0
@@ -3031,7 +3282,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · bending.max von mises",
    "subject": "CHASSIS",
-   "value": 31369058.814183,
+   "value": 27664861.840321,
    "unit": "Pa",
    "range": null,
    "status": "computed",
@@ -3043,14 +3294,14 @@
    },
    "sourceRole": "solver",
    "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
-   "note": "member fw-post-L"
+   "note": "member c-post-L"
   },
   {
    "id": "structure.frame@CHASSIS:bending.maxTranslation",
    "group": "Solver outputs",
    "name": "structure.frame · bending.max translation",
    "subject": "CHASSIS",
-   "value": 0.001686,
+   "value": 0.00157,
    "unit": "m",
    "range": null,
    "status": "computed",
@@ -3069,7 +3320,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · bending.max rotation",
    "subject": "CHASSIS",
-   "value": 0.002014,
+   "value": 0.001867,
    "unit": "rad",
    "range": null,
    "status": "computed",
@@ -3088,7 +3339,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · twist.max von mises",
    "subject": "CHASSIS",
-   "value": 61734.938988,
+   "value": 50613.079524,
    "unit": "Pa",
    "range": null,
    "status": "computed",
@@ -3107,7 +3358,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · twist.max translation",
    "subject": "CHASSIS",
-   "value": 0.000012,
+   "value": 0.000011,
    "unit": "m",
    "range": null,
    "status": "computed",
@@ -3126,7 +3377,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · twist.max rotation",
    "subject": "CHASSIS",
-   "value": 0.00001,
+   "value": 0.000009,
    "unit": "rad",
    "range": null,
    "status": "computed",
@@ -3145,7 +3396,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · kerb-twist.max von mises",
    "subject": "CHASSIS",
-   "value": 40941627.446229,
+   "value": 33630413.035249,
    "unit": "Pa",
    "range": null,
    "status": "computed",
@@ -3164,7 +3415,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · kerb-twist.max translation",
    "subject": "CHASSIS",
-   "value": 0.00806,
+   "value": 0.007293,
    "unit": "m",
    "range": null,
    "status": "computed",
@@ -3183,7 +3434,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · kerb-twist.max rotation",
    "subject": "CHASSIS",
-   "value": 0.006481,
+   "value": 0.00572,
    "unit": "rad",
    "range": null,
    "status": "computed",
@@ -3202,7 +3453,7 @@
    "group": "Solver outputs",
    "name": "structure.frame · stiffness.torsional",
    "subject": "CHASSIS",
-   "value": 629793.590794,
+   "value": 700262.666237,
    "unit": "N·m/rad",
    "range": null,
    "status": "computed",
@@ -3214,7 +3465,7 @@
    },
    "sourceRole": "solver",
    "method": "3D Euler-Bernoulli frame FE (fea-solver element, members subdivided), reduced Cholesky solve, consistent member loads, von Mises at the extreme fibre along every element; linear buckling (K + λ Kg) φ = 0 with consistent geometric stiffness (Jacobi eigen-solve)",
-   "note": "couple 10 N × 0.82 m over twist u/arm; u = 1.0677e-5 m at FA.R.z"
+   "note": "couple 10 N × 0.82 m over twist u/arm; u = 9.6021e-6 m at FA.R.z"
   },
   {
    "id": "vehicle.top-speed@VEH:topSpeed",
@@ -3259,7 +3510,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · drag limited top speed",
    "subject": "VEH",
-   "value": 107.069035,
+   "value": 116.85545,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -3297,7 +3548,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · aero power at top speed",
    "subject": "VEH",
-   "value": 131459.039573,
+   "value": 100619.463036,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3316,7 +3567,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · rolling power at top speed",
    "subject": "VEH",
-   "value": 11847.08672,
+   "value": 11871.913617,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3335,7 +3586,7 @@
    "group": "Solver outputs",
    "name": "vehicle.required-power · required power",
    "subject": "VEH",
-   "value": 151233.734844,
+   "value": 118814.60964,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3354,7 +3605,7 @@
    "group": "Solver outputs",
    "name": "vehicle.required-power · aero power",
    "subject": "VEH",
-   "value": 124476.84669,
+   "value": 95275.254674,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3373,7 +3624,7 @@
    "group": "Solver outputs",
    "name": "vehicle.required-power · rolling power",
    "subject": "VEH",
-   "value": 11633.51467,
+   "value": 11657.894002,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3392,7 +3643,7 @@
    "group": "Solver outputs",
    "name": "vehicle.axle-loads · front share",
    "subject": "VEH",
-   "value": 0.5172,
+   "value": 0.517112,
    "unit": "1",
    "range": null,
    "status": "computed",
@@ -3411,7 +3662,7 @@
    "group": "Solver outputs",
    "name": "vehicle.axle-loads · rear share",
    "subject": "VEH",
-   "value": 0.4828,
+   "value": 0.482888,
    "unit": "1",
    "range": null,
    "status": "computed",
@@ -3430,7 +3681,7 @@
    "group": "Solver outputs",
    "name": "vehicle.axle-loads · front axle load",
    "subject": "VEH",
-   "value": 6797.636609,
+   "value": 6810.724359,
    "unit": "N",
    "range": null,
    "status": "computed",
@@ -3449,7 +3700,7 @@
    "group": "Solver outputs",
    "name": "vehicle.axle-loads · rear axle load",
    "subject": "VEH",
-   "value": 6345.510446,
+   "value": 6359.965632,
    "unit": "N",
    "range": null,
    "status": "computed",
@@ -3544,7 +3795,7 @@
    "group": "Solver outputs",
    "name": "vehicle.gearing · drag limited top speed",
    "subject": "VEH",
-   "value": 107.069035,
+   "value": 116.85545,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -3620,7 +3871,7 @@
    "group": "Solver outputs",
    "name": "cad.body · surface area",
    "subject": "BODY_SHELL",
-   "value": 26.289963,
+   "value": 26.24379,
    "unit": "m2",
    "range": null,
    "status": "computed",
@@ -3639,7 +3890,7 @@
    "group": "Solver outputs",
    "name": "cad.body · volume",
    "subject": "BODY_SHELL",
-   "value": 6.389902,
+   "value": 6.380989,
    "unit": "m3",
    "range": null,
    "status": "computed",
@@ -3658,11 +3909,11 @@
    "group": "Solver outputs",
    "name": "cad.body · frontal area",
    "subject": "BODY_SHELL",
-   "value": 2.052268,
+   "value": 2.052981,
    "unit": "m2",
    "range": null,
    "status": "computed",
-   "statusLabel": "computed: projection onto the y-z plane, 240 horizontal slices of the kernel tessellation (chordal deviation 2 mm: inscribed, so low by at most 0.004726 m2 plus the slicing error; body only: tyres, mi",
+   "statusLabel": "computed: projection onto the y-z plane, 240 horizontal slices of the kernel tessellation (chordal deviation 2 mm: inscribed, so low by at most 0.004727 m2 plus the slicing error; body only: tyres, mi",
    "source": {
     "title": "cad.body 1.2.0 (server/lib/conkay/cad/conkay_body_occ.py)",
     "url": null,
@@ -3715,13 +3966,13 @@
    "group": "Solver outputs",
    "name": "package.tub-fit · min envelope clearance m",
    "subject": "VEH",
-   "value": 0.005,
+   "value": 0.0026,
    "unit": "m",
    "range": null,
    "status": "computed",
    "statusLabel": "solver output",
    "source": {
-    "title": "package.tub-fit 1.0.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
+    "title": "package.tub-fit 1.1.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
     "url": null,
     "locator": "package.tub-fit@VEH"
    },
@@ -3734,13 +3985,13 @@
    "group": "Solver outputs",
    "name": "package.tub-fit · min skin clearance m",
    "subject": "VEH",
-   "value": 0.003613,
+   "value": 0.002208,
    "unit": "m",
    "range": null,
    "status": "computed",
    "statusLabel": "solver output",
    "source": {
-    "title": "package.tub-fit 1.0.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
+    "title": "package.tub-fit 1.1.0 (server/lib/conkay/structural/car-tub.js (tubPackagingFit), server/lib/conkay/cad/tub_fit_occ.py)",
     "url": null,
     "locator": "package.tub-fit@VEH"
    },
@@ -3759,12 +4010,12 @@
    "status": "computed",
    "statusLabel": "solver output",
    "source": {
-    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "title": "aero.drag-buildup 1.1.0 (Ahmed, Ramm & Faltin SAE 840300 via Gant Tables 7.3-7.4 and Lienhart as tabulated there; Guilmineau SAE 2018-01-0720 Table 4 (Ahmed rows only); ERCOFTAC case 082 and Minguez et al. JWEIA 2008 for the 222 mm slant; Brandt et al. SAE 2019-01-0662; Hobeika et al. 2017; Schlichting; Hess & Smith 1967. Hoerner/Saltzman is a residual check, not the base term.)",
     "url": null,
     "locator": "aero.drag-buildup@VEH"
    },
    "sourceRole": "solver",
-   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "method": "calibrated component drag build-up (1.1) on the CAD solid: flat-plate friction, Ahmed 25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, slant bound from those 25 deg readings, cooling 0.003..0.017, wheel share 0.20..0.30. The 1.0 Hoerner/reentry envelope is computed on the same geomet",
    "note": null
   },
   {
@@ -3778,12 +4029,12 @@
    "status": "computed",
    "statusLabel": "solver output",
    "source": {
-    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "title": "aero.drag-buildup 1.1.0 (Ahmed, Ramm & Faltin SAE 840300 via Gant Tables 7.3-7.4 and Lienhart as tabulated there; Guilmineau SAE 2018-01-0720 Table 4 (Ahmed rows only); ERCOFTAC case 082 and Minguez et al. JWEIA 2008 for the 222 mm slant; Brandt et al. SAE 2019-01-0662; Hobeika et al. 2017; Schlichting; Hess & Smith 1967. Hoerner/Saltzman is a residual check, not the base term.)",
     "url": null,
     "locator": "aero.drag-buildup@VEH"
    },
    "sourceRole": "solver",
-   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "method": "calibrated component drag build-up (1.1) on the CAD solid: flat-plate friction, Ahmed 25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, slant bound from those 25 deg readings, cooling 0.003..0.017, wheel share 0.20..0.30. The 1.0 Hoerner/reentry envelope is computed on the same geomet",
    "note": null
   },
   {
@@ -3797,25 +4048,25 @@
    "status": "computed",
    "statusLabel": "Prandtl-Schlichting turbulent flat plate",
    "source": {
-    "title": "aero.drag-buildup 1.0.0 (Saltzman, Wang & Iliff AIAA 99-0383 (Hoerner base relation); Ahmed, Ramm & Faltin SAE 840300; Brandt et al. SAE 2019-01-0662; Hobeika et al. Proc IMechE D 2017; Schlichting; Hess & Smith 1967)",
+    "title": "aero.drag-buildup 1.1.0 (Ahmed, Ramm & Faltin SAE 840300 via Gant Tables 7.3-7.4 and Lienhart as tabulated there; Guilmineau SAE 2018-01-0720 Table 4 (Ahmed rows only); ERCOFTAC case 082 and Minguez et al. JWEIA 2008 for the 222 mm slant; Brandt et al. SAE 2019-01-0662; Hobeika et al. 2017; Schlichting; Hess & Smith 1967. Hoerner/Saltzman is a residual check, not the base term.)",
     "url": null,
     "locator": "aero.drag-buildup@VEH"
    },
    "sourceRole": "solver",
-   "method": "component drag build-up on the CAD solid: Cd = (k_fore Cf(Re) S_wet/A + Hoerner base drag K/sqrt(Cd_fore,b) A_b/A + rear-slant bound + cooling) / (1 - wheel share), each term a low/high range with its source; base area and centreline lines from the kernel STL; 2D Hess-Smith panel method in ground ef",
+   "method": "calibrated component drag build-up (1.1) on the CAD solid: flat-plate friction, Ahmed 25 deg nose, Ahmed base pressure (Gant and Lienhart) times Ab/A, slant bound from those 25 deg readings, cooling 0.003..0.017, wheel share 0.20..0.30. The 1.0 Hoerner/reentry envelope is computed on the same geomet",
    "note": null
   }
  ],
  "mass": {
-  "totalKg": 1032.2,
+  "totalKg": 1035,
   "bandKg": [
-   1018.2,
-   1034.9
+   1021.1,
+   1037.8
   ],
   "byState": {
    "sourced": 361.2,
    "measured": 213.2,
-   "computed": 305,
+   "computed": 307.8,
    "estimated": 152.7,
    "design": 0,
    "unknown": 0
@@ -3869,49 +4120,49 @@
   "limit": {
    "label": "brief: 2,500 lb",
    "kg": 1134,
-   "marginKg": 101.8
+   "marginKg": 98.9
   }
  },
  "drawings": [
   {
    "title": "General arrangement CK-GA-VEH",
-   "revision": "R-77BE7CCC",
-   "modelHash": "77be7cccdad938d58faf40bba510f41ec2df4f91420b1d38a4e280f4452c6385",
+   "revision": "R-3DB38354",
+   "modelHash": "3db38354614512c6128bc5de3698a8e880b3fd5d4809f5eaa279a6872a69b6a2",
    "method": "Hidden-line projection (OpenCascade HLRBRep_PolyAlgo) of the CAD body's STEP into side, plan and front views at 1:25 on A3, first-angle; tyres and axle centre lines from the node positions; key dimensions from cad.body (computed) and the layout (design / derived); BOM grouped from the component library and designed parts with mass.part masses; title block revision = SHA-256 of everything shown",
    "files": [
     {
      "label": "Sheet 1 (side, plan, front)",
-     "name": "CK-GA-VEH-R-77BE7CCC-sheet1.svg",
+     "name": "CK-GA-VEH-R-3DB38354-sheet1.svg",
      "kind": "svg",
-     "bytes": 353236,
-     "sha256": "a0c0298291a12dd46b24c6ea012ab49f06a04504c578774cf42fddf1446361c5"
+     "bytes": 343748,
+     "sha256": "5c60129c387598afdfb4856ddcf8b412d7641d4d6d8c15f1025026bc4618abe6"
     },
     {
      "label": "Sheet 2 (BOM, dimensions)",
-     "name": "CK-GA-VEH-R-77BE7CCC-sheet2.svg",
+     "name": "CK-GA-VEH-R-3DB38354-sheet2.svg",
      "kind": "svg",
      "bytes": 76718,
-     "sha256": "6e380bda2bb38541c4e098c6ea027a19eaf7fc29d40af4b6e933a422795badb6"
+     "sha256": "6af93e625dc0deb1eb18e0e8bc48d7d43c1bc080920595df3b8a34f8200118aa"
     },
     {
      "label": "PDF (both sheets)",
-     "name": "CK-GA-VEH-R-77BE7CCC.pdf",
+     "name": "CK-GA-VEH-R-3DB38354.pdf",
      "kind": "pdf",
-     "bytes": 361078,
-     "sha256": "88c21920d369f2dad58ee9e297d17e06c47f8ca7f1a1a69f35e05f420a97db5b"
+     "bytes": 358343,
+     "sha256": "8c7d04c4f99c4bca3bd09579aa7be209ab9bb451187d0d719e15708728d5af3d"
     }
    ]
   }
  ],
  "model3d": {
-  "name": "body-8d37536a86f7.stl",
+  "name": "body-2b42882b03f0.stl",
   "format": "stl",
-  "bytes": 715384,
-  "sha256": "8d37536a86f7d1543ba52512dab70fb245a98e8c725c0ba90c531fe6f7860836",
-  "triangles": 14306,
+  "bytes": 737084,
+  "sha256": "2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795",
+  "triangles": 14740,
   "units": "m",
   "upAxis": "z",
-  "source": "cad.body@BODY_SHELL (OpenCascade kernel b1d9ec5642008c8708fe9d79); exterior skin only, no tyres or interior"
+  "source": "cad.body@BODY_SHELL (OpenCascade kernel f0bd2e00aa69bd7b993c17c3); exterior skin only, no tyres or interior"
  },
  "physicalTests": [
   "Cd and frontal area: Cd is an input or the centre of a screening drag build-up range (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening) (the top speed depends on it)",
@@ -3944,25 +4195,25 @@
  },
  "files": [
   {
-   "name": "CK-GA-VEH-R-77BE7CCC-sheet1.svg",
-   "bytes": 353236,
-   "sha256": "a0c0298291a12dd46b24c6ea012ab49f06a04504c578774cf42fddf1446361c5"
+   "name": "CK-GA-VEH-R-3DB38354-sheet1.svg",
+   "bytes": 343748,
+   "sha256": "5c60129c387598afdfb4856ddcf8b412d7641d4d6d8c15f1025026bc4618abe6"
   },
   {
-   "name": "CK-GA-VEH-R-77BE7CCC-sheet2.svg",
+   "name": "CK-GA-VEH-R-3DB38354-sheet2.svg",
    "bytes": 76718,
-   "sha256": "6e380bda2bb38541c4e098c6ea027a19eaf7fc29d40af4b6e933a422795badb6"
+   "sha256": "6af93e625dc0deb1eb18e0e8bc48d7d43c1bc080920595df3b8a34f8200118aa"
   },
   {
-   "name": "CK-GA-VEH-R-77BE7CCC.pdf",
-   "bytes": 361078,
-   "sha256": "88c21920d369f2dad58ee9e297d17e06c47f8ca7f1a1a69f35e05f420a97db5b"
+   "name": "CK-GA-VEH-R-3DB38354.pdf",
+   "bytes": 358343,
+   "sha256": "8c7d04c4f99c4bca3bd09579aa7be209ab9bb451187d0d719e15708728d5af3d"
   },
   {
-   "name": "body-8d37536a86f7.stl",
-   "bytes": 715384,
-   "sha256": "8d37536a86f7d1543ba52512dab70fb245a98e8c725c0ba90c531fe6f7860836"
+   "name": "body-2b42882b03f0.stl",
+   "bytes": 737084,
+   "sha256": "2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795"
   }
  ],
- "snapshotSha256": "db763464d1631c128b3f0df3a41b6afb54940b7a51cac26c32095772db8d8330"
+ "snapshotSha256": "13bd844a1db7b2064a36492daaaf36793c561392d116b135cf6c7a4849fd927a"
 }

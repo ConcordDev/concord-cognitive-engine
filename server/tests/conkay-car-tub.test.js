@@ -23,6 +23,7 @@ import fs from "node:fs";
 import { analyzeFrame, sectionProps, plateLocalBuckling, frameValidity } from "../lib/conkay/structural/frame-fe.js";
 import { panelDiagonals, plateShearBuckling, panelShear } from "../lib/conkay/structural/shear-panel.js";
 import { withStructuralTub, tubLayout, tubPackagingFit, tubPartBox, TORSION_TARGET, TUB_DESIGN_CHOICES } from "../lib/conkay/structural/car-tub.js";
+import { buildTubGaSheets, tubGaInput } from "../lib/conkay/drawings/tub-ga.js";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { openDesign } from "../lib/conkay/index.js";
 import { DesignGraph } from "../lib/conkay/graph/design-graph.js";
@@ -125,8 +126,8 @@ describe("shear panels (equivalent crossed diagonals)", () => {
 });
 
 describe("the car's structural tub", () => {
-  const ladder = buildCarFromLibrary(BRIEF, { cadBody: false });
-  const tub = buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "tub" });
+  const ladder = buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "ladder" });
+  const tub = buildCarFromLibrary(BRIEF, { cadBody: false });
   const s = openDesign(tub.ir).session;
   const s0 = openDesign(ladder.ir).session;
   const frame = s.result("structure.frame@CHASSIS");
@@ -139,14 +140,48 @@ describe("the car's structural tub", () => {
     for (const [k, v] of Object.entries(TUB_DESIGN_CHOICES)) assert.ok(v.basis && v.basis.length > 10, `${k} has a basis`);
   });
 
-  it("torsional stiffness meets the cited target (Lotus Elise bonded aluminium tub, 10,800 N·m/deg) with every check in range", () => {
-    assert.equal(frame.status, "PASS", `${frame.reason || ""} ${(frame.warnings || []).join(" | ")} ${(frame.failures || []).join(" | ")}`);
+  it("torsional stiffness meets the cited target on the rigid and computed bond-line solves; the estimated joint bound is a warning", () => {
+    assert.equal(frame.status, "WARN", `${frame.reason || ""} ${(frame.warnings || []).join(" | ")} ${(frame.failures || []).join(" | ")}`);
+    assert.ok((frame.warnings || []).some((w) => /estimated joint-wall bound/.test(w)));
     const k = frame.outputs["stiffness.torsional"];
     assert.ok(k.perDegree >= TORSION_TARGET.perDegree, `${k.perDegree}`);
-    // pinned so a change to the tub or the solver shows up: 10,992 N·m/deg at the time of writing
-    near(k.perDegree, 10992, 0.01, "torsional stiffness N·m/deg");
-    assert.ok(frame.margins.some((m) => /stiffness torsional ≥ target/.test(m.check)));
+    // pinned so a change to the tub or the solver shows up: 12,222 N·m/deg with the openings and their
+    // repairs (brief 4 item 2; 10,992 before the openings were designed). Rigid joints are the upper bound.
+    near(k.perDegree, 12222, 0.01, "torsional stiffness N·m/deg");
+    const jr = frame.outputs["stiffness.torsional.jointRange"].value;
+    assert.ok(jr.lowComputedPerDegree >= TORSION_TARGET.perDegree, `computed low ${jr.lowComputedPerDegree}`);
+    assert.ok(jr.lowEstimatedPerDegree < TORSION_TARGET.perDegree, `estimated low ${jr.lowEstimatedPerDegree}`);
+    assert.ok(jr.rigidPerDegree + 1e-6 >= jr.lowComputedPerDegree);
+    const hard = frame.margins.filter((m) => /stiffness torsional ≥ target/.test(m.check));
+    assert.equal(hard.length, 2, "rigid upper bound and lowest computed scenario");
+    for (const m of hard) assert.ok(m.utilization <= 1, m.check);
     assert.ok(TORSION_TARGET.sources.every((x) => x.url && x.quote));
+    const cc = frame.outputs["stiffness.torsional.crossCheck"].value;
+    assert.equal(cc.withPanelsPerDegree, k.perDegree);
+    assert.ok(Number.isFinite(cc.withoutPanelsPerDegree) && Number.isFinite(cc.saintVenantPerDegree), JSON.stringify(cc));
+    assert.equal(typeof cc.reading, "string");
+    const lp = frame.outputs["stiffness.torsional.loadPath"].value;
+    assert.equal(lp.length, 3);
+    for (const cut of lp) assert.ok(Math.abs(cut.equilibrium - 1) < 0.05, JSON.stringify(cut));
+    const spec = frame.outputs["stiffness.torsional.specific"].value;
+    assert.ok(spec.tubMassKg.massKg > 40 && spec.tubMassKg.missing.length === 0, JSON.stringify(spec.tubMassKg));
+    near(spec.chassisMassKg, spec.tubMassKg.massKg, 1e-9, "this chassis assembly is the tub parts");
+    assert.ok(Math.abs(spec.tubMassKg.massKg - 68) > 20, `${spec.tubMassKg.massKg} is not the Elise 68 kg`);
+    assert.equal(spec.elise.length, 2);
+    const veh = tub.ir.nodes.find((n) => n.id === "VEH");
+    const fm = tub.ir.nodes.find((n) => n.id === "CHASSIS").props.frameModel;
+    const sheets = buildTubGaSheets(tubGaInput({
+      choices: TUB_DESIGN_CHOICES, nodes: fm.nodes, members: fm.members,
+      frontAxleX: parseFloat(veh.props.vehicle.frontAxleX), rearAxleX: parseFloat(veh.props.vehicle.rearAxleX), frame,
+    }));
+    assert.equal(sheets.length, 3);
+    const tagged = sheets.flatMap((sh) => sh.items.filter((it) => it.tag));
+    assert.ok(tagged.length > 15, `${tagged.length}`);
+    for (const it of tagged) assert.ok(/ [CDS]$/.test(it.s), it.s);
+    const blob = sheets.flatMap((sh) => sh.items.filter((it) => it.t === "text").map((it) => it.s)).join("\n");
+    assert.match(blob, /bonded\+riveted/);
+    assert.match(blob, /weld no/);
+    assert.doesNotMatch(blob, /weld yes/);
     const ladderFrame = openDesign(withChassisFrame(ladder.ir)).session.result("structure.frame@CHASSIS");
     near(ladderFrame.outputs["stiffness.torsional"].perDegree, 8.30, 0.01, "the ladder screen it replaces");
   });
@@ -181,7 +216,7 @@ describe("the car's structural tub", () => {
   });
 
   it("every part clears the packaging envelopes and the occupants' egress lines (separating-axis test)", () => {
-    const b2 = buildCarFromLibrary(BRIEF);
+    const b2 = buildCarFromLibrary(BRIEF, { chassis: "ladder" });
     const g = DesignGraph.fromIR(b2.ir).graph;
     const q = cadBodyRequest({ get: (id, p) => g.get(id, p) }, "BODY_SHELL");
     const veh = b2.ir.nodes.find((n) => n.id === "VEH").props.vehicle;
@@ -194,8 +229,10 @@ describe("the car's structural tub", () => {
     assert.ok(hit.minClearanceM < 0 && /egress|SEAT_4/.test(hit.against), JSON.stringify(hit));
   });
 
-  it("the ladder stays the default build and an unknown chassis is an error", () => {
+  it("the tub is the default build; the ladder is kept on request and an unknown chassis is an error", () => {
+    assert.ok(tub.ir.nodes.some((n) => n.id === "TUB_SILL_L") && !tub.ir.nodes.some((n) => n.id === "RAIL_L"));
     assert.ok(ladder.ir.nodes.some((n) => n.id === "RAIL_L"));
+    assert.ok(buildCarFromLibrary(BRIEF, { cadBody: false, packaging: false }).ir.nodes.some((n) => n.id === "RAIL_L"), "no package to lay a tub in: the ladder screen");
     assert.ok(buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "spaceframe" }).error);
   });
 });
@@ -204,7 +241,7 @@ const HAVE_KERNEL = fs.existsSync(kernelPythonPath());
 const BODY_STEP = process.env.CONKAY_TUB_BODY_STEP;
 describe("tub inside the CAD body skin (OpenCascade)", { skip: !(HAVE_KERNEL && BODY_STEP) && "set CONKAY_TUB_BODY_STEP to the car body's STEP with a kernel available" }, () => {
   it("every boxed part is inside the skin with clearance to its inner face", async () => {
-    const b = buildCarFromLibrary(BRIEF);
+    const b = buildCarFromLibrary(BRIEF, { chassis: "ladder" });
     const t = withStructuralTub(b.ir);
     const r = await runTubFitKernelAsync({ step: BODY_STEP, skinThickness: 0.002925, boxes: t.layout.parts.filter((p) => !p.box.conformsToSkin).map(tubPartBox) });
     assert.equal(r.ok, true, r.error);
