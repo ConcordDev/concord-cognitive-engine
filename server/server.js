@@ -28658,6 +28658,7 @@ ${_operatorV6Block}` : "";
       brain: llmUsed ? "conscious" : "local",
       confidence: llmUsed ? 0.8 : 0.5,
       workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+      userId: ctx?.actor?.userId || null,
     });
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
@@ -28675,7 +28676,7 @@ ${_operatorV6Block}` : "";
   // Accelerated chat DTU promotion every 5 exchanges
   try {
     if (isAcceleratedPromotionDue(sess)) {
-      const _promoResult = acceleratedChatPromotion(STATE, sessionId);
+      const _promoResult = acceleratedChatPromotion(STATE, sessionId, ctx?.actor?.userId || null);
       if (_promoResult.promoted > 0 || _promoResult.megaCreated) {
         ctx.log("chat_enrichment", "Accelerated chat DTU promotion", {
           sessionId, promoted: _promoResult.promoted,
