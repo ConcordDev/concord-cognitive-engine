@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   noteDtuWrite,
   sidecarListTotal,
+  sidecarCandidatePageIsComplete,
   shouldFallbackFromSidecarList,
   dtuMatchesQuery,
   dtuListedOwner,
@@ -88,6 +89,14 @@ describe("dtu list source", () => {
     assert.deepEqual(tagFilterTerms("Alpha, beta"), ["alpha", "beta"]);
     assert.equal(dtuMatchesTagFilter({ tags: ["OSR770726"] }, ["osr770726"]), true);
     assert.equal(dtuMatchesTagFilter({ tags: ["other"] }, ["osr770726"]), false);
+  });
+
+  it("treats a cached page as complete only when it holds every counted row", () => {
+    const full = { dtus: [{ id: "a" }, { id: "b" }], total: 2 };
+    assert.equal(sidecarCandidatePageIsComplete(full, 0), true);
+    assert.equal(sidecarCandidatePageIsComplete({ dtus: [{ id: "a" }], total: 46 }, 0), false);
+    assert.equal(sidecarCandidatePageIsComplete(full, 10), false);
+    assert.equal(sidecarCandidatePageIsComplete({ dtus: [], total: 0 }, 0), true);
   });
 
   it("repairs a zero total when the sidecar returned rows", () => {

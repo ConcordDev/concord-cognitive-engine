@@ -58,6 +58,19 @@ export function sidecarListTotal(body) {
 }
 
 /**
+ * The sidecar counts and pages before Node applies domain/kind.
+ * A filtered total is valid only when this body is the entire candidate
+ * set: offset 0 and every reported row is present. A partial page cannot
+ * be recounted.
+ */
+export function sidecarCandidatePageIsComplete(body, offset = 0) {
+  const start = Number(offset);
+  if (!Number.isFinite(start) || start !== 0) return false;
+  const rows = Array.isArray(body?.dtus) ? body.dtus.length : 0;
+  return rows >= sidecarListTotal(body);
+}
+
+/**
  * True when the sidecar body must be ignored and STATE.dtus used instead.
  * Empty hits with a query are a stale cache, not an empty vault.
  * An unqueried anonymous list does not fall back — that would disable the

@@ -295,6 +295,184 @@ describe("PR-B DTU routes", () => {
     const anon = await http.get(`/api/dtus/paginated?scope=mine&query=${encodeURIComponent(marker)}`);
     assert.equal((anon.body.dtus || anon.body.items || []).some((d) => d.id === created.dtu.id), false);
   });
+
+  async function createOwned(fields) {
+    const ctx = makeCtx({ user: { id: fields.userId || OWNER, role: "member" }, headers: {}, get() { return ""; } });
+    const created = await runMacro("dtu", "create", {
+      title: fields.title,
+      content: fields.content || "body",
+      tags: fields.tags || [],
+      domain: fields.domain,
+      source: "user",
+      visibility: "private",
+      scope: "local",
+      core: { definitions: ["row"], claims: ["row"] },
+      human: { summary: fields.summary || "row" },
+    }, ctx);
+    assert.equal(created.ok, true, JSON.stringify(created));
+    if (fields.createdAt) STATE.dtus.get(created.dtu.id).createdAt = fields.createdAt;
+    return created.dtu;
+  }
+
+  it("cached path total equals the domain-filtered count when the page holds every candidate", async () => {
+    const domain = `docs${Date.now()}`;
+    const docs = {
+      id: `docs-${domain}`,
+      domain,
+      title: "the doc",
+      ownerId: OWNER,
+      createdAt: new Date().toISOString(),
+      visibility: "private",
+    };
+    const others = Array.from({ length: 45 }, (_, i) => ({
+      id: `other-${domain}-${i}`,
+      domain: "notes",
+      title: "note",
+      ownerId: OWNER,
+      createdAt: new Date().toISOString(),
+    }));
+    const prevWrite = globalThis._dtuLastWriteAt;
+    globalThis._dtuLastWriteAt = 0;
+    globalThis.__dtuSidecarList = async () => ({
+      ok: true,
+      dtus: [docs, ...others],
+      total: 46,
+      indexedThrough: Date.now() + 60_000,
+    });
+    try {
+      const listed = await http.get(`/api/dtus?mine=true&domain=${encodeURIComponent(domain)}`, { userId: OWNER });
+      assert.equal(listed.status, 200);
+      assert.equal(listed.body._source, "dtu-sidecar");
+      assert.equal((listed.body.dtus || []).length, 1);
+      assert.equal(listed.body.dtus[0].id, docs.id);
+      assert.equal(listed.body.total, 1);
+    } finally {
+      globalThis.__dtuSidecarList = undefined;
+      globalThis._dtuLastWriteAt = prevWrite;
+    }
+  });
+
+  it("a partial cached page does not keep the pre-domain total", async () => {
+    const domain = `partial${Date.now()}`;
+    const older = await createOwned({ domain, title: "older docs", createdAt: "2019-01-01T00:00:00.000Z" });
+    const newer = await createOwned({ domain, title: "newer docs", createdAt: "2024-01-01T00:00:00.000Z" });
+    const prevWrite = globalThis._dtuLastWriteAt;
+    globalThis._dtuLastWriteAt = 0;
+    globalThis.__dtuSidecarList = async () => ({
+      ok: true,
+      dtus: [{ id: "not-docs", domain: "notes", title: "n", ownerId: OWNER, createdAt: new Date().toISOString() }],
+      total: 80,
+      indexedThrough: Date.now() + 60_000,
+    });
+    try {
+      const listed = await http.get(`/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&limit=50`, { userId: OWNER });
+      assert.equal(listed.status, 200);
+      assert.notEqual(listed.body._source, "dtu-sidecar");
+      assert.equal(listed.body.total, 2);
+      const ids = (listed.body.dtus || []).map((d) => d.id);
+      assert.equal(ids.includes(older.id), true);
+      assert.equal(ids.includes(newer.id), true);
+      assert.equal(ids.includes("not-docs"), false);
+    } finally {
+      globalThis.__dtuSidecarList = undefined;
+      globalThis._dtuLastWriteAt = prevWrite;
+    }
+  });
+
+  it("domain+mine+q and domain+mine+tag totals match every filter and stay owner-scoped", async () => {
+    const stamp = Date.now();
+    const domain = `docs${stamp}`;
+    const marker = `marker${stamp}`;
+    const tag = `tag${stamp}`;
+    const match = await createOwned({
+      domain,
+      title: `match ${marker}`,
+      content: `body ${marker}`,
+      tags: [tag],
+    });
+    await createOwned({ domain, title: "other docs", content: "no marker", tags: ["else"] });
+    await createOwned({ domain: "notes", title: `notes ${marker}`, content: `body ${marker}`, tags: [tag] });
+    const hidden = await createOwned({
+      userId: OTHER,
+      domain,
+      title: `hidden ${marker}`,
+      content: `body ${marker}`,
+      tags: [tag],
+    });
+
+    globalThis.__dtuSidecarList = async () => ({
+      ok: true,
+      dtus: [],
+      total: 46,
+      indexedThrough: Date.now() + 60_000,
+    });
+    try {
+      const byQ = await http.get(
+        `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&q=${encodeURIComponent(marker)}`,
+        { userId: OWNER },
+      );
+      assert.equal(byQ.body.total, 1);
+      assert.equal((byQ.body.dtus || []).length, 1);
+      assert.equal(byQ.body.dtus[0].id, match.id);
+      assert.notEqual(byQ.body._source, "dtu-sidecar");
+
+      const byTag = await http.get(
+        `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&tag=${encodeURIComponent(tag)}`,
+        { userId: OWNER },
+      );
+      assert.equal(byTag.body.total, 1);
+      assert.equal(byTag.body.dtus[0].id, match.id);
+
+      const byTags = await http.get(
+        `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&tags=${encodeURIComponent(tag)}`,
+        { userId: OWNER },
+      );
+      assert.equal(byTags.body.total, 1);
+      assert.equal(byTags.body.dtus[0].id, match.id);
+
+      const other = await http.get(
+        `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&q=${encodeURIComponent(marker)}`,
+        { userId: OTHER },
+      );
+      const otherIds = (other.body.dtus || []).map((d) => d.id);
+      assert.equal(otherIds.includes(match.id), false);
+      assert.equal(otherIds.includes(hidden.id), true);
+      assert.equal(other.body.total, 1);
+
+      const anon = await http.get(`/api/dtus?domain=${encodeURIComponent(domain)}&q=${encodeURIComponent(marker)}`);
+      const anonIds = (anon.body.dtus || []).map((d) => d.id);
+      assert.equal(anonIds.includes(match.id), false);
+      assert.equal(anonIds.includes(hidden.id), false);
+
+      const anonMine = await http.get(`/api/dtus?mine=true&domain=${encodeURIComponent(domain)}`);
+      assert.equal((anonMine.body.dtus || []).some((d) => d.id === match.id || d.id === hidden.id), false);
+    } finally {
+      globalThis.__dtuSidecarList = undefined;
+    }
+  });
+
+  it("domain pages keep one total for the full filtered set", async () => {
+    const domain = `page${Date.now()}`;
+    const oldest = await createOwned({ domain, title: "oldest", createdAt: "2020-01-01T00:00:00.000Z" });
+    await createOwned({ domain, title: "mid", createdAt: "2021-01-01T00:00:00.000Z" });
+    const newest = await createOwned({ domain, title: "newest", createdAt: "2022-01-01T00:00:00.000Z" });
+    await createOwned({ domain: "notes", title: "noise" });
+
+    const first = await http.get(
+      `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&limit=1&offset=0`,
+      { userId: OWNER },
+    );
+    assert.equal(first.body.total, 3);
+    assert.equal((first.body.dtus || []).length, 1);
+    assert.equal(first.body.dtus[0].id, newest.id);
+
+    const last = await http.get(
+      `/api/dtus?mine=true&domain=${encodeURIComponent(domain)}&limit=1&offset=2`,
+      { userId: OWNER },
+    );
+    assert.equal(last.body.total, 3);
+    assert.equal(last.body.dtus[0].id, oldest.id);
+  });
 });
 
 function clamp(n, min, max) {

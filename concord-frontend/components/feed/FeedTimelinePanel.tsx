@@ -9,6 +9,7 @@ import { useFeedPosts, type FeedTab } from '@/components/feed/useFeedPosts';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { loadFeedTopics } from '@/lib/dtu/list-pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -535,20 +536,10 @@ export function FeedTimelinePanel({
             posts: (t.count as number) || (t.posts as number) || 0,
           }));
         }
-        // Fallback: derive from DTU tags
-        const dtuR = await apiHelpers.dtus.list().catch(() => ({ data: { dtus: [] } }));
-        const allTags = new Set<string>();
-        (dtuR.data?.dtus || []).forEach((d: Record<string, unknown>) =>
-          ((d.tags as string[]) || []).forEach((t) => allTags.add(t))
-        );
-        return Array.from(allTags)
-          .slice(0, 5)
-          .map((tag, i) => ({
-            id: `t-${i}`,
-            tag: `#${tag}`,
-            category: ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
-            posts: 0,
-          }));
+        // Fallback: rank tags across every DTU page, not the newest 50.
+        return await loadFeedTopics((params) =>
+          apiHelpers.dtus.list(params).then((r) => r.data),
+        ).catch(() => []);
       } catch {
         return [];
       }
