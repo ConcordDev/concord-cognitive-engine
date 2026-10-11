@@ -100,6 +100,7 @@ import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conka
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
+import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
@@ -41189,6 +41190,18 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
 app.use((err, req, res, _next) => {
+  if (res.headersSent) return;
+  // Routes mounted after the earlier error handler (including DELETE
+  // /api/media/:id) land here. ConcordError already carries the right status
+  // (404 not found, 403 forbidden, 400 validation). res.json() without a
+  // status is HTTP 200, which made those deletes look successful.
+  if (err instanceof ConcordError) {
+    return res.status(err.statusCode || 500).json({
+      ok: false,
+      error: err.message,
+      code: err.code,
+    });
+  }
   const errorId = uid("err");
   const msg = String(err?.message || err || "Unknown error");
   const out = {
@@ -47645,14 +47658,17 @@ app.get("/api/lens/stats", (req, res) => {
 // register() macros) would otherwise DOUBLE-nest, so a raw `api.post` caller reading
 // `data.result.<field>` gets the inner wrapper, not the payload (blank calc
 // workbenches, dropped results — the systemic bug found by running the app, 2026-06-03).
-// Unwrap exactly ONE envelope layer here so the response is single-nested:
-//   - lensRun() tolerates single OR double, so its callers are unaffected;
-//   - defensive `data.result.X ?? data.X` readers resolve on the single-nest;
-//   - an { ok:false, error } shape (no `result` key) passes through so errors surface;
-//   - a bare payload (no `ok`+`result`) passes through unchanged.
+// Success envelopes peel exactly one `{ ok, result }` layer so the response
+// stays single-nested. Failures do NOT peel: a handler `{ ok:false, error,
+// result }` (staking insufficient_balance includes the live balance) used to
+// be reduced to the inner object and re-wrapped as `{ ok:true, result }`,
+// HTTP 200. The route now sends `_shapeLensRunHttp` (4xx + top-level
+// `{ ok:false, error }`). This helper remains for any caller that still
+// wants the success payload only.
 function _unwrapLensEnvelope(r) {
-  if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
-  return r;
+  const shaped = _shapeLensRunHttp(r);
+  if (shaped.body.ok === false) return shaped.body;
+  return shaped.body.result;
 }
 
 // Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
@@ -47758,8 +47774,9 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
         return res.status(_httpErr.status).json(_httpErr.body);
       }
-      const result = _unwrapLensEnvelope(lensRaw);
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const shaped = _shapeLensRunHttp(lensRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
       // capability-tier fact for the two verdict-producing macros only. See
       // lib/conkay-verdict-bridge.js's header for why this reuses the SAME
@@ -47767,7 +47784,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
@@ -47781,11 +47798,12 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
         return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
       }
-      const result = _unwrapLensEnvelope(macroRaw);
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const shaped = _shapeLensRunHttp(macroRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
     //
@@ -47878,7 +47896,7 @@ app.get("/api/lens/:domain/:id", async (req, res) => {
 app.post("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47888,7 +47906,7 @@ app.post("/api/lens/:domain", async (req, res) => {
 app.put("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47898,7 +47916,7 @@ app.put("/api/lens/:domain/:id", async (req, res) => {
 app.delete("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "delete", { id: req.params.id }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "delete", { id: req.params.id }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -89187,6 +89205,7 @@ export function __clearActiveTimersForTest() {
 export const __TEST__ = Object.freeze({
   VERSION,
   STATE,
+  app,
   ensureQueues,
   enqueueNotification,
   realtimeEmit,

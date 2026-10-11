@@ -704,14 +704,13 @@ export default function createMediaRouter({ STATE }) {
 
     const result = deleteMediaDTU(STATE, req.params.id, authorId);
     if (!result.ok) {
-      if (result.error === "Media not found") throw new NotFoundError("Media", req.params.id);
-      // Return the status directly. Throwing ValidationError here is caught by
-      // the later chat-shaped error handler (mounted after this router) and
-      // rewritten as HTTP 200 { mode, sessionId, llmUsed }.
-      return res.status(403).json({
-        ok: false,
-        error: result.error || "Not authorized to delete this media",
-      });
+      // Respond here. Throwing used to fall through to a later error
+      // handler that res.json()'d without a status, so DELETE came back
+      // HTTP 200 {ok:false} and the client treated the row as gone.
+      const error = result.error || "delete_failed";
+      if (error === "Media not found") return res.status(404).json({ ok: false, error });
+      if (/authorized|forbidden|permission/i.test(error)) return res.status(403).json({ ok: false, error });
+      return res.status(422).json({ ok: false, error });
     }
 
     res.json(result);
