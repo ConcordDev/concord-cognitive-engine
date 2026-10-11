@@ -21,6 +21,18 @@ describe("lookupUserIdentity", () => {
     db.close();
   });
 
+  it("reads a stub that only implements prepare().get()", () => {
+    const db = {
+      prepare() {
+        return { get() { return { username: "ada", displayName: "Ada Lovelace" }; } };
+      },
+    };
+    assert.deepEqual(lookupUserIdentity(db, "user_a"), {
+      username: "ada",
+      displayName: "Ada Lovelace",
+    });
+  });
+
   it("returns nulls when the table or the caller is missing", () => {
     const db = new Database(":memory:");
     assert.deepEqual(lookupUserIdentity(db, "u1"), { username: null, displayName: null });
