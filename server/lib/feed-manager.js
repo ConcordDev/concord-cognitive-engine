@@ -25,6 +25,7 @@ import { browserEngine } from "./browser-engine.js";
 import { checkQualityGate, logRejectedDTU, pruneQualityLog } from "./ingest-quality.js";
 import { getDedupKey, hashDedupKey } from "./dedup-keys.js";
 import { normalizeTagList } from "./dtu-tags.js";
+import { trackFeedJob } from "../emergent/feed.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
@@ -56,6 +57,9 @@ const _seenHashes = new Set();
 
 /** @type {Map<string, NodeJS.Timeout>} Per-feed interval timers */
 const _feedTimers = new Map();
+
+/** @type {Map<string, NodeJS.Timeout>} One-shot initial-fetch timers (not kept on the interval map) */
+const _feedStartTimers = new Map();
 
 /** @type {Map<string, number>} Last successful poll timestamp per feed id.
  *  Keys are feed ids (capped at MAX_ACTIVE_FEEDS = 1000 in practice), but we
@@ -750,7 +754,12 @@ async function commitFeedDTU(item, feedSource) {
 // FEED TICK — Process one feed source (called by its interval timer)
 // ══════════════════════════════════════════════════════════════════════════════
 
-async function tickFeed(feedId) {
+async function tickFeed(feedId, opts) {
+  // Timers must not start another poll once stopFeedManager has run.
+  // forceTick passes allowWhenStopped for an explicit manual refresh;
+  // that call is still tracked so shutdown can flush it.
+  if (!_running && !opts?.allowWhenStopped) return { ok: true, skipped: "stopped" };
+  if (!opts?._tracked) return trackFeedJob(tickFeed(feedId, { ...opts, _tracked: true }));
   // Sprint 60+ — idle gate. RSS polling is a per-feed HTTP fetch + parse
   // + dedup + DTU mint. With no users, the feeds will pile up duplicates
   // that nobody is reading. Skip the work; resume when users return.
@@ -894,12 +903,22 @@ function mapDomainToEventType(domain) {
 // safe (if slightly shorter than requested) cadence instead of overflowing.
 const MAX_SAFE_TIMER_MS = 2_147_483_647;
 
+function clearFeedStartTimer(feedId) {
+  const timer = _feedStartTimers.get(feedId);
+  if (timer) {
+    clearTimeout(timer);
+    _feedStartTimers.delete(feedId);
+  }
+}
+
 function startFeedTimer(feedSource) {
   stopFeedTimer(feedSource.id);
+  clearFeedStartTimer(feedSource.id);
   if (!feedSource.enabled) return;
 
   const interval = Math.min(Math.max(feedSource.interval || 60000, 5000), MAX_SAFE_TIMER_MS); // 5s..~24.8d
   const timer = setInterval(() => {
+    if (!_running) return;
     tickFeed(feedSource.id).catch(err => {
       logger.warn?.("[feed-manager] Feed tick error", { feedId: feedSource.id, error: err.message });
     });
@@ -909,13 +928,18 @@ function startFeedTimer(feedSource) {
   if (timer.unref) timer.unref();
   _feedTimers.set(feedSource.id, timer);
 
-  // Initial fetch with small random delay to avoid thundering herd
+  // Initial fetch with small random delay to avoid thundering herd.
+  // Held so shutdown can clear it — previously this timeout was untracked
+  // and could call tickFeed after the database handle was closed.
   const startDelay = Math.floor(Math.random() * 5000) + 1000;
-  setTimeout(() => {
+  const startTimer = setTimeout(() => {
+    _feedStartTimers.delete(feedSource.id);
+    if (!_running) return;
     tickFeed(feedSource.id).catch(err => {
       logger.warn?.("[feed-manager] Initial fetch error", { feedId: feedSource.id, error: err.message });
     });
   }, startDelay);
+  _feedStartTimers.set(feedSource.id, startTimer);
 }
 
 function stopFeedTimer(feedId) {
@@ -1176,6 +1200,9 @@ export function stopFeedManager() {
   for (const feedId of _feedTimers.keys()) {
     stopFeedTimer(feedId);
   }
+  for (const feedId of [..._feedStartTimers.keys()]) {
+    clearFeedStartTimer(feedId);
+  }
   logger.info?.("feed-manager", "Stopped");
 }
 
@@ -1188,7 +1215,7 @@ export async function forceTick(feedId) {
   if (!feed) return { ok: false, error: "not_found" };
   const orig = feed.enabled;
   feed.enabled = true; // temporarily enable for test
-  await tickFeed(feedId);
+  await tickFeed(feedId, { allowWhenStopped: true });
   feed.enabled = orig;
   return { ok: true };
 }

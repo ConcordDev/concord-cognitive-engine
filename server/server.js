@@ -3327,6 +3327,29 @@ async function gracefulShutdown(signal) {
   _activeTimers.clear();
   structuredLog("info", "shutdown_timers_cleared", { count: _activeTimers.size });
 
+  // Emergent activity-feed writes and feed-manager ingest do not live on
+  // _activeTimers. minorAgentScheduler's interval (and feed-manager's
+  // per-source timers, including the previously untracked initial-fetch
+  // timeout) keep scheduling work, and an in-flight tick only calls
+  // emitFeedEvent after an await. The first shutdown callback below is
+  // db.close() — registered at DB init, before the later timer-cleanup
+  // callback — so those writes hit a closed handle and log
+  // "[feed] DB write failed: The database connection is not open".
+  // Stop new ticks now, let anything already running finish across the
+  // HTTP drain below, then flush+seal immediately before that close.
+  const stopFeedIngress = async () => {
+    try { minorAgentScheduler.stop(); }
+    catch (e) { structuredLog("warn", "shutdown_minor_agent_stop_failed", { error: e?.message }); }
+    try {
+      const { stopFeedManager } = await import("./lib/feed-manager.js");
+      stopFeedManager();
+    } catch (e) {
+      structuredLog("warn", "shutdown_feed_manager_stop_failed", { error: e?.message });
+    }
+  };
+  try { await stopFeedIngress(); }
+  catch (e) { structuredLog("warn", "shutdown_feed_ingress_stop_failed", { error: e?.message }); }
+
   // Stop repair cortex loop
   try { stopRepairLoop(); } catch (_e) { logger.debug('server', 'best-effort', { error: _e?.message }); }
 
@@ -3347,6 +3370,28 @@ async function gracefulShutdown(signal) {
     structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
   }
 
+  // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
+  // is the first callback. Time spent here is subtracted from
+  // SHUTDOWN_TIMEOUT_MS below so this does not extend the kill_timeout budget.
+  let feedFlushMs = 0;
+  try {
+    const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
+    const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+    const flushStart = Date.now();
+    const { shutdownFeedPersistence } = await import("./emergent/feed.js");
+    const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
+    feedFlushMs = Date.now() - flushStart;
+    structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
+      drained: feedDrain.drained,
+      pending: feedDrain.pending,
+      dropped: feedDrain.dropped,
+      timeoutMs,
+      ms: feedFlushMs,
+    });
+  } catch (e) {
+    structuredLog("warn", "shutdown_feed_flush_failed", { error: e?.message });
+  }
+
   // Run registered callbacks
   for (const callback of shutdownCallbacks) {
     try {
@@ -3356,9 +3401,11 @@ async function gracefulShutdown(signal) {
     }
   }
 
-  // Give pending requests time to complete
+  // Give pending requests time to complete. Subtract feed-flush time so
+  // the drain + flush + this wait still fit inside the kill_timeout budget.
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
-  await new Promise(resolve => { setTimeout(resolve, timeout); });
+  const postWait = Math.max(0, timeout - feedFlushMs);
+  await new Promise(resolve => { setTimeout(resolve, postWait); });
 
   // The backup fired earlier (non-blocking) has now had the full drain +
   // timeout window above to finish concurrently. Log its outcome if known;
