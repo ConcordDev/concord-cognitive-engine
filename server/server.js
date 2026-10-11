@@ -11,6 +11,7 @@
  * @see ../README.md for architecture overview
  */
 
+import expressRateLimit from "express-rate-limit";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
@@ -60718,7 +60719,15 @@ app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
   res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(body) });
 }));
 
-app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+app.get("/api/reasoning/traces", perEndpointRateLimit("read.default"), expressRateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX,
+  message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: _rateLimitKey,
+  skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+}), asyncHandler(async (req, res) => {
   const gate = gateLogRead(req);
   if (!gate.ok) return sendGate(res, gate);
   const m = await import("./emergent/hlr-engine.js");
@@ -71985,7 +71994,7 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 app.get("/api/rate-limits", (req, res) => {
   const gate = gateLogRead(req);
   if (!gate.ok) return sendGate(res, gate);
-  const userId = selectScopedUserId(gate.actor, req.query.userId);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const limits = STATE._rateLimits.get(userId);
   const hourAgo = Date.now() - 60 * 60 * 1000;
   const recentCalls = limits ? limits.calls.filter(t => t > hourAgo).length : 0;
@@ -71995,7 +72004,7 @@ app.get("/api/rate-limits", (req, res) => {
 app.get("/api/costs", (req, res) => {
   const gate = gateLogRead(req);
   if (!gate.ok) return sendGate(res, gate);
-  const userId = selectScopedUserId(gate.actor, req.query.userId);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
   res.json({ ok: true, userId, ...redactLogValue(account) });
 });

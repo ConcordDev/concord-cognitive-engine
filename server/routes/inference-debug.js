@@ -188,9 +188,7 @@ export function createInferenceDebugRouter({ db }) {
     const { days = 30 } = req.query;
     // Admin with no userId sees every caller. A member cannot widen the
     // filter by passing ?userId= someone else.
-    const userId = isLogAdmin(gate.actor)
-      ? (req.query.userId ? String(req.query.userId) : null)
-      : selectScopedUserId(gate.actor, null);
+    const userId = selectScopedUserId(gate.actor, req.query, null);
     const since = new Date(Date.now() - Number(days) * 86400000).toISOString();
 
     try {

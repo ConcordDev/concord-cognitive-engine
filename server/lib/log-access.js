@@ -20,7 +20,7 @@ const SECRET_KEY_RE = /(?:^|_)(?:password|passwd|pwd|secret|token|authorization|
 
 // Credential shapes embedded in an otherwise-ordinary string (a chat
 // reply that pasted a key, a stack that echoed an Authorization header).
-const EMBEDDED_SECRET_RE = /(?:Bearer\s+[A-Za-z0-9\-._~+/]+=*|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|sk-(?:ant-)?[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|ya29\.[A-Za-z0-9_\-]{20,})/g;
+const EMBEDDED_SECRET_RE = /(?:Bearer\s+[A-Za-z0-9\-._~+/]+=*|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|sk-(?:ant-)?[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|ya29\.[A-Za-z0-9_-]{20,})/g;
 
 const REDACTED = "[redacted]";
 
@@ -263,8 +263,14 @@ export function recordOwnedByCaller(record, actor, fields) {
   return false;
 }
 
-export function selectScopedUserId(actor, requested) {
-  if (isLogAdmin(actor) && requested) return String(requested);
+export function selectScopedUserId(actor, requested, adminDefault) {
+  // A query bag is accepted so callers never read req.query.userId themselves.
+  // Only an admin's requested id is honored. Members always get their own id.
+  const id = requested && typeof requested === "object" ? requested.userId : requested;
+  if (isLogAdmin(actor)) {
+    if (id) return String(id);
+    return adminDefault === undefined ? actor.userId : adminDefault;
+  }
   return actor.userId;
 }
 

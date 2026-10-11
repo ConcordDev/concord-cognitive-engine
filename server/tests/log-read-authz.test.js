@@ -371,8 +371,11 @@ describe("sibling chat, trace, bridge, and telemetry reads", () => {
 
   it("a member cannot read another user's rate-limit or cost bucket by query", () => {
     assert.equal(selectScopedUserId({ userId: "user-a", role: "member" }, "user-b"), "user-a");
+    assert.equal(selectScopedUserId({ userId: "user-a", role: "member" }, { userId: "user-b" }), "user-a");
     assert.equal(selectScopedUserId({ userId: "admin-1", role: "admin" }, "user-b"), "user-b");
+    assert.equal(selectScopedUserId({ userId: "admin-1", role: "admin" }, { userId: "user-b" }), "user-b");
     assert.equal(selectScopedUserId({ userId: "admin-1", role: "admin" }, undefined), "admin-1");
+    assert.equal(selectScopedUserId({ userId: "admin-1", role: "admin" }, {}, null), null);
   });
 
   it("inference traces and spans follow caller id, not the query string", () => {
@@ -557,7 +560,10 @@ describe("production handlers call the shared gate", () => {
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/system/operations-log"').includes("gateLogAdmin"));
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/compliance/log"').includes("gateLogAdmin"));
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/rbac/audit-export/:orgId"').includes("gateLogAdmin"));
-    assert.ok(sliceAround(SERVER_JS, 'app.get("/api/reasoning/traces"', 2200).includes("projectReasoningTraces"));
+    const tracesRoute = sliceAround(SERVER_JS, 'app.get("/api/reasoning/traces"', 2800);
+    assert.ok(tracesRoute.includes("perEndpointRateLimit(\"read.default\")"));
+    assert.ok(tracesRoute.includes("expressRateLimit("));
+    assert.ok(tracesRoute.includes("projectReasoningTraces"));
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/reasoning/trace/:traceId"').includes("reasoningTraceAccess"));
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/anon/messages"').includes("resolveAnonMessageRead"));
     assert.ok(sliceAround(SERVER_JS, 'app.get("/api/party-combat/:sessionId/log"').includes("combatLogAccess"));
