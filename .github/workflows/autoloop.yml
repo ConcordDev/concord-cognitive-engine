@@ -88,7 +88,7 @@ jobs:
             echo "stopped=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         with:
           node-version: 22
