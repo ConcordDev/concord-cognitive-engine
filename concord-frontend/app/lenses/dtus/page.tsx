@@ -63,6 +63,7 @@ function DTUBrowserPageInner() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DtusView>('browser');
+  const [viewsOpen, setViewsOpen] = useState(false);
   const browse = useCallback(() => {
     setActive('browser');
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -116,6 +117,39 @@ function DTUBrowserPageInner() {
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="dtus" data={{}} compact />
           </div>
+        </div>
+
+        <div className="mb-4">
+          <button
+            type="button"
+            aria-expanded={viewsOpen}
+            aria-controls="dtu-view-strip"
+            onClick={() => setViewsOpen((open) => !open)}
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Views
+          </button>
+          {viewsOpen && (
+            <nav id="dtu-view-strip" aria-label="DTU views" className="mt-2 flex flex-wrap gap-2">
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-current={active === v.id ? 'page' : undefined}
+                  title={v.hint}
+                  onClick={() => setActive(v.id)}
+                  className={
+                    active === v.id
+                      ? 'rounded-full border border-teal-400/40 bg-teal-400/10 px-3 py-1 text-xs text-teal-200'
+                      : 'rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400 hover:text-zinc-200'
+                  }
+                >
+                  {v.label}
+                  <span className="ml-1 text-zinc-600">{v.keys}</span>
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
 
         <main className="min-w-0">
