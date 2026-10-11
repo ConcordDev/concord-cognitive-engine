@@ -338,9 +338,65 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 }
 
 /**
+ * Positive duration stored on a media DTU, in whole seconds.
+ * 0 when the row is missing or the probe never landed.
+ */
+export function readMediaDurationSec(STATE, mediaId) {
+  if (!STATE || !mediaId) return 0;
+  const fromMedia = STATE._media?.mediaDTUs?.get?.(mediaId);
+  const fromDtu = STATE.dtus?.get?.(mediaId);
+  const n = Number(fromMedia?.duration ?? fromDtu?.duration);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(1, Math.round(n));
+}
+
+/**
+ * System write of privacy + matching scope. Podcast draft episodes call
+ * this so an upload that landed as public stops being readable the moment
+ * it is attached to an unpublished episode. Author check is the caller's
+ * job — episode-add already requires the creator.
+ */
+export function setMediaPrivacy(STATE, mediaId, privacy) {
+  if (!STATE || !mediaId) return { ok: false, error: "Media not found" };
+  if (privacy !== "public" && privacy !== "private" && privacy !== "followers-only") {
+    return { ok: false, error: "invalid privacy" };
+  }
+  const dtu = STATE._media?.mediaDTUs?.get?.(mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  dtu.privacy = privacy;
+  dtu.scope = privacy === "public" ? "global" : "user";
+  dtu.updatedAt = new Date().toISOString();
+  if (STATE.dtus?.set) STATE.dtus.set(mediaId, dtu);
+  return { ok: true, mediaDTU: dtu };
+}
+
+/**
+ * Media referenced by a draft or scheduled podcast episode stays private
+ * until that episode is published, even if the upload's own privacy flag
+ * is still "public". The episode creator and the media author can read it.
+ */
+function draftMediaHiddenFromViewer(STATE, mediaDTU, viewerId) {
+  const episodes = STATE?.podcastLens?.episodes;
+  if (!mediaDTU || !episodes || typeof episodes.values !== "function") return false;
+  for (const list of episodes.values()) {
+    if (!Array.isArray(list)) continue;
+    for (const ep of list) {
+      if (!ep || ep.mediaId !== mediaDTU.id) continue;
+      if (ep.status !== "draft" && ep.status !== "scheduled") continue;
+      if (viewerId && (viewerId === ep.createdBy || viewerId === mediaDTU.author)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Get a media DTU AND enforce viewer access in one call. Preferred
  * entry point for route handlers — returns 404 / 403 shaped results
  * so the caller can't accidentally forget the access check.
+ *
+ * Draft and scheduled podcast audio is hidden from everyone except the
+ * episode creator and the media author until the episode is published.
  *
  * @param {object} STATE
  * @param {string} mediaId
@@ -350,6 +406,11 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 export function getMediaDTUForViewer(STATE, mediaId, viewerId) {
   const result = getMediaDTU(STATE, mediaId);
   if (!result.ok) return { ok: false, status: 404, error: "Media not found" };
+
+  if (draftMediaHiddenFromViewer(STATE, result.mediaDTU, viewerId)) {
+    const status = !viewerId ? 401 : 404;
+    return { ok: false, status, error: "Private content" };
+  }
 
   const access = canAccessMediaDTU(STATE, result.mediaDTU, viewerId);
   if (!access.allowed) {

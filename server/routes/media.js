@@ -44,6 +44,7 @@ import {
   MAX_FILE_SIZES,
 } from "../lib/media-dtu.js";
 import { storeArtifact, retrieveArtifact, isSupportedType } from "../lib/artifact-store.js";
+import { resolveAudioDurationSec } from "../lib/artifact-transcoder.js";
 import { screenForPublish, screenLocalSync } from "../lib/content-safety/index.js";
 import {
   normalizeTiers,
@@ -237,9 +238,10 @@ export default function createMediaRouter({ STATE }) {
     // bytes ever landed on disk. The artifactRef hash is then attached
     // to the media DTU so the stream + thumbnail endpoints can resolve.
     let artifactRef = null;
+    let audioBuffer = null;
     if (data && typeof data === "string") {
       try {
-        const buf = Buffer.from(data, "base64");
+        audioBuffer = Buffer.from(data, "base64");
         const safeMime = mimeType && isSupportedType(mimeType)
           ? mimeType
           : "application/octet-stream";
@@ -249,7 +251,7 @@ export default function createMediaRouter({ STATE }) {
         // media DTU so /stream + /thumbnail can hand it straight back.
         artifactRef = await storeArtifact(
           `media-${authorId}-${Date.now()}`,
-          buf,
+          audioBuffer,
           safeMime,
           originalFilename || "upload.bin",
         );
@@ -257,6 +259,13 @@ export default function createMediaRouter({ STATE }) {
         throw new ValidationError(`Failed to store media bytes: ${err?.message || err}`);
       }
     }
+
+    const durationSec = await resolveAudioDurationSec({
+      declared: duration,
+      buffer: audioBuffer,
+      mimeType,
+      filePath: artifactRef?.diskPath || null,
+    });
 
     const result = createMediaDTU(STATE, {
       authorId,
@@ -266,7 +275,7 @@ export default function createMediaRouter({ STATE }) {
       mimeType,
       fileSize,
       originalFilename,
-      duration,
+      duration: durationSec > 0 ? durationSec : undefined,
       resolution,
       codec,
       bitrate,
