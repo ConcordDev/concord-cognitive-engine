@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   explicitImagePrompt, fulfillImageRequest, produceGpuImage, GPU_OFFLINE_REPLY, markdownImageReply,
+  getMediaDTU, canAccessMediaDTU, retrieveArtifact,
 } from "../lib/chat/image-router.js";
 import { runAgentLoop } from "../lib/chat-agent.js";
 
@@ -55,7 +56,7 @@ test("explicit image phrasing is recognized and idioms are not", () => {
   }
 });
 
-test("a healthy GPU returns the image inline and names no outside service", async () => {
+test("a healthy GPU stores a private artifact and the reply contains no data URL", async () => {
   const png = Buffer.from("red-bicycle-png").toString("base64");
   const srv = await startGen((url) => (url === "/health"
     ? { ok: true, weights: { flux_schnell: true } }
@@ -73,13 +74,24 @@ test("a healthy GPU returns the image inline and names no outside service", asyn
     return origFetch(input, init);
   };
   try {
-    const hit = await fulfillImageRequest("make an image of a red bicycle");
+    const state = { dtus: new Map() };
+    const hit = await fulfillImageRequest("make an image of a red bicycle", { ownerId: "owner-1", state });
     assert.equal(hit.ok, true);
     assert.equal(hit.offline, false);
-    assert.equal(hit.reply, markdownImageReply("a red bicycle", png));
-    assert.match(hit.reply, /^!\[a red bicycle\]\(data:image\/png;base64,/);
+    assert.equal(hit.reply, markdownImageReply("a red bicycle", hit.artifact.url));
+    assert.match(hit.reply, /^!\[a red bicycle\]\(\/api\/media\/media-[^)]+\/stream\)$/);
+    assert.equal(hit.reply.includes("data:image"), false);
+    assert.equal(JSON.stringify(hit).includes("data:image"), false);
     assert.equal(hit.artifact.kind, "image");
-    assert.equal(hit.artifact.image_b64, png);
+    assert.equal(hit.artifact.image_b64, undefined);
+    const stored = getMediaDTU(state, hit.artifact.mediaId);
+    assert.equal(stored.ok, true);
+    assert.equal(stored.mediaDTU.privacy, "private");
+    assert.equal(canAccessMediaDTU(state, stored.mediaDTU, "owner-1").allowed, true);
+    assert.equal(canAccessMediaDTU(state, stored.mediaDTU, "someone-else").allowed, false);
+    const bytes = retrieveArtifact(stored.mediaDTU.id, stored.mediaDTU.storageRef.artifactRef);
+    assert.equal(Buffer.isBuffer(bytes) && bytes.toString("base64"), png);
+    try { fs.unlinkSync(stored.mediaDTU.storageRef.artifactRef.diskPath); } catch { /* test cleanup */ }
     assert.equal(await fulfillImageRequest("what is the capital of France"), null);
     assert.ok(urls.every((u) => !/pollinations/i.test(u)));
     assert.ok(!/dall-?e|stable diffusion|midjourney|pollinations/i.test(hit.reply));
@@ -154,7 +166,8 @@ test("chat.respond and the agent loop route images before any model call", () =>
   assert.equal(macro.includes("ctx.state"), false);
   assert.match(macro, /produceGpuImage/);
   assert.match(macro, /handler_error/);
-  assert.doesNotMatch(macro, /SD_URL|Stable Diffusion|pollinations/i);
+  assert.doesNotMatch(macro, /SD_URL|Stable Diffusion|pollinations|data:image/i);
+  assert.match(server, /_genImages\.find\(\(r\) => r\.artifact\?\.url\)/);
   const agent = fs.readFileSync(new URL("../lib/chat-agent.js", import.meta.url), "utf8");
   const loop = agent.slice(agent.indexOf("export async function runAgentLoop"));
   const at = loop.indexOf("explicitImagePrompt(message)");
@@ -189,8 +202,10 @@ test("runAgentLoop returns the GPU image and does not ask the brain", async () =
     });
     assert.equal(brainCalled, false);
     assert.equal(result.ok, true);
-    assert.match(result.answer, /data:image\/png;base64,/);
-    assert.equal(result.artifacts[0].image_b64, png);
+    assert.equal(result.answer.includes("data:image"), false);
+    assert.match(result.answer, /\/api\/media\/media-[^)]+\/stream/);
+    assert.equal(result.artifacts[0].image_b64, undefined);
+    assert.match(result.artifacts[0].url, /^\/api\/media\/media-/);
     assert.equal(result.turns, 0);
     assert.ok(!/dall-?e|stable diffusion|midjourney/i.test(result.answer));
     assert.equal(events.some((e) => e.type === "tool_call" && e.payload.tool === "generate_image" && e.payload.ok), true);

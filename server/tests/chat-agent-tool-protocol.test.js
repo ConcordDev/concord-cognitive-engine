@@ -305,7 +305,9 @@ test("generate_image uses the pod image path and does not touch ctx.state", asyn
     assert.equal(result.ok, true);
     assert.equal(result.source, "local_gpu_flux");
     assert.equal(result.artifact.kind, "image");
-    assert.equal(result.artifact.image_b64, png);
+    assert.equal(result.artifact.image_b64, undefined);
+    assert.match(result.artifact.url, /^\/api\/media\/media-[^/]+\/stream$/);
+    assert.equal(JSON.stringify(result).includes("data:image"), false);
     assert.equal(result.artifact.width, 512);
     assert.equal(result.artifact.height, 512);
     assert.ok(!JSON.stringify(formatToolResults([result])).includes(png));
@@ -399,8 +401,11 @@ test("generate_image and the lens image action never surface macro_uncaught_thro
         assert.equal(r.ok, true, JSON.stringify(r));
         assert.notEqual(r.error, "macro_uncaught_throw");
         assert.equal(r.artifact.kind, "image");
-        assert.equal(r.artifact.image_b64, png);
-        assert.ok(!/macro_uncaught_throw|dall-?e|stable diffusion|pollinations/i.test(JSON.stringify({ ...r, artifact: { ...r.artifact, image_b64: "png" } })));
+        assert.equal(r.artifact.image_b64, undefined);
+        assert.match(r.artifact.url, /^\/api\/media\/media-[^/]+\/stream$/);
+        const packed = JSON.stringify(r);
+        assert.equal(packed.includes("data:image"), false);
+        assert.ok(!/macro_uncaught_throw|dall-?e|stable diffusion|pollinations/i.test(packed));
       }
     } finally {
       srv.close();

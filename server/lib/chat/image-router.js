@@ -10,6 +10,18 @@
 // server that is actually unreachable or missing weights.
 
 import { generateViaLocalGpu } from "../pollinations-image.js";
+import { storeArtifact, retrieveArtifact } from "../artifact-store.js";
+import { createMediaDTU, canAccessMediaDTU, getMediaDTU } from "../media-dtu.js";
+
+// Unit tests have no booted server. Production chat uses the same STATE
+// object the /api/media router was mounted with.
+let _fallbackMediaState = null;
+function mediaHost(explicit) {
+  if (explicit && typeof explicit === "object") return explicit;
+  if (globalThis._concordSTATE) return globalThis._concordSTATE;
+  if (!_fallbackMediaState) _fallbackMediaState = { dtus: new Map() };
+  return _fallbackMediaState;
+}
 
 export const GPU_OFFLINE_REPLY = "GPU image generation is offline";
 
@@ -63,16 +75,61 @@ export function explicitImagePrompt(message) {
   };
 }
 
-export function markdownImageReply(prompt, imageB64) {
+export function markdownImageReply(prompt, url) {
   const alt = String(prompt || "image").replace(/[[\]()]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "image";
-  return `![${alt}](data:image/png;base64,${imageB64})`;
+  return `![${alt}](${url})`;
 }
+
+/**
+ * Bytes go to the content-addressed artifact store. The media row is
+ * private, so only the owner can stream it. The chat reply keeps the
+ * short URL, never the PNG.
+ */
+export async function publishPrivateImage({ imageB64, prompt, width, height, ownerId, state } = {}) {
+  const buf = Buffer.from(String(imageB64 || ""), "base64");
+  if (!buf.length) return { ok: false, error: "image generation returned no image", reason: "no_image" };
+  const host = mediaHost(state);
+  const authorId = String(ownerId || "anonymous");
+  let artifactRef;
+  try {
+    artifactRef = await storeArtifact(
+      `chat-image-${authorId}-${Date.now()}`,
+      buf,
+      "image/png",
+      "image.png",
+    );
+  } catch (err) {
+    return { ok: false, error: "could not store image artifact", reason: "store_failed", detail: String(err?.message || err) };
+  }
+  const created = createMediaDTU(host, {
+    authorId,
+    title: String(prompt || "generated image").slice(0, 180),
+    mediaType: "image",
+    mimeType: "image/png",
+    fileSize: buf.length,
+    originalFilename: "image.png",
+    privacy: "private",
+    resolution: width && height ? { width, height } : undefined,
+    tags: ["chat", "generated"],
+    artifactRef,
+  });
+  if (!created.ok) return { ok: false, error: created.error || "could not store image artifact", reason: "store_failed" };
+  const mediaId = created.mediaDTU.id;
+  return {
+    ok: true,
+    url: `/api/media/${mediaId}/stream`,
+    mediaId,
+    privacy: created.mediaDTU.privacy,
+  };
+}
+
+export { retrieveArtifact, canAccessMediaDTU, getMediaDTU };
 
 /**
  * Pod GPU only. Never calls Pollinations. Never throws.
  * offline is true only for local_gpu_unreachable and weights_missing.
  */
-export async function produceGpuImage({ prompt, width, height, seed } = {}) {
+export async function produceGpuImage({ prompt, width, height, seed, ownerId, state } = {}) {
   const clean = String(prompt || "").trim();
   let gen;
   try {
@@ -84,6 +141,12 @@ export async function produceGpuImage({ prompt, width, height, seed } = {}) {
   const dataUrl = typeof gen?.url === "string" && gen.url.startsWith("data:") ? gen.url : "";
   const image_b64 = gen?.imageB64 || (dataUrl ? dataUrl.slice(dataUrl.indexOf(",") + 1) : "");
   if (gen?.ok && !external && image_b64) {
+    const stored = await publishPrivateImage({
+      imageB64: image_b64, prompt: clean, width: gen.width, height: gen.height, ownerId, state,
+    });
+    if (!stored.ok) {
+      return { ok: false, offline: false, error: stored.error, reason: stored.reason, prompt: clean };
+    }
     const source = gen.provider || "local_gpu_flux";
     return {
       ok: true,
@@ -95,7 +158,8 @@ export async function produceGpuImage({ prompt, width, height, seed } = {}) {
         source,
         prompt: clean,
         mimeType: "image/png",
-        image_b64,
+        url: stored.url,
+        mediaId: stored.mediaId,
         ...(gen.width ? { width: gen.width } : {}),
         ...(gen.height ? { height: gen.height } : {}),
       },
@@ -117,16 +181,16 @@ export async function produceGpuImage({ prompt, width, height, seed } = {}) {
 /**
  * @returns {Promise<null | { ok: boolean, offline: boolean, prompt: string, reply: string, artifact?: object, reason?: string }>}
  */
-export async function fulfillImageRequest(message) {
+export async function fulfillImageRequest(message, opts = {}) {
   const parsed = explicitImagePrompt(message);
   if (!parsed) return null;
-  const gen = await produceGpuImage(parsed);
+  const gen = await produceGpuImage({ ...parsed, ownerId: opts.ownerId, state: opts.state });
   if (gen.ok && gen.artifact) {
     return {
       ok: true,
       offline: false,
       prompt: parsed.prompt,
-      reply: markdownImageReply(parsed.prompt, gen.artifact.image_b64),
+      reply: markdownImageReply(parsed.prompt, gen.artifact.url),
       artifact: gen.artifact,
       source: gen.source,
     };

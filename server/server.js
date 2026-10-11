@@ -15559,13 +15559,13 @@ register("multimodal","image_generate", async (_ctx, input={}) => {
       width: input.width,
       height: input.height,
       seed: input.seed,
+      ownerId: _ctx?.actor?.userId,
     });
     if (!gen.ok) return { ok:false, error: gen.error, reason: gen.reason };
     return {
       ok: true,
-      image_b64: gen.artifact.image_b64,
-      image: gen.artifact.image_b64,
-      url: `data:image/png;base64,${gen.artifact.image_b64}`,
+      url: gen.artifact.url,
+      mediaId: gen.artifact.mediaId,
       source: gen.source,
       width: gen.artifact.width,
       height: gen.artifact.height,
@@ -27952,7 +27952,7 @@ ${_operatorV6Block}` : "";
   if (!_deterministicAnswer) {
     try {
       const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
-      const _image = await _fulfillImageRequest(prompt);
+      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId });
       if (_image) {
         _imageTurn = _image;
         _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
@@ -28538,9 +28538,9 @@ ${_operatorV6Block}` : "";
           // The image is the reply. A follow-up brain call restates it as
           // "I can't generate images, try DALL-E" and drops the artifact.
           const { markdownImageReply: _markdownImageReply } = await import("./lib/chat/image-router.js");
-          const _imgHit = _genImages.find((r) => r.artifact?.image_b64);
+          const _imgHit = _genImages.find((r) => r.artifact?.url);
           if (_imgHit) {
-            finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.image_b64);
+            finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.url);
             _imageTurn = { ok: true, reply: finalReply, artifact: _imgHit.artifact, prompt: _imgHit.prompt };
           } else {
             finalReply = String(_genImages.find((r) => !r.ok)?.error || "GPU image generation is offline");

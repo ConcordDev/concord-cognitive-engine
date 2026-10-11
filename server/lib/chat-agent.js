@@ -626,13 +626,15 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             width: actionInput.width,
             height: actionInput.height,
             seed: actionInput.seed,
+            ownerId: ctx?.actor?.userId,
+            state: ctx?.mediaState,
           });
           if (!gen.ok) {
             return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason, domain, action };
           }
           return {
             tool: call.tool, ok: true, key: `${domain}.${action}`, domain, action, input: actionInput,
-            result: { ok: true, image_b64: gen.artifact.image_b64, source: gen.source, prompt: gen.prompt },
+            result: { ok: true, url: gen.artifact.url, mediaId: gen.artifact.mediaId, source: gen.source, prompt: gen.prompt },
             artifact: gen.artifact,
           };
         }
@@ -859,7 +861,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const size = String(call.params.size || "");
         const sizeMatch = size.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
         if (sizeMatch) { width = Number(sizeMatch[1]); height = Number(sizeMatch[2]); }
-        const gen = await produceGpuImage({ prompt: call.params.prompt, width, height, seed: call.params.seed });
+        const gen = await produceGpuImage({
+          prompt: call.params.prompt, width, height, seed: call.params.seed,
+          ownerId: ctx?.actor?.userId, state: ctx?.mediaState,
+        });
         if (!gen.ok) {
           return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason };
         }
@@ -1164,7 +1169,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   try {
     const { explicitImagePrompt, fulfillImageRequest } = await import("./chat/image-router.js");
     if (explicitImagePrompt(message)) {
-      const image = await fulfillImageRequest(message);
+      const image = await fulfillImageRequest(message, { ownerId: userId });
       if (image) {
         const artifact = image.artifact || null;
         const toolCall = {
