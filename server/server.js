@@ -63453,6 +63453,40 @@ function getGameProfile(userId) {
   return STATE.gameProfiles.get(userId);
 }
 
+// Quest XP is the xpReward stored on the owner's completed game/quest
+// artifacts — the same rows the Quests tab lists. Clamped to the create
+// form's 0–2000 range so a crafted artifact cannot mint unbounded XP.
+function sumCompletedQuestXp(userId) {
+  let xp = 0;
+  let completed = 0;
+  if (!userId) return { xp, completed };
+  for (const art of _lensDomainArtifacts("game")) {
+    if (!art || art.type !== "quest" || art.ownerId !== userId) continue;
+    if (art.data?.status !== "completed") continue;
+    completed += 1;
+    const reward = Number(art.data?.xpReward);
+    if (Number.isFinite(reward)) xp += Math.max(0, Math.min(2000, reward));
+  }
+  return { xp, completed };
+}
+
+function refreshGameProfile(userId) {
+  const profile = getGameProfile(userId);
+  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
+  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
+  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
+  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
+  const quests = sumCompletedQuestXp(userId);
+  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + quests.xp;
+  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
+  profile.questsCompleted = quests.completed;
+  const achievements = computeAchievements(userId);
+  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
+  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: quests.completed, questXp: quests.xp };
+  profile.lastActivityAt = profile.lastActivityAt || null;
+  return profile;
+}
+
 function computeAchievements(userId) {
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
   const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
@@ -63470,18 +63504,7 @@ function computeAchievements(userId) {
 
 app.get("/api/game/profile", (req, res) => {
   const userId = req.user?.id || "anon";
-  const profile = getGameProfile(userId);
-  // Calculate XP from DTU count plus quest completions
-  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
-  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
-  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
-  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
-  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + ((profile.questsCompleted || 0) * 100);
-  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
-  const achievements = computeAchievements(userId);
-  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
-  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: profile.questsCompleted || 0 };
-  profile.lastActivityAt = profile.lastActivityAt || null;
+  const profile = refreshGameProfile(userId);
   res.json({ ok: true, profile });
 });
 
@@ -63494,7 +63517,8 @@ app.get("/api/game/achievements", (req, res) => {
 });
 
 app.get("/api/game/challenges", (req, res) => {
-  // Generate challenges from current system state
+  // Activity goals from DTU/vote counts. The Game lens Quests tab does not
+  // read this list — a custom challenge is a private game/quest artifact.
   const userId = req.user?.id || "anon";
   const dtuCount = STATE.dtus.size;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
@@ -63519,7 +63543,8 @@ app.get("/api/game/leaderboard", (req, res) => {
     if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
     const p = STATE.gameProfiles.get(uid);
     const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + ((p.questsCompleted || 0) * 100);
+    const questXp = sumCompletedQuestXp(uid).xp;
+    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
     p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
     p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
   }
@@ -63530,20 +63555,26 @@ app.get("/api/game/leaderboard", (req, res) => {
   res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size });
 });
 
-// POST /api/game/quests/:questId/complete — mark a quest complete and grant XP
+// POST /api/game/quests/:questId/complete — mark the quest artifact completed.
+// XP is not taken from the request body. The next profile read sums
+// xpReward on completed game/quest artifacts owned by this user.
 app.post("/api/game/quests/:questId/complete", (req, res) => {
   try {
-    const userId = req.user?.id || "default";
-    if (!STATE.gameProfiles) STATE.gameProfiles = new Map();
-    if (!STATE.gameProfiles.has(userId)) {
-      STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, questsCompleted: 0, badges: [] });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const artifact = STATE.lensArtifacts?.get(req.params.questId);
+    if (!artifact || artifact.domain !== "game" || artifact.type !== "quest") {
+      return res.status(404).json({ ok: false, error: "quest not found" });
     }
-    const profile = STATE.gameProfiles.get(userId);
-    const xpGain = Number(req.body?.xpReward) || 100;
-    profile.xp = (profile.xp || 0) + xpGain;
-    profile.questsCompleted = (profile.questsCompleted || 0) + 1;
-    // Level up every 1000 XP
-    profile.level = Math.floor(profile.xp / 1000) + 1;
+    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== userId) {
+      return res.status(403).json({ ok: false, error: "not your quest" });
+    }
+    if (artifact.data?.status !== "completed") {
+      artifact.data = { ...(artifact.data || {}), status: "completed" };
+      artifact.updatedAt = nowISO();
+      saveStateDebounced();
+    }
+    const profile = refreshGameProfile(userId);
     res.json({ ok: true, profile });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -89126,5 +89157,7 @@ export const __TEST__ = Object.freeze({
   getEthosEnforcementSnapshot,
   ETHOS_ENFORCEMENT_HISTORY_CAP,
   initGhostFleet,
+  sumCompletedQuestXp,
+  refreshGameProfile,
 });
 // Test commit

@@ -52,12 +52,27 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
   },
 };
 
+/**
+ * Game profile XP, quests, and achievements are the user's own activity.
+ * The generic SIM_GRADE_A line ("Not real data") is false for those. The
+ * chip names the two surfaces that actually are simulations.
+ */
+const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  game: {
+    label: 'Lab & arcade sim',
+    caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
+  },
+};
+
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
   return useMemo(() => {
     if (!lensId) return null;
     const manifest = getLensManifest(lensId);
     if (!manifest?.dataTier) return null;
-    return TIER_INFO[manifest.dataTier] ?? null;
+    const info = TIER_INFO[manifest.dataTier];
+    if (!info) return null;
+    const override = LENS_DEPTH_OVERRIDE[lensId];
+    return override ? { ...info, ...override } : info;
   }, [lensId]);
 }
 
