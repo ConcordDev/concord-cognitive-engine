@@ -33,9 +33,13 @@ export function privateDtuHiddenFrom(d, viewerId) {
 
 /**
  * Viewer id for a macro ctx or an Express req.
- * Prefers actor.id (what dtu.list uses). Falls back to a real actor.userId
- * so owner-scoped callers that only stamp userId can still read their own
- * DTUs. The makeCtx anonymous placeholder "anon" is not a viewer.
+ * Prefers actor.id (what dtu.list uses). Falls back to actor.userId.
+ * That fallback includes the public-mode placeholder "anon": dtu.create
+ * stamps the same userId onto ownerId, and the local-first anonymous
+ * identity has to be able to read the private DTU it just created.
+ * A member-owned DTU stays hidden, because its ownerId is a real user id.
+ * dtu.list still passes actor.id (null when the caller is anonymous) into
+ * userVisibleDTUs, so the list does not gain anon-owned private rows.
  */
 export function viewerIdFromCtx(ctx) {
   if (!ctx) return null;
@@ -43,7 +47,7 @@ export function viewerIdFromCtx(ctx) {
   const id = actor?.id || actor?.odId || ctx.user?.id || null;
   if (id) return id;
   const uid = actor?.userId || ctx.user?.userId;
-  if (uid && uid !== "anon") return uid;
+  if (uid) return uid;
   return null;
 }
 

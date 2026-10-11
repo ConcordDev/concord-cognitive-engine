@@ -995,11 +995,13 @@ test("D20 — scene-load rejects a non-level-design DTU and an unauthorized priv
     assert.equal(__TEST__.STATE.dtus.get(dtuId).visibility, "private", "a level-design DTU defaults to private");
 
     // ...and User B (a different user) must be honestly rejected trying to
-    // load it — never silently reconstructed for a non-owner.
+    // load it — never silently reconstructed for a non-owner. dtu.get
+    // answers a hidden private id with the same not-found error a missing
+    // id gets, so the response does not confirm the DTU exists.
     sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId } });
     const forbiddenFrame = await waitForEvt(wsB, "design_command:result");
     assert.equal(forbiddenFrame.data.ok, false);
-    assert.equal(forbiddenFrame.data.error, "not_authorized");
+    assert.equal(forbiddenFrame.data.error, "DTU not found");
   } finally { wsA.close(); wsB.close(); }
 });
 

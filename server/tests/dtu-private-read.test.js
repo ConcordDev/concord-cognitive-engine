@@ -69,11 +69,13 @@ describe("dtu-read-access predicate", () => {
     assert.equal(privateDtuHiddenFrom({ visibility: "public", scope: "personal", ownerId: OWNER }, null), false);
   });
 
-  it("ignores the anonymous placeholder and honors req.user.id", () => {
+  it("honors req.user.id, and the public-mode anon identity only for DTUs it owns", () => {
     assert.equal(viewerIdFromCtx(null), null);
-    assert.equal(viewerIdFromCtx({ actor: { userId: "anon" } }), null);
+    assert.equal(viewerIdFromCtx({ actor: { userId: "anon" } }), "anon");
     assert.equal(viewerIdFromCtx({ actor: { userId: OWNER } }), OWNER);
     assert.equal(viewerIdFromCtx({ user: { id: OWNER } }), OWNER);
+    assert.equal(ctxMayReadDtu({ actor: { userId: "anon" } }, owned), false);
+    assert.equal(ctxMayReadDtu({ actor: { userId: "anon" } }, { visibility: "private", ownerId: "anon" }), true);
     assert.equal(ctxMayReadDtu({ actor: { role: "admin", id: "admin-1" } }, owned), false);
     assert.equal(ctxMayReadDtu({ internal: true, actor: { userId: "system" } }, owned), true);
   });
@@ -108,6 +110,7 @@ describe("private DTU by-id reads", () => {
     child: "privread-child",
     storeOnly: "privread-store-only",
     sql: "privread-sql",
+    anonOwned: "privread-anon-owned",
   };
 
   function seed(id, over) {
@@ -216,7 +219,7 @@ describe("private DTU by-id reads", () => {
       assert.equal(ownerUserIdOnly.ok, true, "owner ctx that only stamps userId can still read");
 
       const anonPlaceholder = await getMacro("get", id, { actor: { userId: "anon" } });
-      assert.equal(anonPlaceholder.ok, false);
+      assert.equal(anonPlaceholder.ok, false, "the shared anon identity is not the member who owns this DTU");
 
       const internal = await getMacro("get", id, makeInternalCtx("system"));
       assert.equal(internal.ok, true);
@@ -231,6 +234,18 @@ describe("private DTU by-id reads", () => {
 
     const fed = await getMacro("get", ids.fedLocal, anonCtx());
     assert.equal(fed.ok, true, "visibility public stays readable by id even when federation_tier is local");
+
+    seed(ids.anonOwned, {
+      visibility: "private",
+      scope: "local",
+      ownerId: "anon",
+      author: "anon",
+      content: SECRET,
+    });
+    const anonOwn = await getMacro("get", ids.anonOwned, anonCtx());
+    assert.equal(anonOwn.ok, true, "public-mode anon can read the private DTU dtu.create stamped with ownerId anon");
+    const otherAnonOwned = await getMacro("get", ids.anonOwned, userCtx(OTHER));
+    assert.equal(otherAnonOwned.ok, false);
   });
 
   it("dtu.list still hides the private id from anonymous callers and shows it to the owner", async () => {
