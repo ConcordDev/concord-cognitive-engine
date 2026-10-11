@@ -187,9 +187,9 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
   }), [assembly]);
   const clip = useMemo(() => {
     if (!section) return [];
-    const p = sectionPlane(section.axis, section.position);
+    const p = sectionPlane(section.axis, section.position, cx);
     return [new THREE.Plane(new THREE.Vector3(...p.normal), p.constant)];
-  }, [section]);
+  }, [section, cx]);
   const show = (id: string) => !hidden.has(id) && (!isolated || isolated === id);
   const showInterior = mode === 'engineering' || explode > 0.02;
   return (
