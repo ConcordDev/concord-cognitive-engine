@@ -12,10 +12,13 @@ import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PaperVersionHistory } from '@/components/paper/PaperVersionHistory';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { paperItemKeepRecord } from '@/components/lens/recordKeep';
 
 interface Paper {
   id: string; title: string; authors: string[]; year: number | null; venue: string | null;
-  abstract: string; status: string; rating: number | null; tags: string[]; notes: string; collectionIds: string[];
+  abstract: string; doi?: string | null; url?: string | null; status: string; rating: number | null;
+  tags: string[]; notes: string; collectionIds: string[];
 }
 interface CollectionMeta { id: string; name: string; paperCount: number }
 interface Dash { totalPapers: number; toRead: number; reading: number; read: number; collections: number }
@@ -207,8 +210,10 @@ function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection }: {
 }) {
   const [notes, setNotes] = useState(paper.notes);
 
+  const kept = paperItemKeepRecord(paper);
   return (
     <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
+      <KeepRecordActions saveLabel="Save as DTU" key={kept?.body} record={kept} />
       {paper.abstract && <p className="text-[11px] text-zinc-400 mb-1">{paper.abstract}</p>}
       <textarea value={notes} rows={2} placeholder="Your notes…"
         onChange={e => setNotes(e.target.value)}
