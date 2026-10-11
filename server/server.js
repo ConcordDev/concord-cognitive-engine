@@ -16995,6 +16995,32 @@ register("hypothesis", "list", (ctx, input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+// Lifecycle-engine names the REST routes and HypothesisLab call. Ghost
+// Fleet registers the same names later (last-write-wins, note
+// intentional_shadow_ok) once it has imported the module. Until that
+// lands — and if the fleet is disabled — these handlers still call the
+// engine directly instead of leaving the names unregistered. An
+// unregistered name makes runMacro throw "macro not found", which the
+// route error handler turns into HTTP 500.
+async function _hypothesisEngineCall(method, args) {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  const fn = hypo?.[method];
+  if (typeof fn !== "function") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  try {
+    const out = await fn(...args);
+    if (out == null || typeof out !== "object") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+    return out;
+  } catch {
+    return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  }
+}
+register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
+register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
+  input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
+]), { public: false });
+
 // ===== END HYPOTHESIS ENGINE MACROS =====
 
 // ===== METACOGNITION MACROS =====
@@ -20606,8 +20632,8 @@ async function initGhostFleet() {
       return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
     }, { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "list", (_ctx, input = {}) => ghostFleetOk(hypo.listHypotheses(input.status)), { note: "ghost_fleet_shadow_ok" });
-    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary));
-    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description));
+    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary), { note: "intentional_shadow_ok" });
+    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description), { note: "intentional_shadow_ok" });
     register("hypothesis", "update_test", (_ctx, input = {}) => hypo.updateTestResult(input.hypothesisId, input.testId, input.result));
     register("hypothesis", "add_prediction", (_ctx, input = {}) => hypo.addPrediction(input.hypothesisId, input.statement));
     register("hypothesis", "verify_prediction", (_ctx, input = {}) => hypo.verifyPrediction(input.hypothesisId, input.predIndex, input.verified));
@@ -20615,7 +20641,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
-    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics());
+    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
   } catch (err) {
