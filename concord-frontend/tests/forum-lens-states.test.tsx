@@ -79,7 +79,7 @@ describe('forum lens (FmTopicsPanel) — four UX states', () => {
     wireLensRun(() => new Promise(() => {}));
     const { container, queryByText } = render(<FmTopicsPanel onChange={noop} />);
     expect(container.querySelector('.animate-spin')).toBeTruthy();
-    expect(queryByText(/No topics yet/i)).toBeNull();
+    expect(queryByText(/No posts on the board/i)).toBeNull();
     expect(queryByText(/Sidechain compression tips/i)).toBeNull();
   });
 
@@ -95,7 +95,7 @@ describe('forum lens (FmTopicsPanel) — four UX states', () => {
     // The red alert proves it did NOT silently collapse into the empty CTA —
     // the error is what distinguishes an outage from a genuinely-empty forum.
     expect(view!.getByRole('alert')).toBeInTheDocument();
-    expect(view!.queryByText(/No topics yet/i)).toBeNull();
+    expect(view!.queryByText(/No posts on the board/i)).toBeNull();
   });
 
   it('ERROR retry RE-FETCHES (not window.reload) and recovers to POPULATED', async () => {
@@ -136,7 +136,7 @@ describe('forum lens (FmTopicsPanel) — four UX states', () => {
       view = render(<FmTopicsPanel onChange={noop} />);
     });
     await waitFor(() => {
-      expect(view!.getByText(/No topics yet/i)).toBeInTheDocument();
+      expect(view!.getByText(/No posts on the board/i)).toBeInTheDocument();
     });
     expect(view!.queryByText(/Sidechain compression tips/i)).toBeNull();
     expect(view!.queryByRole('alert')).toBeNull();
@@ -152,6 +152,6 @@ describe('forum lens (FmTopicsPanel) — four UX states', () => {
       expect(view!.getByText(/Sidechain compression tips/i)).toBeInTheDocument();
     });
     expect(view!.getByText(/2 replies/i)).toBeInTheDocument();
-    expect(view!.queryByText(/No topics yet/i)).toBeNull();
+    expect(view!.queryByText(/No posts on the board/i)).toBeNull();
   });
 });

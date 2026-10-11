@@ -42,6 +42,7 @@ function registerLensAction(domain, name, fn) {
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+const asMod = (ctx) => ({ ...ctx, actor: { ...ctx.actor, role: "moderator" } });
 
 // Drive a calculator via the persisted-artifact /:id/run path: a single-post
 // artifact (.data has no forum-wide arrays) + the page-derived params (3rd arg).
@@ -276,7 +277,8 @@ describe("forum STATE substrate — round-trips + isolation", () => {
     assert.equal(callMacro("vote", ctxA, { targetType: "topic", targetId: top.id, direction: 1 }).result.score, 1);
     assert.equal(callMacro("vote", ctxA, { targetType: "topic", targetId: top.id, direction: 0 }).result.score, 0);
     // lock the topic → further replies rejected
-    callMacro("topic-lock", ctxA, { id: top.id, locked: true });
+    assert.equal(callMacro("topic-lock", ctxA, { id: top.id, locked: true }).error, "moderator role required");
+    callMacro("topic-lock", asMod(ctxA), { id: top.id, locked: true });
     const blocked = callMacro("post-reply", ctxA, { topicId: top.id, body: "late" });
     assert.equal(blocked.ok, false);
     assert.match(blocked.error, /locked/);
@@ -295,11 +297,12 @@ describe("forum STATE substrate — round-trips + isolation", () => {
     const top = callMacro("topic-create", ctxA, { title: "Reported" }).result.topic;
     const flag = callMacro("flag-create", ctxA, { targetType: "topic", targetId: top.id, reason: "spam" });
     assert.equal(flag.ok, true);
-    const q = callMacro("flag-queue", ctxA, {});
+    assert.equal(callMacro("flag-queue", ctxA, {}).error, "moderator role required");
+    const q = callMacro("flag-queue", asMod(ctxA), {});
     assert.equal(q.result.pendingCount, 1);
     assert.deepEqual(q.result.byReason, { spam: 1 });
-    callMacro("flag-resolve", ctxA, { id: flag.result.flag.id, action: "content_removed" });
-    const q2 = callMacro("flag-queue", ctxA, {});
+    callMacro("flag-resolve", asMod(ctxA), { id: flag.result.flag.id, action: "content_removed" });
+    const q2 = callMacro("flag-queue", asMod(ctxA), {});
     assert.equal(q2.result.pendingCount, 0);
     assert.equal(q2.result.resolvedCount, 1);
   });
@@ -342,7 +345,8 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   it("fail-CLOSED: trending with a corrupt createdAt keeps hotScore FINITE", () => {
     const top = callMacro("topic-create", ctxA, { title: "Corrupt" }).result.topic;
     // corrupt the stored timestamp the way a bad import could
-    globalThis._concordSTATE.forumLens.topics.get("user_a")[0].createdAt = "not-a-date";
+    const shared = globalThis._concordSTATE.forumLens.topics.get("_shared");
+    shared.find((t) => t.id === top.id).createdAt = "not-a-date";
     const r = callMacro("trending", ctxA, {});
     assert.equal(r.ok, true);
     assert.ok(Number.isFinite(r.result.trending[0].hotScore));
@@ -369,9 +373,16 @@ describe("forum STATE substrate — round-trips + isolation", () => {
     assert.equal(d.result.replies, 1);
   });
 
-  it("per-user isolation — user_b never sees user_a's topics", () => {
-    callMacro("topic-create", ctxA, { title: "Private to A" });
-    assert.equal(callMacro("topic-list", ctxA, {}).result.count, 1);
-    assert.equal(callMacro("topic-list", ctxB, {}).result.count, 0);
+  it("user_b reads a topic user_a posted on the shared board", () => {
+    const top = callMacro("topic-create", ctxA, { title: "Open to the board" }).result.topic;
+    assert.equal(top.authorId, "user_a");
+    const listed = callMacro("topic-list", ctxB, {});
+    assert.equal(listed.result.topics.some((t) => t.id === top.id), true);
+    assert.equal(callMacro("topic-get", ctxB, { id: top.id }).result.topic.title, "Open to the board");
+    assert.equal(callMacro("post-reply", ctxB, { topicId: top.id, body: "seen it" }).ok, true);
+    assert.equal(callMacro("vote", ctxB, { targetType: "topic", targetId: top.id, direction: 1 }).result.score, 1);
+    assert.equal(callMacro("vote", ctxB, { targetType: "topic", targetId: top.id, direction: 1 }).result.score, 1);
+    assert.equal(callMacro("topic-delete", ctxB, { id: top.id }).error, "only the author can delete");
+    assert.equal(callMacro("topic-lock", ctxB, { id: top.id }).error, "moderator role required");
   });
 });

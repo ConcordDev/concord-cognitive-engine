@@ -60,8 +60,14 @@ export default function registerForumActions(registerLensAction) {
   });
 
   // ─── Discourse + Reddit 2026 parity — community forum ───────────────
-  // Categories + tags, topics with replies, voting, a moderation flag
-  // queue, a trust-tier reputation system and search.
+  // One shared board. Topics, posts, categories, communities, and the
+  // flag queue live under the "_shared" key. Older per-user buckets are
+  // folded in (authorId kept) and left in place — the fold is idempotent
+  // and does not delete the source arrays. Subscriptions, notifications,
+  // and saves stay per user.
+
+  const FM_SHARED = "_shared";
+  const FM_MOD_ROLES = new Set(["moderator", "admin", "owner", "founder", "sovereign"]);
 
   function getFmState() {
     const STATE = globalThis._concordSTATE;
@@ -74,6 +80,8 @@ export default function registerForumActions(registerLensAction) {
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
+    if (!Array.isArray(s.foldedIds)) s.foldedIds = [];
+    migrateForumShared(s);
     return s;
   }
   function saveFmState() {
@@ -83,33 +91,186 @@ export default function registerForumActions(registerLensAction) {
   }
   const fmId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const fmNow = () => new Date().toISOString();
-  const fmAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fmListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const fmNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const fmClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const fmScore = (voters) => Object.values(voters || {}).reduce((a, v) => a + v, 0);
+  // Signed-in actors only. The "anon" sentinel is the missing-user fallback.
+  const fmUser = (ctx) => {
+    const id = ctx?.actor?.userId || ctx?.userId || "";
+    if (!id || id === "anon") return null;
+    return String(id);
+  };
+  const fmIsMod = (ctx) => {
+    const role = String(ctx?.actor?.role || ctx?.role || "").toLowerCase();
+    if (FM_MOD_ROLES.has(role)) return true;
+    const roles = ctx?.actor?.roles;
+    return Array.isArray(roles) && roles.some((r) => FM_MOD_ROLES.has(String(r).toLowerCase()));
+  };
+  const fmNeedUser = (ctx) => {
+    if (!fmUser(ctx)) return { ok: false, error: "sign in required" };
+    return null;
+  };
+  const fmNeedMod = (ctx) => {
+    const gate = fmNeedUser(ctx);
+    if (gate) return gate;
+    if (!fmIsMod(ctx)) return { ok: false, error: "moderator role required" };
+    return null;
+  };
+  const fmShared = (map) => fmListB(map, FM_SHARED);
+  const fmTags = (item) => (Array.isArray(item?.tags) ? item.tags : []);
+  const fmIsAuthor = (item, ctx) => !!item && item.authorId === fmUser(ctx);
+  const fmAuthorOrMod = (item, ctx) => fmIsMod(ctx) || fmIsAuthor(item, ctx);
+
+  function fmVisibility(params) {
+    return params?.visibility === "private" || params?.private === true ? "private" : "public";
+  }
+  function fmMemberIds(params, authorId) {
+    const extra = Array.isArray(params?.members)
+      ? params.members.map((m) => fmClean(m, 80)).filter((m) => m && m !== "anon")
+      : [];
+    return [...new Set([authorId, ...extra].filter(Boolean))];
+  }
+  function fmCanSeeContainer(item, ctx) {
+    if (!item || item.visibility !== "private") return true;
+    const uid = fmUser(ctx);
+    if (!uid) return false;
+    if (item.authorId === uid) return true;
+    return Array.isArray(item.memberIds) && item.memberIds.includes(uid);
+  }
+  function fmTopicInPrivateContainer(s, topic) {
+    if (!topic) return false;
+    if (topic.categoryId) {
+      const cat = fmShared(s.categories).find((c) => c.id === topic.categoryId);
+      if (cat?.visibility === "private") return true;
+    }
+    if (topic.subforumId) {
+      const sf = fmShared(s.subforums).find((f) => f.id === topic.subforumId);
+      if (sf?.visibility === "private") return true;
+    }
+    return false;
+  }
+  function fmTopicVisible(s, topic, ctx) {
+    if (!topic) return false;
+    if (topic.categoryId) {
+      const cat = fmShared(s.categories).find((c) => c.id === topic.categoryId);
+      if (cat && !fmCanSeeContainer(cat, ctx)) return false;
+    }
+    if (topic.subforumId) {
+      const sf = fmShared(s.subforums).find((f) => f.id === topic.subforumId);
+      if (sf && !fmCanSeeContainer(sf, ctx)) return false;
+    }
+    return true;
+  }
+  function fmVisibleTopics(s, ctx) {
+    return fmShared(s.topics).filter((t) => fmTopicVisible(s, t, ctx));
+  }
+  function fmFindTopic(s, ctx, id) {
+    if (!id) return null;
+    const topic = fmShared(s.topics).find((t) => t.id === id);
+    if (!topic || !fmTopicVisible(s, topic, ctx)) return null;
+    return topic;
+  }
+  function fmFindPost(s, ctx, id) {
+    if (!id) return null;
+    const post = fmShared(s.posts).find((p) => p.id === id);
+    if (!post) return null;
+    const topic = fmShared(s.topics).find((t) => t.id === post.topicId);
+    if (topic && !fmTopicVisible(s, topic, ctx)) return null;
+    return post;
+  }
+  function fmCopyItem(item, authorId, membership) {
+    const copy = { ...item, authorId: item.authorId || authorId };
+    if (item.voters && typeof item.voters === "object" && !Array.isArray(item.voters)) {
+      copy.voters = { ...item.voters };
+    }
+    if (Array.isArray(item.tags)) copy.tags = item.tags.slice();
+    if (Array.isArray(item.images)) copy.images = item.images.slice();
+    if (Array.isArray(item.awards)) copy.awards = item.awards.slice();
+    if (Array.isArray(item.rules)) copy.rules = item.rules.slice();
+    if (Array.isArray(item.moderators)) copy.moderators = item.moderators.slice();
+    if (membership) {
+      copy.visibility = item.visibility === "private" ? "private" : "public";
+      const members = new Set(Array.isArray(item.memberIds) ? item.memberIds.filter(Boolean) : []);
+      if (copy.authorId) members.add(copy.authorId);
+      copy.memberIds = [...members];
+    }
+    return copy;
+  }
+  // Fold per-user buckets into "_shared". Source arrays are not removed.
+  // foldedIds remembers every id already considered so a later delete from
+  // the shared list is not resurrected on the next read, and a second pass
+  // does not duplicate.
+  function migrateForumShared(s) {
+    const folded = new Set(s.foldedIds);
+    const remember = (mark) => {
+      if (folded.has(mark)) return;
+      folded.add(mark);
+      s.foldedIds.push(mark);
+    };
+    const fold = (map, bucket, membership) => {
+      const shared = fmShared(map);
+      const seen = new Set(shared.map((x) => x && x.id).filter(Boolean));
+      for (const [key, arr] of map.entries()) {
+        if (key === FM_SHARED || !Array.isArray(arr)) continue;
+        for (const item of arr) {
+          if (!item || typeof item !== "object" || !item.id) continue;
+          const mark = `${bucket}:${item.id}`;
+          if (seen.has(item.id) || folded.has(mark)) {
+            remember(mark);
+            continue;
+          }
+          shared.push(fmCopyItem(item, key, membership));
+          seen.add(item.id);
+          remember(mark);
+        }
+      }
+    };
+    fold(s.categories, "categories", true);
+    fold(s.topics, "topics", false);
+    fold(s.posts, "posts", false);
+    fold(s.flags, "flags", false);
+    fold(s.subforums, "subforums", true);
+  }
+  function fmNotifySubscribers(s, topic, post) {
+    for (const [uid, subs] of s.subscriptions.entries()) {
+      if (uid === FM_SHARED || !Array.isArray(subs)) continue;
+      if (!subs.some((x) => x.topicId === topic.id)) continue;
+      fmListB(s.notifications, uid).push({
+        id: fmId("ntf"), kind: "reply",
+        topicId: topic.id, topicTitle: topic.title,
+        postId: post.id, message: `New reply in "${topic.title}"`,
+        read: false, createdAt: fmNow(),
+      });
+    }
+  }
 
   // ── Categories ──────────────────────────────────────────────────────
   registerLensAction("forum", "category-create", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const authorId = fmUser(ctx);
     const name = fmClean(params.name, 80);
     if (!name) return { ok: false, error: "category name required" };
     const category = {
       id: fmId("cat"), name,
       description: fmClean(params.description, 400) || null,
       color: fmClean(params.color, 16) || "sky",
+      authorId,
+      visibility: fmVisibility(params),
+      memberIds: fmMemberIds(params, authorId),
       createdAt: fmNow(),
     };
-    fmListB(s.categories, fmAid(ctx)).push(category);
+    fmShared(s.categories).push(category);
     saveFmState();
     return { ok: true, result: { category } };
   });
 
   registerLensAction("forum", "category-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
-    const categories = (s.categories.get(userId) || []).map((c) => ({
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const topics = fmVisibleTopics(s, ctx);
+    const categories = fmShared(s.categories).filter((c) => fmCanSeeContainer(c, ctx)).map((c) => ({
       ...c,
       topicCount: topics.filter((t) => t.categoryId === c.id).length,
     }));
@@ -118,13 +279,14 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "category-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const arr = s.categories.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const arr = fmShared(s.categories);
     const i = arr.findIndex((c) => c.id === params.id);
-    if (i < 0) return { ok: false, error: "category not found" };
+    if (i < 0 || !fmCanSeeContainer(arr[i], ctx)) return { ok: false, error: "category not found" };
+    if (!fmAuthorOrMod(arr[i], ctx)) return { ok: false, error: "only the author can delete" };
     arr.splice(i, 1);
     // orphan topics keep existing but lose the category link
-    for (const t of s.topics.get(userId) || []) {
+    for (const t of fmShared(s.topics)) {
       if (t.categoryId === params.id) t.categoryId = null;
     }
     saveFmState();
@@ -135,16 +297,24 @@ export default function registerForumActions(registerLensAction) {
   registerLensAction("forum", "topic-create", (ctx, _a, params = {}) => {
   try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const authorId = fmUser(ctx);
     const title = fmClean(params.title, 200);
     if (!title) return { ok: false, error: "topic title required" };
     let categoryId = params.categoryId ? String(params.categoryId) : null;
-    if (categoryId && !(s.categories.get(userId) || []).some((c) => c.id === categoryId)) categoryId = null;
+    if (categoryId) {
+      const cat = fmShared(s.categories).find((c) => c.id === categoryId);
+      if (!cat || !fmCanSeeContainer(cat, ctx)) categoryId = null;
+    }
+    let subforumId = params.subforumId ? String(params.subforumId) : null;
+    if (subforumId) {
+      const sf = fmShared(s.subforums).find((f) => f.id === subforumId);
+      if (!sf || !fmCanSeeContainer(sf, ctx)) subforumId = null;
+    }
     const images = Array.isArray(params.images)
       ? params.images.map((u) => fmClean(u, 2000)).filter(Boolean).slice(0, 8) : [];
     const topic = {
-      id: fmId("top"), categoryId,
-      subforumId: params.subforumId ? String(params.subforumId) : null,
+      id: fmId("top"), categoryId, subforumId,
       title,
       body: fmClean(params.body, 8000) || "",
       format: params.format === "markdown" ? "markdown" : "plain",
@@ -152,11 +322,12 @@ export default function registerForumActions(registerLensAction) {
       tags: Array.isArray(params.tags)
         ? [...new Set(params.tags.map((t) => fmClean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 8) : [],
       author: fmClean(params.author, 60) || "Me",
+      authorId,
       pinned: false, locked: false,
       voters: {}, score: 0, awards: [],
       createdAt: fmNow(), updatedAt: fmNow(),
     };
-    fmListB(s.topics, userId).push(topic);
+    fmShared(s.topics).push(topic);
     saveFmState();
     return { ok: true, result: { topic } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -164,15 +335,15 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "topic-list", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const posts = s.posts.get(userId) || [];
-    let topics = (s.topics.get(userId) || []).map((t) => ({
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const posts = fmShared(s.posts);
+    let topics = fmVisibleTopics(s, ctx).map((t) => ({
       ...t,
       replyCount: posts.filter((p) => p.topicId === t.id).length,
     }));
     if (params.categoryId) topics = topics.filter((t) => t.categoryId === String(params.categoryId));
     if (params.subforumId) topics = topics.filter((t) => t.subforumId === String(params.subforumId));
-    if (params.tag) topics = topics.filter((t) => t.tags.includes(String(params.tag).toLowerCase()));
+    if (params.tag) topics = topics.filter((t) => fmTags(t).includes(String(params.tag).toLowerCase()));
     const sort = ["latest", "top", "new"].includes(String(params.sort)) ? String(params.sort) : "latest";
     topics.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -186,10 +357,11 @@ export default function registerForumActions(registerLensAction) {
   registerLensAction("forum", "topic-get", (ctx, _a, params = {}) => {
   try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topic = (s.topics.get(userId) || []).find((t) => t.id === params.id);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topic = fmFindTopic(s, ctx, params.id);
     if (!topic) return { ok: false, error: "topic not found" };
-    const posts = (s.posts.get(userId) || [])
+    const posts = fmShared(s.posts)
       .filter((p) => p.topicId === topic.id)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // Build a nested comment tree from parentId links.
@@ -215,19 +387,25 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "topic-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const arr = s.topics.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const arr = fmShared(s.topics);
     const i = arr.findIndex((t) => t.id === params.id);
-    if (i < 0) return { ok: false, error: "topic not found" };
+    if (i < 0 || !fmTopicVisible(s, arr[i], ctx)) return { ok: false, error: "topic not found" };
+    if (!fmIsAuthor(arr[i], ctx)) return { ok: false, error: "only the author can delete" };
+    const id = arr[i].id;
     arr.splice(i, 1);
-    s.posts.set(userId, (s.posts.get(userId) || []).filter((p) => p.topicId !== params.id));
+    const posts = fmShared(s.posts);
+    for (let p = posts.length - 1; p >= 0; p--) {
+      if (posts[p].topicId === id) posts.splice(p, 1);
+    }
     saveFmState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("forum", "topic-pin", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const topic = (s.topics.get(fmAid(ctx)) || []).find((t) => t.id === params.id);
+    const gate = fmNeedMod(ctx); if (gate) return gate;
+    const topic = fmFindTopic(s, ctx, params.id);
     if (!topic) return { ok: false, error: "topic not found" };
     topic.pinned = params.pinned !== false;
     saveFmState();
@@ -236,7 +414,8 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "topic-lock", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const topic = (s.topics.get(fmAid(ctx)) || []).find((t) => t.id === params.id);
+    const gate = fmNeedMod(ctx); if (gate) return gate;
+    const topic = fmFindTopic(s, ctx, params.id);
     if (!topic) return { ok: false, error: "topic not found" };
     topic.locked = params.locked !== false;
     saveFmState();
@@ -247,14 +426,15 @@ export default function registerForumActions(registerLensAction) {
   registerLensAction("forum", "post-reply", (ctx, _a, params = {}) => {
   try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topic = (s.topics.get(userId) || []).find((t) => t.id === params.topicId);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const authorId = fmUser(ctx);
+    const topic = fmFindTopic(s, ctx, params.topicId);
     if (!topic) return { ok: false, error: "topic not found" };
     if (topic.locked) return { ok: false, error: "topic is locked" };
     const body = fmClean(params.body, 8000);
     if (!body) return { ok: false, error: "reply body required" };
     let parentId = params.parentId ? String(params.parentId) : null;
-    const existing = s.posts.get(userId) || [];
+    const existing = fmShared(s.posts);
     if (parentId) {
       const parent = existing.find((p) => p.id === parentId);
       if (!parent || parent.topicId !== topic.id) parentId = null;
@@ -266,23 +446,13 @@ export default function registerForumActions(registerLensAction) {
       format: params.format === "markdown" ? "markdown" : "plain",
       images,
       author: fmClean(params.author, 60) || "Me",
+      authorId,
       voters: {}, score: 0, awards: [],
       createdAt: fmNow(),
     };
-    fmListB(s.posts, userId).push(post);
+    existing.push(post);
     topic.updatedAt = fmNow();
-    // notify thread subscribers (other than the replier)
-    for (const sub of s.subscriptions.get(userId) || []) {
-      if (sub.topicId === topic.id) {
-        fmListB(s.notifications, userId).push({
-          id: fmId("ntf"), kind: "reply",
-          topicId: topic.id, topicTitle: topic.title,
-          postId: post.id, message: `New reply in "${topic.title}"`,
-          read: false, createdAt: fmNow(),
-        });
-        break;
-      }
-    }
+    fmNotifySubscribers(s, topic, post);
     saveFmState();
     return { ok: true, result: { post } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -290,24 +460,30 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "post-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.posts.get(fmAid(ctx)) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const arr = fmShared(s.posts);
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "post not found" };
+    const topic = fmShared(s.topics).find((t) => t.id === arr[i].topicId);
+    if (topic && !fmTopicVisible(s, topic, ctx)) return { ok: false, error: "post not found" };
+    if (!fmIsAuthor(arr[i], ctx)) return { ok: false, error: "only the author can delete" };
     arr.splice(i, 1);
     saveFmState();
     return { ok: true, result: { deleted: params.id } };
   });
 
-  // ── Voting ──────────────────────────────────────────────────────────
+  // ── Voting — one ballot per user, stored on the shared item ────────
   registerLensAction("forum", "vote", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const targetType = params.targetType === "post" ? "post" : "topic";
-    const bucket = targetType === "post" ? s.posts.get(userId) : s.topics.get(userId);
-    const item = (bucket || []).find((x) => x.id === params.targetId);
+    const item = targetType === "post"
+      ? fmFindPost(s, ctx, params.targetId)
+      : fmFindTopic(s, ctx, params.targetId);
     if (!item) return { ok: false, error: `${targetType} not found` };
     const dir = Math.sign(fmNum(params.direction));
-    if (!item.voters) item.voters = {};
+    if (!item.voters || typeof item.voters !== "object" || Array.isArray(item.voters)) item.voters = {};
     if (dir === 0) delete item.voters[userId];
     else item.voters[userId] = dir;
     item.score = fmScore(item.voters);
@@ -318,9 +494,10 @@ export default function registerForumActions(registerLensAction) {
   // ── Tags ────────────────────────────────────────────────────────────
   registerLensAction("forum", "tag-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
     const counts = {};
-    for (const t of s.topics.get(fmAid(ctx)) || []) {
-      for (const tag of t.tags) counts[tag] = (counts[tag] || 0) + 1;
+    for (const t of fmVisibleTopics(s, ctx)) {
+      for (const tag of fmTags(t)) counts[tag] = (counts[tag] || 0) + 1;
     }
     const tags = Object.entries(counts)
       .map(([tag, count]) => ({ tag, count }))
@@ -331,6 +508,7 @@ export default function registerForumActions(registerLensAction) {
   // ── Moderation ──────────────────────────────────────────────────────
   registerLensAction("forum", "flag-create", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
     const targetType = params.targetType === "post" ? "post" : "topic";
     const flag = {
       id: fmId("flg"), targetType,
@@ -339,17 +517,19 @@ export default function registerForumActions(registerLensAction) {
         ? String(params.reason) : "other",
       note: fmClean(params.note, 300) || null,
       status: "pending", action: null,
+      authorId: fmUser(ctx),
       createdAt: fmNow(),
     };
     if (!flag.targetId) return { ok: false, error: "targetId required" };
-    fmListB(s.flags, fmAid(ctx)).push(flag);
+    fmShared(s.flags).push(flag);
     saveFmState();
     return { ok: true, result: { flag } };
   });
 
   registerLensAction("forum", "flag-queue", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const all = s.flags.get(fmAid(ctx)) || [];
+    const gate = fmNeedMod(ctx); if (gate) return gate;
+    const all = fmShared(s.flags);
     const pending = all.filter((f) => f.status === "pending").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const byReason = {};
     for (const f of pending) byReason[f.reason] = (byReason[f.reason] || 0) + 1;
@@ -361,7 +541,8 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "flag-resolve", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const flag = (s.flags.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
+    const gate = fmNeedMod(ctx); if (gate) return gate;
+    const flag = fmShared(s.flags).find((f) => f.id === params.id);
     if (!flag) return { ok: false, error: "flag not found" };
     flag.status = "resolved";
     flag.action = ["dismissed", "content_removed", "warned"].includes(String(params.action))
@@ -370,12 +551,13 @@ export default function registerForumActions(registerLensAction) {
     return { ok: true, result: { id: flag.id, status: flag.status, action: flag.action } };
   });
 
-  // ── Reputation / trust tier ─────────────────────────────────────────
+  // ── Reputation / trust tier — the caller's own contributions ────────
   registerLensAction("forum", "user-reputation", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
-    const posts = s.posts.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topics = fmShared(s.topics).filter((t) => t.authorId === userId);
+    const posts = fmShared(s.posts).filter((p) => p.authorId === userId);
     const contributions = topics.length + posts.length;
     const karma = topics.reduce((a, t) => a + (t.score || 0), 0)
       + posts.reduce((a, p) => a + (p.score || 0), 0);
@@ -393,15 +575,16 @@ export default function registerForumActions(registerLensAction) {
   // ── Search ──────────────────────────────────────────────────────────
   registerLensAction("forum", "forum-search", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
     const q = fmClean(params.query, 120).toLowerCase();
     if (!q) return { ok: false, error: "search query required" };
-    const userId = fmAid(ctx);
-    const topics = (s.topics.get(userId) || []).filter(
+    const visible = fmVisibleTopics(s, ctx);
+    const visibleIds = new Set(visible.map((t) => t.id));
+    const topics = visible.filter(
       (t) => t.title.toLowerCase().includes(q) || t.body.toLowerCase().includes(q)
-        || t.tags.some((tag) => tag.includes(q)));
+        || fmTags(t).some((tag) => tag.includes(q)));
     const topicIds = new Set(topics.map((t) => t.id));
-    const posts = (s.posts.get(userId) || []).filter((p) => p.body.toLowerCase().includes(q));
-    // surface topics that have a matching reply too
+    const posts = fmShared(s.posts).filter((p) => visibleIds.has(p.topicId) && p.body.toLowerCase().includes(q));
     for (const p of posts) topicIds.add(p.topicId);
     return {
       ok: true,
@@ -417,18 +600,20 @@ export default function registerForumActions(registerLensAction) {
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("forum", "forum-dashboard", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topics = fmVisibleTopics(s, ctx);
+    const visibleIds = new Set(topics.map((t) => t.id));
     const week = new Date(Date.now() - 7 * 86400000).toISOString();
     return {
       ok: true,
       result: {
-        categories: (s.categories.get(userId) || []).length,
+        categories: fmShared(s.categories).filter((c) => fmCanSeeContainer(c, ctx)).length,
         topics: topics.length,
-        replies: (s.posts.get(userId) || []).length,
+        replies: fmShared(s.posts).filter((p) => visibleIds.has(p.topicId)).length,
         topicsThisWeek: topics.filter((t) => t.createdAt >= week).length,
-        pendingFlags: (s.flags.get(userId) || []).filter((f) => f.status === "pending").length,
-        subforums: (s.subforums.get(userId) || []).length,
+        pendingFlags: fmIsMod(ctx) ? fmShared(s.flags).filter((f) => f.status === "pending").length : 0,
+        subforums: fmShared(s.subforums).filter((f) => fmCanSeeContainer(f, ctx)).length,
         subscriptions: (s.subscriptions.get(userId) || []).length,
         unreadNotifications: (s.notifications.get(userId) || []).filter((n) => !n.read).length,
         savedPosts: (s.saves.get(userId) || []).length,
@@ -440,12 +625,13 @@ export default function registerForumActions(registerLensAction) {
   // Per-community rules + mod teams (item: User-created communities).
   registerLensAction("forum", "subforum-create", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const authorId = fmUser(ctx);
     const name = fmClean(params.name, 60);
     if (!name) return { ok: false, error: "subforum name required" };
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)
       || `sf-${Date.now().toString(36)}`;
-    const existing = s.subforums.get(userId) || [];
+    const existing = fmShared(s.subforums);
     if (existing.some((f) => f.slug === slug)) return { ok: false, error: "subforum already exists" };
     const subforum = {
       id: fmId("sf"), slug, name,
@@ -454,29 +640,34 @@ export default function registerForumActions(registerLensAction) {
       rules: Array.isArray(params.rules)
         ? params.rules.map((r) => fmClean(r, 200)).filter(Boolean).slice(0, 12) : [],
       moderators: [fmClean(params.author, 60) || "Me"],
+      authorId,
+      visibility: fmVisibility(params),
+      memberIds: fmMemberIds(params, authorId),
       createdAt: fmNow(),
     };
-    fmListB(s.subforums, userId).push(subforum);
+    existing.push(subforum);
     saveFmState();
     return { ok: true, result: { subforum } };
   });
 
   registerLensAction("forum", "subforum-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
-    const subforums = (s.subforums.get(userId) || []).map((f) => ({
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const topics = fmVisibleTopics(s, ctx);
+    const subforums = fmShared(s.subforums).filter((f) => fmCanSeeContainer(f, ctx)).map((f) => ({
       ...f,
       topicCount: topics.filter((t) => t.subforumId === f.id).length,
-      memberCount: 1 + (f.moderators ? f.moderators.length - 1 : 0),
+      memberCount: Array.isArray(f.memberIds) ? f.memberIds.length : (1 + (f.moderators ? Math.max(0, f.moderators.length - 1) : 0)),
     }));
     return { ok: true, result: { subforums, count: subforums.length } };
   });
 
   registerLensAction("forum", "subforum-update-rules", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const sf = (s.subforums.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
-    if (!sf) return { ok: false, error: "subforum not found" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const sf = fmShared(s.subforums).find((f) => f.id === params.id);
+    if (!sf || !fmCanSeeContainer(sf, ctx)) return { ok: false, error: "subforum not found" };
+    if (!fmAuthorOrMod(sf, ctx)) return { ok: false, error: "only the author can edit" };
     if (Array.isArray(params.rules)) {
       sf.rules = params.rules.map((r) => fmClean(r, 200)).filter(Boolean).slice(0, 12);
     }
@@ -487,8 +678,10 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "subforum-add-mod", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const sf = (s.subforums.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
-    if (!sf) return { ok: false, error: "subforum not found" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const sf = fmShared(s.subforums).find((f) => f.id === params.id);
+    if (!sf || !fmCanSeeContainer(sf, ctx)) return { ok: false, error: "subforum not found" };
+    if (!fmAuthorOrMod(sf, ctx)) return { ok: false, error: "only the author can edit" };
     const mod = fmClean(params.moderator, 60);
     if (!mod) return { ok: false, error: "moderator name required" };
     if (!Array.isArray(sf.moderators)) sf.moderators = [];
@@ -499,23 +692,25 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "subforum-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const arr = s.subforums.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const arr = fmShared(s.subforums);
     const i = arr.findIndex((f) => f.id === params.id);
-    if (i < 0) return { ok: false, error: "subforum not found" };
+    if (i < 0 || !fmCanSeeContainer(arr[i], ctx)) return { ok: false, error: "subforum not found" };
+    if (!fmAuthorOrMod(arr[i], ctx)) return { ok: false, error: "only the author can delete" };
     arr.splice(i, 1);
-    for (const t of s.topics.get(userId) || []) {
+    for (const t of fmShared(s.topics)) {
       if (t.subforumId === params.id) t.subforumId = null;
     }
     saveFmState();
     return { ok: true, result: { deleted: params.id } };
   });
 
-  // ── Thread subscriptions + notifications ────────────────────────────
+  // ── Thread subscriptions + notifications (per reader) ───────────────
   registerLensAction("forum", "thread-subscribe", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topic = (s.topics.get(userId) || []).find((t) => t.id === params.topicId);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topic = fmFindTopic(s, ctx, params.topicId);
     if (!topic) return { ok: false, error: "topic not found" };
     const subs = fmListB(s.subscriptions, userId);
     const idx = subs.findIndex((x) => x.topicId === topic.id);
@@ -528,8 +723,9 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "subscription-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topics = fmVisibleTopics(s, ctx);
     const subs = (s.subscriptions.get(userId) || [])
       .map((x) => {
         const t = topics.find((tp) => tp.id === x.topicId);
@@ -541,7 +737,8 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "notification-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const all = (s.notifications.get(userId) || [])
       .slice()
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -557,7 +754,8 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "notification-read", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const all = s.notifications.get(userId) || [];
     if (params.id) {
       const n = all.find((x) => x.id === params.id);
@@ -587,12 +785,13 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "award-give", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
     const kind = String(params.kind || "");
     if (!FM_AWARDS[kind]) return { ok: false, error: "unknown award kind" };
     const targetType = params.targetType === "post" ? "post" : "topic";
-    const bucket = targetType === "post" ? s.posts.get(userId) : s.topics.get(userId);
-    const item = (bucket || []).find((x) => x.id === params.targetId);
+    const item = targetType === "post"
+      ? fmFindPost(s, ctx, params.targetId)
+      : fmFindTopic(s, ctx, params.targetId);
     if (!item) return { ok: false, error: `${targetType} not found` };
     if (!Array.isArray(item.awards)) item.awards = [];
     const def = FM_AWARDS[kind];
@@ -607,10 +806,12 @@ export default function registerForumActions(registerLensAction) {
   // ── Saved posts + post history + profile pages ──────────────────────
   registerLensAction("forum", "save-toggle", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const targetType = params.targetType === "post" ? "post" : "topic";
-    const bucket = targetType === "post" ? s.posts.get(userId) : s.topics.get(userId);
-    const item = (bucket || []).find((x) => x.id === params.targetId);
+    const item = targetType === "post"
+      ? fmFindPost(s, ctx, params.targetId)
+      : fmFindTopic(s, ctx, params.targetId);
     if (!item) return { ok: false, error: `${targetType} not found` };
     const saves = fmListB(s.saves, userId);
     const idx = saves.findIndex((x) => x.targetId === item.id && x.targetType === targetType);
@@ -623,9 +824,10 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "saved-list", (ctx, _a, _params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
-    const posts = s.posts.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topics = fmVisibleTopics(s, ctx);
+    const posts = fmShared(s.posts).filter((p) => topics.some((t) => t.id === p.topicId));
     const items = (s.saves.get(userId) || []).map((sv) => {
       if (sv.targetType === "topic") {
         const t = topics.find((x) => x.id === sv.targetId);
@@ -641,15 +843,24 @@ export default function registerForumActions(registerLensAction) {
 
   registerLensAction("forum", "post-history", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const author = params.author ? fmClean(params.author, 60) : null;
-    const topics = (s.topics.get(userId) || [])
-      .filter((t) => !author || t.author === author)
+    const mine = (item) => author
+      ? (item.author === author || item.authorId === author)
+      : item.authorId === userId;
+    const topics = fmVisibleTopics(s, ctx)
+      .filter(mine)
       .map((t) => ({ type: "topic", id: t.id, title: t.title, score: t.score, at: t.createdAt }));
-    const posts = (s.posts.get(userId) || [])
-      .filter((p) => !author || p.author === author)
+    const allTopics = fmShared(s.topics);
+    const posts = fmShared(s.posts)
+      .filter((p) => {
+        if (!mine(p)) return false;
+        const topic = allTopics.find((x) => x.id === p.topicId);
+        return !!topic && fmTopicVisible(s, topic, ctx);
+      })
       .map((p) => {
-        const t = (s.topics.get(userId) || []).find((x) => x.id === p.topicId);
+        const t = allTopics.find((x) => x.id === p.topicId);
         return {
           type: "reply", id: p.id, topicId: p.topicId,
           title: t ? t.title : "reply", snippet: p.body.slice(0, 120),
@@ -663,12 +874,16 @@ export default function registerForumActions(registerLensAction) {
   registerLensAction("forum", "user-profile", (ctx, _a, params = {}) => {
   try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
     const author = params.author ? fmClean(params.author, 60) : null;
-    const allTopics = s.topics.get(userId) || [];
-    const allPosts = s.posts.get(userId) || [];
-    const topics = allTopics.filter((t) => !author || t.author === author);
-    const posts = allPosts.filter((p) => !author || p.author === author);
+    const mine = (item) => author
+      ? (item.author === author || item.authorId === author)
+      : item.authorId === userId;
+    const allTopics = fmVisibleTopics(s, ctx);
+    const allPosts = fmShared(s.posts).filter((p) => allTopics.some((t) => t.id === p.topicId));
+    const topics = allTopics.filter(mine);
+    const posts = allPosts.filter(mine);
     const karma = topics.reduce((a, t) => a + (t.score || 0), 0)
       + posts.reduce((a, p) => a + (p.score || 0), 0);
     const awardsEarned = [
@@ -700,18 +915,20 @@ export default function registerForumActions(registerLensAction) {
   registerLensAction("forum", "trending", (ctx, _a, params = {}) => {
   try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = fmAid(ctx);
-    const topics = s.topics.get(userId) || [];
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const userId = fmUser(ctx);
+    const topics = fmVisibleTopics(s, ctx);
     if (topics.length === 0) {
       return { ok: true, result: { trending: [], count: 0, affinityTags: [] } };
     }
-    const posts = s.posts.get(userId) || [];
+    const topicIds = new Set(topics.map((t) => t.id));
+    const posts = fmShared(s.posts).filter((p) => topicIds.has(p.topicId));
     const now = Date.now();
     // Tag affinity: tags on topics the viewer authored or replied in.
-    const myTopicIds = new Set(posts.map((p) => p.topicId));
+    const myTopicIds = new Set(posts.filter((p) => p.authorId === userId).map((p) => p.topicId));
     const affinity = {};
     for (const t of topics) {
-      const mine = t.author === "Me" || myTopicIds.has(t.id);
+      const mine = t.authorId === userId || myTopicIds.has(t.id);
       if (!mine) continue;
       for (const tag of t.tags || []) affinity[tag] = (affinity[tag] || 0) + 1;
     }
@@ -743,10 +960,20 @@ export default function registerForumActions(registerLensAction) {
       };
     }).sort((a, b) => b.hotScore - a.hotScore);
     const limit = Math.min(50, Math.max(1, fmNum(params.limit, 20)));
+    const hotWindow = ranked.slice(0, limit);
+    const shown = new Set(hotWindow.map((row) => row.id));
+    // Private topics the viewer can already see (author or memberIds) stay
+    // on their board when hotter public threads fill the hot window.
+    // Non-members never reach this list: fmVisibleTopics dropped them.
+    const membership = ranked.filter((row) => {
+      if (shown.has(row.id)) return false;
+      const topic = topics.find((t) => t.id === row.id);
+      return fmTopicInPrivateContainer(s, topic);
+    });
     return {
       ok: true,
       result: {
-        trending: ranked.slice(0, limit),
+        trending: hotWindow.concat(membership),
         count: ranked.length,
         affinityTags,
         personalized: personalize,

@@ -22,6 +22,7 @@ beforeEach(() => {
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+const asMod = (ctx) => ({ ...ctx, actor: { ...ctx.actor, role: "moderator" } });
 
 describe("forum.category-*", () => {
   it("creates, lists with topic counts and deletes", () => {
@@ -33,9 +34,17 @@ describe("forum.category-*", () => {
     assert.equal(call("category-list", ctxA, {}).result.count, 0);
   });
 
-  it("isolates categories per user", () => {
-    call("category-create", ctxA, { name: "X" });
-    assert.equal(call("category-list", ctxB, {}).result.count, 0);
+  it("shares public categories and hides private ones from non-members", () => {
+    call("category-create", ctxA, { name: "Open" });
+    const secret = call("category-create", ctxA, { name: "Secret", visibility: "private" }).result.category;
+    const club = call("category-create", ctxA, { name: "Club", private: true, members: ["user_b"] }).result.category;
+    const names = call("category-list", ctxB, {}).result.categories.map((c) => c.name);
+    assert.deepEqual(names.sort(), ["Club", "Open"]);
+    assert.equal(names.includes("Secret"), false);
+    assert.equal(call("category-delete", ctxB, { id: secret.id }).error, "category not found");
+    // A platform moderator who is not a member still cannot read the room.
+    assert.equal(call("category-list", asMod(ctxB), {}).result.categories.some((c) => c.id === secret.id), false);
+    assert.ok(club.id);
   });
 });
 
@@ -51,14 +60,15 @@ describe("forum topics & replies", () => {
 
   it("locks a topic and blocks replies", () => {
     const t = call("topic-create", ctxA, { title: "Closed" }).result.topic;
-    call("topic-lock", ctxA, { id: t.id, locked: true });
+    assert.equal(call("topic-lock", ctxA, { id: t.id, locked: true }).error, "moderator role required");
+    call("topic-lock", asMod(ctxA), { id: t.id, locked: true });
     assert.equal(call("post-reply", ctxA, { topicId: t.id, body: "late" }).ok, false);
   });
 
   it("pins topics to the top of the list", () => {
     const t1 = call("topic-create", ctxA, { title: "Normal" }).result.topic;
     const t2 = call("topic-create", ctxA, { title: "Important" }).result.topic;
-    call("topic-pin", ctxA, { id: t2.id, pinned: true });
+    call("topic-pin", asMod(ctxA), { id: t2.id, pinned: true });
     const list = call("topic-list", ctxA, {});
     assert.equal(list.result.topics[0].id, t2.id);
     assert.ok(t1);
@@ -95,9 +105,11 @@ describe("forum moderation", () => {
   it("creates flags, queues them and resolves", () => {
     const t = call("topic-create", ctxA, { title: "Reported" }).result.topic;
     const flag = call("flag-create", ctxA, { targetType: "topic", targetId: t.id, reason: "spam" }).result.flag;
-    assert.equal(call("flag-queue", ctxA, {}).result.pendingCount, 1);
-    call("flag-resolve", ctxA, { id: flag.id, action: "content_removed" });
-    const q = call("flag-queue", ctxA, {});
+    assert.equal(call("flag-queue", ctxA, {}).error, "moderator role required");
+    assert.equal(call("forum-dashboard", ctxA, {}).result.pendingFlags, 0);
+    assert.equal(call("flag-queue", asMod(ctxA), {}).result.pendingCount, 1);
+    call("flag-resolve", asMod(ctxA), { id: flag.id, action: "content_removed" });
+    const q = call("flag-queue", asMod(ctxA), {});
     assert.equal(q.result.pendingCount, 0);
     assert.equal(q.result.resolvedCount, 1);
   });
@@ -204,9 +216,11 @@ describe("forum subforums", () => {
     assert.equal(filtered.result.count, 1);
   });
 
-  it("isolates subforums per user", () => {
-    call("subforum-create", ctxA, { name: "Private" });
-    assert.equal(call("subforum-list", ctxB, {}).result.count, 0);
+  it("shares public communities and hides private ones from non-members", () => {
+    call("subforum-create", ctxA, { name: "Public Room" });
+    call("subforum-create", ctxA, { name: "Private Room", visibility: "private" });
+    const names = call("subforum-list", ctxB, {}).result.subforums.map((f) => f.name);
+    assert.deepEqual(names, ["Public Room"]);
   });
 });
 
@@ -322,6 +336,38 @@ describe("forum trending", () => {
     assert.equal(r.result.count, 0);
     assert.deepEqual(r.result.trending, []);
   });
+
+  it("keeps a member's private topic on a crowded board and off a non-member's", () => {
+    for (let i = 0; i < 25; i++) {
+      const pub = call("topic-create", ctxA, { title: `Public ${i}` }).result.topic;
+      call("vote", ctxA, { targetType: "topic", targetId: pub.id, direction: 1 });
+    }
+    const sealed = call("category-create", ctxA, { name: "Sealed", visibility: "private" }).result.category;
+    const hidden = call("topic-create", ctxA, { title: "Members only", categoryId: sealed.id }).result.topic;
+    const own = call("trending", ctxA, {});
+    assert.equal(own.result.count, 26);
+    assert.ok(own.result.trending.length > 20);
+    assert.equal(own.result.trending.some((x) => x.id === hidden.id), true);
+    const outsider = call("trending", ctxB, {});
+    assert.equal(outsider.result.trending.some((x) => x.id === hidden.id), false);
+    assert.equal(outsider.result.count, 25);
+    // depthCtx stamps role "owner"; that is a moderation role, not membership.
+    const platformOwner = {
+      actor: { userId: "user_b", role: "owner" },
+      userId: "user_b",
+      role: "owner",
+    };
+    const asOwner = call("trending", platformOwner, {});
+    assert.equal(asOwner.result.trending.some((x) => x.id === hidden.id), false);
+    const club = call("category-create", ctxA, {
+      name: "Club", visibility: "private", members: ["user_b"],
+    }).result.category;
+    const shared = call("topic-create", ctxA, { title: "For members", categoryId: club.id }).result.topic;
+    assert.equal(call("trending", ctxB, {}).result.trending.some((x) => x.id === shared.id), true);
+    assert.equal(call("trending", ctxA, {}).result.trending.some((x) => x.id === hidden.id), true);
+    assert.equal(call("trending", platformOwner, {}).result.trending.some((x) => x.id === shared.id), true);
+    assert.ok(club.id);
+  });
 });
 
 // Additional coverage for the macro paths the rebuilt forum UI relies on
@@ -376,5 +422,97 @@ describe("forum UI macro coverage", () => {
     call("subforum-update-rules", ctxA, { id: sf.id, rules: ["A", "C"] });
     const list = call("subforum-list", ctxA, {});
     assert.deepEqual(list.result.subforums[0].rules, ["A", "C"]);
+  });
+});
+
+describe("forum shared board", () => {
+  it("lets B read, reply, and upvote a topic A posted, and only A can delete it", () => {
+    const t = call("topic-create", ctxA, { title: "From A", body: "hello board" }).result.topic;
+    assert.equal(t.authorId, "user_a");
+    const listed = call("topic-list", ctxB, {});
+    assert.equal(listed.result.topics.some((x) => x.id === t.id), true);
+    const got = call("topic-get", ctxB, { id: t.id });
+    assert.equal(got.ok, true);
+    assert.equal(got.result.topic.title, "From A");
+
+    const reply = call("post-reply", ctxB, { topicId: t.id, body: "from B" });
+    assert.equal(reply.ok, true);
+    assert.equal(reply.result.post.authorId, "user_b");
+
+    assert.equal(call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 1);
+    assert.equal(call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 1);
+    assert.equal(call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 2);
+
+    const locked = call("topic-lock", ctxB, { id: t.id });
+    assert.equal(locked.ok, false);
+    assert.equal(locked.error, "moderator role required");
+    const removed = call("topic-delete", ctxB, { id: t.id });
+    assert.equal(removed.ok, false);
+    assert.equal(removed.error, "only the author can delete");
+    assert.equal(call("topic-delete", asMod(ctxB), { id: t.id }).error, "only the author can delete");
+
+    assert.equal(call("topic-delete", ctxA, { id: t.id }).ok, true);
+    assert.equal(call("topic-get", ctxB, { id: t.id }).error, "topic not found");
+    assert.equal(call("topic-list", ctxA, {}).result.count, 0);
+  });
+
+  it("hides a topic filed in a private category from non-members", () => {
+    const cat = call("category-create", ctxA, { name: "Inner", visibility: "private" }).result.category;
+    const hidden = call("topic-create", ctxA, { title: "Quiet", categoryId: cat.id }).result.topic;
+    assert.equal(call("topic-list", ctxB, {}).result.count, 0);
+    assert.equal(call("topic-get", ctxB, { id: hidden.id }).error, "topic not found");
+    const invited = call("category-create", ctxA, {
+      name: "Invited", visibility: "private", members: ["user_b"],
+    }).result.category;
+    const visible = call("topic-create", ctxA, { title: "Welcome in", categoryId: invited.id }).result.topic;
+    const titles = call("topic-list", ctxB, {}).result.topics.map((x) => x.id);
+    assert.deepEqual(titles, [visible.id]);
+  });
+
+  it("folds legacy per-user maps into the shared store without deleting them", () => {
+    const createdAt = "2026-01-01T00:00:00.000Z";
+    globalThis._concordSTATE.forumLens = {
+      categories: new Map([["user_a", [{ id: "cat_old", name: "Legacy" }]]]),
+      topics: new Map([["user_a", [{
+        id: "top_old", title: "Legacy topic", body: "kept", tags: ["old"],
+        voters: { user_a: 1 }, score: 1, createdAt, updatedAt: createdAt,
+      }]]]),
+      posts: new Map([["user_a", [{
+        id: "pst_old", topicId: "top_old", body: "legacy reply", author: "Ada",
+        voters: {}, score: 0, createdAt,
+      }]]]),
+      subforums: new Map(),
+      flags: new Map(),
+    };
+    const list = call("topic-list", ctxB, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.topics[0].id, "top_old");
+    assert.equal(list.result.topics[0].authorId, "user_a");
+    assert.equal(list.result.topics[0].replyCount, 1);
+    const again = call("topic-list", ctxB, {});
+    assert.equal(again.result.count, 1);
+    const source = globalThis._concordSTATE.forumLens.topics.get("user_a");
+    assert.equal(source.length, 1);
+    assert.equal(source[0].title, "Legacy topic");
+    assert.equal(call("category-list", ctxB, {}).result.categories[0].authorId, "user_a");
+
+    assert.equal(call("topic-delete", ctxA, { id: "top_old" }).ok, true);
+    assert.equal(call("topic-list", ctxB, {}).result.count, 0);
+    assert.equal(globalThis._concordSTATE.forumLens.topics.get("user_a").length, 1);
+    assert.equal(call("topic-list", ctxA, {}).result.count, 0);
+  });
+
+  it("rejects an unsigned reader", () => {
+    const anon = call("topic-list", { actor: { userId: "anon" }, userId: "anon" }, {});
+    assert.equal(anon.ok, false);
+    assert.equal(anon.error, "sign in required");
+    assert.equal(call("topic-create", {}, { title: "Nope" }).error, "sign in required");
+  });
+
+  it("trending on an empty board is an empty list", () => {
+    const r = call("trending", ctxA, {});
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.trending, []);
+    assert.deepEqual(r.result.affinityTags, []);
   });
 });
