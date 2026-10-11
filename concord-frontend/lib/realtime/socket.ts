@@ -107,14 +107,15 @@ function getAuthCredentials(): { apiKey?: string } {
 // Duration reasoning: the manager retries indefinitely with ~1s base delay
 // capped at 5s (see getSocket's reconnection opts), so a normal Wi-Fi flap or
 // server restart-in-place almost always recovers on the first attempt or two
-// (~1–3s). 6s is comfortably longer than that (absorbs the blip) yet short
-// enough that a genuine backend death surfaces the "connection lost" state
-// within a reasonable demo/test window. The socket keeps retrying underneath
-// regardless, so recovery from a longer outage is automatic; this timer only
-// governs WHEN to tell in-flight work (e.g. ConKay's rings) the backend went
-// quiet. Motion stopping a few seconds after a real kill is honest; wiping
-// in-flight work on a 1s flap is not.
-const CONNECTION_LOST_GRACE_MS = 6000;
+// (~1–3s). A memory-pressured host also stalls the event loop for several
+// seconds (GC, swap) without being dead — that used to cross a 6s grace and
+// flip the UI to "Connection lost" while the process was still serving.
+// 20s absorbs that stall and a restart-in-place, and still surfaces a real
+// backend death. The socket keeps retrying underneath regardless; this timer
+// only governs WHEN to tell in-flight work (e.g. ConKay's rings) the backend
+// went quiet. Motion stopping after a real kill is honest; wiping in-flight
+// work on a multi-second stall is not.
+export const CONNECTION_LOST_GRACE_MS = 20_000;
 let _connectionLostTimer: ReturnType<typeof setTimeout> | null = null;
 const _connectionLostListeners = new Set<() => void>();
 const _reconnectedListeners = new Set<() => void>();
@@ -188,6 +189,10 @@ export function getSocket(): Socket {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      // Handshake budget. The default 20s is tight when the server event
+      // loop is stalled for several seconds; the server pingTimeout (90s)
+      // covers an already-open socket.
+      timeout: 45_000,
       // Same-origin /socket.io. This Next 16 `next dest` checkout DOES
       // proxy WS upgrades to :5050 (101 verified). Engine.io polling on
       // this backend answers 400 Transport unknown (websocket-only), so

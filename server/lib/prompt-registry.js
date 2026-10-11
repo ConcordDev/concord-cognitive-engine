@@ -1464,3 +1464,61 @@ Prefer the layer hint if it makes sense: ${layerHint || "none"}.
 Return ONLY valid JSON, no extra text, no markdown fences.
 Ground the summary in the seed. Do not invent capabilities or citations.`,
 };
+
+/**
+ * The Modelfile SYSTEM formatting rule. Conversational chat sends
+ * buildConsciousPrompt as the request system message, and Ollama then
+ * replaces the Modelfile SYSTEM — so this sentence has to be restated
+ * last or the persona's "no markdown vomit" rule never reaches the model.
+ */
+export const PERSONA_FORMATTING_RULE =
+  "No markdown vomit. Bullets only when actually listing parallel items. Headers basically never. Most of the time you're talking, not formatting.";
+
+/** One-shot instruction when a chat completion stopped on the length cap. */
+export const CHAT_LENGTH_CONTINUE_SYSTEM =
+  "Finish the reply in plain prose. Do not repeat anything already said. Complete the current sentence, then stop. No headers.";
+
+const CONVERSATIONAL_CHAT_MODES = new Set(["", "chat", "ask", "explore", "vibes"]);
+
+export function isConversationalChatMode(mode) {
+  return CONVERSATIONAL_CHAT_MODES.has(String(mode ?? "").trim().toLowerCase());
+}
+
+const MARKDOWN_ENCOURAGEMENT_RES = [
+  /Markdown link is fine:[^\n]*/gi,
+  /prefers structured lists/gi,
+  /use markdown headers[^\n.]*/gi,
+  /use bold headers[^\n.]*/gi,
+  /expand into \d+\s*[-–]\s*\d+ bulleted[^\n.]*/gi,
+  /\bUse markdown\b[^\n.]*/gi,
+  /^.*Bullet lists:.*$/gim,
+  /^.*OUTPUT FORMAT \(JSON\).*$/gim,
+];
+
+/**
+ * For open-ended conversation, strip instructions that push headers and
+ * bullet walls, then append the persona formatting rule last so it wins.
+ * Design, debug, research, forge, document, and ConKay modes are returned
+ * unchanged — those surfaces need structure. Code fences and an explicit
+ * user request for a list or table stay allowed.
+ */
+export function finalizeConversationalSystemPrompt(system, mode) {
+  const raw = String(system || "");
+  if (!isConversationalChatMode(mode)) return raw;
+  let next = raw;
+  for (const re of MARKDOWN_ENCOURAGEMENT_RES) {
+    re.lastIndex = 0;
+    next = next.replace(re, "");
+  }
+  next = next
+    .replace(/^[ \t]*\.[ \t]*$/gm, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const rule = [
+    "CONVERSATIONAL FORMATTING (this overrides any earlier formatting instruction):",
+    PERSONA_FORMATTING_RULE,
+    "Write plain prose. Do not open with a bold header or a markdown heading. Use a bullet or numbered list only when the user asked for a list or the items are genuinely parallel and a sentence would be worse. A fenced code block is fine when you are showing code. A table is fine only when the user asked for one. Tone and length hints above change voice and length only — they do not ask for outlines, headers, or bullet walls.",
+  ].join("\n");
+  return `${next}\n\n${rule}`;
+}

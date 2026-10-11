@@ -7,7 +7,8 @@
  * Can be opened from the DTU Browser, lenses, or dashboard.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -42,6 +43,14 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
 
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -85,19 +94,30 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
     createMutation.mutate();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  // Portaled to document.body. The DTUs lens mounts this inside a framer-motion
+  // div (a transform), and AppShell's <main> is the page scrollport. A transformed
+  // ancestor makes position:fixed stick to that box instead of the viewport, so
+  // the dialog was centered in a region taller than the screen and Create sat
+  // below the fold where page scroll could not reach it. Cap the dialog to the
+  // viewport, scroll the fields, and keep Cancel/Create outside that scroller.
+  // z-[80] is above CookieConsent (ACTION_REQUIRED = 60) so the notice cannot
+  // cover the footer.
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dtu-quick-create-title"
         onSubmit={handleSubmit}
-        className="relative w-full max-w-lg bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden"
+        className="relative flex min-h-0 w-full max-w-lg max-h-[calc(100dvh-2rem)] flex-col overflow-hidden bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-lattice-border">
+        <div className="flex shrink-0 items-center justify-between px-6 py-4 border-b border-lattice-border">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-neon-blue" />
-            <h2 className="font-semibold">Create New DTU</h2>
+            <h2 id="dtu-quick-create-title" className="font-semibold">Create New DTU</h2>
           </div>
           <button
             type="button"
@@ -108,8 +128,8 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
           </button>
         </div>
 
-        {/* Form body */}
-        <div className="p-6 space-y-4">
+        {/* Form body — the only scrolling region. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-4">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -200,8 +220,8 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
           />
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-lattice-border flex items-center justify-end gap-3">
+        {/* Footer stays put while the fields scroll. */}
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-lattice-border px-6 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -223,7 +243,8 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

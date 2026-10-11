@@ -18,6 +18,18 @@ export async function preloadBrains(structuredLog = () => {}) {
   const loaded = [];
   const failed = [];
 
+  // Small or swapping hosts must not pull multi-GB models at boot. The
+  // first real request still warms a model on demand.
+  try {
+    const { shouldAutoLoadLlmModels } = await import("./host-profile.js");
+    if (!shouldAutoLoadLlmModels()) {
+      structuredLog("info", "brain_preload_skipped_low_memory", {});
+      return { loaded, failed, skipped: "low_memory_host" };
+    }
+  } catch {
+    // Helper unavailable — preload as before rather than fail the boot.
+  }
+
   // De-duplicate: group brains by (URL, model) so we don't pull the same
   // model twice. Phase D — also probe every endpoint in `config.urls`
   // (multi-endpoint scale-out) not just the primary.

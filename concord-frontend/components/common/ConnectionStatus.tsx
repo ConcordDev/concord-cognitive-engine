@@ -26,7 +26,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { Z_INDEX } from '@/lib/ui/z-index';
 import { useClientConfig } from '@/hooks/useClientConfig';
 import { onConnectionLost, onReconnected } from '@/lib/realtime/socket';
+import {
+  clearServerBusy,
+  getServerBusy,
+  isServiceOverloadedPayload,
+  noteServerBusy,
+  onServerBusy,
+  type ServerBusyDetail,
+} from '@/lib/realtime/server-busy';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
+
+const HEALTH_TIMEOUT_MS = 15_000;
+
+function isStallTimeout(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as { name?: string }).name || '';
+  const message = String((err as { message?: string }).message || '');
+  return name === 'TimeoutError' || name === 'AbortError' || /timeout|aborted/i.test(message);
+}
 
 export function ConnectionStatus() {
   // Shell-diet: this mounts on every page for every user, so the cadence is
@@ -36,6 +53,7 @@ export function ConnectionStatus() {
   const [socketDown, setSocketDown] = useState(false);
   const [healthOk, setHealthOk] = useState(true);
   const [stale, setStale] = useState(false);
+  const [busy, setBusy] = useState<ServerBusyDetail | null>(() => getServerBusy());
   // OfflineFallback (components/pwa/OfflineFallback.tsx) renders its own
   // full-width banner at this exact same top strip whenever the BROWSER goes
   // offline. OfflineFallback is the more fundamental of the two and outranks
@@ -56,7 +74,9 @@ export function ConnectionStatus() {
     };
   }, []);
 
-  // Primary: confirmed socket loss / recovery.
+  // Primary: confirmed socket loss / recovery. The grace period in
+  // lib/realtime/socket.ts is long enough that a several-second stall
+  // does not land here.
   useEffect(() => {
     const offLost = onConnectionLost(() => setSocketDown(true));
     const offBack = onReconnected(() => setSocketDown(false));
@@ -66,6 +86,11 @@ export function ConnectionStatus() {
     };
   }, []);
 
+  // 503 service_overloaded is "server busy", including when it arrives on
+  // some other request (the API client notes it). /health itself is never
+  // shed, so this subscription is what a lens-run 503 actually drives.
+  useEffect(() => onServerBusy(setBusy), []);
+
   // Secondary: stale-data header + fallback liveness. Audit fix
   // (2026-07-27): this mounts on every page for every user — useSmartPolling
   // pauses it while the tab is hidden (a backgrounded tab was still pinging
@@ -74,11 +99,29 @@ export function ConnectionStatus() {
   const check = useCallback(async () => {
     try {
       const res = await fetch('/health', {
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
       });
+      if (res.status === 503) {
+        const body = await res.clone().json().catch(() => null);
+        if (isServiceOverloadedPayload(body)) {
+          const retryAfterS = body && typeof body === 'object' && typeof (body as { retryAfterS?: number }).retryAfterS === 'number'
+            ? (body as { retryAfterS: number }).retryAfterS
+            : undefined;
+          noteServerBusy({
+            retryAfterS,
+            message: 'Server busy. Retrying…',
+          });
+          setHealthOk(true);
+          setStale(false);
+          return;
+        }
+      }
+      if (res.ok) clearServerBusy();
       setHealthOk(res.ok);
       setStale(res.headers.get('X-Concord-Stale') === 'true');
-    } catch {
+    } catch (err) {
+      // One stalled probe is not a disconnect. A hard network error is.
+      if (isStallTimeout(err)) return;
       setHealthOk(false);
     }
   }, []);
@@ -86,7 +129,13 @@ export function ConnectionStatus() {
   useSmartPolling(check, poll.connectionStatusMs);
 
   const online = !socketDown && healthOk;
-  if (online && !stale) return null;
+  if (!busy && online && !stale) return null;
+
+  const message = busy
+    ? `Server busy. Retrying in ${busy.retryAfterS}s…`
+    : online && stale
+      ? 'Showing cached data. Reconnecting...'
+      : 'Connection lost. Working offline with cached data.';
 
   return (
     <div
@@ -94,10 +143,9 @@ export function ConnectionStatus() {
       className={`fixed left-0 right-0 bg-yellow-600/90 text-black text-center text-sm py-1 transition-[top] duration-300 ${
         browserOffline ? 'top-8' : 'top-0'
       }`}
+      role="status"
     >
-      {online && stale
-        ? 'Showing cached data. Reconnecting...'
-        : 'Connection lost. Working offline with cached data.'}
+      {message}
     </div>
   );
 }

@@ -44,10 +44,9 @@ vi.mock('../offline/db', () => ({
 
 let socketModule: typeof import('@/lib/realtime/socket');
 
-// The grace-period timer is CONNECTION_LOST_GRACE_MS (6000) in the source. Use
-// a value comfortably past it for the "elapsed" advances.
-const GRACE_MS = 6000;
-const PAST_GRACE = GRACE_MS + 100;
+// Read the live grace period (a several-second stall must sit inside it).
+let GRACE_MS = 20_000;
+let PAST_GRACE = GRACE_MS + 100;
 const WITHIN_GRACE = 1000;
 
 function handlerFor(name: string): ((...args: unknown[]) => void) | undefined {
@@ -62,6 +61,9 @@ describe('socket connection-lost grace period', () => {
     vi.resetModules();
     vi.useFakeTimers();
     socketModule = await import('@/lib/realtime/socket');
+    GRACE_MS = socketModule.CONNECTION_LOST_GRACE_MS;
+    PAST_GRACE = GRACE_MS + 100;
+    expect(GRACE_MS).toBeGreaterThanOrEqual(15_000);
   });
 
   afterEach(() => {

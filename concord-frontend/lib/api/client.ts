@@ -3,6 +3,7 @@ import { updateClockOffset } from '../offline/db';
 import { useUIStore } from '@/store/ui';
 import { fromAxiosError } from '@/lib/errors';
 import { getApiBase } from './base';
+import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
 import type {
   CreateDTURequest,
   UpdateDTURequest,
@@ -200,19 +201,7 @@ const RETRY_BASE_DELAY_MS = 1000;
 
 /** True when the server is shedding/warming (not a permission gate). */
 function isServiceWarmingOrOverloaded(error: AxiosError): boolean {
-  const data = error.response?.data as {
-    error?: string;
-    code?: string;
-    reason?: string;
-    warming?: boolean;
-  } | undefined;
-  if (!data) return false;
-  if (data.warming === true) return true;
-  if (data.error === 'service_overloaded' || data.code === 'service_overloaded' || data.code === 'service_warming') {
-    return true;
-  }
-  if (typeof data.reason === 'string' && /^event_loop_lag/.test(data.reason)) return true;
-  return false;
+  return isServiceOverloadedPayload(error.response?.data);
 }
 
 function retryDelayMsFor(error: AxiosError, retryCount: number): number {
@@ -246,6 +235,13 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
   if (isRetryable && retryCount < maxRetries) {
     config._retryCount = retryCount + 1;
     config._retried = true; // Signal to downstream interceptors that this request was already retried
+    if (warmingOrOverloaded) {
+      const shedBody = error.response?.data as { retryAfterS?: number; retryAfter?: number; warming?: boolean } | undefined;
+      noteServerBusy({
+        retryAfterS: shedBody?.retryAfterS ?? shedBody?.retryAfter,
+        message: shedBody?.warming === true ? 'Concord warming up. Retrying…' : 'Server busy. Retrying…',
+      });
+    }
     const delay = retryDelayMsFor(error, retryCount);
     console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} (attempt ${config._retryCount}/${maxRetries}) after ${delay}ms${warmingOrOverloaded ? ' [warming/overload]' : ''}`);
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -336,6 +332,12 @@ api.interceptors.response.use(
 
     // A 2xx proves the session is live again, so lift any refresh suppression.
     clearAuthRefreshBackoff();
+    // A shed request that just got through, or any admitted mutation, means
+    // the host is serving again. Background GETs stay out of this so a poll
+    // that was never shed doesn't wipe a busy banner mid-retry.
+    const admittedMethod = (response.config?.method || 'get').toUpperCase();
+    const wasRetried = Boolean((response.config as { _retried?: boolean } | undefined)?._retried);
+    if (wasRetried || admittedMethod !== 'GET') clearServerBusy();
 
     return response;
   },
@@ -501,15 +503,20 @@ api.interceptors.response.use(
       const shouldThrottle = existingToastCount >= 2;
 
       if (!shouldThrottle) {
-        const warmingOrOverloaded =
-          data?.warming === true
-          || data?.error === 'service_overloaded'
-          || data?.code === 'service_overloaded'
-          || data?.code === 'service_warming'
-          || (typeof data?.reason === 'string' && /^event_loop_lag/.test(data.reason));
+        const warmingOrOverloaded = isServiceOverloadedPayload(data);
         if (warmingOrOverloaded && (toastStatus === 503 || toastStatus === 429 || (toastStatus != null && toastStatus >= 500))) {
-          // Post-restart / event-loop shed — buttons are not permission-gated.
-          store.addToast({ type: 'warning', message: 'Concord warming up — retry' });
+          // Shed / warmup is "server busy", not a dropped connection and not
+          // a permission gate. The client already retries with Retry-After.
+          const retryAfterRaw = (data as { retryAfterS?: number; retryAfter?: number } | undefined)?.retryAfterS
+            ?? (data as { retryAfter?: number } | undefined)?.retryAfter;
+          noteServerBusy({
+            retryAfterS: typeof retryAfterRaw === 'number' ? retryAfterRaw : undefined,
+            message: data?.warming === true ? 'Concord warming up. Retrying…' : 'Server busy. Retrying…',
+          });
+          store.addToast({
+            type: 'warning',
+            message: data?.warming === true ? 'Concord warming up — retry' : 'Server busy. Retrying shortly.',
+          });
         } else if (toastStatus === 401) {
           store.addToast({ type: 'warning', message: 'Session expired. Please log in again.' });
         } else if (toastStatus === 403) {

@@ -1,71 +1,39 @@
 // server/lib/request-admission.js
 //
-// Front-door admission control keyed on real event-loop lag (Launch
-// Readiness — bare-metal single-process deploy audit, 2026-07-25).
+// Front-door admission control keyed on SUSTAINED event-loop lag.
 //
-// The measured problem: with `instances: 1, exec_mode: 'fork'`, ONE Node
-// process serves every HTTP + WebSocket request, and better-sqlite3 is
-// synchronous/in-process (no libuv threadpool escape). Under 44 concurrent
-// requests the LAST one measured ~8.5s wall-clock while no single request
-// took longer than 1.3s — that is queueing on one thread, not slow
-// endpoints. Once the loop is genuinely saturated, every request in flight
-// degrades together. This module refuses NEW low-value work at the door so
-// the requests already worth serving keep their real latency instead of
-// queueing behind an unbounded pile-up — shedding PRESERVES performance for
-// the traffic that matters, it does not sacrifice it.
+// The measured failure this replaced: `monitorEventLoopDelay().max` is the
+// single worst moment in each 2s window. On a swapping host one GC pause
+// cleared the 300ms anonymous bar (and often the 900ms authenticated bar)
+// and every request — including a logged-in user's POST /api/lens/run —
+// came back 503 `service_overloaded` in 1–16ms. /ready already refused to
+// flap on that spike (3 consecutive probes). The shedder now uses the same
+// idea:
+//   - the lag value is the rolling mean of window p99s
+//     (`getSustainedLagMs`, CONCORD_EVENT_LOOP_WINDOWS), not the max;
+//   - shedding starts only after CONCORD_LOAD_SHED_STRIKES consecutive
+//     windows whose latest p99 is over the bar (default 3, same as
+//     CONCORD_READY_PRESSURE_STRIKES). A clean window resets the counter.
 //
-// Deliberately built on top of the EXISTING event-loop-lag instrumentation
-// rather than a new measurement:
-//   - `getCurrentLagMs()` from ./event-loop-pressure.js (already samples
-//     `perf_hooks.monitorEventLoopDelay` every `CONCORD_EVENT_LOOP_SAMPLE_MS`
-//     and already gates `lowPriority` heartbeat backoff in
-//     emergent/heartbeat-registry.js).
-//   - The 300ms default here matches `CONCORD_EVENT_LOOP_PRESSURE_MS`'s own
-//     default and the `ConcordEventLoopUnderPressure` alert threshold in
-//     monitoring/prometheus/alerts.yml (lag > 300ms for 2m) — the same
-//     "genuinely stressed, not just a single GC pause" bar already
-//     established elsewhere, not a new number invented for this module.
-//
-// Priority classes (front-door admission only — an in-flight request is
-// NEVER shed):
+// Priority classes (an in-flight request is NEVER shed):
 //   CRITICAL  — /health, /ready, /metrics, /api/health*, /api/status,
-//               /api/brain/health. NEVER evaluated against lag, ever. If
-//               pm2/Cloudflare/an orchestrator's liveness probe gets shed,
-//               a brownout reads as a dead box and a recoverable slowdown
-//               becomes an outage — worse than doing nothing.
-//   PROTECTED — an authenticated request (`req.user?.id` truthy, set by
-//               authMiddleware upstream) that isn't bulk-shaped, OR one of
-//               the small set of auth-critical endpoints a user hits
-//               BEFORE they have a session (login/register/refresh/
-//               csrf-token). Those are unauthenticated by definition — the
-//               plain authed-check would otherwise put them at the same
-//               tight 300ms bar as anonymous bulk traffic, which is wrong:
-//               a random "signup failed" reads as "the site is broken" to
-//               a new user, not as a polite ask to retry, even with a
-//               correct Retry-After header. Real production symptom fixed
-//               2026-08-23: live login/register 503s traced to exactly
-//               this misclassification. The no-login ConKay demo
-//               (/api/conkay/demo/*) gets the same reserved lane: it is the
-//               public front door, and its first solve was 503ing
-//               (2026-10-09) because anonymous GETs shed at 300ms, a bar
-//               post-restart lag routinely clears. It is GET-only,
-//               compute-only (one beam-frame FEA, milliseconds) and per-IP
-//               rate-limited (read.conkay-demo), so it is not bulk-shaped.
-//               This is the in-flight-session
-//               traffic (plus its on-ramp) the whole exercise exists to
-//               protect. Only sheds once lag is well past the point where
-//               shedding SHEDDABLE traffic alone hasn't been enough.
-//   SHEDDABLE — everything else: unauthenticated/new-session traffic, and
-//               any request (authenticated or not) whose path looks like
-//               bulk I/O (export/import/bulk/download) — exactly the class
-//               of request an operator would rather see retry with backoff
-//               than let it hold a lock/queue slot other users are waiting
-//               behind. Sheds first, at the lower threshold.
+//               /api/brain/health. Never evaluated against lag.
+//   PROTECTED — authenticated non-bulk traffic, auth-critical pre-session
+//               routes, and the public ConKay demo. Higher lag bar.
+//   INTERACTIVE — authenticated chat and lens run. Even when the protected
+//               bar has been sustained, these are NOT instant-503'd. They
+//               wait a short bounded queue (CONCORD_LOAD_SHED_ADMISSION_WAIT_MS).
+//               If the loop recovers, they proceed. If it doesn't, the
+//               response is 503 `busy_retry` with Retry-After — a clear
+//               "busy, retry", not a disconnect.
+//   SHEDDABLE — anonymous traffic and bulk I/O. Sheds first, once pressure
+//               is sustained, with 503 service_overloaded + Retry-After.
 //
-// Honesty invariant: a shed request gets a REAL 503 + a REAL Retry-After
-// computed from the actual lag reading — never a fabricated empty success.
+// Honesty invariant: a shed request gets a REAL 503 + a REAL Retry-After.
+// Never a fabricated empty success.
 
-import { getCurrentLagMs } from "./event-loop-pressure.js";
+import { getSustainedLagMs } from "./event-loop-pressure.js";
+import { isSqliteBackupRunning } from "./sqlite-online-backup.js";
 
 export const PRIORITY = Object.freeze({
   CRITICAL: "critical",
@@ -74,60 +42,119 @@ export const PRIORITY = Object.freeze({
 });
 
 // Mirrors server.js's `_HEALTH_PROBE_RE` exactly. Kept as a separate literal
-// (rather than importing from server.js) so this module stays unit-testable
-// without booting the whole monolith — if you touch one, touch the other.
+// so this module stays unit-testable without booting the monolith.
 const _CRITICAL_PATH_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
 
-// "Obviously bulk" traffic — export/import/bulk/download-shaped paths.
-// Matches the existing route shapes (`/api/export/my-data`,
-// `/api/ingest/bulk-upload`, `/api/substrate/export`, `/api/*/bulk`,
-// `/api/artifact/:id/download`, etc.) without needing an exhaustive
-// allowlist of every such route.
 const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 
-// Auth-critical endpoints a user necessarily hits with NO session yet.
-// Mirrors the write-auth-public-paths ratchet's own EXPECTED entries for
-// these four routes (server/tests/invariants/write-auth-public-paths.test.js)
-// — same set, different reason (that test pins they're allowed to run
-// unauthenticated at all; this one pins they don't get shed like bulk
-// traffic while doing so). csrf-token is included because it's a hard
-// prerequisite fetch before login/register can even be attempted — shedding
-// it blocks the flow just as effectively as shedding login itself.
 const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
-// The public ConKay demo (routes/conkay-demo.js): materials, beam, sweep.
-// Reserved lane, not an exemption: it still sheds at the PROTECTED bar.
 const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep)(\?|$|\/)/;
+
+// Authenticated interactive work: chat and lens run. Never an instant 503.
+const _INTERACTIVE_PATH_RE = /^\/api\/(?:lens\/run|chat-agent(?:\/|$|\?)|chat(?:\/|$|\?))/;
+
+let _sheddableStrikes = 0;
+let _protectedStrikes = 0;
+let _interactiveWaiters = 0;
 
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;
   return process.env.CONCORD_LOAD_SHED_ENABLED === "0";
 }
 
-/** Lag (ms) above which SHEDDABLE traffic starts getting 503'd. */
+function _positiveNumber(raw, fallback) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Lag (ms) above which SHEDDABLE traffic can be shed, once strikes are met. */
 export function getShedLagMs() {
-  return Number(process.env.CONCORD_LOAD_SHED_LAG_MS) || 300;
+  return _positiveNumber(process.env.CONCORD_LOAD_SHED_LAG_MS, 300);
 }
 
 /**
- * Lag (ms) above which even PROTECTED (authenticated, non-bulk) traffic
- * starts getting 503'd — a materially higher bar than `getShedLagMs()`
- * (default 3x) so authenticated sessions aren't shed at the first sign of
- * pressure, only once shedding SHEDDABLE traffic alone hasn't relieved it.
+ * Lag (ms) above which PROTECTED traffic can be shed. Default 3× the
+ * sheddable bar. Interactive chat/lens-run still queue instead of
+ * instant-503 at this bar.
  */
 export function getShedLagMsProtected() {
-  return Number(process.env.CONCORD_LOAD_SHED_LAG_MS_PROTECTED) || 900;
+  return _positiveNumber(process.env.CONCORD_LOAD_SHED_LAG_MS_PROTECTED, 900);
 }
 
-/** Retry-After seconds sent on a shed response. */
+/** Consecutive over-bar windows required before shedding. Matches /ready's default of 3. */
+export function getShedStrikesRequired() {
+  return Math.max(1, Math.floor(_positiveNumber(process.env.CONCORD_LOAD_SHED_STRIKES, 3)));
+}
+
+/** Retry-After seconds sent on a shed or busy response. */
 export function getRetryAfterSeconds() {
-  return Number(process.env.CONCORD_LOAD_SHED_RETRY_AFTER_S) || 2;
+  return _positiveNumber(process.env.CONCORD_LOAD_SHED_RETRY_AFTER_S, 2);
+}
+
+/** How long an interactive request will wait for the loop to recover. */
+export function getAdmissionWaitMs() {
+  const n = Number(process.env.CONCORD_LOAD_SHED_ADMISSION_WAIT_MS);
+  if (Number.isFinite(n) && n >= 0) return n;
+  return 1500;
+}
+
+function getAdmissionPollMs() {
+  return _positiveNumber(process.env.CONCORD_LOAD_SHED_ADMISSION_POLL_MS, 100);
+}
+
+function getInteractiveQueueCap() {
+  return Math.max(1, Math.floor(_positiveNumber(process.env.CONCORD_LOAD_SHED_INTERACTIVE_QUEUE, 32)));
 }
 
 /**
- * Classify a request into a priority class. Pure function of the request
- * shape — no I/O, safe to call on every request.
+ * One sample window landed. Strikes follow the LATEST window p99 (a clean
+ * window resets, same shape as /ready). The sustained mean is what
+ * decideAdmission compares to the threshold.
  *
+ * @param {number|{ sustainedMs?: number, latestMs?: number }} sample
+ * @param {{ shedLagMs?: number, shedLagMsProtected?: number }} [opts]
+ */
+export function observeLagWindow(sample, opts = {}) {
+  const sustainedMs = typeof sample === "number" ? sample : Number(sample?.sustainedMs) || 0;
+  const latestMs = typeof sample === "number"
+    ? sample
+    : Number(sample?.latestMs ?? sample?.sustainedMs) || 0;
+  const shed = opts.shedLagMs ?? getShedLagMs();
+  const prot = opts.shedLagMsProtected ?? getShedLagMsProtected();
+  _sheddableStrikes = latestMs > shed ? _sheddableStrikes + 1 : 0;
+  _protectedStrikes = latestMs > prot ? _protectedStrikes + 1 : 0;
+  return {
+    sustainedMs,
+    latestMs,
+    sheddable: _sheddableStrikes,
+    protected: _protectedStrikes,
+  };
+}
+
+export function getPressureStrikes() {
+  return { sheddable: _sheddableStrikes, protected: _protectedStrikes };
+}
+
+export function strikesFor(priority) {
+  return priority === PRIORITY.SHEDDABLE ? _sheddableStrikes : _protectedStrikes;
+}
+
+/** Test-only. */
+export function _resetAdmissionForTest() {
+  _sheddableStrikes = 0;
+  _protectedStrikes = 0;
+  _interactiveWaiters = 0;
+}
+
+/** Test-only: force both strike counters. */
+export function _setStrikesForTest(n) {
+  const v = Math.max(0, Number(n) || 0);
+  _sheddableStrikes = v;
+  _protectedStrikes = v;
+}
+
+/**
  * @param {{ path?: string, url?: string, user?: { id?: string } }} req
  * @returns {"critical"|"protected"|"sheddable"}
  */
@@ -142,14 +169,26 @@ export function classifyRequest(req) {
 }
 
 /**
- * Decide whether to admit a request of a given priority class at a given
- * observed lag reading. Pure function — no I/O, no env reads if opts is
- * fully supplied — so it's trivial to unit-test and mutation-verify.
+ * Authenticated chat / lens run. These queue instead of instant-503.
+ * Bulk-shaped paths stay sheddable even when authenticated.
+ */
+export function isInteractiveRequest(req) {
+  if (!req?.user?.id) return false;
+  const path = req?.path || req?.url || "";
+  if (_BULK_PATH_RE.test(path)) return false;
+  return _INTERACTIVE_PATH_RE.test(path);
+}
+
+/**
+ * Admit or shed. Pure when opts supplies every input.
+ *
+ * Shedding requires BOTH the lag reading over the class threshold AND
+ * `strikes >= strikesRequired`. Omitting strikes means "not yet sustained"
+ * (0), so a bare over-threshold sample does not shed.
  *
  * @param {"critical"|"protected"|"sheddable"} priority
- * @param {number} lagMs
- * @param {{ enabled?: boolean, shedLagMs?: number, shedLagMsProtected?: number }} [opts]
- * @returns {{ admit: boolean, reason?: string, lagMs?: number, thresholdMs?: number }}
+ * @param {number} lagMs sustained lag
+ * @param {{ enabled?: boolean, shedLagMs?: number, shedLagMsProtected?: number, strikes?: number, strikesRequired?: number }} [opts]
  */
 export function decideAdmission(priority, lagMs, opts = {}) {
   if (_isKillSwitchOff(opts.enabled)) return { admit: true };
@@ -157,58 +196,134 @@ export function decideAdmission(priority, lagMs, opts = {}) {
 
   const shedLagMs = opts.shedLagMs ?? getShedLagMs();
   const shedLagMsProtected = opts.shedLagMsProtected ?? getShedLagMsProtected();
+  const strikesRequired = opts.strikesRequired ?? getShedStrikesRequired();
+  const strikes = Number.isFinite(Number(opts.strikes)) ? Number(opts.strikes) : 0;
   const lag = Number(lagMs) || 0;
+  const sustained = strikes >= strikesRequired;
 
-  if (priority === PRIORITY.SHEDDABLE && lag > shedLagMs) {
-    return { admit: false, reason: "event_loop_lag", lagMs: lag, thresholdMs: shedLagMs };
+  if (priority === PRIORITY.SHEDDABLE && lag > shedLagMs && sustained) {
+    return { admit: false, reason: "event_loop_lag", lagMs: lag, thresholdMs: shedLagMs, strikes, strikesRequired };
   }
-  if (priority === PRIORITY.PROTECTED && lag > shedLagMsProtected) {
-    return { admit: false, reason: "event_loop_lag_critical", lagMs: lag, thresholdMs: shedLagMsProtected };
+  if (priority === PRIORITY.PROTECTED && lag > shedLagMsProtected && sustained) {
+    return { admit: false, reason: "event_loop_lag_critical", lagMs: lag, thresholdMs: shedLagMsProtected, strikes, strikesRequired };
   }
-  return { admit: true };
+  return { admit: true, lagMs: lag, strikes, strikesRequired };
+}
+
+function _warmingFlag() {
+  const uptimeS = typeof process.uptime === "function" ? process.uptime() : null;
+  return uptimeS != null && uptimeS < 120;
+}
+
+function _writeShed(res, { decision, priority, code, message, retryAfterS, queuedMs }) {
+  const warming = _warmingFlag();
+  res.set("Retry-After", String(retryAfterS));
+  return res.status(503).json({
+    ok: false,
+    error: "service_overloaded",
+    code: code || (warming ? "service_warming" : "service_overloaded"),
+    message: message || (warming ? "Concord is warming up. Retry shortly." : "Server is busy. Retry shortly."),
+    reason: decision.reason,
+    priority,
+    lagMs: Math.round(decision.lagMs || 0),
+    thresholdMs: decision.thresholdMs,
+    strikes: decision.strikes,
+    strikesRequired: decision.strikesRequired,
+    retryAfterS,
+    warming: code === "busy_retry" ? false : warming,
+    ...(queuedMs != null ? { queuedMs } : {}),
+  });
+}
+
+function _sleep(ms) {
+  // Ref'd on purpose. This timer is the only thing keeping an admitted-wait
+  // request alive; unref'ing it lets the loop go idle and the response never
+  // lands (node:test reports the promise still pending).
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function _waitForInteractiveAdmission(getLagMs, priority) {
+  const waitMs = getAdmissionWaitMs();
+  const pollMs = getAdmissionPollMs();
+  const started = Date.now();
+  const deadline = started + waitMs;
+  let decision = decideAdmission(priority, getLagMs(), { strikes: strikesFor(priority) });
+  if (decision.admit || waitMs === 0) {
+    return { decision, queuedMs: Date.now() - started };
+  }
+  while (Date.now() < deadline) {
+    const remaining = deadline - Date.now();
+    await _sleep(Math.min(pollMs, Math.max(1, remaining)));
+    decision = decideAdmission(priority, getLagMs(), { strikes: strikesFor(priority) });
+    if (decision.admit) break;
+  }
+  return { decision, queuedMs: Date.now() - started };
 }
 
 /**
- * Build the Express middleware. Mount AFTER auth (so `req.user` is
- * populated) and BEFORE route handlers — this is front-door admission
- * control only; it never touches an already-admitted, in-flight request.
- *
  * @param {{ getLagMs?: () => number, onShed?: (priority: string, reason: string) => void }} [deps]
  */
 export function createLoadSheddingMiddleware(deps = {}) {
-  const getLagMs = deps.getLagMs || getCurrentLagMs;
+  const getLagMs = deps.getLagMs || getSustainedLagMs;
   const onShed = deps.onShed || (() => {});
 
   return function loadSheddingMiddleware(req, res, next) {
     const priority = classifyRequest(req);
     if (priority === PRIORITY.CRITICAL) return next();
+    // The post-start SQLite snapshot used to stall the loop for seconds.
+    // It now runs off-thread, and while it is in flight authenticated
+    // traffic and login stay admitted even if a residual spike is sustained.
+    if (priority === PRIORITY.PROTECTED && isSqliteBackupRunning()) return next();
 
     const lagMs = getLagMs();
-    const decision = decideAdmission(priority, lagMs);
+    const decision = decideAdmission(priority, lagMs, { strikes: strikesFor(priority) });
     if (decision.admit) return next();
+
+    if (isInteractiveRequest(req)) {
+      return _admitInteractiveOrBusy(req, res, next, getLagMs, priority, onShed);
+    }
 
     const retryAfterS = getRetryAfterSeconds();
     try { onShed(priority, decision.reason); } catch { /* observability best-effort */ }
-
-    // Clarity only — does NOT change admit/shed thresholds. Post-restart lag
-    // often trips the same path; clients can toast "warming up" instead of
-    // treating this like a permission gate or permanent outage.
-    const uptimeS = (typeof process !== "undefined" && typeof process.uptime === "function")
-      ? process.uptime()
-      : null;
-    const warming = uptimeS != null && uptimeS < 120;
-
-    res.set("Retry-After", String(retryAfterS));
-    return res.status(503).json({
-      ok: false,
-      error: "service_overloaded",
-      code: warming ? "service_warming" : "service_overloaded",
-      reason: decision.reason,
-      priority,
-      lagMs: Math.round(decision.lagMs || 0),
-      thresholdMs: decision.thresholdMs,
-      retryAfterS,
-      warming,
-    });
+    return _writeShed(res, { decision, priority, retryAfterS });
   };
+}
+
+async function _admitInteractiveOrBusy(req, res, next, getLagMs, priority, onShed) {
+  const retryAfterS = getRetryAfterSeconds();
+  if (_interactiveWaiters >= getInteractiveQueueCap()) {
+    const decision = decideAdmission(priority, getLagMs(), { strikes: strikesFor(priority) });
+    try { onShed(priority, "interactive_queue_full"); } catch { /* best-effort */ }
+    return _writeShed(res, {
+      decision: { ...decision, reason: decision.reason || "event_loop_lag_critical" },
+      priority,
+      code: "busy_retry",
+      message: "Server is busy. Retry shortly.",
+      retryAfterS,
+      queuedMs: 0,
+    });
+  }
+
+  _interactiveWaiters += 1;
+  try {
+    const { decision, queuedMs } = await _waitForInteractiveAdmission(getLagMs, priority);
+    if (decision.admit) {
+      if (!res.headersSent) return next();
+      return undefined;
+    }
+    try { onShed(priority, decision.reason || "event_loop_lag_critical"); } catch { /* best-effort */ }
+    if (res.headersSent) return undefined;
+    return _writeShed(res, {
+      decision,
+      priority,
+      code: "busy_retry",
+      message: "Server is busy. Retry shortly.",
+      retryAfterS,
+      queuedMs,
+    });
+  } finally {
+    _interactiveWaiters -= 1;
+  }
 }

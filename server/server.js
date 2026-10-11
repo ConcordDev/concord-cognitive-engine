@@ -87,6 +87,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { privateDtuHiddenFrom, ctxMayReadDtu } from "./lib/dtu-read-access.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
@@ -99,6 +100,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -1896,6 +1898,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
+import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
@@ -1934,6 +1937,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { stripGovernanceLeak, visibleChatReply, createGovernanceLeakFilter } from "./lib/chat-governance-leak.js";
 import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
@@ -4227,7 +4231,7 @@ function buildStyleHints(sv) {
   lines.push(`- Technical depth: ${sv.technicality > 0.6 ? 'deep technical detail' : sv.technicality < 0.4 ? 'plain language' : 'moderate technical'}`);
   lines.push(`- Response length: ${sv.verbosity > 0.6 ? 'detailed, thorough' : sv.verbosity < 0.4 ? 'concise, brief' : 'moderate length'}`);
   lines.push(`- Warmth: ${sv.warmth > 0.6 ? 'warm and personal' : sv.warmth < 0.4 ? 'terse and direct' : 'professional'}`);
-  lines.push(`- Bullet lists: ${sv.bulletiness > 0.6 ? 'prefers structured lists' : sv.bulletiness < 0.4 ? 'prefers flowing prose' : 'mixed format'}`);
+  lines.push(`- Shape: plain prose. ${sv.bulletiness > 0.6 ? "They sometimes write lists; still answer in prose unless they explicitly ask for a list." : "Prefer flowing prose."}`);
   lines.push(`Adapt your responses to match these preferences naturally.`);
   return lines.join("\n");
 }
@@ -10487,8 +10491,10 @@ async function tryInitWebSockets(server) {
     transports: process.env.CONCORD_SOCKET_WEBSOCKET_ONLY === "true"
       ? ["websocket"]
       : ["websocket", "polling"],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // A several-second GC or swap stall must not drop the socket. 90s is
+    // the pong deadline; the frontend grace period is the UI half of this.
+    pingTimeout: Number(process.env.CONCORD_SOCKET_PING_TIMEOUT_MS) || 90_000,
+    pingInterval: Number(process.env.CONCORD_SOCKET_PING_INTERVAL_MS) || 25_000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
@@ -17449,7 +17455,14 @@ function makeCtx(req=null) {
     },
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
-      async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+      async chat({ system, messages, temperature=0.3, maxTokens, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // Conscious chat used to default to 1500, which sat under the
+        // conversational cap and cut replies off before CONCORD_CHAT_MAX_TOKENS
+        // could matter. Callers that pass maxTokens are unchanged.
+        const _resolvedMaxTokens = (Number.isFinite(maxTokens) && maxTokens > 0)
+          ? maxTokens
+          : (slot === "conscious" ? resolveChatMaxTokens() : 1500);
+        maxTokens = _resolvedMaxTokens;
         // Private/High Power Mode (migration 397). Private is the
         // whole-account "no exceptions" guarantee — skip BOTH the BYO
         // override branch below AND the platform-provider attempt
@@ -17672,7 +17685,7 @@ function makeCtx(req=null) {
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama" };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", doneReason: json.done_reason || null };
             }
             _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
@@ -18066,18 +18079,10 @@ function userVisibleDTUs(viewerId = null) {
     // Privacy / scope filters — private or user-scoped content is only
     // visible to its owner, never to a system caller that forgot to
     // pass a viewer ID.
-    const isPrivate =
-      d.privacy === "private" ||
-      d.privacy === "followers-only" ||
-      d.scope === "user" ||
-      d.visibility === "private";
-
+    // Same predicate as by-id reads (lib/dtu-read-access.js). Kept as a
+    // call, not a copy, so list and get cannot drift.
     const owner = d.author || d.ownerId || d.userId || d.createdBy;
-
-    if (isPrivate) {
-      if (!viewerId) return false;
-      if (owner !== viewerId) return false;
-    }
+    if (privateDtuHiddenFrom(d, viewerId)) return false;
 
     // ── Federation tier filter ───────────────────────────────────
     // Regional / national tier DTUs are only visible to viewers in
@@ -19584,7 +19589,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     stream: true,
     options: {
       temperature: options.temperature || 0.7,
-      num_predict: options.maxTokens || 1500,
+      num_predict: options.maxTokens || resolveChatMaxTokens(),
       // num_ctx is sized to the MODEL actually loading (see callOllama note) —
       // not options.brainName, which can disagree with `model`. Pass
       // options.numCtx to force a specific window.
@@ -19626,7 +19631,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
             onToken(parsed.message.content);
           }
           if (parsed.done) {
-            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0 };
+            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0, doneReason: parsed.done_reason || null };
           }
         } catch (_parseErr) {
           // skip malformed NDJSON lines
@@ -19866,7 +19871,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // actual content lives in one file now (the registry), not scattered.
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
-import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS, finalizeConversationalSystemPrompt, isConversationalChatMode, CHAT_LENGTH_CONTINUE_SYSTEM } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
 // Adversarial-hardening: per-user token bucket for HOT raw socket events.
 // Raw socket.io events bypass the HTTP rate-limit middleware entirely; this is
@@ -19881,6 +19886,12 @@ const _combatSocketLimiter = makeSocketRateLimiter({
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
+import {
+  resolveChatMaxTokens,
+  finishLengthLimitedReply,
+  stoppedOnLength,
+  buildChatHistoryMessages,
+} from "./lib/chat-reply-policy.js";
 
 // Single-instance fallback: someone running one plain `ollama serve` (every
 // model pulled into it, e.g. via OLLAMA_HOST/OLLAMA_URL) rather than the
@@ -21517,7 +21528,7 @@ ${_sharedToolRules}` : "";
       stream: false,
       options: {
         temperature: options.temperature || 0.7,
-        num_predict: options.maxTokens || 500,
+        num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500),
         num_ctx: _ollamaNumCtx(brainName),
       },
     };
@@ -21821,7 +21832,7 @@ ${_sharedToolRules}` : "";
           model: brain.model,
           messages: _followUpMessages,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx(brainName) },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500), num_ctx: _ollamaNumCtx(brainName) },
         };
 
         try {
@@ -23088,12 +23099,16 @@ function getConsciousOllamaCallback() {
     return (prompt, opts) => callBrain("conscious", prompt, {
       system: opts?.system,
       temperature: opts?.temperature || 0.7,
-      maxTokens: opts?.maxTokens || opts?.num_predict || 700,
+      maxTokens: opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens(),
     });
   }
-  // Fall back to default Ollama
+  // Fall back to default Ollama. Pass the chat cap through — callOllama's
+  // own omitted-maxTokens default is 500 and would silently undo it.
   if (LLM_PIPELINE?.providers?.ollama?.enabled) {
-    return (prompt, opts) => callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, opts);
+    return (prompt, opts) => {
+      const maxTokens = opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens();
+      return callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, { ...opts, maxTokens });
+    };
   }
   return null;
 }
@@ -25687,7 +25702,11 @@ register("dtu", "get", async (ctx, input) => {
       if (await dtuSidecar.isAvailable()) {
         const r = await dtuSidecar.getDTU(id);
         if (r && (r.ok === true || r.error === "DTU not found")) {
-          return r.ok ? { ok: true, dtu: r.dtu } : { ok: false, error: "DTU not found" };
+          if (!r.ok) return { ok: false, error: "DTU not found" };
+          // Sidecar get is unfiltered. Apply the same private gate as the
+          // in-memory path before the body leaves this macro.
+          if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
+          return { ok: true, dtu: r.dtu };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar get unavailable — inline fallback", { error: _e?.message }); }
@@ -25697,6 +25716,10 @@ register("dtu", "get", async (ctx, input) => {
   if (!dtu) return { ok: false, error: "DTU not found" };
   // Don't expose shadow DTUs via this endpoint
   if (isShadowDTU(dtu)) return { ok: false, error: "DTU not found" };
+  // Private / user-scoped DTUs are owner-only. Same predicate as
+  // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
+  // the id exists. Internal callers (makeInternalCtx) are exempt.
+  if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
 
@@ -26061,9 +26084,11 @@ register("dtu", "export", (ctx, input = {}) => {
   try {
     const id = input.id || input.dtuId;
     if (!id) return { ok: false, error: "id required" };
-    const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const d = (typeof userVisibleDTUs === "function" ? userVisibleDTUs(userId) : []).find(x => x.id === id) || STATE.dtus?.get?.(id);
+    const d = STATE.dtus?.get?.(id);
+    // The previous `|| STATE.dtus.get` fallback returned the DTU even when
+    // userVisibleDTUs had filtered it out. Misses are not_found.
     if (!d || (typeof isShadowDTU === "function" && isShadowDTU(d))) return { ok: false, error: "not_found" };
+    if (!ctxMayReadDtu(ctx, d)) return { ok: false, error: "not_found" };
     return { ok: true, dtu: d, format: input.format || "json" };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -28165,6 +28190,15 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
+  let _replyDoneReason = null;
+  // Conversational cap. Verbosity 0.5 (the affect default) resolves to
+  // CONCORD_CHAT_MAX_TOKENS itself, default 2000 — not the old 700 base
+  // that stopped replies mid-sentence. Shared by the ctx.llm path, the
+  // direct fetch, and the tool follow-up so none of them re-cap lower.
+  const _chatMaxTokens = resolveChatMaxTokens({
+    verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
+  });
+  const _conversationalChat = isConversationalChatMode(mode);
   if (_deterministicAnswer) {
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
@@ -28179,11 +28213,7 @@ ${_operatorV6Block}` : "";
     // No DHTP preset result is computed in this code path (confirmed via eslint
     // scope analysis — `_dhtpApplied` above lives in a sibling scope, not this
     // one), so this always falls through to the affect-modulated default below.
-    const _presetMaxTokens = 0;
-    const _affectMaxTokens = Math.round(
-      700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
-    );
-    const _llmMaxTokens = Math.max(_presetMaxTokens, _affectMaxTokens);
+    const _llmMaxTokens = _chatMaxTokens;
     // Inject affect-aware behavioral guidance into system prompt
     const _affectGuidance = _aff.policy ? [
       _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
@@ -28194,7 +28224,10 @@ ${_operatorV6Block}` : "";
     // GRC: Inject Grounded Recursive Closure system prompt when module is available
     // Use _enrichedFocus (unified context engine: regular + MEGA + HYPER tiers) instead of bare focus
     const _dtuTitles = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
-    const _grcSystemPrompt = GRC_MODULE
+    // GRC's JSON output contract fights the persona's prose rule. Keep the
+    // post-hoc grcFormatAndValidate pass; don't put the format into the
+    // conversational prompt.
+    const _grcSystemPrompt = (GRC_MODULE && !_conversationalChat)
       ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
       : "";
     // Prefer the DTU Context Pipeline's token-budgeted output (_pipelineBudget,
@@ -28266,7 +28299,7 @@ ${_operatorV6Block}` : "";
 
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-    const system = buildConsciousPrompt({
+    const system = finalizeConversationalSystemPrompt(buildConsciousPrompt({
       dtu_count: STATE.dtus?.size || 0,
       domain_count: Object.keys(STATE.domains || {}).length || _enrichedFocus.reduce((s, d) => { s.add(d.domain); return s; }, new Set()).size,
       lens: currentLens || mode || "general",
@@ -28281,17 +28314,14 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "");
-    // Build messages with conversation history for continuity
-    const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
-    messages = [];
-    for (const msg of _recentHistory) {
-      messages.push({ role: msg.role === "assistant" ? "assistant" : "user", content: String(msg.content || "").slice(0, 1500) });
-    }
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : ""), mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
-    messages.push({ role: "user", content: _userContent });
+    // Prior turns once, as history. The current user message is already on
+    // the session; buildChatHistoryMessages drops that copy and appends
+    // _userContent last so the request never ends on an assistant prefill.
+    messages = buildChatHistoryMessages(sess.messages, _userContent);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
       system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
@@ -28302,6 +28332,7 @@ ${_operatorV6Block}` : "";
     });
     if (r.ok) {
       _lastBrainMessage = r.message || r.raw || r;
+      _replyDoneReason = r.doneReason || r.raw?.done_reason || null;
       finalReply = String(r.content || "").trim() || localReply;
       llmUsed = true;
       _llmSpan.end("ok", { responseLength: finalReply.length });
@@ -28333,6 +28364,7 @@ ${_operatorV6Block}` : "";
         BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
         if (_fbRes.ok && (_fbJson.message?.content || _fbJson.message?.tool_calls)) {
           _lastBrainMessage = _fbJson.message || null;
+          _replyDoneReason = _fbJson.done_reason || null;
           finalReply = String(_fbJson.message?.content || "").trim() || localReply;
           llmUsed = true;
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
@@ -28353,7 +28385,7 @@ ${_operatorV6Block}` : "";
     try {
       const _directDtuContext = _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
       const _directParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-      const _directSystem = buildConsciousPrompt({
+      const _directSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
         dtu_count: STATE.dtus?.size || 0,
         domain_count: Object.keys(STATE.domains || {}).length,
         lens: currentLens || mode || "general",
@@ -28366,13 +28398,10 @@ ${_operatorV6Block}` : "";
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt + _lensHintSuffix;
-      // Include conversation history in messages
-      const _directHistory = (sess.messages || []).slice(-10, -1);
+      }) + _toolSystemPrompt + _lensHintSuffix, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
-        ..._directHistory.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "").slice(0, 1500) })),
-        { role: "user", content: prompt }
+        ...buildChatHistoryMessages(sess.messages, prompt),
       ];
       const _directAc = new AbortController();
       const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
@@ -28385,7 +28414,7 @@ ${_operatorV6Block}` : "";
           messages: _directMessages,
           stream: false,
           think: false,
-          options: { temperature: _directParams.temperature || 0.75, num_predict: _directParams.maxTokens || 1500 }
+          options: { temperature: _directParams.temperature || 0.75, num_predict: _chatMaxTokens }
         }),
         signal: _directAc.signal
       }).finally(() => clearTimeout(_directTimeout));
@@ -28396,6 +28425,7 @@ ${_operatorV6Block}` : "";
       BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
       if (_directRes.ok && (_directJson.message?.content || _directJson.message?.tool_calls)) {
         _lastBrainMessage = _directJson.message || null;
+        _replyDoneReason = _directJson.done_reason || null;
         finalReply = String(_directJson.message?.content || "").trim() || localReply;
         llmUsed = true;
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
@@ -28481,12 +28511,12 @@ ${_operatorV6Block}` : "";
         // Tool-call follow-up: same composeSystemPrompt path but with
         // an `extra` note that primes the model to synthesize over the
         // tool results it just received.
-        const _followUpSystem = composeSystemPrompt("conscious", {
+        const _followUpSystem = finalizeConversationalSystemPrompt(composeSystemPrompt("conscious", {
           mode,
           currentLens,
           worldId: input?.worldId || null,
-          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation.",
-        }).system;
+          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation. A fenced code block is fine when the result is code.",
+        }).system, mode);
         try {
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
@@ -28499,7 +28529,7 @@ ${_operatorV6Block}` : "";
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
               stream: false,
               think: false,
-              options: { temperature: 0.4, num_predict: 900 }
+              options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
           }).finally(() => clearTimeout(_fuTimeout));
@@ -28509,6 +28539,7 @@ ${_operatorV6Block}` : "";
           BRAIN.conscious.stats.totalMs += _fuElapsed;
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (_fuRes.ok && _fuJson.message?.content) {
+            _replyDoneReason = _fuJson.done_reason || null;
             finalReply = _enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText);
             ctx.log("chat_tools", "Follow-up brain call with tool results succeeded", { elapsed: _fuElapsed, toolCount: _toolResults.length, citeEnforce: true });
           } else {
@@ -28614,8 +28645,52 @@ ${_operatorV6Block}` : "";
     }
   }
 
+  // A length stop is not a finished reply. One short continuation, then
+  // trim to the last complete sentence or list item. Persist only that
+  // text — the next turn must not be handed a mid-sentence stub.
+  if (llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
+    try {
+      const _finished = await finishLengthLimitedReply(finalReply, {
+        doneReason: _replyDoneReason,
+        continueOnce: async (partial) => {
+          const _cAc = new AbortController();
+          const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+          try {
+            const _cRes = await fetch(`${brainUrl}/api/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: brainModel,
+                messages: [
+                  { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                  { role: "assistant", content: partial },
+                  { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                ],
+                stream: false,
+                think: false,
+                options: { temperature: 0.3, num_predict: Math.min(600, _chatMaxTokens) },
+              }),
+              signal: _cAc.signal,
+            });
+            const _cJson = await _cRes.json().catch(() => ({}));
+            if (!_cRes.ok) return { content: "", doneReason: null };
+            return { content: String(_cJson.message?.content || ""), doneReason: _cJson.done_reason || null };
+          } finally {
+            clearTimeout(_cTimeout);
+          }
+        },
+      });
+      if (_finished.text) finalReply = _finished.text;
+      else finalReply = "I lost the end of that thought. Ask me to pick it up and I will.";
+    } catch (_finErr) {
+      const _cut = (await finishLengthLimitedReply(finalReply, { doneReason: "length" })).text;
+      if (_cut) finalReply = _cut;
+      ctx.log("chat", "Length-stop finish failed; trimmed.", { error: String(_finErr?.message || _finErr) });
+    }
+  }
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
@@ -32592,9 +32667,13 @@ register("dtu", "confidence", (ctx, input = {}) => {
 // Fields with no real backing on this pass (forks / citedBy / relatedIds)
 // are left as empty arrays rather than invented — an honest "no ancestors"
 // empty state is the correct UI for an original, uncited DTU.
-function _dtuLineageRef(id) {
+function _dtuLineageRef(id, ctx) {
   const d = STATE.dtus.get(id);
   if (!d) return { id };
+  // A public child's lineage must not carry a private parent's title,
+  // summary, or owner. The id is already on the visible subject's own
+  // lineage field; the private body stays off this response.
+  if (!ctxMayReadDtu(ctx, d)) return { id };
   return {
     id: d.id,
     title: d.title || d.human?.summary || null,
@@ -32610,6 +32689,7 @@ register("dtu", "lineage", (ctx, input = {}) => {
     if (!id) return { ok: false, error: "missing_id" };
     const dtu = STATE.dtus.get(id);
     if (!dtu) return { ok: false, error: "DTU not found" };
+    if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
 
     let parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
     // Fallback: derive from the plain-array `input.lineage` form when the
@@ -32622,8 +32702,8 @@ register("dtu", "lineage", (ctx, input = {}) => {
         .filter(Boolean);
     }
     const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
-    const parents = parentIds.map(_dtuLineageRef);
-    const children = childIds.map(_dtuLineageRef);
+    const parents = parentIds.map((pid) => _dtuLineageRef(pid, ctx));
+    const children = childIds.map((cid) => _dtuLineageRef(cid, ctx));
 
     let royaltyCascade = [];
     const db = ctx?.db || STATE?.db;
@@ -32632,10 +32712,11 @@ register("dtu", "lineage", (ctx, input = {}) => {
         const chain = _dtuLineageAncestorChain(db, id);
         royaltyCascade = chain.map((a) => {
           const ref = STATE.dtus.get(a.contentId);
+          const hidden = ref ? !ctxMayReadDtu(ctx, ref) : false;
           return {
             id: a.contentId,
-            title: ref?.title || null,
-            ownerId: ref?.ownerId || a.creatorId || null,
+            title: hidden ? null : (ref?.title || null),
+            ownerId: hidden ? null : (ref?.ownerId || a.creatorId || null),
             generation: a.generation,
             royaltyRate: a.rate,
             royaltyPercent: `${(a.rate * 100).toFixed(1)}%`,
@@ -37079,10 +37160,14 @@ const INTERNAL_LEAK_PATTERNS = [
   /\bshadow\s*dtu\b.*\bhidden\b/i,
   /\bSYSTEM\s+PROMPT\b/i
 ];
-function stripInternalLeakage(reply, { debug=false, showInternals=false } = {}) {
+function stripInternalLeakage(reply, { debug=false, showInternals=false, userText="" } = {}) {
   if (!reply) return "";
-  if (debug || showInternals) return String(reply);
-  const lines = String(reply).split("\n");
+  // Governance envelopes are never user-visible, including when a caller
+  // asked to see internals — the structured copy already rides on `grc`.
+  const text = stripGovernanceLeak(reply, { userText });
+  if (!text) return "";
+  if (debug || showInternals) return text;
+  const lines = text.split("\n");
   const kept = [];
   for (const line of lines) {
     const bad = INTERNAL_LEAK_PATTERNS.some(re => re.test(line));
@@ -37142,7 +37227,8 @@ function toUI(out, req, extraMeta={}) {
   const base = ensureReplyEnvelope(out, req, extraMeta);
   let reply = String(base.reply || "");
   const showInternals = Boolean(req?.body?.showInternals || req?.query?.showInternals === "1");
-  reply = stripInternalLeakage(reply, { debug: false, showInternals });
+  const userText = req?.body?.prompt || req?.body?.message || req?.body?.query || req?.body?.content || "";
+  reply = stripInternalLeakage(reply, { debug: false, showInternals, userText });
   reply = softEnforceLabelDiscipline(reply, base?.meta?.mode || req?.body?.mode || "chat");
   if (!reply) reply = deterministicFallbackReply(req);
 
@@ -37902,6 +37988,10 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
+  if (shouldPauseHeavyBackground()) {
+    log("heartbeat.worker", "Cognitive worker not spawned (low-memory host profile)");
+    return;
+  }
   // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
   // .pathname does NOT decode percent-encoding, so on a checkout path
   // containing a space (encoded "%20" in the URL), the Worker constructor's
@@ -38082,7 +38172,16 @@ function startHeartbeat() {
     // ── Cognitive pipeline tasks: dispatch to worker thread ──
     // The 4 pipeline tasks (autogen, dream, evolution, synthesize) run off-thread.
     // This is the core of the worker migration: HTTP never blocks during pipeline computation.
-    if (cognitiveWorkerReady && STATE.dtus.size > 0) {
+    // Low-memory hosts skip both the worker and the main-thread fallback so a
+    // single interactive session is not competing with autogen/dream/synth.
+    if (!shouldPauseHeavyBackground() && !cognitiveWorker && !_cognitiveWorkerTestShutdown) {
+      try { spawnCognitiveWorker(); } catch (err) {
+        console.error("[cognitive-worker] Failed to spawn:", err);
+      }
+    }
+    if (shouldPauseHeavyBackground()) {
+      // paused — no worker tick and no main-thread autogen/dream/synth fallback
+    } else if (cognitiveWorkerReady && STATE.dtus.size > 0) {
       const anyEnabled = STATE.settings.autogenEnabled || STATE.settings.dreamEnabled
         || STATE.settings.evolutionEnabled || STATE.settings.synthEnabled;
       if (anyEnabled) {
@@ -41312,7 +41411,12 @@ async function governorTick(reason="heartbeat") {
   // cluster detection). With no users, there's no one to notice the result.
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
-  if (reason !== "boot" && !presenceIdle.shouldRunHeavyMaintenance()) {
+  //
+  // This gate is idle-only. The heavy-maintenance helper also returns false
+  // on a low-memory host, and using it here skipped the liveness counter
+  // even while authenticated users were driving load (tick-SLO: 0 ticks,
+  // "frozen loop", on a 16 GB CI runner).
+  if (reason !== "boot" && presenceIdle.isIdle()) {
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41323,8 +41427,13 @@ async function governorTick(reason="heartbeat") {
   try { const nsMod = await import("./lib/npc-simulator.js"); nsMod.resetNpcQuestTickCounter?.(); } catch (_e) { /* best-effort */ }
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  // This happens BEFORE the low-memory pause so a small host still looks
+  // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
+    if (reason !== "boot" && shouldPauseHeavyBackground()) {
+      return { ok: true, skipped: "low_memory_host" };
+    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
@@ -54449,7 +54558,8 @@ function initChatSocketHandlers(io) {
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
-            const _streamSystem = buildConsciousPrompt({
+            const _streamMaxTokens = resolveChatMaxTokens({ verbosity: _streamStyleVec?.verbosity });
+            const _streamSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
@@ -54462,17 +54572,10 @@ function initChatSocketHandlers(io) {
               entityStateBlock: "",
               affectGuidance: "",
               styleHints: buildStyleHints(_streamStyleVec),
-            });
+            }), "chat");
 
-            // Build messages with conversation history
-            const _streamHistory = (_streamSess.messages || []).slice(-10, -1);
-            const _streamMessages = [
-              ..._streamHistory.map(m => ({
-                role: m.role === "assistant" ? "assistant" : "user",
-                content: String(m.content || "").slice(0, 1500),
-              })),
-              { role: "user", content: String(prompt) },
-            ];
+            // Prior turns once. Current user message is already on the session.
+            const _streamMessages = buildChatHistoryMessages(_streamSess.messages, String(prompt));
 
             // ===== BYO KEY ROUTING (streaming path) =====
             // Audit 2026-07-27: this path used to ignore BYO overrides
@@ -54502,7 +54605,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   // Bug fix (found while wiring High Power Mode alongside
@@ -54531,7 +54634,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   if (pg?.ok && pg.text) {
@@ -54550,19 +54653,23 @@ function initChatSocketHandlers(io) {
             // never entered, and background brain work competed with live
             // chat for the same Ollama slots un-arbitrated.
             let _streamSeq = 0;
+            const _streamUserText = String(prompt || "");
+            const _govFilter = createGovernanceLeakFilter({ userText: _streamUserText });
             const streamResult = _streamByo
               ? (() => {
                   // _streamByo.text is the real field (see the bug-fix note
                   // above) — normalize to `.content` here so the downstream
                   // consumer (which expects callOllamaStreaming's shape) sees
                   // the same field name regardless of which branch produced it.
-                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
+                  const _byoVisible = visibleChatReply(_streamByo.text, _streamUserText);
+                  if (_byoVisible) socket.emit("chat:token", { token: _byoVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _byoVisible, model: _streamByo.model || "byo", source: "byo" };
                 })()
               : _streamPlatform
               ? (() => {
-                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
+                  const _platVisible = visibleChatReply(_streamPlatform.text, _streamUserText);
+                  if (_platVisible) socket.emit("chat:token", { token: _platVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _platVisible, model: _streamPlatform.model || "platform", source: "platform" };
                 })()
               : await _llmQueue.enqueue(
                   () => callOllamaStreaming(
@@ -54571,21 +54678,59 @@ function initChatSocketHandlers(io) {
                     _streamMessages,
                     _streamSystem,
                     (token) => {
-                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                      const visible = _govFilter.push(token);
+                      if (visible) socket.emit("chat:token", { token: visible, sessionId, seq: _streamSeq++ });
                     },
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     }
                   ),
                   _llmQueue.PRIORITY.CRITICAL
                 ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
+              if (stoppedOnLength(streamResult.doneReason)) {
+                try {
+                  const _streamFinished = await finishLengthLimitedReply(streamResult.content, {
+                    doneReason: streamResult.doneReason,
+                    continueOnce: async (partial) => {
+                      const _cAc = new AbortController();
+                      const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+                      try {
+                        const _cRes = await fetch(`${_streamBrainUrl}/api/chat`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            model: _streamBrainModel,
+                            messages: [
+                              { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                              { role: "assistant", content: partial },
+                              { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                            ],
+                            stream: false,
+                            think: false,
+                            options: { temperature: 0.3, num_predict: Math.min(600, _streamMaxTokens) },
+                          }),
+                          signal: _cAc.signal,
+                        });
+                        const _cJson = await _cRes.json().catch(() => ({}));
+                        if (!_cRes.ok) return { content: "", doneReason: null };
+                        const extra = String(_cJson.message?.content || "");
+                        if (extra) socket.emit("chat:token", { token: extra, sessionId, seq: _streamSeq++ });
+                        return { content: extra, doneReason: _cJson.done_reason || null };
+                      } finally {
+                        clearTimeout(_cTimeout);
+                      }
+                    },
+                  });
+                  if (_streamFinished.text) streamResult.content = _streamFinished.text;
+                } catch { /* keep the streamed text; history trim still drops a stub next turn */ }
+              }
               // Store assistant response in session
               _streamSess.messages.push({
                 role: "assistant",
-                content: streamResult.content,
+                content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
                 meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
               });
@@ -54679,7 +54824,7 @@ function initChatSocketHandlers(io) {
               const br = await byoBrainChat({
                 db, userId: _rlKey, slot: "conscious",
                 messages: _messages,
-                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || 700, timeout: opts.timeout },
+                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || resolveChatMaxTokens(), timeout: opts.timeout },
               });
               if (br.ok && br.text) {
                 _meterLlmChat(db, {
@@ -56914,7 +57059,18 @@ structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations"
 // ============================================================================
 
 // ---- Wave 2: Version History Endpoints ----
+// By-id reads of a DTU that exists and is private to someone else are 404.
+// A missing id keeps the handler's previous behavior (versions may be []).
+function rejectIfPrivateDtuHidden(req, res, id) {
+  const dtu = STATE.dtus?.get?.(id);
+  if (dtu && !ctxMayReadDtu(req, dtu)) {
+    res.status(404).json({ ok: false, error: "DTU not found" });
+    return true;
+  }
+  return false;
+}
 app.get("/api/dtus/:id/versions", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const versions = getDTUVersions(req.params.id);
   res.json({ ok: true, versions });
 });
@@ -57031,6 +57187,7 @@ app.get("/api/ai/search", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/suggestions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await suggestConnections(req.params.id, { limit: Number(req.query.limit || 5) });
   res.json(result);
 }));
@@ -57041,6 +57198,7 @@ app.post("/api/ai/creti", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/contradictions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await detectContradictions(req.params.id);
   res.json(result);
 }));
@@ -57138,6 +57296,7 @@ app.post("/api/workspaces/:id/members", (req, res) => {
 
 // ---- Wave 4: Comments Endpoints ----
 app.get("/api/dtus/:id/comments", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = getComments(req.params.id);
   res.json(result);
 });
@@ -57199,7 +57358,7 @@ app.post("/api/dtus/:id/share", (req, res) => {
 app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
   try {
     const dtu = STATE.dtus?.get?.(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const lens = req.body?.lens || req.body?.domain;
     if (!lens) return res.status(400).json({ ok: false, error: "lens/domain required" });
     const userId = req.user.id;
@@ -57234,7 +57393,7 @@ app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
 app.post("/api/dtus/:id/fork", requireAuth(), (req, res) => {
   try {
     const sourceDtu = STATE.dtus?.get?.(req.params.id);
-    if (!sourceDtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!sourceDtu || !ctxMayReadDtu(req, sourceDtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const userId = req.user.id;
     const forkedDtu = {
       ...structuredClone(sourceDtu),
@@ -57272,6 +57431,9 @@ app.post("/api/lens/:domain/:id/pull", (req, res) => {
     // If the artifact links to an existing DTU, fork that DTU
     if (artifact.data?.dtuId && STATE.dtus.get(artifact.data.dtuId)) {
       const sourceDtu = STATE.dtus.get(artifact.data.dtuId);
+      if (!ctxMayReadDtu(req, sourceDtu)) {
+        return res.status(404).json({ ok: false, error: "DTU not found" });
+      }
       const forkedDtu = {
         ...structuredClone(sourceDtu),
         id: uid("dtu"),
@@ -67754,7 +67916,7 @@ function freshnessLabel(score) {
 // Track DTU access for freshness
 app.get("/api/dtus/:id/freshness", (req, res) => {
   const dtu = STATE.dtus.get(req.params.id);
-  if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+  if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
 
   // Record access
   if (!dtu.meta) dtu.meta = {};
@@ -85877,8 +86039,9 @@ async function runBackup() {
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room, and copy in one step so concurrent
-        // writes can't restart it.
+        // honestly when there's no room. The one-step copy still runs, but
+        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
+        // loop for up to 8.4s and the shedder 503'd login during warmup.
         const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
         let freeBytes = Infinity;
         try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
@@ -85887,7 +86050,7 @@ async function runBackup() {
           throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
         }
         try {
-          await _db.backup(snapPath, { progress: () => 0x7fffffff });
+          await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),

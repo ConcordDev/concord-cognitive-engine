@@ -8,6 +8,7 @@ import { logAudit } from "../lib/audit-logger.js";
 import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
 
@@ -22,7 +23,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.get("/api/dtu_view/:id", (req, res) => {
     const id = req.params.id;
     const d = STATE.dtus.get(id);
-    if (!d) return res.status(404).json({ ok:false, error:"DTU not found" });
+    if (!d || !ctxMayReadDtu(req, d)) return res.status(404).json({ ok:false, error:"DTU not found" });
     return res.json({ ok:true, dtu: dtuForClient(d, { raw: req.query.raw === "1" }) });
   });
 
@@ -322,7 +323,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   // GET /api/dtu/:id/export — pack a DTU as a portable container archive
   app.get("/api/dtu/:id/export", asyncHandler(async (req, res) => {
     const dtu = dtusArray().find(d => d.id === req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const artifactRootDir = path.join(process.cwd(), "data", "artifacts");
     const containerPath = await packDTUContainer(dtu, artifactRootDir);
     res.download(containerPath, `dtu-${req.params.id}.tar.gz`, err => {
