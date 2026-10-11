@@ -49,7 +49,7 @@ function bootDb() {
     CREATE TABLE building_rooms (id TEXT PRIMARY KEY, building_id TEXT, world_id TEXT, room_type TEXT, name TEXT, width REAL, depth REAL, height REAL, x_offset REAL, z_offset REAL, floor INTEGER, capacity INTEGER, is_public INTEGER DEFAULT 1, furniture TEXT DEFAULT '[]', lock_tier INTEGER DEFAULT 0, lock_state TEXT DEFAULT 'open');
     CREATE TABLE player_achievements (player_id TEXT, achievement_id TEXT, earned_at INTEGER, PRIMARY KEY (player_id, achievement_id));
     CREATE TABLE lattice_born_quests (id TEXT PRIMARY KEY, quest_id TEXT, drift_alert_signature TEXT UNIQUE, world_id TEXT, parent_quest_id TEXT, cascade_depth INTEGER);
-    CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, kind TEXT, created_by TEXT, created_at INTEGER, body_json TEXT);
+    CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, type TEXT, creator_id TEXT, created_at INTEGER, body_json TEXT);
   `);
   upHouses(db);
   upOverrides(db);
@@ -158,7 +158,8 @@ describe("Phase BA-BE — belonging sprint end-to-end", () => {
     const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
     const photo = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: tinyPng, caption: "Decorated my cottage." });
     assert.equal(photo.ok, true);
-    sharePhoto(db, photo.id);
+    const shared = sharePhoto(db, photo.id);
+    assert.equal(shared.ok, true, shared.error);
     const feed = listPublicPhotosInWorld(db, "tunya");
     assert.equal(feed.length, 1);
   });
