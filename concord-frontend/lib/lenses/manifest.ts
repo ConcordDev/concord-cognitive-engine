@@ -1091,7 +1091,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     dataTier: 'SIM_GRADE_A',
     emptyState: {
       headline: "Run a dilemma through the Decision Toolkit.",
-      caption: "Multi-framework analysis, stakeholder mapping, decision matrices, bias checklists and audits, peer review, and a case library — nine tools, all backed by real computed results.",
+      caption: "Multi-framework analysis, stakeholder mapping, decision matrices, bias checklists and audits, a personal deliberation log, and a case library — nine tools, all backed by real computed results.",
       firstActionLabel: "Open the Decision Toolkit",
     },
     firstRunGuide: {

@@ -55,7 +55,7 @@ export default function EthicsLensPage() {
         lensId="ethics"
         crumb="Ethics"
         title={`What is the right call${who ? `, ${who}` : ''}?`}
-        subtitle="Multi-framework decision analysis, stakeholder equity, bias auditing, and a peer-reviewed case library."
+        subtitle="Multi-framework decision analysis, stakeholder equity, bias auditing, and a personal case library."
         cta={{ label: 'Analyze a decision', icon: Scale, onClick: analyze, title: 'Analyze a decision (N)' }}
       >
         <DecisionToolkit activeTab={activeTab} onTabChange={setActiveTab} />
