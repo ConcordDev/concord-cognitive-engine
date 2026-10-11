@@ -7,7 +7,7 @@
 // Domains covered:
 //   geology.live_quakes_today        USGS Earthquake Catalog (M2.5+, 24h)
 //   ocean.live_buoys_atlantic        NOAA NDBC active Atlantic buoys
-//   environment.live_air_quality     EPA AirNow current observations (by ZIP)
+//   environment.live_air_quality     Open-Meteo CAMS air quality (by ZIP); see key-required-live.js
 //   history.live_wiki_otd            Wikipedia "On This Day" featured content
 //   atlas.live_geocode               OpenStreetMap Nominatim search
 //

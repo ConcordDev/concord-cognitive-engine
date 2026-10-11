@@ -23,6 +23,7 @@
 
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { triggerCrisis, CRISIS_TYPES } from "../lib/world-crisis.js";
 import { mirrorToGateways } from "../lib/gateway-fanout.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
@@ -421,7 +422,7 @@ export default function registerCrisisMacros(register) {
       } catch (e) { out.sources.usgsError = String(e?.message || e); }
       // NWS active weather alerts
       try {
-        const nws = await cachedFetchJson(NWS_ALERTS, { ttlMs: 5 * 60 * 1000 });
+        const nws = await cachedFetchJson(NWS_ALERTS, { ttlMs: 10 * 60 * 1000, opts: { headers: nwsHeaders() } });
         const feats = Array.isArray(nws?.features) ? nws.features : [];
         out.sources.nws = feats.length;
         const sevRank = { Extreme: 1, Severe: 0.8, Moderate: 0.55, Minor: 0.3, Unknown: 0.2 };

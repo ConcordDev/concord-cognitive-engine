@@ -42,12 +42,15 @@ test('finance.live_fred_series returns missing_api_key when FRED_API_KEY unset',
   assert.match(r.signupUrl, /stlouisfed\.org/);
 });
 
-test('environment.live_air_quality returns missing_api_key envelope', async () => {
+test('environment.live_air_quality does not require an AirNow key', async () => {
   delete process.env.EPA_AIRNOW_API_KEY;
+  delete process.env.AIRNOW_API_KEY;
   const r = await seen.get('environment.live_air_quality').fn({}, {});
   assert.equal(r.ok, false);
-  assert.equal(r.envVar, 'EPA_AIRNOW_API_KEY');
-  assert.match(r.signupUrl, /airnow/);
+  assert.equal(r.reason, 'missing_location');
+  assert.notEqual(r.reason, 'missing_api_key');
+  assert.equal(r.envVar, undefined);
+  assert.equal(r.observations, undefined);
 });
 
 test('travel.live_nps_parks returns missing_api_key envelope', async () => {
@@ -58,24 +61,22 @@ test('travel.live_nps_parks returns missing_api_key envelope', async () => {
   assert.match(r.signupUrl, /nps\.gov/);
 });
 
-test('weather.live_forecast returns missing_api_key envelope', async () => {
+test('weather.live_forecast does not require an OpenWeatherMap key', async () => {
   delete process.env.OPENWEATHERMAP_API_KEY;
   const r = await seen.get('weather.live_forecast').fn({}, {});
   assert.equal(r.ok, false);
-  assert.equal(r.envVar, 'OPENWEATHERMAP_API_KEY');
-  assert.match(r.signupUrl, /openweathermap/);
+  assert.equal(r.reason, 'missing_location');
+  assert.notEqual(r.reason, 'missing_api_key');
+  assert.equal(r.envVar, undefined);
+  assert.equal(r.forecasts, undefined);
 });
 
 test('missing_api_key shapes to HTTP 200 with the honest envelope, not 422', async () => {
   delete process.env.FRED_API_KEY;
-  delete process.env.EPA_AIRNOW_API_KEY;
   delete process.env.NPS_API_KEY;
-  delete process.env.OPENWEATHERMAP_API_KEY;
   const cases = [
     ['finance.live_fred_series', 'FRED_API_KEY', /stlouisfed\.org/],
-    ['environment.live_air_quality', 'EPA_AIRNOW_API_KEY', /airnow/],
     ['travel.live_nps_parks', 'NPS_API_KEY', /nps\.gov/],
-    ['weather.live_forecast', 'OPENWEATHERMAP_API_KEY', /openweathermap/],
   ];
   for (const [key, envVar, urlRe] of cases) {
     const raw = await seen.get(key).fn({}, {});
@@ -96,17 +97,14 @@ test('missing_api_key shapes to HTTP 200 with the honest envelope, not 422', asy
 
 test('missing-key envelope is never fake — no observations/forecasts/parks/series', async () => {
   delete process.env.FRED_API_KEY;
-  delete process.env.EPA_AIRNOW_API_KEY;
   delete process.env.NPS_API_KEY;
-  delete process.env.OPENWEATHERMAP_API_KEY;
   const results = await Promise.all([
     seen.get('finance.live_fred_series').fn({}, {}),
-    seen.get('environment.live_air_quality').fn({}, {}),
     seen.get('travel.live_nps_parks').fn({}, {}),
-    seen.get('weather.live_forecast').fn({}, {}),
   ]);
   for (const r of results) {
     assert.equal(r.ok, false);
+    assert.equal(r.reason, 'missing_api_key');
     assert.equal(r.observations, undefined);
     assert.equal(r.forecasts, undefined);
     assert.equal(r.parks, undefined);

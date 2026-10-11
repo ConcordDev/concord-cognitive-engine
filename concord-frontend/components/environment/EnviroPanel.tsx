@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * EnviroPanel — bespoke EPA AirNow + Superfund + USGS Water panel
- * for the environment lens. Backed by environment.airnow-current +
- * environment.epa-superfund-search + environment.usgs-water-realtime.
+ * EnviroPanel — Open-Meteo air quality + EPA Superfund + USGS Water
+ * for the environment lens. Backed by environment.airnow-current
+ * (Open-Meteo CAMS, no key) + environment.epa-superfund-search +
+ * environment.usgs-water-realtime.
  *
- * Per category-leader research (AirNow, IQAir, EPA Envirofacts, USGS
- * WaterWatch): EPA AQI color bands + Superfund site detail + per-row
- * Save-as-DTU.
+ * AQI color bands follow the US AQI scale. Concentrations are labeled
+ * as modeled CAMS values, not EPA monitor readings.
  */
 
 import { useState } from 'react';
@@ -18,10 +18,17 @@ import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface AqiObservation {
-  dateObserved: string; hourObserved: number;
-  reportingArea: string; stateCode: string;
-  parameterName: string; aqi: number;
-  category?: string;
+  dateObserved: string; hourObserved: number | null;
+  reportingArea: string; stateCode: string | null;
+  parameterName: string; aqi: number | null;
+  category?: string | null;
+  value?: number | null;
+  unit?: string | null;
+  pm2_5?: number | null;
+  pm10?: number | null;
+  ozone?: number | null;
+  no2?: number | null;
+  co?: number | null;
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -45,16 +52,30 @@ function aqiColor(aqi: number) {
   return 'bg-rose-900 text-rose-50';
 }
 
+function readingLabel(o: AqiObservation) {
+  if (typeof o.aqi === 'number') return String(o.aqi);
+  if (typeof o.value === 'number') return `${o.value}${o.unit ? ` ${o.unit}` : ''}`;
+  return '—';
+}
+
 export function EnviroPanel() {
   const [zip, setZip] = useState('94110');
   const [observations, setObservations] = useState<AqiObservation[]>([]);
+  const [sourceNote, setSourceNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const aqiMutation = useMutation({
-    mutationFn: async () => callMacro<{ observations: AqiObservation[] }>('airnow-current', { zipCode: zip }),
+    mutationFn: async () => callMacro<{ observations: AqiObservation[]; source?: string; sourceNote?: string }>('airnow-current', { zipCode: zip }),
     onSuccess: (env) => {
-      if (env.ok && env.result) { setObservations(env.result.observations); setError(null); }
-      else { setObservations([]); setError(env.error || 'no AQI data'); }
+      if (env.ok && env.result) {
+        setObservations(env.result.observations || []);
+        setSourceNote(env.result.sourceNote || 'Modeled CAMS data, not EPA monitor readings');
+        setError(null);
+      } else {
+        setObservations([]);
+        setSourceNote(null);
+        setError(env.error || 'no AQI data');
+      }
     },
   });
 
@@ -64,34 +85,38 @@ export function EnviroPanel() {
         <div className="flex items-center gap-2">
           <Leaf className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Environmental data (EPA / USGS)</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">airnow · envirofacts · usgs</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">open-meteo · envirofacts · usgs</span>
         </div>
       </header>
 
       <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-2">
         <div className="flex items-center gap-2">
           <Wind className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-xs font-semibold text-zinc-200">Current AQI (AirNow)</span>
+          <span className="text-xs font-semibold text-zinc-200">Current AQI (Open-Meteo)</span>
           <input type="text" maxLength={5} value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))} placeholder="ZIP" className="ml-2 w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs font-mono text-white" />
           <button type="button" onClick={() => aqiMutation.mutate()} disabled={zip.length !== 5 || aqiMutation.isPending} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
             {aqiMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Load AQI'}
           </button>
         </div>
+        <p className="text-[10px] text-zinc-500">Open-Meteo modeled CAMS data, not EPA monitor readings.</p>
         {error && <div className="text-[11px] text-red-300">{error}</div>}
+        {sourceNote && observations.length > 0 && (
+          <p className="text-[10px] text-zinc-400">{sourceNote}</p>
+        )}
         {observations.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5">
             {observations.map((o, i) => (
               <div key={`${o.parameterName}-${i}`} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${aqiColor(o.aqi)}`}>{o.aqi}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeof o.aqi === 'number' ? aqiColor(o.aqi) : 'bg-zinc-800 text-zinc-200'}`}>{readingLabel(o)}</span>
                 <span className="font-mono text-zinc-300">{o.parameterName}</span>
                 <span className="text-zinc-400">{o.category || ''}</span>
-                <span className="ml-auto text-[10px] text-zinc-400">{o.reportingArea}, {o.stateCode}</span>
+                <span className="ml-auto text-[10px] text-zinc-400">{o.reportingArea}{o.stateCode ? `, ${o.stateCode}` : ''}</span>
                 <SaveAsDtuButton
                   compact
-                  apiSource="epa-airnow"
-                  title={`AQI ${o.aqi} ${o.parameterName} — ${o.reportingArea}, ${o.stateCode}`}
-                  content={`AQI: ${o.aqi}\nParameter: ${o.parameterName}\nCategory: ${o.category}\nReporting area: ${o.reportingArea}, ${o.stateCode}\nObserved: ${o.dateObserved} ${o.hourObserved}:00`}
-                  extraTags={['environment', 'aqi', 'epa', o.parameterName.toLowerCase().replace(/\./g, '-')]}
+                  apiSource="open-meteo"
+                  title={`${o.parameterName} ${readingLabel(o)} — ${o.reportingArea}${o.stateCode ? `, ${o.stateCode}` : ''}`}
+                  content={`Source: Open-Meteo (modeled CAMS, not EPA monitor readings)\nParameter: ${o.parameterName}\nValue: ${readingLabel(o)}\nCategory: ${o.category || '—'}\nReporting area: ${o.reportingArea}${o.stateCode ? `, ${o.stateCode}` : ''}\nObserved: ${o.dateObserved} ${o.hourObserved ?? '—'}:00`}
+                  extraTags={['environment', 'aqi', 'open-meteo', o.parameterName.toLowerCase().replace(/\./g, '-')]}
                   rawData={o}
                 />
               </div>

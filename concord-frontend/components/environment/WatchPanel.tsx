@@ -2,9 +2,9 @@
 
 /**
  * WatchPanel — NOAA/EPA live ops board.
- * Wires AirNow + Superfund + USGS Water + NOAA CDO (EnviroPanel),
- * GBIF occurrences, EPA AirNow ZIP lookup, and the AirNow action stack.
- * No fabricated observations — empty/key-gated states come from the macros.
+ * Wires Open-Meteo air quality, Superfund, USGS Water, NOAA CDO,
+ * GBIF occurrences, and the air-quality action stack.
+ * No fabricated observations. A missing station or NOAA token stays empty.
  */
 
 import { Wind } from 'lucide-react';
@@ -25,7 +25,7 @@ export function WatchPanel() {
             Live government feeds
           </h2>
           <p className={ds.textMuted}>
-            EPA AirNow · Superfund · USGS WaterWatch · NOAA CDO · GBIF — honest empty when a key or station is missing
+            Open-Meteo air quality · Superfund · USGS WaterWatch · NOAA CDO · GBIF — air quality needs no key
           </p>
         </div>
       </header>

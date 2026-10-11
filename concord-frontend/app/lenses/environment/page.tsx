@@ -120,7 +120,7 @@ export default function EnvironmentLensPage() {
         lensId="environment"
         crumb="Environment"
         title={`${current.title}${activeView === 'watch' && who ? `, ${who}` : ''}`}
-        subtitle="NOAA / EPA ops: AirNow, Superfund, USGS, field survey and GHG Protocol inventory."
+        subtitle="NOAA / Open-Meteo air quality, Superfund, USGS, field survey and GHG Protocol inventory."
         actions={
           <>
             <LensFeedButton domain="environment" label="Live environment feed" />

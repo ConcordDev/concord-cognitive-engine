@@ -79,7 +79,8 @@ const PUBLIC_API_HOST_RE = new RegExp(
     "commoncrawl\\.org", "index\\.commoncrawl\\.org",
     // Public data / utility APIs
     "coingecko\\.com", "stackexchange\\.com", "algolia\\.com",
-    "ycombinator\\.com", "open-meteo\\.com", "boardgamegeek\\.com",
+    "ycombinator\\.com", "open-meteo\\.com", "zippopotam\\.us",
+    "weather\\.gov", "airnowapi\\.org", "boardgamegeek\\.com",
     "sunrise-sunset\\.org", "wheretheiss\\.at", "spacexdata\\.com",
     "thespacedevs\\.com", "earthquake\\.usgs\\.gov", "imgflip\\.com",
     "torproject\\.org", "sketchfab\\.com", "qrserver\\.com",
