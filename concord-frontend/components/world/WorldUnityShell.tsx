@@ -51,15 +51,44 @@ const CANDIDATE_SRCS = [
   '/unity-client/index.html',
 ].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
 
+const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
+
+/** Framework URL next to a player index (`…/index.html` → `…/Build/concordia.framework.js.unityweb`). */
+function unityFrameworkUrl(indexSrc: string): string {
+  const pathOnly = indexSrc.split('?')[0];
+  const dir = pathOnly.endsWith('/') ? pathOnly : pathOnly.replace(/[^/]*$/, '');
+  return `${dir}Build/concordia.framework.js.unityweb`;
+}
+
 async function probeUnitySrc(src: string): Promise<boolean> {
   try {
-    const path = src.split('?')[0];
-    const r = await fetch(path, { credentials: 'include' });
-    const ct = r.headers.get('content-type') || '';
-    if (!r.ok) return false;
+    const pathOnly = src.split('?')[0];
+    const index = await fetch(pathOnly, { credentials: 'include' });
+    const ct = index.headers.get('content-type') || '';
+    if (!index.ok) return false;
     // Next JSON 404 / missing-export payloads are not a Unity index.
     if (ct.includes('application/json')) return false;
-    return true;
+    // The index HTML is real even when the Build/*.unityweb blobs are Git LFS
+    // pointers. Loading that player runs concordia.loader.js, which then
+    // throws `unityFramework is not defined`. A real export is gzip (1f 8b)
+    // or JS that defines unityFramework. A pointer, a failed gunzip, or a
+    // JSON 404 is an unbuilt player — leave the iframe unmounted.
+    const framework = await fetch(unityFrameworkUrl(src), { credentials: 'include' });
+    if (!framework.ok) return false;
+    const fwCt = framework.headers.get('content-type') || '';
+    if (fwCt.includes('application/json')) return false;
+    const reader = framework.body?.getReader();
+    if (!reader) return false;
+    const { value } = await reader.read();
+    await reader.cancel().catch(() => undefined);
+    const bytes = value ?? new Uint8Array();
+    if (bytes.length < 64) return false;
+    const head = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(0, 80));
+    if (head.startsWith(LFS_POINTER_PREFIX)) return false;
+    // Raw gzip export, or a large decoded JS blob. An LFS pointer is ~130 bytes.
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) return true;
+    if (bytes.length >= 512) return true;
+    return head.includes('unityFramework');
   } catch {
     return false;
   }
