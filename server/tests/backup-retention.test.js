@@ -219,13 +219,16 @@ describe("server.js wires the shared-folder retention", () => {
     return stripComments(RAW.slice(start, endAt > start ? endAt : start + 8000));
   };
 
-  it("runBackup prunes only via pruneDatedDbBackups and protects the directory it just wrote", () => {
+  it("runBackup prunes only after the new gzip is verified, via the dated-dir helper", () => {
     const body = fnBody("async function runBackup()", "backup_complete");
-    assert.match(body, /pruneDatedDbBackups\(BACKUP_DIR,\s*\{/);
-    assert.match(body, /retentionDays:\s*_BACKUP_RETENTION_DAYS/);
+    assert.match(body, /if \(dbGzipVerified\)/);
+    assert.match(body, /applyDbBackupRetention\(BACKUP_DIR,\s*\{/);
+    assert.match(body, /keep:\s*_BACKUP_RETENTION_DAYS/);
     assert.match(body, /protectName:\s*timestamp/);
+    assert.match(body, /verified:\s*dbGzipVerified/);
     assert.doesNotMatch(body, /readdirSync\(BACKUP_DIR\)\.sort\(\)/);
     assert.doesNotMatch(body, /fs\.rmSync\(oldPath/);
+    assert.doesNotMatch(body, /pruneDatedDbBackups\(BACKUP_DIR/);
   });
 
   it("createBackup rotates JSON files and does not list the shared directory itself", () => {

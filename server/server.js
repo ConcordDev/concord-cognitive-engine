@@ -100,8 +100,18 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
 import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
+import {
+  assessDbBackupDisk,
+  finalizeVerifiedGzip,
+  cleanStaleDbBackupTemps,
+  evaluateStartupBackup,
+  recordDbBackupRunStatus,
+  applyDbBackupRetention,
+  dbBackupKeepCount,
+  dbBackupStartupIntervalMs,
+} from "./lib/db-snapshot-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -85991,7 +86001,9 @@ app.get("/api/search", (req, res) => {
 // ── Automated Backup System ──────────────────────────────────────────────────
 // BACKUP_DIR already declared at top-level (line ~4626)
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const _BACKUP_RETENTION_DAYS = 1; // 2026-09-05: keep newest only (disk pressure)
+// Dated YYYY-MM-DD copies to keep after a verified publish. Default 2 so a
+// same-day rewrite still leaves the previous day. CONCORD_DB_BACKUP_KEEP.
+const _BACKUP_RETENTION_DAYS = dbBackupKeepCount();
 
 async function runBackup() {
   try {
@@ -86063,26 +86075,49 @@ async function runBackup() {
     // page-by-page under a read transaction and yields a consistent, valid
     // database even under concurrent writes. Snapshot to a temp file, gzip
     // that, delete it.
+    // Gzip goes to concord.db.gz.tmp-<pid> in this directory, then fsync +
+    // gzip-test + rename onto concord.db.gz. createWriteStream on the final
+    // path truncated the only good copy for the whole multi-GB write.
+    let dbGzipVerified = false;
+    let dbSkip = null;
+    let gzipPath = null;
     try {
       const _db = STATE?.db || globalThis._concordDB;
-      const gzipPath = `${backupDir}/concord.db.gz`;
-      if (_db && typeof _db.backup === "function") {
-        const snapPath = `${backupDir}/.concord.db.snapshot`;
+      const finalGzipPath = `${backupDir}/concord.db.gz`;
+      gzipPath = `${backupDir}/concord.db.gz.tmp-${process.pid}`;
+      const disk = await assessDbBackupDisk(DB_PATH, backupDir);
+      if (!disk.ok) {
+        dbSkip = { skipped: true, reason: "low_disk", message: disk.message };
+        structuredLog("warn", "backup_db_skipped_low_disk", {
+          message: disk.message,
+          needBytes: disk.needBytes,
+          freeBytes: disk.freeBytes,
+          dbBytes: disk.dbBytes,
+          source: DB_PATH,
+        });
+        try {
+          await recordDbBackupRunStatus(BACKUP_DIR, {
+            result: "skipped",
+            reason: "low_disk",
+            message: disk.message,
+            needBytes: disk.needBytes,
+            freeBytes: disk.freeBytes,
+            dbBytes: disk.dbBytes,
+            at: new Date().toISOString(),
+          });
+        } catch (statusErr) {
+          structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+        }
+      } else if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot.tmp-${process.pid}`;
         // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
         // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room. The one-step copy still runs, but
-        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
-        // loop for up to 8.4s and the shedder 503'd login during warmup.
-        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
-        let freeBytes = Infinity;
-        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
-        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
-        if (freeBytes < needBytes) {
-          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
-        }
+        // honestly when there's no room (free < db × 1.3). The one-step copy
+        // still runs, but in a worker: on the main thread an ~8.9 GB snapshot
+        // blocked the loop for up to 8.4s and the shedder 503'd login during warmup.
         try {
           await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
@@ -86090,8 +86125,10 @@ async function runBackup() {
             zlib.createGzip({ level: 6 }),
             fs.createWriteStream(gzipPath),
           );
+          await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+          dbGzipVerified = true;
           const { size: sourceBytes } = await fs.promises.stat(snapPath);
-          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
           structuredLog("info", "backup_db_captured", {
             source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
           });
@@ -86106,8 +86143,10 @@ async function runBackup() {
           zlib.createGzip({ level: 6 }),
           fs.createWriteStream(gzipPath),
         );
+        await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+        dbGzipVerified = true;
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
-        const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+        const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
         structuredLog("info", "backup_db_captured", {
           source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
@@ -86118,28 +86157,76 @@ async function runBackup() {
       }
     } catch (e) {
       structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+      if (gzipPath) await fs.promises.rm(gzipPath, { force: true }).catch(() => {});
     }
 
-    // Keep the newest dated DB directories only. Do not readdir+sort the
-    // whole folder: JSON state backups live here too, and digit-leading
-    // YYYY-MM-DD names sort first, so retention 1 deleted the directory
-    // this run just wrote whenever any backup-*.json / auto-*.json existed.
-    try {
-      pruneDatedDbBackups(BACKUP_DIR, {
-        retentionDays: _BACKUP_RETENTION_DAYS,
-        protectName: timestamp,
-      });
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    // Keep the newest N dated DB directories only after the new gzip is
+    // verified. Do not readdir+sort the whole folder: JSON state backups
+    // live here too, and digit-leading YYYY-MM-DD names sort first, so the
+    // old retention deleted the directory this run just wrote whenever any
+    // backup-*.json / auto-*.json existed. backups-legacy is not a date name.
+    if (dbGzipVerified) {
+      try {
+        await recordDbBackupRunStatus(BACKUP_DIR, {
+          result: "ok",
+          reason: null,
+          message: null,
+          at: new Date().toISOString(),
+          filename: `${timestamp}/concord.db.gz`,
+        });
+      } catch (statusErr) {
+        structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+      }
+      try {
+        applyDbBackupRetention(BACKUP_DIR, {
+          keep: _BACKUP_RETENTION_DAYS,
+          protectName: timestamp,
+          verified: dbGzipVerified,
+        });
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
 
-    structuredLog("info", "backup_complete", { backupDir });
-    return { ok: true, path: backupDir, timestamp };
+    structuredLog("info", "backup_complete", { backupDir, dbVerified: dbGzipVerified, dbSkip: dbSkip?.reason ?? null });
+    return {
+      ok: true,
+      path: backupDir,
+      timestamp,
+      dbVerified: dbGzipVerified,
+      ...(dbSkip ? { skipped: true, reason: dbSkip.reason, message: dbSkip.message } : {}),
+    };
   } catch (e) {
     console.error("[Backup] Failed:", String(e?.message || e));
     return { ok: false, error: String(e?.message || e) };
   }
 }
 
-// Run backup on startup (delayed) and periodically
+// Scheduled backup stays on _BACKUP_INTERVAL_MS and always runs runBackup.
+// Boot does not: a deploy restart used to rewrite a 9GB gzip in place every
+// time. Skip when the newest verified snapshot is younger than
+// CONCORD_DB_BACKUP_STARTUP_INTERVAL_HOURS (default 6).
+async function _backupOnStartup() {
+  try {
+    await cleanStaleDbBackupTemps(BACKUP_DIR);
+  } catch (e) {
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) });
+  }
+  let decision = { skip: false, reason: "no_decision" };
+  try {
+    decision = await evaluateStartupBackup(BACKUP_DIR, { intervalMs: dbBackupStartupIntervalMs() });
+  } catch (e) {
+    decision = { skip: false, reason: "decision_failed", error: String(e?.message || e) };
+  }
+  if (decision.skip) {
+    // Do not overwrite a low_disk status: a young verified backup is why boot
+    // skipped, and the admin status should still show the last disk refusal
+    // until a backup actually succeeds.
+    structuredLog("info", "backup_startup_skipped", decision);
+    return { ok: true, skipped: true, reason: "fresh_verified_backup" };
+  }
+  structuredLog("info", "backup_startup_running", { reason: decision.reason || "due" });
+  return runBackup();
+}
+
 // `.catch` rather than try/catch: runBackup is async now, so a rejection is
 // NOT caught by a synchronous try block around the call — it would surface as
 // an unhandled rejection instead. runBackup already returns `{ok:false}` on
@@ -86150,7 +86237,14 @@ const _backupTick = () => {
       structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 };
-_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setTimeout(() => {
+  cleanStaleDbBackupTemps(BACKUP_DIR).catch((e) =>
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) }));
+}, 0));
+_unrefInTest(setTimeout(() => {
+  Promise.resolve(_backupOnStartup()).catch((e) =>
+    structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+}, 60000)); // 1 min after start, gated on the newest verified backup
 _unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
