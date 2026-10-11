@@ -66,6 +66,27 @@ describe('lensRun failure envelope', () => {
     expect(r.data.error).toBe('insufficient_balance');
   });
 
+  it('keeps missing_api_key envVar and signupUrl on an HTTP 200 refusal', async () => {
+    post.mockResolvedValue({
+      status: 200,
+      data: {
+        ok: false,
+        reason: 'missing_api_key',
+        envVar: 'EPA_AIRNOW_API_KEY',
+        signupUrl: 'https://docs.airnowapi.org/account/request/',
+        error: 'missing_api_key',
+      },
+    });
+    const { lensRun } = await import('@/lib/api/client');
+    const r = await lensRun('environment', 'live_air_quality', { zipCode: '94110' });
+    expect(r.data.ok).toBe(false);
+    expect(r.data.result).toBeNull();
+    expect(r.data.error).toBe('missing_api_key');
+    expect(r.data.reason).toBe('missing_api_key');
+    expect(r.data.envVar).toBe('EPA_AIRNOW_API_KEY');
+    expect(r.data.signupUrl).toMatch(/airnow/);
+  });
+
   it('unwraps a real success down to the payload', async () => {
     post.mockResolvedValue({
       status: 200,
