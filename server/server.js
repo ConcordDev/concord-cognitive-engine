@@ -38164,7 +38164,12 @@ app.use((req, res, next) => {
         userId: req.user.id,
         orgId: "default",
         role: req.user.role || "member",
-        scopes: Array.isArray(req.user.scopes) && req.user.scopes.length ? req.user.scopes : ["read", "write"]
+        scopes: Array.isArray(req.user.scopes) && req.user.scopes.length ? req.user.scopes : ["read", "write"],
+        // Private/High Power Mode (migration 397). makeCtx prefers req.actor
+        // over req.user, so without this every authenticated HTTP macro
+        // (chat.respond included) saw brainMode undefined -> "private" and
+        // never reached the platform-provider branch of ctx.llm.chat.
+        brainMode: req.user.brainMode === "high_power" ? "high_power" : "private",
       };
     } else {
       const a = getActorFromReq(req);
