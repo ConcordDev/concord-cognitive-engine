@@ -98,6 +98,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
         <HashtagPage
           tag={view.tag}
           username={username}
+          currentUserId={currentUserId}
           onBack={backToFeed}
           onOpenHashtag={openHashtag}
           onOpenDetail={openDetail}
@@ -109,6 +110,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
         <PostDetail
           postId={view.postId}
           username={username}
+          currentUserId={currentUserId}
           onBack={backToFeed}
           onOpenHashtag={openHashtag}
           onOpenDetail={openDetail}
@@ -164,6 +166,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
                   key={p.id}
                   post={p}
                   username={username}
+                  currentUserId={currentUserId}
                   onChanged={loadFeed}
                   onQuote={quote}
                   onOpenHashtag={openHashtag}

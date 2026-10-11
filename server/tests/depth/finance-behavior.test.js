@@ -206,6 +206,7 @@ describe("finance — net worth + dashboard (wave 8 top-up)", () => {
     // cash clamps to 0 → 0 + 1000 + 0 + 0 − 200 = 800
     assert.equal(r2.result.snapshot.total, 800);
     assert.equal(r2.result.snapshot.cash, 0);
+    assert.equal(r2.result.snapshot.date, "2020-01-01");
   });
 
   it("dashboard-summary: netWorth = cash + investments − credit − loans", async () => {
@@ -260,7 +261,8 @@ describe("finance — holdings + investment-checkup + dividends (wave 8 top-up)"
     const empty = await depthCtx("finance-topup8-empty");
     const bad = await lensRun("finance", "investment-checkup", {}, empty);
     assert.equal(bad.result.ok, false);
-    assert.ok(bad.result.error.includes("no holdings"));
+    assert.match(bad.result.error, /No holdings yet/);
+    assert.doesNotMatch(bad.result.error, /finance\./);
   });
 
   it("dividends-summary: annualDividend = value × yield, portfolioYield exact", async () => {

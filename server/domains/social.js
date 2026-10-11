@@ -10,6 +10,7 @@
 
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
@@ -60,9 +61,36 @@ export default function registerSocialActions(registerLensAction) {
     return b;
   }
 
+  function authorIdentity(ctx, userId, clientUsername, clientDisplay) {
+    const idn = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId);
+    const client = clip(clientUsername, 60);
+    const clientOk = client && client !== userId ? client : "";
+    const dbHandle = idn.username && idn.username !== userId ? idn.username : "";
+    const username = clientOk || dbHandle || userId;
+    const named = clientDisplay && clientDisplay !== userId ? clientDisplay : "";
+    const dbName = idn.displayName && idn.displayName !== userId ? idn.displayName : "";
+    const displayName = named || dbName || clientOk || dbHandle || null;
+    return { username, displayName };
+  }
+
+  function persistSocialRow(ctx, post) {
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    if (!db || typeof db.prepare !== "function" || !post?.id) return;
+    try {
+      const created = Number.isFinite(Date.parse(post.createdAt))
+        ? Math.floor(Date.parse(post.createdAt) / 1000)
+        : Math.floor(Date.now() / 1000);
+      db.prepare(
+        `INSERT OR REPLACE INTO social_posts (id, user_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+      ).run(post.id, post.userId, post.userId, post.body || "", created);
+    } catch { /* social_posts may be absent on a minimal DB */ }
+  }
+
   // Hydrate one post into a wire-shape object with engagement counts and
-  // the viewer's own reaction/repost state attached.
-  function hydratePost(s, postId, viewerId) {
+  // the viewer's own reaction/repost state attached. A stored user id is
+  // replaced with the account's display name and @username when the users
+  // table has them.
+  function hydratePost(s, postId, viewerId, ctx) {
     const post = s.posts.get(postId);
     if (!post) return null;
     const reactMap = s.reactions.get(postId) || new Map();
@@ -70,8 +98,11 @@ export default function registerSocialActions(registerLensAction) {
     for (const r of reactMap.values()) reactionCounts[r] = (reactionCounts[r] || 0) + 1;
     const repostSet = s.reposts.get(postId) || new Set();
     const replyList = s.replies.get(postId) || [];
+    const who = authorIdentity(ctx, post.userId, post.username, post.displayName);
     return {
       ...post,
+      username: who.username,
+      displayName: who.displayName,
       replyCount: replyList.length,
       reactionCounts,
       reactionTotal: reactMap.size,
@@ -122,10 +153,12 @@ export default function registerSocialActions(registerLensAction) {
     if (!body && media.length === 0 && !poll && !quoteOf) {
       return { ok: false, error: "post needs a body, media, a poll, or a quoted post" };
     }
+    const who = authorIdentity(ctx, userId, params.username, params.displayName);
     const post = {
       id: sid("post"),
       userId,
-      username: clip(params.username, 60) || userId,
+      username: who.username,
+      displayName: who.displayName,
       body,
       media,
       poll,
@@ -134,8 +167,9 @@ export default function registerSocialActions(registerLensAction) {
       createdAt: now(),
     };
     s.posts.set(post.id, post);
+    persistSocialRow(ctx, post);
     save();
-    return { ok: true, result: { post: hydratePost(s, post.id, userId) } };
+    return { ok: true, result: { post: hydratePost(s, post.id, userId, ctx) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -148,8 +182,29 @@ export default function registerSocialActions(registerLensAction) {
       .filter((p) => !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
-      .map((p) => hydratePost(s, p.id, viewerId));
+      .map((p) => hydratePost(s, p.id, viewerId, ctx));
     return { ok: true, result: { posts: items, count: items.length } };
+  });
+
+  registerLensAction("social", "deletePost", (ctx, _a, params = {}) => {
+    const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const postId = String(params.postId || "");
+    const post = s.posts.get(postId);
+    if (!post) return { ok: false, error: "post not found" };
+    if (post.userId !== userId) return { ok: false, error: "only the author can delete this post" };
+    s.posts.delete(postId);
+    s.replies.delete(postId);
+    s.reactions.delete(postId);
+    s.reposts.delete(postId);
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    if (db && typeof db.prepare === "function") {
+      try {
+        db.prepare("DELETE FROM social_posts WHERE id = ? AND (user_id = ? OR author_id = ?)").run(postId, userId, userId);
+      } catch { /* table may be absent */ }
+    }
+    save();
+    return { ok: true, result: { id: postId, deleted: true } };
   });
 
   // ── 1. Threaded replies / comment trees ─────────────────────────────
@@ -165,12 +220,14 @@ export default function registerSocialActions(registerLensAction) {
       return { ok: false, error: "parent reply not found" };
     }
     const userId = actor(ctx);
+    const who = authorIdentity(ctx, userId, params.username, params.displayName);
     const reply = {
       id: sid("reply"),
       postId,
       parentId,
       userId,
-      username: clip(params.username, 60) || userId,
+      username: who.username,
+      displayName: who.displayName,
       body,
       createdAt: now(),
     };
@@ -180,12 +237,16 @@ export default function registerSocialActions(registerLensAction) {
     return { ok: true, result: { reply } };
   });
 
-  registerLensAction("social", "replyTree", (_ctx, _a, params = {}) => {
+  registerLensAction("social", "replyTree", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
     if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const flat = (s.replies.get(postId) || []).slice()
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => {
+        const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
+        return { ...r, username: who.username, displayName: who.displayName };
+      });
     const byId = new Map(flat.map((r) => [r.id, { ...r, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
@@ -344,7 +405,7 @@ export default function registerSocialActions(registerLensAction) {
       .filter((p) => p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
-      .map((p) => hydratePost(s, p.id, viewerId));
+      .map((p) => hydratePost(s, p.id, viewerId, ctx));
     const contributors = new Set(posts.map((p) => p.userId)).size;
     return { ok: true, result: { tag, posts, count: posts.length, contributors } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -374,16 +435,20 @@ export default function registerSocialActions(registerLensAction) {
     const postId = String(params.postId || "");
     if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const viewerId = actor(ctx);
-    const post = hydratePost(s, postId, viewerId);
+    const post = hydratePost(s, postId, viewerId, ctx);
     const flat = (s.replies.get(postId) || []).slice()
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => {
+        const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
+        return { ...r, username: who.username, displayName: who.displayName };
+      });
     const byId = new Map(flat.map((r) => [r.id, { ...r, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
       if (node.parentId && byId.has(node.parentId)) byId.get(node.parentId).children.push(node);
       else roots.push(node);
     }
-    const quoted = post.quoteOf ? hydratePost(s, post.quoteOf, viewerId) : null;
+    const quoted = post.quoteOf ? hydratePost(s, post.quoteOf, viewerId, ctx) : null;
     return {
       ok: true,
       result: {
