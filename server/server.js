@@ -2238,6 +2238,15 @@ import {
   shouldSkipExecution,
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
+import {
+  handleMacroHandlerThrow,
+  noteStructuredLog,
+  reportHttpFailure,
+} from "./lib/cortex-failure-signals.js";
+import {
+  createEarlyRouteErrorHandler,
+  createLateRouteErrorHandler,
+} from "./lib/route-error-handlers.js";
 
 // ---- "Everything Real" imports: migration runner + durable endpoints ----
 import { runMigrations as runSchemaMigrations } from "./migrate.js";
@@ -3618,6 +3627,8 @@ const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 };
 function structuredLog(level, event, data = {}) {
   if (LOG_LEVELS[level] < LOG_LEVELS[LOG_LEVEL]) return;
 
+  try { noteStructuredLog(level, event, data); } catch { /* cortex must never break logging */ }
+
   const entry = {
     timestamp: new Date().toISOString(),
     level,
@@ -3675,6 +3686,10 @@ function requestLoggerMiddleware(req, res, next) {
 
     // ---- P95 Tracking (Category 5: Observability) ----
     _LATENCY.record(duration, req.path, req.method);
+
+    if (res.statusCode >= 500 || res.statusCode === 403 || res.statusCode === 422 || res.statusCode === 429) {
+      try { reportHttpFailure(req, null, res.statusCode); } catch { /* cortex must never break the response */ }
+    }
 
     // Log response (skip health checks to reduce noise)
     if (!req.path.startsWith("/health") && !req.path.startsWith("/ready")) {
@@ -15045,26 +15060,12 @@ async function runMacro(domain, name, input, ctx) {
   try {
     result = await m.fn(ctx, input ?? {});
   } catch (macroErr) {
-    // Avoidance learning: record macro failures for pattern learning.
-    try {
-      const painMod = await import("./emergent/avoidance-learning.js").catch(() => null);
-      if (painMod?.recordPain) painMod.recordPain({ domain, name, error: String(macroErr?.message || macroErr) });
-    } catch (e) { observe(e, "macro_failure_pain_recording"); }
     // Contract: runMacro never throws — every caller treats the response
     // as an `{ ok: boolean, ... }` envelope. A handler that throws on bad
     // input would force every caller to add try/catch and lose the pain-
-    // learning hook above. Convert to structured failure instead.
-    structuredLog("warn", "macro_uncaught_throw", {
-      domain, name,
-      error: String(macroErr?.message || macroErr),
-    });
-    return {
-      ok: false,
-      error: "macro_uncaught_throw",
-      message: String(macroErr?.message || macroErr),
-      domain,
-      name,
-    };
+    // learning hook. Convert to structured failure instead. observe() +
+    // recordPain run inside handleMacroHandlerThrow and cannot throw out.
+    return handleMacroHandlerThrow(macroErr, domain, name, structuredLog);
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
 
@@ -37305,6 +37306,7 @@ app.use(createLoadSheddingMiddleware({
               if (!res.headersSent) {
                 if (trySendShutdownError(err, res)) return;
                 const status = msg.startsWith("forbidden") ? 403 : msg.includes("not found") ? 404 : 500;
+                try { reportHttpFailure(req, err, status); } catch { /* cortex must never break the response */ }
                 res.status(status).json({ ok: false, error: msg });
               }
             });
@@ -38115,49 +38117,12 @@ registerAtlasSignalRoutes(app, {
 });
 
 // Error handler
-app.use((err, req, res, _next) => {
-  if (res.headersSent) return;
-
-  if (trySendShutdownError(err, res)) {
-    structuredLog("warn", "shutdown_request_after_close", {
-      requestId: req.id, method: req.method, path: req.path, error: String(err?.message || err),
-    });
-    return;
-  }
-
-  // Handle ConcordError subclasses with proper HTTP status and code
-  if (err instanceof ConcordError) {
-    structuredLog(
-      err.statusCode >= 500 ? "error" : "warn",
-      "request_error",
-      { requestId: req.id, method: req.method, path: req.path, statusCode: err.statusCode, code: err.code, error: err.message, ...(err.statusCode >= 500 ? { stack: err.stack } : {}), ...err.context }
-    );
-    return res.status(err.statusCode).json(err.toJSON());
-  }
-
-  // Handle CORS/Origin blocks
-  if (err?.code === "ORIGIN_BLOCKED") {
-    structuredLog("warn", "origin_blocked", { ip: req.ip, reason: err?.reason });
-    return res.status(403).json({ ok:false, error:"Origin blocked", code:"ORIGIN_BLOCKED" });
-  }
-
-  // Fallback for unknown errors — log full stack, return safe message
-  const msg = String(err?.message || err);
-  structuredLog("error", "unhandled_route_error", { requestId: req.id, method: req.method, path: req.path, error: msg, stack: String(err?.stack || "") });
-  res.status(500).json({ ok:false, error: "An unexpected error occurred", code: "INTERNAL_ERROR" });
-
-  // Trigger repair cortex in background for 500-level errors
-  if (typeof repairError === "function") {
-    repairError({
-      type: "api-error",
-      message: msg,
-      stack: String(err?.stack || ""),
-      file: extractFileFromStack?.(String(err?.stack || "")) || null,
-      line: extractLineFromStack?.(String(err?.stack || "")) || null,
-      meta: { method: req.method, path: req.path },
-    }).catch(() => {});
-  }
-});
+app.use(createEarlyRouteErrorHandler({
+  structuredLog,
+  repairError,
+  extractFileFromStack,
+  extractLineFromStack,
+}));
 
 // ---- heartbeat (Scope Separation: Local tick + Global tick, no Marketplace tick) ----
 // Worker Thread Architecture: cognitive pipeline tasks run off-thread so HTTP is never blocked.
@@ -41480,46 +41445,13 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 
 
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
-app.use((err, req, res, _next) => {
-  if (res.headersSent) return;
-  if (trySendShutdownError(err, res)) {
-    try {
-      structuredLog("warn", "shutdown_request_after_close", {
-        method: req.method, path: req.path, error: String(err?.message || err),
-      });
-    } catch { /* response already 503 */ }
-    return;
-  }
-  // Routes mounted after the earlier error handler (including DELETE
-  // /api/media/:id) land here. ConcordError already carries the right status
-  // (404 not found, 403 forbidden, 400 validation). res.json() without a
-  // status is HTTP 200, which made those deletes look successful.
-  if (err instanceof ConcordError) {
-    return res.status(err.statusCode || 500).json({
-      ok: false,
-      error: err.message,
-      code: err.code,
-    });
-  }
-  const errorId = uid("err");
-  const msg = String(err?.message || err || "Unknown error");
-  const out = {
-    ok: false,
-    error: msg,
-    mode: req?.body?.mode || "chat",
-    sessionId: req?._concordSessionId || req?.body?.sessionId || req?.query?.sessionId || "default",
-    llmUsed: false
-  };
-  try {
-    return uiJson(res, _withAck(out, req, ["logs"], ["/api/logs"], { id: errorId, status: "error" }, { errorId }), req, { errorId });
-  } catch {
-    return res.status(500).json({
-      ok: false,
-      reply: "Internal error.",
-      meta: { sessionId: out.sessionId, mode: out.mode, llmUsed: false, version: VERSION, errorId }
-    });
-  }
-});
+app.use(createLateRouteErrorHandler({
+  structuredLog,
+  uid,
+  uiJson,
+  withAck: _withAck,
+  version: VERSION,
+}));
 // ===== CHICKEN3: Autonomous Lattice Cron + Federation Hooks (additive) =====
 function _c3internalCtx() {
   const ctx = makeInternalCtx("chicken3_cron");

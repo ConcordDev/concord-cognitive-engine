@@ -2,6 +2,7 @@
 // Activity feed for emergent visibility. Persists events to DB and broadcasts via realtimeEmit.
 
 import crypto from "node:crypto";
+import logger from "../logger.js";
 
 export const FEED_EVENT_TYPES = Object.freeze({
   emergence:        "New emergent has emerged",
@@ -231,7 +232,7 @@ export function emitFeedEvent(event, db, realtimeEmit) {
       } catch (e) {
         const msg = e?.message || String(e);
         if (_feedSealed || /not open/i.test(msg)) noteFeedWriteSkipped(msg);
-        else console.error("[feed] DB write failed:", msg);
+        else logger.error("feed", "DB write failed", { error: String(msg).slice(0, 300) });
       }
     }
   }
