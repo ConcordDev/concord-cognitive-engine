@@ -246,6 +246,7 @@ const nextConfig = {
       // tabLabel slugs from lib/lens-registry.ts (redirectsForTabLabels).
       // permanent → 308. Kept in lockstep by tests/lib/lens-tab-redirects.test.ts.
       { source: '/lenses/anonymous', destination: '/lenses/anon', permanent: true },
+      { source: '/lenses/concordia-world-ledger-game-world', destination: '/lenses/ledger', permanent: true },
       { source: '/lenses/ecosystem', destination: '/lenses/eco', permanent: true },
       { source: '/lenses/entities', destination: '/lenses/entity', permanent: true },
       { source: '/lenses/governance', destination: '/lenses/council', permanent: true },

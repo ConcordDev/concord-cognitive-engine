@@ -156,7 +156,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // with a known lensId (no firstRunGuide/emptyState by design).
   // ═══════════════════════════════════════════════════════════════
   { domain: 'careers', label: 'Careers', artifacts: ['contract', 'shift'], macros: { list: 'careers.tracks', get: 'careers.contracts', create: 'careers.work', run: 'careers.offer' }, exports: ['json'], actions: ['browse', 'work', 'offer', 'accept'], category: 'lifestyle' },
-  { domain: 'ledger', label: 'Ledger', artifacts: ['anomaly', 'lien'], macros: { list: 'ledger.anomalies', get: 'ledger.faction_economy', run: 'ledger.flow_summary' }, exports: ['json', 'csv'], actions: ['view', 'audit', 'export'], category: 'finance' },
+  { domain: 'ledger', label: 'Concordia world ledger (game world)', artifacts: ['anomaly', 'lien'], macros: { list: 'ledger.anomalies', get: 'ledger.faction_economy', run: 'ledger.flow_summary' }, exports: ['json', 'csv'], actions: ['view', 'audit', 'export'], category: 'government' },
   // The Codex is a READER over the real `lore` domain (server/domains/lore.js —
   // register("lore", "list"|"get"|"facets"|"spine")). There is NO `codex` domain;
   // the page calls lensRun('lore', …) directly. The manifest key stays 'codex'
@@ -2635,7 +2635,13 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'finance',
-    dataTier: 'SIM_GRADE_A',
+    // Balance, history, and the economy dashboard read the real economy
+    // ledger (GET /api/economy/balance and /api/economy/history →
+    // getBalancePreferSidecar / getTransactions). Plans, subscriptions, and
+    // invoices are the user's own persisted STATE.billingLens records
+    // (server/domains/billing.js), the same class as the accounting books.
+    // SIM_GRADE_A painted a false "Simulated · Not real data" chip over both.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Billing workflow.",
       caption: "Invoices, payments, subscriptions, plans, receipts \u2014 analyze, generate, export.",

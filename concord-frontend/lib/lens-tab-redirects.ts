@@ -57,4 +57,5 @@ export const TAB_LABEL_REDIRECTS: readonly TabLabelRedirect[] = [
   { source: '/lenses/ecosystem', destination: '/lenses/eco' },
   { source: '/lenses/visuals', destination: '/lenses/fractal' },
   { source: '/lenses/simulation', destination: '/lenses/sim' },
+  { source: '/lenses/concordia-world-ledger-game-world', destination: '/lenses/ledger' },
 ];
