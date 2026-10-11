@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BookOpen, NotebookPen, CalendarClock, TrendingUp, Lightbulb, Loader2, Wand2, Share2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { RfEntriesPanel } from './RfEntriesPanel';
 import { RfOnThisDayPanel } from './RfOnThisDayPanel';
@@ -57,7 +58,7 @@ export function ReflectionSection() {
   const [loading, setLoading] = useState(true);
 
   const refreshDash = useCallback(async () => {
-    const r = await lensRun('reflection', 'reflection-dashboard', {});
+    const r = await lensRun('reflection', 'reflection-dashboard', { today: calendarDateKey() });
     setDash((r.data?.result as Dash | null) || null);
     setLoading(false);
   }, []);

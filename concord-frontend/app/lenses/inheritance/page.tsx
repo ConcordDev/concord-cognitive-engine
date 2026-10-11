@@ -25,6 +25,7 @@ import { NoticesPanel } from '@/components/inheritance/NoticesPanel';
 import { MarketPanel } from '@/components/inheritance/MarketPanel';
 import { IntestacyPanel } from '@/components/inheritance/IntestacyPanel';
 import { DiscussionPanel } from '@/components/inheritance/DiscussionPanel';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { TABS, type Tab } from '@/components/inheritance/inheritance-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -58,10 +59,11 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
   const { status, loadAll, loading, loadError } = useEstate();
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
+  const viewTabs = omitCommunityRedditViews(VIEW_TABS, ['discussion']);
 
   useLensCommand(
     [
-      ...VIEW_TABS.map((t) => ({
+      ...viewTabs.map((t) => ({
         id: `inheritance-${t.id}`,
         keys: t.keys,
         description: `${t.label} tab`,
@@ -88,7 +90,7 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
       title={`Plan what you leave behind${active === 'overview' && who ? `, ${who}` : ''}`}
       subtitle="Estate planner and heir-slot market: wills, beneficiaries, assets, executors, probate and intestacy."
       actions={status ? <p className="font-mono text-xs text-amber-200/80">{status}</p> : undefined}
-      tabs={VIEW_TABS}
+      tabs={viewTabs}
       activeTab={active}
       onTab={(id) => setActive(id as View)}
       tabsLabel="Estate views"

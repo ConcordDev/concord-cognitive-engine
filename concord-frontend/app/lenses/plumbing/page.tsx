@@ -5,6 +5,8 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
 import { FieldServiceConsole } from '@/components/plumbing/FieldServiceConsole';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -57,6 +59,7 @@ export default function PlumbingLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<PageTab>('operations');
+  const pageTabs = omitCommunityRedditViews(PAGE_TABS, ['feed']);
 
   useLensCommand(
     [
@@ -74,13 +77,13 @@ export default function PlumbingLensPage() {
         category: 'navigation',
         action: () => setTab('calculators'),
       },
-      {
+      ...(isCommunityRedditEnabled() ? [{
         id: 'tab-feed',
         keys: '3',
         description: 'Go to Industry Feed',
-        category: 'navigation',
+        category: 'navigation' as const,
         action: () => setTab('feed'),
-      },
+      }] : []),
     ],
     { lensId: 'plumbing' }
   );
@@ -99,7 +102,7 @@ export default function PlumbingLensPage() {
             <DTUExportButton domain="plumbing" data={realtimeData || {}} compact />
           </>
         }
-        tabs={PAGE_TABS}
+        tabs={pageTabs}
         activeTab={tab}
         onTab={(id) => setTab(id as PageTab)}
         tabsLabel="Plumbing views"
@@ -124,9 +127,11 @@ export default function PlumbingLensPage() {
         )}
 
         {tab === 'feed' && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <PlumbingFeed />
-          </div>
+          <CommunityRedditSlot>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <PlumbingFeed />
+            </div>
+          </CommunityRedditSlot>
         )}
         {realtimeData && (
           <RealtimeDataPanel domain="plumbing" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />

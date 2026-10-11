@@ -11,9 +11,41 @@
  * @see ../README.md for architecture overview
  */
 
+import expressRateLimit from "express-rate-limit";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
+import {
+  redactLogValue,
+  actorFromCtx,
+  projectLogs,
+  denyUnlessAuthenticated,
+  denyUnlessAdmin,
+  gateLogRead,
+  gateLogAdmin,
+  sendGate,
+  mapPublicEvents,
+  buildChatConversations,
+  buildGenericEventLog,
+  finalizeActivityFeed,
+  projectTraces,
+  resolveTrace,
+  projectBusEvents,
+  projectBridgeLog,
+  selectScopedUserId,
+  summarizePerfSamples,
+  sessionOwnerLookup,
+  projectReasoningTraces,
+  reasoningTraceAccess,
+  resolveAnonMessageRead,
+  combatLogAccess,
+  isLogAdmin,
+  actorFromReq,
+} from "./lib/log-access.js";
+import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { aggregateTopicCounts } from "./lib/trending-topics.js";
+import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
+import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -55,14 +87,23 @@ try {
  */
 
 import express from "express";
+import { installTrustedClientIp } from "./lib/trusted-client-ip.js";
 import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { lookupUserIdentity } from "./lib/user-identity.js";
+import { validateMimeType } from "./lib/upload-mime.js";
+import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
+import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
+import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
+import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
@@ -70,6 +111,18 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
+import {
+  assessDbBackupDisk,
+  finalizeVerifiedGzip,
+  cleanStaleDbBackupTemps,
+  evaluateStartupBackup,
+  recordDbBackupRunStatus,
+  applyDbBackupRetention,
+  dbBackupKeepCount,
+  dbBackupStartupIntervalMs,
+} from "./lib/db-snapshot-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -1867,8 +1920,11 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
+import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
+import { detectContentInjection } from "./lib/dtu-content-injection.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -1880,7 +1936,20 @@ const _DTU_SIDECAR_LAG_BYPASS_MS = Number(process.env.CONCORD_DTU_SIDECAR_LAG_BY
 function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
 }
+// Test seam: NODE_ENV=test may set globalThis.__dtuSidecarList to force the
+// sidecar branch (including a stale empty cache) without the Rust process.
+function _dtuSidecarListActive() {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") return true;
+  return dtuSidecar.ENABLED;
+}
+async function _dtuSidecarListCall(args) {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") {
+    return globalThis.__dtuSidecarList(args);
+  }
+  return dtuSidecar.list(args);
+}
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -1905,6 +1974,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { stripGovernanceLeak, visibleChatReply, createGovernanceLeakFilter } from "./lib/chat-governance-leak.js";
 import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
@@ -1922,6 +1992,7 @@ import {
   hotReload as loaderHotReload, buildSandboxedContext,
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
 import { getArtifactSchema } from "./lib/artifact-schemas.js";
@@ -2048,10 +2119,25 @@ import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-ro
 // ~line 26290); see server/lib/csl-router.js for the gate contract and
 // docs/SPRINT-33-SPECS.md "Worker: cc-sonnet" Task 4 for the design.
 import { createCslToolGate } from "./lib/csl-router.js";
+import {
+  parseExplicitDtuSave,
+  isPdfCreateRequest,
+  explicitDtuCreateInput,
+  savedDtuReply,
+  PDF_CAPABILITY_MESSAGE,
+} from "./lib/chat/dtu-save-intent.js";
+import {
+  shouldSkipToolFollowup,
+  composeToolTurnReply,
+  toolFollowUpUserMessage,
+  followUpFailureReply,
+  ensureCreatedDtuIds,
+} from "./lib/chat/tool-turn-reply.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
+import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
@@ -2604,54 +2690,9 @@ const _SANITIZE_PATTERNS = {
   sqlKeywords: /\b(union|select|insert|update|delete|drop|truncate|exec|execute)\b.*\b(from|into|table|database)\b/gi,
 };
 
-// ---- DTU Content Injection Detection ----
-// Detects prompt injection / jailbreak patterns in DTU content that could manipulate LLM reasoning
-// Injection defense: consolidated patterns (authoritative source: injection-defense.js)
-// These inline patterns are the fast-path check; the full scan uses injection-defense.js
-const _INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i,
-  /you\s+are\s+now\s+(a|an|in)\s+/i,
-  /system\s*:\s*you\s+(are|must|should|will)/i,
-  /\bDAN\b.*\bjailbreak/i,
-  /forget\s+(everything|all|your)\s+(you|instructions?|rules?)/i,
-  /act\s+as\s+(if|though)\s+you\s+(have\s+no|don't\s+have)/i,
-  /override\s+(your|the|all)\s+(safety|content|system)/i,
-  /\[\s*SYSTEM\s*\]/i,
-  /<<\s*SYS\s*>>/i,
-];
-
-function detectContentInjection(text) {
-  if (typeof text !== "string" || text.length < 10) return { injected: false, patterns: [] };
-  const matched = [];
-  for (const pat of _INJECTION_PATTERNS) {
-    if (pat.test(text)) matched.push(pat.source.slice(0, 40));
-  }
-  // Also run the full injection defense module if available. NOTE: injection-defense.js
-  // returns `findings` (not `detections`) — the previous code mapped the wrong field
-  // and silently dropped the actual pattern matches, leaving the structuredLog line
-  // carrying an empty patterns array. That hid the real signal in 94+ false-positive
-  // dtu_injection_detected warnings (2026-08-12). Fixed to include the actual findings
-  // types so the operator can see what's matching.
-  try {
-    const injDef = globalThis._injectionDefenseModule;
-    if (injDef?.scanContent) {
-      const fullScan = injDef.scanContent(globalThis._concordSTATE || {}, text);
-      const findings = fullScan?.findings || [];
-      if (fullScan?.threatLevel && fullScan.threatLevel !== "NONE") {
-        return {
-          injected: true,
-          patterns: [
-            ...matched,
-            ...findings.map(f => `${f.type}:${f.severity ?? "?"}`),
-          ],
-          threatLevel: fullScan.threatLevel,
-          firstFinding: findings[0]?.message || null,
-        };
-      }
-    }
-  } catch (e) { logger.debug('server', 'silent catch', { error: e?.message }); }
-  return { injected: matched.length > 0, patterns: matched };
-}
+// DTU content injection detection lives in lib/dtu-content-injection.js.
+// Threat levels from injection-defense.js are lowercase ("none"). The gate
+// is case-insensitive and requires at least one finding.
 
 // Merge extended domain rules into main registry
 try {
@@ -3187,9 +3228,27 @@ function throttledInterval(fn, ms, name) {
   return timerId;
 }
 
+import { stopFeedManager } from "./lib/feed-manager.js";
+import { feedWriteStats, shutdownFeedPersistence } from "./emergent/feed.js";
+import { runShutdownDurability, writeShutdownLine } from "./lib/shutdown-durability.js";
+import {
+  beginShutdownHttp,
+  getInflightResponses,
+  rollbackOpenWrite,
+  sealDatabaseWrites,
+  shutdownHttpMiddleware,
+  SHUTDOWN_INFLIGHT_BUDGET_MS,
+  trySendShutdownError,
+  waitForInflight,
+} from "./lib/shutdown-http.js";
+
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  // Before server.close and before db.close. A request that still reaches
+  // the app from here on is 503 shutting_down; one already past the
+  // middleware keeps running until the inflight window below.
+  beginShutdownHttp();
 
   structuredLog("info", "shutdown_received", { signal });
 
@@ -3217,6 +3276,54 @@ async function gracefulShutdown(signal) {
     }
   } catch (e) {
     structuredLog("warn", "shutdown_governor_timer_clear_failed", { error: e.message });
+  }
+
+  // Stop accepting before any further database work. server.close() only
+  // stops accept; the close callback fires later. The shutting-down guard
+  // is already set. Both happen before db.close.
+  if (global.httpServer) {
+    try {
+      global.httpServer.close(() => {
+        structuredLog("info", "shutdown_http_closed", {});
+      });
+    } catch (e) {
+      structuredLog("error", "shutdown_http_close_failed", { error: e?.message, stack: e?.stack });
+    }
+  }
+
+  // Requests already inside the app get one short window to finish before
+  // the handle closes. The wait is their own finish/close events plus one
+  // monotonic deadline (clamped to 1.5s inside waitForInflight) — not a
+  // timer poll. Nothing in flight: do not schedule the deadline at all, so
+  // a queued stall cannot run ahead of db.close. This window is before the
+  // state snapshot: an explicit BEGIN left open shares this connection, and
+  // a snapshot written inside it would vanish if we later roll the
+  // transaction back. Anything still open after the deadline is rolled
+  // back here (no partial commit), then the snapshot is its own transaction.
+  let inflight = [];
+  try { inflight = getInflightResponses(); }
+  catch (e) { structuredLog("error", "shutdown_inflight_snapshot_failed", { error: e?.message, stack: e?.stack }); }
+  let inflightDrain = { waited_ms: 0, remaining: 0 };
+  if (inflight.length > 0) {
+    const requested = Number(process.env.SHUTDOWN_INFLIGHT_MS ?? SHUTDOWN_INFLIGHT_BUDGET_MS);
+    inflightDrain = await waitForInflight(inflight, { budgetMs: requested });
+  }
+  structuredLog("info", "shutdown_inflight_drained", {
+    waited_ms: Math.round(Number(inflightDrain.waited_ms) * 1000) / 1000,
+    remaining: inflightDrain.remaining,
+  });
+  if (inflightDrain.remaining > 0) {
+    structuredLog("warn", "shutdown_drain_deferred", {
+      activeRequests: inflightDrain.remaining,
+      reason: "inflight window elapsed; database close runs before the post-close drain",
+    });
+  }
+  try {
+    if (db && rollbackOpenWrite(db)) {
+      structuredLog("warn", "shutdown_open_write_rolled_back", {});
+    }
+  } catch (e) {
+    structuredLog("error", "shutdown_open_write_rollback_failed", { error: e?.message, stack: e?.stack });
   }
 
   // Flush state to disk immediately — critical for OOM kills and SIGTERM
@@ -3287,38 +3394,112 @@ async function gracefulShutdown(signal) {
   _activeTimers.clear();
   structuredLog("info", "shutdown_timers_cleared", { count: _activeTimers.size });
 
-  // Stop repair cortex loop
-  try { stopRepairLoop(); } catch (_e) { logger.debug('server', 'best-effort', { error: _e?.message }); }
+  // Emergent activity-feed writes and feed-manager ingest do not live on
+  // _activeTimers. minorAgentScheduler's interval (and feed-manager's
+  // per-source timers, including the previously untracked initial-fetch
+  // timeout) keep scheduling work, and an in-flight tick only calls
+  // emitFeedEvent after an await. The first shutdown callback below is
+  // db.close() — registered at DB init, before the later timer-cleanup
+  // callback — so those writes hit a closed handle and log
+  // "[feed] DB write failed: The database connection is not open".
+  //
+  // Feed stop stays synchronous: a dynamic import() of feed-manager let a
+  // queued stall run before db.close, and launchd bootout killed the
+  // process at shutdown_timers_cleared. The flush that follows awaits
+  // tracked feed-job promises until they settle or FEED_SHUTDOWN_FLUSH_MS
+  // expires on a monotonic clock. An idle microtask pump used to return
+  // drained=false in ~1ms with pending still 1 (bootout 2026-10-11
+  // 11:02:53Z: timeoutMs=2000, ms=1.276), and db.close then dropped the
+  // write. Nothing pending: the flush does not arm a timer. The long
+  // post-close request drain still runs only after db.close. The short
+  // inflight window (finish/close, capped at 1.5s, skipped when nothing
+  // is in flight) sits between stop-accept and this flush.
+  const _feedClock = () => process.hrtime.bigint();
+  const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
+  const _feedT0 = _feedClock();
+  structuredLog("info", "shutdown_feed_stopping", { pendingJobs: feedWriteStats().pendingJobs });
+  const stopFeedIngress = () => {
+    try { minorAgentScheduler.stop(); }
+    catch (e) { structuredLog("warn", "shutdown_minor_agent_stop_failed", { error: e?.message }); }
+    try { stopFeedManager(); }
+    catch (e) { structuredLog("warn", "shutdown_feed_manager_stop_failed", { error: e?.message }); }
+  };
+  try { stopFeedIngress(); }
+  catch (e) { structuredLog("warn", "shutdown_feed_ingress_stop_failed", { error: e?.message }); }
+  let activeRequests = null;
+  try { activeRequests = getActiveRequests(); }
+  catch (e) { structuredLog("error", "shutdown_active_requests_failed", { error: e?.message, stack: e?.stack }); }
+  structuredLog("info", "shutdown_feed_stopped", { ms: _feedMs(_feedT0), activeRequests });
 
-  // Stop accepting new connections
-  if (global.httpServer) {
-    global.httpServer.close(() => {
-      structuredLog("info", "shutdown_http_closed", {});
-    });
-  }
+  // Stop repair cortex loop. logger.debug in the catch used to be able to
+  // reject this function; the production unhandledRejection handler then
+  // called gracefulShutdown again, which returned immediately because
+  // isShuttingDown was already set, so db.close never ran.
+  try { stopRepairLoop(); }
+  catch (e) { structuredLog("warn", "shutdown_repair_stop_failed", { error: e?.message, stack: e?.stack }); }
 
-  // Wait for in-flight requests to drain
-  const drainStart = Date.now();
-  const drainTimeout = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
-  while (getActiveRequests() > 0 && (Date.now() - drainStart) < drainTimeout) {
-    await new Promise((r) => { setTimeout(r, 500); });
-  }
-  if (getActiveRequests() > 0) {
-    structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
-  }
+  // Accept is already stopped and the inflight window already ran, before
+  // the state snapshot. Feed flush and db.close are still ahead. The long
+  // post-close drain stays inside afterClose, so a stuck count cannot push
+  // db.close out toward launchd's ~5s kill.
 
-  // Run registered callbacks
-  for (const callback of shutdownCallbacks) {
-    try {
-      await callback();
-    } catch (e) {
-      console.error("[Shutdown] Callback error:", e.message);
-    }
-  }
+  // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
+  // is the first callback, so it does not run while a feed write is still
+  // pending unless the flush deadline expired. Expired flushes log warn
+  // with drained=false, the pending count, and elapsed ms — not a clean
+  // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
+  // stays inside the kill_timeout budget.
+  let feedFlushMs = 0;
+  await runShutdownDurability({
+    async flushFeed() {
+      const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
+      const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+      const flushStart = _feedClock();
+      structuredLog("info", "shutdown_feed_flushing", {
+        timeoutMs,
+        pendingJobs: feedWriteStats().pendingJobs,
+      });
+      const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
+      feedFlushMs = Number(process.hrtime.bigint() - flushStart) / 1e6;
+      structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
+        drained: feedDrain.drained,
+        pending: feedDrain.pending,
+        dropped: feedDrain.dropped,
+        timeoutMs,
+        ms: _feedMs(flushStart),
+      });
+    },
+    onFlushError(e) {
+      structuredLog("error", "shutdown_feed_flush_failed", { error: e?.message, stack: e?.stack });
+    },
+    callbacks: shutdownCallbacks,
+    onCallbackError(e) {
+      structuredLog("error", "shutdown_callback_failed", { error: e?.message, stack: e?.stack });
+    },
+    onExitRaced({ code, stack }) {
+      structuredLog("error", "shutdown_exit_raced", { code: code ?? null, stack });
+    },
+    onFatal(e) {
+      structuredLog("error", "shutdown_failed", { signal, error: e?.message, stack: e?.stack });
+    },
+    async afterClose() {
+      const drainStart = Date.now();
+      const drainTimeout = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
+      while (getActiveRequests() > 0 && (Date.now() - drainStart) < drainTimeout) {
+        await new Promise((r) => { setTimeout(r, 500); });
+      }
+      if (getActiveRequests() > 0) {
+        structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
+      }
+    },
+  });
 
-  // Give pending requests time to complete
+  // Give pending requests time to complete. Subtract feed-flush time so
+  // the drain + flush + this wait still fit inside the kill_timeout budget.
+  // This wait is after db.close. It must not move back in front of it.
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
-  await new Promise(resolve => { setTimeout(resolve, timeout); });
+  const postWait = Math.max(0, timeout - feedFlushMs);
+  await new Promise(resolve => { setTimeout(resolve, postWait); });
 
   // The backup fired earlier (non-blocking) has now had the full drain +
   // timeout window above to finish concurrently. Log its outcome if known;
@@ -3357,9 +3538,29 @@ function _crashMemorySnapshot() {
   }
 }
 
+function runShutdownCallbacksSync() {
+  for (const callback of shutdownCallbacks) {
+    try { callback(); }
+    catch (e) {
+      try { structuredLog("error", "shutdown_callback_failed", { error: e?.message, stack: e?.stack }); }
+      catch { /* last-chance path */ }
+    }
+  }
+}
+
+function onShutdownSignal(signal) {
+  gracefulShutdown(signal).catch((err) => {
+    try {
+      structuredLog("error", "shutdown_failed", { signal, error: err?.message, stack: err?.stack });
+    } catch { /* */ }
+    runShutdownCallbacksSync();
+    process.exit(1);
+  });
+}
+
 // Register shutdown handlers
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => onShutdownSignal("SIGTERM"));
+process.on("SIGINT", () => onShutdownSignal("SIGINT"));
 process.on("uncaughtException", (err) => {
   structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack, memory: _crashMemorySnapshot() });
   // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
@@ -3372,6 +3573,16 @@ process.on("uncaughtException", (err) => {
     const diagnosis = matchErrorPattern(err.message);
     if (diagnosis?.fixes?.[0]) addToRepairMemory(err.message, diagnosis.fixes[0]);
   } catch { /* the repair cortex must never crash the crash handler */ }
+  // A second entry used to call gracefulShutdown, which returns immediately
+  // once isShuttingDown is set, and then nothing closed the database.
+  if (isShuttingDown) {
+    try {
+      structuredLog("error", "shutdown_uncaught_during_shutdown", { error: err.message, stack: err.stack });
+    } catch { /* */ }
+    runShutdownCallbacksSync();
+    process.exit(1);
+    return;
+  }
   gracefulShutdown("uncaughtException");
 });
 process.on("unhandledRejection", (reason, _promise) => {
@@ -3386,6 +3597,14 @@ process.on("unhandledRejection", (reason, _promise) => {
   } catch (_e) { logger.debug('server', 'repair cortex must never crash the crash handler', { error: _e?.message }); }
   if ((process.env.NODE_ENV || "development") === "production") {
     console.error("[FATAL] Unhandled promise rejection in production — exiting for clean restart.");
+    if (isShuttingDown) {
+      try {
+        structuredLog("error", "shutdown_unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
+      } catch { /* */ }
+      runShutdownCallbacksSync();
+      process.exit(1);
+      return;
+    }
     gracefulShutdown("unhandledRejection");
   }
 });
@@ -3407,6 +3626,16 @@ function structuredLog(level, event, data = {}) {
     version: "1.0.0",
     ...data
   };
+
+  // Shutdown lines go out with writeSync. console.log on a pipe stays in
+  // the stream buffer, and process.exit (or a kill during the post-close
+  // wait) drops that buffer. A regular file is already synchronous; the
+  // writeSync path keeps a pipe honest too. Fall through if the fd is gone.
+  if (isShuttingDown) {
+    try {
+      return writeShutdownLine(level, event, data, { json: LOG_FORMAT === "json" });
+    } catch { /* fd missing or not writable */ }
+  }
 
   if (LOG_FORMAT === "json") {
     console.log(JSON.stringify(entry));
@@ -4198,7 +4427,7 @@ function buildStyleHints(sv) {
   lines.push(`- Technical depth: ${sv.technicality > 0.6 ? 'deep technical detail' : sv.technicality < 0.4 ? 'plain language' : 'moderate technical'}`);
   lines.push(`- Response length: ${sv.verbosity > 0.6 ? 'detailed, thorough' : sv.verbosity < 0.4 ? 'concise, brief' : 'moderate length'}`);
   lines.push(`- Warmth: ${sv.warmth > 0.6 ? 'warm and personal' : sv.warmth < 0.4 ? 'terse and direct' : 'professional'}`);
-  lines.push(`- Bullet lists: ${sv.bulletiness > 0.6 ? 'prefers structured lists' : sv.bulletiness < 0.4 ? 'prefers flowing prose' : 'mixed format'}`);
+  lines.push(`- Shape: plain prose. ${sv.bulletiness > 0.6 ? "They sometimes write lists; still answer in prose unless they explicitly ask for a list." : "Prefer flowing prose."}`);
   lines.push(`Adapt your responses to match these preferences naturally.`);
   return lines.join("\n");
 }
@@ -5556,34 +5785,18 @@ function simpleTokens(s) {
 }
 
 // ---- Offline-first semantic query expansion (synonyms + fuzzy) ----
+// SYN_MAP lives in lib/synonym-map.js as a null-prototype dictionary.
+// A plain object lookup of "constructor" (or stemLite("constructors"))
+// is Object.prototype.constructor, and `for (const s of syns)` throws
+// "syns is not iterable" — macro_uncaught_throw before the LLM.
+import { expandTokenList, forEachSynonym } from "./lib/synonym-map.js";
+import { nullDict, ownArray } from "./lib/own-lookup.js";
 const STOPWORDS = new Set([
   "a","an","the","and","or","but","if","then","else","so","to","of","in","on","for","from","with","as","at","by",
   "is","are","was","were","be","been","being","do","does","did","doing","done","can","could","should","would","may","might",
   "i","me","my","mine","you","your","yours","we","us","our","ours","they","them","their","theirs",
   "this","that","these","those","it","its","there","here","what","why","how","when","where","who"
 ]);
-
-// Small, safe synonym map (expand over time via shadow linguistic DTUs)
-const SYN_MAP = Object.freeze({
-  "talk": ["chat","conversation","dialogue"],
-  "chat": ["talk","conversation","dialogue"],
-  "conversation": ["chat","talk","dialogue"],
-  "help": ["assist","support","aid"],
-  "fix": ["repair","patch","resolve"],
-  "bug": ["issue","error","problem"],
-  "search": ["retrieve","lookup","find"],
-  "retrieve": ["search","lookup","find"],
-  "dtu": ["dtus","unit","thought"],
-  "dtus": ["dtu","units","thoughts"],
-  "offline": ["local","local-first","no-llm"],
-  "static": ["canned","repetitive","monotone"],
-  "dynamic": ["adaptive","responsive","fluid"],
-  "meaning": ["semantics","intent","sense"],
-  "synonym": ["similar","equivalent","alias"],
-  "topic": ["subject","theme","thread"],
-  "recency": ["recent","fresh","new"],
-  "recent": ["recency","fresh","new"]
-});
 
 function stemLite(t="") {
   let s = String(t||"").toLowerCase();
@@ -5636,29 +5849,30 @@ function learnedSynonymsMap() {
 }
 
 function expandQueryTokens(q="") {
-  const raw = normalizeQueryText(q);
-  const base = tokensNoStop(raw);
-  const expanded = new Set(base);
-  // Synonym expansion
-  for (const t of base) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
-    if (syns) for (const s of syns) expanded.add(stemLite(s));
-  }
-  // Phrase-level learned expansions
-  const lmap = learnedSynonymsMap();
-  if (lmap.size) {
-    const low = raw.toLowerCase();
-    // direct phrase
-    const hit = lmap.get(low);
-    if (hit) for (const s of hit) expanded.add(stemLite(s));
-    // soft phrase match (contains)
-    for (const [k, v] of lmap.entries()) {
-      if (k.length >= 6 && low.includes(k)) {
-        for (const s of v) expanded.add(stemLite(s));
+  // A single bad synonym, learned list, or prototype-key token degrades
+  // to no expansion for that entry. It must not throw out of chat.respond.
+  let base = [];
+  try {
+    const raw = normalizeQueryText(q);
+    base = tokensNoStop(raw);
+    const expanded = new Set(expandTokenList(base, stemLite));
+    try {
+      const lmap = learnedSynonymsMap();
+      if (lmap && lmap.size) {
+        const low = raw.toLowerCase();
+        const hit = lmap.get(low);
+        forEachSynonym(hit, (s) => expanded.add(stemLite(s)));
+        for (const [k, v] of lmap.entries()) {
+          if (typeof k === "string" && k.length >= 6 && low.includes(k)) {
+            forEachSynonym(v, (s) => expanded.add(stemLite(s)));
+          }
+        }
       }
-    }
+    } catch { /* learned expansions are optional */ }
+    return Array.from(expanded).slice(0, 256);
+  } catch {
+    return Array.isArray(base) ? base.slice(0, 256) : [];
   }
-  return Array.from(expanded).slice(0, 256);
 }
 
 function charNgrams(s="", n=3) {
@@ -6299,6 +6513,16 @@ if (db && !READ_REPLICA) {
     structuredLog("warn", "api_keys_load_failed", { error: String(e?.message || e) });
   }
 
+  // Media stream URLs (/api/media/:id/stream) read the in-memory map.
+  // Load the SQLite index so a deploy restart does not 404 every upload.
+  try {
+    const { hydrateMediaIndex } = await import("./lib/media-dtu.js");
+    const mediaLoaded = hydrateMediaIndex(STATE);
+    structuredLog("info", "media_index_loaded_from_db", mediaLoaded);
+  } catch (e) {
+    structuredLog("warn", "media_index_load_failed", { error: String(e?.message || e) });
+  }
+
   // Ingest quality log prune — keep last 50k rows, 30d retention
   try {
     const { pruneQualityLog } = await import("./lib/ingest-quality.js");
@@ -6403,11 +6627,25 @@ if (_DTU_STORE_READY) {
 // firing during the shutdown drain/timeout waits and blocked the event
 // loop long enough to blow past pm2's kill_timeout. Kept the ms timing
 // here — cheap, and it's exactly what proved db.close() wasn't the culprit.)
+let _shutdownDbClosed = false;
 if (db) {
   registerShutdownCallback(() => {
+    if (_shutdownDbClosed) return;
+    // Roll back a multi-statement write still open, and refuse any SQL
+    // that has not started. Then close. Feed flush already ran.
+    try { sealDatabaseWrites(db); }
+    catch (e) {
+      structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
+    }
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
-    db.close();
+    try {
+      db.close();
+    } catch (e) {
+      structuredLog("error", "shutdown_database_close_failed", { error: e?.message, stack: e?.stack });
+      return;
+    }
+    _shutdownDbClosed = true;
     const __ms = Number(process.hrtime.bigint() - __t0) / 1e6;
     structuredLog("info", "shutdown_database_closed", { ms: __ms });
   });
@@ -7774,7 +8012,21 @@ function authMiddleware(req, res, next) {
 
   // If this is a sovereign route, do NOT allow the publicReadPaths bypass below.
   // Force authentication first, then check role after auth resolves.
-  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => req.path.startsWith(route));
+  //
+  // Prefix boundary: "/api/sovereign".startsWith matches the user-own lock
+  // namespace "/api/sovereignty" and "/api/sovereignty/...". Those handlers
+  // are caller-scoped (requireAuth + own rows) and must not inherit the
+  // sovereign role gate. Every other extension of the prefix stays gated,
+  // including "/api/sovereign", "/api/sovereign/...", "/api/sovereign-emergent",
+  // and lookalikes such as "/api/sovereignX". The other listed prefixes
+  // keep bare startsWith, so "/api/admin/sovereign..." is unchanged.
+  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => {
+    if (!req.path.startsWith(route)) return false;
+    if (route === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) {
+      return false;
+    }
+    return true;
+  });
 
   // Skip auth for public-read endpoints (GET only)
   // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
@@ -8026,7 +8278,14 @@ function authMiddleware(req, res, next) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty is intentionally absent. status/setup/unsync/
+    // preferences/audit are caller-scoped and requireAuth. Listing the
+    // prefix would let an anonymous GET skip this middleware once the
+    // path is no longer caught by the /api/sovereign prefix gate.
+    // The "/api/sovereign" entry above still startsWith-matches
+    // /api/sovereignty; the bypass below excludes that namespace so
+    // anonymous curl stays 401 instead of falling through to the bot guard.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -8051,7 +8310,15 @@ function authMiddleware(req, res, next) {
   // user-scoped behavior (search history, saved searches) see the JWT.
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
-  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => {
+    if (!req.path.startsWith(p)) return false;
+    // "/api/sovereign" is a public-read prefix for the sovereign console,
+    // but it also prefix-matches the caller-scoped lock namespace. Those
+    // routes are no longer sovereign-gated, so without this exclusion an
+    // anonymous GET would skip auth here.
+    if (p === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) return false;
+    return true;
+  })) return next();
   // MCP bypass (Sprint 54, 2026-08-13): local-first MCP server for cloud workers.
   // When CONCORD_MCP_PUBLIC=1, both GET /mcp/tools and POST /mcp/call bypass auth.
   // When AUTH_MODE=public (local-first dev), the public mode already handles this.
@@ -9341,13 +9608,10 @@ async function createBackup(name = null) {
     // in disk from a constant nobody re-read. Derive it instead.
     try {
       const MAX_STATE_BACKUPS = _stateBackupRetentionCount();
-      const allBackups = fs.readdirSync(BACKUP_DIR)
-        .filter(f => f.endsWith(".json") && !f.startsWith("."))
-        .sort();
-      while (allBackups.length > MAX_STATE_BACKUPS) {
-        const oldest = allBackups.shift();
-        try { fs.unlinkSync(path.join(BACKUP_DIR, oldest)); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-      }
+      // JSON files only. Dated DB directories in this same folder are
+      // runBackup's, and a lexical listing would otherwise treat them as
+      // rotation candidates.
+      pruneJsonStateBackups(BACKUP_DIR, MAX_STATE_BACKUPS);
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     structuredLog("info", "backup_created", { path: backupPath });
@@ -10476,8 +10740,10 @@ async function tryInitWebSockets(server) {
     transports: process.env.CONCORD_SOCKET_WEBSOCKET_ONLY === "true"
       ? ["websocket"]
       : ["websocket", "polling"],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // A several-second GC or swap stall must not drop the socket. 90s is
+    // the pong deadline; the frontend grace period is the UI half of this.
+    pingTimeout: Number(process.env.CONCORD_SOCKET_PING_TIMEOUT_MS) || 90_000,
+    pingInterval: Number(process.env.CONCORD_SOCKET_PING_INTERVAL_MS) || 25_000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
     // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
     // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
@@ -13254,26 +13520,27 @@ try {
   structuredLog("info", "state_fields_initialized", { maps: 30, arrays: 14, objects: 7 });
 }
 
-// Auto-migrate DTU ownership (runs once, idempotent)
+// Auto-migrate DTU ownership (idempotent).
+//
+// Must persist through STATE.dtus.set(). This runs after the write-through
+// store is attached; an in-place field write never reaches `dtu_store`, and
+// saveStateDebounced() omits DTUs from the snapshot once that store is
+// active. That is why ownerless `dtu_oracle_*` (type oracle_answer) rows
+// came back with no owner and no visibility on every restart — rehydrate
+// reloads the JSON column, which the old loop never updated.
+//
+// News-feed items, system summaries, and the genesis/seed corpus are stamped
+// system-owned but stay public. Other ownerless rows (including oracle
+// answers) become system-owned and internal. See lib/dtu-ownership.js.
 {
-  let migrated = 0;
-  for (const [id, dtu] of STATE.dtus) {
-    if (dtu.ownerId) continue; // already migrated
-    if (dtu.creatorType === "user" || dtu.creatorType === "user_uploaded_text" || dtu.source === "local") {
-      dtu.ownerId = "founder";
-      dtu.visibility = dtu.visibility || "private";
-    } else {
-      dtu.ownerId = "system";
-      dtu.visibility = "internal";
+  try {
+    const ownership = normalizeOwnerlessDtus(STATE.dtus);
+    if (ownership.migrated > 0) {
+      structuredLog("info", "dtu_ownership_migration", { ...ownership, total: STATE.dtus.size });
+      saveStateDebounced();
     }
-    if (!dtu.creatorType) {
-      dtu.creatorType = dtu.ownerId === "system" ? "system" : "user";
-    }
-    migrated++;
-  }
-  if (migrated > 0) {
-    structuredLog("info", "dtu_ownership_migration", { migrated, total: STATE.dtus.size });
-    saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "dtu_ownership_migration_failed", { error: String(e?.message || e) });
   }
 }
 
@@ -13498,7 +13765,7 @@ function councilGate(dtu, opts={}) {
 
 function toOptionADTU(seedLike) {
   const title = normalizeText(seedLike.title || seedLike.name || "Untitled DTU");
-  const tags = Array.isArray(seedLike.tags) ? seedLike.tags.map(t=>normalizeText(t)).filter(Boolean) : [];
+  const tags = normalizeTagList(seedLike.tags, (t) => normalizeText(t));
   const tier = seedLike.tier && ["regular","mega","hyper"].includes(seedLike.tier) ? seedLike.tier : "regular";
   const core = seedLike.core && typeof seedLike.core === "object" ? seedLike.core : {};
   const human = seedLike.human && typeof seedLike.human === "object" ? seedLike.human : {};
@@ -13673,17 +13940,28 @@ try {
 // ── Learning Verification: migrate existing DTU classifications at startup ──
 try {
   const migrationResult = migrateClassifications(STATE.dtus);
-  if (migrationResult.migrated > 0) {
-    structuredLog("info", "learning_classification_migration", migrationResult);
-    saveStateDebounced();
+  if (migrationResult.migrated > 0 || migrationResult.failed > 0) {
+    structuredLog(
+      migrationResult.failed > 0 ? "warn" : "info",
+      "learning_classification_migration",
+      migrationResult,
+    );
   }
+  if (migrationResult.migrated > 0) saveStateDebounced();
 } catch (e) {
   structuredLog("error", "learning_migration_failed", { error: String(e?.message || e) });
 }
 
 // ---- logging ----
-function log(type, message, meta={}) {
-  const entry = { id: uid("log"), ts: nowISO(), type, message, meta };
+function log(type, message, meta={}, actorUserId=null) {
+  const entry = {
+    id: uid("log"),
+    ts: nowISO(),
+    type: typeof type === "string" ? redactLogValue(type) : type,
+    message: typeof message === "string" ? redactLogValue(message) : message,
+    meta: redactLogValue(meta && typeof meta === "object" ? meta : {}),
+  };
+  if (actorUserId && actorUserId !== "anon" && actorUserId !== "system") entry.userId = actorUserId;
   STATE.logs.push(entry);
   if (STATE.logs.length > 2000) STATE.logs.splice(0, STATE.logs.length - 2000);
   return entry;
@@ -14196,7 +14474,9 @@ async function runMacro(domain, name, input, ctx) {
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
     graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
-    events: new Set(["list", "recent", "log", "paginated"]),
+    // events.list/recent/log/paginated read the process-wide STATE.logs ring
+    // (other sessions' chat). Not a public read — handlers require an actor
+    // and return only that caller's rows. See lib/log-access.js.
     worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
     // "create"/"update"/"delete" removed (public-read-write-verb-detector,
     // confirmed dead 2026-07-31): the real goals macros are
@@ -14217,7 +14497,10 @@ async function runMacro(domain, name, input, ctx) {
     metalearning: new Set(["strategies", "status"]),
     reasoning: new Set(["chains", "steps", "status", "traces", "trace"]),
     temporal: new Set(["status", "get"]),
-    inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // traces/spans/threads/checkpoints/sandboxes/costs are debug reads of
+    // other callers' inference. They are not public. `query` stays: it is
+    // the deterministic logic engine, not the span SQL console.
+    inference: new Set(["status", "query"]),
     // (The dx domain is registered later in this file with the
     //  full DX-Platform macro set; the onboarding macros
     //  `onboarding_progress` and `welcome` are appended to that
@@ -14356,7 +14639,9 @@ async function runMacro(domain, name, input, ctx) {
     feedback: new Set(["aggregate"]),
     artifact: new Set(["info", "thumbnail"]),
     // Missing frontend domains (three-gate audit scan)
-    bridge: new Set(["births", "debates", "emergents", "log", "organisms"]),
+    // `log` dropped: GET /api/bridge/log is an operator dump (query text,
+    // DTU ids) and is admin-only. The other names are catalogs, not logs.
+    bridge: new Set(["births", "debates", "emergents", "organisms"]),
     brief: new Set(["morning", "dismiss"]),
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
@@ -14638,7 +14923,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty omitted — mirror of Gate 1. Caller-scoped lock
+    // routes are not anonymous reads. The "/api/sovereign" entry above
+    // still startsWith-matches that namespace; the bypass below excludes it.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -14682,7 +14970,11 @@ async function runMacro(domain, name, input, ctx) {
   ];
   const safeReadBypass =
     _domainNameAllowed ||
-    (_method === "GET" && _safeReadPaths.some(p => _path.startsWith(p))) ||
+    (_method === "GET" && _safeReadPaths.some(p => {
+      if (!_path.startsWith(p)) return false;
+      if (p === "/api/sovereign" && (_path === "/api/sovereignty" || _path.startsWith("/api/sovereignty/"))) return false;
+      return true;
+    })) ||
     (_method === "POST" && _safePostPaths.some(p => _path.startsWith(p))) ||
     (domain === "chat" && (name === "respond" || name === "feedback"));
 
@@ -15508,31 +15800,37 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   });
 }, { public:false });
 
-register("multimodal","image_generate", (ctx, input={}) => {
-  enforceEthosInvariant("generate_image");
-  const flags = _c3sessionFlags(ctx);
-  if (!ctx.state.__chicken3?.multimodalEnabled) return { ok:false, error:"multimodal disabled" };
-  if (!flags.multimodalOptIn) return { ok:false, error:"session multimodal opt-in required" };
-
-  const prompt = String(input.prompt || "");
-  if (!prompt) return { ok:false, error:"prompt required" };
-
-  return governedCall(ctx, "multimodal.image_generate", async () => {
-
-  // Local-first: Stable Diffusion / ComfyUI HTTP if configured
-  const SD_URL = process.env.SD_URL || process.env.COMFYUI_URL || process.env.A1111_URL || "";
-  if (SD_URL) {
-    const body = { prompt, steps: clamp(Number(input.steps || 30), 5, 80) };
-    const r = await fetch(SD_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) }).catch(_e=>null);
-    if (r && r.ok) {
-      const j = await r.json().catch(()=>null);
-      const img = j?.images?.[0] || j?.image || j?.data?.[0] || null;
-      return { ok:true, image: img, source: "stable_diffusion", raw: j };
-    }
+register("multimodal","image_generate", async (_ctx, input={}) => {
+  // Pod GPU only. The previous body touched session flags before any
+  // image was made, so the agent loop (ctx has no session) surfaced
+  // macro_uncaught_throw — twice, when the model retried. It also told
+  // the caller to configure an outside diffusion URL. This handler never
+  // throws and never names an outside service.
+  try {
+    enforceEthosInvariant("generate_image");
+    const prompt = String(input.prompt || "").trim();
+    if (!prompt) return { ok:false, error:"prompt required" };
+    const { produceGpuImage } = await import("./lib/chat/image-router.js");
+    const gen = await produceGpuImage({
+      prompt,
+      width: input.width,
+      height: input.height,
+      seed: input.seed,
+      ownerId: _ctx?.actor?.userId,
+    });
+    if (!gen.ok) return { ok:false, error: gen.error, reason: gen.reason };
+    return {
+      ok: true,
+      url: gen.artifact.url,
+      mediaId: gen.artifact.mediaId,
+      source: gen.source,
+      width: gen.artifact.width,
+      height: gen.artifact.height,
+      prompt: gen.prompt,
+    };
+  } catch (e) {
+    return { ok: false, error: "handler_error", message: String(e?.message || e) };
   }
-
-  return { ok:false, error:"No image generation backend configured. Set SD_URL (Stable Diffusion) or COMFYUI_URL or A1111_URL" };
-  });
 }, { public:false });
 
 register("voice","transcribe", async (ctx, input={}) => {
@@ -16941,6 +17239,32 @@ register("hypothesis", "list", (ctx, input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+// Lifecycle-engine names the REST routes and HypothesisLab call. Ghost
+// Fleet registers the same names later (last-write-wins, note
+// intentional_shadow_ok) once it has imported the module. Until that
+// lands — and if the fleet is disabled — these handlers still call the
+// engine directly instead of leaving the names unregistered. An
+// unregistered name makes runMacro throw "macro not found", which the
+// route error handler turns into HTTP 500.
+async function _hypothesisEngineCall(method, args) {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  const fn = hypo?.[method];
+  if (typeof fn !== "function") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  try {
+    const out = await fn(...args);
+    if (out == null || typeof out !== "object") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+    return out;
+  } catch {
+    return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  }
+}
+register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
+register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
+  input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
+]), { public: false });
+
 // ===== END HYPOTHESIS ENGINE MACROS =====
 
 // ===== METACOGNITION MACROS =====
@@ -17413,7 +17737,9 @@ function makeCtx(req=null) {
       founderSecret: req.get("x-founder-secret") || "",
       at: nowISO()
     } : null,
-    log,
+    // Stamp the caller onto STATE.logs so log.list can hide other
+    // sessions. The ring itself is process-global; attribution is not.
+    log: (type, message, meta) => log(type, message, meta, resolvedActor?.userId),
     utils: { uid, normalizeText, simpleTokens, jaccard, cretiPack, clamp },
     macro: {
       run: (domain, name, input) => runMacro(domain, name, input, makeCtx(req)),
@@ -17422,7 +17748,14 @@ function makeCtx(req=null) {
     },
     llm: {
       enabled: BRAIN.conscious && BRAIN.conscious.enabled,
-      async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+      async chat({ system, messages, temperature=0.3, maxTokens, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
+        // Conscious chat used to default to 1500, which sat under the
+        // conversational cap and cut replies off before CONCORD_CHAT_MAX_TOKENS
+        // could matter. Callers that pass maxTokens are unchanged.
+        const _resolvedMaxTokens = (Number.isFinite(maxTokens) && maxTokens > 0)
+          ? maxTokens
+          : (slot === "conscious" ? resolveChatMaxTokens() : 1500);
+        maxTokens = _resolvedMaxTokens;
         // Private/High Power Mode (migration 397). Private is the
         // whole-account "no exceptions" guarantee — skip BOTH the BYO
         // override branch below AND the platform-provider attempt
@@ -17626,7 +17959,15 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
+              body: JSON.stringify({
+                model: brainModel,
+                messages: ollamaMessages,
+                stream: false,
+                // Not a named parameter — chat.respond passes think:false and
+                // the destructure above drops it. Read the call object here.
+                ...(typeof arguments[0]?.think === "boolean" ? { think: arguments[0].think } : {}),
+                options: { temperature, num_predict: maxTokens, num_ctx: _numCtx },
+              }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
@@ -17645,7 +17986,7 @@ function makeCtx(req=null) {
                 callerId: resolvedActor?.userId, latencyMs: elapsed,
                 tokensIn: json.prompt_eval_count, tokensOut: json.eval_count,
               });
-              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama" };
+              return { ok: true, content, raw: json, brain: _useBrainName, source: "ollama", doneReason: json.done_reason || null };
             }
             _brain.stats.errors++;
             structuredLog("warn", "llm_ollama_error", { status: res.status, error: json?.error, elapsed });
@@ -18039,18 +18380,10 @@ function userVisibleDTUs(viewerId = null) {
     // Privacy / scope filters — private or user-scoped content is only
     // visible to its owner, never to a system caller that forgot to
     // pass a viewer ID.
-    const isPrivate =
-      d.privacy === "private" ||
-      d.privacy === "followers-only" ||
-      d.scope === "user" ||
-      d.visibility === "private";
-
+    // Same predicate as by-id reads (lib/dtu-read-access.js). Kept as a
+    // call, not a copy, so list and get cannot drift.
     const owner = d.author || d.ownerId || d.userId || d.createdBy;
-
-    if (isPrivate) {
-      if (!viewerId) return false;
-      if (owner !== viewerId) return false;
-    }
+    if (privateDtuHiddenFrom(d, viewerId)) return false;
 
     // ── Federation tier filter ───────────────────────────────────
     // Regional / national tier DTUs are only visible to viewers in
@@ -18115,6 +18448,9 @@ function dtusByIds(ids=[]) {
   return out;
 }
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
+  // Sidecar cache is refreshed from SQLite on a timer. Record the write so
+  // dtu.list can fall back while that cache is behind.
+  try { noteDtuWrite(); } catch { /* clock */ }
   // Input sanitization: prevent XSS and normalize tags
   if (typeof sanitizeDTUInput === "function") {
     try { sanitizeDTUInput(dtu); } catch (e) { structuredLog("error", "dtu_sanitization_failed", { id: dtu?.id, error: String(e) }); }
@@ -19327,6 +19663,12 @@ function addToSRS(dtuId) {
   return { ok: true, dtuId, message: "Added to SRS" };
 }
 
+function removeFromSRS(dtuId) {
+  if (!dtuId || !SRS.cards.has(dtuId)) return { ok: false, error: "Not in review" };
+  SRS.cards.delete(dtuId);
+  return { ok: true, dtuId };
+}
+
 // ---- Chat with Lattice (RAG) ----
 async function chatWithLattice(query, { contextLimit = 5, sessionId: _sessionId = "" } = {}) {
   // Retrieve relevant context using semantic search
@@ -19557,7 +19899,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     stream: true,
     options: {
       temperature: options.temperature || 0.7,
-      num_predict: options.maxTokens || 1500,
+      num_predict: options.maxTokens || resolveChatMaxTokens(),
       // num_ctx is sized to the MODEL actually loading (see callOllama note) —
       // not options.brainName, which can disagree with `model`. Pass
       // options.numCtx to force a specific window.
@@ -19599,7 +19941,7 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
             onToken(parsed.message.content);
           }
           if (parsed.done) {
-            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0 };
+            return { ok: true, content: fullContent, model, source: "ollama-stream", tokens: parsed.eval_count || 0, doneReason: parsed.done_reason || null };
           }
         } catch (_parseErr) {
           // skip malformed NDJSON lines
@@ -19839,7 +20181,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // actual content lives in one file now (the registry), not scattered.
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
-import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS, finalizeConversationalSystemPrompt, isConversationalChatMode, CHAT_LENGTH_CONTINUE_SYSTEM } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
 // Adversarial-hardening: per-user token bucket for HOT raw socket events.
 // Raw socket.io events bypass the HTTP rate-limit middleware entirely; this is
@@ -19854,6 +20196,12 @@ const _combatSocketLimiter = makeSocketRateLimiter({
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
+import {
+  resolveChatMaxTokens,
+  finishLengthLimitedReply,
+  stoppedOnLength,
+  buildChatHistoryMessages,
+} from "./lib/chat-reply-policy.js";
 
 // Single-instance fallback: someone running one plain `ollama serve` (every
 // model pulled into it, e.g. via OLLAMA_HOST/OLLAMA_URL) rather than the
@@ -20528,8 +20876,8 @@ async function initGhostFleet() {
       return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
     }, { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "list", (_ctx, input = {}) => ghostFleetOk(hypo.listHypotheses(input.status)), { note: "ghost_fleet_shadow_ok" });
-    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary));
-    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description));
+    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary), { note: "intentional_shadow_ok" });
+    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description), { note: "intentional_shadow_ok" });
     register("hypothesis", "update_test", (_ctx, input = {}) => hypo.updateTestResult(input.hypothesisId, input.testId, input.result));
     register("hypothesis", "add_prediction", (_ctx, input = {}) => hypo.addPrediction(input.hypothesisId, input.statement));
     register("hypothesis", "verify_prediction", (_ctx, input = {}) => hypo.verifyPrediction(input.hypothesisId, input.predIndex, input.verified));
@@ -20537,7 +20885,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
-    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics());
+    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
   } catch (err) {
@@ -21490,7 +21838,7 @@ ${_sharedToolRules}` : "";
       stream: false,
       options: {
         temperature: options.temperature || 0.7,
-        num_predict: options.maxTokens || 500,
+        num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500),
         num_ctx: _ollamaNumCtx(brainName),
       },
     };
@@ -21794,7 +22142,7 @@ ${_sharedToolRules}` : "";
           model: brain.model,
           messages: _followUpMessages,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx(brainName) },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500), num_ctx: _ollamaNumCtx(brainName) },
         };
 
         try {
@@ -23061,12 +23409,16 @@ function getConsciousOllamaCallback() {
     return (prompt, opts) => callBrain("conscious", prompt, {
       system: opts?.system,
       temperature: opts?.temperature || 0.7,
-      maxTokens: opts?.maxTokens || opts?.num_predict || 700,
+      maxTokens: opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens(),
     });
   }
-  // Fall back to default Ollama
+  // Fall back to default Ollama. Pass the chat cap through — callOllama's
+  // own omitted-maxTokens default is 500 and would silently undo it.
   if (LLM_PIPELINE?.providers?.ollama?.enabled) {
-    return (prompt, opts) => callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, opts);
+    return (prompt, opts) => {
+      const maxTokens = opts?.maxTokens || opts?.num_predict || resolveChatMaxTokens();
+      return callOllama(opts?.system ? `${opts.system}\n\n${prompt}` : prompt, { ...opts, maxTokens });
+    };
   }
   return null;
 }
@@ -24814,6 +25166,7 @@ async function maybeRunLocalUpgrade() {
 // ================= END ABSTRACTION GOVERNOR =================
 
 async function pipelineCommitDTU(ctx, dtu, opts={}) {
+  if (dtu && Array.isArray(dtu.tags)) dtu.tags = scrubStoredTags(dtu.tags);
   // DEDUP GATE: block templates and exact title dupes (system-generated only)
   if (dtu.source !== "user" && dtu.source !== "import") {
     // Real bug found by the Game Design Lens D20 unit's own test: this used
@@ -24843,6 +25196,7 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // fallback to legacy write
     if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
     else STATE.dtus.set(dtu.id, dtu);
+    try { noteDtuWrite(); } catch { /* clock */ }
     saveStateDebounced();
     return { ok:true, dtu, bypassed:true };
   }
@@ -24937,6 +25291,9 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     STATE.dtus.set(dtu.id, dtu);
+    // Sidecar list cache refreshes from SQLite on a timer and has no write
+    // API. Stamp the write so mine/q can fall back while that cache lags.
+    try { noteDtuWrite(); } catch { /* clock */ }
     saveStateDebounced();
 
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
@@ -25130,7 +25487,7 @@ register("dtu", "create", async (ctx, input) => {
   // `R&D`, quotes, apostrophes survive verbatim. Body content is left
   // alone: it flows through the markdown renderer's own output-encoding.
   const title = stripTags(normalizeText(input.title || "Untitled DTU"));
-  const tags = Array.isArray(input.tags) ? input.tags.map(t=>stripTags(normalizeText(t))).filter(Boolean) : [];
+  const tags = normalizeTagList(input.tags, (t) => stripTags(normalizeText(t)));
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
@@ -25269,8 +25626,15 @@ register("dtu", "create", async (ctx, input) => {
       const firstKey = globalThis._injDedup.keys().next().value;
       globalThis._injDedup.delete(firstKey);
     }
-    // Tag for quarantine review rather than hard-block (reduces false positives)
+    // Tag for quarantine review rather than hard-block (reduces false positives).
+    // Record the scan so the untag script can tell a real finding from the
+    // historical "none" vs "NONE" false positive (those rows have no scan).
     if (!tags.includes("quarantine:injection-review")) tags.push("quarantine:injection-review");
+    meta.injectionScan = {
+      threatLevel: injScan.threatLevel || "pattern",
+      patterns: injScan.patterns,
+      findings: injScan.patterns,
+    };
   }
 
   // ── Lens-based visibility defaults ──────────────────────────────────
@@ -25463,9 +25827,15 @@ register("dtu", "create", async (ctx, input) => {
   }
 
   if (rawText) {
+    dtu.content = rawText;
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
+    // Detail view and dtu.get read `content`. A caller that passed a body
+    // expects that exact string back, not only the notes side channel.
+    if (dtu.content == null) {
+      dtu.content = typeof input.content === "string" ? input.content : rawText;
+    }
   }
 
   // User-initiated direct writes get a lower council threshold (1
@@ -25478,6 +25848,7 @@ register("dtu", "create", async (ctx, input) => {
   const isUserInitiated = source === "user" ||
     source === "forge" ||
     source === "lens" ||
+    source === "chat_tool" ||
     (actorRole && actorRole !== "system" && actorRole !== "internal");
   const _promotePublic = (
     input.promotePublic === true ||
@@ -25517,6 +25888,13 @@ register("dtu", "create", async (ctx, input) => {
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
   _beat("persisting");
+  if (input.skipAutoTag === true || meta?.skipAutoTag === true) {
+    dtu._skipAutoTag = true;
+    dtu.skipAutoTag = true;
+    if (!dtu.meta || typeof dtu.meta !== "object") dtu.meta = {};
+    dtu.meta.skipAutoTag = true;
+  }
+
   const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
@@ -25660,7 +26038,12 @@ register("dtu", "get", async (ctx, input) => {
       if (await dtuSidecar.isAvailable()) {
         const r = await dtuSidecar.getDTU(id);
         if (r && (r.ok === true || r.error === "DTU not found")) {
-          return r.ok ? { ok: true, dtu: r.dtu } : { ok: false, error: "DTU not found" };
+          if (!r.ok) return { ok: false, error: "DTU not found" };
+          // Sidecar get is unfiltered. Apply the same private gate as the
+          // in-memory path before the body leaves this macro. visibility
+          // "internal" (boot-stamped ownerless oracle answers) is included.
+          if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
+          return { ok: true, dtu: r.dtu };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar get unavailable — inline fallback", { error: _e?.message }); }
@@ -25670,6 +26053,11 @@ register("dtu", "get", async (ctx, input) => {
   if (!dtu) return { ok: false, error: "DTU not found" };
   // Don't expose shadow DTUs via this endpoint
   if (isShadowDTU(dtu)) return { ok: false, error: "DTU not found" };
+  // Private / user-scoped DTUs are owner-only. Same predicate as
+  // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
+  // the id exists. Internal callers (makeInternalCtx) are exempt.
+  // visibility "internal" is hidden here too (ctxMayReadDtu).
+  if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
 
@@ -25681,26 +26069,18 @@ register("dtu", "update", async (ctx, input) => {
   const existing = STATE.dtus.get(id);
   if (!existing) return { ok: false, error: "DTU not found" };
 
-  // SECURITY: ownership gate — only the DTU's owner (or admin) can
-  // update it. Skipped in AUTH_MODE=public because local-first
-  // single-user installs trust the local user with everything, and
-  // skipped for legacy DTUs with no owner field so old content
-  // remains editable. Protected-seed DTUs still reject everyone via
-  // the `protected/immutable/seedOrigin` check in dtu.delete and a
-  // similar check would apply here if we ever seed immutable DTUs.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const role = ctx?.actor?.role || "guest";
-    const isAdmin = ["owner", "admin", "founder"].includes(role);
-    const ownerField = existing.ownerId || existing.createdBy || existing.createdByUser || existing.authorId;
-    const isOwner = userId && ownerField && ownerField === userId;
-    // Only gate DTUs that have a concrete foreign owner. Legacy unowned
-    // DTUs fall through (anyone can edit) so pre-existing content
-    // doesn't suddenly become read-only after an upgrade.
-    if (!isAdmin && ownerField && !isOwner && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only update your own DTUs" };
-    }
-  }
+  // Ownerless and system DTUs (no real user owner, or ownerId "system")
+  // are editable only by an admin/owner role. A member used to be able to
+  // rewrite title/content/tags on any DTU that had no owner field — that
+  // included every oracle_answer. AUTH_MODE=public stays local-first.
+  // ctx?.actor?.userId is read here so the public-read write-verb detector
+  // still sees the ownership idiom on this handler.
+  const denial = dtuMutationDenial(existing, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // ---- Optimistic Locking (Category 2: Concurrency) ----
   // If client sends expectedVersion, reject if stale
@@ -25721,6 +26101,11 @@ register("dtu", "update", async (ctx, input) => {
   const updated = { ...existing };
   if (input.title !== undefined) updated.title = String(input.title || existing.title);
   if (input.content !== undefined) updated.content = String(input.content);
+  if (input.summary !== undefined) {
+    const summary = String(input.summary);
+    updated.summary = summary;
+    updated.human = { ...(existing.human || {}), summary };
+  }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
   // Tier changes require admin role - prevent gaming via direct update
@@ -25758,26 +26143,21 @@ register("dtu", "delete", async (ctx, input) => {
     return { ok: false, error: "Cannot delete protected seed DTU" };
   }
 
-  // Ownership validation — DTU's owner fields must match actor userId
-  // (or actor must be admin). Skipped in AUTH_MODE=public (local-first
-  // single-user mode) and for legacy DTUs with no owner stamp so old
-  // content stays editable.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId);
-    const isAuthor = userId && (dtu.authorId === userId || dtu.source === userId);
-    const isAdmin = ctx?.actor?.role === "owner" || ctx?.actor?.role === "admin" || ctx?.actor?.role === "founder";
-    const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId;
-    if (hasOwner && !isOwner && !isAuthor && !isAdmin && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only delete your own DTUs" };
-    }
-  }
+  // Same ownerless/system gate as dtu.update. Anonymous callers are
+  // rejected (they used to skip the check because userId === "anon").
+  const denial = dtuMutationDenial(dtu, ctx, {
+    authMode: AUTH_MODE,
+    verb: "delete",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // Fire plugin before-delete hooks
   try { fireHook(STATE, "dtu:beforeDelete", dtu); } catch (e) { log("hook.warn", `dtu:beforeDelete: ${e?.message}`); }
 
   // Delete the DTU
   STATE.dtus.delete(id);
+  try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
@@ -25832,6 +26212,20 @@ register("dtu", "delete", async (ctx, input) => {
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
 
+// Admin custody: set visibility and owner on existing DTUs by id.
+// Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
+// without a restart. dryRun changes nothing. Role check is inside
+// assignDtuCustody (owner/admin/founder/sovereign) and the call is
+// audit-logged. Not on the public-read allowlist.
+register("dtu", "assignCustody", async (ctx, input) => {
+  const actorUserId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  return assignDtuCustody(STATE.dtus, input || {}, ctx, {
+    authMode: AUTH_MODE,
+    actorUserId,
+    persist: (dtu) => upsertDTU(dtu, { broadcast: true }),
+  });
+}, { description: "Admin-only: set visibility and owner on existing DTUs by id. dryRun leaves storage unchanged. Audit-logged." });
+
 // dtu.stats — single source of truth for DTU counts + tier/kind
 // distribution + average richness. The /api/dtus/stats REST route
 // in routes/dtus.js delegates to this macro so the two can't drift.
@@ -25861,45 +26255,77 @@ register("dtu", "stats", (ctx, _input = {}) => {
 
 register("dtu", "list", async (ctx, input) => {
   try {
-  const limit = clamp(Number(input.limit || 5000), 1, 5000);
+  const limit = resolveListLimit(input.limit);
   const offset = clamp(Number(input.offset || 0), 0, 1e9);
   const tier = input.tier && ["regular","mega","hyper","any"].includes(input.tier) ? input.tier : "any";
-  const q = tokenish(input.q || "");
+  const qRaw = input.q || input.search || "";
+  const q = tokenish(qRaw);
+  const tagTerms = tagFilterTerms(input.tag ?? input.tags);
   const scopeFilter = input.scope || null; // "local", "global", or null (default: user's view)
-  const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+  // Production auth stamps req.actor.userId and omits actor.id. by-id reads
+  // already fall back through viewerIdFromCtx; the list must use the same
+  // viewer or a signed-in owner's private DTUs disappear.
+  const userId = viewerIdFromCtx(ctx);
   // "mine" — the caller's OWN creations only (any scope, public + private),
   // never other users' published DTUs. Used by the dashboard "My Activity"
   // chart so the creation rhythm is the signed-in user's, not the global feed.
   const mineOnly = input.mine === true || input.mine === "true" || input.owner === "me";
+  const domainWant = input.domain ? String(input.domain) : "";
+  const kindWant = input.kind ? String(input.kind).toLowerCase() : "";
+  const narrowListedDtus = (rows) => {
+    let out = rows;
+    if (domainWant) out = out.filter((d) => dtuMatchesDomain(d, domainWant));
+    if (kindWant) out = out.filter((d) => dtuKind(d) === kindWant);
+    return out;
+  };
 
   // Concurrency Refactor Phase 3: run the visibility filter in the Rust sidecar
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
   // the in-memory filter below. Behaviour pinned by the differential proof at
   // engines/concord-dtu-sidecar/proof/run-proof.mjs.
-  if (dtuSidecar.ENABLED && !_dtuSidecarLagBypass()) {
+  if (_dtuSidecarListActive() && !_dtuSidecarLagBypass()) {
     try {
-      if (await dtuSidecar.isAvailable()) {
+      const testHook = process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function";
+      if (testHook || await dtuSidecar.isAvailable()) {
         const loc = _resolveViewerLocation(userId);
-        const r = await dtuSidecar.list({
+        const sidecarArgs = {
           viewer: userId || "",
           scope: scopeFilter,
           tier,
-          q: input.q || "",
+          q: qRaw,
           mine: mineOnly,
           limit,
           offset,
           viewerRegional: loc.declaredRegional || "",
           viewerNational: loc.declaredNational || "",
+        };
+        const r = await _dtuSidecarListCall(sidecarArgs);
+        const fallback = shouldFallbackFromSidecarList(r, {
+          q: qRaw,
+          tag: tagTerms.join(","),
+          mine: mineOnly,
+          viewer: userId || "",
+          lastWriteAt: globalThis._dtuLastWriteAt || 0,
+          now: Date.now(),
         });
-        if (r && r.ok && Array.isArray(r.dtus)) {
-          const items = r.dtus;
+        // Domain and kind are not sidecar params. They run in narrowListedDtus
+        // after the sidecar has already counted. Using that count makes
+        // mine+domain report the unfiltered total (1 docs row, total 46).
+        // Recount only when the body is the full candidate set. A partial
+        // page falls through to the in-process list, which filters first.
+        const postFilter = Boolean(domainWant || kindWant);
+        const pageComplete = sidecarCandidatePageIsComplete(r, offset);
+        if (!fallback && r && r.ok && Array.isArray(r.dtus) && (!postFilter || pageComplete)) {
+          const narrowed = narrowListedDtus(r.dtus);
+          const items = narrowed.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          return { ok: true, dtus: items, limit, offset, total: r.total ?? items.length, _source: "dtu-sidecar" };
+          const total = postFilter ? narrowed.length : sidecarListTotal(r);
+          return { ok: true, dtus: items, limit, offset, total, _source: "dtu-sidecar" };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -25920,7 +26346,7 @@ register("dtu", "list", async (ctx, input) => {
 
   if (mineOnly) {
     // Owner-scoped: only DTUs this signed-in user created. Not signed in → none.
-    items = userId ? items.filter(d => d.ownerId === userId) : [];
+    items = userId ? items.filter(d => dtuListedOwner(d) === userId) : [];
   } else if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
     const requestedLevel = SCOPE_LEVELS[scopeFilter];
     items = items.filter(d => {
@@ -25933,14 +26359,16 @@ register("dtu", "list", async (ctx, input) => {
       if (scopeFilter === "regional") return dtuLevel >= 1 && dtuLevel <= 2;
       if (scopeFilter === "local") {
         if (dtuLevel > 0) return false; // local means local only
-        return !userId || !d.ownerId || d.ownerId === userId;
+        const owner = dtuListedOwner(d);
+        return !userId || !owner || owner === userId;
       }
       return true;
     });
     // Non-owners can only see published/public content at higher scopes
     if (scopeFilter !== "local") {
       items = items.filter(d => {
-        if (!d.ownerId || d.ownerId === userId) return true; // own content always visible
+        const owner = dtuListedOwner(d);
+        if (!owner || owner === userId) return true; // own content always visible
         const vis = d.meta?.visibility || d.visibility;
         return vis === "published" || vis === "public";
       });
@@ -25948,7 +26376,8 @@ register("dtu", "list", async (ctx, input) => {
   } else if (userId) {
     // Default view: user's own DTUs (any scope) + published/public DTUs at any scope
     items = items.filter(d => {
-      if (!d.ownerId || d.ownerId === userId) return true;
+      const owner = dtuListedOwner(d);
+      if (!owner || owner === userId) return true;
       if (d.scope === "global") return true;
       const vis = d.meta?.visibility || d.visibility;
       if (vis === "published" || vis === "public") return true;
@@ -25958,7 +26387,9 @@ register("dtu", "list", async (ctx, input) => {
 
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
-  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || d.creti || "")).includes(q));
+  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
+  if (tagTerms.length) items = items.filter(d => dtuMatchesTagFilter(d, tagTerms));
+  items = narrowListedDtus(items);
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -25997,7 +26428,7 @@ register("dtu", "search", (ctx, input = {}) => {
       const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
       const qq = tokenish(q);
       hits = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow")
-        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || d.creti || "")).includes(qq))
+        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq))
         .slice(0, limit);
     }
     return { ok: true, query: q, dtus: hits, total: hits.length, limit };
@@ -26034,9 +26465,11 @@ register("dtu", "export", (ctx, input = {}) => {
   try {
     const id = input.id || input.dtuId;
     if (!id) return { ok: false, error: "id required" };
-    const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const d = (typeof userVisibleDTUs === "function" ? userVisibleDTUs(userId) : []).find(x => x.id === id) || STATE.dtus?.get?.(id);
+    const d = STATE.dtus?.get?.(id);
+    // The previous `|| STATE.dtus.get` fallback returned the DTU even when
+    // userVisibleDTUs had filtered it out. Misses are not_found.
     if (!d || (typeof isShadowDTU === "function" && isShadowDTU(d))) return { ok: false, error: "not_found" };
+    if (!ctxMayReadDtu(ctx, d)) return { ok: false, error: "not_found" };
     return { ok: true, dtu: d, format: input.format || "json" };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -27220,12 +27653,8 @@ const qBase = tokensNoStop(qRaw);
 const qExp  = expandQueryTokens(qRaw);
 
 const expandTokensFromTokens = (tokens=[]) => {
-  const out = new Set(tokens.map(stemLite));
-  for (const t of tokens) {
-    const syns = SYN_MAP[t] || SYN_MAP[stemLite(t)] || null;
-    if (syns) for (const s of syns) out.add(stemLite(s));
-  }
-  return Array.from(out).slice(0, 256);
+  try { return expandTokenList(tokens, stemLite); }
+  catch { return []; }
 };
 
 // ── Usage Rights Enforcement ─────────────────────────────────────
@@ -27265,6 +27694,21 @@ try {
   }
 } catch (_embErr) { _queryVec = null; _dtuEmbedMap = null; }
 
+// Lens-domain affinity. Null prototype: currentLens is caller-supplied, and
+// "constructor" on a plain object is a function (`.some` would throw and
+// kill the reply). Built once per turn, not once per DTU.
+const _LENS_DOMAIN_AFFINITY = nullDict({
+  studio:   ["audio","music","sound","creative","production","mixing","recording","composition","track","beat","melody","harmony"],
+  code:     ["programming","software","algorithm","implementation","code","function","class","typescript","javascript","python","api","debug"],
+  board:    ["planning","task","project","kanban","sprint","milestone","workflow","schedule","deadline","backlog","roadmap"],
+  graph:    ["relationship","network","graph","node","edge","connection","topology","cluster","link","visualization","map","tree"],
+  research: ["research","academic","citation","paper","study","experiment","hypothesis","analysis","literature","evidence","findings"],
+  film:     ["film","video","scene","shot","edit","cut","narrative","cinematography","screenplay","director","footage"],
+  forge:    ["prototype","build","design","artifact","template","generate","create","wireframe","mockup","specification"],
+  atlas:    ["knowledge","concept","definition","theory","domain","taxonomy","ontology","category","classification"],
+});
+const _lensAffinity = ownArray(_LENS_DOMAIN_AFFINITY, currentLens);
+
 const scored = _consentFiltered.map(d => {
   const dText = [
     d?.title || "",
@@ -27285,17 +27729,6 @@ const scored = _consentFiltered.map(d => {
 
   // Lens-domain affinity boost — prioritize DTUs matching the active lens's domain
   // so "studio" chat surfaces audio/music DTUs ahead of unrelated content.
-  const _LENS_DOMAIN_AFFINITY = {
-    studio:   ["audio","music","sound","creative","production","mixing","recording","composition","track","beat","melody","harmony"],
-    code:     ["programming","software","algorithm","implementation","code","function","class","typescript","javascript","python","api","debug"],
-    board:    ["planning","task","project","kanban","sprint","milestone","workflow","schedule","deadline","backlog","roadmap"],
-    graph:    ["relationship","network","graph","node","edge","connection","topology","cluster","link","visualization","map","tree"],
-    research: ["research","academic","citation","paper","study","experiment","hypothesis","analysis","literature","evidence","findings"],
-    film:     ["film","video","scene","shot","edit","cut","narrative","cinematography","screenplay","director","footage"],
-    forge:    ["prototype","build","design","artifact","template","generate","create","wireframe","mockup","specification"],
-    atlas:    ["knowledge","concept","definition","theory","domain","taxonomy","ontology","category","classification"],
-  };
-  const _lensAffinity = _LENS_DOMAIN_AFFINITY[currentLens] || null;
   let _lensBoost = 1.0;
   if (_lensAffinity) {
     const dTextLower = dText.toLowerCase();
@@ -27745,6 +28178,31 @@ let localReply = formatCrispResponse({
   }
   // ===== END DTU CONTEXT PIPELINE =====
 
+  // An explicit "save/create a DTU titled … with content …" is fulfilled
+  // here, before the brain. The model used to answer from retrieved notes
+  // (and the CSL gate then rejected create_dtu as not_formal_intent). The
+  // id in the reply is the id that was stored. A PDF request has no tool
+  // on this path — say so, instead of inventing a file.
+  let _explicitDtu = null;
+  let _lockedReply = null;
+  const _explicitSave = parseExplicitDtuSave(prompt);
+  if (_explicitSave) {
+    try {
+      const created = await runMacro("dtu", "create", explicitDtuCreateInput(_explicitSave, sessionId), ctx);
+      const id = created?.dtu?.id || created?.id;
+      if (created?.ok && id) {
+        _explicitDtu = { id, title: created.dtu?.title || _explicitSave.title };
+        _lockedReply = savedDtuReply(_explicitDtu);
+      } else {
+        _lockedReply = `I couldn't save that DTU. ${created?.error || created?.reason || "The record store refused it."}`;
+      }
+    } catch (e) {
+      _lockedReply = `I couldn't save that DTU. ${e?.message || "create failed"}`;
+    }
+  } else if (isPdfCreateRequest(prompt)) {
+    _lockedReply = PDF_CAPABILITY_MESSAGE;
+  }
+
   let finalReply = localReply;
   let llmUsed = false;
   // Set when a requested brain call fails (503 / circuit-open / network).
@@ -27792,6 +28250,7 @@ let localReply = formatCrispResponse({
         return rt.executeTurn({
           userId: cslOpts?.userId, sessionId: cslOpts?.sessionId, turnText,
           domainHint: cslOpts?.domainHint, macroHint: cslOpts?.macroHint,
+          userPrompt: cslOpts?.userPrompt,
         });
       };
     }
@@ -27801,6 +28260,7 @@ let localReply = formatCrispResponse({
     sessionId,
     userId: ctx?.actor?.userId,
     clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
+    userText: prompt,
   });
 
   // Operator-only prompt segments (lib/runtime/operator-gate.js): the V6 observe
@@ -27831,8 +28291,10 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- generate_image: Generate an image on Concord's GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
 ${_operatorToolLines}
 Rules for tool use:
+- For an explicit request to make, draw, or generate an image, use generate_image. Never recommend DALL-E, Midjourney, Stable Diffusion, or any outside image service. If the GPU server is down, say exactly: GPU image generation is offline.
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
 - Use browse_url when the user provides a URL or asks about a specific page.
@@ -27873,6 +28335,10 @@ ${_operatorV6Block}` : "";
   // Set when a deterministic engine answered the question outright (e.g. a
   // written beam-deflection problem); enforced after the brain replies.
   let _deterministicAnswer = null;
+  // Set when an explicit image request was answered by the pod GPU. The
+  // reply is the image (or the offline sentence). A later brain turn must
+  // not replace it with a recommendation for an outside image service.
+  let _imageTurn = null;
   // Compute-don't-guess on ANY model (lib/chat/compute-router.js): a fully
   // specified computational question (arithmetic, calculus, units, beam /
   // column / electrical / hydraulic / HVAC, stats, chemistry, finance…) is
@@ -27882,6 +28348,16 @@ ${_operatorV6Block}` : "";
     const _routed = _routeComputeQuestion(prompt);
     if (_routed) _deterministicAnswer = { value: _routed.value, text: _composeRoutedReply(_routed), route: _routed.route };
   } catch { /* never block chat on a compute failure */ }
+  if (!_deterministicAnswer) {
+    try {
+      const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
+      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId });
+      if (_image) {
+        _imageTurn = _image;
+        _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
+      }
+    } catch { /* never block chat on an image-router failure */ }
+  }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
     _parseObserveCalls = _v6.parseObserveCalls;
@@ -27924,32 +28400,31 @@ ${_operatorV6Block}` : "";
     try {
       switch (call.tool) {
         case "web_search": {
-          const searchResult = await runMacro("tools", "web_search", {
-            query: String(call.params.query || ""),
-            sessionId,
-          }, ctx);
-          if (!searchResult?.ok) {
-            return { tool: call.tool, ok: false, error: searchResult?.error || "web_search failed" };
-          }
-          return {
-            tool: call.tool, ok: true,
-            result: (searchResult.summary || searchResult.text || "").slice(0, MAX_TOOL_RESULT_LEN),
-            source: searchResult.source || "unknown",
-          };
+          // expert_mode.web_search, same as the agent loop. tools.web_search
+          // goes through governedCall and is rejected overlap_below_threshold
+          // once the substrate is past ~1000 DTUs.
+          const { dispatchChatWebSearch } = await import("./lib/chat-tool-surface.js");
+          return dispatchChatWebSearch(runMacro, ctx, call.params || {});
         }
         case "create_dtu": {
-          const dtuResult = await runMacro("dtu", "create", {
-            title: String(call.params.title || "Untitled"),
-            human: { summary: String(call.params.summary || ""), bullets: [] },
-            tags: Array.isArray(call.params.tags) ? call.params.tags : [],
-            tier: "regular",
-            source: "chat_tool",
-            sessionId,
-          }, ctx);
-          if (!dtuResult?.ok) {
-            return { tool: call.tool, ok: false, error: dtuResult?.error || "create_dtu failed" };
+          // The explicit-save path already minted one private DTU. A second
+          // tool call in the same turn must not mint another.
+          if (_explicitDtu?.id) {
+            return { tool: call.tool, ok: true, dtuId: _explicitDtu.id, title: _explicitDtu.title };
           }
-          return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
+          const title = String(call.params.title || "Untitled");
+          const summary = String(call.params.summary || call.params.content || title);
+          const createdInput = explicitDtuCreateInput({ title, content: summary }, sessionId);
+          if (Array.isArray(call.params.tags) && call.params.tags.length) {
+            createdInput.tags = call.params.tags.map((t) => String(t));
+          }
+          const dtuResult = await runMacro("dtu", "create", createdInput, ctx);
+          if (!dtuResult?.ok) {
+            return { tool: call.tool, ok: false, error: dtuResult?.error || dtuResult?.reason || "create_dtu failed" };
+          }
+          const dtuId = dtuResult.dtu?.id || dtuResult.id;
+          if (!dtuId) return { tool: call.tool, ok: false, error: "create_dtu returned no id" };
+          return { tool: call.tool, ok: true, dtuId, title: dtuResult.dtu?.title || title };
         }
         case "run_compute": {
           // Normalize model-invented shapes ("multiply", {expression}) onto the
@@ -28015,6 +28490,12 @@ ${_operatorV6Block}` : "";
           }
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
+        }
+        case "generate_image": {
+          // Same GPU-only path as the agent loop. Never the old
+          // multimodal.image_generate macro (it threw without ctx.state).
+          const { executeToolCall: _imageTool } = await import("./lib/chat-agent.js");
+          return _imageTool(ctx, runMacro, LENS_ACTIONS, call);
         }
         case "list_capabilities":
         case "invoke_capability": {
@@ -28113,6 +28594,7 @@ ${_operatorV6Block}` : "";
       if (r.tool === "browse_url") return `[TOOL_RESULT: browse_url url=${r.url}]\nTitle: ${r.title}\n${r.text}`;
       if (r.tool === "create_dtu") return `[TOOL_RESULT: create_dtu] Created DTU "${r.title}" (id: ${r.dtuId})`;
       if (r.tool === "run_lens_action") return `[TOOL_RESULT: run_lens_action] ${JSON.stringify(r.result).slice(0, 4000)}`;
+      if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image] Image generated and attached.`;
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 4000)}`;
     }).join("\n\n");
   };
@@ -28141,7 +28623,18 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
-  if (_deterministicAnswer) {
+  let _replyDoneReason = null;
+  // Conversational cap. Verbosity 0.5 (the affect default) resolves to
+  // CONCORD_CHAT_MAX_TOKENS itself, default 2000 — not the old 700 base
+  // that stopped replies mid-sentence. Shared by the ctx.llm path, the
+  // direct fetch, and the tool follow-up so none of them re-cap lower.
+  const _chatMaxTokens = resolveChatMaxTokens({
+    verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
+  });
+  const _conversationalChat = isConversationalChatMode(mode);
+  if (_lockedReply) {
+    finalReply = _lockedReply;
+  } else if (_deterministicAnswer) {
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
@@ -28155,11 +28648,7 @@ ${_operatorV6Block}` : "";
     // No DHTP preset result is computed in this code path (confirmed via eslint
     // scope analysis — `_dhtpApplied` above lives in a sibling scope, not this
     // one), so this always falls through to the affect-modulated default below.
-    const _presetMaxTokens = 0;
-    const _affectMaxTokens = Math.round(
-      700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
-    );
-    const _llmMaxTokens = Math.max(_presetMaxTokens, _affectMaxTokens);
+    const _llmMaxTokens = _chatMaxTokens;
     // Inject affect-aware behavioral guidance into system prompt
     const _affectGuidance = _aff.policy ? [
       _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
@@ -28170,7 +28659,10 @@ ${_operatorV6Block}` : "";
     // GRC: Inject Grounded Recursive Closure system prompt when module is available
     // Use _enrichedFocus (unified context engine: regular + MEGA + HYPER tiers) instead of bare focus
     const _dtuTitles = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
-    const _grcSystemPrompt = GRC_MODULE
+    // GRC's JSON output contract fights the persona's prose rule. Keep the
+    // post-hoc grcFormatAndValidate pass; don't put the format into the
+    // conversational prompt.
+    const _grcSystemPrompt = (GRC_MODULE && !_conversationalChat)
       ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
       : "";
     // Prefer the DTU Context Pipeline's token-budgeted output (_pipelineBudget,
@@ -28242,7 +28734,7 @@ ${_operatorV6Block}` : "";
 
     // Build the full conscious prompt with identity, personality, memory, and context
     const _consciousParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-    const system = buildConsciousPrompt({
+    const system = finalizeConversationalSystemPrompt(buildConsciousPrompt({
       dtu_count: STATE.dtus?.size || 0,
       domain_count: Object.keys(STATE.domains || {}).length || _enrichedFocus.reduce((s, d) => { s.add(d.domain); return s; }, new Set()).size,
       lens: currentLens || mode || "general",
@@ -28257,17 +28749,14 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "");
-    // Build messages with conversation history for continuity
-    const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
-    messages = [];
-    for (const msg of _recentHistory) {
-      messages.push({ role: msg.role === "assistant" ? "assistant" : "user", content: String(msg.content || "").slice(0, 1500) });
-    }
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : ""), mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
-    messages.push({ role: "user", content: _userContent });
+    // Prior turns once, as history. The current user message is already on
+    // the session; buildChatHistoryMessages drops that copy and appends
+    // _userContent last so the request never ends on an assistant prefill.
+    messages = buildChatHistoryMessages(sess.messages, _userContent);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
       system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
@@ -28278,6 +28767,7 @@ ${_operatorV6Block}` : "";
     });
     if (r.ok) {
       _lastBrainMessage = r.message || r.raw || r;
+      _replyDoneReason = r.doneReason || r.raw?.done_reason || null;
       finalReply = String(r.content || "").trim() || localReply;
       llmUsed = true;
       _llmSpan.end("ok", { responseLength: finalReply.length });
@@ -28310,6 +28800,7 @@ ${_operatorV6Block}` : "";
         BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
         if (_fbRes.ok && (_fbJson.message?.content || _fbJson.message?.tool_calls)) {
           _lastBrainMessage = _fbJson.message || null;
+          _replyDoneReason = _fbJson.done_reason || null;
           finalReply = String(_fbJson.message?.content || "").trim() || localReply;
           llmUsed = true;
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
@@ -28332,7 +28823,7 @@ ${_operatorV6Block}` : "";
     try {
       const _directDtuContext = _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
       const _directParams = getConsciousParams({ exchange_count: (sess.messages || []).length });
-      const _directSystem = buildConsciousPrompt({
+      const _directSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
         dtu_count: STATE.dtus?.size || 0,
         domain_count: Object.keys(STATE.domains || {}).length,
         lens: currentLens || mode || "general",
@@ -28345,13 +28836,10 @@ ${_operatorV6Block}` : "";
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt + _lensHintSuffix;
-      // Include conversation history in messages
-      const _directHistory = (sess.messages || []).slice(-10, -1);
+      }) + _toolSystemPrompt + _lensHintSuffix, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
-        ..._directHistory.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content || "").slice(0, 1500) })),
-        { role: "user", content: prompt }
+        ...buildChatHistoryMessages(sess.messages, prompt),
       ];
       const _directAc = new AbortController();
       const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
@@ -28364,7 +28852,7 @@ ${_operatorV6Block}` : "";
           messages: _directMessages,
           stream: false,
           think: false,
-          options: { temperature: _directParams.temperature || 0.75, num_predict: _directParams.maxTokens || 1500 }
+          options: { temperature: _directParams.temperature || 0.75, num_predict: _chatMaxTokens }
         }),
         signal: _directAc.signal
       }).finally(() => clearTimeout(_directTimeout));
@@ -28375,6 +28863,7 @@ ${_operatorV6Block}` : "";
       BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
       if (_directRes.ok && (_directJson.message?.content || _directJson.message?.tool_calls)) {
         _lastBrainMessage = _directJson.message || null;
+        _replyDoneReason = _directJson.done_reason || null;
         finalReply = String(_directJson.message?.content || "").trim() || localReply;
         llmUsed = true;
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
@@ -28442,32 +28931,48 @@ ${_operatorV6Block}` : "";
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
-        // Strip tool call markers from the initial response
-        // A JSON-only first reply (bare tool object, often with a GUESSED
-        // "answer" beside it) must not be fed back — it anchors the follow-up.
-        const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
-
+        const _genImages = _toolResults.filter((r) => r.tool === "generate_image");
         if (_arithOnly) {
           finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else if (_genImages.length > 0) {
+          // The image is the reply. A follow-up brain call restates it as
+          // "I can't generate images, try DALL-E" and drops the artifact.
+          const { markdownImageReply: _markdownImageReply } = await import("./lib/chat/image-router.js");
+          const _imgHit = _genImages.find((r) => r.artifact?.url);
+          if (_imgHit) {
+            finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.url);
+            _imageTurn = { ok: true, reply: finalReply, artifact: _imgHit.artifact, prompt: _imgHit.prompt };
+          } else {
+            finalReply = String(_genImages.find((r) => !r.ok)?.error || "GPU image generation is offline");
+            _imageTurn = { ok: false, offline: finalReply === "GPU image generation is offline", reply: finalReply };
+          }
+          _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
+        } else if (shouldSkipToolFollowup(_toolResults)) {
+          // A failed tool, or a plain DTU save, is answered from the tool
+          // result. The pre-tool assistant draft is retrieved-note context
+          // and must not become the visible reply.
+          const _toolResultsText = _formatToolResults(_toolResults);
+          finalReply = composeToolTurnReply(_toolResults) || followUpFailureReply(_toolResults, _toolResultsText);
+          ctx.log("chat_tools", "Skipped follow-up brain call; answering from tool results", { toolCount: _toolResults.length });
         } else {
-        // Build follow-up messages with tool results
+        // Follow-up sees the user prompt and the tool results only — not
+        // the pre-tool assistant draft, which is where unrelated retrieved
+        // notes were leaking into the visible reply.
         const _toolResultsText = _formatToolResults(_toolResults);
         const _followUpMessages = [
-          { role: "user", content: `User prompt:\n${prompt}` },
-          { role: "assistant", content: _cleanedInitialReply || "(tool calls issued)" },
-          { role: "user", content: `Tool results:\n${_toolResultsText}\n\nGROUNDING RULES (mandatory):\n- If web_search results include numbered snippets with title/url/excerpt, your answer MUST cite at least one real title and full https URL from those snippets. Refusing to cite when URLs are present is wrong.\n- Quote or paraphrase only from the provided excerpts — do NOT invent Google Cloud docs, API pages, or other sources not listed.\n- Only say you cannot verify when snippets are empty or clearly irrelevant to the question.\n- Do NOT output any [TOOL_CALL:] markers. Respond naturally.` }
+          { role: "user", content: toolFollowUpUserMessage(prompt, _toolResultsText) },
         ];
 
         // Make a follow-up brain call with tool results
         // Tool-call follow-up: same composeSystemPrompt path but with
         // an `extra` note that primes the model to synthesize over the
         // tool results it just received.
-        const _followUpSystem = composeSystemPrompt("conscious", {
+        const _followUpSystem = finalizeConversationalSystemPrompt(composeSystemPrompt("conscious", {
           mode,
           currentLens,
           worldId: input?.worldId || null,
-          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation.",
-        }).system;
+          extra: "You previously called tools and received their results. Ground your final answer ONLY on those tool results. For web_search, cite real title/url/excerpt from the snippets — never invent unrelated documentation. A fenced code block is fine when the result is code.",
+        }).system, mode);
         try {
           const _fuAc = new AbortController();
           const _fuTimeout = setTimeout(() => _fuAc.abort(), 120000);
@@ -28480,7 +28985,7 @@ ${_operatorV6Block}` : "";
               messages: [{ role: "system", content: _followUpSystem }, ..._followUpMessages],
               stream: false,
               think: false,
-              options: { temperature: 0.4, num_predict: 900 }
+              options: { temperature: 0.4, num_predict: _chatMaxTokens }
             }),
             signal: _fuAc.signal
           }).finally(() => clearTimeout(_fuTimeout));
@@ -28490,25 +28995,17 @@ ${_operatorV6Block}` : "";
           BRAIN.conscious.stats.totalMs += _fuElapsed;
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (_fuRes.ok && _fuJson.message?.content) {
-            finalReply = _enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText);
+            _replyDoneReason = _fuJson.done_reason || null;
+            finalReply = ensureCreatedDtuIds(_enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText), _toolResults);
             ctx.log("chat_tools", "Follow-up brain call with tool results succeeded", { elapsed: _fuElapsed, toolCount: _toolResults.length, citeEnforce: true });
           } else {
-            // Follow-up failed — use the cleaned initial reply + inline tool results
             BRAIN.conscious.stats.errors++;
-            finalReply = _cleanedInitialReply + "\n\n" + _toolResults
-              .filter(r => r.ok)
-              .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-              .join("\n\n");
+            finalReply = followUpFailureReply(_toolResults, _toolResultsText);
             ctx.log("chat_tools", "Follow-up brain call failed, using inline results", { status: _fuRes.status });
           }
         } catch (_fuErr) {
           BRAIN.conscious.stats.errors++;
-          // Graceful degradation: append tool results to the cleaned reply
-          const _cleanReply = _stripToolCalls(finalReply);
-          finalReply = _cleanReply + "\n\n" + _toolResults
-            .filter(r => r.ok)
-            .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-            .join("\n\n");
+          finalReply = followUpFailureReply(_toolResults, _toolResultsText);
           ctx.log("chat_tools", "Follow-up brain call threw, using inline results", { error: String(_fuErr?.message || _fuErr) });
         }
         } // end non-arithmetic follow-up
@@ -28567,7 +29064,7 @@ ${_operatorV6Block}` : "";
   // brain's reply doesn't carry that number (4 significant figures), the
   // engine's answer is the reply — a model's re-derivation is never trusted
   // over the engine for a fully-specified problem.
-  if (_deterministicAnswer && typeof finalReply === "string") {
+  if (!_lockedReply && _deterministicAnswer && typeof finalReply === "string") {
     const _dv = _deterministicAnswer.value;
     const _carries = typeof _dv === "number"
       ? [String(Number(_dv.toPrecision(4))), String(Number(_dv.toPrecision(3)))].some((v) => finalReply.replace(/,(?=\d{3})/g, "").includes(v))
@@ -28580,10 +29077,10 @@ ${_operatorV6Block}` : "";
   // that passed llm:false opted out on purpose — that local path stays below.
   let _aiUnavailable = null;
   const _llmWasRequested = llm !== false;
-  if (_llmWasRequested && !llmUsed && !_deterministicAnswer && localReply && finalReply === localReply) {
+  if (!_lockedReply && _llmWasRequested && !llmUsed && !_deterministicAnswer && localReply && finalReply === localReply) {
     _aiUnavailable = aiUnavailableChat({ items: distinctDtuSummaries(relevant, 5) });
     finalReply = _aiUnavailable.reply;
-  } else if (!llmUsed && localReply && finalReply === localReply) {
+  } else if (!_lockedReply && !llmUsed && localReply && finalReply === localReply && !_deterministicAnswer?.image) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -28601,8 +29098,57 @@ ${_operatorV6Block}` : "";
     }
   }
 
+  // A length stop is not a finished reply. One short continuation, then
+  // trim to the last complete sentence or list item. Persist only that
+  // text — the next turn must not be handed a mid-sentence stub.
+  if (!_lockedReply && llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
+    try {
+      const _finished = await finishLengthLimitedReply(finalReply, {
+        doneReason: _replyDoneReason,
+        continueOnce: async (partial) => {
+          const _cAc = new AbortController();
+          const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+          try {
+            const _cRes = await fetch(`${brainUrl}/api/chat`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: brainModel,
+                messages: [
+                  { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                  { role: "assistant", content: partial },
+                  { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                ],
+                stream: false,
+                think: false,
+                options: { temperature: 0.3, num_predict: Math.min(600, _chatMaxTokens) },
+              }),
+              signal: _cAc.signal,
+            });
+            const _cJson = await _cRes.json().catch(() => ({}));
+            if (!_cRes.ok) return { content: "", doneReason: null };
+            return { content: String(_cJson.message?.content || ""), doneReason: _cJson.done_reason || null };
+          } finally {
+            clearTimeout(_cTimeout);
+          }
+        },
+      });
+      if (_finished.text) finalReply = _finished.text;
+      else finalReply = "I lost the end of that thought. Ask me to pick it up and I will.";
+    } catch (_finErr) {
+      const _cut = (await finishLengthLimitedReply(finalReply, { doneReason: "length" })).text;
+      if (_cut) finalReply = _cut;
+      ctx.log("chat", "Length-stop finish failed; trimmed.", { error: String(_finErr?.message || _finErr) });
+    }
+  }
+
+  if (!_lockedReply && _toolCallsExecuted.length) {
+    finalReply = ensureCreatedDtuIds(finalReply, _toolCallsExecuted);
+  }
+  if (_lockedReply) finalReply = _lockedReply;
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
@@ -28615,6 +29161,7 @@ ${_operatorV6Block}` : "";
       brain: llmUsed ? "conscious" : "local",
       confidence: llmUsed ? 0.8 : 0.5,
       workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+      userId: ctx?.actor?.userId || null,
     });
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
@@ -28632,7 +29179,7 @@ ${_operatorV6Block}` : "";
   // Accelerated chat DTU promotion every 5 exchanges
   try {
     if (isAcceleratedPromotionDue(sess)) {
-      const _promoResult = acceleratedChatPromotion(STATE, sessionId);
+      const _promoResult = acceleratedChatPromotion(STATE, sessionId, ctx?.actor?.userId || null);
       if (_promoResult.promoted > 0 || _promoResult.megaCreated) {
         ctx.log("chat_enrichment", "Accelerated chat DTU promotion", {
           sessionId, promoted: _promoResult.promoted,
@@ -28838,6 +29385,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_aiUnavailable ? {
       code: _aiUnavailable.code,
       notice: _aiUnavailable.notice,
@@ -28905,69 +29453,15 @@ ${_operatorV6Block}` : "";
 // ===== CHAT PIPELINE MACROS =====
 // New macros for the DTU-enriched context pipeline.
 
-register("chat", "tools", (ctx, _input = {}) => {
+register("chat", "tools", async (ctx, _input = {}) => {
   try {
   const flags = _c3sessionFlags(ctx);
-  const globalEnabled = Boolean(STATE.__chicken3?.toolsEnabled);
-  const sessionOptIn = flags.toolsOptIn;
-  const available = globalEnabled && sessionOptIn;
-
-  const tools = [
-    {
-      name: "web_search",
-      description: "Search the web for current information using DuckDuckGo or SearxNG.",
-      params: { query: { type: "string", required: true, description: "Search query" } },
-      requiresOptIn: true,
-    },
-    {
-      name: "create_dtu",
-      description: "Create a new DTU (Decision/Thought Unit) from the conversation.",
-      params: {
-        title: { type: "string", required: true, description: "DTU title" },
-        summary: { type: "string", required: false, description: "Brief summary" },
-        tags: { type: "array", required: false, description: "Tags for categorization" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_compute",
-      description: "Run a physics, chemistry, math, quantum, or engineering calculation. Keys: chemistry.molecularAnalysis, chemistry.balanceReaction, physics.beamDeflection, quantum.simulateCircuit, engineering.columnBuckling, statistics.linearRegression, etc.",
-      params: {
-        key: { type: "string", required: true, description: "module.function e.g. chemistry.balanceReaction" },
-        input: { type: "object", required: false, description: "Function-specific arguments" },
-      },
-      requiresOptIn: false,
-    },
-    {
-      name: "browse_url",
-      description: "Fetch and read the text content of any public web page.",
-      params: {
-        url: { type: "string", required: true, description: "Full https:// URL" },
-        selector: { type: "string", required: false, description: "Optional CSS selector to narrow content" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_lens_action",
-      description: "Invoke a lens domain action (e.g., legal.draft, finance.analyze).",
-      params: {
-        domain: { type: "string", required: true, description: "Lens domain" },
-        action: { type: "string", required: true, description: "Action name" },
-        params: { type: "object", required: false, description: "Action-specific parameters" },
-      },
-      requiresOptIn: true,
-    },
-  ];
-
-  // Compute module keys for discovery
-  const computeKeys = [
-    "chemistry.molecularAnalysis","chemistry.balanceReaction","chemistry.solutionChemistry","chemistry.enthalpyOfReaction","chemistry.gibbsFreeEnergy",
-    "physics.beamDeflection","physics.windLoad","physics.momentOfInertia","physics.heatTransfer","physics.carnotEfficiency","physics.idealGasLaw",
-    "quantum.simulateCircuit","quantum.analyzeCircuit","quantum.measureCircuit","quantum.circuitDepth",
-    "engineering.columnBuckling","engineering.weldStrength","engineering.reinforcedConcreteWall","engineering.voltageDrop","engineering.heatLoadCalc",
-    "statistics.linearRegression","statistics.polynomialRegression","statistics.pearsonCorrelation","statistics.fitNormal","statistics.hypothesisTest",
-    "math.differentiate","math.integrate","math.solve","math.simplify",
-  ];
+  const { buildChatToolsReport } = await import("./lib/chat-tool-surface.js");
+  const report = buildChatToolsReport({
+    toolsEnabled: STATE.__chicken3?.toolsEnabled,
+    sessionOptIn: flags.toolsOptIn,
+    operator: _isOperatorActor(ctx),
+  });
 
   // List registered lens actions
   const lensActions = [];
@@ -28976,18 +29470,9 @@ register("chat", "tools", (ctx, _input = {}) => {
     lensActions.push({ domain, action, key });
   }
 
-  return {
-    ok: true,
-    available,
-    globalEnabled,
-    sessionOptIn,
-    tools,
-    lensActions,
-    computeKeys,
-    usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
-  };
+  return { ok: true, ...report, lensActions };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "List all tools available to the chat system and their opt-in status." });
+}, { description: "List the tools chat.respond and the agent loop actually inject, and whether each path will dispatch them." });
 
 // Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
 // a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The
@@ -32587,9 +33072,13 @@ register("dtu", "confidence", (ctx, input = {}) => {
 // Fields with no real backing on this pass (forks / citedBy / relatedIds)
 // are left as empty arrays rather than invented — an honest "no ancestors"
 // empty state is the correct UI for an original, uncited DTU.
-function _dtuLineageRef(id) {
+function _dtuLineageRef(id, ctx) {
   const d = STATE.dtus.get(id);
   if (!d) return { id };
+  // A public child's lineage must not carry a private parent's title,
+  // summary, or owner. The id is already on the visible subject's own
+  // lineage field; the private body stays off this response.
+  if (!ctxMayReadDtu(ctx, d)) return { id };
   return {
     id: d.id,
     title: d.title || d.human?.summary || null,
@@ -32605,6 +33094,7 @@ register("dtu", "lineage", (ctx, input = {}) => {
     if (!id) return { ok: false, error: "missing_id" };
     const dtu = STATE.dtus.get(id);
     if (!dtu) return { ok: false, error: "DTU not found" };
+    if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
 
     let parentIds = Array.isArray(dtu.lineage?.parents) ? dtu.lineage.parents : [];
     // Fallback: derive from the plain-array `input.lineage` form when the
@@ -32617,8 +33107,8 @@ register("dtu", "lineage", (ctx, input = {}) => {
         .filter(Boolean);
     }
     const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
-    const parents = parentIds.map(_dtuLineageRef);
-    const children = childIds.map(_dtuLineageRef);
+    const parents = parentIds.map((pid) => _dtuLineageRef(pid, ctx));
+    const children = childIds.map((cid) => _dtuLineageRef(cid, ctx));
 
     let royaltyCascade = [];
     const db = ctx?.db || STATE?.db;
@@ -32627,10 +33117,11 @@ register("dtu", "lineage", (ctx, input = {}) => {
         const chain = _dtuLineageAncestorChain(db, id);
         royaltyCascade = chain.map((a) => {
           const ref = STATE.dtus.get(a.contentId);
+          const hidden = ref ? !ctxMayReadDtu(ctx, ref) : false;
           return {
             id: a.contentId,
-            title: ref?.title || null,
-            ownerId: ref?.ownerId || a.creatorId || null,
+            title: hidden ? null : (ref?.title || null),
+            ownerId: hidden ? null : (ref?.ownerId || a.creatorId || null),
             generation: a.generation,
             royaltyRate: a.rate,
             royaltyPercent: `${(a.rate * 100).toFixed(1)}%`,
@@ -32909,8 +33400,11 @@ register("context", "query", async (ctx, input) => {
     const relevance = keywordOverlap(query || "", dtuText);
     score += relevance * 0.5;
 
-    // Tier boost
-    const tierBoost = CONTEXT_TIER_BOOST[dtu.tier || "regular"] || 1.0;
+    // Tier boost. dtu.tier is stored data; "constructor" on a plain
+    // object is a function, and `function || 1.0` keeps the function.
+    const tierKey = dtu.tier || "regular";
+    const tierRaw = Object.hasOwn(CONTEXT_TIER_BOOST, tierKey) ? CONTEXT_TIER_BOOST[tierKey] : 1.0;
+    const tierBoost = typeof tierRaw === "number" ? tierRaw : 1.0;
     score *= tierBoost;
 
     // Domain boost
@@ -33211,21 +33705,18 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "list", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 100), 200);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const events = logs.slice(-limit).map((log) => ({
-        id: log.id || undefined,
-        type: log.domain || "system",
-        action: log.action || "event",
-        message: log.message || "",
-        timestamp: log.ts || log.timestamp || null,
-        meta: log.meta || {},
-      }));
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const events = mapPublicEvents(projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) }));
       return { ok: true, events, count: events.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Recent system events (GET /api/events)." });
+  }, { description: "Recent system events scoped to the caller (GET /api/events). Admin sees the full ring." });
 
   register("events", "recent", async (ctx, input = {}) => {
     return _aliasRun(ctx, "events", "list", { ...input, limit: input.limit || 50 });
@@ -33233,25 +33724,35 @@ register("settings", "status", (ctx, _input) => {
 
   register("events", "log", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 20), 100);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      return { ok: true, log: logs.slice(-limit), count: Math.min(logs.length, limit) };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const log = projectLogs(logs, actor, { limit, sessionOwner: sessionOwnerLookup(sessions) });
+      return { ok: true, log, count: log.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Tail of STATE.logs (read-only)." });
+  }, { description: "Tail of STATE.logs scoped to the caller (admin sees all)." });
 
   register("events", "paginated", (ctx, input = {}) => {
     try {
+      const actor = actorFromCtx(ctx);
+      const denied = denyUnlessAuthenticated(actor);
+      if (denied) return denied;
       const limit = Math.min(Number(input.limit || 50), 200);
       const offset = Math.max(Number(input.offset || 0), 0);
       const logs = (typeof STATE !== "undefined" ? STATE.logs : ctx?.state?.logs) || [];
-      const slice = logs.slice().reverse().slice(offset, offset + limit);
-      return { ok: true, events: slice, limit, offset, total: logs.length };
+      const sessions = (typeof STATE !== "undefined" ? STATE.sessions : ctx?.state?.sessions) || null;
+      const visible = projectLogs(logs, actor, { limit: logs.length || 1, sessionOwner: sessionOwnerLookup(sessions) });
+      const slice = visible.slice().reverse().slice(offset, offset + limit);
+      return { ok: true, events: slice, limit, offset, total: visible.length };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }
-  }, { description: "Paginated events from STATE.logs." });
+  }, { description: "Paginated STATE.logs scoped to the caller (admin sees all)." });
 
   register("daily", "list", async (ctx, input = {}) => {
     const r = await _aliasRun(ctx, "daily", "list_mine", input);
@@ -33735,24 +34236,27 @@ register("settings", "set", (ctx, input) => {
     }
   }, { description: "Knowledge-gap analysis (mirrors GET /api/ai/gaps).", note: "intentional_shadow_ok" });
   if (!MACROS.get("brain")?.has("status")) {
-    register("brain", "status", (_ctx, _input = {}) => {
+    register("brain", "status", (ctx, _input = {}) => {
       try {
         if (typeof getBrainStatus === "function") {
-          return { ok: true, ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined, aliasOf: "GET /api/brain/status" };
+          const raw = { ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined };
+          return authenticatedBrainStatus(raw, ctx?.actor, { aliasOf: "GET /api/brain/status" });
         }
         return _honest("brain.status", "no_macro_substrate", "getBrainStatus unavailable");
       } catch (e) {
         return _honest("brain.status", "handler_error", String(e?.message || e));
       }
-    }, { description: "Per-brain health (mirrors GET /api/brain/status)." });
+    }, { description: "Per-brain health (mirrors GET /api/brain/status). Anonymous refused; members get no URLs or model names." });
   }
   if (!MACROS.get("brain")?.has("health")) {
-    register("brain", "health", async (_ctx, _input = {}) => {
+    register("brain", "health", async (ctx, _input = {}) => {
       // Lightweight projection — full probe is GET /api/brain/health (expensive).
       try {
         if (typeof getBrainStatus === "function") {
-          const s = getBrainStatus();
-          return { ok: true, ...s, note: "macro projection; for live Ollama probes use GET /api/brain/health", aliasOf: "getBrainStatus" };
+          return authenticatedBrainStatus(getBrainStatus(), ctx?.actor, {
+            note: "macro projection; for live Ollama probes use GET /api/brain/health",
+            aliasOf: "getBrainStatus",
+          });
         }
         return _honest("brain.health", "no_macro_substrate", "use GET /api/brain/health");
       } catch (e) {
@@ -33972,8 +34476,16 @@ register("interface", "tabs", (_ctx, _input) => {
 
 // Logs domain
 register("log", "list", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAuthenticated(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit || 200), 1, 2000);
-  return { ok:true, logs: ctx.state.logs.slice(-limit) };
+  const sessions = ctx.state?.sessions || STATE.sessions;
+  const logs = projectLogs(ctx.state?.logs || STATE.logs, actor, {
+    limit,
+    sessionOwner: sessionOwnerLookup(sessions),
+  });
+  return { ok: true, logs };
 });
 
 // Materials test domain (debug hook)
@@ -35501,32 +36013,36 @@ register("paper","export", (ctx, input) => {
 register("observability", "log_error", (ctx, input = {}) => {
   try {
     const { lensId, message, stack, componentStack } = input || {};
-    const entry = {
+    const _errUser = ctx?.actor?.userId;
+    const entry = redactLogValue({
       at: Date.now(),
       kind: "client_error",
       lensId: String(lensId || "unknown"),
       message: String(message || "").slice(0, 500),
       stack: String(stack || "").slice(0, 4000),
       componentStack: String(componentStack || "").slice(0, 2000),
-      userId: ctx?.actor?.userId || null,
-    };
+      userId: _errUser && _errUser !== "anon" ? _errUser : null,
+    });
     (STATE.logs ||= []).push(entry);
     return { ok: true, result: { logged: true, lensId: entry.lensId } };
   } catch { return { ok: true, result: { logged: false }, reason: "log_failed" }; }
 }, { note: "Sink for LensErrorBoundary client-side error reports." });
 
 register("audit","query", (ctx, input) => {
+  const actor = actorFromCtx(ctx);
+  const denied = denyUnlessAdmin(actor);
+  if (denied) return denied;
   const limit = clamp(Number(input.limit||100), 1, 500);
   const domain = normalizeText(input.domain||"");
   const contains = normalizeText(input.contains||"");
-  const logs = (STATE.logs||[]).slice(-2000).filter(x => {
+  const logs = projectLogs(STATE.logs || [], actor, { limit: 2000 }).filter(x => {
     if (!x) return false;
-    if (domain && String(x.domain||"") !== domain) return false;
+    if (domain && String(x.domain || x.type || "") !== domain) return false;
     if (contains && !JSON.stringify(x).toLowerCase().includes(contains.toLowerCase())) return false;
     return true;
   }).slice(-limit);
   return { ok:true, logs };
-}, { summary:"Query recent audit logs (in-memory mirror)."} );
+}, { summary:"Query recent audit logs (admin/owner only; secrets redacted)."} );
 
 
 // =================== VERIFY / SCORE / DERIVE MACROS (minimal, opt-in) ===================
@@ -36758,13 +37274,21 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
 
 const app = express();
 
-// ---- Trust Proxy ----
-// Required when behind a reverse proxy (nginx, traefik, Docker, Cloudflare).
-// Without this, Express thinks protocol is HTTP → secure cookies are not set,
-// req.ip returns the proxy IP, and rate limiting/CSRF break.
-if (NODE_ENV === "production" || process.env.TRUST_PROXY) {
-  app.set("trust proxy", process.env.TRUST_PROXY || 1);
-}
+// ---- Trust Proxy / client IP (INC-20261010-15) ----
+// Loopback peers only (cloudflared and the Next.js rewrite on this host).
+// TRUST_PROXY=1 as a string is not hop-count 1 — proxy-addr reads it as
+// 0.0.0.1 — so every proxied login was one 127.0.0.1 bucket. The middleware
+// sets req.ip from CF-Connecting-IP or the rightmost non-loopback
+// X-Forwarded-For hop, and logs when it still has to share a bucket.
+// Rate limiters below (authRateLimiter, the general limiter, unauth,
+// upload) and routes/auth.js checkLoginRateLimit / the register cap all
+// key on req.ip, so they follow this. See lib/trusted-client-ip.js.
+installTrustedClientIp(app);
+
+// Shutting-down guard. Mounted before auth and routes so a request that
+// arrives after beginShutdownHttp() does not touch SQLite on its way to
+// a 500. In-flight requests have already passed this middleware.
+app.use(shutdownHttpMiddleware);
 
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
@@ -36837,6 +37361,7 @@ app.use(createLoadSheddingMiddleware({
               const msg = String(err?.message || err);
               log("async.error", `Unhandled async error on ${req.method} ${req.path}: ${msg}`, { stack: String(err?.stack || "").slice(0, 500) });
               if (!res.headersSent) {
+                if (trySendShutdownError(err, res)) return;
                 const status = msg.startsWith("forbidden") ? 403 : msg.includes("not found") ? 404 : 500;
                 res.status(status).json({ ok: false, error: msg });
               }
@@ -37052,10 +37577,14 @@ const INTERNAL_LEAK_PATTERNS = [
   /\bshadow\s*dtu\b.*\bhidden\b/i,
   /\bSYSTEM\s+PROMPT\b/i
 ];
-function stripInternalLeakage(reply, { debug=false, showInternals=false } = {}) {
+function stripInternalLeakage(reply, { debug=false, showInternals=false, userText="" } = {}) {
   if (!reply) return "";
-  if (debug || showInternals) return String(reply);
-  const lines = String(reply).split("\n");
+  // Governance envelopes are never user-visible, including when a caller
+  // asked to see internals — the structured copy already rides on `grc`.
+  const text = stripGovernanceLeak(reply, { userText });
+  if (!text) return "";
+  if (debug || showInternals) return text;
+  const lines = text.split("\n");
   const kept = [];
   for (const line of lines) {
     const bad = INTERNAL_LEAK_PATTERNS.some(re => re.test(line));
@@ -37115,7 +37644,8 @@ function toUI(out, req, extraMeta={}) {
   const base = ensureReplyEnvelope(out, req, extraMeta);
   let reply = String(base.reply || "");
   const showInternals = Boolean(req?.body?.showInternals || req?.query?.showInternals === "1");
-  reply = stripInternalLeakage(reply, { debug: false, showInternals });
+  const userText = req?.body?.prompt || req?.body?.message || req?.body?.query || req?.body?.content || "";
+  reply = stripInternalLeakage(reply, { debug: false, showInternals, userText });
   reply = softEnforceLabelDiscipline(reply, base?.meta?.mode || req?.body?.mode || "chat");
   if (!reply) reply = deterministicFallbackReply(req);
 
@@ -37646,6 +38176,13 @@ registerAtlasSignalRoutes(app, {
 app.use((err, req, res, _next) => {
   if (res.headersSent) return;
 
+  if (trySendShutdownError(err, res)) {
+    structuredLog("warn", "shutdown_request_after_close", {
+      requestId: req.id, method: req.method, path: req.path, error: String(err?.message || err),
+    });
+    return;
+  }
+
   // Handle ConcordError subclasses with proper HTTP status and code
   if (err instanceof ConcordError) {
     structuredLog(
@@ -37875,6 +38412,10 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
+  if (shouldPauseHeavyBackground()) {
+    log("heartbeat.worker", "Cognitive worker not spawned (low-memory host profile)");
+    return;
+  }
   // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
   // .pathname does NOT decode percent-encoding, so on a checkout path
   // containing a space (encoded "%20" in the URL), the Worker constructor's
@@ -38055,7 +38596,16 @@ function startHeartbeat() {
     // ── Cognitive pipeline tasks: dispatch to worker thread ──
     // The 4 pipeline tasks (autogen, dream, evolution, synthesize) run off-thread.
     // This is the core of the worker migration: HTTP never blocks during pipeline computation.
-    if (cognitiveWorkerReady && STATE.dtus.size > 0) {
+    // Low-memory hosts skip both the worker and the main-thread fallback so a
+    // single interactive session is not competing with autogen/dream/synth.
+    if (!shouldPauseHeavyBackground() && !cognitiveWorker && !_cognitiveWorkerTestShutdown) {
+      try { spawnCognitiveWorker(); } catch (err) {
+        console.error("[cognitive-worker] Failed to spawn:", err);
+      }
+    }
+    if (shouldPauseHeavyBackground()) {
+      // paused — no worker tick and no main-thread autogen/dream/synth fallback
+    } else if (cognitiveWorkerReady && STATE.dtus.size > 0) {
       const anyEnabled = STATE.settings.autogenEnabled || STATE.settings.dreamEnabled
         || STATE.settings.evolutionEnabled || STATE.settings.synthEnabled;
       if (anyEnabled) {
@@ -40256,6 +40806,9 @@ app.post("/api/telemetry/console-ping", express.json({ limit: "2kb" }), asyncHan
   const result = cs.recordConsolePing({ userAgent, gamepadId });
   res.json(result);
 }));
+// Reviewed 2026-10-10: device-class counts only (no user id, session,
+// UA string, or token). Stays public so the console-demand page can
+// render without a login. Do not add raw pings to this payload.
 app.get("/api/telemetry/console-stats", asyncHandler(async (_req, res) => {
   const cs = await import("./lib/console-stats.js");
   res.json({ ok: true, ...cs.getConsoleStats() });
@@ -40288,21 +40841,12 @@ app.post("/api/world/perf-telemetry", express.json({ limit: "8kb" }), (req, res)
     res.status(400).json({ ok: false, error: "invalid_payload" });
   }
 });
-app.get("/api/world/perf-telemetry", (_req, res) => {
-  const s = _perfTelemetry.samples;
-  if (!s.length) return res.json({ ok: true, samples: 0, breachRate: 0, p50Fps: 0, p10Fps: 0 });
-  const fps = s.map(x => x.avgFps).sort((a,b) => a-b);
-  const breaches = s.reduce((a,x) => a + x.breaches, 0);
-  const total = s.reduce((a,x) => a + x.samples, 0) || 1;
-  res.json({
-    ok: true,
-    samples: s.length,
-    breachRate: Math.round((breaches / total) * 10000) / 100,
-    p50Fps: fps[Math.floor(fps.length * 0.5)],
-    p10Fps: fps[Math.floor(fps.length * 0.1)],
-    p90Fps: fps[Math.floor(fps.length * 0.9)],
-    recent: s.slice(-30),
-  });
+app.get("/api/world/perf-telemetry", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  // Aggregates only for a member. `recent` includes other clients' UA
+  // strings and is admin-only. POST intake above stays anonymous.
+  res.json(summarizePerfSamples(_perfTelemetry.samples, gate.actor));
 });
 
 // E4 — client-error intake. Public-write (Gate-1 POST bypass already whitelists
@@ -40729,7 +41273,7 @@ import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
 // and the event_timeline domain.
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
-  app.use("/api", createFrontierRoutesPart2({ requireAuth }));
+  app.use("/api", createFrontierRoutesPart2({ requireAuth, db }));
   app.use("/api", createFrontierRoutesPart4({ requireAuth }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
@@ -40808,6 +41352,12 @@ try { app.use("/api/studio", createStudioRouter({ db, requireAuth })); } catch (
 
 import createFeedRoutes from "./routes/feeds.js";
 try { app.use("/api/feeds", createFeedRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "feed_routes_skip", { error: e.message }); }
+
+// Lens community panels (reflection and the same Reddit listing pattern).
+// Allowlisted subreddit JSON only — see routes/reddit-listing.js. Not a
+// public-read path; the global auth middleware still applies.
+import { createRedditListingRouter } from "./routes/reddit-listing.js";
+try { app.use("/api/community", createRedditListingRouter()); } catch (e) { structuredLog("warn", "reddit_listing_routes_skip", { error: e.message }); }
 
 import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
@@ -40989,6 +41539,26 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
 app.use((err, req, res, _next) => {
+  if (res.headersSent) return;
+  if (trySendShutdownError(err, res)) {
+    try {
+      structuredLog("warn", "shutdown_request_after_close", {
+        method: req.method, path: req.path, error: String(err?.message || err),
+      });
+    } catch { /* response already 503 */ }
+    return;
+  }
+  // Routes mounted after the earlier error handler (including DELETE
+  // /api/media/:id) land here. ConcordError already carries the right status
+  // (404 not found, 403 forbidden, 400 validation). res.json() without a
+  // status is HTTP 200, which made those deletes look successful.
+  if (err instanceof ConcordError) {
+    return res.status(err.statusCode || 500).json({
+      ok: false,
+      error: err.message,
+      code: err.code,
+    });
+  }
   const errorId = uid("err");
   const msg = String(err?.message || err || "Unknown error");
   const out = {
@@ -41291,7 +41861,12 @@ async function governorTick(reason="heartbeat") {
   // cluster detection). With no users, there's no one to notice the result.
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
-  if (reason !== "boot" && !presenceIdle.shouldRunHeavyMaintenance()) {
+  //
+  // This gate is idle-only. The heavy-maintenance helper also returns false
+  // on a low-memory host, and using it here skipped the liveness counter
+  // even while authenticated users were driving load (tick-SLO: 0 ticks,
+  // "frozen loop", on a 16 GB CI runner).
+  if (reason !== "boot" && presenceIdle.isIdle()) {
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41302,8 +41877,13 @@ async function governorTick(reason="heartbeat") {
   try { const nsMod = await import("./lib/npc-simulator.js"); nsMod.resetNpcQuestTickCounter?.(); } catch (_e) { /* best-effort */ }
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  // This happens BEFORE the low-memory pause so a small host still looks
+  // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
+    if (reason !== "boot" && shouldPauseHeavyBackground()) {
+      return { ok: true, skipped: "low_memory_host" };
+    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
@@ -43353,7 +43933,7 @@ register("admin", "logs", (ctx, input) => {
   // alias of `ts` because the admin lens frontend reads `log.at`.
   let logs = STATE.logs || [];
   if (type) logs = logs.filter(l => l.type === type);
-  logs = logs.slice(-limit).reverse().map(l => ({ ...l, at: l.ts }));
+  logs = logs.slice(-limit).reverse().map(l => redactLogValue({ ...l, at: l.ts }));
 
   return { ok: true, logs, count: logs.length };
 });
@@ -46721,76 +47301,17 @@ app.get("/api/feedback-review", asyncHandler(async (req, res) => {
 }));
 
 // ── Artifact API Endpoints ──
-app.post("/api/artifact/upload", async (req, res) => {
-  try {
-    // Storage quota gate. Artifact uploads are the byte-heavy path —
-    // cooking and combat DTUs are tiny, but a single audio/video can
-    // be hundreds of MB. The 5 GiB baseline + earned expansion is
-    // enforced here. Anonymous uploads are not permitted (no user to
-    // bill bytes against).
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
-
-    const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
-    if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
-
-    // Handle raw body or multipart
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const buffer = Buffer.concat(chunks);
-
-    // Quota check before write. Must come AFTER reading the body so we
-    // know the actual byte count, but BEFORE storeArtifact so we don't
-    // commit to disk just to fail.
-    try {
-      assertHasSpaceFor(db, userId, buffer.length);
-    } catch (e) {
-      if (e?.code === "quota_exceeded") return res.status(413).json(e.payload);
-      throw e;
-    }
-
-    const contentType = req.headers["content-type"] || "application/octet-stream";
-    const filename = req.headers["x-filename"] || `upload_${Date.now()}`;
-    const domain = req.headers["x-domain"] || "general";
-    const title = req.headers["x-title"] || filename;
-
-    // MIME allowlist + magic bytes validation
-    const mimeCheck = validateMimeType(contentType, buffer);
-    if (!mimeCheck.ok) return res.status(400).json({ ok: false, error: mimeCheck.error });
-
-    const dtuId = uid("artifact");
-    const artifactRef = await artifactMod.storeArtifact(dtuId, buffer, contentType, filename);
-
-    const dtu = {
-      id: dtuId,
-      tier: "regular",
-      scope: "local",
-      domain: artifactMod.inferDomainFromType(contentType) || domain,
-      human: { summary: title, bullets: [] },
-      core: { definitions: [], claims: [], examples: [] },
-      machine: { kind: artifactMod.inferKindFromType(contentType), verifier: { format: contentType, sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
-      artifact: artifactRef,
-      lineage: { parents: [], children: [] },
-      authority: { score: 0.5 },
-      meta: { createdBy: userId, lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
-    };
-
-    STATE.dtus.set(dtuId, dtu);
-    // Record byte delta for the user. Best-effort — counter drift won't
-    // crash the upload pipeline if it happens.
-    recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
-    // Surface thumbnail URL when one was synchronously generated
-    // (currently: video → ffmpeg frame extraction; falsy otherwise).
-    const hasThumb = !!artifactRef.thumbnail && typeof artifactRef.thumbnail === "string" && contentType.startsWith("video/");
-    res.json({
-      ok: true,
-      dtuId,
-      artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes },
-      thumbnailUrl: hasThumb ? `/api/artifact/${dtuId}/thumbnail` : null,
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: String(err?.message || err) });
-  }
+// Raw file body (Content-Type: file MIME, x-filename / x-title / x-domain)
+// or multipart/form-data. Both land in the same owner-stamped DTU path.
+mountArtifactUploadRoutes(app, {
+  db,
+  STATE,
+  uid,
+  assertHasSpaceFor,
+  recordStorageDelta,
+  STORAGE_REASONS,
+  validateMimeType,
+  saveState: () => { try { saveStateDebounced(); } catch { /* best-effort */ } },
 });
 
 // Thumbnail/poster bytes for an artifact. Currently populated for
@@ -46834,6 +47355,21 @@ app.get("/api/artifact/:dtuId/stream", async (req, res) => {
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
     if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
 
+    // Priced art: non-licensees get a watermarked preview, never the original.
+    if (!viewerHasFullArtAccess(dtu, req.user?.id || null, db)) {
+      const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
+      if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+      const gated = await bytesForViewer({
+        dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+      });
+      if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
+
     const stream = artifactMod.retrieveArtifactStream(dtu.artifact);
     if (!stream) return res.status(404).json({ ok: false, error: "file_not_found" });
 
@@ -46871,6 +47407,18 @@ app.get("/api/artifact/:dtuId/download", async (req, res) => {
 
     const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
     if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+
+    const gated = await bytesForViewer({
+      dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+    });
+    if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+    if (gated.access === "preview") {
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
 
     res.setHeader("Content-Type", dtu.artifact.type);
     res.setHeader("Content-Disposition", `attachment; filename="${dtu.artifact.filename}"`);
@@ -47024,9 +47572,12 @@ app.post("/api/system/circuit-breakers/reset", requireOwner, asyncHandler(async 
 
 // Request traces
 app.get("/api/system/traces", asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit || "50", 10);
   const minDurationMs = req.query.slow ? parseInt(req.query.slow, 10) : undefined;
-  res.json(getRecentTraces({ limit, minDurationMs }));
+  const body = getRecentTraces({ limit, minDurationMs });
+  res.json(redactLogValue(body));
 }));
 
 app.get("/api/system/trace-metrics", asyncHandler(async (req, res) => {
@@ -47464,14 +48015,17 @@ app.get("/api/lens/stats", (req, res) => {
 // register() macros) would otherwise DOUBLE-nest, so a raw `api.post` caller reading
 // `data.result.<field>` gets the inner wrapper, not the payload (blank calc
 // workbenches, dropped results — the systemic bug found by running the app, 2026-06-03).
-// Unwrap exactly ONE envelope layer here so the response is single-nested:
-//   - lensRun() tolerates single OR double, so its callers are unaffected;
-//   - defensive `data.result.X ?? data.X` readers resolve on the single-nest;
-//   - an { ok:false, error } shape (no `result` key) passes through so errors surface;
-//   - a bare payload (no `ok`+`result`) passes through unchanged.
+// Success envelopes peel exactly one `{ ok, result }` layer so the response
+// stays single-nested. Failures do NOT peel: a handler `{ ok:false, error,
+// result }` (staking insufficient_balance includes the live balance) used to
+// be reduced to the inner object and re-wrapped as `{ ok:true, result }`,
+// HTTP 200. The route now sends `_shapeLensRunHttp` (4xx + top-level
+// `{ ok:false, error }`). This helper remains for any caller that still
+// wants the success payload only.
 function _unwrapLensEnvelope(r) {
-  if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
-  return r;
+  const shaped = _shapeLensRunHttp(r);
+  if (shaped.body.ok === false) return shaped.body;
+  return shaped.body.result;
 }
 
 // Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
@@ -47569,8 +48123,17 @@ app.post("/api/lens/run", async (req, res) => {
       const _lensT0 = Date.now();
       const lensRaw = await lensHandler(ctx, virtualArtifact, rest);
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
-      const result = _unwrapLensEnvelope(lensRaw);
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      // Ownership refusals (engineering.deletePart / renamePart) carry
+      // status 403 and an error that starts with "forbidden". That is an
+      // HTTP 403, not a 200 envelope that looks like success.
+      const _httpErr = _httpErrorFromLensAction(lensRaw);
+      if (_httpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
+        return res.status(_httpErr.status).json(_httpErr.body);
+      }
+      const shaped = _shapeLensRunHttp(lensRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
       // capability-tier fact for the two verdict-producing macros only. See
       // lib/conkay-verdict-bridge.js's header for why this reuses the SAME
@@ -47578,7 +48141,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
@@ -47586,11 +48149,18 @@ app.post("/api/lens/run", async (req, res) => {
     // reason.verify/reason.evaluate_answer themselves register, so this is
     // the branch that actually fires the conkay:verdict emit below today.)
     if (MACROS.get(domain)?.get(action)) {
-      const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const macroRaw = await runMacro(domain, action, rest, ctx);
+      const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
+      if (_macroHttpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
+        return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
+      }
+      const shaped = _shapeLensRunHttp(macroRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
     //
@@ -47649,6 +48219,16 @@ app.post("/api/lens/run", async (req, res) => {
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
+    // Lens-action throws used to become a 500 body with nothing written to
+    // the process log, so a broken feed was invisible in backend.log / backend.err.
+    try {
+      logger.error("lens-run", "lens action failed", {
+        domain: _lifeDomain,
+        action: _lifeAction,
+        error: msg,
+        stack: e?.stack,
+      });
+    } catch { /* logging must not mask the response */ }
     // If we announced a start, always announce a terminus — never leave a HUD
     // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
     if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
@@ -47683,7 +48263,7 @@ app.get("/api/lens/:domain/:id", async (req, res) => {
 app.post("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47693,7 +48273,7 @@ app.post("/api/lens/:domain", async (req, res) => {
 app.put("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47703,7 +48283,7 @@ app.put("/api/lens/:domain/:id", async (req, res) => {
 app.delete("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "delete", { id: req.params.id }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "delete", { id: req.params.id }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -52120,44 +52700,11 @@ app.get("/api/chat/messages", requireAuth(), async (req, res) => {
     const db = STATE.db;
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 
-    // Owner gate — the chat_sessions row must belong to the caller.
-    // Anonymous (NULL owner_id) sessions can't be cross-loaded; they're
-    // per-browser and localStorage-scoped by design.
-    let ownerRow;
-    try {
-      ownerRow = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-    if (!ownerRow) return res.status(404).json({ ok: false, error: "session_not_found" });
-    if (!ownerRow.owner_id || ownerRow.owner_id !== userId) {
-      return res.status(403).json({ ok: false, error: "session_forbidden" });
-    }
-
-    let rows;
-    try {
-      rows = db.prepare(`
-        SELECT role, content, ts, meta_json
-        FROM chat_messages
-        WHERE session_id = ?
-        ORDER BY ts ASC
-        LIMIT ?
-      `).all(sessionId, limit);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-
-    const messages = (rows || []).map(r => {
-      let meta = null;
-      try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
-      return {
-        role: r.role,
-        content: r.content,
-        ts: new Date(r.ts).toISOString(),
-        meta: meta || undefined,
-      };
-    });
-    res.json({ ok: true, sessionId, messages });
+    // Unknown session → 200 empty list (the code lens asks before the first
+    // message). Another user's session stays 403. See chat-messages-read.js.
+    const { readChatMessages } = await import("./lib/chat-messages-read.js");
+    const read = readChatMessages(db, { userId, sessionId, limit });
+    return res.status(read.status).json(read.body);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -54425,7 +54972,8 @@ function initChatSocketHandlers(io) {
             // Build system prompt for streaming
             const _streamConsciousParams = getConsciousParams({ exchange_count: (_streamSess.messages || []).length });
             const _streamStyleVec = getSessionStyleVector(sessionId);
-            const _streamSystem = buildConsciousPrompt({
+            const _streamMaxTokens = resolveChatMaxTokens({ verbosity: _streamStyleVec?.verbosity });
+            const _streamSystem = finalizeConversationalSystemPrompt(buildConsciousPrompt({
               dtu_count: STATE.dtus?.size || 0,
               domain_count: Object.keys(STATE.domains || {}).length,
               lens: lens || "general",
@@ -54438,17 +54986,10 @@ function initChatSocketHandlers(io) {
               entityStateBlock: "",
               affectGuidance: "",
               styleHints: buildStyleHints(_streamStyleVec),
-            });
+            }), "chat");
 
-            // Build messages with conversation history
-            const _streamHistory = (_streamSess.messages || []).slice(-10, -1);
-            const _streamMessages = [
-              ..._streamHistory.map(m => ({
-                role: m.role === "assistant" ? "assistant" : "user",
-                content: String(m.content || "").slice(0, 1500),
-              })),
-              { role: "user", content: String(prompt) },
-            ];
+            // Prior turns once. Current user message is already on the session.
+            const _streamMessages = buildChatHistoryMessages(_streamSess.messages, String(prompt));
 
             // ===== BYO KEY ROUTING (streaming path) =====
             // Audit 2026-07-27: this path used to ignore BYO overrides
@@ -54478,7 +55019,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   // Bug fix (found while wiring High Power Mode alongside
@@ -54507,7 +55048,7 @@ function initChatSocketHandlers(io) {
                     messages: [{ role: "system", content: _streamSystem }, ..._streamMessages],
                     opts: {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     },
                   });
                   if (pg?.ok && pg.text) {
@@ -54526,19 +55067,23 @@ function initChatSocketHandlers(io) {
             // never entered, and background brain work competed with live
             // chat for the same Ollama slots un-arbitrated.
             let _streamSeq = 0;
+            const _streamUserText = String(prompt || "");
+            const _govFilter = createGovernanceLeakFilter({ userText: _streamUserText });
             const streamResult = _streamByo
               ? (() => {
                   // _streamByo.text is the real field (see the bug-fix note
                   // above) — normalize to `.content` here so the downstream
                   // consumer (which expects callOllamaStreaming's shape) sees
                   // the same field name regardless of which branch produced it.
-                  socket.emit("chat:token", { token: _streamByo.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamByo.text, model: _streamByo.model || "byo", source: "byo" };
+                  const _byoVisible = visibleChatReply(_streamByo.text, _streamUserText);
+                  if (_byoVisible) socket.emit("chat:token", { token: _byoVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _byoVisible, model: _streamByo.model || "byo", source: "byo" };
                 })()
               : _streamPlatform
               ? (() => {
-                  socket.emit("chat:token", { token: _streamPlatform.text, sessionId, seq: _streamSeq++ });
-                  return { ok: true, content: _streamPlatform.text, model: _streamPlatform.model || "platform", source: "platform" };
+                  const _platVisible = visibleChatReply(_streamPlatform.text, _streamUserText);
+                  if (_platVisible) socket.emit("chat:token", { token: _platVisible, sessionId, seq: _streamSeq++ });
+                  return { ok: true, content: _platVisible, model: _streamPlatform.model || "platform", source: "platform" };
                 })()
               : await _llmQueue.enqueue(
                   () => callOllamaStreaming(
@@ -54547,21 +55092,59 @@ function initChatSocketHandlers(io) {
                     _streamMessages,
                     _streamSystem,
                     (token) => {
-                      socket.emit("chat:token", { token, sessionId, seq: _streamSeq++ });
+                      const visible = _govFilter.push(token);
+                      if (visible) socket.emit("chat:token", { token: visible, sessionId, seq: _streamSeq++ });
                     },
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
-                      maxTokens: _streamConsciousParams.maxTokens || 1500,
+                      maxTokens: _streamMaxTokens,
                     }
                   ),
                   _llmQueue.PRIORITY.CRITICAL
                 ).catch((qErr) => ({ ok: false, error: String(qErr?.message || qErr), queueRejected: true }));
 
             if (streamResult.ok && streamResult.content) {
+              if (stoppedOnLength(streamResult.doneReason)) {
+                try {
+                  const _streamFinished = await finishLengthLimitedReply(streamResult.content, {
+                    doneReason: streamResult.doneReason,
+                    continueOnce: async (partial) => {
+                      const _cAc = new AbortController();
+                      const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+                      try {
+                        const _cRes = await fetch(`${_streamBrainUrl}/api/chat`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            model: _streamBrainModel,
+                            messages: [
+                              { role: "system", content: CHAT_LENGTH_CONTINUE_SYSTEM },
+                              { role: "assistant", content: partial },
+                              { role: "user", content: "Continue from the cutoff. Do not repeat earlier paragraphs." },
+                            ],
+                            stream: false,
+                            think: false,
+                            options: { temperature: 0.3, num_predict: Math.min(600, _streamMaxTokens) },
+                          }),
+                          signal: _cAc.signal,
+                        });
+                        const _cJson = await _cRes.json().catch(() => ({}));
+                        if (!_cRes.ok) return { content: "", doneReason: null };
+                        const extra = String(_cJson.message?.content || "");
+                        if (extra) socket.emit("chat:token", { token: extra, sessionId, seq: _streamSeq++ });
+                        return { content: extra, doneReason: _cJson.done_reason || null };
+                      } finally {
+                        clearTimeout(_cTimeout);
+                      }
+                    },
+                  });
+                  if (_streamFinished.text) streamResult.content = _streamFinished.text;
+                } catch { /* keep the streamed text; history trim still drops a stub next turn */ }
+              }
               // Store assistant response in session
               _streamSess.messages.push({
                 role: "assistant",
-                content: streamResult.content,
+                content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
                 meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
               });
@@ -54655,7 +55238,7 @@ function initChatSocketHandlers(io) {
               const br = await byoBrainChat({
                 db, userId: _rlKey, slot: "conscious",
                 messages: _messages,
-                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || 700, timeout: opts.timeout },
+                opts: { temperature: opts.temperature || 0.7, maxTokens: opts.maxTokens || resolveChatMaxTokens(), timeout: opts.timeout },
               });
               if (br.ok && br.text) {
                 _meterLlmChat(db, {
@@ -54850,10 +55433,104 @@ register("collab", "unlock", (ctx, input) => {
 // Whiteboards are owner-scoped: list/get/update only see the caller's boards.
 // Boards created before ownerId was recorded have none and stay reachable.
 const _wbVisible = (dtu, ctx) => !dtu.ownerId || dtu.ownerId === ctx?.actor?.userId;
+const _wbMissing = () => ({ ok: false, error: "Whiteboard not found", status: 404 });
+
+// The canvas is the whiteboard DTU. A lens artifact (type board) is only a
+// catalog shadow so GET /api/lens/whiteboard?type=board stays in step with
+// rename and delete. The shadow stores whiteboardId; it does not copy elements.
+function _wbAttachMirror(ctx, whiteboard) {
+  const ownerId = ctx?.actor?.userId || "anon";
+  const now = whiteboard.createdAt || nowISO();
+  const id = uid("lart");
+  const artifact = {
+    id,
+    domain: "whiteboard",
+    type: "board",
+    ownerId,
+    title: whiteboard.title,
+    data: {
+      whiteboardId: whiteboard.id,
+      linkedDtus: Array.isArray(whiteboard.linkedDtus) ? whiteboard.linkedDtus : [],
+      createdAt: now,
+      elementCount: 0,
+    },
+    meta: {
+      tags: [],
+      status: "draft",
+      visibility: "private",
+      scope: "local",
+      consent: { publishToMarketplace: false, shareToFeed: false, allowCitations: false, allowAiTraining: false },
+    },
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  };
+  STATE.lensArtifacts.set(id, artifact);
+  _lensDomainIndexAdd("whiteboard", id);
+  whiteboard.artifactId = id;
+  return artifact;
+}
+
+function _wbPushShadow(shadows, seen, artifact, ownerId) {
+  if (!artifact || !artifact.id || seen.has(artifact.id)) return;
+  if (artifact.domain !== "whiteboard" || artifact.type !== "board") return;
+  if (ownerId && artifact.ownerId && artifact.ownerId !== ownerId) return;
+  seen.add(artifact.id);
+  shadows.push(artifact);
+}
+
+// Linked shadows (data.whiteboardId or the id stored on the board) plus, when
+// the title still matches, the single unlinked shadow the old studio wrote.
+function _wbCollectShadows(dtu, legacyTitle) {
+  const ownerId = dtu?.ownerId || null;
+  const whiteboardId = dtu?.machine?.data?.id || dtu?.id;
+  const shadows = [];
+  const seen = new Set();
+  const hinted = dtu?.machine?.data?.artifactId;
+  if (hinted) _wbPushShadow(shadows, seen, STATE.lensArtifacts.get(hinted), ownerId);
+  for (const artifact of _lensDomainArtifacts("whiteboard")) {
+    if (artifact?.data?.whiteboardId === whiteboardId) _wbPushShadow(shadows, seen, artifact, ownerId);
+  }
+  const legacy = pickLegacyShadow(_lensDomainArtifacts("whiteboard"), { ownerId, title: legacyTitle });
+  _wbPushShadow(shadows, seen, legacy, ownerId);
+  return shadows;
+}
+
+function _wbWriteShadow(artifact, title, whiteboardId, linkedDtus, when) {
+  const prev = artifact.data && typeof artifact.data === "object" ? artifact.data : {};
+  const nextLinked = Array.isArray(linkedDtus) ? linkedDtus : (Array.isArray(prev.linkedDtus) ? prev.linkedDtus : []);
+  const sameLinks = JSON.stringify(prev.linkedDtus || []) === JSON.stringify(nextLinked);
+  if (artifact.title === title && prev.whiteboardId === whiteboardId && sameLinks) return;
+  artifact.title = title;
+  artifact.data = {
+    ...prev,
+    whiteboardId,
+    linkedDtus: nextLinked,
+    elementCount: Array.isArray(prev.elements) ? prev.elements.length : (prev.elementCount || 0),
+  };
+  artifact.updatedAt = when;
+  artifact.version = (artifact.version || 1) + 1;
+  STATE.lensArtifacts.set(artifact.id, artifact);
+}
+
+function _wbDropShadow(artifact) {
+  STATE.lensArtifacts.delete(artifact.id);
+  _lensDomainIndexRemove(artifact.domain || "whiteboard", artifact.id);
+}
+
+function _wbSyncShadows(dtu, legacyTitle) {
+  const wb = dtu?.machine?.data || {};
+  const when = wb.updatedAt || nowISO();
+  for (const artifact of _wbCollectShadows(dtu, legacyTitle)) {
+    _wbWriteShadow(artifact, wb.title || artifact.title, wb.id || dtu.id, wb.linkedDtus, when);
+  }
+}
 
 register("whiteboard", "create", (ctx, input) => {
   const { title, linkedDtus } = input;
   const whiteboard = { id: uid("wb"), title: title || "Untitled Whiteboard", elements: [], linkedDtus: linkedDtus || [], collaborators: [], createdAt: nowISO(), updatedAt: nowISO() };
+  try { _wbAttachMirror(ctx, whiteboard); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_mirror_failed", { id: whiteboard.id, error: String(e?.message || e) }); }
   const wbDtu = {
     id: whiteboard.id,
     title: `Whiteboard: ${whiteboard.title}`,
@@ -54875,13 +55552,15 @@ register("whiteboard", "create", (ctx, input) => {
 register("whiteboard", "update", (ctx, input) => {
   const { whiteboardId, elements, linkedDtus } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   const wb = dtu.machine.data;
   if (elements) wb.elements = elements;
   if (linkedDtus) { wb.linkedDtus = linkedDtus; dtu.lineage.parents = linkedDtus; }
   wb.updatedAt = nowISO();
   dtu.updatedAt = nowISO();
   STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, wb.title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
   realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
   return { ok: true, whiteboard: wb };
@@ -54890,17 +55569,77 @@ register("whiteboard", "update", (ctx, input) => {
 register("whiteboard", "get", (ctx, input) => {
   const { whiteboardId } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   return { ok: true, whiteboard: dtu.machine.data, linkedDtus: dtu.lineage?.parents || [] };
 });
 
 register("whiteboard", "list", (ctx, _input) => {
+  // `title` is the DTU title ("Whiteboard: <name>") so the knowledge object
+  // stays labeled. GET /api/whiteboard/:id returns machine.data.title, the
+  // raw name. The studio strips the prefix when it renders the list.
   const whiteboards = dtusArray()
     .filter(d => d.machine?.kind === "whiteboard" && _wbVisible(d, ctx))
     .map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt, updatedAt: d.updatedAt || d.createdAt }))
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   return { ok: true, whiteboards, count: whiteboards.length };
 });
+
+// Delete and rename are owner-only. A missing ownerId is not ownership:
+// legacy boards stay readable, but a stranger cannot remove them.
+function _wbCallerId(ctx) {
+  return ctx?.actor?.userId || ctx?.userId || null;
+}
+function _wbMutateGate(dtu, ctx) {
+  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found", status: 404 };
+  const owner = dtu.ownerId || null;
+  const caller = _wbCallerId(ctx);
+  if (!owner || !caller || owner !== caller) return { ok: false, error: "owner_required", status: 403 };
+  return null;
+}
+
+register("whiteboard", "rename", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  const next = String(input?.title || "").trim();
+  if (!next) return { ok: false, error: "title required", status: 400 };
+  const wb = dtu.machine.data || {};
+  const previous = wb.title;
+  wb.title = next;
+  wb.updatedAt = nowISO();
+  dtu.machine.data = wb;
+  dtu.title = `Whiteboard: ${next}`;
+  dtu.updatedAt = wb.updatedAt;
+  STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, previous); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_rename_failed", { id: whiteboardId, error: String(e?.message || e) }); }
+  saveStateDebounced();
+  return { ok: true, whiteboard: wb };
+});
+
+register("whiteboard", "delete", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  const title = dtu.machine?.data?.title;
+  let shadows = [];
+  try { shadows = _wbCollectShadows(dtu, title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: whiteboardId, error: String(e?.message || e) }); }
+  STATE.dtus.delete(whiteboardId);
+  for (const artifact of shadows) {
+    try { _wbDropShadow(artifact); }
+    catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: artifact?.id, error: String(e?.message || e) }); }
+  }
+  saveStateDebounced();
+  return { ok: true, deleted: true, id: whiteboardId };
+});
+
+function _wbHttp(res, result) {
+  const status = result && result.ok === false && Number.isInteger(result.status) ? result.status : 200;
+  return res.status(status).json(result);
+}
 
 app.post("/api/collab/session", asyncHandler(async (req, res) => res.json(await runMacro("collab", "createSession", req.body, makeCtx(req)))));
 app.post("/api/collab/join", asyncHandler(async (req, res) => res.json(await runMacro("collab", "join", req.body, makeCtx(req)))));
@@ -54910,8 +55649,10 @@ app.get("/api/collab/sessions", asyncHandler(async (req, res) => res.json(await 
 app.post("/api/collab/lock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "lock", req.body, makeCtx(req)))));
 app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "unlock", req.body, makeCtx(req)))));
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
-app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
-app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
+app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
+app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 5: Collaboration & Whiteboard" });
@@ -55737,40 +56478,46 @@ app.post("/api/obsidian/import", asyncHandler(async (req, res) => res.json(await
 app.post("/api/notion/import", asyncHandler(async (req, res) => res.json(await runMacro("notion", "import", req.body, makeCtx(req)))));
 app.get("/api/integrations", asyncHandler(async (req, res) => res.json(await runMacro("integration", "list", {}, makeCtx(req)))));
 
-// Additional endpoints for frontend compatibility
+// Additional endpoints for frontend compatibility.
+// The ring is global; the response is not. Anonymous 401, a member sees
+// only rows attributed to them, admin/owner/founder/sovereign see all.
 app.get("/api/events", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
-    // Return recent system events/logs
-    const events = (STATE.logs || []).slice(-100).map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-      meta: log.meta || {}
-    }));
+    const events = mapPublicEvents(
+      projectLogs(STATE.logs || [], gate.actor, { limit: 100, sessionOwner: sessionOwnerLookup(STATE.sessions) }),
+      () => uid("evt"),
+    );
     return res.json({ ok: true, events, count: events.length });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
-// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions
+// Paginated activity feed — merges DTU events, audit log, system logs, economy transactions.
+// Each row is tagged with the user ids allowed to see it. Unattributed rows
+// (another session's DTU title, a system log) are admin-only.
 app.get("/api/events/paginated", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
     const domain = req.query.domain;
     const entityType = req.query.entityType;
     const activities = [];
+    const sessionOwner = sessionOwnerLookup(STATE.sessions);
 
     // Source 1: DTU lifecycle events from thought timeline
     for (const e of THOUGHT_TIMELINE) {
+      const parties = [e.userId, e.snapshot?.userId, e.snapshot?.ownerId, e.snapshot?.owner_id].filter(Boolean);
       activities.push({
         id: e.id, type: "dtu", action: e.action,
         message: `DTU ${e.action}: ${e.snapshot?.title || e.dtuId}`,
         entityId: e.dtuId, entityType: "dtu",
-        timestamp: e.timestamp, meta: e.snapshot || {}
+        timestamp: e.timestamp, meta: e.snapshot || {},
+        _parties: parties,
       });
     }
 
@@ -55785,19 +56532,24 @@ app.get("/api/events/paginated", (req, res) => {
             id: r.id, type: r.category || "system", action: r.action,
             message: `${r.action} ${r.path || ""}`.trim(),
             entityId: r.user_id, entityType: r.category || "audit",
-            timestamp: r.timestamp, meta: det
+            timestamp: r.timestamp, meta: det,
+            _parties: r.user_id ? [r.user_id] : [],
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
     // Source 3: Recent structured logs
-    for (const log of (STATE.logs || []).slice(-200)) {
+    for (const logEntry of (STATE.logs || []).slice(-200)) {
+      const parties = [logEntry.userId, logEntry.meta?.userId];
+      const sessOwner = logEntry.meta?.sessionId ? sessionOwner(logEntry.meta.sessionId) : null;
+      if (sessOwner) parties.push(sessOwner);
       activities.push({
-        id: log.id || uid("evt"), type: log.domain || "system",
-        action: log.action || "log", message: log.message || "",
-        entityId: null, entityType: log.domain || "system",
-        timestamp: log.ts || log.timestamp || nowISO(), meta: log.meta || {}
+        id: logEntry.id || uid("evt"), type: logEntry.type || logEntry.domain || "system",
+        action: logEntry.action || "log", message: logEntry.message || "",
+        entityId: logEntry.userId || null, entityType: logEntry.domain || "system",
+        timestamp: logEntry.ts || logEntry.timestamp || nowISO(), meta: logEntry.meta || {},
+        _parties: parties.filter(Boolean),
       });
     }
 
@@ -55811,24 +56563,20 @@ app.get("/api/events/paginated", (req, res) => {
             message: `${tx.type}: ${tx.amount} credits${tx.memo ? " — " + tx.memo : ""}`,
             entityId: tx.from_user_id || tx.to_user_id, entityType: "transaction",
             timestamp: tx.created_at,
-            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id }
+            meta: { amount: tx.amount, from: tx.from_user_id, to: tx.to_user_id },
+            _parties: [tx.from_user_id, tx.to_user_id].filter(Boolean),
           });
         }
       } catch (_) { /* table may not exist */ }
     }
 
-    // Filter
     let filtered = activities;
     if (domain) filtered = filtered.filter(a => a.type === domain);
     if (entityType) filtered = filtered.filter(a => a.entityType === entityType);
 
-    // Sort descending, paginate
-    filtered.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
-    const total = filtered.length;
-    const page = filtered.slice(offset, offset + limit);
-    return res.json({ ok: true, events: page, total, limit, offset });
+    return res.json(finalizeActivityFeed(filtered, gate.actor, { limit, offset }));
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json(emptyEventsPage(String(e?.message || e), { limit, offset }));
   }
 });
 
@@ -55846,42 +56594,22 @@ app.post("/api/undo", (req, res) => {
   }
 });
 
-// Events log — threads lens expects conversations from chat sessions
+// Events log — threads lens expects conversations from chat sessions.
+// type=chat used to return every session's title, summary, and last
+// message. It now returns only sessions the caller owns or participates in.
 app.get("/api/events/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const type = req.query.type;
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
     if (type === "chat") {
-      // Build conversation list from STATE.sessions
-      const conversations = [];
-      for (const [sessionId, sess] of (STATE.sessions || new Map())) {
-        const msgs = sess.messages || [];
-        if (msgs.length === 0) continue;
-        const userMsgs = msgs.filter(m => m.role === "user");
-        const lastMsg = msgs[msgs.length - 1];
-        conversations.push({
-          id: sessionId,
-          title: userMsgs[0]?.content?.slice(0, 80) || "Untitled",
-          summary: userMsgs.slice(-1)[0]?.content?.slice(0, 120) || "",
-          lastMessage: lastMsg?.content?.slice(0, 200) || "",
-          messageCount: msgs.length,
-          createdAt: sess.createdAt || msgs[0]?.ts || nowISO(),
-          updatedAt: lastMsg?.ts || sess.createdAt || nowISO(),
-        });
-      }
-      conversations.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-      return res.json({ ok: true, conversations: conversations.slice(0, limit) });
+      const conversations = buildChatConversations(STATE.sessions, gate.actor, limit);
+      return res.json({ ok: true, conversations });
     }
 
-    // Generic event log
-    const events = (STATE.logs || []).slice(-limit).reverse().map(log => ({
-      id: log.id || uid("evt"),
-      type: log.domain || "system",
-      action: log.action || "event",
-      message: log.message || "",
-      timestamp: log.ts || log.timestamp || nowISO(),
-    }));
+    const events = buildGenericEventLog(STATE.logs || [], gate.actor, limit, sessionOwnerLookup(STATE.sessions));
     return res.json({ ok: true, events });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -55924,12 +56652,12 @@ app.get("/api/lattice/beacon", (_req, res) => {
 });
 
 // System health — guidance panel + resonance lens
-app.get("/api/system/health", (_req, res) => {
+app.get("/api/system/health", (req, res) => {
   try {
     const dtus = dtusArray();
     const total = dtus.length;
     const sessions = STATE.sessions?.size || 0;
-    const brainStatus = typeof getBrainStatus === "function" ? getBrainStatus() : {};
+    const brainStatus = brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user);
     const uptime = process.uptime();
 
     // Heartbeat liveness. `__governorTickAt` is stamped on EVERY governorTick
@@ -56036,11 +56764,13 @@ app.get("/api/system/adaptive-status", (_req, res) => {
 });
 // dtu_store). These are operational telemetry (repair cortex events, etc.)
 // and live in their own table so they don't pollute the DTU knowledge
-// substrate. Public endpoint so the operator dashboard can surface them.
+// substrate. Operator-only: gateLogAdmin. Payloads are redacted on read.
 //
 // Filters: ?subsystem=repair_cortex&severity=error&sinceMs=1700000000000&limit=200
 app.get("/api/system/operations-log", async (_req, res) => {
   try {
+    const gate = gateLogAdmin(_req);
+    if (!gate.ok) return sendGate(res, gate);
     // ES-module dynamic import — server.js uses ESM, not CommonJS.
     const { getOperationsLog } = await import("./lib/dtu-operations-log.js");
     const filters = {};
@@ -56050,12 +56780,12 @@ app.get("/api/system/operations-log", async (_req, res) => {
     if (_req.query.sinceMs) filters.sinceMs = Number(_req.query.sinceMs);
     if (_req.query.limit) filters.limit = Number(_req.query.limit);
     const rows = getOperationsLog(db, filters);
-    return res.json({
+    return res.json(redactLogValue({
       ok: true,
       count: rows.length,
       filters,
       entries: rows,
-    });
+    }));
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -56901,7 +57631,18 @@ structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations"
 // ============================================================================
 
 // ---- Wave 2: Version History Endpoints ----
+// By-id reads of a DTU that exists and is private to someone else are 404.
+// A missing id keeps the handler's previous behavior (versions may be []).
+function rejectIfPrivateDtuHidden(req, res, id) {
+  const dtu = STATE.dtus?.get?.(id);
+  if (dtu && !ctxMayReadDtu(req, dtu)) {
+    res.status(404).json({ ok: false, error: "DTU not found" });
+    return true;
+  }
+  return false;
+}
 app.get("/api/dtus/:id/versions", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const versions = getDTUVersions(req.params.id);
   res.json({ ok: true, versions });
 });
@@ -57018,6 +57759,7 @@ app.get("/api/ai/search", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/suggestions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await suggestConnections(req.params.id, { limit: Number(req.query.limit || 5) });
   res.json(result);
 }));
@@ -57028,6 +57770,7 @@ app.post("/api/ai/creti", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/dtus/:id/contradictions", asyncHandler(async (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = await detectContradictions(req.params.id);
   res.json(result);
 }));
@@ -57063,6 +57806,15 @@ app.post("/api/srs/:dtuId/review", (req, res) => {
   try {
     const result = reviewSRSCard(req.params.dtuId, Number(req.body.quality));
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete("/api/srs/:dtuId", (req, res) => {
+  try {
+    const result = removeFromSRS(req.params.dtuId);
+    res.status(result.ok ? 200 : 404).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -57125,6 +57877,7 @@ app.post("/api/workspaces/:id/members", (req, res) => {
 
 // ---- Wave 4: Comments Endpoints ----
 app.get("/api/dtus/:id/comments", (req, res) => {
+  if (rejectIfPrivateDtuHidden(req, res, req.params.id)) return;
   const result = getComments(req.params.id);
   res.json(result);
 });
@@ -57186,7 +57939,7 @@ app.post("/api/dtus/:id/share", (req, res) => {
 app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
   try {
     const dtu = STATE.dtus?.get?.(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const lens = req.body?.lens || req.body?.domain;
     if (!lens) return res.status(400).json({ ok: false, error: "lens/domain required" });
     const userId = req.user.id;
@@ -57221,7 +57974,7 @@ app.post("/api/dtus/:id/sync-lens", requireAuth(), (req, res) => {
 app.post("/api/dtus/:id/fork", requireAuth(), (req, res) => {
   try {
     const sourceDtu = STATE.dtus?.get?.(req.params.id);
-    if (!sourceDtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!sourceDtu || !ctxMayReadDtu(req, sourceDtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const userId = req.user.id;
     const forkedDtu = {
       ...structuredClone(sourceDtu),
@@ -57259,6 +58012,9 @@ app.post("/api/lens/:domain/:id/pull", (req, res) => {
     // If the artifact links to an existing DTU, fork that DTU
     if (artifact.data?.dtuId && STATE.dtus.get(artifact.data.dtuId)) {
       const sourceDtu = STATE.dtus.get(artifact.data.dtuId);
+      if (!ctxMayReadDtu(req, sourceDtu)) {
+        return res.status(404).json({ ok: false, error: "DTU not found" });
+      }
       const forkedDtu = {
         ...structuredClone(sourceDtu),
         id: uid("dtu"),
@@ -60700,32 +61456,56 @@ app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) =
 // Phase CF9 — HLR reasoning trace (surface hlr-engine.js).
 app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
   const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
-  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+  const userId = req.user?.id || req.user?.userId || null;
+  const body = { ...(req.body || {}) };
+  if (userId) body.userId = userId;
+  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(body) });
 }));
 
-app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+app.get("/api/reasoning/traces", perEndpointRateLimit("read.default"), expressRateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX,
+  message: { ok: false, error: "Too many requests", retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: _rateLimitKey,
+  skip: (req) => _RATE_LIMIT_BYPASS_ENV || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+}), asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const m = await import("./emergent/hlr-engine.js");
   const limit = Number(req.query.limit) || 50;
   // Wave 7 / B6 — also surface the durable agent deliberation journal (mig 327): the
   // "what I was thinking" the awareness loop writes on each tier-3 wake (with the
   // attended quale + prediction-error surprise + the awareness-index correlate).
+  // NPC journal rows are operator telemetry, not the caller's reasoning.
   let agentTraces = [];
-  try {
-    const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
-    const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
-    agentTraces = (STATE?.db?.prepare(
-      `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
-       FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
-    ).all(...args)) || [];
-  } catch { /* agent_reasoning_traces optional */ }
-  res.json({ ok: true, traces: m.listTraces(limit), agentTraces, modes: Object.values(m.REASONING_MODES) });
+  if (isLogAdmin(gate.actor)) {
+    try {
+      const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
+      const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
+      agentTraces = (STATE?.db?.prepare(
+        `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
+         FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
+      ).all(...args)) || [];
+    } catch { /* agent_reasoning_traces optional */ }
+  }
+  res.json({
+    ok: true,
+    traces: projectReasoningTraces(m.listTraces(limit), gate.actor),
+    agentTraces: redactLogValue(agentTraces),
+    modes: Object.values(m.REASONING_MODES),
+  });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const { getReasoningTrace } = await import("./emergent/hlr-engine.js");
   const t = getReasoningTrace(req.params.traceId);
-  if (!t) return res.status(404).json({ ok: false, error: "no_trace" });
-  res.json({ ok: true, trace: t });
+  const access = reasoningTraceAccess(t, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, trace: redactLogValue(t) });
 }));
 
 // Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
@@ -61163,8 +61943,14 @@ app.get("/api/party-combat/:sessionId/state", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
-  const { listActionLog } = await import("./lib/party-combat.js");
-  res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const { listActionLog, getCombatState } = await import("./lib/party-combat.js");
+  const state = getCombatState(db, req.params.sessionId);
+  if (!state) return res.status(404).json({ ok: false, error: "no_session" });
+  const access = combatLogAccess(state.combatants, gate.actor);
+  if (access.status !== 200) return res.status(access.status).json({ ok: false, error: access.error });
+  res.json({ ok: true, log: redactLogValue(listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100)) });
 }));
 
 // Phase DB9 — active session lookup for the fluid combat HUD.
@@ -63236,6 +64022,40 @@ function getGameProfile(userId) {
   return STATE.gameProfiles.get(userId);
 }
 
+// Quest XP is the xpReward stored on the owner's completed game/quest
+// artifacts — the same rows the Quests tab lists. Clamped to the create
+// form's 0–2000 range so a crafted artifact cannot mint unbounded XP.
+function sumCompletedQuestXp(userId) {
+  let xp = 0;
+  let completed = 0;
+  if (!userId) return { xp, completed };
+  for (const art of _lensDomainArtifacts("game")) {
+    if (!art || art.type !== "quest" || art.ownerId !== userId) continue;
+    if (art.data?.status !== "completed") continue;
+    completed += 1;
+    const reward = Number(art.data?.xpReward);
+    if (Number.isFinite(reward)) xp += Math.max(0, Math.min(2000, reward));
+  }
+  return { xp, completed };
+}
+
+function refreshGameProfile(userId) {
+  const profile = getGameProfile(userId);
+  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
+  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
+  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
+  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
+  const quests = sumCompletedQuestXp(userId);
+  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + quests.xp;
+  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
+  profile.questsCompleted = quests.completed;
+  const achievements = computeAchievements(userId);
+  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
+  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: quests.completed, questXp: quests.xp };
+  profile.lastActivityAt = profile.lastActivityAt || null;
+  return profile;
+}
+
 function computeAchievements(userId) {
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
   const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
@@ -63253,18 +64073,7 @@ function computeAchievements(userId) {
 
 app.get("/api/game/profile", (req, res) => {
   const userId = req.user?.id || "anon";
-  const profile = getGameProfile(userId);
-  // Calculate XP from DTU count plus quest completions
-  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
-  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
-  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
-  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
-  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + ((profile.questsCompleted || 0) * 100);
-  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
-  const achievements = computeAchievements(userId);
-  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
-  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: profile.questsCompleted || 0 };
-  profile.lastActivityAt = profile.lastActivityAt || null;
+  const profile = refreshGameProfile(userId);
   res.json({ ok: true, profile });
 });
 
@@ -63277,7 +64086,8 @@ app.get("/api/game/achievements", (req, res) => {
 });
 
 app.get("/api/game/challenges", (req, res) => {
-  // Generate challenges from current system state
+  // Activity goals from DTU/vote counts. The Game lens Quests tab does not
+  // read this list — a custom challenge is a private game/quest artifact.
   const userId = req.user?.id || "anon";
   const dtuCount = STATE.dtus.size;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
@@ -63302,7 +64112,8 @@ app.get("/api/game/leaderboard", (req, res) => {
     if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
     const p = STATE.gameProfiles.get(uid);
     const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + ((p.questsCompleted || 0) * 100);
+    const questXp = sumCompletedQuestXp(uid).xp;
+    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
     p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
     p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
   }
@@ -63313,20 +64124,26 @@ app.get("/api/game/leaderboard", (req, res) => {
   res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size });
 });
 
-// POST /api/game/quests/:questId/complete — mark a quest complete and grant XP
+// POST /api/game/quests/:questId/complete — mark the quest artifact completed.
+// XP is not taken from the request body. The next profile read sums
+// xpReward on completed game/quest artifacts owned by this user.
 app.post("/api/game/quests/:questId/complete", (req, res) => {
   try {
-    const userId = req.user?.id || "default";
-    if (!STATE.gameProfiles) STATE.gameProfiles = new Map();
-    if (!STATE.gameProfiles.has(userId)) {
-      STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, questsCompleted: 0, badges: [] });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const artifact = STATE.lensArtifacts?.get(req.params.questId);
+    if (!artifact || artifact.domain !== "game" || artifact.type !== "quest") {
+      return res.status(404).json({ ok: false, error: "quest not found" });
     }
-    const profile = STATE.gameProfiles.get(userId);
-    const xpGain = Number(req.body?.xpReward) || 100;
-    profile.xp = (profile.xp || 0) + xpGain;
-    profile.questsCompleted = (profile.questsCompleted || 0) + 1;
-    // Level up every 1000 XP
-    profile.level = Math.floor(profile.xp / 1000) + 1;
+    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== userId) {
+      return res.status(403).json({ ok: false, error: "not your quest" });
+    }
+    if (artifact.data?.status !== "completed") {
+      artifact.data = { ...(artifact.data || {}), status: "completed" };
+      artifact.updatedAt = nowISO();
+      saveStateDebounced();
+    }
+    const profile = refreshGameProfile(userId);
     res.json({ ok: true, profile });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -63361,11 +64178,18 @@ app.get("/api/anon/identity", (req, res) => {
 });
 
 app.get("/api/anon/messages", (req, res) => {
-  // Anonymous messages stored in sessions
-  const sessionId = req.query.sessionId || req.cookies?.concord_anon;
+  const cookieSessionId = req.cookies?.concord_anon || null;
+  const querySessionId = req.query.sessionId ? String(req.query.sessionId) : null;
+  const sessionId = querySessionId || cookieSessionId;
   const session = sessionId ? STATE.sessions.get(sessionId) : null;
-  const messages = session?.messages || [];
-  res.json({ ok: true, messages: messages.slice(-50) });
+  const read = resolveAnonMessageRead({
+    session,
+    actor: actorFromReq(req),
+    cookieSessionId,
+    querySessionId,
+  });
+  if (read.status !== 200) return res.status(read.status).json({ ok: false, error: read.error });
+  res.json({ ok: true, messages: read.messages });
 });
 
 app.post("/api/anon/rotate", (req, res) => {
@@ -63538,10 +64362,22 @@ app.post("/api/sovereign/repair/acknowledge", async (req, res) => {
 });
 
 // Sovereignty/audit
+// Caller-scoped. requireAuth is load-bearing: this registration used to
+// have none, and the "/api/sovereign" prefix gate was the only thing
+// standing in front of it. That prefix no longer matches
+// /api/sovereignty/*. Anonymous callers stay 401. The body cannot name
+// another user — audit.run is not a registered macro (the catch is the
+// live path) and reports system posture, not another account's rows.
 
-app.post("/api/sovereignty/audit", asyncHandler(async (req, res) => {
+app.post("/api/sovereignty/audit", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "Auth required" });
+  const raw = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  const input = { ...raw, userId };
+  delete input.user_id;
+  delete input.ownerId;
   try {
-    const out = await runMacro("audit", "run", req.body || {}, makeCtx(req));
+    const out = await runMacro("audit", "run", input, makeCtx(req));
     res.json(out);
   } catch (e) {
     // Run basic checks even if macro fails
@@ -64870,11 +65706,13 @@ app.get("/api/social/analytics/creator", requireAuth(), (req, res) => {
 });
 app.get("/api/social/topics/trending", (_req, res) => {
   try {
-    const tagCount = new Map();
-    for (const dtu of dtusArray().slice(-500)) { for (const t of (dtu.tags || [])) { tagCount.set(t, (tagCount.get(t) || 0) + 1); } }
-    const topics = [...tagCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([tag, count]) => ({ tag, count }));
+    const topics = aggregateTopicCounts(dtusArray().slice(-500).map((d) => d?.tags), 20);
     res.json({ ok: true, topics });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  } catch (e) {
+    try { logger.error("social", "topics/trending failed", { error: e?.message, stack: e?.stack }); }
+    catch { /* logging must not mask the response */ }
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 app.get("/api/social/trending/creators", (_req, res) => {
   try {
@@ -64907,9 +65745,9 @@ app.get("/api/social/trending/domains", (_req, res) => {
 });
 
 // Platform status
-app.get("/api/platform/status", (_req, res) => {
+app.get("/api/platform/status", (req, res) => {
   try {
-    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: typeof getBrainStatus === "function" ? getBrainStatus() : {}, dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
+    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user), dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -65039,18 +65877,29 @@ app.post("/api/social/post", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/post/:postId", (req, res) => {
-  try { res.json(socialGetPost(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPost(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialDeletePost(STATE, { userId, postId: req.params.postId }));
+    const result = socialDeletePost(STATE, { userId, postId: req.params.postId });
+    if (!result.ok) {
+      const status = result.error === "Post not found" ? 404 : 403;
+      return res.status(status).json(result);
+    }
+    res.json(result);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/posts/user/:userId", (req, res) => {
-  try { res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Reactions ----
@@ -65095,7 +65944,10 @@ app.delete("/api/social/comment/:postId/:commentId", requireAuth(), (req, res) =
 });
 
 app.get("/api/social/comments/:postId", (req, res) => {
-  try { res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Shares ----
@@ -65107,7 +65959,10 @@ app.post("/api/social/share", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/shares/:postId", (req, res) => {
-  try { res.json(socialGetShares(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetShares(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Bookmarks ----
@@ -65344,7 +66199,10 @@ app.post("/api/social/poll/vote", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/poll/:postId", (req, res) => {
-  try { res.json(socialGetPollResults(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPollResults(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Notifications ----
@@ -65571,7 +66429,11 @@ app.get("/api/rbac/org-lenses/:orgId", (req, res) => {
 });
 
 app.get("/api/rbac/audit-export/:orgId", (req, res) => {
-  try { res.json(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(exportAuditLog(STATE, req.params.orgId, { since: req.query.since, until: req.query.until, action: req.query.action, limit: Number(req.query.limit || 1000) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/rbac/metrics", (req, res) => {
@@ -65677,7 +66539,11 @@ app.get("/api/compliance/retention/:orgId", (req, res) => {
 });
 
 app.get("/api/compliance/log", (req, res) => {
-  try { res.json(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
+    res.json(redactLogValue(getComplianceLog(STATE, { action: req.query.action, since: req.query.since, limit: Number(req.query.limit || 100) })));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/compliance/status", (req, res) => {
@@ -65754,7 +66620,9 @@ app.get("/api/atlas/auto-promote-gate/:id", (req, res) => {
 });
 
 app.get("/api/atlas/write-guard/log", (req, res) => {
-  try { res.json({ ok: true, log: getWriteGuardLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getWriteGuardLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/atlas/write-guard/metrics", (req, res) => {
@@ -65873,7 +66741,9 @@ app.get("/api/atlas/invariants/metrics", (req, res) => {
 });
 
 app.get("/api/atlas/invariants/log", (req, res) => {
-  try { res.json({ ok: true, log: getInvariantLog(Number(req.query.limit || 100)) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
+  try { res.json({ ok: true, log: redactLogValue(getInvariantLog(Number(req.query.limit || 100))) }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Atlas v2: Chat Loose Mode Endpoints ─────────────────────────────────────
@@ -66344,18 +67214,13 @@ app.post("/api/brain/wants/decay", (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Per-brain health and stats endpoint
-app.get("/api/brain/status", (_req, res) => {
-  try {
-    // getBrainStatus() (defined above) is the single source of truth for
-    // mode/onlineCount/avgResponseMs/embeddings — it was already used by
-    // the chat-context builder and /api/platform/status but this route
-    // hand-rolled a stripped-down duplicate missing those fields, which is
-    // why the frontend's BrainMonitor badge always showed "Fallback 0/N"
-    // regardless of real brain state.
-    res.json({ ...getBrainStatus(), llmReady: LLM_READY });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
+// Per-brain health and stats endpoint.
+// getBrainStatus() is the single source of truth for mode/onlineCount/
+// avgResponseMs/embeddings. URLs and model names inside it are operator
+// diagnostics: anonymous callers get 401, members get the same health
+// fields with those stripped, admins get the raw object.
+// See lib/brain-status-public.js (stricter than PR #1098's URL-only redaction).
+mountBrainStatusRoute(app, () => ({ ...getBrainStatus(), llmReady: LLM_READY }));
 
 // Spontaneous message endpoints
 app.get("/api/brain/spontaneous/status", (_req, res) => {
@@ -66748,7 +67613,10 @@ app.post("/api/brain/entity/explore", asyncHandler(async (req, res) => {
 // Tracks consecutive failures per brain to avoid marking offline on a single timeout
 const _brainHealthFailures = {};
 const BRAIN_HEALTH_FAILURE_THRESHOLD = 3; // Only mark offline after 3 consecutive failures
-app.get("/api/brain/health", asyncHandler(async (_req, res) => {
+app.get("/api/brain/health", asyncHandler(async (req, res) => {
+  const _brainDenied = denyAnonymousBrainRead(req);
+  if (_brainDenied) return res.status(_brainDenied.status).json(_brainDenied.body);
+  const _sendBrainHealth = (body) => res.json(brainStatusForViewer(body, req.user));
   // CI / no-Ollama deployments set CONCORD_DISABLE_BRAINS=true. Skip the
   // 5×8 s parallel Ollama probes that would otherwise return useless
   // failure rows + leave the event loop holding 5 dead sockets during
@@ -66759,7 +67627,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
     for (const [name, brain] of Object.entries(BRAIN)) {
       health[name] = { online: false, healthy: false, model: brain.model, error: "brains_disabled" };
     }
-    return res.json({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
+    return _sendBrainHealth({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
   }
   const health = {};
   const probes = Object.entries(BRAIN).map(async ([name, brain]) => {
@@ -66824,7 +67692,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
   });
   await Promise.all(probes);
   const allHealthy = Object.values(health).every(r => r.online);
-  res.json({ ok: true, allHealthy, ...health, brains: health });
+  _sendBrainHealth({ ok: true, allHealthy, ...health, brains: health });
 }));
 
 // LLM Fallback health — shows active tiers and available fallback layers
@@ -66999,32 +67867,12 @@ app.get("/api/workers/stats", requireAuth(), requireRole("owner"), (_req, res) =
 
 // ---- Admin: Backup Status Endpoint ----
 app.get("/api/admin/backup/status", requireAuth(), requireRole("owner"), asyncHandler(async (_req, res) => {
-  const backupDir = path.join(DATA_DIR, 'backups');
+  // runBackup writes <YYYY-MM-DD>/concord.db.gz under BACKUP_DIR. A scan for
+  // top-level concord-YYYYMMDD_HHMMSS.db(.gz) never matches that layout, so
+  // this endpoint reported no backup (hours Infinity, healthy false) even
+  // when a multi-GB snapshot was on disk.
   try {
-    const files = fs.readdirSync(backupDir);
-    const backups = files
-      .filter(f => f.endsWith('.db.gz') || f.endsWith('.db'))
-      .map(f => {
-        const stat = fs.statSync(path.join(backupDir, f));
-        const dateMatch = f.match(/concord-(\d{8}_\d{6})/);
-        return { filename: f, size: stat.size, date: dateMatch?.[1] || null };
-      })
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-    const lastBackup = backups[0];
-    let hoursSinceBackup = Infinity;
-    if (lastBackup?.date) {
-      const parsed = lastBackup.date.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6');
-      hoursSinceBackup = (Date.now() - new Date(parsed).getTime()) / 3600000;
-    }
-
-    res.json({
-      totalBackups: backups.length,
-      lastBackup: lastBackup?.date || null,
-      hoursSinceLastBackup: Math.round(hoursSinceBackup),
-      healthy: hoursSinceBackup < 26,
-      backups: backups.slice(0, 7),
-    });
+    res.json(await summarizeDatedDbBackups(BACKUP_DIR));
   } catch {
     res.json({ totalBackups: 0, lastBackup: null, hoursSinceLastBackup: Infinity, healthy: false, backups: [] });
   }
@@ -67032,10 +67880,15 @@ app.get("/api/admin/backup/status", requireAuth(), requireRole("owner"), asyncHa
 
 // ---- Admin: Centralized Logs Endpoint ----
 app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  // requireAuth/requireRole no-op when AUTH_MODE=public. This handler is
+  // also shadowed by routes/domain.js (registered first). The gate stays
+  // so a reorder cannot reopen the buffer to a member.
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   try {
     const logMod = await import("./logger.js");
     const { level, source, lens, since, search, limit } = req.query;
-    const logs = logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 });
+    const logs = redactLogValue(logMod.query({ level, source, lens, since, search, limit: parseInt(limit) || 100 }));
     res.json({ logs, total: logs.length });
   } catch {
     res.json({ logs: [], total: 0 });
@@ -67044,6 +67897,8 @@ app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(asy
 
 // ---- Admin: Log Stream (SSE) ----
 app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  const gate = gateLogAdmin(req);
+  if (!gate.ok) return sendGate(res, gate);
   let logMod;
   try { logMod = await import("./logger.js"); } catch { return res.status(500).end(); }
   startSSE(res);
@@ -67055,7 +67910,7 @@ app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHand
       const newLogs = buf.slice(lastIndex);
       if (newLogs.length > 0) {
         for (const entry of newLogs) {
-          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+          res.write(`data: ${JSON.stringify(redactLogValue(entry))}\n\n`);
         }
         lastIndex = buf.length;
       }
@@ -67705,7 +68560,7 @@ function freshnessLabel(score) {
 // Track DTU access for freshness
 app.get("/api/dtus/:id/freshness", (req, res) => {
   const dtu = STATE.dtus.get(req.params.id);
-  if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+  if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
 
   // Record access
   if (!dtu.meta) dtu.meta = {};
@@ -71475,9 +72330,12 @@ eventBus.on("dtu.composted", (evt) => {
 
 // Event Bus API routes
 app.get("/api/events/bus", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 100;
   const type = req.query.type;
-  res.json({ ok: true, events: eventBus.getHistory(limit, { type }), stats: eventBus.getStats() });
+  const history = eventBus.getHistory(10000, { type });
+  res.json({ ok: true, events: projectBusEvents(history, gate.actor, limit), stats: eventBus.getStats() });
 });
 
 app.get("/api/events/bus/stats", (_req, res) => {
@@ -71870,17 +72728,19 @@ function startTrace(trigger) {
 }
 
 app.get("/api/traces", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = parseInt(req.query.limit) || 50;
   const minDuration = parseInt(req.query.minDuration) || 0;
-  let traces = [...STATE._traces].reverse();
-  if (minDuration > 0) traces = traces.filter(t => (t.totalDuration || 0) >= minDuration);
-  res.json({ ok: true, traces: traces.slice(0, limit) });
+  const traces = projectTraces(STATE._traces, gate.actor, { limit, minDuration });
+  res.json({ ok: true, traces });
 });
 
 app.get("/api/traces/:id", (req, res) => {
-  const trace = STATE._traces.find(t => t.traceId === req.params.id);
-  if (!trace) return res.status(404).json({ ok: false, error: "Trace not found" });
-  res.json({ ok: true, trace });
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const resolved = resolveTrace(STATE._traces, req.params.id, gate.actor);
+  res.status(resolved.status).json(resolved.body);
 });
 
 // ---------- #85: RATE LIMITER & COST GOVERNOR ----------
@@ -71938,9 +72798,9 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 }
 
 app.get("/api/rate-limits", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const limits = STATE._rateLimits.get(userId);
   const hourAgo = Date.now() - 60 * 60 * 1000;
   const recentCalls = limits ? limits.calls.filter(t => t > hourAgo).length : 0;
@@ -71948,11 +72808,11 @@ app.get("/api/rate-limits", (req, res) => {
 });
 
 app.get("/api/costs", (req, res) => {
-   
-  // eslint-disable-next-line no-restricted-syntax
-  const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
+  const userId = selectScopedUserId(gate.actor, req.query);
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
-  res.json({ ok: true, ...account });
+  res.json({ ok: true, userId, ...redactLogValue(account) });
 });
 
 // ---------- #87: MIGRATION ENGINE ----------
@@ -73085,11 +73945,12 @@ app.post("/api/bridge/validate", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/bridge/log", (req, res) => {
+  const gate = gateLogRead(req);
+  if (!gate.ok) return sendGate(res, gate);
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-  const action = req.query.action;
-  let log = STATE._bridge.log;
-  if (action) log = log.filter(e => e.action === action);
-  res.json({ ok: true, log: log.slice(-limit), total: log.length });
+  const out = projectBridgeLog(STATE._bridge?.log, gate.actor, { limit, action: req.query.action });
+  if (out.ok === false) return res.status(403).json(out);
+  res.json(out);
 });
 
 app.get("/api/bridge/organisms", (_req, res) => {
@@ -73216,11 +74077,7 @@ function sanitizeDTUInput(body) {
   if (body.title) body.title = sanitizeString(body.title);
   if (body.content) body.content = sanitizeString(body.content);
   if (body.tags && Array.isArray(body.tags)) {
-    body.tags = body.tags
-      .filter(t => typeof t === "string")
-      .map(t => t.toLowerCase().trim().replace(/[<>"'`]/g, ""))
-      .filter(t => t.length > 0 && t.length <= 100);
-    body.tags = [...new Set(body.tags)];
+    body.tags = sanitizeDtuTags(body.tags);
   }
   return body;
 }
@@ -82888,49 +83745,7 @@ function ensureArtistryState() {
   return STATE.artistry;
 }
 
-// ── File Upload MIME Allowlist & Magic Bytes ────────────────────────────────
-
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
-  'video/mp4', 'video/webm',
-  'application/pdf',
-  'text/plain', 'text/markdown', 'text/csv',
-  'application/json',
-  'application/octet-stream', // fallback for unknown binary
-]);
-
-const MAGIC_BYTES = {
-  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
-  'image/png': [[0x89, 0x50, 0x4E, 0x47]],
-  'image/gif': [[0x47, 0x49, 0x46, 0x38]],
-  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF
-  'audio/mpeg': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 + ID3
-  'audio/ogg': [[0x4F, 0x67, 0x67, 0x53]],
-  'audio/flac': [[0x66, 0x4C, 0x61, 0x43]],
-  'video/mp4': [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
-  'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
-};
-
-function validateMimeType(mimeType, dataOrBuffer) {
-  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-    return { ok: false, error: `File type not allowed: ${mimeType}` };
-  }
-  // Check magic bytes if we have rules for this type
-  const rules = MAGIC_BYTES[mimeType];
-  if (rules && dataOrBuffer) {
-    const buf = typeof dataOrBuffer === 'string'
-      ? Buffer.from(dataOrBuffer.slice(0, 100), 'base64')
-      : (Buffer.isBuffer(dataOrBuffer) ? dataOrBuffer.slice(0, 100) : null);
-    if (buf && buf.length >= 2) {
-      const matches = rules.some(magic => magic.every((byte, i) => i < buf.length && buf[i] === byte));
-      if (!matches) {
-        return { ok: false, error: 'File content does not match declared type' };
-      }
-    }
-  }
-  return { ok: true };
-}
+// MIME allowlist lives in server/lib/upload-mime.js.
 
 // ── Blob Storage Engine ─────────────────────────────────────────────────────
 
@@ -84818,7 +85633,7 @@ function autoClassifyDTU(dtu) {
  */
 function applyAutoTagging(dtu) {
   try {
-    if (!dtu || dtu._skipAutoTag) return;
+    if (dtuSkipsAutoTag(dtu)) return;
     const autoDomains = autoClassifyDTU(dtu);
     if (autoDomains.length === 0) return;
     const existing = new Set(dtu.tags || []);
@@ -84889,16 +85704,18 @@ async function retroTagAllDTUs() {
     let processed = 0;
 
     for (const dtu of dtus) {
-      // Auto-classify and merge tags
-      const domains = autoClassifyDTU(dtu);
-      if (domains.length > 0) {
-        const existing = new Set(dtu.tags || []);
-        const before = existing.size;
-        for (const d of domains) existing.add(d);
-        if (existing.size > before) {
-          dtu.tags = Array.from(existing);
-          dtu.updatedAt = new Date().toISOString();
-          tagged++;
+      // Authored DTUs that set skipAutoTag keep the tags they were saved with.
+      if (!dtuSkipsAutoTag(dtu)) {
+        const domains = autoClassifyDTU(dtu);
+        if (domains.length > 0) {
+          const existing = new Set(dtu.tags || []);
+          const before = existing.size;
+          for (const d of domains) existing.add(d);
+          if (existing.size > before) {
+            dtu.tags = Array.from(existing);
+            dtu.updatedAt = new Date().toISOString();
+            tagged++;
+          }
         }
       }
 
@@ -85740,7 +86557,9 @@ app.get("/api/search", (req, res) => {
 // ── Automated Backup System ──────────────────────────────────────────────────
 // BACKUP_DIR already declared at top-level (line ~4626)
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const _BACKUP_RETENTION_DAYS = 1; // 2026-09-05: keep newest only (disk pressure)
+// Dated YYYY-MM-DD copies to keep after a verified publish. Default 2 so a
+// same-day rewrite still leaves the previous day. CONCORD_DB_BACKUP_KEEP.
+const _BACKUP_RETENTION_DAYS = dbBackupKeepCount();
 
 async function runBackup() {
   try {
@@ -85812,34 +86631,60 @@ async function runBackup() {
     // page-by-page under a read transaction and yields a consistent, valid
     // database even under concurrent writes. Snapshot to a temp file, gzip
     // that, delete it.
+    // Gzip goes to concord.db.gz.tmp-<pid> in this directory, then fsync +
+    // gzip-test + rename onto concord.db.gz. createWriteStream on the final
+    // path truncated the only good copy for the whole multi-GB write.
+    let dbGzipVerified = false;
+    let dbSkip = null;
+    let gzipPath = null;
     try {
       const _db = STATE?.db || globalThis._concordDB;
-      const gzipPath = `${backupDir}/concord.db.gz`;
-      if (_db && typeof _db.backup === "function") {
-        const snapPath = `${backupDir}/.concord.db.snapshot`;
+      const finalGzipPath = `${backupDir}/concord.db.gz`;
+      gzipPath = `${backupDir}/concord.db.gz.tmp-${process.pid}`;
+      const disk = await assessDbBackupDisk(DB_PATH, backupDir);
+      if (!disk.ok) {
+        dbSkip = { skipped: true, reason: "low_disk", message: disk.message };
+        structuredLog("warn", "backup_db_skipped_low_disk", {
+          message: disk.message,
+          needBytes: disk.needBytes,
+          freeBytes: disk.freeBytes,
+          dbBytes: disk.dbBytes,
+          source: DB_PATH,
+        });
+        try {
+          await recordDbBackupRunStatus(BACKUP_DIR, {
+            result: "skipped",
+            reason: "low_disk",
+            message: disk.message,
+            needBytes: disk.needBytes,
+            freeBytes: disk.freeBytes,
+            dbBytes: disk.dbBytes,
+            at: new Date().toISOString(),
+          });
+        } catch (statusErr) {
+          structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+        }
+      } else if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot.tmp-${process.pid}`;
         // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
         // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room, and copy in one step so concurrent
-        // writes can't restart it.
-        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
-        let freeBytes = Infinity;
-        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
-        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
-        if (freeBytes < needBytes) {
-          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
-        }
+        // honestly when there's no room (free < db × 1.3). The one-step copy
+        // still runs, but in a worker: on the main thread an ~8.9 GB snapshot
+        // blocked the loop for up to 8.4s and the shedder 503'd login during warmup.
         try {
-          await _db.backup(snapPath, { progress: () => 0x7fffffff });
+          await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),
             fs.createWriteStream(gzipPath),
           );
+          await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+          dbGzipVerified = true;
           const { size: sourceBytes } = await fs.promises.stat(snapPath);
-          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
           structuredLog("info", "backup_db_captured", {
             source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
           });
@@ -85854,8 +86699,10 @@ async function runBackup() {
           zlib.createGzip({ level: 6 }),
           fs.createWriteStream(gzipPath),
         );
+        await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+        dbGzipVerified = true;
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
-        const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+        const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
         structuredLog("info", "backup_db_captured", {
           source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
@@ -85866,27 +86713,76 @@ async function runBackup() {
       }
     } catch (e) {
       structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+      if (gzipPath) await fs.promises.rm(gzipPath, { force: true }).catch(() => {});
     }
 
-    // Clean old backups (keep BACKUP_RETENTION_DAYS)
-    try {
-      const backups = fs.readdirSync(BACKUP_DIR).sort();
-      while (backups.length > _BACKUP_RETENTION_DAYS) {
-        const oldest = backups.shift();
-        const oldPath = `${BACKUP_DIR}/${oldest}`;
-        fs.rmSync(oldPath, { recursive: true, force: true });
+    // Keep the newest N dated DB directories only after the new gzip is
+    // verified. Do not readdir+sort the whole folder: JSON state backups
+    // live here too, and digit-leading YYYY-MM-DD names sort first, so the
+    // old retention deleted the directory this run just wrote whenever any
+    // backup-*.json / auto-*.json existed. backups-legacy is not a date name.
+    if (dbGzipVerified) {
+      try {
+        await recordDbBackupRunStatus(BACKUP_DIR, {
+          result: "ok",
+          reason: null,
+          message: null,
+          at: new Date().toISOString(),
+          filename: `${timestamp}/concord.db.gz`,
+        });
+      } catch (statusErr) {
+        structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
       }
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      try {
+        applyDbBackupRetention(BACKUP_DIR, {
+          keep: _BACKUP_RETENTION_DAYS,
+          protectName: timestamp,
+          verified: dbGzipVerified,
+        });
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
 
-    structuredLog("info", "backup_complete", { backupDir });
-    return { ok: true, path: backupDir, timestamp };
+    structuredLog("info", "backup_complete", { backupDir, dbVerified: dbGzipVerified, dbSkip: dbSkip?.reason ?? null });
+    return {
+      ok: true,
+      path: backupDir,
+      timestamp,
+      dbVerified: dbGzipVerified,
+      ...(dbSkip ? { skipped: true, reason: dbSkip.reason, message: dbSkip.message } : {}),
+    };
   } catch (e) {
     console.error("[Backup] Failed:", String(e?.message || e));
     return { ok: false, error: String(e?.message || e) };
   }
 }
 
-// Run backup on startup (delayed) and periodically
+// Scheduled backup stays on _BACKUP_INTERVAL_MS and always runs runBackup.
+// Boot does not: a deploy restart used to rewrite a 9GB gzip in place every
+// time. Skip when the newest verified snapshot is younger than
+// CONCORD_DB_BACKUP_STARTUP_INTERVAL_HOURS (default 6).
+async function _backupOnStartup() {
+  try {
+    await cleanStaleDbBackupTemps(BACKUP_DIR);
+  } catch (e) {
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) });
+  }
+  let decision = { skip: false, reason: "no_decision" };
+  try {
+    decision = await evaluateStartupBackup(BACKUP_DIR, { intervalMs: dbBackupStartupIntervalMs() });
+  } catch (e) {
+    decision = { skip: false, reason: "decision_failed", error: String(e?.message || e) };
+  }
+  if (decision.skip) {
+    // Do not overwrite a low_disk status: a young verified backup is why boot
+    // skipped, and the admin status should still show the last disk refusal
+    // until a backup actually succeeds.
+    structuredLog("info", "backup_startup_skipped", decision);
+    return { ok: true, skipped: true, reason: "fresh_verified_backup" };
+  }
+  structuredLog("info", "backup_startup_running", { reason: decision.reason || "due" });
+  return runBackup();
+}
+
 // `.catch` rather than try/catch: runBackup is async now, so a rejection is
 // NOT caught by a synchronous try block around the call — it would surface as
 // an unhandled rejection instead. runBackup already returns `{ok:false}` on
@@ -85897,7 +86793,14 @@ const _backupTick = () => {
       structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 };
-_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setTimeout(() => {
+  cleanStaleDbBackupTemps(BACKUP_DIR).catch((e) =>
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) }));
+}, 0));
+_unrefInTest(setTimeout(() => {
+  Promise.resolve(_backupOnStartup()).catch((e) =>
+    structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+}, 60000)); // 1 min after start, gated on the newest verified backup
 _unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
@@ -88509,6 +89412,87 @@ register("dtu_sync", "force_sync", async (ctx, input = {}) => {
 }, { note: "Compose + return a portable pack for the device. Uses Phase 0 universal-format export." });
 
 // #20 Classroom — cohorts + homework + peer review.
+//
+// Self-enrolment is the product behaviour: this macro's original note and the
+// cohort card both treat a blank student id as "join myself". Joining somebody
+// else is only the teacher's act. A missing or inactive cohort writes nothing.
+
+function classroomCohortById(database, cohortId) {
+  return database.prepare(
+    `SELECT id, teacher_user_id, status FROM classroom_cohorts WHERE id = ?`
+  ).get(cohortId) || null;
+}
+
+function classroomDtuRecord(database, dtuId) {
+  const id = String(dtuId);
+  // Live DTUs live in the write-through store (STATE.dtus / dtu_store).
+  // Some subsystems still insert straight into the legacy `dtus` table;
+  // honour that row only when the live store has no object, so a stale
+  // public table row cannot widen a private live DTU.
+  try {
+    const store = globalThis._concordSTATE?.dtus;
+    if (store && typeof store.get === "function") {
+      const hit = store.get(id);
+      if (hit && typeof hit === "object") return hit;
+    }
+  } catch { /* fall through to the legacy table */ }
+  const row = database.prepare(
+    `SELECT id, owner_user_id, creator_id, visibility FROM dtus WHERE id = ?`
+  ).get(id);
+  if (!row) return null;
+  const owner = row.owner_user_id || row.creator_id || null;
+  return {
+    id: row.id,
+    ownerId: owner,
+    owner_user_id: row.owner_user_id || null,
+    creator_id: row.creator_id || null,
+    author: owner,
+    visibility: row.visibility || null,
+  };
+}
+
+function classroomSubmitterMayAttach(dtu, userId) {
+  if (!dtu || !userId) return false;
+  const owners = [dtu.ownerId, dtu.owner_user_id, dtu.creator_id, dtu.author, dtu.userId, dtu.createdBy];
+  for (const owner of owners) {
+    if (typeof owner === "string" && owner && owner !== "anon" && owner === userId) return true;
+  }
+  // Same predicate as the by-id read gate, without the internal-ctx bypass:
+  // this macro is a user action even when a test calls it through makeInternalCtx.
+  if (dtu.visibility === "internal") return false;
+  return !privateDtuHiddenFrom(dtu, userId);
+}
+
+// Public label for a teacher. lookupUserIdentity prefers display_name, then
+// the @handle, and never invents one from the raw id. A stored name that is
+// the id itself is not a public label — fall through to the handle, or blank.
+function classroomPublicTeacherName(ident, userId) {
+  const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+  const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+  if (display && display !== userId) return display;
+  if (handle && handle !== userId) return handle;
+  return null;
+}
+
+function classroomWithTeacherNames(database, rows) {
+  const names = new Map();
+  for (const row of rows) {
+    const id = row?.teacher_user_id;
+    if (!id || names.has(id)) continue;
+    names.set(id, classroomPublicTeacherName(lookupUserIdentity(database, id), id));
+  }
+  // Studying rows are visible to every enrolled student. Cohort ids are
+  // sequential, so returning teacher_user_id lets a student harvest other
+  // users' internal ids. The teacher's own teaching query never selects it.
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    rubric_dtu_id: row.rubric_dtu_id,
+    enroled_at: row.enroled_at,
+    teacher_display_name: names.get(row.teacher_user_id) || null,
+  }));
+}
+
 register("classroom", "create_cohort", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;
@@ -88530,14 +89514,21 @@ register("classroom", "enrol", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { cohortId, studentUserId } = input || {};
   if (!cohortId) return { ok: false, reason: "missing_cohort" };
-  const target = studentUserId || userId;
+  const trimmed = studentUserId == null ? "" : String(studentUserId).trim();
+  const target = trimmed === "" ? userId : trimmed;
   try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    if (target !== userId && cohort.teacher_user_id !== userId) {
+      return { ok: false, reason: "not_teacher" };
+    }
     db.prepare(`
       INSERT OR IGNORE INTO classroom_enrolments (cohort_id, student_user_id) VALUES (?, ?)
-    `).run(cohortId, target);
-    return { ok: true, cohortId, studentUserId: target };
+    `).run(cohort.id, target);
+    return { ok: true, cohortId: cohort.id, studentUserId: target };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Enrol a student in a cohort. Self-enrolment if studentUserId omitted." });
+}, { note: "Enrol in an active cohort. Self-enrolment if studentUserId is omitted. Enrolling someone else requires the teacher." });
 
 register("classroom", "submit_homework", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -88550,13 +89541,19 @@ register("classroom", "submit_homework", (ctx, input = {}) => {
       SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
     `).get(cohortId, userId);
     if (!enroled) return { ok: false, reason: "not_enroled" };
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    const dtu = classroomDtuRecord(db, dtuId);
+    if (!dtu) return { ok: false, reason: "dtu_not_found" };
+    if (!classroomSubmitterMayAttach(dtu, userId)) return { ok: false, reason: "dtu_not_readable" };
     const r = db.prepare(`
       INSERT INTO homework_submissions (cohort_id, student_user_id, dtu_id)
       VALUES (?, ?, ?)
-    `).run(cohortId, userId, dtuId);
+    `).run(cohort.id, userId, String(dtuId));
     return { ok: true, submissionId: r.lastInsertRowid };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Student submits a DTU as homework." });
+}, { note: "Enrolled student submits a DTU they own or can read as homework." });
 
 register("classroom", "peer_review", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -88565,13 +89562,26 @@ register("classroom", "peer_review", (ctx, input = {}) => {
   const { submissionId, score, comment = null } = input || {};
   if (!submissionId || score === undefined) return { ok: false, reason: "missing_inputs" };
   try {
+    const submission = db.prepare(`
+      SELECT id, cohort_id, student_user_id FROM homework_submissions WHERE id = ?
+    `).get(submissionId);
+    if (!submission) return { ok: false, reason: "submission_not_found" };
+    if (submission.student_user_id === userId) return { ok: false, reason: "own_submission" };
+    const cohort = classroomCohortById(db, submission.cohort_id);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    const teaches = cohort.teacher_user_id === userId;
+    const enrolled = teaches ? true : !!db.prepare(`
+      SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).get(submission.cohort_id, userId);
+    if (!enrolled) return { ok: false, reason: "not_in_cohort" };
     db.prepare(`
       INSERT OR REPLACE INTO peer_reviews (submission_id, reviewer_user_id, score, comment)
       VALUES (?, ?, ?, ?)
-    `).run(submissionId, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
+    `).run(submission.id, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
     return { ok: true };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Peer review a submission. Reviewer score 0-100." });
+}, { note: "Peer review a real submission. Reviewer must teach or be enrolled in that cohort, and must not be the author. Score 0-100." });
 
 register("classroom", "list_cohorts", (ctx, _input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -88584,16 +89594,53 @@ register("classroom", "list_cohorts", (ctx, _input = {}) => {
       FROM classroom_cohorts WHERE teacher_user_id = ? AND status = 'active'
       ORDER BY created_at DESC
     `).all(userId);
-    const studying = db.prepare(`
+    const studying = classroomWithTeacherNames(db, db.prepare(`
       SELECT c.id, c.name, c.rubric_dtu_id, c.teacher_user_id, e.enroled_at
       FROM classroom_enrolments e
       JOIN classroom_cohorts c ON c.id = e.cohort_id
       WHERE e.student_user_id = ? AND c.status = 'active'
       ORDER BY e.enroled_at DESC
-    `).all(userId);
+    `).all(userId));
     return { ok: true, teaching, studying };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Cohorts where the user teaches or studies." });
+}, { note: "Active cohorts where the user teaches or studies. Studying rows name the teacher (display name or handle) and omit the internal user id." });
+
+register("classroom", "archive_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.teacher_user_id !== userId) return { ok: false, reason: "not_teacher" };
+    if (cohort.status === "archived") return { ok: true, cohortId: cohort.id, status: "archived" };
+    const r = db.prepare(`
+      UPDATE classroom_cohorts SET status = 'archived'
+      WHERE id = ? AND teacher_user_id = ? AND status = 'active'
+    `).run(cohort.id, userId);
+    if (r.changes === 0) return { ok: false, reason: "cohort_inactive" };
+    return { ok: true, cohortId: cohort.id, status: "archived" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Teacher archives their cohort (status). list_cohorts only returns active rows." });
+
+register("classroom", "leave_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    const r = db.prepare(`
+      DELETE FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).run(cohort.id, userId);
+    if (r.changes === 0) return { ok: false, reason: "not_enroled" };
+    return { ok: true, cohortId: cohort.id };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Remove the caller's enrolment. The cohort row stays." });
 
 // #21 Cross-world physics import — spawn a Forge app as a sub-world.
 register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
@@ -88794,6 +89841,7 @@ export function __clearActiveTimersForTest() {
 export const __TEST__ = Object.freeze({
   VERSION,
   STATE,
+  app,
   ensureQueues,
   enqueueNotification,
   realtimeEmit,
@@ -88897,5 +89945,7 @@ export const __TEST__ = Object.freeze({
   getEthosEnforcementSnapshot,
   ETHOS_ENFORCEMENT_HISTORY_CAP,
   initGhostFleet,
+  sumCompletedQuestXp,
+  refreshGameProfile,
 });
 // Test commit

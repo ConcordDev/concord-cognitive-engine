@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
 import { useUIStore } from '@/store/ui';
 import { Virtuoso } from 'react-virtuoso';
@@ -421,6 +422,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   };
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
+  const [forgedDtuByMessage, setForgedDtuByMessage] = useState<
+    Record<string, { id: string; title: string; content: string }>
+  >({});
   const [conversationSearch, setConversationSearch] = useState('');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [composerPlusOpen, setComposerPlusOpen] = useState(false);
@@ -1005,7 +1009,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         case '/forge': {
           const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
           if (lastAssistant) {
-            forgeMutation.mutate(lastAssistant.content);
+            forgeMutation.mutate({ content: lastAssistant.content, messageId: lastAssistant.id });
           } else {
             const sysMsg: Message = {
               id: `sys-${Date.now()}`,
@@ -1524,23 +1528,30 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   });
 
   const forgeMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, messageId }: { content: string; messageId: string }) => {
       const response = await apiHelpers.forge.hybrid({
         content,
+        // forge.hybrid stores input.prompt. content alone was saved as an empty body.
+        prompt: content,
         tags: ['chat-forged'],
         source: 'chat-lens',
       });
-      return response.data;
+      return { forged: response.data, messageId, content };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ forged, messageId, content }) => {
+      const id = forged?.dtu?.id || forged?.id || '';
+      const title = forged?.dtu?.title || forged?.title || 'New DTU created';
       const forgeMsg: Message = {
         id: `forge-${Date.now()}`,
         role: 'system',
-        content: `Forged to DTU: ${data?.dtu?.title || data?.title || 'New DTU created'}`,
+        content: `Forged to DTU: ${title}`,
         timestamp: new Date().toISOString(),
-        dtuId: data?.dtu?.id || data?.id,
+        dtuId: id || undefined,
       };
       setLocalMessages((prev) => [...prev, forgeMsg]);
+      if (id) {
+        setForgedDtuByMessage((prev) => ({ ...prev, [messageId]: { id, title, content } }));
+      }
       queryClient.invalidateQueries({ queryKey: ['dtus'] });
     },
     onError: () => {
@@ -2470,7 +2481,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   )}
                   <span>·</span>
                   <button
-                    onClick={() => forgeMutation.mutate(message.content)}
+                    onClick={() => forgeMutation.mutate({ content: message.content, messageId: message.id })}
                     disabled={forgeMutation.isPending}
                     className={cn(
                       'hover:text-neon-cyan transition-colors flex items-center gap-1',
@@ -2482,6 +2493,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <Zap className="w-3 h-3" />
                     <span className="hidden sm:inline">Forge DTU</span>
                   </button>
+                  <ChatDraftInThreadButton
+                    dtuId={forgedDtuByMessage[message.id]?.id || ''}
+                    title={forgedDtuByMessage[message.id]?.title || message.content.slice(0, 80)}
+                    content={forgedDtuByMessage[message.id]?.content || message.content}
+                  />
                 </>
               )}
             </div>}
@@ -2491,6 +2507,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     },
     [
       feedbackState,
+      forgedDtuByMessage,
       feedbackMutation,
       forgeMutation,
       regenerateMutation,

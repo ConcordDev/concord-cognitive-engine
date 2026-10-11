@@ -67,6 +67,40 @@ function f0Denied(call) {
   return { deny: false };
 }
 
+const TOOL_CALL_MARKER = "[TOOL_CALL:";
+// GRC / governance envelope (prompt-registry grcFormatter). The model sometimes
+// hides the real answer — including [TOOL_CALL:] markers — inside `payload`.
+const GOVERNANCE_KEYS = ["toneLock", "anchor", "nextLoop", "invariants", "reality"];
+
+/**
+ * Index just past a JSON object or array that starts at `start`.
+ * Brace- and bracket-depth, and it does not treat `{` `}` `[` `]` inside
+ * strings as structure (including escaped quotes). Returns -1 if unclosed.
+ */
+export function scanJsonEnd(s, start) {
+  const open = s[start];
+  if (open !== "{" && open !== "[") return -1;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let j = start; j < s.length; j++) {
+    const c = s[j];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{" || c === "[") depth++;
+    else if (c === "}" || c === "]") {
+      depth--;
+      if (depth === 0) return j + 1;
+    }
+  }
+  return -1;
+}
+
 function extractJsonObjects(text) {
   const s = String(text || "");
   const out = [];
@@ -74,31 +108,94 @@ function extractJsonObjects(text) {
   while (i < s.length) {
     const start = s.indexOf("{", i);
     if (start < 0) break;
-    let depth = 0, inStr = false, esc = false, end = -1;
-    for (let j = start; j < s.length; j++) {
-      const c = s[j];
-      if (inStr) {
-        if (esc) { esc = false; }
-        else if (c === "\\") esc = true;
-        else if (c === '"') inStr = false;
-        continue;
-      }
-      if (c === '"') inStr = true;
-      else if (c === "{") depth++;
-      else if (c === "}") {
-        depth--;
-        if (depth === 0) { end = j; break; }
-      }
-    }
+    const end = scanJsonEnd(s, start);
     if (end < 0) break;
-    const slice = s.slice(start, end + 1);
+    const slice = s.slice(start, end);
     try {
       const obj = JSON.parse(slice);
       if (obj && typeof obj === "object" && !Array.isArray(obj)) out.push(obj);
     } catch { /* not json */ }
-    i = end + 1;
+    i = end;
   }
   return out;
+}
+
+function isGovernanceEnvelope(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
+  if (typeof obj.payload !== "string") return false;
+  return GOVERNANCE_KEYS.some((k) => Object.prototype.hasOwnProperty.call(obj, k));
+}
+
+/**
+ * When the whole reply is a governance JSON object (optional ```json fence),
+ * return its payload string. Otherwise null.
+ */
+export function unwrapGovernancePayload(text) {
+  let t = String(text || "").trim();
+  const fence = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fence) t = fence[1].trim();
+  if (!t.startsWith("{") || !t.endsWith("}")) return null;
+  let obj;
+  try { obj = JSON.parse(t); } catch { return null; }
+  return isGovernanceEnvelope(obj) ? obj.payload : null;
+}
+
+/** Payload strings from governance envelopes embedded in `text`. */
+export function governancePayloads(text) {
+  const out = [];
+  const whole = unwrapGovernancePayload(text);
+  if (whole != null) out.push(whole);
+  for (const obj of extractJsonObjects(text)) {
+    if (!isGovernanceEnvelope(obj)) continue;
+    if (out.includes(obj.payload)) continue;
+    out.push(obj.payload);
+  }
+  return out;
+}
+
+/**
+ * Locate `[TOOL_CALL: {…}]` spans with a bracket- and string-aware scan.
+ * A nested `"files":[{…}]` or a `}` inside a string is part of the call,
+ * not the end of it. Malformed markers that close before the next marker
+ * are returned with `strip: true` so the visible answer can drop them
+ * without swallowing a later valid call.
+ * @returns {{start:number,end:number,raw:string,json:string,parsed:object|null,strip?:boolean}[]}
+ */
+export function findToolCallSpans(text) {
+  const s = String(text || "");
+  const spans = [];
+  let i = 0;
+  while (i < s.length) {
+    const start = s.indexOf(TOOL_CALL_MARKER, i);
+    if (start < 0) break;
+    let j = start + TOOL_CALL_MARKER.length;
+    while (j < s.length && /\s/.test(s[j])) j++;
+    if (s[j] !== "{") { i = start + TOOL_CALL_MARKER.length; continue; }
+    const endObj = scanJsonEnd(s, j);
+    if (endObj < 0) { i = start + TOOL_CALL_MARKER.length; continue; }
+    let k = endObj;
+    while (k < s.length && /\s/.test(s[k])) k++;
+    if (s[k] !== "]") { i = start + TOOL_CALL_MARKER.length; continue; }
+    const json = s.slice(j, endObj);
+    let parsed = null;
+    try { parsed = JSON.parse(json); } catch { parsed = null; }
+    const end = k + 1;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !parsed.tool) {
+      const next = s.indexOf(TOOL_CALL_MARKER, start + TOOL_CALL_MARKER.length);
+      // Self-contained junk (`[TOOL_CALL: {not valid json}]`) — drop the
+      // span, but never let it eat a later real marker.
+      if (next < 0 || end <= next) {
+        spans.push({ start, end, raw: s.slice(start, end), json, parsed: null, strip: true });
+        i = end;
+        continue;
+      }
+      i = start + TOOL_CALL_MARKER.length;
+      continue;
+    }
+    spans.push({ start, end, raw: s.slice(start, end), json, parsed });
+    i = end;
+  }
+  return spans;
 }
 
 /**
@@ -117,15 +214,18 @@ export function parseObserveCalls(text, ollamaMessage) {
     calls.push({ tool: t, params: params && typeof params === "object" ? params : {}, f0, raw: raw || t });
   };
 
-  const re = /\[TOOL_CALL:\s*(\{[\s\S]*?\})\s*\]/g;
-  let m;
   const s = String(text || "");
-  while ((m = re.exec(s)) !== null) {
-    try {
-      const parsed = JSON.parse(m[1]);
-      if (parsed?.tool) push(parsed.tool, parsed.params || parsed.args || {}, parsed.f0, m[0]);
-    } catch { /* skip */ }
-  }
+  const takeMarkers = (source) => {
+    for (const span of findToolCallSpans(source)) {
+      const parsed = span.parsed;
+      if (!parsed?.tool) continue;
+      push(parsed.tool, parsed.params || parsed.args || {}, parsed.f0, span.raw);
+    }
+  };
+  takeMarkers(s);
+  // Governance replies wrap the marker inside a JSON `payload` string, so
+  // the braces are escaped in the raw text and a top-level scan misses them.
+  for (const payload of governancePayloads(s)) takeMarkers(payload);
 
   for (const obj of extractJsonObjects(s)) {
     if (obj.tool || obj.organ) {

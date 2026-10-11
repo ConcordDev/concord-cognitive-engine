@@ -515,10 +515,19 @@ describe("forum — trending (shared ctx)", () => {
     assert.equal(tr.result.personalized, false);
   });
 
-  it("trending: empty corpus returns an empty list", async () => {
-    const fresh = await depthCtx("forum-trending-empty");
-    const tr = await lensRun("forum", "trending", {}, fresh);
-    assert.equal(tr.result.count, 0);
-    assert.deepEqual(tr.result.trending, []);
+  it("trending: a private topic stays off a non-member's board", async () => {
+    const owner = await depthCtx("forum-trending-owner");
+    const outsider = await depthCtx("forum-trending-outsider");
+    const cat = await lensRun("forum", "category-create", {
+      params: { name: "Sealed", visibility: "private" },
+    }, owner);
+    const hidden = await lensRun("forum", "topic-create", {
+      params: { title: "Members only", categoryId: cat.result.category.id },
+    }, owner);
+    const tr = await lensRun("forum", "trending", {}, outsider);
+    assert.equal(tr.ok, true);
+    assert.ok(!tr.result.trending.some((x) => x.id === hidden.result.topic.id));
+    const own = await lensRun("forum", "trending", {}, owner);
+    assert.ok(own.result.trending.some((x) => x.id === hidden.result.topic.id));
   });
 });

@@ -90,9 +90,14 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 // ── ui store (toasts) ────────────────────────────────────────────────────────
-vi.mock('@/store/ui', () => ({
-  useUIStore: { getState: () => ({ addToast: vi.fn() }) },
-}));
+vi.mock('@/store/ui', () => {
+  const state = { addToast: vi.fn() };
+  const useUIStore = Object.assign(
+    (selector?: (s: typeof state) => unknown) => (selector ? selector(state) : state),
+    { getState: () => state },
+  );
+  return { useUIStore };
+});
 
 // ── headless chrome + heavy side panels: render-only / inert stubs ──────────
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
@@ -237,10 +242,11 @@ describe('voice lens — four UX states', () => {
 
   it('POPULATED: a real take artifact renders with its name + duration', async () => {
     lensDataState.items = [TAKE];
-    const { getByText } = render(<VoiceLensPage />);
+    const { getByText, getAllByText } = render(<VoiceLensPage />);
     // the take's name renders in the Takes sidebar
     await waitFor(() => expect(getByText('Pitch rehearsal')).toBeInTheDocument());
-    // 95s formats as 01:35 (formatTime) — the real duration from the artifact
-    expect(getByText('01:35')).toBeInTheDocument();
+    // 95s formats as 01:35 (formatTime) — the real duration from the artifact.
+    // The newest take is selected on load, so the clock also shows in transport.
+    expect(getAllByText('01:35').length).toBeGreaterThan(0);
   });
 });

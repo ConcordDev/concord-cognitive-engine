@@ -18,6 +18,7 @@ import {
   CheckCircle2, ClipboardCheck, X, Download, Flame,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { RecipeImportBar } from './RecipeImportBar';
@@ -72,7 +73,7 @@ export function RecipeKitchen() {
   // rating + made-it form
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingNote, setRatingNote] = useState('');
-  const [madeDate, setMadeDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [madeDate, setMadeDate] = useState(() => calendarDateKey());
   const [madeNote, setMadeNote] = useState('');
 
   const refreshRecipes = useCallback(async () => {

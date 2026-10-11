@@ -9,6 +9,14 @@ on:
 env:
   NODE_VERSION: '22'
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint-and-test:
     name: Lint & Test

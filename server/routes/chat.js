@@ -9,6 +9,13 @@ import { buildWorkingContext } from '../lib/chat/working-context.js';
 import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRESSION_BATCH } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
+import { scrubChatFields } from '../lib/chat-governance-leak.js';
+import { visionImageGate } from '../lib/vision-inference.js';
+
+function chatUserText(body) {
+  const b = body || {};
+  return String(b.prompt || b.message || b.query || b.content || "");
+}
 export default function registerChatRoutes(app, {
   STATE,
   makeCtx,
@@ -43,6 +50,12 @@ export default function registerChatRoutes(app, {
   app.post("/api/chat", chatRateLimit, validate("chat"), asyncHandler(async (req, res) => {
     const errorId = uid("err");
     try {
+      // Run on the raw body, before mode normalization rewrites "vision" to
+      // "chat" and before any LLM reply can be written.
+      const visionGate = visionImageGate(req.body);
+      if (!visionGate.ok) {
+        return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";
       const ctx = makeCtx(req);
@@ -81,7 +94,7 @@ export default function registerChatRoutes(app, {
         }
 
         sse("meta", { ok:true, mode: req._concordMode, sessionId: req.body.sessionId || null });
-        const out = await runMacro("chat","respond", req.body, ctx);
+        const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
 
         // An unavailable brain is a notice, not a streamed answer.
         if (out?.code !== "ai_unavailable") {
@@ -113,7 +126,7 @@ export default function registerChatRoutes(app, {
         logger.debug('[chat] buildWorkingContext failed', { err: _wcErr?.message });
       }
 
-      const out = await runMacro("chat","respond", req.body, { ...ctx, workingContext });
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext }), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       // Attach confidence score to the final response
@@ -126,7 +139,7 @@ export default function registerChatRoutes(app, {
       // Non-blocking rolling window compression (after response is ready)
       const _sess = sessionId ? STATE.sessions?.get(sessionId) : null;
       if (_sess && needsWindowCompression(_sess)) {
-        compressRollingWindow(STATE, sessionId, {}).catch(err =>
+        compressRollingWindow(STATE, sessionId, { userId: ctx?.actor?.userId || null }).catch(err =>
           logger?.debug?.('[chat] window compression failed', { err: err?.message })
         );
       }
@@ -219,13 +232,17 @@ export default function registerChatRoutes(app, {
   app.post("/api/chat/stream", asyncHandler(async (req, res) => {
     const errorId = uid("err");
     try {
+      const visionGate = visionImageGate(req.body);
+      if (!visionGate.ok) {
+        return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
       enforceEthosInvariant("chat_stream");
       if (!STATE.__chicken3?.streamingEnabled) {
         // Streaming not enabled — return standard JSON response instead of throwing
         req.body = enforceRequestInvariants(req, req.body || {});
         req._concordMode = req.body.mode || "chat";
         const fallbackCtx = makeCtx(req);
-        const fallbackOut = await runMacro("chat","respond", req.body, fallbackCtx);
+        const fallbackOut = scrubChatFields(await runMacro("chat","respond", req.body, fallbackCtx), chatUserText(req.body));
         return res.json(fallbackOut);
       }
       req.body = enforceRequestInvariants(req, req.body || {});
@@ -234,7 +251,7 @@ export default function registerChatRoutes(app, {
 
       startSSE(res);
 
-      const out = await runMacro("chat","respond", req.body, ctx);
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       const content = String(out?.reply || out?.content || out?.answer || out?.text || "");

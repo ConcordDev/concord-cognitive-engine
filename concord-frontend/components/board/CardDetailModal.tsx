@@ -35,6 +35,8 @@ import {
   LABEL_COLOR_CLASS,
   LABEL_COLORS,
 } from './workspace-types';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { boardCardKeepRecord } from '@/components/lens/recordKeep';
 
 function fmt(at: string): string {
   const d = new Date(at);
@@ -199,6 +201,7 @@ export function CardDetailModal({
   const comments: WsComment[] = card?.comments || [];
   const attachments: WsAttachment[] = card?.attachments || [];
   const activity: WsActivity[] = card?.activity || [];
+  const keepRecord = boardCardKeepRecord(card, board);
 
   return (
     <div
@@ -245,6 +248,7 @@ export function CardDetailModal({
 
         {card && !loading && (
           <div className="px-5 pb-5 space-y-5">
+            <KeepRecordActions key={keepRecord?.body} record={keepRecord} />
             {/* Tabs */}
             <div className="flex border-b border-white/10">
               {(['details', 'activity'] as const).map((t) => (

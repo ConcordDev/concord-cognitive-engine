@@ -730,6 +730,8 @@ export function mySubmissions(db, submitterId, opts = {}) {
       count: rows.length,
       submissions: rows.map((r) => ({
         id: r.id, title: r.title, workKind: r.work_kind, status: r.status,
+        description: r.description || "",
+        body: typeof r.body === "string" ? r.body : "",
         submittedAt: r.submitted_at, admittedAt: r.admitted_at,
         curatorStatement: r.curator_statement, admittedBy: r.admitted_by, admittedByRole: r.admitted_by_role,
         recordDtuId: r.record_dtu_id,

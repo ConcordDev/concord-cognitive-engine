@@ -39,6 +39,7 @@ import {
   Hammer,
 } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { cn } from '@/lib/utils';
 import type { ChatMode } from './ChatModeTypes';
 
@@ -504,10 +505,12 @@ interface ResponseActionsProps {
   currentLens: string;
   onSendMessage: (content: string) => void;
   onViewContext?: () => void;
-  onForgeDTU?: (content: string) => void;
+  onForgeDTU?: (content: string) => void | Promise<void | string | { dtuId?: string }>;
 }
 
 export function ResponseActions({ mode, responseContent, currentLens, onSendMessage, onViewContext, onForgeDTU }: ResponseActionsProps) {
+  const [forgedDtuId, setForgedDtuId] = useState('');
+  const [forgeNote, setForgeNote] = useState('');
   const getActions = (): { label: string; prompt: string; icon: React.ComponentType<{ className?: string }> }[] => {
     switch (mode) {
       case 'assist':
@@ -588,13 +591,45 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
       )}
       {onForgeDTU && (
         <button
-          onClick={() => onForgeDTU(responseContent)}
+          onClick={() => {
+            void (async () => {
+              setForgeNote('');
+              try {
+                const returned = await onForgeDTU(responseContent);
+                const id = typeof returned === 'string'
+                  ? returned
+                  : returned && typeof returned === 'object'
+                    ? String(returned.dtuId || '')
+                    : '';
+                if (!id) {
+                  setForgedDtuId('');
+                  setForgeNote('Forge did not return a DTU id, so this cannot be drafted in Thread.');
+                  return;
+                }
+                setForgedDtuId(id);
+              } catch (e) {
+                setForgedDtuId('');
+                setForgeNote(`Not forged. ${e instanceof Error ? e.message : 'Forge failed.'}`);
+              }
+            })();
+          }}
           className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-neon-purple/60 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
           title="Promote this exchange to a permanent DTU"
         >
           <Hammer className="w-2.5 h-2.5" />
           Forge DTU
         </button>
+      )}
+      {onForgeDTU && (
+        <ChatDraftInThreadButton
+          dtuId={forgedDtuId}
+          title={responseContent.slice(0, 80)}
+          content={responseContent}
+          className="px-2 py-1 rounded text-[10px] text-neon-purple/60"
+        />
+      )}
+      {forgeNote && (
+        <span role="status" className="text-[10px] text-zinc-400">{forgeNote}</span>
       )}
     </div>
   );

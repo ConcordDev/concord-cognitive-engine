@@ -8,6 +8,8 @@
  * - Active request gauge for graceful shutdown
  */
 
+import { noteInflightResponse } from "./shutdown-http.js";
+
 const HISTOGRAM_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
 // Global metrics store
@@ -31,6 +33,8 @@ for (const b of HISTOGRAM_BUCKETS) {
 export function httpMetricsMiddleware(req, res, next) {
   const start = process.hrtime.bigint();
   metrics.activeRequests++;
+  // The shutdown drain waits on these response objects, not the counter.
+  noteInflightResponse(res);
 
   const onFinish = () => {
     res.removeListener("finish", onFinish);

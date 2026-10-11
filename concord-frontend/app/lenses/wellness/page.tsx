@@ -16,6 +16,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WellnessSection } from '@/components/wellness/WellnessSection';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { WellnessActionPanel } from '@/components/wellness/WellnessActionPanel';
 import { SelfFieldsPanel } from '@/components/wellness/SelfFieldsPanel';
 import { CBTPanel } from '@/components/wellness/CBTPanel';
@@ -147,8 +149,9 @@ export default function WellnessPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<WellnessView>('today');
+  const navViews = omitCommunityRedditViews(VIEWS, ['community']);
   useLensCommand([
-    ...VIEWS.map((v) => ({
+    ...navViews.map((v) => ({
       id: `wellness-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -168,7 +171,7 @@ export default function WellnessPage() {
         crumb="Wellness"
         title={`${current.title}${view === 'today' && who ? `, ${who}` : ''}`}
         subtitle="Recovery, mood, habits, guided CBT and meditation. No medical claims; this is a tool, not treatment. You can revoke any therapeutic field at any time."
-        tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
+        tabs={navViews.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as WellnessView)}
         tabsLabel="Wellness views"
@@ -201,9 +204,11 @@ export default function WellnessPage() {
             </>
           )}
           {view === 'community' && (
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <WellnessFeed />
-            </section>
+            <CommunityRedditSlot>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <WellnessFeed />
+              </section>
+            </CommunityRedditSlot>
           )}
         </div>
       </NorthStarFrame>

@@ -12,10 +12,33 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import {
   OpsTelemetryConsole,
   type OpsView,
 } from '@/components/ops-telemetry/OpsTelemetryConsole';
+
+// Same allow-list as requireRole("owner", "admin", "sovereign", "founder")
+// on every route this lens reads, including GET /api/runtime/constellation
+// (server.js — it is admin-only, the same gate as /api/admin/heartbeat-stats
+// and /api/admin/liveness). requireRole also admits a wildcard scope ("*");
+// a named scope such as "admin" does not, and sovereign already passes every
+// requireRole check.
+//
+// A non-operator used to mount OpsTelemetryConsole immediately. Its first
+// paint falls through to the dashboard (loading starts false), so
+// LivenessPanel and RuntimeConstellationPanel fetch on mount in the same
+// turn as the heartbeat-stats probe — the 403 branch inside refresh() is
+// too late to stop those requests (heartbeat-stats was observed twice).
+// Wait for /api/auth/me and mount the console only for a viewer the
+// server would allow.
+const OPS_TELEMETRY_ROLES = new Set(['owner', 'admin', 'sovereign', 'founder']);
+
+function isOpsTelemetryOperator(user: { role?: string; scopes?: string[] } | null | undefined): boolean {
+  if (!user) return false;
+  if (typeof user.role === 'string' && OPS_TELEMETRY_ROLES.has(user.role)) return true;
+  return Array.isArray(user.scopes) && user.scopes.includes('*');
+}
 
 const VIEWS: { id: OpsView; label: string; keys: string; title: string; hint: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', keys: '1', title: 'How the system is running', hint: 'Cost story, simulation and federation mesh', icon: LayoutDashboard },
@@ -28,7 +51,8 @@ const VIEWS: { id: OpsView; label: string; keys: string; title: string; hint: st
 
 export default function OpsTelemetryPage() {
   useLensIdentity('ops-telemetry');
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const isOperator = isOpsTelemetryOperator(user);
   const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<OpsView>('overview');
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -43,6 +67,22 @@ export default function OpsTelemetryPage() {
     })),
     { lensId: 'ops-telemetry' },
   );
+
+  if (authLoading) {
+    return (
+      <LensShell lensId="ops-telemetry" asMain={false}>
+        <p role="status" className="px-4 py-6 text-sm text-zinc-400">Checking access…</p>
+      </LensShell>
+    );
+  }
+
+  if (!isOperator) {
+    return (
+      <LensShell lensId="ops-telemetry" asMain={false}>
+        <AdminRequiredState roles={['owner', 'admin', 'sovereign', 'founder']} />
+      </LensShell>
+    );
+  }
 
   const current = VIEWS.find((v) => v.id === active)!;
 

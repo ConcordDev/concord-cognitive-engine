@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingDashboardSection } from '@/components/marketing/MarketingDashboardSection';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
 import { MarketingEmailPanel } from '@/components/marketing/MarketingEmailPanel';
 import { MarketingWorkflowsPanel } from '@/components/marketing/MarketingWorkflowsPanel';
@@ -163,9 +164,11 @@ export default function MarketingLensPage() {
           </PipingProvider>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <MarketingFeed />
-        </section>
+        <CommunityRedditSlot>
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MarketingFeed />
+          </section>
+        </CommunityRedditSlot>
       </div>
       </NorthStarFrame>
     </LensShell>

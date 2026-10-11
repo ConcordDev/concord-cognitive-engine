@@ -23,6 +23,8 @@
  * client input and benefit the caller — keep their messages plain.
  */
 
+import { isShutdownDbError, sendShuttingDown } from "./shutdown-http.js";
+
 let _structuredLog = null;
 
 /**
@@ -49,6 +51,17 @@ function safeLog(level, event, payload) {
  * @returns {import("express").Response}
  */
 export function serverError(res, err, statusCode = 500, hint = "") {
+  // A catch block that funnels every throw through serverError() must not
+  // turn "database connection is not open" into a 500 mid-restart.
+  if (isShutdownDbError(err)) {
+    safeLog("warn", "shutdown_request_after_close", {
+      message: err?.message ? String(err.message) : String(err),
+      path: res.req?.originalUrl || res.req?.url || null,
+      method: res.req?.method || null,
+    });
+    return sendShuttingDown(res);
+  }
+
   const isProd = process.env.NODE_ENV === "production";
   const message = err?.message ? String(err.message) : String(err);
   const stack = err?.stack ? String(err.stack) : undefined;

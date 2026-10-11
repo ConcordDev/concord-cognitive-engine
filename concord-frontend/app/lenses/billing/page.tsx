@@ -57,7 +57,7 @@ export default function BillingPage() {
         lensId="billing"
         crumb="Billing"
         title={`${current.title}${view === 'overview' && who ? `, ${who}` : ''}`}
-        subtitle="Balance, invoices, plans and the platform economy, from real ledger numbers."
+        subtitle="Concord Coin balance and the platform economy, from the real ledger. Plans and invoices are the billing records you keep."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
         activeTab={view}
         onTab={(id) => setView(id as BillingView)}
