@@ -53,10 +53,27 @@ const CANDIDATE_SRCS = [
 
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
 
-/** Framework URL next to a player index (`…/index.html` → `…/Build/concordia.framework.js.unityweb`). */
-function unityFrameworkUrl(indexSrc: string): string {
+/** Directory of a player index (`…/index.html` → `…/`). */
+function playerDir(indexSrc: string): string {
   const pathOnly = indexSrc.split('?')[0];
-  const dir = pathOnly.endsWith('/') ? pathOnly : pathOnly.replace(/[^/]*$/, '');
+  return pathOnly.endsWith('/') ? pathOnly : pathOnly.replace(/[^/]*$/, '');
+}
+
+/**
+ * Framework URL the player index actually loads. Unity's template writes
+ * `var buildUrl = "Build"` and `frameworkUrl: buildUrl + "/<name>.framework.js…"`;
+ * builds name that file differently (`concordia.framework.js.unityweb`,
+ * `<export>.framework.js.gz`), so read it from the index instead of guessing.
+ * Falls back to the committed player's name when the index does not say.
+ */
+export function unityFrameworkUrl(indexSrc: string, indexHtml = ''): string {
+  const dir = playerDir(indexSrc);
+  const build = /buildUrl\s*=\s*["']([^"']*)["']/.exec(indexHtml)?.[1];
+  const fw = /frameworkUrl\s*:\s*buildUrl\s*\+\s*["']([^"']+)["']/.exec(indexHtml)?.[1];
+  if (build !== undefined && fw) {
+    const base = build.startsWith('/') || /^https?:/.test(build) ? build : `${dir}${build}`;
+    return `${base}${fw.startsWith('/') ? fw : `/${fw}`}`;
+  }
   return `${dir}Build/concordia.framework.js.unityweb`;
 }
 
@@ -73,7 +90,8 @@ async function probeUnitySrc(src: string): Promise<boolean> {
     // throws `unityFramework is not defined`. A real export is gzip (1f 8b)
     // or JS that defines unityFramework. A pointer, a failed gunzip, or a
     // JSON 404 is an unbuilt player — leave the iframe unmounted.
-    const framework = await fetch(unityFrameworkUrl(src), { credentials: 'include' });
+    const indexHtml = await index.text().catch(() => '');
+    const framework = await fetch(unityFrameworkUrl(src, indexHtml), { credentials: 'include' });
     if (!framework.ok) return false;
     const fwCt = framework.headers.get('content-type') || '';
     if (fwCt.includes('application/json')) return false;
