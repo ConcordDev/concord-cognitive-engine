@@ -1957,6 +1957,7 @@ import {
   hotReload as loaderHotReload, buildSandboxedContext,
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
 import { getArtifactSchema } from "./lib/artifact-schemas.js";
@@ -13273,26 +13274,27 @@ try {
   structuredLog("info", "state_fields_initialized", { maps: 30, arrays: 14, objects: 7 });
 }
 
-// Auto-migrate DTU ownership (runs once, idempotent)
+// Auto-migrate DTU ownership (idempotent).
+//
+// Must persist through STATE.dtus.set(). This runs after the write-through
+// store is attached; an in-place field write never reaches `dtu_store`, and
+// saveStateDebounced() omits DTUs from the snapshot once that store is
+// active. That is why ownerless `dtu_oracle_*` (type oracle_answer) rows
+// came back with no owner and no visibility on every restart — rehydrate
+// reloads the JSON column, which the old loop never updated.
+//
+// News-feed items, system summaries, and the genesis/seed corpus are stamped
+// system-owned but stay public. Other ownerless rows (including oracle
+// answers) become system-owned and internal. See lib/dtu-ownership.js.
 {
-  let migrated = 0;
-  for (const [id, dtu] of STATE.dtus) {
-    if (dtu.ownerId) continue; // already migrated
-    if (dtu.creatorType === "user" || dtu.creatorType === "user_uploaded_text" || dtu.source === "local") {
-      dtu.ownerId = "founder";
-      dtu.visibility = dtu.visibility || "private";
-    } else {
-      dtu.ownerId = "system";
-      dtu.visibility = "internal";
+  try {
+    const ownership = normalizeOwnerlessDtus(STATE.dtus);
+    if (ownership.migrated > 0) {
+      structuredLog("info", "dtu_ownership_migration", { ...ownership, total: STATE.dtus.size });
+      saveStateDebounced();
     }
-    if (!dtu.creatorType) {
-      dtu.creatorType = dtu.ownerId === "system" ? "system" : "user";
-    }
-    migrated++;
-  }
-  if (migrated > 0) {
-    structuredLog("info", "dtu_ownership_migration", { migrated, total: STATE.dtus.size });
-    saveStateDebounced();
+  } catch (e) {
+    structuredLog("warn", "dtu_ownership_migration_failed", { error: String(e?.message || e) });
   }
 }
 
@@ -25706,7 +25708,8 @@ register("dtu", "get", async (ctx, input) => {
         if (r && (r.ok === true || r.error === "DTU not found")) {
           if (!r.ok) return { ok: false, error: "DTU not found" };
           // Sidecar get is unfiltered. Apply the same private gate as the
-          // in-memory path before the body leaves this macro.
+          // in-memory path before the body leaves this macro. visibility
+          // "internal" (boot-stamped ownerless oracle answers) is included.
           if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
           return { ok: true, dtu: r.dtu };
         }
@@ -25721,6 +25724,7 @@ register("dtu", "get", async (ctx, input) => {
   // Private / user-scoped DTUs are owner-only. Same predicate as
   // userVisibleDTUs (the list). 404-shaped so a miss does not confirm
   // the id exists. Internal callers (makeInternalCtx) are exempt.
+  // visibility "internal" is hidden here too (ctxMayReadDtu).
   if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
   return { ok: true, dtu };
 });
@@ -25733,26 +25737,18 @@ register("dtu", "update", async (ctx, input) => {
   const existing = STATE.dtus.get(id);
   if (!existing) return { ok: false, error: "DTU not found" };
 
-  // SECURITY: ownership gate — only the DTU's owner (or admin) can
-  // update it. Skipped in AUTH_MODE=public because local-first
-  // single-user installs trust the local user with everything, and
-  // skipped for legacy DTUs with no owner field so old content
-  // remains editable. Protected-seed DTUs still reject everyone via
-  // the `protected/immutable/seedOrigin` check in dtu.delete and a
-  // similar check would apply here if we ever seed immutable DTUs.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const role = ctx?.actor?.role || "guest";
-    const isAdmin = ["owner", "admin", "founder"].includes(role);
-    const ownerField = existing.ownerId || existing.createdBy || existing.createdByUser || existing.authorId;
-    const isOwner = userId && ownerField && ownerField === userId;
-    // Only gate DTUs that have a concrete foreign owner. Legacy unowned
-    // DTUs fall through (anyone can edit) so pre-existing content
-    // doesn't suddenly become read-only after an upgrade.
-    if (!isAdmin && ownerField && !isOwner && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only update your own DTUs" };
-    }
-  }
+  // Ownerless and system DTUs (no real user owner, or ownerId "system")
+  // are editable only by an admin/owner role. A member used to be able to
+  // rewrite title/content/tags on any DTU that had no owner field — that
+  // included every oracle_answer. AUTH_MODE=public stays local-first.
+  // ctx?.actor?.userId is read here so the public-read write-verb detector
+  // still sees the ownership idiom on this handler.
+  const denial = dtuMutationDenial(existing, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // ---- Optimistic Locking (Category 2: Concurrency) ----
   // If client sends expectedVersion, reject if stale
@@ -25810,20 +25806,14 @@ register("dtu", "delete", async (ctx, input) => {
     return { ok: false, error: "Cannot delete protected seed DTU" };
   }
 
-  // Ownership validation — DTU's owner fields must match actor userId
-  // (or actor must be admin). Skipped in AUTH_MODE=public (local-first
-  // single-user mode) and for legacy DTUs with no owner stamp so old
-  // content stays editable.
-  if (AUTH_MODE !== "public") {
-    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId;
-    const isOwner = userId && (dtu.ownerId === userId || dtu.createdBy === userId || dtu.createdByUser === userId);
-    const isAuthor = userId && (dtu.authorId === userId || dtu.source === userId);
-    const isAdmin = ctx?.actor?.role === "owner" || ctx?.actor?.role === "admin" || ctx?.actor?.role === "founder";
-    const hasOwner = dtu.ownerId || dtu.createdBy || dtu.createdByUser || dtu.authorId;
-    if (hasOwner && !isOwner && !isAuthor && !isAdmin && userId !== "anon") {
-      return { ok: false, error: "unauthorized: you can only delete your own DTUs" };
-    }
-  }
+  // Same ownerless/system gate as dtu.update. Anonymous callers are
+  // rejected (they used to skip the check because userId === "anon").
+  const denial = dtuMutationDenial(dtu, ctx, {
+    authMode: AUTH_MODE,
+    verb: "delete",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId,
+  });
+  if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
 
   // Fire plugin before-delete hooks
   try { fireHook(STATE, "dtu:beforeDelete", dtu); } catch (e) { log("hook.warn", `dtu:beforeDelete: ${e?.message}`); }
@@ -25883,6 +25873,20 @@ register("dtu", "delete", async (ctx, input) => {
   return { ok: true, deleted: { id, title: dtu.title } };
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
+
+// Admin custody: set visibility and owner on existing DTUs by id.
+// Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
+// without a restart. dryRun changes nothing. Role check is inside
+// assignDtuCustody (owner/admin/founder/sovereign) and the call is
+// audit-logged. Not on the public-read allowlist.
+register("dtu", "assignCustody", async (ctx, input) => {
+  const actorUserId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  return assignDtuCustody(STATE.dtus, input || {}, ctx, {
+    authMode: AUTH_MODE,
+    actorUserId,
+    persist: (dtu) => upsertDTU(dtu, { broadcast: true }),
+  });
+}, { description: "Admin-only: set visibility and owner on existing DTUs by id. dryRun leaves storage unchanged. Audit-logged." });
 
 // dtu.stats — single source of truth for DTU counts + tier/kind
 // distribution + average richness. The /api/dtus/stats REST route
