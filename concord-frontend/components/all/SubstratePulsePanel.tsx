@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, Loader2, FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { getLensById } from '@/lib/lens-registry';
+import { domainChipHref, domainChipLabel } from '@/lib/substrate-pulse-chips';
 
 interface DomainStatsResult {
   totalDtus: number;
@@ -79,15 +79,12 @@ export function SubstratePulsePanel() {
           </p>
           <div className="space-y-1.5">
             {(stats?.topDomains || []).slice(0, 6).map((d) => {
-              const lens = getLensById(d.domain);
+              const href = domainChipHref(d.domain);
+              const label = domainChipLabel(d.domain);
               const max = stats?.topDomains?.[0]?.count || 1;
-              return (
-                <Link
-                  key={d.domain}
-                  href={lens?.path || `/lenses/${d.domain}`}
-                  className="flex items-center gap-2 text-xs group"
-                >
-                  <span className="w-20 truncate text-gray-400 group-hover:text-white">{lens?.name || d.domain}</span>
+              const bar = (
+                <>
+                  <span className="w-36 truncate text-gray-400 group-hover:text-white" title={label}>{label}</span>
                   <span className="flex-1 h-1.5 rounded-full bg-lattice-void overflow-hidden">
                     <span
                       className="block h-full bg-neon-cyan/60 group-hover:bg-neon-cyan"
@@ -95,6 +92,24 @@ export function SubstratePulsePanel() {
                     />
                   </span>
                   <span className="w-8 text-right text-gray-400">{d.count}</span>
+                </>
+              );
+              // No registry lens for this classification — plain text, not
+              // `/lenses/<class>`, which 404s (INC-42).
+              if (!href) {
+                return (
+                  <div key={d.domain} className="flex items-center gap-2 text-xs">
+                    {bar}
+                  </div>
+                );
+              }
+              return (
+                <Link
+                  key={d.domain}
+                  href={href}
+                  className="flex items-center gap-2 text-xs group"
+                >
+                  {bar}
                 </Link>
               );
             })}
@@ -104,16 +119,20 @@ export function SubstratePulsePanel() {
           <p className="text-[11px] text-gray-400 mb-2">Recent activity, every domain</p>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {feed.map((row) => {
-              const lens = row.domain ? getLensById(row.domain) : undefined;
+              const lensPath = row.domain ? domainChipHref(row.domain) : null;
+              const href = lensPath
+                ? `${lensPath}?dtu=${encodeURIComponent(row.dtuId)}`
+                : `/lenses/dtus?id=${encodeURIComponent(row.dtuId)}`;
+              const domainLabel = row.domain ? domainChipLabel(row.domain) : '';
               return (
                 <Link
                   key={row.dtuId}
-                  href={lens?.path ? `${lens.path}?dtu=${encodeURIComponent(row.dtuId)}` : `/lenses/dtus?id=${encodeURIComponent(row.dtuId)}`}
+                  href={href}
                   className="flex items-center gap-2 text-xs hover:text-white text-gray-400"
                 >
                   <FileText className="w-3 h-3 shrink-0 text-neon-cyan/70" />
                   <span className="truncate flex-1">{row.title || row.dtuId}</span>
-                  {row.domain && <span className="text-[9px] px-1 rounded bg-lattice-void shrink-0">{row.domain}</span>}
+                  {domainLabel && <span className="text-[9px] px-1 rounded bg-lattice-void shrink-0">{domainLabel}</span>}
                   <span className="text-[10px] shrink-0">{relTime(row.createdAt)}</span>
                 </Link>
               );
