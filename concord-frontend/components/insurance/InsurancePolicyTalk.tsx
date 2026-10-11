@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck, Loader2, ExternalLink, ArrowUp, MessageSquare } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
 
 interface Post { id: string; title: string; permalink: string; author: string; score: number; num_comments: number; link_flair_text?: string; }
-interface FeedResult { posts: Post[]; unavailable: boolean; }
+interface FeedResult { posts: Post[]; unavailable: boolean; cached?: boolean; stale?: boolean; }
 
 const SUBS = [
   { id: 'Insurance', label: 'r/Insurance' },
@@ -25,11 +26,8 @@ export function InsurancePolicyTalk() {
     retry: false,
     queryFn: async (): Promise<FeedResult> => {
       try {
-        const r = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}&limit=25`);
-        if (!r.ok) return { posts: [], unavailable: true };
-        const j = await r.json();
-        const list = (j?.data?.children || []).map((c: { data: Post }) => c.data) as Post[];
-        return { posts: list, unavailable: false };
+        const listing = await fetchRedditListing({ sub, window: windowKey });
+        return { posts: listing.posts as Post[], unavailable: false, cached: listing.cached, stale: listing.stale };
       } catch {
         return { posts: [], unavailable: true };
       }
@@ -44,7 +42,7 @@ export function InsurancePolicyTalk() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Real-world insurance discussion</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit · top {windowKey}</span></div>
+        <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Real-world insurance discussion</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit · top {windowKey}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} /></div>
         <div className="flex items-center gap-2">
           <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SUBS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
           <select value={windowKey} onChange={(e) => setWindowKey(e.target.value as typeof WINDOWS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}</select>

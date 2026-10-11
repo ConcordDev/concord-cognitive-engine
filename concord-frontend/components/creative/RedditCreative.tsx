@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles, Loader2, ArrowUp, MessageSquare, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
 
 interface RedditPost {
   id: string;
@@ -36,11 +37,10 @@ export function RedditCreative() {
 
   const posts = useQuery({
     queryKey: ['reddit-creative', sub, sort],
+    retry: false,
     queryFn: async () => {
-      const r = await fetch(`https://www.reddit.com/r/${sub}/${sort}.json?limit=25&t=week`);
-      if (!r.ok) throw new Error(`reddit ${r.status}`);
-      const j = await r.json();
-      return ((j?.data?.children || []) as { data: RedditPost }[]).map((c) => c.data);
+      const listing = await fetchRedditListing({ sub, sort, window: 'week' });
+      return Object.assign(listing.posts as RedditPost[], { cached: listing.cached, stale: listing.stale });
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -51,7 +51,7 @@ export function RedditCreative() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Reddit creative feed</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit.com/r/{sub} · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit · r/{sub}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} />
         </div>
         <div className="flex items-center gap-2">
           <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
@@ -75,7 +75,7 @@ export function RedditCreative() {
           )}
         </div>
       </header>
-      {posts.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Reddit unreachable.</div>}
+      {posts.isError && <div role="status" className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Community feed unavailable.</div>}
       {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 max-h-[520px] overflow-y-auto">
         {(posts.data || []).map((p) => {
