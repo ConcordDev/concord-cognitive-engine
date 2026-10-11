@@ -168,14 +168,17 @@ function FirstWinWizard() {
     allDone: false,
     completedCount: 0,
   };
-  const baseResolved = data || (isError ? FALLBACK_DATA : null);
+  const baseResolved = (data && Array.isArray(data.steps)) ? data : (isError ? FALLBACK_DATA : null);
 
   // Merge First Cycle phases as additional steps when the tutorial is
   // incomplete. Phases come first so the wizard reads top-to-bottom in
   // the order Concordia walks the player through the world.
+  // A payload with no phases array (guidance route down, or a shape that
+  // is not the tutorial) is not a cycle — skip the merge. Mapping a
+  // missing phases list throws and the app error boundary covers the lens.
   const resolved: FirstWinData | null = (() => {
     if (!baseResolved) return null;
-    if (!tutorial || tutorial.complete) return baseResolved;
+    if (!tutorial || tutorial.complete || !Array.isArray(tutorial.phases)) return baseResolved;
     const cyclePhases: FirstWinStep[] = tutorial.phases.map((p) => ({
       id: p.questId,
       label: FIRST_CYCLE_LABELS[p.questId] ?? p.questId,
