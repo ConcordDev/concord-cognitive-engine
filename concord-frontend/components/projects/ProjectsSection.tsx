@@ -24,6 +24,7 @@ import { PjTeamPanel } from './PjTeamPanel';
 import { PjSettingsPanel } from './PjSettingsPanel';
 import { PjPortfolioPanel } from './PjPortfolioPanel';
 import { PjCollabPanel } from './PjCollabPanel';
+import { ProjectsKeepMenu } from './ProjectsKeepMenu';
 
 interface Project { id: string; name: string; key: string; color: string; status: string; health: string; archived: boolean }
 interface Dash {
@@ -55,13 +56,21 @@ export function ProjectsSection() {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', key: '' });
+  const [composerOpen, setComposerOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const focusNew = () => nameInputRef.current?.focus();
-    window.addEventListener('projects:new', focusNew);
-    return () => window.removeEventListener('projects:new', focusNew);
+  const openComposer = useCallback(() => {
+    setComposerOpen(true);
+    requestAnimationFrame(() => {
+      nameInputRef.current?.scrollIntoView({ block: 'center' });
+      nameInputRef.current?.focus();
+    });
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('projects:new', openComposer);
+    return () => window.removeEventListener('projects:new', openComposer);
+  }, [openComposer]);
 
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('projects', 'project-list', {});
@@ -90,9 +99,12 @@ export function ProjectsSection() {
     if (!form.name.trim()) { setError('Project name is required.'); return; }
     const r = await lensRun('projects', 'project-create', { name: form.name.trim(), key: form.key.trim() });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    const createdId = (r.data?.result as { project?: { id?: string } } | null)?.project?.id;
     setForm({ name: '', key: '' });
+    setComposerOpen(false);
     setError(null);
     await refreshProjects();
+    if (createdId) setActiveProject(createdId);
   };
 
   const delProject = async (id: string) => {
@@ -144,23 +156,28 @@ export function ProjectsSection() {
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <input ref={nameInputRef} placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
-              <input placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
-                className="w-20 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
-              <button type="button" onClick={addProject}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
-                <Plus className="w-3.5 h-3.5" /> Project
-              </button>
-            </div>
+            {composerOpen && (
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => { e.preventDefault(); void addProject(); }}
+              >
+                <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
+                <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
+                  className="w-20 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
+                <button type="submit"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-400 text-black rounded-lg">
+                  <Plus className="w-3.5 h-3.5" /> Create
+                </button>
+              </form>
+            )}
           </div>
 
           {!activeProject || !project ? (
-            <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Create a project to start tracking work.</p>
+            <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">Nothing in the substrate. Use New project to start one.</p>
           ) : (
             <>
-              {/* Project meta + dashboard */}
+              <ProjectsKeepMenu project={project} />
               <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
                 <select value={project.status} onChange={(e) => updateProject({ status: e.target.value })}
                   className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1 text-[11px] text-white capitalize">
@@ -173,16 +190,6 @@ export function ProjectsSection() {
                 <button type="button" onClick={archiveProject}
                   className="text-[11px] px-2 py-1 bg-lattice-elevated hover:bg-lattice-border text-gray-300 rounded-lg">Archive</button>
               </div>
-              {dash && (
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-lattice-border">
-                  <Stat label="Tasks" value={dash.totalTasks} />
-                  <Stat label="Done" value={`${dash.completionPct}%`} />
-                  <Stat label="Overdue" value={dash.overdue} />
-                  <Stat label="Sprints" value={dash.activeSprints} />
-                  <Stat label="Milestones" value={dash.openMilestones} />
-                  <Stat label="Team" value={dash.members} />
-                </div>
-              )}
               <nav className="mx-4 mt-3 inline-flex max-w-[calc(100%-2rem)] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Project views">
                 {TABS.map((t) => {
                   const Icon = t.icon;
@@ -213,15 +220,6 @@ export function ProjectsSection() {
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="text-center">
-      <p className="text-base font-bold text-white tabular-nums">{value}</p>
-      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

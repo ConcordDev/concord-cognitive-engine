@@ -1,6 +1,11 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const lensRunMock = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
+}));
 
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: vi.fn() }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
@@ -18,17 +23,37 @@ vi.mock('@/components/code/GithubTrending', () => ({ GithubTrending: () => <div>
 vi.mock('@/components/code/CodeActionPanel', () => ({ CodeActionPanel: () => <div>actions panel</div> }));
 
 import CodeApp from '@/components/code/CodeApp';
+import { resetExecStatusForTests } from '@/components/code/codeExecGate';
+
+beforeEach(() => {
+  resetExecStatusForTests();
+  lensRunMock.mockReset();
+});
 
 describe('CodeApp', () => {
-  it('switches every workspace and handles real run-state events', () => {
+  it('switches every workspace and runs only after execution is confirmed on', async () => {
+    lensRunMock.mockResolvedValue({ data: { ok: true, result: { enabled: true, reason: '' } } });
     const dispatched = vi.spyOn(window, 'dispatchEvent');
     render(<CodeApp />);
     fireEvent.click(screen.getByRole('button', { name: /open advanced/i }));
     fireEvent.click(screen.getByRole('tab', { name: /GitHub trending/i }));
     fireEvent.click(screen.getByRole('tab', { name: /Review workbench/i }));
     fireEvent.click(screen.getByRole('tab', { name: /Editor/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^Run$/ }));
+    const run = await screen.findByRole('button', { name: /^Run$/ });
+    await waitFor(() => expect(run).not.toBeDisabled());
+    fireEvent.click(run);
     window.dispatchEvent(new CustomEvent('concord:code-run-state', { detail: { running: true } }));
     expect(dispatched).toHaveBeenCalled();
+    expect(lensRunMock).toHaveBeenCalledWith('code', 'exec-status', {});
+  });
+
+  it('disables Run and names the reason when execution is off', async () => {
+    lensRunMock.mockResolvedValue({
+      data: { ok: true, result: { enabled: false, reason: 'Live code execution is disabled in this environment.' } },
+    });
+    render(<CodeApp />);
+    const run = await screen.findByRole('button', { name: /Run off/ });
+    await waitFor(() => expect(run).toBeDisabled());
+    expect(run).toHaveAttribute('title', expect.stringMatching(/disabled/i));
   });
 });

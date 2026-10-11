@@ -52193,44 +52193,11 @@ app.get("/api/chat/messages", requireAuth(), async (req, res) => {
     const db = STATE.db;
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 
-    // Owner gate — the chat_sessions row must belong to the caller.
-    // Anonymous (NULL owner_id) sessions can't be cross-loaded; they're
-    // per-browser and localStorage-scoped by design.
-    let ownerRow;
-    try {
-      ownerRow = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-    if (!ownerRow) return res.status(404).json({ ok: false, error: "session_not_found" });
-    if (!ownerRow.owner_id || ownerRow.owner_id !== userId) {
-      return res.status(403).json({ ok: false, error: "session_forbidden" });
-    }
-
-    let rows;
-    try {
-      rows = db.prepare(`
-        SELECT role, content, ts, meta_json
-        FROM chat_messages
-        WHERE session_id = ?
-        ORDER BY ts ASC
-        LIMIT ?
-      `).all(sessionId, limit);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-
-    const messages = (rows || []).map(r => {
-      let meta = null;
-      try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
-      return {
-        role: r.role,
-        content: r.content,
-        ts: new Date(r.ts).toISOString(),
-        meta: meta || undefined,
-      };
-    });
-    res.json({ ok: true, sessionId, messages });
+    // Unknown session → 200 empty list (the code lens asks before the first
+    // message). Another user's session stays 403. See chat-messages-read.js.
+    const { readChatMessages } = await import("./lib/chat-messages-read.js");
+    const read = readChatMessages(db, { userId, sessionId, limit });
+    return res.status(read.status).json(read.body);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }

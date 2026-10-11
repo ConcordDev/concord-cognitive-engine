@@ -6,6 +6,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import { lensRun } from '@/lib/api/client';
+import { parseExecStatus, publishExecStatus, readExecStatus } from '@/components/code/codeExecGate';
 import { Blocks, Flame, Loader2, Play, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -39,12 +41,29 @@ export default function CodeApp() {
   const who = titleCaseDisplayName(user?.username);
   const [extras, setExtras] = useState<CodeExtras>('none');
   const [running, setRunning] = useState(false);
+  const [exec, setExec] = useState(() => readExecStatus());
 
   useEffect(() => {
     const onState = (e: Event) => setRunning(Boolean((e as CustomEvent<{ running?: boolean }>).detail?.running));
     window.addEventListener('concord:code-run-state', onState);
     return () => window.removeEventListener('concord:code-run-state', onState);
   }, []);
+
+  useEffect(() => {
+    let live = true;
+    void lensRun('code', 'exec-status', {}).then((r) => {
+      if (!live) return;
+      const status = parseExecStatus(r.data);
+      publishExecStatus(status);
+      setExec(status);
+    });
+    return () => { live = false; };
+  }, []);
+
+  const execOff = exec?.enabled === false;
+  const runTitle = execOff
+    ? exec?.reason || 'Live code execution is disabled in this environment.'
+    : 'Run the active file (⌘ Enter)';
 
   useLensCommand(
     [
@@ -130,13 +149,13 @@ export default function CodeApp() {
 
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('concord:code-run'))}
-            disabled={running}
-            title="Run the active file (⌘ Enter)"
+            onClick={() => { if (!execOff) window.dispatchEvent(new CustomEvent('concord:code-run')); }}
+            disabled={running || execOff || exec === null}
+            title={runTitle}
             className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {running ? 'Running…' : 'Run'}
+            {running ? 'Running…' : execOff ? 'Run off' : 'Run'}
           </button>
 
           <div className="mt-5">
