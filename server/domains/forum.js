@@ -133,11 +133,22 @@ export default function registerForumActions(registerLensAction) {
   }
   function fmCanSeeContainer(item, ctx) {
     if (!item || item.visibility !== "private") return true;
-    if (fmIsMod(ctx)) return true;
     const uid = fmUser(ctx);
     if (!uid) return false;
     if (item.authorId === uid) return true;
     return Array.isArray(item.memberIds) && item.memberIds.includes(uid);
+  }
+  function fmTopicInPrivateContainer(s, topic) {
+    if (!topic) return false;
+    if (topic.categoryId) {
+      const cat = fmShared(s.categories).find((c) => c.id === topic.categoryId);
+      if (cat?.visibility === "private") return true;
+    }
+    if (topic.subforumId) {
+      const sf = fmShared(s.subforums).find((f) => f.id === topic.subforumId);
+      if (sf?.visibility === "private") return true;
+    }
+    return false;
   }
   function fmTopicVisible(s, topic, ctx) {
     if (!topic) return false;
@@ -949,10 +960,20 @@ export default function registerForumActions(registerLensAction) {
       };
     }).sort((a, b) => b.hotScore - a.hotScore);
     const limit = Math.min(50, Math.max(1, fmNum(params.limit, 20)));
+    const hotWindow = ranked.slice(0, limit);
+    const shown = new Set(hotWindow.map((row) => row.id));
+    // Private topics the viewer can already see (author or memberIds) stay
+    // on their board when hotter public threads fill the hot window.
+    // Non-members never reach this list: fmVisibleTopics dropped them.
+    const membership = ranked.filter((row) => {
+      if (shown.has(row.id)) return false;
+      const topic = topics.find((t) => t.id === row.id);
+      return fmTopicInPrivateContainer(s, topic);
+    });
     return {
       ok: true,
       result: {
-        trending: ranked.slice(0, limit),
+        trending: hotWindow.concat(membership),
         count: ranked.length,
         affinityTags,
         personalized: personalize,

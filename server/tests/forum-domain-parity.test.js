@@ -42,7 +42,8 @@ describe("forum.category-*", () => {
     assert.deepEqual(names.sort(), ["Club", "Open"]);
     assert.equal(names.includes("Secret"), false);
     assert.equal(call("category-delete", ctxB, { id: secret.id }).error, "category not found");
-    assert.equal(call("category-list", asMod(ctxB), {}).result.categories.some((c) => c.id === secret.id), true);
+    // A platform moderator who is not a member still cannot read the room.
+    assert.equal(call("category-list", asMod(ctxB), {}).result.categories.some((c) => c.id === secret.id), false);
     assert.ok(club.id);
   });
 });
@@ -334,6 +335,38 @@ describe("forum trending", () => {
     const r = call("trending", ctxA, {});
     assert.equal(r.result.count, 0);
     assert.deepEqual(r.result.trending, []);
+  });
+
+  it("keeps a member's private topic on a crowded board and off a non-member's", () => {
+    for (let i = 0; i < 25; i++) {
+      const pub = call("topic-create", ctxA, { title: `Public ${i}` }).result.topic;
+      call("vote", ctxA, { targetType: "topic", targetId: pub.id, direction: 1 });
+    }
+    const sealed = call("category-create", ctxA, { name: "Sealed", visibility: "private" }).result.category;
+    const hidden = call("topic-create", ctxA, { title: "Members only", categoryId: sealed.id }).result.topic;
+    const own = call("trending", ctxA, {});
+    assert.equal(own.result.count, 26);
+    assert.ok(own.result.trending.length > 20);
+    assert.equal(own.result.trending.some((x) => x.id === hidden.id), true);
+    const outsider = call("trending", ctxB, {});
+    assert.equal(outsider.result.trending.some((x) => x.id === hidden.id), false);
+    assert.equal(outsider.result.count, 25);
+    // depthCtx stamps role "owner"; that is a moderation role, not membership.
+    const platformOwner = {
+      actor: { userId: "user_b", role: "owner" },
+      userId: "user_b",
+      role: "owner",
+    };
+    const asOwner = call("trending", platformOwner, {});
+    assert.equal(asOwner.result.trending.some((x) => x.id === hidden.id), false);
+    const club = call("category-create", ctxA, {
+      name: "Club", visibility: "private", members: ["user_b"],
+    }).result.category;
+    const shared = call("topic-create", ctxA, { title: "For members", categoryId: club.id }).result.topic;
+    assert.equal(call("trending", ctxB, {}).result.trending.some((x) => x.id === shared.id), true);
+    assert.equal(call("trending", ctxA, {}).result.trending.some((x) => x.id === hidden.id), true);
+    assert.equal(call("trending", platformOwner, {}).result.trending.some((x) => x.id === shared.id), true);
+    assert.ok(club.id);
   });
 });
 
