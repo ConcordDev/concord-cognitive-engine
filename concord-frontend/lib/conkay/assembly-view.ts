@@ -24,9 +24,12 @@ export function explodedShift(part: ExplodePart, t: number): [number, number, nu
  * Clipping plane in three.js space (normal, constant) that removes the
  * positive side of the vehicle axis at `position` metres.
  * THREE.Plane discards pixels where normal·point + constant < 0.
+ * `originX` is the vehicle x the viewer places at the world origin.
  */
-export function sectionPlane(axis: "x" | "y" | "z", position: number): { normal: [number, number, number]; constant: number } {
-  if (axis === "x") return { normal: [1, 0, 0], constant: -position };
+export function sectionPlane(axis: "x" | "y" | "z", position: number, originX = 0): { normal: [number, number, number]; constant: number } {
+  // The scene group is shifted by -originX along x (the car is centred on the
+  // origin), and clipping planes live in world space, so shift the cut too.
+  if (axis === "x") return { normal: [1, 0, 0], constant: -(position - originX) };
   if (axis === "y") return { normal: [0, 0, 1], constant: position };
   return { normal: [0, -1, 0], constant: position };
 }

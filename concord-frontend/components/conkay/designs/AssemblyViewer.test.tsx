@@ -59,6 +59,10 @@ describe('assembly view math', () => {
     expect(explodedShift({ id: 'a', placement: { x: 1, y: 2, z: 3 }, explode: { axis: 'z', sign: 1, rank: 1 } }, 0)).toEqual([1, 2, 3]);
     expect(sectionPlane('x', 1.5)).toEqual({ normal: [1, 0, 0], constant: -1.5 });
     expect(sectionPlane('z', 0.8).normal).toEqual([0, -1, 0]);
+    // The viewer centres the car on x; a cut at vehicle x=2.0 with the car
+    // centred at 2.4 sits at world x=-0.4.
+    expect(sectionPlane('x', 2.0, 2.4).constant).toBeCloseTo(0.4);
+    expect(sectionPlane('y', 0.3, 2.4)).toEqual(sectionPlane('y', 0.3));
   });
 });
 
