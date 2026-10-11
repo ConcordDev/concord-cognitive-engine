@@ -13911,10 +13911,14 @@ try {
 // ── Learning Verification: migrate existing DTU classifications at startup ──
 try {
   const migrationResult = migrateClassifications(STATE.dtus);
-  if (migrationResult.migrated > 0) {
-    structuredLog("info", "learning_classification_migration", migrationResult);
-    saveStateDebounced();
+  if (migrationResult.migrated > 0 || migrationResult.failed > 0) {
+    structuredLog(
+      migrationResult.failed > 0 ? "warn" : "info",
+      "learning_classification_migration",
+      migrationResult,
+    );
   }
+  if (migrationResult.migrated > 0) saveStateDebounced();
 } catch (e) {
   structuredLog("error", "learning_migration_failed", { error: String(e?.message || e) });
 }
