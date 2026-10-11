@@ -62,7 +62,7 @@ describe('ForecastPanel', () => {
       name: 'live_forecast',
       input: { city: 'San Francisco' },
     });
-    expect(screen.getByText('This Afternoon')).toBeInTheDocument();
+    expect(await screen.findByText('This Afternoon')).toBeInTheDocument();
     expect(screen.getAllByText('Partly Cloudy').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('68°F')).toBeInTheDocument();
     expect(screen.getByText('20%')).toBeInTheDocument();
