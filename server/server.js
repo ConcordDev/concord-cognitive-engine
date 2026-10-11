@@ -90,7 +90,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
-import { privateDtuHiddenFrom, ctxMayReadDtu } from "./lib/dtu-read-access.js";
+import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { validateMimeType } from "./lib/upload-mime.js";
 import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
 import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
@@ -1921,7 +1921,7 @@ import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
-import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal } from "./lib/dtu-list-source.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -24923,6 +24923,7 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // fallback to legacy write
     if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
     else STATE.dtus.set(dtu.id, dtu);
+    try { noteDtuWrite(); } catch { /* clock */ }
     saveStateDebounced();
     return { ok:true, dtu, bypassed:true };
   }
@@ -25017,6 +25018,9 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     STATE.dtus.set(dtu.id, dtu);
+    // Sidecar list cache refreshes from SQLite on a timer and has no write
+    // API. Stamp the write so mine/q can fall back while that cache lags.
+    try { noteDtuWrite(); } catch { /* clock */ }
     saveStateDebounced();
 
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
@@ -25978,12 +25982,17 @@ register("dtu", "stats", (ctx, _input = {}) => {
 
 register("dtu", "list", async (ctx, input) => {
   try {
-  const limit = clamp(Number(input.limit || 5000), 1, 5000);
+  const limit = resolveListLimit(input.limit);
   const offset = clamp(Number(input.offset || 0), 0, 1e9);
   const tier = input.tier && ["regular","mega","hyper","any"].includes(input.tier) ? input.tier : "any";
-  const q = tokenish(input.q || "");
+  const qRaw = input.q || input.search || "";
+  const q = tokenish(qRaw);
+  const tagTerms = tagFilterTerms(input.tag ?? input.tags);
   const scopeFilter = input.scope || null; // "local", "global", or null (default: user's view)
-  const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+  // Production auth stamps req.actor.userId and omits actor.id. by-id reads
+  // already fall back through viewerIdFromCtx; the list must use the same
+  // viewer or a signed-in owner's private DTUs disappear.
+  const userId = viewerIdFromCtx(ctx);
   // "mine" — the caller's OWN creations only (any scope, public + private),
   // never other users' published DTUs. Used by the dashboard "My Activity"
   // chart so the creation rhythm is the signed-in user's, not the global feed.
@@ -26010,7 +26019,7 @@ register("dtu", "list", async (ctx, input) => {
           viewer: userId || "",
           scope: scopeFilter,
           tier,
-          q: input.q || "",
+          q: qRaw,
           mine: mineOnly,
           limit,
           offset,
@@ -26019,12 +26028,15 @@ register("dtu", "list", async (ctx, input) => {
         };
         const r = await _dtuSidecarListCall(sidecarArgs);
         const fallback = shouldFallbackFromSidecarList(r, {
-          q: input.q || "",
+          q: qRaw,
+          tag: tagTerms.join(","),
+          mine: mineOnly,
+          viewer: userId || "",
           lastWriteAt: globalThis._dtuLastWriteAt || 0,
           now: Date.now(),
         });
         if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
-          const items = narrowListedDtus(r.dtus);
+          const items = narrowListedDtus(r.dtus).slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
@@ -26052,7 +26064,7 @@ register("dtu", "list", async (ctx, input) => {
 
   if (mineOnly) {
     // Owner-scoped: only DTUs this signed-in user created. Not signed in → none.
-    items = userId ? items.filter(d => d.ownerId === userId) : [];
+    items = userId ? items.filter(d => dtuListedOwner(d) === userId) : [];
   } else if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
     const requestedLevel = SCOPE_LEVELS[scopeFilter];
     items = items.filter(d => {
@@ -26065,14 +26077,16 @@ register("dtu", "list", async (ctx, input) => {
       if (scopeFilter === "regional") return dtuLevel >= 1 && dtuLevel <= 2;
       if (scopeFilter === "local") {
         if (dtuLevel > 0) return false; // local means local only
-        return !userId || !d.ownerId || d.ownerId === userId;
+        const owner = dtuListedOwner(d);
+        return !userId || !owner || owner === userId;
       }
       return true;
     });
     // Non-owners can only see published/public content at higher scopes
     if (scopeFilter !== "local") {
       items = items.filter(d => {
-        if (!d.ownerId || d.ownerId === userId) return true; // own content always visible
+        const owner = dtuListedOwner(d);
+        if (!owner || owner === userId) return true; // own content always visible
         const vis = d.meta?.visibility || d.visibility;
         return vis === "published" || vis === "public";
       });
@@ -26080,7 +26094,8 @@ register("dtu", "list", async (ctx, input) => {
   } else if (userId) {
     // Default view: user's own DTUs (any scope) + published/public DTUs at any scope
     items = items.filter(d => {
-      if (!d.ownerId || d.ownerId === userId) return true;
+      const owner = dtuListedOwner(d);
+      if (!owner || owner === userId) return true;
       if (d.scope === "global") return true;
       const vis = d.meta?.visibility || d.visibility;
       if (vis === "published" || vis === "public") return true;
@@ -26091,6 +26106,7 @@ register("dtu", "list", async (ctx, input) => {
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
   if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
+  if (tagTerms.length) items = items.filter(d => dtuMatchesTagFilter(d, tagTerms));
   items = narrowListedDtus(items);
   const total = items.length;
   items = items.slice(offset, offset + limit);

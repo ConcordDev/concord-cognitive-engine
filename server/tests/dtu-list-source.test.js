@@ -5,8 +5,14 @@ import {
   sidecarListTotal,
   shouldFallbackFromSidecarList,
   dtuMatchesQuery,
+  dtuListedOwner,
+  dtuMatchesTagFilter,
+  tagFilterTerms,
+  resolveListLimit,
   shapePaginatedBody,
   SIDECAR_REFRESH_MS,
+  DEFAULT_LIST_LIMIT,
+  MAX_LIST_LIMIT,
 } from "../lib/dtu-list-source.js";
 
 describe("dtu list source", () => {
@@ -38,6 +44,50 @@ describe("dtu list source", () => {
   it("does not disable the sidecar for an unqueried list", () => {
     noteDtuWrite(1);
     assert.equal(shouldFallbackFromSidecarList({ ok: true, dtus: [], total: 0 }, { q: "", lastWriteAt: Date.now() }), false);
+  });
+
+  it("falls back for an empty mine, a tag filter, and a signed-in search", () => {
+    assert.equal(shouldFallbackFromSidecarList(
+      { ok: true, dtus: [], total: 0 },
+      { mine: true, viewer: "owner-1" },
+    ), true);
+    assert.equal(shouldFallbackFromSidecarList(
+      { ok: true, dtus: [{ id: "public" }], total: 1 },
+      { tag: "osr770726" },
+    ), true);
+    assert.equal(shouldFallbackFromSidecarList(
+      { ok: true, dtus: [{ id: "other" }], total: 1 },
+      { q: "helix", viewer: "owner-1" },
+    ), true);
+  });
+
+  it("falls back when a mine page is older than a write inside the refresh window", () => {
+    const now = 20_000;
+    assert.equal(shouldFallbackFromSidecarList(
+      { ok: true, dtus: [{ id: "old", createdAt: "1970-01-01T00:00:01.000Z" }], total: 1, indexedThrough: now },
+      { mine: true, viewer: "owner-1", lastWriteAt: now - 500, now },
+    ), true);
+    assert.equal(shouldFallbackFromSidecarList(
+      { ok: true, dtus: [{ id: "fresh", createdAt: new Date(now - 100).toISOString() }], total: 1, indexedThrough: now },
+      { mine: true, viewer: "owner-1", lastWriteAt: now - 500, now },
+    ), false);
+  });
+
+  it("caps an omitted list limit and keeps an explicit limit", () => {
+    assert.equal(resolveListLimit(undefined), DEFAULT_LIST_LIMIT);
+    assert.equal(resolveListLimit(""), DEFAULT_LIST_LIMIT);
+    assert.equal(resolveListLimit("200"), 200);
+    assert.equal(resolveListLimit(9000), MAX_LIST_LIMIT);
+    assert.equal(DEFAULT_LIST_LIMIT, 50);
+  });
+
+  it("matches an owner on author or ownerId and a tag case-insensitively", () => {
+    assert.equal(dtuListedOwner({ author: "a", ownerId: "b" }), "a");
+    assert.equal(dtuListedOwner({ ownerId: "b" }), "b");
+    assert.equal(dtuListedOwner({ authorId: "c" }), "c");
+    assert.deepEqual(tagFilterTerms("Alpha, beta"), ["alpha", "beta"]);
+    assert.equal(dtuMatchesTagFilter({ tags: ["OSR770726"] }, ["osr770726"]), true);
+    assert.equal(dtuMatchesTagFilter({ tags: ["other"] }, ["osr770726"]), false);
   });
 
   it("repairs a zero total when the sidecar returned rows", () => {
