@@ -1,5 +1,6 @@
 // server/domains/gamedesign.js
 import { registerCitation } from "../economy/royalty-cascade.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "mechanicsAnalysis", (ctx, artifact, _params) => {
@@ -2492,24 +2493,19 @@ export default function registerGameDesignActions(registerLensAction) {
     const dtuId = params.dtuId ? String(params.dtuId) : "";
     if (!dtuId) return { ok: false, error: "dtuId required" };
     const fetched = await ctx.macro.run("dtu", "get", { id: dtuId });
-    let dtu = fetched?.ok ? fetched.dtu : null;
-    if (!dtu) {
-      // dtu.get answers "DTU not found" for a private row the caller may
-      // not read, so a miss does not confirm the id. This action has its
-      // own ownership error and must not reconstruct the level. If the
-      // row is in the store and this user is not the owner, say so.
-      const raw = ctx.state?.dtus?.get?.(dtuId);
-      const owner = raw?.ownerId || raw?.author || raw?.userId || raw?.createdBy;
-      if (raw && owner && owner !== userId && raw.visibility !== "public" && raw.visibility !== "published") {
-        return { ok: false, error: "not_authorized" };
-      }
-      return { ok: false, error: fetched?.error || "dtu not found" };
+    const dtu = fetched?.ok ? fetched.dtu : null;
+    // A missing id and a private id this caller cannot read are the same
+    // answer. dtu.get already returns "DTU not found" for both; do not
+    // consult STATE to tell them apart, and do not return the body. A
+    // distinct error would confirm the private id exists.
+    if (!dtu || !ctxMayReadDtu(ctx, dtu)) {
+      return { ok: false, error: "DTU not found" };
     }
     if (dtu.meta?.type !== GD_LEVEL_DESIGN_DTU_TYPE) {
       return { ok: false, error: "not_a_level_design_dtu" };
     }
-    // Honest ownership gate — a private level-design snapshot can only be
-    // reconstructed by its owner, or by anyone if the author made it public.
+    // Reconstruct only for a DTU this caller can already read. A non-owner
+    // of a readable non-public snapshot still does not get a new level.
     if (dtu.ownerId && dtu.ownerId !== userId && dtu.visibility !== "public") {
       return { ok: false, error: "not_authorized" };
     }

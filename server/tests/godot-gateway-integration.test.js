@@ -943,7 +943,7 @@ test("D20 — scene-save/scene-load round-trips a level design (with a placed en
   } finally { ws.close(); }
 });
 
-test("D20 — scene-load rejects a non-level-design DTU and an unauthorized private DTU honestly", async () => {
+test("D20 — scene-load rejects a non-level-design DTU, and a private DTU the caller cannot read is the same 404 as a missing id", async () => {
   const { token: tokenA, userId: userIdA } = await registerUser(`godotit_${TS}_q1`);
   const { token: tokenB } = await registerUser(`godotit_${TS}_q2`);
   const wsA = await connect(WS_URL);
@@ -994,12 +994,25 @@ test("D20 — scene-load rejects a non-level-design DTU and an unauthorized priv
     const dtuId = saveFrame.data.result.dtuId;
     assert.equal(__TEST__.STATE.dtus.get(dtuId).visibility, "private", "a level-design DTU defaults to private");
 
-    // ...and User B (a different user) must be honestly rejected trying to
-    // load it — never silently reconstructed for a non-owner.
+    // User B cannot read A's private level. That answer must be the same
+    // plain 404 as a DTU that does not exist — a different error would
+    // confirm the private id is real. Compare the payloads after the
+    // gateway's per-frame ts/_seq/_evt stamps.
     sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId } });
-    const forbiddenFrame = await waitForEvt(wsB, "design_command:result");
-    assert.equal(forbiddenFrame.data.ok, false);
-    assert.equal(forbiddenFrame.data.error, "not_authorized");
+    const hiddenFrame = await waitForEvt(wsB, "design_command:result");
+    sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId: `missing-${TS}-never` } });
+    const missingFrame = await waitForEvt(wsB, "design_command:result");
+    const denial = (frame) => {
+      const rest = { ...frame.data };
+      delete rest.ts;
+      delete rest._seq;
+      delete rest._evt;
+      return rest;
+    };
+    const hidden = denial(hiddenFrame);
+    const missing = denial(missingFrame);
+    assert.deepEqual(hidden, { action: "scene-load", ok: false, error: "DTU not found" });
+    assert.deepEqual(hidden, missing);
   } finally { wsA.close(); wsB.close(); }
 });
 
