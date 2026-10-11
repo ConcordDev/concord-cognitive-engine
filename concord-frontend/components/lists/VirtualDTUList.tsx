@@ -213,7 +213,7 @@ export function VirtualDTUList({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -410,10 +410,13 @@ export function VirtualDTUList({
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
-        {filteredDTUs.length} of {dtus.length} DTUs
-      </div>
+      {/* Footer — only when a local filter hides rows. An unfiltered page
+          must not read as "20 of 20 DTUs" next to the real page count. */}
+      {filteredDTUs.length !== dtus.length && (
+        <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
+          {filteredDTUs.length} of {dtus.length} in this page
+        </div>
+      )}
     </div>
   );
 }

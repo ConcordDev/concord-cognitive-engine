@@ -36,7 +36,7 @@ test.describe('DTU quick-create submit stays in the viewport', () => {
       await page.goto('/lenses/dtus', { waitUntil: 'domcontentloaded' });
       await expect(page).not.toHaveURL(/\/login/);
 
-      // New DTU lives on the n shortcut (one Browse primary on the page).
+      // New DTU is a visible button. n still opens the same dialog.
       await expect(async () => {
         await page.keyboard.press('n');
         await expect(page.getByRole('dialog', { name: 'Create New DTU' })).toBeVisible({ timeout: 1000 });

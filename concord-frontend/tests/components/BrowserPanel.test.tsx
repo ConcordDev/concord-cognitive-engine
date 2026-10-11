@@ -82,13 +82,13 @@ describe('BrowserPanel', () => {
     });
   });
 
-  it('shows the pagination total, creation time, and no stat cards or second primary', async () => {
+  it('shows the page count, creation time, and a New DTU action', async () => {
     renderPanel({ initialQuery: 'helix' });
     expect(await screen.findByText('Helix note')).toBeTruthy();
-    const count = screen.getByRole('heading', { name: 'DTU Browser' }).parentElement;
-    expect(count?.textContent).toMatch(/40\s+discrete thought units/);
+    expect(screen.getAllByText('Showing 1–20 of 40').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/1--20/)).toBeNull();
     expect(screen.queryByText('Total DTUs')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'New DTU' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'New DTU' })).toBeTruthy();
     expect(screen.queryByText('Live Feed')).toBeNull();
     expect(screen.getByText('No unit selected')).toBeTruthy();
     expect(screen.getByText('2020-01-02T03:04:05.000Z')).toBeTruthy();
