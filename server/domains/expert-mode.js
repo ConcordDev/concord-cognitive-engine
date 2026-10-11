@@ -26,7 +26,7 @@
 // no seed/mock/demo data.
 
 import crypto from "node:crypto";
-import { expertAnswer, gatherSourcesForQuery, extractCitationIndices } from "../lib/expert-mode.js";
+import { expertAnswer, gatherSourcesForQuery, extractCitationIndices, EXPERT_SOURCE_TEXT_CAP } from "../lib/expert-mode.js";
 
 // ---- store ---------------------------------------------------------------
 
@@ -118,8 +118,10 @@ async function liveWebSources(query, limit) {
     return (results || []).slice(0, limit).map((r) => ({
       id: `web_${crypto.createHash("sha1").update(r.url || r.title || query).digest("hex").slice(0, 12)}`,
       title: r.title || query,
+      // snippet stays the short search blurb for the source card.
+      // content is the lead extract (height, capital, …) the answer prompt reads.
       snippet: (r.snippet || r.content || "").slice(0, 240),
-      content: (r.content || r.snippet || "").slice(0, 1200),
+      content: (r.content || r.snippet || "").slice(0, EXPERT_SOURCE_TEXT_CAP),
       url: r.url || "",
       creator_id: null,
       scope: "web",
@@ -255,11 +257,18 @@ export default function registerExpertModeMacros(register) {
     const contextQuery = threadContextQuery(thread, String(query).trim());
     const augmented = `${contextQuery}${mode.directive ? `\n\n[Focus directive] ${mode.directive}` : ""}`;
 
+    // Web pages have to be in the numbered source list BEFORE the brain
+    // answers. Fetching them afterwards left the card showing Wikipedia
+    // while the prompt still said the sources do not address the question.
+    const web = wantWeb
+      ? await liveWebSources(`${query}${mode.queryAugment}`, Math.min(5, cap))
+      : [];
+
     let answerRes;
     try {
       answerRes = await expertAnswer({
         db, userId, query: augmented,
-        opts: { maxSources: cap },
+        opts: { maxSources: cap, extraSources: web, refuseWhenNoSources: wantWeb },
       });
     } catch (e) {
       return { ok: false, reason: "brain_failed", error: String(e?.message || e) };
@@ -268,28 +277,8 @@ export default function registerExpertModeMacros(register) {
       return { ok: false, reason: "brain_failed", error: answerRes?.error || "unknown" };
     }
 
-    // Live web sources are appended after the DTU sources, renumbered so
-    // citation chips stay contiguous across the merged list.
-    let sources = Array.isArray(answerRes.sources) ? [...answerRes.sources] : [];
-    let webCount = 0;
-    if (wantWeb) {
-      const web = await liveWebSources(`${query}${mode.queryAugment}`, Math.min(5, cap));
-      webCount = web.length;
-      const offset = sources.length;
-      sources = sources.concat(web.map((w, i) => ({
-        idx: offset + i + 1,
-        id: w.id,
-        title: w.title,
-        creatorId: null,
-        scope: "web",
-        origin: "web",
-        url: w.url,
-        sourceName: w.source_name,
-        snippet: w.snippet,
-        mintedByProvider: null,
-        mintedByModel: null,
-      })));
-    }
+    const sources = Array.isArray(answerRes.sources) ? answerRes.sources : [];
+    const webCount = sources.filter((s) => s.origin === "web" || s.scope === "web").length;
 
     const turn = {
       id: uid("turn"),

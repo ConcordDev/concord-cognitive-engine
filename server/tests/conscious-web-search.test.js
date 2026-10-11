@@ -4,6 +4,7 @@
 // outranked the page that answers "what is the capital of France".
 // Egress is mocked. These tests must not fetch the network.
 
+import { readFileSync } from "node:fs";
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
@@ -74,7 +75,7 @@ function installFetch({ searchPayload, ddg, onUrl }) {
       const extracts = {
         "List of capitals of France": "The capital of France has been Paris since its liberation in 1944.",
         Paris: "Paris is the capital and largest city of France.",
-        "Eiffel Tower": "The Eiffel Tower is a lattice tower on the Champ de Mars in Paris, France.",
+        "Eiffel Tower": "The Eiffel Tower is a lattice tower on the Champ de Mars in Paris, France. The tower is 330 metres (1,083 ft) tall.",
       };
       const extract = extracts[title];
       if (!extract) return jsonResponse({ query: { pages: {} } });
@@ -93,6 +94,13 @@ beforeEach(() => {
 
 afterEach(() => {
   delete globalThis.fetch;
+});
+
+describe("wikipedia courtesy delay", () => {
+  it("waits 2s between article fetches in production and skips the wait under the test runner", () => {
+    const src = readFileSync(new URL("../emergent/conscious-web-search.js", import.meta.url), "utf8");
+    assert.match(src, /NODE_ENV\)\.toLowerCase\(\) === "test" \? 0 : 2000/);
+  });
 });
 
 describe("shapeSearchQuery", () => {
@@ -247,6 +255,11 @@ describe("webSearchForChat", () => {
     assert.ok(results.some((r) => r.title === "Eiffel Tower"));
     assert.ok(results.every((r) => r.title !== "Erika Eiffel"));
     assert.equal(new URL(urls.find((u) => u.includes("list=search"))).searchParams.get("srsearch"), "Eiffel Tower");
+    // The search blurb is the first sentence. The height lives in the extract.
+    const wiki = results.find((r) => r.source === "en.wikipedia.org" && r.title === "Eiffel Tower");
+    assert.ok(wiki, "wikipedia lead extract is kept on content");
+    assert.ok(wiki.content.includes("330 metres"));
+    assert.ok(!wiki.snippet.includes("330"));
   });
 
   it("searches nothing when the query shapes to empty", async () => {
