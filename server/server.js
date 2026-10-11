@@ -6321,6 +6321,16 @@ if (db && !READ_REPLICA) {
     structuredLog("warn", "api_keys_load_failed", { error: String(e?.message || e) });
   }
 
+  // Media stream URLs (/api/media/:id/stream) read the in-memory map.
+  // Load the SQLite index so a deploy restart does not 404 every upload.
+  try {
+    const { hydrateMediaIndex } = await import("./lib/media-dtu.js");
+    const mediaLoaded = hydrateMediaIndex(STATE);
+    structuredLog("info", "media_index_loaded_from_db", mediaLoaded);
+  } catch (e) {
+    structuredLog("warn", "media_index_load_failed", { error: String(e?.message || e) });
+  }
+
   // Ingest quality log prune — keep last 50k rows, 30d retention
   try {
     const { pruneQualityLog } = await import("./lib/ingest-quality.js");
