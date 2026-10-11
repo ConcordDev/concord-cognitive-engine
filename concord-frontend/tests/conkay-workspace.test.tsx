@@ -29,12 +29,21 @@ vi.mock('@/lib/conkay/agent-stream', async (orig) => ({
 
 const lensRun = vi.fn();
 const apiGet = vi.fn();
+const listMock = vi.fn();
+const downloadMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...a: unknown[]) => lensRun(...a),
   api: { get: (...a: unknown[]) => apiGet(...a) },
+  apiHelpers: { lens: { list: (...a: unknown[]) => listMock(...a) } },
+}));
+vi.mock('@/lib/utils', async (orig) => ({
+  ...(await orig<object>()),
+  downloadFile: (...a: unknown[]) => downloadMock(...a),
 }));
 
 import { ConKayWorkspace } from '@/components/conkay/workspace/ConKayWorkspace';
+import { ExportMenu, CONKAY_EMPTY_EXPORT_NOTICE } from '@/components/common/ExportMenu';
+import { setConkayCurrentModel } from '@/lib/conkay/model-export';
 
 const DIMS = { length: 1200, height: 300, flangeWidth: 150, flangeThickness: 15, webThickness: 9 };
 const MATERIALS = [
@@ -88,6 +97,10 @@ beforeEach(() => {
   appended = [];
   lensRun.mockReset();
   apiGet.mockReset();
+  listMock.mockReset();
+  listMock.mockResolvedValue({ data: { items: [] } });
+  downloadMock.mockReset();
+  setConkayCurrentModel(null);
   streamMock.mockReset();
   routerPush.mockReset();
   routerReplace.mockReset();
@@ -203,7 +216,7 @@ describe('ConKay workspace — study edits', () => {
     render(<ConKayWorkspace />);
     await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
     send('save model');
-    await waitFor(() => expect(within(convo()).getByText(/Saved “I-beam study” to Models \(part_1\)/)).toBeTruthy());
+    await waitFor(() => expect(within(convo()).getByText(/Saved “I-beam” to Models \(part_1\)/)).toBeTruthy());
     expect(lensRun.mock.calls.find((c) => c[1] === 'savePart')?.[2]).toMatchObject({ kind: 'i-beam', params: { length: 1.2, webThickness: 0.009 } });
   });
 });
@@ -327,5 +340,126 @@ describe('ConKay workspace — handoffs and navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Library' }));
     fireEvent.click(screen.getByRole('button', { name: /ASTM A36 Structural Steel/ }));
     expect((screen.getByLabelText('Material') as HTMLSelectElement).value).toBe('steel-a36');
+  });
+});
+
+describe('ConKay workspace — save, export, delete', () => {
+  it('names the save from the design type, then Export downloads JSON containing the part', async () => {
+    const parts: Array<Record<string, unknown>> = [];
+    routes({
+      'engineering.beamStudy': (input) => ok(solved({
+        dims: { ...DIMS, ...(input.dims as object) },
+        loadN: input.loadN,
+        support: input.support,
+        analysisReceipt: { solver: 'fea-solver@5.0.0', inputHash: 'abc', units: 'SI', assumptions: [], outOfScope: [] },
+      })),
+      'engineering.savePart': (input) => {
+        const part = { id: 'part_1', ...input };
+        parts.splice(0, parts.length, part);
+        return ok({ part });
+      },
+      'engineering.listParts': () => ok({ parts: parts.map((p) => ({ ...p })) }),
+    });
+    render(<><ConKayWorkspace /><ExportMenu domain="conkay" /></>);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('run fea');
+    await waitFor(() => expect(screen.getByText('FEA util. 24.9%')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save model' }));
+    const name = await screen.findByLabelText('Model name') as HTMLInputElement;
+    await waitFor(() => expect(name.value).toBe('I-beam'));
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+    await waitFor(() => expect(within(convo()).getByText(/Saved “I-beam” to Models \(part_1\)/)).toBeTruthy());
+    expect(lensRun.mock.calls.find((c) => c[1] === 'savePart')?.[2]).toMatchObject({
+      kind: 'i-beam',
+      designType: 'i-beam',
+      name: 'I-beam',
+      solverVersion: 'fea-solver@5.0.0',
+      params: { length: 1.2, webThickness: 0.009 },
+      results: { maxStressMPa: 86.1, pass: true },
+    });
+
+    fireEvent.click(screen.getByTitle('Export (Ctrl+E)'));
+    fireEvent.click(screen.getByText('Export as JSON'));
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1));
+    const [content, filename, mime] = downloadMock.mock.calls[0];
+    expect(String(content).length).toBeGreaterThan(2);
+    expect(filename).toMatch(/^conkay-models-.*\.json$/);
+    expect(mime).toBe('application/json');
+    const doc = JSON.parse(String(content));
+    expect(doc.kind).toBe('conkay-model-export');
+    expect(doc.savedModels[0]).toMatchObject({
+      id: 'part_1',
+      name: 'I-beam',
+      params: { length: 1.2, webThickness: 0.009 },
+      solverVersion: 'fea-solver@5.0.0',
+      results: { maxStressMPa: 86.1, pass: true },
+    });
+    expect(doc.currentModel).toMatchObject({
+      params: { length: 1.2 },
+      solverVersion: 'fea-solver@5.0.0',
+      results: { maxStressMPa: 86.1 },
+    });
+  });
+
+  it('header export downloads nothing when there is no saved model and no open study', async () => {
+    routes({ 'engineering.listParts': () => ok({ parts: [] }) });
+    render(<ExportMenu domain="conkay" />);
+    fireEvent.click(screen.getByTitle('Export (Ctrl+E)'));
+    fireEvent.click(screen.getByText('Export as JSON'));
+    expect(await screen.findByTestId('export-menu-notice')).toHaveTextContent(CONKAY_EMPTY_EXPORT_NOTICE);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it('delete removes the model and it is gone after the list reloads', async () => {
+    const parts = [{
+      id: 'p1', name: 'Shop beam', kind: 'i-beam', material: 'steel-a36', geometry: { mass: 70.6 },
+      params: { length: 2, height: 0.3, flangeWidth: 0.15, flangeThickness: 0.015, webThickness: 0.009 },
+    }];
+    routes({
+      'engineering.listParts': () => ok({ parts: parts.map((p) => ({ ...p })) }),
+      'engineering.deletePart': (input) => {
+        const before = parts.length;
+        const next = parts.filter((p) => p.id !== input.id);
+        parts.splice(0, parts.length, ...next);
+        return ok({ deleted: before - next.length, count: next.length });
+      },
+    });
+    const openModels = async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Models' }));
+    };
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    await openModels();
+    await waitFor(() => expect(screen.getByText('Shop beam')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Shop beam' }));
+    await waitFor(() => expect(screen.getByText(/No saved models/)).toBeTruthy());
+    expect(screen.queryByText('Shop beam')).toBeNull();
+
+    cleanup();
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    await openModels();
+    await waitFor(() => expect(screen.getByText(/No saved models/)).toBeTruthy());
+    expect(screen.queryByText('Shop beam')).toBeNull();
+  });
+
+  it('a forbidden delete stays on screen and says the model belongs to another account', async () => {
+    routes({
+      'engineering.listParts': () => ok({
+        parts: [{
+          id: 'p1', name: 'Shop beam', kind: 'i-beam', geometry: { mass: 1 },
+          params: { length: 2, height: 0.3, flangeWidth: 0.15, flangeThickness: 0.015, webThickness: 0.009 },
+        }],
+      }),
+      'engineering.deletePart': () => ({ data: { ok: false, result: null, error: 'forbidden: not the owner of this part' } }),
+    });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Models' }));
+    await waitFor(() => expect(screen.getByText('Shop beam')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Shop beam' }));
+    await waitFor(() => expect(screen.getByText('This model belongs to another account.')).toBeTruthy());
+    expect(screen.getByText('Shop beam')).toBeTruthy();
   });
 });

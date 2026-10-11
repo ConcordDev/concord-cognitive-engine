@@ -95,6 +95,7 @@ import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
@@ -47762,6 +47763,14 @@ app.post("/api/lens/run", async (req, res) => {
       const _lensT0 = Date.now();
       const lensRaw = await lensHandler(ctx, virtualArtifact, rest);
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
+      // Ownership refusals (engineering.deletePart / renamePart) carry
+      // status 403 and an error that starts with "forbidden". That is an
+      // HTTP 403, not a 200 envelope that looks like success.
+      const _httpErr = _httpErrorFromLensAction(lensRaw);
+      if (_httpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
+        return res.status(_httpErr.status).json(_httpErr.body);
+      }
       const result = _unwrapLensEnvelope(lensRaw);
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
@@ -47779,7 +47788,13 @@ app.post("/api/lens/run", async (req, res) => {
     // reason.verify/reason.evaluate_answer themselves register, so this is
     // the branch that actually fires the conkay:verdict emit below today.)
     if (MACROS.get(domain)?.get(action)) {
-      const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
+      const macroRaw = await runMacro(domain, action, rest, ctx);
+      const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
+      if (_macroHttpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
+        return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
+      }
+      const result = _unwrapLensEnvelope(macroRaw);
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
