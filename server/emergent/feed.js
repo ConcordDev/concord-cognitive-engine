@@ -70,55 +70,97 @@ export function feedWriteStats() {
   return { dropped: _feedDropped, sealed: _feedSealed, pendingJobs: _feedJobs.size };
 }
 
-// How many already-queued microtasks we'll let run while a feed job is
-// still pending. A job that is one or two `await`s from its INSERT finishes
-// here. A job blocked on a timer or socket does not: waiting for it with
-// setTimeout queues behind any stall already on the macrotask queue, and
-// that stall runs to completion before the deadline callback. Measured
-// (Node 22): a 50ms budget took 700ms when a 400ms busy-loop was queued
-// first, and db.close never ran. Microtasks run before that queue, so the
-// caller can close the database on this turn.
+// stopNewWork is synchronous in production. A stop promise is only given
+// this many already-queued microtasks: waiting on it with a timer would
+// spend the write budget before drainFeedJobs awaits the INSERT. Idle
+// spins are not the write drain. That drain used to be this same pump,
+// which returns after 32 turns with the job still in _feedJobs. Bootout
+// 2026-10-11 11:02:53Z logged drained=false pending=1 timeoutMs=2000
+// ms=1.276, then db.close, and the in-flight feed write was dropped.
 const FEED_DRAIN_IDLE_SPINS = 32;
 
-async function pumpMicrotasks(deadline, isDone) {
+async function pumpMicrotasks(deadlineNs, isDone) {
   let idle = 0;
   let spins = 0;
-  // `spins` is the hard cap. Idle resets when a job finishes so a short
-  // await-chain can land, but the cap still stops a job that keeps
-  // scheduling more microtasks from burning the whole timeoutMs.
-  while (!isDone() && Date.now() < deadline && idle < FEED_DRAIN_IDLE_SPINS && spins < FEED_DRAIN_IDLE_SPINS) {
+  while (!isDone() && process.hrtime.bigint() < deadlineNs && idle < FEED_DRAIN_IDLE_SPINS && spins < FEED_DRAIN_IDLE_SPINS) {
     spins += 1;
     const pendingBefore = _feedJobs.size;
     await Promise.resolve();
     if (isDone()) return;
-    if (Date.now() >= deadline) return;
+    if (process.hrtime.bigint() >= deadlineNs) return;
     if (_feedJobs.size < pendingBefore) idle = 0;
     else idle += 1;
   }
 }
 
+/**
+ * Await the promises in `_feedJobs` until each has settled or `timeoutMs`
+ * has elapsed on a monotonic clock. `drained` is false only when that
+ * deadline passed with a job still pending — never because the microtask
+ * queue went idle. One deadline timer. If it fires before `hrtime` reaches
+ * the deadline, the remainder is waited once; a late wake does not arm
+ * another wait. A synchronous stall already queued on the macrotask queue
+ * still runs before the timer (same thread), so elapsed can include it.
+ * @param {number} timeoutMs
+ */
 async function drainFeedJobs(timeoutMs) {
   const budget = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 0;
-  const deadline = Date.now() + budget;
-  await pumpMicrotasks(deadline, () => _feedJobs.size === 0);
-  return { drained: _feedJobs.size === 0, pending: _feedJobs.size };
+  const deadlineNs = process.hrtime.bigint() + BigInt(Math.round(budget * 1e6));
+  if (_feedJobs.size === 0) return { drained: true, pending: 0 };
+  if (process.hrtime.bigint() >= deadlineNs) {
+    return { drained: false, pending: _feedJobs.size };
+  }
+
+  let timer = null;
+  let timedOut = false;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      resolve();
+    }, budget);
+  });
+  try {
+    while (_feedJobs.size > 0 && !timedOut) {
+      // Snapshot so a job that starts another tracked job during this wait
+      // is picked up on the next turn, still under the same deadline.
+      await Promise.race([Promise.allSettled([..._feedJobs]), timeout]);
+    }
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
+  if (_feedJobs.size > 0 && process.hrtime.bigint() < deadlineNs) {
+    const leftMs = Number(deadlineNs - process.hrtime.bigint()) / 1e6;
+    if (leftMs > 0) {
+      await Promise.race([
+        Promise.allSettled([..._feedJobs]),
+        new Promise((resolve) => { timer = setTimeout(resolve, leftMs); }),
+      ]);
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  const pending = _feedJobs.size;
+  return { drained: pending === 0, pending };
 }
 
 /**
- * Stop new feed work, give in-flight jobs one microtask window to write,
- * then seal the writer. Call this before db.close().
+ * Stop new feed work, wait for in-flight feed writes, then seal the writer.
+ * Call this before db.close().
  *
- * `timeoutMs` is a wall-clock cap on that window, not a timer wait. Jobs
- * still blocked on I/O when the cap (or the idle-spin limit) hits are
- * counted in one warning and must not touch the handle afterwards — waiting
- * on the event loop lets an in-flight heartbeat stall run first, and launchd
- * bootout SIGKILLs a user agent in about 5s (a plist ExitTimeOut can raise
- * that; this path does not depend on it).
+ * `timeoutMs` is a monotonic cap (`process.hrtime`) on that wait. The drain
+ * awaits the tracked job promises. It reports drained=false only when that
+ * deadline has passed and a write is still pending. A job that settles
+ * inside the cap is persisted before this function returns, so the caller's
+ * db.close runs after the row. A job still pending at the deadline is one
+ * warning (pending count and elapsed ms) and must not call prepare() after
+ * the seal.
  * @param {{ stopNewWork?: () => unknown, timeoutMs?: number }} [opts]
  */
 export async function shutdownFeedPersistence({ stopNewWork, timeoutMs = 2000 } = {}) {
   const budget = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 2000;
-  const deadline = Date.now() + budget;
+  const startNs = process.hrtime.bigint();
+  const deadlineNs = startNs + BigInt(Math.round(budget * 1e6));
   try {
     const stop = stopNewWork?.();
     if (stop && typeof stop.then === "function") {
@@ -128,18 +170,23 @@ export async function shutdownFeedPersistence({ stopNewWork, timeoutMs = 2000 } 
         () => { settled = true; },
         (err) => { settled = true; failed = err; },
       );
-      await pumpMicrotasks(deadline, () => settled);
+      await pumpMicrotasks(deadlineNs, () => settled);
       if (failed) throw failed;
     }
   } catch (e) {
     console.warn("[feed] failed to stop new feed work:", e?.message);
   }
-  const drain = await drainFeedJobs(Math.max(0, deadline - Date.now()));
+  const remainingMs = Math.max(0, Number(deadlineNs - process.hrtime.bigint()) / 1e6);
+  const drain = await drainFeedJobs(remainingMs);
   _feedSealed = true;
+  const elapsedMs = Math.round(Number(process.hrtime.bigint() - startNs) / 1e6);
   if (!drain.drained) {
-    warnFeedWriteLoss(Math.max(drain.pending, _feedDropped), `shutdown timeout ${timeoutMs}ms`);
+    warnFeedWriteLoss(
+      Math.max(drain.pending, _feedDropped),
+      `shutdown timeout ${timeoutMs}ms elapsed ${elapsedMs}ms pending ${drain.pending}`,
+    );
   }
-  return { ...drain, dropped: _feedDropped, sealed: true };
+  return { ...drain, dropped: _feedDropped, sealed: true, elapsedMs };
 }
 
 /** Test-only. Production shutdown does not reopen the writer. */

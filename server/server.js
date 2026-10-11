@@ -3403,18 +3403,17 @@ async function gracefulShutdown(signal) {
   // callback — so those writes hit a closed handle and log
   // "[feed] DB write failed: The database connection is not open".
   //
-  // Stop and flush without yielding to the macrotask queue. A dynamic
-  // import() of feed-manager, and the old setTimeout drain, both let an
-  // already-queued synchronous stall run first (measured: 250ms stall
-  // inside the import; a 50ms flush budget took 700ms). The process was
-  // gone ~5s after SIGTERM — launchd bootout's user-agent kill, which an
-  // ExitTimeOut can raise — with the log stuck at shutdown_timers_cleared,
-  // so db.close() and the timer-cleanup callback never ran. Static
-  // bindings plus shutdownFeedPersistence's microtask window keep the
-  // feed stop itself inside a few milliseconds. The long post-close
-  // drain is still that class of yield and runs only after db.close.
-  // The short inflight window (finish/close, capped at 1.5s, skipped
-  // when nothing is in flight) sits between stop-accept and this flush.
+  // Feed stop stays synchronous: a dynamic import() of feed-manager let a
+  // queued stall run before db.close, and launchd bootout killed the
+  // process at shutdown_timers_cleared. The flush that follows awaits
+  // tracked feed-job promises until they settle or FEED_SHUTDOWN_FLUSH_MS
+  // expires on a monotonic clock. An idle microtask pump used to return
+  // drained=false in ~1ms with pending still 1 (bootout 2026-10-11
+  // 11:02:53Z: timeoutMs=2000, ms=1.276), and db.close then dropped the
+  // write. Nothing pending: the flush does not arm a timer. The long
+  // post-close request drain still runs only after db.close. The short
+  // inflight window (finish/close, capped at 1.5s, skipped when nothing
+  // is in flight) sits between stop-accept and this flush.
   const _feedClock = () => process.hrtime.bigint();
   const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
   const _feedT0 = _feedClock();
@@ -3445,9 +3444,11 @@ async function gracefulShutdown(signal) {
   // db.close out toward launchd's ~5s kill.
 
   // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
-  // is the first callback. The flush does not wait on timers (see
-  // shutdownFeedPersistence); ms here is subtracted from SHUTDOWN_TIMEOUT_MS
-  // below so a real wait would not extend the kill_timeout budget.
+  // is the first callback, so it does not run while a feed write is still
+  // pending unless the flush deadline expired. Expired flushes log warn
+  // with drained=false, the pending count, and elapsed ms — not a clean
+  // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
+  // stays inside the kill_timeout budget.
   let feedFlushMs = 0;
   await runShutdownDurability({
     async flushFeed() {
