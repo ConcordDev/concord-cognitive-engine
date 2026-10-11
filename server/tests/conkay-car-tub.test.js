@@ -125,8 +125,8 @@ describe("shear panels (equivalent crossed diagonals)", () => {
 });
 
 describe("the car's structural tub", () => {
-  const ladder = buildCarFromLibrary(BRIEF, { cadBody: false });
-  const tub = buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "tub" });
+  const ladder = buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "ladder" });
+  const tub = buildCarFromLibrary(BRIEF, { cadBody: false });
   const s = openDesign(tub.ir).session;
   const s0 = openDesign(ladder.ir).session;
   const frame = s.result("structure.frame@CHASSIS");
@@ -143,8 +143,9 @@ describe("the car's structural tub", () => {
     assert.equal(frame.status, "PASS", `${frame.reason || ""} ${(frame.warnings || []).join(" | ")} ${(frame.failures || []).join(" | ")}`);
     const k = frame.outputs["stiffness.torsional"];
     assert.ok(k.perDegree >= TORSION_TARGET.perDegree, `${k.perDegree}`);
-    // pinned so a change to the tub or the solver shows up: 10,992 N·m/deg at the time of writing
-    near(k.perDegree, 10992, 0.01, "torsional stiffness N·m/deg");
+    // pinned so a change to the tub or the solver shows up: 12,222 N·m/deg with the openings and their
+    // repairs (brief 4 item 2; 10,992 before the openings were designed)
+    near(k.perDegree, 12222, 0.01, "torsional stiffness N·m/deg");
     assert.ok(frame.margins.some((m) => /stiffness torsional ≥ target/.test(m.check)));
     assert.ok(TORSION_TARGET.sources.every((x) => x.url && x.quote));
     const ladderFrame = openDesign(withChassisFrame(ladder.ir)).session.result("structure.frame@CHASSIS");
@@ -181,7 +182,7 @@ describe("the car's structural tub", () => {
   });
 
   it("every part clears the packaging envelopes and the occupants' egress lines (separating-axis test)", () => {
-    const b2 = buildCarFromLibrary(BRIEF);
+    const b2 = buildCarFromLibrary(BRIEF, { chassis: "ladder" });
     const g = DesignGraph.fromIR(b2.ir).graph;
     const q = cadBodyRequest({ get: (id, p) => g.get(id, p) }, "BODY_SHELL");
     const veh = b2.ir.nodes.find((n) => n.id === "VEH").props.vehicle;
@@ -194,8 +195,10 @@ describe("the car's structural tub", () => {
     assert.ok(hit.minClearanceM < 0 && /egress|SEAT_4/.test(hit.against), JSON.stringify(hit));
   });
 
-  it("the ladder stays the default build and an unknown chassis is an error", () => {
+  it("the tub is the default build; the ladder is kept on request and an unknown chassis is an error", () => {
+    assert.ok(tub.ir.nodes.some((n) => n.id === "TUB_SILL_L") && !tub.ir.nodes.some((n) => n.id === "RAIL_L"));
     assert.ok(ladder.ir.nodes.some((n) => n.id === "RAIL_L"));
+    assert.ok(buildCarFromLibrary(BRIEF, { cadBody: false, packaging: false }).ir.nodes.some((n) => n.id === "RAIL_L"), "no package to lay a tub in: the ladder screen");
     assert.ok(buildCarFromLibrary(BRIEF, { cadBody: false, chassis: "spaceframe" }).error);
   });
 });
@@ -204,7 +207,7 @@ const HAVE_KERNEL = fs.existsSync(kernelPythonPath());
 const BODY_STEP = process.env.CONKAY_TUB_BODY_STEP;
 describe("tub inside the CAD body skin (OpenCascade)", { skip: !(HAVE_KERNEL && BODY_STEP) && "set CONKAY_TUB_BODY_STEP to the car body's STEP with a kernel available" }, () => {
   it("every boxed part is inside the skin with clearance to its inner face", async () => {
-    const b = buildCarFromLibrary(BRIEF);
+    const b = buildCarFromLibrary(BRIEF, { chassis: "ladder" });
     const t = withStructuralTub(b.ir);
     const r = await runTubFitKernelAsync({ step: BODY_STEP, skinThickness: 0.002925, boxes: t.layout.parts.filter((p) => !p.box.conformsToSkin).map(tubPartBox) });
     assert.equal(r.ok, true, r.error);

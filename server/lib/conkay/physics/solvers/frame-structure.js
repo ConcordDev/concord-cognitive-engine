@@ -80,7 +80,8 @@ export const frameStructure = registerSolver({
     for (const m of fm.members || []) {
       let section, mat;
       if (m.part) {
-        section = sectionFromGeometry(ctx.get(m.part, "geometry"));
+        // a member may override its part's section where the part is cut (an access opening over a length)
+        section = m.section || sectionFromGeometry(ctx.get(m.part, "geometry"));
         if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (rect-tube, round-tube, i-beam, rect)` };
         mat = ctx.material(m.part);
         if (!mat) return { notComputed: `member ${m.id}: part ${m.part} has no material` };
@@ -107,12 +108,15 @@ export const frameStructure = registerSolver({
       const mat = ctx.material(p.part);
       const mp = materialProps(mat);
       if (mp.error) return { notComputed: `panel ${p.id}: ${mp.error}` };
+      // a sheet with cut-outs keeps the fraction of its shear stiffness its factor states (membrane-fe.js)
+      const factor = p.shearStiffnessFactor?.value ?? 1;
+      if (!(factor > 0 && factor <= 1)) return { notComputed: `panel ${p.id}: shearStiffnessFactor must be in (0, 1]` };
       let pd;
-      try { pd = panelDiagonals(nodesById, p, { E: mp.E, G: mp.G, t }); } catch (e) { return { notComputed: e.message }; }
+      try { pd = panelDiagonals(nodesById, p, { E: mp.E, G: mp.G * factor, t }); } catch (e) { return { notComputed: e.message }; }
       for (const d of pd.diagonals) members.push({ id: d.id, i: d.i, j: d.j, section: d.section, E: mp.E, G: mp.G, fy: null, segments: 1, geometricStiffness: false });
-      panelInfo.push({ id: p.id, part: p.part, t, mp, nu: mat.poisson, geometry: pd.geometry, diagonals: pd.diagonals });
+      panelInfo.push({ id: p.id, part: p.part, t, mp, nu: mat.poisson, geometry: pd.geometry, diagonals: pd.diagonals, factor });
       if (!mp.fy) panelWarnings.push(`panel ${p.id}: ${mp.id} has no yield or shear strength in the library: its shear strength is not checked (elastic shear buckling is)`);
-      inputs[`panel.${p.id}`] = { value: { part: p.part, thicknessM: t, material: mp.id, a: pd.geometry.a, b: pd.geometry.b, rectangular: pd.geometry.rectangular }, source: mp.source };
+      inputs[`panel.${p.id}`] = { value: { part: p.part, thicknessM: t, material: mp.id, a: pd.geometry.a, b: pd.geometry.b, rectangular: pd.geometry.rectangular, ...(factor !== 1 ? { shearStiffnessFactor: factor, factorBasis: p.shearStiffnessFactor.basis, cutouts: p.cutouts || [] } : {}) }, source: mp.source };
     }
     const panelMember = new Set(panelInfo.flatMap((p) => p.diagonals.map((d) => d.id)));
     const fs = fm.factorOfSafety?.value ?? 1;
@@ -266,6 +270,7 @@ export const frameStructure = registerSolver({
         ...(fm.shearDeformation ? ["Members are Timoshenko beams (shear deformation with Cowper shear areas); transverse shear stress V/As is added to the torsional shear (conservative)."] : []),
         ...(panelInfo.length ? [
           "Shear panels are equivalent crossed diagonals with the panel's in-plane shear stiffness (structural/shear-panel.js); their out-of-plane bending is not credited and a panel above its elastic shear-buckling stress fails its check (tension-field stiffness not modelled).",
+          ...(panelInfo.some((p) => p.factor !== 1) ? [`Panels with cut-outs (${panelInfo.filter((p) => p.factor !== 1).map((p) => `${p.id} × ${p.factor.toFixed(3)}`).join(", ")}) keep the shear stiffness fraction their membrane FE computed (structural/membrane-fe.js); their shear stress is the gross-section average: the stress concentration at a cut-out's edge is not checked.`] : []),
           ...(panelInfo.some((p) => !p.geometry.rectangular) ? [`Non-rectangular panels (${panelInfo.filter((p) => !p.geometry.rectangular).map((p) => p.id).join(", ")}) use the mean opposite side lengths: approximate.`] : []),
         ] : []),
         ...(fm.assumptions || []),
