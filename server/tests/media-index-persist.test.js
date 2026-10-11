@@ -19,7 +19,7 @@ import {
 } from "../lib/media-dtu.js";
 import createMediaRouter from "../routes/media.js";
 import { createErrorMiddleware } from "../lib/async-handler.js";
-import { up as migrateMediaIndex } from "../migrations/471_media_index.js";
+import { up as migrateMediaIndex } from "../migrations/472_media_index.js";
 
 function listen(app) {
   return new Promise((resolve) => {
