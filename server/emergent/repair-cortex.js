@@ -5072,6 +5072,13 @@ export async function processRepairQueue() {
   let fixed = 0, escalated = 0;
 
   for (const errorEntry of batch) {
+    // Anonymous frontend reports are an observe() signal only. They must
+    // not grow RUNTIME_PATCHES / _repairCaches, spend a repair-brain call,
+    // or become a persisted repair_escalation DTU.
+    const moduleName = String(errorEntry?.context?.module || "");
+    if (errorEntry?.context?.trigger === "frontend_render" || moduleName.startsWith("frontend:")) {
+      continue;
+    }
     let repaired = false;
     for (const strategy of REPAIR_STRATEGIES) {
       if (strategy.match && !strategy.match(errorEntry)) continue;

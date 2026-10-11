@@ -2090,6 +2090,7 @@ import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
 import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
 import { isStrongShareToken } from "./lib/share-token.js";
 import { ingestClientError } from "./lib/client-error-intake.js";
+import { ingestFrontendError } from "./lib/frontend-error-intake.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
 
@@ -64649,19 +64650,16 @@ app.get("/api/sovereign/audit/gates", async (req, res) => {
 });
 
 // === v3.1 Repair Cortex API ===
-app.post("/api/repair/frontend-error", async (req, res) => {
+app.post("/api/repair/frontend-error", perEndpointRateLimit("write.frontend-error"), async (req, res) => {
   try {
-    const { error, componentStack, lens, url, timestamp } = req.body;
-    const { ERROR_CONTEXT: EC, REPAIR_QUEUE: RQ } = await import("./emergent/repair-cortex.js");
-    const entry = EC.capture(new Error(error?.message || "Frontend error"), {
-      module: `frontend:${lens || "unknown"}`,
-      function: url || lens || "unknown",
-      trigger: "frontend_render",
-      params: { componentStack: componentStack?.slice(0, 500) },
-    });
-    RQ.push(entry);
-    res.json({ ok: true, errorId: entry.id });
-  } catch (e) { res.status(500).json({ ok: false, errorId: null, error: String(e?.message || e) }); }
+    const result = ingestFrontendError(req.body);
+    if (result.limited) {
+      res.set("Retry-After", "60");
+      return res.status(429).json({ ok: false, errorId: null, error: "rate_limited" });
+    }
+    if (!result.ok) return res.status(500).json({ ok: false, errorId: null, error: "ingest_failed" });
+    res.json({ ok: true, errorId: result.errorId });
+  } catch { res.status(500).json({ ok: false, errorId: null, error: "ingest_failed" }); }
 });
 
 app.post("/api/repair/frontend-recovery", async (req, res) => {

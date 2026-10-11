@@ -40,6 +40,7 @@ const LIMITS = {
   'write.esign':        { max: 30,  windowMs: 60000 },   // anonymous signing-link submits
   'write.proof-comment': { max: 5,  windowMs: 60000 },   // anonymous proof-link reviewer comments
   'write.client-error': { max: 200, windowMs: 60000 },   // anon telemetry; an error storm must not self-DoS
+  'write.frontend-error': { max: 60, windowMs: 60000 }, // route-boundary crashes; a render loop must not flood observe()
   'read.conkay-demo':   { max: 120, windowMs: 60000 },   // no-login ConKay demo — anonymous FEA solves, compute only
 };
 
