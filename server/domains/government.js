@@ -2,6 +2,81 @@ import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
 
+// api.congress.gov member-list `state` is the full name (swagger example
+// "Vermont"), not the postal code. Used to drop members the state-scoped
+// endpoint should not have returned.
+const CONGRESS_STATE_NAMES = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
+  CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
+  DC: "District of Columbia",
+  FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho",
+  IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas",
+  KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi",
+  MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada",
+  NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
+  NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+  OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah",
+  VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia",
+  WI: "Wisconsin", WY: "Wyoming",
+  AS: "American Samoa", GU: "Guam", MP: "Northern Mariana Islands",
+  PR: "Puerto Rico", VI: "U.S. Virgin Islands",
+};
+const CONGRESS_STATE_ALIASES = {
+  VI: ["Virgin Islands", "United States Virgin Islands"],
+};
+// Documented maximum page size. A current delegation fits in one page
+// (California is 54); offset still walks `pagination.next` / count so a
+// short page is not treated as the full list.
+const CONGRESS_MEMBER_PAGE_LIMIT = 250;
+const CONGRESS_MEMBER_MAX_PAGES = 6;
+
+function memberRepresentsState(member, code) {
+  const codeField = String(member?.stateCode || "").trim().toUpperCase();
+  if (codeField === code) return true;
+  const raw = String(member?.state || "").trim();
+  if (!raw) return false;
+  if (raw.toUpperCase() === code) return true;
+  const lower = raw.toLowerCase();
+  const names = [CONGRESS_STATE_NAMES[code], ...(CONGRESS_STATE_ALIASES[code] || [])];
+  return names.some((name) => name && name.toLowerCase() === lower);
+}
+
+function congressMemberListUrl(state, apiKey, offset) {
+  return `https://api.congress.gov/v3/member/${encodeURIComponent(state)}?currentMember=true&limit=${CONGRESS_MEMBER_PAGE_LIMIT}&offset=${offset}&format=json&api_key=${encodeURIComponent(apiKey)}`;
+}
+
+function congressNextOffset(pagination, currentOffset, pageLength) {
+  const next = pagination?.next;
+  if (typeof next === "string") {
+    const match = /[?&]offset=(\d+)/.exec(next);
+    if (match) {
+      const parsed = Number(match[1]);
+      if (Number.isFinite(parsed) && parsed > currentOffset) return parsed;
+    }
+  }
+  return currentOffset + pageLength;
+}
+
+function mapCongressMember(m) {
+  const term = (m.terms?.item || [])[0] || {};
+  return {
+    bioguideId: m.bioguideId,
+    name: m.name || `${m.firstName || ""} ${m.lastName || ""}`.trim(),
+    party: m.partyName === "Democratic" ? "D" : m.partyName === "Republican" ? "R" : (m.partyName || "I").charAt(0),
+    partyName: m.partyName,
+    state: m.state,
+    district: m.district != null ? String(m.district) : null,
+    office: term.chamber === "Senate" ? "U.S. Senate" : term.chamber === "House of Representatives" ? "U.S. House" : term.chamber || "Congress",
+    level: "federal",
+    termStart: term.startYear ? String(term.startYear) : null,
+    termEnd: term.endYear ? String(term.endYear) : null,
+    imageUrl: m.depiction?.imageUrl || null,
+    url: m.url || null,
+  };
+}
+
 export default function registerGovernmentActions(registerLensAction) {
   // Field-alias note (Wave 3 audit, docs/lens-specs/government-capability-
   // map.md): these four macros are driven by the generic "Permit"/
@@ -106,16 +181,12 @@ export default function registerGovernmentActions(registerLensAction) {
   }
 
   /**
-   * representatives-find — by ZIP / address. Returns federal + state +
-   * local reps. Seeded demo data (real impl would call Google Civic API
-   * or OpenStates).
+   * representatives-find — current federal members for one state.
+   * /v3/member ignores a stateCode query param; the state list is
+   * /v3/member/{stateCode}. Pages with offset so a delegation larger
+   * than one page is not silently cut off. total is the filtered count.
    */
   registerLensAction("government", "representatives-find", async (_ctx, _artifact, params = {}) => {
-    // Federal members of Congress via api.congress.gov — official source,
-    // free with API key. The current member-by-address lookup isn't in
-    // the Congress.gov API directly (Google Civic was the standard, now
-    // sunset), so we accept state + optional district and return all
-    // current Congress members for that state.
     const apiKey = process.env.CONGRESS_GOV_API_KEY;
     if (!apiKey) {
       return { ok: false, error: "CONGRESS_GOV_API_KEY env var required (free signup at https://api.congress.gov/sign-up/)" };
@@ -124,42 +195,83 @@ export default function registerGovernmentActions(registerLensAction) {
     if (!state || state.length !== 2) {
       return { ok: false, error: "state required as 2-letter code (e.g. CA, NY, TX)" };
     }
-    try {
-      const url = `https://api.congress.gov/v3/member?currentMember=true&stateCode=${state}&limit=50&format=json&api_key=${encodeURIComponent(apiKey)}`;
-      const r = await globalThis.fetch(url);
-      if (!r.ok) return { ok: false, error: `congress.gov ${r.status}` };
-      const data = await r.json();
+    const raw = [];
+    const seen = new Set();
+    let reportedCount = null;
+    let truncated = false;
+    let offset = 0;
+    for (let page = 0; page < CONGRESS_MEMBER_MAX_PAGES; page++) {
+      const url = congressMemberListUrl(state, apiKey, offset);
+      let r;
+      try {
+        r = await globalThis.fetch(url);
+      } catch (e) {
+        if (raw.length === 0) {
+          return { ok: false, error: `representatives lookup failed: ${e?.message || "network"}` };
+        }
+        truncated = true;
+        break;
+      }
+      if (!r.ok) {
+        if (raw.length === 0) return { ok: false, error: `congress.gov ${r.status}` };
+        truncated = true;
+        break;
+      }
+      let data;
+      try {
+        data = await r.json();
+      } catch (e) {
+        if (raw.length === 0) {
+          return { ok: false, error: `representatives lookup failed: ${e?.message || "network"}` };
+        }
+        truncated = true;
+        break;
+      }
       const members = Array.isArray(data?.members) ? data.members : [];
-      const representatives = members.map((m) => {
-        const term = (m.terms?.item || [])[0] || {};
-        return {
-          bioguideId: m.bioguideId,
-          name: m.name || `${m.firstName || ""} ${m.lastName || ""}`.trim(),
-          party: m.partyName === "Democratic" ? "D" : m.partyName === "Republican" ? "R" : (m.partyName || "I").charAt(0),
-          partyName: m.partyName,
-          state: m.state,
-          district: m.district != null ? String(m.district) : null,
-          office: term.chamber === "Senate" ? "U.S. Senate" : term.chamber === "House of Representatives" ? "U.S. House" : term.chamber || "Congress",
-          level: "federal",
-          termStart: term.startYear ? String(term.startYear) : null,
-          termEnd: term.endYear ? String(term.endYear) : null,
-          imageUrl: m.depiction?.imageUrl || null,
-          url: m.url || null,
-        };
-      });
-      return {
-        ok: true,
-        result: {
-          representatives,
-          state,
-          total: data?.pagination?.count ?? representatives.length,
-          source: "api.congress.gov (current Congress)",
-          notes: "Returns all current US House + Senate members for the given state. State + local representatives require OpenStates API (separate integration).",
-        },
-      };
-    } catch (e) {
-      return { ok: false, error: `representatives lookup failed: ${e?.message || "network"}` };
+      const countRaw = data?.pagination?.count;
+      if (countRaw != null && Number.isFinite(Number(countRaw))) reportedCount = Number(countRaw);
+      let added = 0;
+      for (const m of members) {
+        const key = m?.bioguideId
+          ? `id:${m.bioguideId}`
+          : `row:${m?.name || ""}|${m?.state || ""}|${m?.district ?? ""}|${m?.url || ""}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        raw.push(m);
+        added += 1;
+      }
+      const more = Boolean(data?.pagination?.next)
+        || (reportedCount != null && raw.length < reportedCount)
+        || (members.length >= CONGRESS_MEMBER_PAGE_LIMIT && reportedCount == null);
+      if (!more) break;
+      if (members.length === 0 || added === 0) {
+        truncated = reportedCount == null || raw.length < reportedCount;
+        break;
+      }
+      const nxt = congressNextOffset(data?.pagination, offset, members.length);
+      if (nxt <= offset) {
+        truncated = true;
+        break;
+      }
+      offset = nxt;
+      if (page === CONGRESS_MEMBER_MAX_PAGES - 1) truncated = true;
     }
+    const representatives = raw.filter((m) => memberRepresentsState(m, state)).map(mapCongressMember);
+    const partial = truncated || (reportedCount != null && raw.length < reportedCount);
+    const notes = partial
+      ? `Partial list of current US House + Senate members for ${state}. congress.gov reported ${reportedCount == null ? "more members than were returned" : `${reportedCount} members`} and this response did not receive the full set (${representatives.length} after keeping only ${state}). State + local representatives require OpenStates API (separate integration).`
+      : "Returns all current US House + Senate members for the given state. State + local representatives require OpenStates API (separate integration).";
+    return {
+      ok: true,
+      result: {
+        representatives,
+        state,
+        total: representatives.length,
+        partial,
+        source: "api.congress.gov (current Congress)",
+        notes,
+      },
+    };
   });
 
   /**
