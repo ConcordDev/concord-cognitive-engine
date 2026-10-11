@@ -292,14 +292,25 @@ describe("welding — client portal", () => {
     assert.equal(ap.result.estimate.status, "accepted");
   });
 
-  it("portal-pay records a client payment against an invoice", () => {
+  it("portal-pay refuses a card payment with no capture, for the token holder and the owner", () => {
     const e = call("estimate-create", ctxA, { title: "Portal pay", lineItems: [{ description: "x", quantity: 1, unitPrice: 500, kind: "labor" }] });
     const conv = call("estimate-to-job", ctxA, { estimateId: e.result.estimate.id });
     const inv = call("invoice-from-job", ctxA, { jobId: conv.result.job.id });
     const token = inv.result.invoice.portalToken;
-    const pay = call("portal-pay", ctxB, { token, amount: 500, method: "card" });
-    assert.equal(pay.ok, true);
-    assert.equal(pay.result.invoice.status, "paid");
+    const invoiceId = inv.result.invoice.id;
+    const stranger = call("portal-pay", ctxB, { token, amount: 500, method: "card" });
+    assert.equal(stranger.ok, false);
+    assert.equal(stranger.error, "payment_capture_not_wired");
+    assert.equal(stranger.reason, "payment_capture_not_wired");
+    const owner = call("portal-pay", ctxA, { token, amount: 10, method: "card" });
+    assert.equal(owner.ok, false);
+    assert.equal(owner.error, "payment_capture_not_wired");
+    const listed = call("invoice-list", ctxA, {});
+    const row = listed.result.invoices.find((i) => i.id === invoiceId);
+    assert.equal(row.balance, 500);
+    assert.equal(row.amountPaid, 0);
+    assert.equal(row.status, "unpaid");
+    assert.deepEqual(row.payments, []);
   });
 
   it("portal-view rejects an invalid token", () => {

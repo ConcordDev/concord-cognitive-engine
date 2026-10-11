@@ -699,29 +699,25 @@ export default function registerWeldingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  registerLensAction("welding", "portal-pay", (ctx, _a, params = {}) => {
-    try {
-      const s = getWeldState(); if (!s) return noState;
-      const ref = s.portal.get(wClean(params.token, 120));
-      if (!ref || ref.kind !== "invoice") return { ok: false, error: "invalid_token" };
-      const inv = wList(s, "invoices", ref.ownerId).find((i) => i.id === ref.refId);
-      if (!inv) return { ok: false, error: "invoice_not_found" };
-      const amt = Math.round(Math.max(0, wNum(params.amount)) * 100) / 100;
-      if (amt <= 0 || amt > inv.balance + 0.001) return { ok: false, error: "invalid_amount" };
-      const payment = {
-        id: wId("pay"),
-        amount: amt,
-        method: ["card", "ach"].includes(params.method) ? params.method : "card",
-        reference: wClean(params.reference, 80) || "client-portal",
-        recordedAt: new Date().toISOString(),
-      };
-      inv.payments.push(payment);
-      inv.amountPaid = Math.round((inv.amountPaid + amt) * 100) / 100;
-      inv.balance = Math.round((inv.amount - inv.amountPaid) * 100) / 100;
-      inv.status = inv.balance <= 0.001 ? "paid" : "partial";
-      saveWeld();
-      return { ok: true, result: { invoice: inv, payment } };
-    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  // Card/ACH capture is not wired. This action used to append a
+  // self-reported {method:"card"|"ach", reference:"client-portal"} payment
+  // and flip the owner's invoice to partial/paid. Any logged-in caller who
+  // knew the portal token could do that — a stranger, or the owner on their
+  // own invoice — with no processor charge. POST /api/welding/portal/:token/pay
+  // already returns 501 payment_capture_not_wired and never calls this
+  // handler; the handler itself must refuse too, or /api/lens/run is a back
+  // door around that honesty fix. It does not look up the token and does
+  // not write state. Owner bookkeeping of money already received stays on
+  // invoice-payment (cash/check/card label the welder records themselves).
+  // portal-view and portal-approve stay token-capability actions: viewing
+  // and approving an estimate by token is the portal's job.
+  registerLensAction("welding", "portal-pay", (_ctx, _a, _params = {}) => {
+    return {
+      ok: false,
+      error: "payment_capture_not_wired",
+      reason: "payment_capture_not_wired",
+      message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
+    };
   });
 
   // ── Operations dashboard rollup ───────────────────────────────────

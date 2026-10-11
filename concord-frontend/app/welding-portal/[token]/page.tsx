@@ -21,12 +21,13 @@
  * an anonymous visitor isn't redirected to /login or shown app chrome
  * before reaching this page.
  *
- * Payment is intentionally honest-not-wired: `welding.portal-pay` only
- * records a self-reported amount with no real card/ACH charge behind it,
- * so the public /pay route returns an explicit "not yet available"
- * response instead of ever claiming a payment succeeded. This page surfaces
- * that real backend response verbatim rather than hard-coding a message
- * client-side.
+ * Payment is intentionally honest-not-wired. Neither this page nor
+ * `welding.portal-pay` records a card/ACH payment: there is no processor
+ * charge behind the token. The public /pay route returns
+ * `payment_capture_not_wired`, and the lens action returns the same
+ * refusal so a logged-in caller cannot record a payment the public route
+ * refuses. This page surfaces that real backend response verbatim rather
+ * than hard-coding a message client-side.
  */
 
 import { useCallback, useEffect, useState } from 'react';

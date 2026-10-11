@@ -58411,20 +58411,16 @@ app.post("/api/welding/portal/:token/approve", async (req, res) => {
   }
 });
 
-// POST — invoice payment. Deliberately NOT wired to the `welding.portal-pay`
-// macro. That macro only RECORDS a self-reported {amount, method,
-// reference} onto the invoice — there is no real card/ACH charge behind it
-// (no Stripe PaymentIntent, no gateway call of any kind). Exposing that as
-// a public, unauthenticated action would let anyone holding a portal link
-// mark their own invoice "paid" with zero money changing hands — an
-// invoice-fraud vector, not an honest payment flow, and squarely the kind
-// of fabricated-success path CLAUDE.md's honest-by-construction + money
-// invariants rule out. This route still validates the token (so it 404s
-// instead of leaking on a bad token) and returns an explicit "not yet
-// wired" state rather than a fabricated success. `portal-pay` remains
-// reachable through the authenticated `/api/lens/run` path for a
-// logged-in welder to log a payment they received by another channel
-// (cash/check/in-person card reader) — that use is unaffected.
+// POST — invoice payment. There is no card/ACH capture (no Stripe
+// PaymentIntent, no gateway call). `welding.portal-pay` used to RECORD a
+// self-reported {amount, method, reference} and mark the invoice paid;
+// INC-55 (2026-10-11) closed that on the handler itself, because any
+// logged-in caller who knew the token could hit it through `/api/lens/run`
+// and fabricate a "card" payment. This route still does not call that
+// handler. It validates the token (404 on a bad one, 400 if the token is
+// not an invoice) and returns 501 payment_capture_not_wired. Owner
+// bookkeeping of money already received is `welding.invoice-payment`,
+// scoped to the invoice owner, not this public token.
 app.post("/api/welding/portal/:token/pay", async (req, res) => {
   try {
     const view = await _runWeldingPortalAction("portal-view", req.params.token);
