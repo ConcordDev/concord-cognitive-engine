@@ -13,6 +13,7 @@
  */
 
 import logger from "../logger.js";
+import { fetchPublicUrl } from "./public-fetch.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
 const MAX_SCROLL_ITERATIONS = 50;
 const SCROLL_PAUSE_MS = 1500;
 const MAX_PAGE_CONTENT_BYTES = 10 * 1024 * 1024; // 10 MB safety cap
+const FETCH_FALLBACK_TIMEOUT_MS = 10_000;
+const FETCH_FALLBACK_MAX_BYTES = 1_500_000;
 const USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ConcordOS/2.0";
 
@@ -35,6 +38,18 @@ let _browserLaunchPromise = null;
 
 /** @type {boolean} */
 let _cleanupRegistered = false;
+
+/** @type {(() => Promise<import('playwright').Browser>) | null} */
+let _ensureBrowserOverride = null;
+
+/**
+ * TEST-ONLY: force fetchRenderedPage's browser launch to succeed or throw
+ * without starting Chromium. Pass null to restore the real launcher.
+ * @param {(() => Promise<import('playwright').Browser>) | null} fn
+ */
+export function __setEnsureBrowserForTests(fn) {
+  _ensureBrowserOverride = typeof fn === "function" ? fn : null;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -184,7 +199,22 @@ export class BrowserEngine {
    */
   async fetchRenderedPage(url, options = {}) {
     if (!url) throw new Error("url is required");
-    const browser = await ensureBrowser();
+    let browser;
+    try {
+      const launch = _ensureBrowserOverride || ensureBrowser;
+      browser = await launch();
+    } catch (err) {
+      if (isChromiumUnavailable(err)) {
+        logger.warn?.(`[browser-engine] Chromium unavailable; using fetch fallback for ${url}: ${err?.message}`);
+        return fetchHtmlFallback(url, options);
+      }
+      return {
+        ok: false,
+        error: err?.message || String(err),
+        url,
+        provenance: provenance(url, { error: err?.message, rendered: false }),
+      };
+    }
     const page = await createPage(browser, {
       timeout: options.timeout || this.timeout,
       viewport: this.viewport,
@@ -624,5 +654,312 @@ export class BrowserEngine {
 
 /** Shared singleton instance with default config */
 export const browserEngine = new BrowserEngine();
+
+/**
+ * The engine instance callers (browse_url) already expect. Chromium may
+ * still be absent; fetchRenderedPage falls back to a plain HTTP fetch then.
+ */
+export function getBrowserEngine() {
+  return browserEngine;
+}
+
+function isChromiumUnavailable(err) {
+  const msg = String(err?.message || err || "");
+  return /playwright is not available|executable doesn't exist|failed to launch|browsertype\.launch/i.test(msg);
+}
+
+function decodeHtmlEntities(s) {
+  return String(s)
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;|&#0*39;/gi, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => safeCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => safeCodePoint(parseInt(d, 10)))
+    .replace(/&amp;/gi, "&");
+}
+
+function safeCodePoint(n) {
+  if (!Number.isFinite(n) || n <= 0 || n > 0x10FFFF) return "";
+  try { return String.fromCodePoint(n); } catch { return ""; }
+}
+
+const _SKIP_HTML = new Set(["script", "style", "noscript", "head"]);
+const _BLOCK_HTML = new Set(["br", "p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "tr", "blockquote", "section", "article"]);
+
+function isHtmlSpace(c) {
+  return c === " " || c === "\n" || c === "\r" || c === "\t" || c === "\f";
+}
+
+function isHtmlNameChar(c) {
+  const code = c.charCodeAt(0);
+  return (code >= 48 && code <= 57)
+    || (code >= 65 && code <= 90)
+    || (code >= 97 && code <= 122)
+    || c === ":" || c === "-" || c === "_";
+}
+
+/**
+ * One tag starting at `src[start] === "<"`.
+ * Closing names may have whitespace before `>` (`</script >`, `</SCRIPT>`).
+ * Returns null when `<` is not a tag so the caller keeps that character.
+ * An unclosed `<...` with no `>` is literal text through EOF (still one pass).
+ */
+function readHtmlTag(src, start) {
+  const n = src.length;
+  let i = start + 1;
+  if (i >= n) return null;
+  const lead = src[i];
+  if (lead === "!" || lead === "?") {
+    const end = src.indexOf(">", i);
+    if (end < 0) return { literal: true, end: n };
+    return { decl: true, end: end + 1 };
+  }
+  let closing = false;
+  if (lead === "/") {
+    closing = true;
+    i += 1;
+  }
+  while (i < n && isHtmlSpace(src[i])) i += 1;
+  const nameStart = i;
+  while (i < n && isHtmlNameChar(src[i])) i += 1;
+  if (i === nameStart) return null;
+  const name = src.slice(nameStart, i);
+  let quote = "";
+  let closed = false;
+  let selfClosing = false;
+  while (i < n) {
+    const c = src[i];
+    if (quote) {
+      if (c === quote) quote = "";
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      i += 1;
+      continue;
+    }
+    if (c === "/") {
+      selfClosing = true;
+      i += 1;
+      continue;
+    }
+    if (c === ">") {
+      closed = true;
+      i += 1;
+      break;
+    }
+    if (!isHtmlSpace(c)) selfClosing = false;
+    i += 1;
+  }
+  if (!closed) return { literal: true, end: n };
+  return { name, closing, selfClosing, end: i };
+}
+
+/**
+ * Readable text from a raw HTML document. Drops script/style/head chrome
+ * and decodes the common entities. Single left-to-right pass — tag names
+ * are case-insensitive and a closing tag may have whitespace before `>`.
+ */
+export function extractReadableText(html) {
+  const src = String(html || "");
+  const n = src.length;
+  const textParts = [];
+  const titleParts = [];
+  let skip = "";
+  let inTitle = false;
+  let i = 0;
+
+  const pushText = (s) => {
+    if (s && !skip) textParts.push(s);
+  };
+  const pushTitle = (s) => {
+    if (s && inTitle) titleParts.push(s);
+  };
+
+  while (i < n) {
+    const lt = src.indexOf("<", i);
+    if (lt < 0) {
+      const rest = src.slice(i);
+      pushText(rest);
+      pushTitle(rest);
+      break;
+    }
+    if (lt > i) {
+      const chunk = src.slice(i, lt);
+      pushText(chunk);
+      pushTitle(chunk);
+    }
+    if (src.startsWith("<!--", lt)) {
+      const end = src.indexOf("-->", lt + 4);
+      i = end < 0 ? n : end + 3;
+      pushText(" ");
+      continue;
+    }
+    const tag = readHtmlTag(src, lt);
+    if (!tag) {
+      pushText("<");
+      pushTitle("<");
+      i = lt + 1;
+      continue;
+    }
+    if (tag.literal) {
+      const rest = src.slice(lt);
+      pushText(rest);
+      pushTitle(rest);
+      break;
+    }
+    i = tag.end;
+    if (tag.decl) {
+      pushText(" ");
+      continue;
+    }
+    const name = tag.name.toLowerCase();
+    const headStructure = skip === "head" && (name === "title" || name === "head");
+    if (skip && !headStructure) {
+      if (tag.closing && name === skip) {
+        skip = "";
+        pushText(" ");
+      }
+      continue;
+    }
+    if (tag.closing) {
+      if (name === "title") inTitle = false;
+      if (name === "head") skip = "";
+      pushText(_BLOCK_HTML.has(name) ? "\n" : " ");
+      continue;
+    }
+    if (name === "title") {
+      inTitle = true;
+      continue;
+    }
+    if (!tag.selfClosing && _SKIP_HTML.has(name)) {
+      skip = name;
+      continue;
+    }
+    pushText(name === "br" ? "\n" : " ");
+  }
+
+  const title = decodeHtmlEntities(titleParts.join("")).replace(/\s+/g, " ").trim();
+  const text = decodeHtmlEntities(textParts.join(""))
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { title, text };
+}
+
+async function readBodyCapped(res, maxBytes) {
+  const reader = res?.body && typeof res.body.getReader === "function" ? res.body.getReader() : null;
+  if (!reader) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    const capped = buf.subarray(0, maxBytes);
+    return { html: capped.toString("utf8"), truncated: buf.length > maxBytes, bytes: capped.length };
+  }
+  const chunks = [];
+  let received = 0;
+  let truncated = false;
+  while (received < maxBytes) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const bytes = Buffer.from(value);
+    const room = maxBytes - received;
+    if (bytes.length > room) {
+      chunks.push(bytes.subarray(0, room));
+      received += room;
+      truncated = true;
+      break;
+    }
+    chunks.push(bytes);
+    received += bytes.length;
+  }
+  try { await reader.cancel(); } catch { /* producer may already be done */ }
+  return { html: Buffer.concat(chunks).toString("utf8"), truncated, bytes: received };
+}
+
+/**
+ * Plain HTTP fetch + tag strip, used when Playwright Chromium is not installed.
+ * The result is labeled as a fetch fallback (not a JS-rendered page).
+ */
+export async function fetchHtmlFallback(url, options = {}) {
+  // options.timeout / options.maxBytes are caller-controlled. An unbounded
+  // timer delay or read limit is resource exhaustion — both sit under the
+  // module ceilings (10s, 1.5MB).
+  let timeoutMs = Number(options.timeout);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
+  let maxBytes = Math.floor(Number(options.maxBytes));
+  if (!Number.isFinite(maxBytes) || maxBytes <= 0 || maxBytes > FETCH_FALLBACK_MAX_BYTES) {
+    maxBytes = FETCH_FALLBACK_MAX_BYTES;
+  }
+  const ctrl = new AbortController();
+  // The timer delay is a resource-exhaustion sink. The call that receives a
+  // caller-supplied number sits in the true branch of `< ceiling`; the other
+  // branch passes the constant. An assignment after `>` is not enough — the
+  // use has to be in the checked branch.
+  let timer;
+  if (timeoutMs < FETCH_FALLBACK_TIMEOUT_MS) {
+    timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  } else {
+    timeoutMs = FETCH_FALLBACK_TIMEOUT_MS;
+    timer = setTimeout(() => ctrl.abort(), FETCH_FALLBACK_TIMEOUT_MS);
+  }
+  try {
+    const res = await fetchPublicUrl(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1",
+      },
+    }, typeof options.fetchImpl === "function" ? { fetchImpl: options.fetchImpl } : {});
+    if (!res?.ok) {
+      const status = res?.status ?? "error";
+      return {
+        ok: false,
+        error: `fetch fallback HTTP ${status}`,
+        url,
+        fallback: "fetch",
+        label: "fetch fallback",
+        provenance: provenance(url, { via: "fetch-fallback", rendered: false, label: "fetch fallback", error: `HTTP ${status}` }),
+      };
+    }
+    const { html, truncated, bytes } = await readBodyCapped(res, maxBytes);
+    const { title, text } = extractReadableText(html);
+    return {
+      ok: true,
+      html,
+      text,
+      title,
+      url,
+      truncated,
+      fallback: "fetch",
+      label: "fetch fallback",
+      provenance: provenance(url, {
+        via: "fetch-fallback",
+        rendered: false,
+        label: "fetch fallback",
+        contentLength: bytes,
+        truncated,
+      }),
+    };
+  } catch (err) {
+    const aborted = err?.name === "AbortError" || ctrl.signal.aborted;
+    const message = aborted
+      ? `fetch fallback timeout after ${timeoutMs}ms`
+      : `fetch fallback failed: ${err?.message || err}`;
+    return {
+      ok: false,
+      error: message,
+      url,
+      fallback: "fetch",
+      label: "fetch fallback",
+      provenance: provenance(url, { via: "fetch-fallback", rendered: false, label: "fetch fallback", error: message }),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default BrowserEngine;
