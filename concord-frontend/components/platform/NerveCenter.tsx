@@ -35,6 +35,46 @@ type BridgeModule = {
   desc: string;
 };
 
+type HypothesisStats = {
+  proposed: number;
+  supported: number;
+  refuted: number;
+  inconclusive: number;
+};
+
+type HypothesisStatusBody = {
+  ok?: boolean;
+  error?: string;
+  stats?: Partial<HypothesisStats>;
+};
+
+const GENERIC_HYPOTHESIS_ERROR = 'An unexpected error occurred';
+
+function hypothesisStatsFrom(body: HypothesisStatusBody | undefined): HypothesisStats | null {
+  const stats = body?.stats;
+  if (body?.ok !== true || stats == null || typeof stats !== 'object') return null;
+  const keys = ['proposed', 'supported', 'refuted', 'inconclusive'] as const;
+  const out = {} as HypothesisStats;
+  for (const key of keys) {
+    const value = stats[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    out[key] = value;
+  }
+  return out;
+}
+
+function hypothesisErrorDetail(error: unknown, body: HypothesisStatusBody | undefined): string | null {
+  const fromBody = typeof body?.error === 'string' ? body.error.trim() : '';
+  let fromThrown = '';
+  if (error && typeof error === 'object' && 'response' in error) {
+    const data = (error as { response?: { data?: { error?: unknown } } }).response?.data;
+    if (typeof data?.error === 'string') fromThrown = data.error.trim();
+  }
+  const raw = fromBody || fromThrown;
+  if (!raw || raw === GENERIC_HYPOTHESIS_ERROR) return null;
+  return raw;
+}
+
 function HealthIndicator({
   pass,
   label,
@@ -132,7 +172,12 @@ function NerveCenter() {
     refetchInterval: 30000,
   });
 
-  const { data: hypothesisRes } = useQuery({
+  const {
+    data: hypothesisRes,
+    isPending: hypothesisPending,
+    isError: hypothesisIsError,
+    error: hypothesisError,
+  } = useQuery({
     queryKey: ['hypothesis-status'],
     queryFn: () => apiHelpers.hypothesis.status(),
     refetchInterval: 30000,
@@ -148,7 +193,10 @@ function NerveCenter() {
   const bridgeModules: BridgeModule[] = bridgeInfoRes?.data?.bridges || [];
   const strategyData = strategyRes?.data?.ok ? strategyRes.data : null;
   const scopeData = scopeRes?.data;
-  const hypothesisData = hypothesisRes?.data;
+  const hypothesisBody = hypothesisRes?.data as HypothesisStatusBody | undefined;
+  const hypothesisStats = hypothesisStatsFrom(hypothesisBody);
+  const hypothesisFailed = hypothesisIsError || hypothesisBody?.ok === false || (!hypothesisPending && !hypothesisStats);
+  const hypothesisDetail = hypothesisFailed ? hypothesisErrorDetail(hypothesisError, hypothesisBody) : null;
   const metalearningData = metalearningRes?.data;
 
   return (
@@ -224,27 +272,34 @@ function NerveCenter() {
             <Lightbulb className="w-4 h-4 text-neon-yellow" />
             Hypothesis Engine
           </h3>
-          {hypothesisData ? (
+          {hypothesisPending && !hypothesisIsError ? (
+            <p className="text-xs text-gray-400">Loading hypothesis metrics</p>
+          ) : hypothesisStats && !hypothesisFailed ? (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-400">Proposed</span>
-                <span className="text-gray-200">{hypothesisData.stats?.proposed ?? 0}</span>
+                <span className="text-gray-200">{hypothesisStats.proposed}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Supported</span>
-                <span className="text-neon-green">{hypothesisData.stats?.supported ?? 0}</span>
+                <span className="text-neon-green">{hypothesisStats.supported}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Refuted</span>
-                <span className="text-neon-orange">{hypothesisData.stats?.refuted ?? 0}</span>
+                <span className="text-neon-orange">{hypothesisStats.refuted}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Inconclusive</span>
-                <span className="text-gray-400">{hypothesisData.stats?.inconclusive ?? 0}</span>
+                <span className="text-gray-400">{hypothesisStats.inconclusive}</span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 italic">Not yet initialized</p>
+            <p role="alert" className="text-xs text-neon-orange">
+              Hypothesis metrics unavailable
+              {hypothesisDetail ? (
+                <span className="mt-1 block text-gray-400">{hypothesisDetail}</span>
+              ) : null}
+            </p>
           )}
         </div>
 
