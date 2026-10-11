@@ -73,6 +73,17 @@ export default function VerifyReceipt() {
         setHttpError('Too many checks from this address. Wait a minute and try again.');
         return;
       }
+      // A 403 is the gate refusing the request. It is not a signature verdict,
+      // even if the body happens to carry a valid flag.
+      if (res.status === 403) {
+        const code = data && typeof data === 'object' && 'code' in data ? String(data.code) : '';
+        setHttpError(
+          code === 'CSRF_FAILED'
+            ? 'The server blocked the check (CSRF) before it read the receipt. Nothing was verified.'
+            : 'The server refused the check (403). Nothing was verified.',
+        );
+        return;
+      }
       if (!res.ok || !data || typeof data.valid !== 'boolean') {
         setHttpError(data?.reason ? `The server rejected the receipt (${data.reason}).` : `The server returned ${res.status}.`);
         return;
