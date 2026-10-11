@@ -47,7 +47,7 @@ const EXAMPLE_RECORDS: PrivacyRecord[] = [
 type AnonView = 'messenger' | 'lab' | 'network';
 
 const VIEWS: { id: AnonView; label: string; keys: string; title: string; hint: string; icon: typeof Lock }[] = [
-  { id: 'messenger', label: 'Messenger', keys: '1', title: 'Say it without a name', hint: 'End-to-end encrypted pseudonymous messages', icon: MessageSquare },
+  { id: 'messenger', label: 'Messenger', keys: '1', title: 'Say it without a name', hint: 'Pseudonymous messages stored encrypted on Concord\u2019s server', icon: MessageSquare },
   { id: 'lab', label: 'Privacy lab', keys: '2', title: 'How hidden is your data', hint: 'k-anonymity, re-identification risk, differential privacy', icon: Gauge },
   { id: 'network', label: 'Network', keys: '3', title: 'How your traffic travels', hint: 'Tor network status', icon: Network },
 ];
@@ -98,7 +98,7 @@ export default function AnonLensPage() {
         category: 'navigation' as const,
         action: () => setView(v.id),
       })),
-      { id: 'anon-new-conversation', keys: 'n', description: 'New encrypted conversation', category: 'actions' as const, action: newConversation },
+      { id: 'anon-new-conversation', keys: 'n', description: 'New conversation', category: 'actions' as const, action: newConversation },
       {
         id: 'run-anonymize',
         keys: 'mod+k',
@@ -153,9 +153,6 @@ export default function AnonLensPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-1 text-[12px] text-teal-300">
-              <Lock className="h-3.5 w-3.5" /> E2E encrypted
-            </span>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="anon" data={realtimeData || {}} compact />
           </div>
@@ -185,10 +182,9 @@ export default function AnonLensPage() {
           })}
         </nav>
 
-        {/* ── Real E2E messenger ── */}
         {view === 'messenger' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <p className="mb-3 text-[13px] text-zinc-500">X25519 + AES-256-GCM end-to-end encrypted pseudonymous messaging.</p>
+            <p className="mb-3 text-[13px] text-zinc-500">Pseudonymous messaging. The thread notice states who can read a conversation.</p>
             <AnonMessenger />
           </section>
         )}
@@ -490,7 +486,7 @@ export default function AnonLensPage() {
         <button
           type="button"
           onClick={newConversation}
-          title="New encrypted conversation (N)"
+          title="New conversation (N)"
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
           <Plus className="h-4 w-4" />
