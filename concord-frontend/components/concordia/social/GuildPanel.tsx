@@ -9,6 +9,8 @@ interface Guild {
   type: string;
   description: string;
   leaderId?: string;
+  viewerIsLeader?: boolean;
+  myRole?: string;
   bankSparks?: number;
   memberCount?: number;
 }
@@ -67,7 +69,7 @@ export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
     api.get('/api/world/orgs').then(r => {
       const all: Guild[] = r.data?.organizations ?? [];
       setGuilds(all);
-      setMyGuild(all.find(g => g.leaderId === playerId) ?? null);
+      setMyGuild(all.find(g => g.viewerIsLeader || (g.leaderId != null && g.leaderId === playerId)) ?? null);
     }).finally(() => setLoading(false));
   }, [playerId]);
 
@@ -293,10 +295,10 @@ export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
                   </div>
                   <button
                     onClick={() => handleJoin(g.id)}
-                    disabled={joining === g.id || g.leaderId === playerId}
+                    disabled={joining === g.id || !!g.viewerIsLeader || g.leaderId === playerId}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white flex-shrink-0"
                   >
-                    {joining === g.id ? '…' : g.leaderId === playerId ? 'Yours' : 'Join'}
+                    {joining === g.id ? '…' : (g.viewerIsLeader || g.leaderId === playerId) ? 'Yours' : 'Join'}
                   </button>
                 </div>
               ))
