@@ -102,6 +102,7 @@ export function BrowserPanel() {
   const [tierFilter, setTierFilter] = useState<DTUTier | 'all'>('all');
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const newDtuRef = useRef<HTMLButtonElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
   // Default to the viewer's own vault — not the shared global substrate, which
@@ -126,6 +127,13 @@ export function BrowserPanel() {
     ],
     { lensId: 'dtus' }
   );
+
+  // Stamp after commit so Playwright can wait until onClick is attached.
+  // A click on the server HTML before this is a no-op under load.
+  useEffect(() => {
+    const el = newDtuRef.current;
+    if (el) el.dataset.hydrated = 'true';
+  }, []);
 
   // Backend action wiring
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -296,6 +304,9 @@ export function BrowserPanel() {
                 <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
               </button>
               <button
+                ref={newDtuRef}
+                type="button"
+                data-hydrated="false"
                 onClick={() => setShowCreateForm(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neon-blue/20 text-neon-blue border border-neon-blue/30 rounded-lg hover:bg-neon-blue/30 transition-colors"
               >
