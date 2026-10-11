@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UtensilsCrossed, Plus, Trash2, ShoppingCart, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Meal {
@@ -26,7 +27,7 @@ function weekDates(offset: number) {
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday); d.setDate(monday.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return calendarDateKey(d);
   });
 }
 

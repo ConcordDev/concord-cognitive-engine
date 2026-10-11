@@ -18,9 +18,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return calendarDateKey();
 }
 
 // ---------------------------------------------------------------------------

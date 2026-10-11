@@ -18,6 +18,7 @@ import {
   LayoutDashboard, CalendarSearch, Send,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -828,7 +829,7 @@ function ConflictsAvailabilityPanel() {
   const [conflictErr, setConflictErr] = useState<string | null>(null);
   const [conflictBusy, setConflictBusy] = useState(false);
 
-  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [day, setDay] = useState(() => calendarDateKey());
   const [durationMin, setDurationMin] = useState(30);
   const [slots, setSlots] = useState<FreeSlot[] | null>(null);
   const [availErr, setAvailErr] = useState<string | null>(null);

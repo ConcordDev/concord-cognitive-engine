@@ -4,6 +4,7 @@ import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check, Milestone } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string }
@@ -198,7 +199,7 @@ export function CalendarPanel() {
     } catch (e) { console.error('[Calendar] add suggestion failed', e); }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
   const upcoming = list.filter(e => e.date >= today);
   const past = list.filter(e => e.date < today);
 

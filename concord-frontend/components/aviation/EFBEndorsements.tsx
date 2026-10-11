@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Award, Stamp, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 interface Endorsement {
   id: string;
@@ -46,7 +47,7 @@ const RATING_TYPES = [
 ];
 
 const fmt = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => calendarDateKey();
 
 export default function EFBEndorsements() {
   const [endorsements, setEndorsements] = useState<Endorsement[]>([]);

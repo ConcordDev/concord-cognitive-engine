@@ -22,6 +22,9 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  calendarDateKey, coerceDateKey, formatDateKey, profileTimeZone, resolveCalendarTimeZone, shiftDateKey,
+} from '@/lib/calendar-date';
 
 // -- Types ------------------------------------------------------------------
 interface JournalEntry { id: string; date: string; mood: number | null; notes: string; workedOn: string; learned: string; goals: string }
@@ -122,10 +125,13 @@ export function DailyTodayPanel() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('daily');
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
+  const timeZone = resolveCalendarTimeZone(profileTimeZone(user));
+  const today = calendarDateKey(new Date(), timeZone);
 
   // -- State ----------------------------------------------------------------
   const [selectedDate, setSelectedDate] = useState(today);
+  const datePicked = useRef(false);
+  const calendarMoved = useRef(false);
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderDue, setReminderDue] = useState('');
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
@@ -152,7 +158,9 @@ export function DailyTodayPanel() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [localReminders, setLocalReminders] = useState<Reminder[]>([]);
   const [calMonth, setCalMonth] = useState(() => {
-    const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() };
+    const key = calendarDateKey(new Date(), resolveCalendarTimeZone(profileTimeZone(user)));
+    const [year, month] = key.split('-').map(Number);
+    return { year, month: (month || 1) - 1 };
   });
 
   // ── Backend action state ───────────────────────────────────────────────────
@@ -413,35 +421,77 @@ export function DailyTodayPanel() {
     return cells;
   }, [calMonth]);
 
-  const entries: JournalEntry[] = useMemo(() => entryItems.map(i => i.data as unknown as JournalEntry), [entryItems]);
+  const entries: JournalEntry[] = useMemo(() => entryItems.map((item) => {
+    const data = (item.data || {}) as Partial<JournalEntry>;
+    const rawDate = typeof data.date === 'string' && data.date ? data.date : item.title;
+    return {
+      id: item.id,
+      date: coerceDateKey(rawDate, timeZone),
+      mood: typeof data.mood === 'number' ? data.mood : null,
+      notes: typeof data.notes === 'string' ? data.notes : '',
+      workedOn: typeof data.workedOn === 'string' ? data.workedOn : '',
+      learned: typeof data.learned === 'string' ? data.learned : '',
+      goals: typeof data.goals === 'string' ? data.goals : '',
+    };
+  }), [entryItems, timeZone]);
 
-  const entryDates = useMemo(() => new Set(entries.map((e) => e.date)), [entries]);
+  const entryDates = useMemo(() => new Set(entries.map((e) => e.date).filter(Boolean)), [entries]);
 
-  const recentDates = useMemo(() => {
-    const dates: string[] = [];
-    for (let i = 0; i < 14; i++) { const d = new Date(); d.setDate(d.getDate() - i); dates.push(d.toISOString().split('T')[0]); }
-    return dates;
-  }, []);
+  const recentDates = useMemo(() => (
+    Array.from({ length: 14 }, (_, i) => shiftDateKey(today, -i))
+  ), [today]);
 
-  const entriesThisWeek = entries.filter((e) => {
-    return (new Date().getTime() - new Date(e.date).getTime()) / 86400000 <= 7;
-  }).length;
+  const weekStart = shiftDateKey(today, -6);
+  const entriesThisWeek = entries.filter((e) => e.date >= weekStart && e.date <= today).length;
 
-  // Real consecutive-day streak computed from actual journal-entry dates —
-  // replaces a previously hardcoded "5 days" label that never moved with
-  // real data. Counts backward from today; a day with no entry yet (today,
-  // before writing one) doesn't break a streak that ended yesterday.
+  // Real consecutive-day streak computed from actual journal-entry dates.
+  // Counts backward from the local calendar day; a day with no entry yet
+  // (today, before writing one) doesn't break a streak that ended yesterday.
   const journalStreak = useMemo(() => {
     if (entryDates.size === 0) return 0;
     let streak = 0;
-    const cursor = new Date();
-    if (!entryDates.has(cursor.toISOString().split('T')[0])) cursor.setDate(cursor.getDate() - 1);
-    while (entryDates.has(cursor.toISOString().split('T')[0])) {
+    let cursor = entryDates.has(today) ? today : shiftDateKey(today, -1);
+    while (entryDates.has(cursor)) {
       streak++;
-      cursor.setDate(cursor.getDate() - 1);
+      cursor = shiftDateKey(cursor, -1);
     }
     return streak;
-  }, [entryDates]);
+  }, [entryDates, today]);
+
+  const entryForDate = useMemo(
+    () => entries.find((e) => e.date === selectedDate) ?? null,
+    [entries, selectedDate],
+  );
+
+  // Keep "today" and the visible month on the profile/browser calendar day
+  // once auth resolves a timezone, without clobbering a day the user picked.
+  useEffect(() => {
+    if (!datePicked.current) setSelectedDate(today);
+  }, [today]);
+  useEffect(() => {
+    if (calendarMoved.current) return;
+    const [year, month] = today.split('-').map(Number);
+    if (!year || !month) return;
+    setCalMonth((current) => (
+      current.year === year && current.month === month - 1 ? current : { year, month: month - 1 }
+    ));
+  }, [today]);
+
+  // Reload: the saved artifact is the source for this day. The key is the
+  // saved content, so a refetch that returns the same entry does not wipe
+  // an in-progress edit. Draft textareas remount from `entryForDate`.
+  const entrySyncKey = entryForDate
+    ? `${entryForDate.id}\0${entryForDate.mood ?? ''}\0${entryForDate.notes}\0${entryForDate.workedOn}\0${entryForDate.learned}\0${entryForDate.goals}`
+    : '';
+  useEffect(() => {
+    setSelectedMood(entryForDate?.mood ?? null);
+    setJournalNotes(entryForDate?.notes ?? '');
+    setWorkedOn(entryForDate?.workedOn ?? '');
+    setLearned(entryForDate?.learned ?? '');
+    setGoals(entryForDate?.goals ?? '');
+    // entryForDate is read for the snapshot identified by entrySyncKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, entrySyncKey]);
 
   // -- Daily digest ----------------------------------------------------------
   const dailyDigest = useMemo(() => {
@@ -464,10 +514,8 @@ export function DailyTodayPanel() {
     createReminderMut.mutate(); setReminderTitle(''); setReminderDue('');
   };
   const handleSelectDate = (dateStr: string) => {
+    datePicked.current = true;
     setSelectedDate(dateStr);
-    const entry = entries.find((e) => e.date === dateStr);
-    if (entry) { setSelectedMood(entry.mood); setJournalNotes(entry.notes); setWorkedOn(entry.workedOn); setLearned(entry.learned); setGoals(entry.goals); }
-    else { setSelectedMood(null); setJournalNotes(''); setWorkedOn(''); setLearned(''); setGoals(''); }
   };
 
   // -- Render ---------------------------------------------------------------
@@ -497,12 +545,12 @@ export function DailyTodayPanel() {
         {/* Mini calendar */}
         <div className="p-4 border-b border-lattice-border">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => setCalMonth((m) => { const p = new Date(m.year, m.month - 1); return { year: p.getFullYear(), month: p.getMonth() }; })}
+            <button onClick={() => { calendarMoved.current = true; setCalMonth((m) => { const p = new Date(m.year, m.month - 1); return { year: p.getFullYear(), month: p.getMonth() }; }); }}
               className="p-1 hover:bg-white/10 rounded" aria-label="Previous"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-sm font-semibold">
               {new Date(calMonth.year, calMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
-            <button onClick={() => setCalMonth((m) => { const n = new Date(m.year, m.month + 1); return { year: n.getFullYear(), month: n.getMonth() }; })}
+            <button onClick={() => { calendarMoved.current = true; setCalMonth((m) => { const n = new Date(m.year, m.month + 1); return { year: n.getFullYear(), month: n.getMonth() }; }); }}
               className="p-1 hover:bg-white/10 rounded" aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
@@ -566,7 +614,7 @@ export function DailyTodayPanel() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">
-                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                {formatDateKey(selectedDate, { year: true })}
               </h1>
               <p className="text-sm text-gray-400 mt-0.5">Production Journal</p>
             </div>
@@ -612,28 +660,28 @@ export function DailyTodayPanel() {
             </h2>
             <div>
               <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Daily Notes</label>
-              <DraftedTextarea lensId="daily" draftKey="journalNotes" initial="" onValueChange={setJournalNotes}
+              <DraftedTextarea key={`journalNotes:${selectedDate}:${entryForDate?.id ?? 'new'}:${entryForDate?.notes ?? ''}`} lensId="daily" draftKey={`journalNotes:${selectedDate}`} initial={entryForDate?.notes ?? ''} onValueChange={setJournalNotes}
                 placeholder="How did your day go?" rows={3} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <CheckSquare className="w-3 h-3" /> What I worked on today
               </label>
-              <DraftedTextarea lensId="daily" draftKey="workedOn" initial="" onValueChange={setWorkedOn}
+              <DraftedTextarea key={`workedOn:${selectedDate}:${entryForDate?.id ?? 'new'}:${entryForDate?.workedOn ?? ''}`} lensId="daily" draftKey={`workedOn:${selectedDate}`} initial={entryForDate?.workedOn ?? ''} onValueChange={setWorkedOn}
                 placeholder="Production log..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen className="w-3 h-3" /> What I learned
               </label>
-              <DraftedTextarea lensId="daily" draftKey="learned" initial="" onValueChange={setLearned}
+              <DraftedTextarea key={`learned:${selectedDate}:${entryForDate?.id ?? 'new'}:${entryForDate?.learned ?? ''}`} lensId="daily" draftKey={`learned:${selectedDate}`} initial={entryForDate?.learned ?? ''} onValueChange={setLearned}
                 placeholder="Key takeaways..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <Target className="w-3 h-3" /> Goals for tomorrow
               </label>
-              <DraftedTextarea lensId="daily" draftKey="goalsTomorrow" initial="" onValueChange={setGoals}
+              <DraftedTextarea key={`goals:${selectedDate}:${entryForDate?.id ?? 'new'}:${entryForDate?.goals ?? ''}`} lensId="daily" draftKey={`goals:${selectedDate}`} initial={entryForDate?.goals ?? ''} onValueChange={setGoals}
                 placeholder="What do you want to accomplish?" rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <button

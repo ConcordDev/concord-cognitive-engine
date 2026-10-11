@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -397,7 +398,7 @@ function DailyLogTab() {
   const [totalManHours, setTotalManHours] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [f, setF] = useState({
-    date: new Date().toISOString().slice(0, 10), weather: 'Clear',
+    date: calendarDateKey(), weather: 'Clear',
     tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent',
   });
   const [manpower, setManpower] = useState<ManpowerRow[]>([{ trade: 'General', workers: '', hours: '8' }]);
@@ -422,7 +423,7 @@ function DailyLogTab() {
       manpower: manpower.filter((m) => m.workers).map((m) => ({ trade: m.trade, workers: Number(m.workers), hours: Number(m.hours) })),
       equipment: equipment.split(',').map((e) => e.trim()).filter(Boolean),
     });
-    setF({ date: new Date().toISOString().slice(0, 10), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
+    setF({ date: calendarDateKey(), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
     setManpower([{ trade: 'General', workers: '', hours: '8' }]);
     setEquipment('');
     setCreateOpen(false);
@@ -1162,7 +1163,7 @@ function GanttTab() {
     { name: 'Foundation', duration: '10', dependencies: 'Excavate' },
     { name: 'Framing', duration: '15', dependencies: 'Foundation' },
   ]);
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(calendarDateKey());
   const [result, setResult] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 

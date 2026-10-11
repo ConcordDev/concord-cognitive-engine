@@ -4,6 +4,7 @@ import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Matter { id: string; name: string }
@@ -98,7 +99,7 @@ export function InvoicesPanel() {
         ) : (
           <ul className="divide-y divide-white/5">
             {invoices.map(inv => {
-              const today = new Date().toISOString().slice(0, 10);
+              const today = calendarDateKey();
               const overdue = inv.status === 'open' && inv.dueAt < today;
               const isOpen = expanded === inv.id;
               return (

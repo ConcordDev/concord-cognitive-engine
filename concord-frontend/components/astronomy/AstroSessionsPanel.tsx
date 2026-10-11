@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Moon, ChevronRight, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { AstroCoObservePanel } from './AstroCoObservePanel';
 
@@ -26,7 +27,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), location: '', bortle: '5', seeing: 'average', transparency: 'average' });
+  const [form, setForm] = useState({ date: calendarDateKey(), location: '', bortle: '5', seeing: 'average', transparency: 'average' });
   const [open, setOpen] = useState<string | null>(null);
   const [openObs, setOpenObs] = useState<Observation[]>([]);
 
@@ -52,7 +53,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
       bortle: Number(form.bortle) || 5, seeing: form.seeing, transparency: form.transparency,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ date: new Date().toISOString().slice(0, 10), location: '', bortle: '5', seeing: 'average', transparency: 'average' });
+    setForm({ date: calendarDateKey(), location: '', bortle: '5', seeing: 'average', transparency: 'average' });
     setShowAdd(false); setError(null);
     await refresh();
   };
