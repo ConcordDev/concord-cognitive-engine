@@ -65353,7 +65353,10 @@ app.post("/api/social/post", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/post/:postId", (req, res) => {
-  try { res.json(socialGetPost(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPost(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
@@ -65364,7 +65367,10 @@ app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/posts/user/:userId", (req, res) => {
-  try { res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Reactions ----
@@ -65409,7 +65415,10 @@ app.delete("/api/social/comment/:postId/:commentId", requireAuth(), (req, res) =
 });
 
 app.get("/api/social/comments/:postId", (req, res) => {
-  try { res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Shares ----
@@ -65421,7 +65430,10 @@ app.post("/api/social/share", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/shares/:postId", (req, res) => {
-  try { res.json(socialGetShares(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetShares(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Bookmarks ----
@@ -65658,7 +65670,10 @@ app.post("/api/social/poll/vote", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/poll/:postId", (req, res) => {
-  try { res.json(socialGetPollResults(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPollResults(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Notifications ----
