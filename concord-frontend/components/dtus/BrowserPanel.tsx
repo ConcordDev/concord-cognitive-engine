@@ -6,7 +6,7 @@
  * duplicateDetection via lensRun; REST via apiHelpers.dtus.*.
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -100,6 +100,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
   const [tierFilter, setTierFilter] = useState<DTUTier | 'all'>('all');
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const newDtuRef = useRef<HTMLButtonElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   // Default to the viewer's own vault — not the shared global substrate, which
   // carries feed-ingested + system DTUs a user never created.
@@ -122,6 +123,13 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
     ],
     { lensId: 'dtus' }
   );
+
+  // Stamp after commit so Playwright can wait until onClick is attached.
+  // A click on the server HTML before this is a no-op under load.
+  useEffect(() => {
+    const el = newDtuRef.current;
+    if (el) el.dataset.hydrated = 'true';
+  }, []);
 
   // Backend action wiring
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -282,7 +290,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur border-b border-lattice-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-neon-blue to-neon-cyan flex items-center justify-center">
                 <Database className="w-6 h-6 text-white" />
@@ -295,9 +303,11 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
+                ref={newDtuRef}
                 type="button"
+                data-hydrated="false"
                 onClick={() => setShowCreateForm(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-teal-400 px-3 py-1.5 text-sm font-medium text-black hover:bg-teal-300 transition-colors"
               >

@@ -1920,7 +1920,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
-import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
+import { shouldPauseHeavyBackground, shouldRunConsolidation } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
@@ -2215,7 +2215,6 @@ import {
   getAllRepairPatterns,
   getRecentRepairDTUs,
   configureRepairPersistence,
-  startGuardian,
   stopGuardian,
   getGuardianStatus,
   runGuardianCheck,
@@ -2247,6 +2246,7 @@ import {
   createEarlyRouteErrorHandler,
   createLateRouteErrorHandler,
 } from "./lib/route-error-handlers.js";
+import { logAbsentGovernorMacrosOnce, tickGovernorOptionalMacros } from "./lib/governor-optional-macros.js";
 
 // ---- "Everything Real" imports: migration runner + durable endpoints ----
 import { runMigrations as runSchemaMigrations } from "./migrate.js";
@@ -3728,7 +3728,7 @@ function releaseMutex() {
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
 import { startupFdGuard, startFdMonitor } from "./lib/fd-guard.js";
-import { distinctDtuSummaries } from "./lib/chat-offline-reply.js";
+import { distinctDtuSummaries, aiUnavailableChat } from "./lib/chat-offline-reply.js";
 import { getFactionRepBuffer, flushAllBuffers } from "./lib/batch-commit-buffer.js";
 
 // FD-limit guard: runs at module load. Detects under-provisioned
@@ -6173,7 +6173,8 @@ const STATE = {
     hypotheses: [],
     philosophy: [],
     wrapperJobs: [],
-    notifications: []
+    notifications: [],
+    goalProposals: []
   },
 
   // ---- Abstraction Governor (v3 upgrades) ----
@@ -8027,7 +8028,21 @@ function authMiddleware(req, res, next) {
 
   // If this is a sovereign route, do NOT allow the publicReadPaths bypass below.
   // Force authentication first, then check role after auth resolves.
-  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => req.path.startsWith(route));
+  //
+  // Prefix boundary: "/api/sovereign".startsWith matches the user-own lock
+  // namespace "/api/sovereignty" and "/api/sovereignty/...". Those handlers
+  // are caller-scoped (requireAuth + own rows) and must not inherit the
+  // sovereign role gate. Every other extension of the prefix stays gated,
+  // including "/api/sovereign", "/api/sovereign/...", "/api/sovereign-emergent",
+  // and lookalikes such as "/api/sovereignX". The other listed prefixes
+  // keep bare startsWith, so "/api/admin/sovereign..." is unchanged.
+  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => {
+    if (!req.path.startsWith(route)) return false;
+    if (route === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) {
+      return false;
+    }
+    return true;
+  });
 
   // Skip auth for public-read endpoints (GET only)
   // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
@@ -8279,7 +8294,14 @@ function authMiddleware(req, res, next) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty is intentionally absent. status/setup/unsync/
+    // preferences/audit are caller-scoped and requireAuth. Listing the
+    // prefix would let an anonymous GET skip this middleware once the
+    // path is no longer caught by the /api/sovereign prefix gate.
+    // The "/api/sovereign" entry above still startsWith-matches
+    // /api/sovereignty; the bypass below excludes that namespace so
+    // anonymous curl stays 401 instead of falling through to the bot guard.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -8304,7 +8326,15 @@ function authMiddleware(req, res, next) {
   // user-scoped behavior (search history, saved searches) see the JWT.
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
-  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => {
+    if (!req.path.startsWith(p)) return false;
+    // "/api/sovereign" is a public-read prefix for the sovereign console,
+    // but it also prefix-matches the caller-scoped lock namespace. Those
+    // routes are no longer sovereign-gated, so without this exclusion an
+    // anonymous GET would skip auth here.
+    if (p === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) return false;
+    return true;
+  })) return next();
   // MCP bypass (Sprint 54, 2026-08-13): local-first MCP server for cloud workers.
   // When CONCORD_MCP_PUBLIC=1, both GET /mcp/tools and POST /mcp/call bypass auth.
   // When AUTH_MODE=public (local-first dev), the public mode already handles this.
@@ -14016,27 +14046,189 @@ function _c2repairDominance(){
   } catch { return { ok: false, error: 'health_check_failed', score: 0 }; }
 }
 
-/**
- * Adaptive overlap threshold: ramps up as the DTU substrate grows.
- * During bootstrap (few DTUs), novel content has no prior art to match against,
- * so the threshold must be low. As the knowledge base matures, the threshold
- * rises automatically. Can be overridden via admin dashboard.
- */
-function _getAdaptiveOverlapThreshold() {
-  // Manual override from admin: if explicitly set to a number, use it
-  const manual = STATE.__chicken2?.thresholdOverlap;
-  if (typeof manual === "number" && manual >= 0 && manual < 0.95) return manual;
+// Fixed overlap bar. One missed genesis invariant out of the five anchor
+// constraints scores 0.7*(4/5)+0.3 = 0.86, so 0.95 admits a candidate that
+// satisfies every anchor invariant and rejects one that breaks any of them.
+// The value does not scale with STATE.dtus.size. 0.95 is a real threshold,
+// not a sentinel that falls through to another ladder.
+const _C2_DEFAULT_OVERLAP_THRESHOLD = 0.95;
+const _C2_GENESIS_ROOT = "genesis_reality_anchor_v1";
+const _C2_OPAQUE_KEYS = new Set([
+  "imagebase64", "image", "audiobase64", "audio", "bytes", "payloadbytes", "datab64", "wav", "buffer",
+]);
+// Read-only tools. Birth-overlap is an admission check for effectful actions
+// and DTU birth, not a tax on observation.
+const _C2_OBSERVE_BARE = new Set([
+  "web_search", "browse_url", "dtu_search", "compute", "run_compute", "symboliccompute",
+]);
 
-  const dtuCount = typeof STATE.dtus?.size === "number" ? STATE.dtus.size : 0;
-  if (dtuCount < 100) return 0.00;      // Bootstrap: let everything through
-  if (dtuCount < 500) return 0.10;      // Early growth: very loose
-  if (dtuCount < 1000) return 0.20;     // Building invariants
-  if (dtuCount < 5000) return 0.35;     // Substrate has enough to compare
-  if (dtuCount < 10000) return 0.50;    // Real filtering begins
-  if (dtuCount < 50000) return 0.65;    // Strong coherence expected
-  if (dtuCount < 100000) return 0.80;   // Mature lattice
-  return 0.90;                           // Full protection
+function _c2finiteUnit(value) {
+  const n = typeof value === "number" ? value : (typeof value === "string" && value.trim() !== "" ? Number(value) : NaN);
+  if (!Number.isFinite(n)) return null;
+  return clamp(n, 0, 1);
 }
+
+/**
+ * Overlap threshold for admitting a candidate into the lattice.
+ * Precedence: CONCORD_OVERLAP_THRESHOLD, then __chicken2.thresholdOverlap
+ * (including an explicit 0.95), then settings.thresholdOverlap, then 0.95.
+ * DTU count is not an input.
+ */
+function _getOverlapThreshold() {
+  const fromEnv = _c2finiteUnit(process.env.CONCORD_OVERLAP_THRESHOLD);
+  if (fromEnv !== null && process.env.CONCORD_OVERLAP_THRESHOLD !== undefined && String(process.env.CONCORD_OVERLAP_THRESHOLD).trim() !== "") {
+    return fromEnv;
+  }
+  const fromChicken = STATE.__chicken2?.thresholdOverlap;
+  if (typeof fromChicken === "number" && Number.isFinite(fromChicken)) return clamp(fromChicken, 0, 1);
+  const fromSettings = STATE.settings?.thresholdOverlap;
+  if (typeof fromSettings === "number" && Number.isFinite(fromSettings)) return clamp(fromSettings, 0, 1);
+  return _C2_DEFAULT_OVERLAP_THRESHOLD;
+}
+
+function _c2isObserveAction({ domain = "", name = "" } = {}) {
+  // Classification is the effect name the gate was asked to admit, not a
+  // field inside the payload (a payload must not relabel an effectful action).
+  const domainStr = String(domain || "").toLowerCase();
+  const n = String(name || "").toLowerCase();
+  const bare = n.split(/[./]/).pop();
+  if (_C2_OBSERVE_BARE.has(n) || _C2_OBSERVE_BARE.has(bare)) return true;
+  if (n.endsWith("dtu.search") || n.endsWith("dtu_search") || n.endsWith("web_search") || n.endsWith("browse_url") || n.endsWith("run_compute")) return true;
+  if ((domainStr === "dtu" || domainStr === "discovery") && /(^|\.)search$/.test(n)) return true;
+  return false;
+}
+
+function _c2stripOpaque(value) {
+  if (!value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(v => _c2stripOpaque(v));
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (_C2_OPAQUE_KEYS.has(String(k).toLowerCase())) continue;
+    if (typeof v === "string" && v.length > 8000 && !/\s/.test(v.slice(0, 80))) continue;
+    out[k] = (v && typeof v === "object") ? _c2stripOpaque(v) : v;
+  }
+  return out;
+}
+
+function _c2subject(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const proposal = input.proposal;
+  if (proposal && typeof proposal === "object" && !Array.isArray(proposal)) {
+    const keys = Object.keys(input);
+    const wrapper = keys.length === 1 || proposal.invariants || proposal.lineage || proposal.lineageRoot;
+    if (wrapper && (keys.length === 1 || keys.every(k => k === "proposal" || k === "steps" || k === "override"))) {
+      return proposal;
+    }
+  }
+  return input;
+}
+
+function _c2declaredInvariantList(subject) {
+  if (!subject || typeof subject !== "object") return null;
+  const raw = subject.invariants ?? subject.invariantKeys ?? subject.core?.invariants ?? null;
+  if (Array.isArray(raw)) return raw.map(x => String(x));
+  if (raw && typeof raw === "object") return Object.keys(raw);
+  return null;
+}
+
+function _c2genesisView(genesis) {
+  const root = genesis?.lineage?.root || genesis?.lineageRoot || genesis?.id || _C2_GENESIS_ROOT;
+  const invariants = Array.isArray(genesis?.invariants) ? genesis.invariants.map(v => String(v)) : [];
+  return { ...genesis, invariants, lineage: { ...(genesis?.lineage || {}), root } };
+}
+
+function _c2negativeValenceContradiction(subject, declared) {
+  if (subject && typeof subject === "object") {
+    if (subject.negativeValence === true) return true;
+    if (String(subject.valence || "").toLowerCase() === "negative") return true;
+  }
+  if (Array.isArray(declared)) {
+    for (const k of declared) {
+      if (/no[_\s-]*negative[_\s-]*valence/i.test(k)) continue;
+      if (/negative[_\s-]*valence/i.test(k)) return true;
+    }
+  }
+  return !_c2negativeValenceProjection(_c2stripOpaque(subject)).ok;
+}
+
+function _c2repairDominanceContradiction(subject, declared, required) {
+  if (subject && typeof subject === "object") {
+    if (subject.repairDominance === false) return true;
+    if (subject.repair && typeof subject.repair === "object" && (subject.repair.required === false || subject.repair.dominance === false)) return true;
+  }
+  if (!Array.isArray(declared)) return false;
+  for (const k of declared) {
+    if (/no[_\s-]*repair[_\s-]*dominance|repair[_\s-]*dominance[_\s-]*(not[_\s-]*required|disabled|optional)|repair[_\s-]*optional/i.test(k)) return true;
+  }
+  const requiredSet = new Set(required);
+  const editsGenesis = declared.some(k => requiredSet.has(k) || /OVERLAP\s*>=/i.test(k) || /x\^2\s*-\s*x/.test(k) || /NEGATIVE_VALENCE/i.test(k) || /REPAIR_DOMINANCE/i.test(k));
+  if (editsGenesis && !declared.some(k => k === "REPAIR_DOMINANCE_REQUIRED" || /repair[_\s-]*dominance[_\s-]*required/i.test(k))) return true;
+  return false;
+}
+
+function _c2overlapFloorContradiction(subject, declared) {
+  if (Array.isArray(declared)) {
+    for (const k of declared) {
+      const m = String(k).match(/OVERLAP\s*>=\s*([0-9]*\.?[0-9]+)/i);
+      if (m && Number(m[1]) < 0.95) return true;
+    }
+  }
+  return false;
+}
+
+function _c2quadraticContradiction(subject) {
+  if (!subject || typeof subject !== "object") return false;
+  if (subject.invertVacuum === true) return true;
+  const disc = subject.invertTest && typeof subject.invertTest === "object" ? subject.invertTest.discriminant : null;
+  return typeof disc === "number" && disc < 0;
+}
+
+function _c2invariantHolds(invariant, subject, declared, required) {
+  const inv = String(invariant);
+  if (inv === "NO_NEGATIVE_VALENCE_DIMENSION" || /no[_\s-]*negative[_\s-]*valence/i.test(inv)) {
+    return !_c2negativeValenceContradiction(subject, declared);
+  }
+  if (inv === "REPAIR_DOMINANCE_REQUIRED" || /repair[_\s-]*dominance[_\s-]*required/i.test(inv)) {
+    return !_c2repairDominanceContradiction(subject, declared, required);
+  }
+  if (inv === "x^2 - x = 0" || inv === "x^2 - x - 1 = 0" || /x\^2\s*-\s*x/.test(inv)) {
+    return !_c2quadraticContradiction(subject);
+  }
+  if (/^OVERLAP\s*>=/i.test(inv)) return !_c2overlapFloorContradiction(subject, declared);
+  if (Array.isArray(declared) && declared.length > 0 && !declared.includes(inv)) {
+    const editsGenesis = declared.some(k => required.includes(k));
+    if (editsGenesis) return false;
+  }
+  return true;
+}
+
+/**
+ * Overlap of the candidate being admitted against the genesis anchor.
+ * The candidate is its own effect payload, proposed invariants, and lineage.
+ * A payload that does not propose a replacement invariant set is admitted
+ * under the anchor constraints: it scores a full match unless its content
+ * contradicts one (negative valence, dropped repair dominance, inversion,
+ * or a looser overlap floor).
+ */
+function _c2admissionOverlap(genesis, input) {
+  const view = _c2genesisView(genesis);
+  const subject = _c2subject(input);
+  const declared = _c2declaredInvariantList(subject);
+  const required = view.invariants;
+  const satisfied = [];
+  const violated = [];
+  for (const inv of required) {
+    if (_c2invariantHolds(inv, subject, declared, required)) satisfied.push(inv);
+    else violated.push(inv);
+  }
+  const declaredLineage = (subject.lineage && typeof subject.lineage === "object")
+    ? subject.lineage
+    : (typeof subject.lineageRoot === "string" && subject.lineageRoot ? { root: subject.lineageRoot } : null);
+  const lineage = declaredLineage || { root: view.lineage.root };
+  const ov = overlap_verifier(view, { invariants: satisfied, lineage });
+  return { ov, violated, satisfied };
+}
+
 function inLatticeReality({ type="macro", domain="", name="", input=null, ctx=null }={}){
   const cfg = STATE.__chicken2 || {};
   // 1) primal satisfaction
@@ -14050,21 +14242,21 @@ function inLatticeReality({ type="macro", domain="", name="", input=null, ctx=nu
     cfg.metrics.rejections++;
     return { ok:false, severity:"hard", reason:"inversion_vacuum", meta: inv };
   }
-  // 3) negative valence projection
-  const nv = _c2negativeValenceProjection({ input, actor: ctx?.actor, type, domain, name });
+  // 3) negative valence projection (text). Opaque blobs are not scanned.
+  const nv = _c2negativeValenceProjection({ input: _c2stripOpaque(input), actor: ctx?.actor, type, domain, name });
   if (!nv.ok){
     cfg.metrics.rejections++;
     return { ok:false, severity:"hard", reason:nv.reason };
   }
-  // 4) repair dominance projection + overlap requirement if genesis exists
-  // Adaptive threshold: ramps up as the substrate grows (bootstrap-friendly)
+  // 4) overlap of THIS candidate against genesis. Observe tools skip it.
+  //    Effectful actions and DTU birth still have to clear the bar.
   const g = _c2genesisDTU();
-  if (g){
-    const ov = overlap_verifier(g, { invariants: Object.keys(STATE.settings||{}), lineage:{ root:"genesis_reality_anchor_v1" }});
-    const adaptiveThreshold = _getAdaptiveOverlapThreshold();
-    if (ov < adaptiveThreshold){
+  if (g && !_c2isObserveAction({ type, domain, name, input })){
+    const { ov, violated } = _c2admissionOverlap(g, input);
+    const threshold = _getOverlapThreshold();
+    if (ov < threshold){
       cfg.metrics.rejections++;
-      return { ok:false, severity:"quarantine", reason:"overlap_below_threshold", meta:{ ov, threshold: adaptiveThreshold, dtuCount: typeof STATE.dtus?.size === "number" ? STATE.dtus.size : 0 } };
+      return { ok:false, severity:"quarantine", reason:"overlap_below_threshold", meta:{ ov, threshold, violated } };
     }
   }
   const rd = _c2repairDominance();
@@ -14109,8 +14301,11 @@ function _c2founderOverrideAllowed(ctx){
   }
   return true;
 }
-async function governedCall(ctx, effectName, fn){
-  const pre = inLatticeReality({ type:"governedCall", domain:"governed", name:effectName, ctx, input:{} });
+async function governedCall(ctx, effectName, fn, effectPayload){
+  // The 4th argument is the effect payload being admitted. Callers that have
+  // one must pass it; an omitted payload is the effect identity, not {}.
+  const input = arguments.length >= 4 ? effectPayload : { effect: String(effectName || "") };
+  const pre = inLatticeReality({ type:"governedCall", domain:"governed", name:effectName, ctx, input });
   if (!pre.ok){
     _c2log("governed.reject", "governedCall rejected by lattice reality", { effectName, pre });
     throw new Error(`governedCall rejected: ${pre.reason}`);
@@ -14909,7 +15104,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty omitted — mirror of Gate 1. Caller-scoped lock
+    // routes are not anonymous reads. The "/api/sovereign" entry above
+    // still startsWith-matches that namespace; the bypass below excludes it.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -14953,7 +15151,11 @@ async function runMacro(domain, name, input, ctx) {
   ];
   const safeReadBypass =
     _domainNameAllowed ||
-    (_method === "GET" && _safeReadPaths.some(p => _path.startsWith(p))) ||
+    (_method === "GET" && _safeReadPaths.some(p => {
+      if (!_path.startsWith(p)) return false;
+      if (p === "/api/sovereign" && (_path === "/api/sovereignty" || _path.startsWith("/api/sovereignty/"))) return false;
+      return true;
+    })) ||
     (_method === "POST" && _safePostPaths.some(p => _path.startsWith(p))) ||
     (domain === "chat" && (name === "respond" || name === "feedback"));
 
@@ -15762,7 +15964,7 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   }
 
   return { ok:false, error:"No vision backend configured. Set OLLAMA_URL with a vision-capable model (e.g. llava)" };
-  });
+  }, input);
 }, { public:false });
 
 register("multimodal","image_generate", async (_ctx, input={}) => {
@@ -15928,7 +16130,7 @@ register("tools","web_search", (ctx, input={}) => {
   }
 
   return { ok:true, source: local ? "searxng" : "duckduckgo_html", text: text.slice(0, 200000), summary };
-  });
+  }, input);
 }, { public:false });
 
 // ===== END CHICKEN3 MACROS =====
@@ -25157,20 +25359,30 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     }
   }
 
-  if (!PIPE.enabled) {
-    // fallback to legacy write
-    if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
-    else STATE.dtus.set(dtu.id, dtu);
-    try { noteDtuWrite(); } catch { /* clock */ }
-    saveStateDebounced();
-    return { ok:true, dtu, bypassed:true };
-  }
-  // --- Anti-gaming guard: only system promotion may create MEGA/HYPER DTUs ---
+  // --- Anti-gaming guard: users can't self-promote MEGA/HYPER ---
+  // Runs before the PIPE bypass so a disabled pipeline cannot skip it.
+  // auto.promo.* and an explicit system ctx still pass (historical).
+  // Trusted consolidation ops (gap_promotion, system.promotionTick,
+  // system.evolution) pass only from an internal/governor ctx —
+  // makeInternalCtx sets ctx.internal, not ctx.system, and that mismatch
+  // was downgrading every heartbeat mega to regular + tier_downgraded.
+  // A user ctx calling the same op is still downgraded.
   try {
     const op = String(opts.op || "");
-    const systemOp = op.startsWith("auto.promo.") || op.startsWith("auto.promo") || op.startsWith("auto.promotion");
+    const autoPromo = op.startsWith("auto.promo.") || op.startsWith("auto.promo") || op.startsWith("auto.promotion");
     const systemCtx = !!(ctx && (ctx.system === true || ctx.isSystem === true || ctx?.meta?.system === true));
-    if ((dtu?.tier === "mega" || dtu?.tier === "hyper") && !(systemOp || systemCtx)) {
+    const internalCtx = !!(ctx && (
+      ctx.internal === true
+      || ctx.actor?.internal === true
+      || ctx.reqMeta?.internal === true
+      || ctx.reqMeta?.source === "governor"
+    ));
+    const trustedInternalOp = (
+      op === "gap_promotion"
+      || op === "system.promotionTick"
+      || op === "system.evolution"
+    ) && internalCtx;
+    if ((dtu?.tier === "mega" || dtu?.tier === "hyper") && !(autoPromo || systemCtx || trustedInternalOp)) {
       // Downgrade to regular; users can't self-promote tiers.
       dtu.tier = "regular";
       dtu.tags = Array.from(new Set([...(dtu.tags||[]), "tier_downgraded"]));
@@ -25179,6 +25391,15 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
       dtu.meta.tierDowngradeReason = "anti_gaming_only_auto_promo_can_set_tier";
     }
   } catch (_e) { logger.debug('server', 'anti-gaming guard may fail gracefully', { error: _e?.message }); }
+
+  if (!PIPE.enabled) {
+    // fallback to legacy write
+    if (isShadowDTU(dtu)) STATE.shadowDtus.set(dtu.id, dtu);
+    else STATE.dtus.set(dtu.id, dtu);
+    try { noteDtuWrite(); } catch { /* clock */ }
+    saveStateDebounced();
+    return { ok:true, dtu, bypassed:true };
+  }
   const p = pipeProposal("dtu.commit", { dtu }, { kind:"macro", id: opts.op || "unknown" });
   const vr = pipeVerify(p);
   p.verify = vr; p.updatedAt = nowISO();
@@ -26738,10 +26959,6 @@ register("dtu", "gapPromote", async (ctx, input) => {
   const targetTier = input.tier === "hyper" ? "hyper" : "mega";
   const childTier = targetTier === "hyper" ? "mega" : "regular";
 
-  // Promote stable clusters of childTier DTUs into a targetTier DTU.
-  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
-  if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length };
-
   // Lightweight topic hashing for cluster identity
   const topicKeyOf = (cluster) => {
     const tags = cluster.flatMap(d => Array.isArray(d.tags)?d.tags:[]).map(t=>String(t).toLowerCase()).filter(Boolean);
@@ -26749,23 +26966,44 @@ register("dtu", "gapPromote", async (ctx, input) => {
     return simpleHash(tags.slice(0, 30).join("|") + "|" + cluster.map(d=>d.id).slice(0,10).join("|"));
   };
 
-  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
-  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
-  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
-  if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
-  const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
+  const _idOf = (x) => (x && typeof x === "object") ? (x.id || null) : x;
+
+  // When the caller already picked the cluster (heartbeat passes cluster.ids),
+  // use that list as the single cluster. Re-clustering here used to run a full
+  // O(n^2) pass per promotion — up to 9 per tick on top of the pass that
+  // already produced the ids.
+  let clusters;
+  if (Array.isArray(input.ids)) {
+    const ids = input.ids.map(_idOf).filter(Boolean);
+    clusters = [{ ids, label: input.label || null }];
+  } else {
+    // Promote stable clusters of childTier DTUs into a targetTier DTU.
+    const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
+    if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length, promoted: [], dtus: [], dtu: null };
+
+    // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
+    // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
+    const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
+    if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
+    clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
+  }
 
   const promoted = [];
+  const created = [];
   for (const c of clusters) {
     if (promoted.length >= maxPromotions) break;
-    const ids = Array.isArray(c.ids) ? c.ids : [];
+    const ids = Array.isArray(c.ids) ? c.ids.map(_idOf).filter(Boolean) : [];
     if (ids.length < minCluster) continue;
-    const members = ids.map(id => STATE.dtus.get(id)).filter(Boolean);
+    const members = ids
+      .map(id => STATE.dtus.get(id))
+      .filter(d => d && (d.tier || "regular") === childTier && !isShadowDTU(d) && (d.status || "active") === "active");
     if (members.length < minCluster) continue;
 
     const clusterKey = topicKeyOf(members);
-    // Skip if a mega already exists for this cluster key
-    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === targetTier && d?.meta?.clusterKey === clusterKey);
+    // Tier-independent: a downgraded regular that already carries this
+    // clusterKey must block a rebuild, or the same megas are minted every
+    // tick and then re-clustered into "MEGA — MEGA …".
+    const existing = Array.from(STATE.dtus.values()).find(d => d?.meta?.clusterKey === clusterKey);
     if (existing) continue;
 
     // Build a deterministic mega summary (no LLM dependency)
@@ -26786,6 +27024,8 @@ register("dtu", "gapPromote", async (ctx, input) => {
     const _lensSet = Array.from(new Set(members.map(m => m.lens_id || m.lensId || m.meta?.lensId).filter(Boolean)));
     const _megaLens = _lensSet.length === 1 ? _lensSet[0] : (_lensSet.length > 1 ? "multi" : (_seed.lens_id || _seed.lensId || null));
     const _megaCreator = _seed.creator_id || _seed.creatorId || _seed.createdBy || _seed.userId || _seed.meta?.creatorId || null;
+    const memberIds = members.map(d => d.id);
+    const memberClaims = members.flatMap(d => Array.isArray(d.core?.claims) ? d.core.claims : []).slice(0, 24);
     const mega = {
       id: uid("dtu"),
       tier: targetTier,
@@ -26800,33 +27040,38 @@ register("dtu", "gapPromote", async (ctx, input) => {
       createdAt: nowISO(),
       updatedAt: nowISO(),
       status: "active",
-      lineage: { parents: members.map(d=>d.id), kind: "gap_promotion" },
+      lineage: { parents: memberIds, kind: "gap_promotion" },
       core: {
-        definitions: [`A compressed synthesis of ${members.length} regular DTUs around: ${titleSeed}.`],
+        definitions: [`A compressed synthesis of ${members.length} ${childTier} DTUs around: ${titleSeed}.`],
         invariants: [
-          "This MEGA is derived from a stable local cluster (gap promotion).",
-          "Member DTUs remain active; this is a soft promotion (no destructive merge)."
+          "This node is derived from a stable local cluster (gap promotion).",
+          "The consolidation cycle archives member DTUs into this node after a successful promotion."
         ],
+        claims: memberClaims,
         examples: [],
         tests: [],
         next_actions: [
-          "Review this MEGA for crispness and missing gaps.",
+          "Review this synthesis for crispness and missing gaps.",
           "If stable, consider elevating to Hyper only with citations + verification."
         ]
       },
       cretiHuman: [
-        `**What this MEGA represents**: ${members.length} related DTUs clustered around **${titleSeed}**.`,
+        `**What this ${targetTier.toUpperCase()} represents**: ${members.length} related ${childTier} DTUs clustered around **${titleSeed}**.`,
+        `Cluster representative for ids ${memberIds.join(", ")}. The synthesis adds the cluster key, the promotion lineage, and a review checklist that no single member states on its own. It is the stable node for this cluster, not a copy of any one member.`,
         tags.length ? `**Tag hints**: ${tags.join(", ")}` : "",
         excerpts.length ? `**Representative excerpts**:\n- ${excerpts.map(e=>e.replace(/\n+/g," ").slice(0,180)).join("\n- ")}` : "",
-        "**Lineage**: soft-promoted from regular DTUs; members remain canonical unless explicitly merged later."
+        "**Lineage**: promoted from the member DTUs. Consolidation archives those members into this node."
       ].filter(Boolean).join("\n\n"),
-      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO() }
+      meta: { clusterKey, promotedFrom: members.length, promotionAt: nowISO(), createdBy: _megaCreator || undefined }
     };
 
     if (!dryRun) {
-      // Sprint 32 E3 — compression quality gate: ensure mega is an upgrade, not a downgrade
+      // Sprint 32 E3 — compression quality gate: ensure mega is an upgrade, not a downgrade.
+      // The pass row is written only AFTER pipelineCommitDTU keeps the target tier.
+      // Logging it before the commit counted downgraded regulars as successful megas.
       let compressionScore = null;
       let compressionReasons = [];
+      let qualityPassed = true;
       try {
         const { scoreCompression, logCompressionAttempt } = await import("./lib/compression-quality.js");
         const qualityResult = scoreCompression({ mega, children: members, STATE });
@@ -26834,7 +27079,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
         compressionReasons = qualityResult.reasons;
 
         if (!qualityResult.pass) {
-          // Quality gate failed — log and skip this promotion
+          qualityPassed = false;
           logCompressionAttempt({
             db: STATE.db,
             mega,
@@ -26848,24 +27093,31 @@ register("dtu", "gapPromote", async (ctx, input) => {
             score: compressionScore,
             reasons: compressionReasons,
           });
-          continue;
         }
+      } catch (err) {
+        logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
+      }
+      if (!qualityPassed) continue;
 
-        // Gate passed — log success
+      const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
+      if (!r?.ok) continue;
+      const committed = STATE.dtus.get(mega.id) || r.dtu || mega;
+      // Anti-gaming downgrade stores a regular with this clusterKey. That row
+      // blocks a rebuild, but it is not a promotion and must not audit as a pass.
+      if (committed?.tier !== targetTier) continue;
+      try {
+        const { logCompressionAttempt } = await import("./lib/compression-quality.js");
         logCompressionAttempt({
           db: STATE.db,
-          mega,
+          mega: committed,
           children: members,
           passed: true,
           score: compressionScore,
           reasons: compressionReasons,
         });
       } catch (err) {
-        logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
+        logger.debug?.("[compression] pass audit skipped", { error: err?.message });
       }
-
-      const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
-      if (!r?.ok) continue;
       for (const m of members) {
         try {
           m.meta = m.meta || {};
@@ -26873,12 +27125,20 @@ register("dtu", "gapPromote", async (ctx, input) => {
         } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
       }
       saveStateDebounced();
+      created.push(committed);
     }
 
-    promoted.push({ megaId: mega.id, clusterKey, members: members.length, label: titleSeed });
+    promoted.push({ megaId: mega.id, clusterKey, members: members.length, memberIds, label: titleSeed });
   }
 
-  return { ok:true, did: promoted.length ? "promoted" : "none", promoted, dryRun };
+  return {
+    ok: true,
+    did: promoted.length ? "promoted" : "none",
+    promoted,
+    dtus: created,
+    dtu: created[0] || null,
+    dryRun,
+  };
 }, { description: "Detect stable clusters (gaps) and soft-promote them into MEGA DTUs." });
 
 // Chat domain
@@ -28170,6 +28430,9 @@ let localReply = formatCrispResponse({
 
   let finalReply = localReply;
   let llmUsed = false;
+  // Set when a requested brain call fails (503 / circuit-open / network).
+  // Read only if llmUsed stays false — a later successful attempt wins.
+  let _brainFailure = null;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
 
   // ===== TOOL CALLING INFRASTRUCTURE =====
@@ -28734,6 +28997,7 @@ ${_operatorV6Block}` : "";
       llmUsed = true;
       _llmSpan.end("ok", { responseLength: finalReply.length });
     } else {
+      _brainFailure = { status: r?.status ?? null, error: r?.error || r?.reason || "llm_failed" };
       _llmSpan.end("error", { error: String(r?.error || "llm_failed") });
       ctx.log("llm.error", "LLM call via ctx.llm failed; attempting conscious brain fallback.", { error: r });
       // ===== CONSCIOUS BRAIN FALLBACK (within ctx.llm block) =====
@@ -28767,10 +29031,12 @@ ${_operatorV6Block}` : "";
           ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
         } else {
           BRAIN.conscious.stats.errors++;
+          _brainFailure = { status: _fbRes.status, error: _fbJson?.error || _brainFailure?.error || "llm_failed" };
           ctx.log("llm.fallback.error", "Conscious brain fallback returned non-ok.", { status: _fbRes.status, error: _fbJson?.error });
         }
       } catch (_fbErr) {
         BRAIN.conscious.stats.errors++;
+        _brainFailure = { status: null, error: String(_fbErr?.message || _fbErr) };
         ctx.log("llm.fallback.error", "Conscious brain fallback threw.", { error: String(_fbErr?.message || _fbErr) });
       }
       // ===== END CONSCIOUS BRAIN FALLBACK =====
@@ -28828,10 +29094,12 @@ ${_operatorV6Block}` : "";
         ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
       } else {
         BRAIN.conscious.stats.errors++;
+        _brainFailure = { status: _directRes.status, error: _directJson?.error || "llm_failed" };
         ctx.log("llm.direct.error", "Direct conscious brain call returned non-ok.", { status: _directRes.status, error: _directJson?.error });
       }
     } catch (_directErr) {
       BRAIN.conscious.stats.errors++;
+      _brainFailure = { status: null, error: String(_directErr?.message || _directErr) };
       ctx.log("llm.direct.error", "Direct conscious brain call threw.", { error: String(_directErr?.message || _directErr) });
     }
     // ===== END DIRECT CONSCIOUS BRAIN CALL =====
@@ -29029,8 +29297,15 @@ ${_operatorV6Block}` : "";
     if (!_carries) finalReply = _deterministicAnswer.text;
   }
 
-  // If LLM failed, make the fallback response conversational instead of a DTU dump
-  if (!_lockedReply && !llmUsed && localReply && finalReply === localReply && !_deterministicAnswer?.image) {
+  // The brain was requested and produced no reply (pod down, 503, circuit
+  // open). Say so. Do not dress retrieved notes up as an answer. Callers
+  // that passed llm:false opted out on purpose — that local path stays below.
+  let _aiUnavailable = null;
+  const _llmWasRequested = llm !== false;
+  if (!_lockedReply && _llmWasRequested && !llmUsed && !_deterministicAnswer && localReply && finalReply === localReply) {
+    _aiUnavailable = aiUnavailableChat({ items: distinctDtuSummaries(relevant, 5) });
+    finalReply = _aiUnavailable.reply;
+  } else if (!_lockedReply && !llmUsed && localReply && finalReply === localReply && !_deterministicAnswer?.image) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -29038,14 +29313,13 @@ ${_operatorV6Block}` : "";
     const userQuestion = (Array.isArray(messages) && messages.length > 0)
       ? (messages[messages.length - 1]?.content || prompt || '')
       : (prompt || '');
-    // Build a helpful response from the DTU context, each distinct note once.
+    // Explicit no-LLM callers still get stored notes, labelled as notes.
     const topSummaries = distinctDtuSummaries(relevant, 5);
     if (topSummaries.length > 0) {
-      finalReply = `Based on what I know, here's what I can share about "${userQuestion.slice(0, 80)}":\n\n` +
-        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n') +
-        `\n\nI'm currently running without my full AI capabilities (LLM offline), so my responses are based on stored knowledge. Once my brain is back online, I can have much deeper conversations about this.`;
+      finalReply = `Stored notes (not an AI answer) about "${userQuestion.slice(0, 80)}":\n\n` +
+        topSummaries.map(summary => `\u2022 ${summary.slice(0, 300)}`).join('\n\n');
     } else {
-      finalReply = `I'd love to help with "${userQuestion.slice(0, 80)}", but I'm currently running in limited mode (my AI brain is offline). I don't have stored knowledge on this topic yet. Once my brain comes back online, I'll be able to have a full conversation about this. In the meantime, try creating some DTUs about this topic so I can learn!`;
+      finalReply = `No AI reply for "${userQuestion.slice(0, 80)}" — this request did not use the language model, and there are no stored notes on it.`;
     }
   }
 
@@ -29099,12 +29373,13 @@ ${_operatorV6Block}` : "";
   if (_lockedReply) finalReply = _lockedReply;
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
+  // An outage notice is not knowledge — don't mint a DTU from it.
   try {
-    createOutputDTU(STATE, {
+    if (!_aiUnavailable) createOutputDTU(STATE, {
       sessionId,
       response: finalReply,
       entityId: null,
@@ -29217,7 +29492,7 @@ ${_operatorV6Block}` : "";
       };
 
       // Forge pipeline: if the request produced a deliverable artifact
-      if (_forgeDetection?.shouldForge && finalReply) {
+      if (_forgeDetection?.shouldForge && finalReply && !_aiUnavailable) {
         _forgeResult = runForgePipeline({
           message: prompt,
           route: _chatRoute,
@@ -29296,6 +29571,7 @@ ${_operatorV6Block}` : "";
         ts: Date.now(),
         meta: {
           llmUsed,
+          code: _aiUnavailable?.code,
           mode,
           toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined,
           toolCallCount: _toolCallsExecuted.length,
@@ -29333,8 +29609,14 @@ ${_operatorV6Block}` : "";
   } catch { /* best-effort, never blocks chat */ }
 
   return {
-    ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
+    ...(_aiUnavailable ? {
+      code: _aiUnavailable.code,
+      notice: _aiUnavailable.notice,
+      ...(_aiUnavailable.retrieval ? { retrieval: _aiUnavailable.retrieval } : {}),
+      ...(_brainFailure?.error ? { providerError: String(_brainFailure.error).slice(0, 200) } : {}),
+    } : {}),
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
       tool: t.tool, ok: t.ok,
       params: t.params || {},
@@ -36376,10 +36658,10 @@ register("verify","stressTest", (ctx, input) => {
 register("lattice", "beacon", (ctx, input={}) => {
   const g = _c2genesisDTU();
   const rootHash = g ? _c2hash({ id:g.id, formula:g.formula, invariants:g.invariants }) : "missing";
-  const threshold = Number(input.threshold ?? (STATE.__chicken2.thresholdOverlap ?? 0.95));
-  // Compare current lattice signature against genesis
-  const latticeSig = { invariants: Object.keys(STATE.settings||{}), lineage:{ root:"genesis_reality_anchor_v1" } };
-  const overlap = g ? overlap_verifier(g, latticeSig) : 0;
+  const threshold = Number(input.threshold ?? _getOverlapThreshold());
+  // Beacon reads the anchor against itself. The runtime settings key list is
+  // not a lattice signature and is not an overlap operand.
+  const overlap = g ? _c2admissionOverlap(g, { invariants: g.invariants, lineage: g.lineage || { root: g.id } }).ov : 0;
   const awake = overlap >= threshold;
   // Update continuity metric
   STATE.__chicken2.metrics.continuityAvg = clamp(overlap, 0, 1);
@@ -41671,9 +41953,14 @@ async function federationPublish(eventType, payload) {
 let __governorTimer = null;
 
 function _governorCtx() {
-  // internal ctx: owner actor + founder override flag for safe local growth operations
+  // internal ctx: owner actor + founder override flag for safe local growth operations.
+  // ctx.system is set so pipelineCommitDTU's anti-gaming guard accepts MEGA/HYPER
+  // from the heartbeat. makeInternalCtx alone only sets ctx.internal, which used
+  // to downgrade every consolidation mega to regular.
   const ctx = makeInternalCtx("governor");
-  ctx.reqMeta = { ...(ctx.reqMeta||{}), override: true, internal: true, source: "governor" };
+  ctx.system = true;
+  ctx.isSystem = true;
+  ctx.reqMeta = { ...(ctx.reqMeta||{}), override: true, internal: true, source: "governor", system: true };
   return ctx;
 }
 
@@ -41736,11 +42023,21 @@ async function governorTick(reason="heartbeat") {
   // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
   // first request after idle, the next tick will catch up.
   //
-  // This gate is idle-only. The heavy-maintenance helper also returns false
-  // on a low-memory host, and using it here skipped the liveness counter
-  // even while authenticated users were driving load (tick-SLO: 0 ticks,
-  // "frozen loop", on a 16 GB CI runner).
+  // This gate is idle-only. The heavy-maintenance helper is also false on a
+  // low-memory host, and using it here skipped the liveness counter while
+  // authenticated users were driving load (tick-SLO: 0 ticks, "frozen loop",
+  // on a 16 GB CI runner). Consolidation uses the same isIdle() signal, not
+  // that helper, so a small host with users still compresses.
   if (reason !== "boot" && presenceIdle.isIdle()) {
+    // Quiet room: skip autogen/dream/jobs. A due consolidation cycle still
+    // runs so a restart during idle does not drop the wall-clock pass.
+    try {
+      if (shouldRunConsolidation() && await _consolidationDue()) {
+        _governorTickRunning = true;
+        try { await _runDtuConsolidationCycle(_governorCtx()); }
+        finally { _governorTickRunning = false; }
+      }
+    } catch (e) { observe(e, "governor_consolidation_idle"); }
     return { ok: true, skipped: "idle_no_users" };
   }
   _governorTickRunning = true;
@@ -41755,24 +42052,50 @@ async function governorTick(reason="heartbeat") {
   // alive. The pause skips the heavy body only.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
-    if (reason !== "boot" && shouldPauseHeavyBackground()) {
-      return { ok: true, skipped: "low_memory_host" };
-    }
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
+    // Low-memory is a flag, not a return. The old return sat above jobs,
+    // the queue, and consolidation, so a 16GB host never compressed and
+    // user-awaited background jobs stalled. Autogen/dream/ingest still pause.
+    const lowMemoryPause = reason !== "boot" && shouldPauseHeavyBackground();
 
     // 1) Deterministic + bounded growth engines
-    if (s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
-    if (s.dreamEnabled)    { try { await runMacro("system","dream",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_dream_heartbeat"); } }
-    if (s.evolutionEnabled){ try { await runMacro("system","evolution",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_evolution_heartbeat"); } }
-    if (s.synthEnabled)    { try { await runMacro("system","synth",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_synth_heartbeat"); } }
+    if (!lowMemoryPause && s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
+    if (!lowMemoryPause && s.dreamEnabled)    { try { await runMacro("system","dream",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_dream_heartbeat"); } }
+    if (!lowMemoryPause && s.evolutionEnabled){ try { await runMacro("system","evolution",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_evolution_heartbeat"); } }
 
-    // 2) Queue processing (best-effort; only if macros exist)
-    try { await runMacro("jobs","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_jobs_tick"); }
-    try { await runMacro("queue","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_queue_tick"); }
-    try { await runMacro("ingest","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_ingest_tick"); }
-    try { await runMacro("crawl","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_crawl_tick"); }
+    // 2) Optional queue/synth macros. Absence is logged once when the governor
+    // starts; a tick skips anything still unregistered and does not observe
+    // that miss. A throw from a macro that IS registered is still observed.
+    // Jobs and the queue are user-awaited — they run even when the low-memory
+    // profile is on. Synth pauses with autogen/dream; ingest/crawl stay paused.
+    await tickGovernorOptionalMacros({
+      macros: MACROS,
+      runMacro,
+      observe,
+      input: { override: true, reason },
+      ctx,
+      synthEnabled: !lowMemoryPause && !!s.synthEnabled,
+      include: ["jobs", "queue", "system"],
+    });
+    if (lowMemoryPause) {
+      // Users are present (the idle return already left). Compression follows
+      // isIdle(), so this host still consolidates unless
+      // CONCORD_CONSOLIDATION_ON_LOW_MEMORY=0.
+      if (shouldRunConsolidation() && !presenceIdle.isIdle() && await _consolidationDue()) {
+        try { await _runDtuConsolidationCycle(ctx); } catch (e) { observe(e, "governor_consolidation_low_memory"); }
+      }
+      return { ok: true, skipped: "low_memory_host" };
+    }
+    await tickGovernorOptionalMacros({
+      macros: MACROS,
+      runMacro,
+      observe,
+      input: { override: true, reason },
+      ctx,
+      include: ["ingest", "crawl"],
+    });
 
     // 2.5) Goal System: process goal proposals and track active goals
     try { await processGoalHeartbeat(ctx); } catch (e) { observe(e, "governor_goal_heartbeat"); }
@@ -42252,147 +42575,14 @@ async function governorTick(reason="heartbeat") {
       }
 
       // ── Consolidation Pipeline (derived from hardware math) ──
-      // Runs every CONSOLIDATION.TICK_INTERVAL ticks (~7.5 minutes)
-      // This is the primary memory management system — consolidation is the lungs.
-      // Wrapped via runHeartbeatModule so timing lands in
-      // concord_heartbeat_block_ms{module="consolidation"} — this block
-      // is the most likely heartbeat-overrun culprit at scale.
-      if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
-        await runHeartbeatModule("consolidation", async () => {
-          // Sprint 60+ — idle gate. Consolidation = cluster detection + MEGA
-          // formation across 6000+ DTUs. Pure maintenance. With no real users,
-          // there's no one to read those DTUs soon. Skip the heavy work;
-          // next tick after users return will catch up.
-          if (!presenceIdle.shouldRunHeavyMaintenance()) {
-            return { ok: true, skipped: "idle_no_users" };
-          }
-          const ctx = _governorCtx();
-          // Phase 1: Cluster detection for MEGA formation
-          try {
-            const clusterResult = await runMacro("dtu", "cluster", {
-              minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
-              maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
-              excludeTiers: ["mega", "hyper"],
-            }, ctx);
-
-            // Phase 2: Create MEGAs from qualifying clusters
-            // Sprint 32 — hard cap per-tick work + cooperative yield to the
-            // event loop between clusters. Pre-fix, a 100+ cluster run was
-            // blocking the event loop for 100+ seconds (heartbeat_block_slow
-            // module=consolidation ms=109043). Now we process at most N
-            // clusters per tick and yield with setImmediate(0) so HTTP
-            // requests (and other heartbeat modules) get scheduled in.
-            // Unprocessed clusters spill to the next consolidation tick
-            // (no data loss — just a slower drain).
-            const CONSO_YIELD_MS = 50;
-            const CONSO_BUDGET_MS = 4000;
-            const _consoStart = Date.now();
-            if (clusterResult?.clusters?.length > 0) {
-              let _consoDone = 0;
-              for (const cluster of clusterResult.clusters.slice(0, CONSOLIDATION.MEGA_MAX_PER_CYCLE)) {
-                // Yield to the event loop between clusters so /api/* and
-                // the rest of the heartbeat get CPU time.
-                await new Promise((r) => { setImmediate(r); });
-                if (Date.now() - _consoStart > CONSO_BUDGET_MS) {
-                  structuredLog("info", "consolidation_defer_remaining", {
-                    done: _consoDone,
-                    remaining: clusterResult.clusters.length - _consoDone,
-                    budgetMs: CONSO_BUDGET_MS,
-                  });
-                  break;
-                }
-                _consoDone++;
-                try {
-                  const mega = await runMacro("dtu", "gapPromote", {
-                    ids: (cluster.members || cluster.dtus || []).map(d => d.id || d),
-                    tier: "mega",
-                    dryRun: false
-                  }, ctx);
-
-                  if (mega?.ok && mega?.dtu?.id) {
-                    // Quality gate: validate consolidation before committing
-                    const quality = validateConsolidationQuality(mega.dtu, (cluster.members || cluster.dtus || []).map(d => d.id || d));
-                    if (!quality.ok) { STATE.dtus.delete(mega.dtu.id); continue; }
-
-                    // Transfer edges before archiving sources
-                    for (const member of (cluster.members || cluster.dtus || [])) {
-                      const memberId = member.id || member;
-                      try { transferEdgesToConsolidated(memberId, mega.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                    }
-                    // Demote absorbed regular DTUs to archive
-                    for (const member of (cluster.members || cluster.dtus || [])) {
-                      const memberId = member.id || member;
-                      try { demoteToArchive(memberId, mega.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                    }
-                    // Credit contributing entities
-                    if (entityEconMod) {
-                      for (const member of (cluster.members || cluster.dtus || [])) {
-                        const src = STATE.dtus.get(member.id || member);
-                        if (src?.meta?.createdBy) {
-                          try { entityEconMod.earnResource(src.meta.createdBy, "INSIGHT", ENTITY_ECONOMY_CONSTANTS.INCOME_CONSOLIDATION, "consolidation"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                        }
-                      }
-                    }
-                    // Earned-storage hook — every MEGA owned by a creator
-                    // grants STORAGE_EARN_PER_MEGA_BYTES (default 512 MiB).
-                    // The MEGA owner is the creator most-cited in the cluster
-                    // (its meta.createdBy); we grant once per MEGA, idempotent
-                    // by the MEGA's id.
-                    try {
-                      const megaOwner = mega.dtu?.meta?.createdBy;
-                      if (megaOwner) {
-                        grantEarnedStorage(
-                          db,
-                          megaOwner,
-                          STORAGE_REASONS.EARNED_MEGA,
-                          STORAGE_EARN_PER_MEGA_BYTES,
-                          `mega:${mega.dtu.id}`,
-                        );
-                      }
-                    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                  }
-                } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              }
-            }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-
-          // Phase 3: HYPER formation (cluster MEGAs into HYPERs)
-          const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
-          if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION) {
-            try {
-              const megaClusters = await runMacro("dtu", "cluster", {
-                minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-                maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
-                onlyTier: "mega",
-              }, ctx);
-
-              if (megaClusters?.clusters?.length > 0) {
-                for (const mc of megaClusters.clusters.slice(0, CONSOLIDATION.HYPER_MAX_PER_CYCLE)) {
-                  try {
-                    const hyper = await runMacro("dtu", "gapPromote", {
-                      ids: (mc.members || mc.dtus || []).map(d => d.id || d),
-                      tier: "hyper",
-                      dryRun: false
-                    }, ctx);
-                    if (hyper?.ok && hyper?.dtu?.id) {
-                      // Quality gate: validate HYPER consolidation
-                      const hyperQuality = validateConsolidationQuality(hyper.dtu, (mc.members || mc.dtus || []).map(d => d.id || d));
-                      if (!hyperQuality.ok) { STATE.dtus.delete(hyper.dtu.id); continue; }
-
-                      // Transfer edges before archiving source MEGAs
-                      for (const member of (mc.members || mc.dtus || [])) {
-                        try { transferEdgesToConsolidated(member.id || member, hyper.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                      }
-                      for (const member of (mc.members || mc.dtus || [])) {
-                        try { demoteToArchive(member.id || member, hyper.dtu.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                      }
-                    }
-                  } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                }
-              }
-            } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-          }
-        });
+      // Wall-clock cadence (TICK_FREQUENCIES.CONSOLIDATION heartbeats),
+      // persisted across restarts. Not an in-memory tick modulus.
+      // Wrapped via runHeartbeatModule inside _runDtuConsolidationCycle so
+      // timing lands in concord_heartbeat_block_ms{module="consolidation"}.
+      // isIdle() — the heavy-maintenance helper is also false on a low-memory
+      // host and was pausing compression while users were here.
+      if (shouldRunConsolidation() && !presenceIdle.isIdle() && await _consolidationDue()) {
+        await _runDtuConsolidationCycle(ctx);
       }
 
       // Heap pressure check
@@ -42906,6 +43096,207 @@ async function governorTick(reason="heartbeat") {
   }
 }
 
+const CONSOLIDATION_LAST_RUN_KEY = "dtu.consolidation.lastRunAt";
+let _consolidationScheduleMod = null;
+
+async function _consolidationSchedule() {
+  if (!_consolidationScheduleMod) {
+    _consolidationScheduleMod = await import("./lib/consolidation-schedule.js");
+  }
+  return _consolidationScheduleMod;
+}
+
+async function _consolidationIntervalMs() {
+  const { consolidationIntervalMs } = await _consolidationSchedule();
+  // TICK_FREQUENCIES.CONSOLIDATION and CONSOLIDATION.TICK_INTERVAL are the
+  // same historical every-30-ticks period, now measured in wall time.
+  return consolidationIntervalMs({
+    heartbeatMs: STATE.settings?.heartbeatMs,
+    everyTicks: TICK_FREQUENCIES.CONSOLIDATION || CONSOLIDATION.TICK_INTERVAL,
+    overrideMs: process.env.CONCORD_CONSOLIDATION_INTERVAL_MS,
+  });
+}
+
+async function _readConsolidationLastRunAt() {
+  const fromSettings = Number(STATE.settings?.consolidationLastRunAt) || 0;
+  let fromDb = 0;
+  try {
+    const { getConfig } = await import("./lib/runtime/runtime-config.js");
+    const v = getConfig(db, CONSOLIDATION_LAST_RUN_KEY, null);
+    fromDb = Number(v && typeof v === "object" ? v.at : v) || 0;
+  } catch { /* kv is optional — settings snapshot still carries the stamp */ }
+  return Math.max(fromSettings, fromDb);
+}
+
+async function _consolidationDue(now = Date.now()) {
+  const { consolidationIsDue } = await _consolidationSchedule();
+  return consolidationIsDue({
+    lastRunAt: await _readConsolidationLastRunAt(),
+    now,
+    intervalMs: await _consolidationIntervalMs(),
+  });
+}
+
+async function _markConsolidationRan(now = Date.now()) {
+  STATE.settings = STATE.settings || {};
+  STATE.settings.consolidationLastRunAt = now;
+  try { saveStateDebounced(); } catch { /* snapshot is best-effort */ }
+  try {
+    const { setConfig } = await import("./lib/runtime/runtime-config.js");
+    setConfig(db, CONSOLIDATION_LAST_RUN_KEY, { at: now }, { source: "governor" });
+  } catch { /* kv is optional */ }
+}
+
+function _clusterMemberIds(cluster) {
+  if (Array.isArray(cluster?.ids) && cluster.ids.length) {
+    return cluster.ids.map(x => (x && typeof x === "object") ? x.id : x).filter(Boolean);
+  }
+  const raw = cluster?.members || cluster?.dtus || [];
+  return raw.map(d => (d && typeof d === "object") ? (d.id || d) : d).filter(Boolean);
+}
+
+/**
+ * Read gapPromote's real return ({ promoted:[{megaId, memberIds}], dtu, dtus })
+ * and absorb members: quality gate, edge transfer, demoteToArchive.
+ * The old tick looked for mega.dtu.id, which gapPromote never set, so
+ * members stayed hot and the regular count never dropped.
+ */
+async function absorbConsolidatedPromotion(promotionResult, cluster) {
+  if (!promotionResult?.ok) return { ok: false, reason: "promote_failed" };
+  const records = Array.isArray(promotionResult.promoted) ? promotionResult.promoted : [];
+  const dtus = Array.isArray(promotionResult.dtus) ? promotionResult.dtus : [];
+  const list = records.length
+    ? records
+    : (promotionResult.dtu?.id ? [{ megaId: promotionResult.dtu.id, memberIds: _clusterMemberIds(cluster) }] : []);
+  if (!list.length) return { ok: false, reason: "no_dtu", promoted: records };
+  const entityEconMod = await import("./emergent/entity-economy.js").catch(() => null);
+  let absorbed = 0;
+  const failures = [];
+  for (const rec of list) {
+    const megaId = rec.megaId || rec.id;
+    const live = (megaId && STATE.dtus.get(megaId))
+      || dtus.find(d => d?.id === megaId)
+      || (promotionResult.dtu?.id === megaId ? promotionResult.dtu : null);
+    if (!live?.id) {
+      failures.push({ megaId, reason: "missing" });
+      continue;
+    }
+    const memberIds = (Array.isArray(rec.memberIds) && rec.memberIds.length)
+      ? rec.memberIds
+      : _clusterMemberIds(cluster);
+    const quality = validateConsolidationQuality(live, memberIds);
+    if (!quality.ok) {
+      try { STATE.dtus.delete(live.id); } catch { /* best-effort */ }
+      failures.push({ megaId: live.id, reason: quality.reason });
+      continue;
+    }
+    const creators = [];
+    for (const memberId of memberIds) {
+      if (!memberId || memberId === live.id) continue;
+      const src = STATE.dtus.get(memberId);
+      if (src?.meta?.createdBy) creators.push(src.meta.createdBy);
+      try { await transferEdgesToConsolidated(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      try { demoteToArchive(memberId, live.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      absorbed++;
+    }
+    if (entityEconMod?.earnResource) {
+      for (const creator of creators) {
+        try { entityEconMod.earnResource(creator, "INSIGHT", ENTITY_ECONOMY_CONSTANTS.INCOME_CONSOLIDATION, "consolidation"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      }
+    }
+    try {
+      const megaOwner = live.meta?.createdBy || live.creator_id || live.creatorId || null;
+      if (megaOwner) {
+        grantEarnedStorage(db, megaOwner, STORAGE_REASONS.EARNED_MEGA, STORAGE_EARN_PER_MEGA_BYTES, `mega:${live.id}`);
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  }
+  return { ok: failures.length === 0, absorbed, failures, megaId: list[0]?.megaId || null };
+}
+
+async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
+  let done = 0;
+  const batch = (clusters || []).slice(0, tier === "hyper" ? CONSOLIDATION.HYPER_MAX_PER_CYCLE : CONSOLIDATION.MEGA_MAX_PER_CYCLE);
+  for (const cluster of batch) {
+    await new Promise((r) => { setImmediate(r); });
+    if (Date.now() - startedAt > budgetMs) {
+      structuredLog("info", "consolidation_defer_remaining", {
+        done,
+        remaining: batch.length - done,
+        budgetMs,
+        tier,
+      });
+      break;
+    }
+    done++;
+    try {
+      const ids = _clusterMemberIds(cluster);
+      const promoted = await runMacro("dtu", "gapPromote", {
+        ids,
+        tier,
+        minCluster,
+        maxPromotions: 1,
+        dryRun: false,
+      }, ctx);
+      await absorbConsolidatedPromotion(promoted, { ids });
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  }
+  return done;
+}
+
+// Primary memory compression. Yields between clusters and stops at a
+// per-tick budget. Eligibility is wall-clock (see _consolidationDue), so a
+// restart does not wait another 30 ticks and an idle room still compresses.
+async function _runDtuConsolidationCycle(ctx) {
+  const cycleCtx = ctx || _governorCtx();
+  const startedAt = Date.now();
+  structuredLog("info", "consolidation_cycle", {
+    at: startedAt,
+    lowMemory: shouldPauseHeavyBackground(),
+    budgetMs: 4000,
+  });
+  await _markConsolidationRan(startedAt);
+  return runHeartbeatModule("consolidation", async () => {
+    const CONSO_BUDGET_MS = 4000;
+    const startedAt = Date.now();
+    try {
+      const clusterResult = await runMacro("dtu", "cluster", {
+        minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
+        maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
+        fromTier: "regular",
+      }, cycleCtx);
+      if (clusterResult?.clusters?.length > 0) {
+        await _promoteClusterBatch(cycleCtx, clusterResult.clusters, {
+          tier: "mega",
+          minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
+          budgetMs: CONSO_BUDGET_MS,
+          startedAt,
+        });
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+    const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
+    if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION && Date.now() - startedAt <= CONSO_BUDGET_MS) {
+      try {
+        const megaClusters = await runMacro("dtu", "cluster", {
+          minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+          maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
+          fromTier: "mega",
+        }, cycleCtx);
+        if (megaClusters?.clusters?.length > 0) {
+          await _promoteClusterBatch(cycleCtx, megaClusters.clusters, {
+            tier: "hyper",
+            minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+            budgetMs: CONSO_BUDGET_MS,
+            startedAt,
+          });
+        }
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
+    return { ok: true };
+  });
+}
+
 function _startGovernorHeartbeat() {
   try {
     if (__governorTimer) return { ok:true, already:true };
@@ -42916,6 +43307,7 @@ function _startGovernorHeartbeat() {
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
+    logAbsentGovernorMacrosOnce(MACROS, structuredLog);
     __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
@@ -64236,10 +64628,22 @@ app.post("/api/sovereign/repair/acknowledge", async (req, res) => {
 });
 
 // Sovereignty/audit
+// Caller-scoped. requireAuth is load-bearing: this registration used to
+// have none, and the "/api/sovereign" prefix gate was the only thing
+// standing in front of it. That prefix no longer matches
+// /api/sovereignty/*. Anonymous callers stay 401. The body cannot name
+// another user — audit.run is not a registered macro (the catch is the
+// live path) and reports system posture, not another account's rows.
 
-app.post("/api/sovereignty/audit", asyncHandler(async (req, res) => {
+app.post("/api/sovereignty/audit", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "Auth required" });
+  const raw = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  const input = { ...raw, userId };
+  delete input.user_id;
+  delete input.ownerId;
   try {
-    const out = await runMacro("audit", "run", req.body || {}, makeCtx(req));
+    const out = await runMacro("audit", "run", input, makeCtx(req));
     res.json(out);
   } catch (e) {
     // Run basic checks even if macro fails
@@ -65287,7 +65691,8 @@ try {
   // Maintenance A — make Repair Memory durable: learned fixes mirror to
   // repair_knowledge so they survive a restart (guarded; no-op if the table is absent).
   try { configureRepairPersistence(db); } catch { /* persistence optional */ }
-  startGuardian();
+  // Guardian monitors are started from startRepairLoop() only. A second start
+  // is a no-op, so a later restart or full deploy does not arm a second set.
   // Phase 5 fix (Sprint 60): wire detector-bridge.js's configureBridge() so
   // the detector-sweep hook (~line 880, "feed delta into repair-cortex
   // bridge") actually reaches pain/avoidance learning + the DTU audit
@@ -65307,7 +65712,7 @@ try {
     const { configureBridge } = await import("./emergent/repair-cortex/detector-bridge.js");
     configureBridge({ observe, logDtu: logRepairDTU });
   } catch (_e) { /* bridge wiring optional — detector-bridge falls back to enqueue-only */ }
-  structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon + Guardian initialized" });
+  structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon initialized" });
 } catch (e) {
   console.warn("[Concord] Repair Cortex failed to initialize:", e.message);
 }
@@ -75788,6 +76193,13 @@ function ensureQueues() {
   for (const k of Object.keys(STATE.queues)) {
     if (!Array.isArray(STATE.queues[k])) STATE.queues[k] = [];
   }
+  // Seed keys the initial object and older snapshots omit. A missing
+  // goalProposals made processGoalHeartbeat throw `.slice` of undefined
+  // on every governor tick (the key loop above only rewrites keys that
+  // are already present).
+  for (const k of ["maintenance", "macroProposals", "panelProposals", "terminalRequests", "synthesis", "hypotheses", "philosophy", "wrapperJobs", "notifications", "metaProposals", "goalProposals", "activeGoals"]) {
+    if (!Array.isArray(STATE.queues[k])) STATE.queues[k] = [];
+  }
 }
 function ensureOrganRegistry() {
   if (!(STATE.organs instanceof Map)) STATE.organs = new Map();
@@ -76182,6 +76594,7 @@ function abandonGoal(goalId, reason = "user_requested") {
 
 function generateAutoGoalProposals(_ctx = {}) {
   ensureGoalSystem();
+  ensureQueues();
   if (!STATE.goals.config.autoProposalEnabled) {
     return { ok: false, error: "Auto-proposal disabled" };
   }
@@ -76255,6 +76668,10 @@ function generateAutoGoalProposals(_ctx = {}) {
 // Goal Heartbeat: called by Governor to process goals autonomously
 function processGoalHeartbeat(ctx = {}) {
   ensureGoalSystem();
+  // goalProposals is absent on the initial queues object and on snapshots
+  // saved before the key existed. .slice on that undefined threw every tick.
+  // A non-array (number, object, string) is not a proposal list either.
+  ensureQueues();
 
   const results = { evaluated: 0, activated: 0, progressed: 0, autoProposed: 0 };
 
@@ -89710,6 +90127,8 @@ export const __TEST__ = Object.freeze({
   emitToWorld,
   inLatticeReality,
   overlap_verifier,
+  _getOverlapThreshold,
+  governedCall,
   _defaultOrganState,
   register,
   runMacro,
@@ -89809,5 +90228,7 @@ export const __TEST__ = Object.freeze({
   initGhostFleet,
   sumCompletedQuestXp,
   refreshGameProfile,
+  absorbConsolidatedPromotion,
+  governorTick,
 });
 // Test commit

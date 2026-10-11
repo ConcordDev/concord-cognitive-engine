@@ -320,13 +320,18 @@ describe("carpentry — client portal (wave 11 top-up)", () => {
   it("portalRespond: client approval flips share status; bad decision rejects", async () => {
     const created = await lensRun("carpentry", "portalCreate", { params: { client: "Cal", estimateId: "EST-10", estimateAmount: 800 } }, ctx);
     const token = created.result.token;
+    // A bad decision on an open portal is an enum reject, before any status flip.
+    const bad = await lensRun("carpentry", "portalRespond", { params: { token, decision: "maybe" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /must be 'approved' or 'declined'/i);
     const ok = await lensRun("carpentry", "portalRespond", { params: { token, decision: "approved", signedBy: "Cal R" } });
     assert.equal(ok.ok, true);
     assert.equal(ok.result.share.status, "approved");
     assert.equal(ok.result.share.clientDecision.decision, "approved");
-    const bad = await lensRun("carpentry", "portalRespond", { params: { token, decision: "maybe" } });
-    assert.equal(bad.result.ok, false);
-    assert.match(String(bad.result.error), /must be 'approved' or 'declined'/i);
+    // One response: a second call reports the estimate is already decided.
+    const again = await lensRun("carpentry", "portalRespond", { params: { token, decision: "declined" } });
+    assert.equal(again.result.ok, false);
+    assert.match(String(again.result.error), /already approved/i);
   });
 
   it("portalUpdateProgress: owner bumps progress; non-owner is rejected", async () => {

@@ -36,11 +36,12 @@ test.describe('DTU quick-create submit stays in the viewport', () => {
       await page.goto('/lenses/dtus', { waitUntil: 'domcontentloaded' });
       await expect(page).not.toHaveURL(/\/login/);
 
-      // New DTU is a visible button. n still opens the same dialog.
-      await expect(async () => {
-        await page.keyboard.press('n');
-        await expect(page.getByRole('dialog', { name: 'Create New DTU' })).toBeVisible({ timeout: 1000 });
-      }).toPass({ timeout: 20_000 });
+      const open = page.getByRole('button', { name: 'New DTU' }).first();
+      await expect(open).toBeVisible({ timeout: 60_000 });
+      // data-hydrated flips in useEffect, after React has attached onClick.
+      // One actionability-checked click. No retry loop.
+      await expect(open).toHaveAttribute('data-hydrated', 'true');
+      await open.click();
 
       const dialog = page.getByRole('dialog', { name: 'Create New DTU' });
       await expect(dialog).toBeVisible();

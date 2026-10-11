@@ -224,6 +224,12 @@ describe("the library car: Cd from its CAD body", () => {
     // CI does not install cadquery-ocp. The assertions are unchanged when it is.
     if (!(await resolveKernelPython())) { skip = "no OCC kernel Python"; return; }
     s = (await carAcceptanceAsync(BRIEF)).session;
+    const body = s.result("cad.body@BODY_SHELL");
+    const drag = s.result("aero.drag-buildup@VEH");
+    const why = [body?.reason, body?.error, drag?.reason].filter(Boolean).join(" ");
+    if (!body || /no Python with OCP|unavailable/i.test(why)) {
+      skip = why || "OCC kernel did not compute the body";
+    }
   });
 
   it("computes a Cd range from the solid and re-runs top speed on it (needs the OCC kernel)", (t) => {
