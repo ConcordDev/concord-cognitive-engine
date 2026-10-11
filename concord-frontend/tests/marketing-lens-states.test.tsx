@@ -20,7 +20,7 @@
  * macros/backend calls) are out of scope here and are stubbed as inert.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import React from 'react';
 
@@ -111,8 +111,16 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import MarketingLensPage from '@/app/lenses/marketing/page';
 
+const priorRedditFlag = process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+
 beforeEach(() => {
+  process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = '1';
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  if (priorRedditFlag === undefined) delete process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+  else process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = priorRedditFlag;
 });
 
 describe('marketing lens — real sections mount (no fake CRUD)', () => {

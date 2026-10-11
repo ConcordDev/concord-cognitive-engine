@@ -123,7 +123,7 @@ export function ConKayDemo() {
           <Link href={DEMO_SIGNIN_HREF} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-slate-300 hover:bg-white/5">
             <LogIn className="h-4 w-4" aria-hidden /> Sign in
           </Link>
-          <Link href={DEMO_SIGNUP_HREF} className="flex items-center gap-1.5 rounded-lg bg-sky-500/90 px-3 py-1.5 font-medium text-white hover:bg-sky-500">
+          <Link href={DEMO_SIGNUP_HREF} className="flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 font-medium text-white hover:bg-sky-800">
             <UserPlus className="h-4 w-4" aria-hidden /> Create account
           </Link>
         </nav>
@@ -140,7 +140,7 @@ export function ConKayDemo() {
                 type="button"
                 onClick={() => void run()}
                 disabled={solving}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-sky-500/90 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-60"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-sky-700 py-1.5 text-xs font-medium text-white hover:bg-sky-800 disabled:opacity-60"
               >
                 {solving && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />} Run FEA
               </button>
@@ -199,7 +199,7 @@ export function ConKayDemo() {
                 {sweeping && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />} Run 5 solves
               </button>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Same beam at 60–140% of the current depth.</p>
+            <p className="mt-1 text-[11px] text-slate-400">Same beam at 60–140% of the current depth.</p>
             {sweepError && <p role="alert" className="mt-2 text-xs text-rose-300">{sweepError}</p>}
             {sweep && (
               <table className="mt-2 w-full text-left font-mono text-[11px]">
@@ -240,7 +240,7 @@ export function ConKayDemo() {
               <li>Save models and keep studies as DTUs you can cite</li>
               <li>Workspaces that follow you across devices</li>
             </ul>
-            <Link href={DEMO_SIGNUP_HREF} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500">
+            <Link href={DEMO_SIGNUP_HREF} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800">
               <UserPlus className="h-3.5 w-3.5" aria-hidden /> Create account
             </Link>
           </section>

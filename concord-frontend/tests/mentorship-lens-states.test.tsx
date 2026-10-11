@@ -23,7 +23,7 @@
  * regression cannot pass.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 
@@ -93,11 +93,19 @@ vi.mock('framer-motion', () => ({
 
 import MentorshipLens from '@/app/lenses/mentorship/page';
 
+const priorRedditFlag = process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+
 beforeEach(() => {
+  process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = '1';
   statsState.status = 'idle';
   statsState.result = null;
   statsState.error = null;
   dispatchSpy.mockClear();
+});
+
+afterEach(() => {
+  if (priorRedditFlag === undefined) delete process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+  else process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = priorRedditFlag;
 });
 
 describe('mentorship lens — tab wiring', () => {
