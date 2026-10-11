@@ -13,9 +13,10 @@ const makeMockHeaders = () => {
   return { set: vi.fn((k: string, v: string) => store.set(k, v)), get: (k: string) => store.get(k) };
 };
 
-const mockRedirect = vi.fn().mockImplementation((url: URL) => ({
+const mockRedirect = vi.fn().mockImplementation((url: URL, status?: number) => ({
   type: 'redirect',
   url: url.toString(),
+  status,
   headers: makeMockHeaders(),
 }));
 
@@ -23,7 +24,7 @@ const mockNext = vi.fn().mockImplementation(() => ({ type: 'next', headers: make
 
 vi.mock('next/server', () => ({
   NextResponse: {
-    redirect: (url: URL) => mockRedirect(url),
+    redirect: (url: URL, status?: number) => mockRedirect(url, status),
     next: () => mockNext(),
   },
 }));
@@ -48,6 +49,38 @@ describe('Auth Middleware', () => {
     vi.resetModules();
     const mod = await import('@/middleware');
     middleware = mod.middleware as typeof middleware;
+  });
+
+  describe('tabLabel lens aliases (308)', () => {
+    it('redirects /lenses/threads to /lenses/thread', () => {
+      middleware(makeRequest('/lenses/threads'));
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      const [url, status] = mockRedirect.mock.calls[0];
+      expect(url.pathname).toBe('/lenses/thread');
+      expect(status).toBe(308);
+    });
+
+    it('redirects /lenses/visuals to /lenses/fractal', () => {
+      middleware(makeRequest('/lenses/visuals'));
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      const [url, status] = mockRedirect.mock.calls[0];
+      expect(url.pathname).toBe('/lenses/fractal');
+      expect(status).toBe(308);
+    });
+
+    it('leaves temporary aliases on 307', () => {
+      middleware(makeRequest('/chat'));
+      expect(mockRedirect.mock.calls[0][0].pathname).toBe('/lenses/chat');
+      expect(mockRedirect.mock.calls[0][1]).toBe(307);
+    });
+
+    it('308s a signed-in /lenses/threads visit before the page renders', () => {
+      middleware(makeRequest('/lenses/threads', { concord_auth: 'tok' }));
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRedirect.mock.calls[0][0].pathname).toBe('/lenses/thread');
+      expect(mockRedirect.mock.calls[0][1]).toBe(308);
+    });
   });
 
   describe('public paths', () => {

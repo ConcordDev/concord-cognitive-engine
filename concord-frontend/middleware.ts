@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { TAB_LABEL_REDIRECTS } from './lib/lens-tab-redirects';
+
+// A label slug that is not the lens path (Threads → /lenses/threads,
+// Visuals → /lenses/visuals) 308s to the canonical route. Checked before
+// auth so the URL itself moves. The list is the registry tabLabels.
+const TAB_LABEL_REDIRECT_MAP: Record<string, string> = Object.fromEntries(
+  TAB_LABEL_REDIRECTS.map((entry) => [entry.source, entry.destination]),
+);
 
 /**
  * Auth middleware — enforces authentication via cookie check, and (below)
@@ -280,10 +288,15 @@ export function middleware(request: NextRequest) {
     '/dila': '/agents',
     '/lenses': '/hub',
   };
-  if (ALIASES[pathname]) {
-    const dest = new URL(ALIASES[pathname], request.url);
-    dest.search = request.nextUrl.search;
-    const status = pathname === '/signup' ? 308 : 307;
+  const aliasDest = ALIASES[pathname];
+  const tabDest = TAB_LABEL_REDIRECT_MAP[pathname];
+  const redirectDest = aliasDest || tabDest;
+  if (redirectDest) {
+    const dest = new URL(redirectDest, request.url);
+    if (typeof request.nextUrl.search === 'string') dest.search = request.nextUrl.search;
+    // tabLabel aliases are permanent (the label is not a lens id). /signup
+    // stays the only other 308; the rest of ALIASES remain temporary.
+    const status = (tabDest || pathname === '/signup') ? 308 : 307;
     return NextResponse.redirect(dest, status);
   }
 
