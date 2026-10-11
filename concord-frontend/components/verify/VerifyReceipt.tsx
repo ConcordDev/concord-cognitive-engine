@@ -150,6 +150,7 @@ export default function VerifyReceipt() {
         </p>
         <p style={prose}>
           Public keys are published at{' '}
+          {/* @broken-link-ok — next.config.js rewrites this to the backend well-known document */}
           <a href="/.well-known/concord-receipt-keys.json" style={link}>/.well-known/concord-receipt-keys.json</a>
           {' '}as <code>keys[keyId]</code>, each value the raw 32-byte public key in base64.
           The key id is the first 16 hex characters of SHA-256 of those 32 bytes. A receipt

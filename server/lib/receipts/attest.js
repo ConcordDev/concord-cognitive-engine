@@ -15,12 +15,14 @@
 // SHA-256 of the raw 32-byte public key.
 //
 // The private key comes from CONCORD_RECEIPT_SIGNING_KEY (PEM, PKCS#8) or
-// CONCORD_RECEIPT_SIGNING_KEY_PATH. It is read once, on first use. If it is
-// missing or unusable, the receipt is still returned with signature: null and
-// a reason. This module never generates a throwaway key.
+// CONCORD_RECEIPT_SIGNING_KEY_PATH. An inline PEM is applied synchronously.
+// A path is read once, asynchronously, by ensureSigningKey(); the listen
+// callback awaits that before it tells PM2 the process is ready. If the key
+// is missing or unusable, the receipt is still returned with signature: null
+// and a reason. This module never generates a throwaway key.
 
 import crypto from "node:crypto";
-import fs from "node:fs";
+import { readFile } from "node:fs/promises";
 
 export const CANON = "sorted-json-v1";
 export const ALG = "Ed25519";
@@ -34,6 +36,11 @@ const UNSIGNED_INVALID = "signing_key_invalid";
 /** @type {undefined | null | { privateKey: crypto.KeyObject, keyId: string, publicKeyB64: string, error?: undefined } | { error: string }} */
 let cached = undefined;
 let warnedInvalid = false;
+// Bumped by resetSigningKeyCache so an in-flight path read cannot repopulate
+// a cache a test (or a key rotation) just cleared.
+let keyGeneration = 0;
+/** @type {Promise<typeof cached> | null} */
+let keyInflight = null;
 
 function canonicalize(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -83,13 +90,38 @@ function normalizePem(text) {
   return trimmed.includes("\\n") ? trimmed.replace(/\\n/g, "\n") : trimmed;
 }
 
-function readPem() {
+function cacheFromPem(pem) {
+  if (!pem) return null;
+  try {
+    const privateKey = crypto.createPrivateKey(pem);
+    if (privateKey.asymmetricKeyType !== "ed25519") {
+      throw new Error("key is not Ed25519");
+    }
+    const raw = rawPublicFromKey(crypto.createPublicKey(privateKey));
+    return { privateKey, keyId: keyIdForRawPublic(raw), publicKeyB64: raw.toString("base64") };
+  } catch (err) {
+    if (!warnedInvalid) {
+      warnedInvalid = true;
+      console.warn(`[receipts] signing key was not usable (${err instanceof Error ? err.message : "invalid"}). Receipts will be unsigned.`);
+    }
+    return { error: UNSIGNED_INVALID };
+  }
+}
+
+/** Inline PEM, or null when that env var is unset. Does not touch the path. */
+function inlinePem() {
   const inline = process.env.CONCORD_RECEIPT_SIGNING_KEY;
   if (inline && inline.trim()) return normalizePem(inline);
+  return null;
+}
+
+async function readConfiguredPem() {
+  const inline = inlinePem();
+  if (inline) return inline;
   const file = process.env.CONCORD_RECEIPT_SIGNING_KEY_PATH;
   if (file && file.trim()) {
     try {
-      return fs.readFileSync(file.trim(), "utf8");
+      return await readFile(file.trim(), "utf8");
     } catch {
       return null;
     }
@@ -100,35 +132,49 @@ function readPem() {
 /**
  * The process signing key, or null when none is configured.
  * An unreadable key is `{ error: "signing_key_invalid" }`.
+ * A file path that ensureSigningKey has not finished reading is null for
+ * this call and is not cached, so the warm can still fill it.
  */
 export function loadSigningKey() {
   if (cached !== undefined) return cached;
-  const pem = readPem();
-  if (!pem) {
-    cached = null;
+  const inline = inlinePem();
+  if (inline) {
+    cached = cacheFromPem(inline);
     return cached;
   }
-  try {
-    const privateKey = crypto.createPrivateKey(pem);
-    if (privateKey.asymmetricKeyType !== "ed25519") {
-      throw new Error("key is not Ed25519");
-    }
-    const raw = rawPublicFromKey(crypto.createPublicKey(privateKey));
-    cached = { privateKey, keyId: keyIdForRawPublic(raw), publicKeyB64: raw.toString("base64") };
-  } catch (err) {
-    if (!warnedInvalid) {
-      warnedInvalid = true;
-      console.warn(`[receipts] signing key was not usable (${err instanceof Error ? err.message : "invalid"}). Receipts will be unsigned.`);
-    }
-    cached = { error: UNSIGNED_INVALID };
-  }
+  const file = process.env.CONCORD_RECEIPT_SIGNING_KEY_PATH;
+  if (file && file.trim()) return null;
+  cached = null;
   return cached;
+}
+
+/**
+ * Resolve the signing key, including a file-backed PEM. Safe to call more
+ * than once; a cleared cache starts a new read.
+ * @returns {Promise<typeof cached>}
+ */
+export function ensureSigningKey() {
+  if (cached !== undefined) return Promise.resolve(cached);
+  if (keyInflight) return keyInflight;
+  const gen = keyGeneration;
+  keyInflight = readConfiguredPem().then((pem) => {
+    if (gen !== keyGeneration) return cached === undefined ? null : cached;
+    cached = cacheFromPem(pem);
+    keyInflight = null;
+    return cached;
+  }, (err) => {
+    if (gen === keyGeneration) keyInflight = null;
+    throw err;
+  });
+  return keyInflight;
 }
 
 /** Test hook. The key is otherwise cached for the life of the process. */
 export function resetSigningKeyCache() {
+  keyGeneration += 1;
   cached = undefined;
   warnedInvalid = false;
+  keyInflight = null;
 }
 
 /** keyId → base64 raw public key. Never includes private material. */

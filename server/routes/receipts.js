@@ -9,7 +9,7 @@
 //      rate-limit middleware. Verification does not write anything.
 
 import express from "express";
-import { publicKeyDocument, verifyAttestation } from "../lib/receipts/attest.js";
+import { ensureSigningKey, publicKeyDocument, verifyAttestation } from "../lib/receipts/attest.js";
 
 const MAX_RECEIPT_CHARS = 1_500_000;
 
@@ -18,9 +18,14 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
   const read = readLimit || ((_req, _res, next) => next());
   const verify = verifyLimit || ((_req, _res, next) => next());
 
-  router.get("/.well-known/concord-receipt-keys.json", read, (_req, res) => {
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.json(publicKeyDocument());
+  router.get("/.well-known/concord-receipt-keys.json", read, async (_req, res) => {
+    try {
+      await ensureSigningKey();
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.json(publicKeyDocument());
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
   });
 
   router.post("/api/receipts/verify", verify, (req, res) => {
