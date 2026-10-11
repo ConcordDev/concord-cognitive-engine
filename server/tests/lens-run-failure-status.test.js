@@ -10,6 +10,15 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { httpStatusForLensFailure, shapeLensRunHttp } from "../lib/lens-run-http.js";
 
+// server.js freezes NODE_ENV and AUTH_MODE at import. The default auth mode
+// is hybrid, which 401s anonymous POST /api/lens/run before the handler.
+// Local-first (AUTH_MODE=public, non-production) is the path the staking
+// and studio repros actually exercise: an anon actor with a 0 CC wallet.
+process.env.NODE_ENV = "test";
+process.env.AUTH_MODE = "public";
+process.env.CONCORD_NO_LISTEN = "true";
+process.env.CONCORD_LOAD_SHED_ENABLED = "0";
+
 describe("shapeLensRunHttp", () => {
   it("lifts insufficient_balance (with a result payload) to 409, not a success envelope", () => {
     const shaped = shapeLensRunHttp({
@@ -55,9 +64,6 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
   let db;
 
   before(async () => {
-    process.env.CONCORD_LOAD_SHED_ENABLED = "0";
-    process.env.NODE_ENV = process.env.NODE_ENV || "test";
-    process.env.CONCORD_NO_LISTEN = process.env.CONCORD_NO_LISTEN || "true";
     const { load } = await import("./depth/_harness.js");
     const t = await load();
     db = t.db;
@@ -91,7 +97,7 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
       action: "open_stake",
       input: { poolId: "core", principalCc: 100, months: 6 },
     });
-    assert.equal(r.status, 409);
+    assert.equal(r.status, 409, JSON.stringify(r.body));
     assert.equal(r.body.ok, false);
     assert.equal(r.body.error, "insufficient_balance");
     assert.notEqual(r.body.ok, true);
@@ -129,7 +135,7 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
       data: { title: "Should Fail", bpm: 120 },
       meta: { status: "active" },
     });
-    assert.equal(bad.status, 422);
+    assert.equal(bad.status, 422, JSON.stringify(bad.body));
     assert.equal(bad.body.ok, false);
     assert.equal(bad.body.error, "validation_failed");
     assert.match(JSON.stringify(bad.body.errors || []), /active/);
@@ -140,7 +146,7 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
       data: { title: "Reload Me", bpm: 96 },
       meta: { status: "draft" },
     });
-    assert.equal(good.status, 200);
+    assert.equal(good.status, 200, JSON.stringify(good.body));
     assert.equal(good.body.ok, true);
     const id = good.body.artifact?.id;
     assert.ok(id, "draft create returns an artifact id");
