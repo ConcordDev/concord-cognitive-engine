@@ -8,6 +8,7 @@
  */
 
 import { asyncHandler } from "../lib/async-handler.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerHelpersExtendedRoutes(app, {
   db,
@@ -623,7 +624,9 @@ export default function registerHelpersExtendedRoutes(app, {
 
   app.get("/api/dtus/recent", asyncHandler(async (req, res) => {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const all = dtusArray().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const all = dtusArray()
+      .filter(d => ctxMayReadDtu(req, d))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     res.json({ ok: true, dtus: all.slice(0, limit).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain, createdAt: d.createdAt })) });
   }));
 
@@ -631,26 +634,29 @@ export default function registerHelpersExtendedRoutes(app, {
     const q = (req.query.q || "").toLowerCase();
     if (!q) return res.json({ ok: true, results: [], total: 0 });
     const results = dtusArray().filter(d =>
-      (d.title || "").toLowerCase().includes(q) ||
-      (d.human?.summary || "").toLowerCase().includes(q) ||
-      (d.tags || []).some(t => t.toLowerCase().includes(q))
+      ctxMayReadDtu(req, d) && (
+        (d.title || "").toLowerCase().includes(q) ||
+        (d.human?.summary || "").toLowerCase().includes(q) ||
+        (d.tags || []).some(t => t.toLowerCase().includes(q))
+      )
     ).slice(0, 50).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain }));
     res.json({ ok: true, results, total: results.length });
   }));
 
   app.get("/api/dtus/:id/children", asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     const children = (dtu.lineage?.children || []).map(cid => {
       const c = STATE.dtus?.get(cid);
-      return c ? { id: c.id, title: c.title, tier: c.tier } : { id: cid, title: null, missing: true };
+      if (!c || !ctxMayReadDtu(req, c)) return { id: cid, title: null, missing: true };
+      return { id: c.id, title: c.title, tier: c.tier };
     });
     res.json({ ok: true, children });
   }));
 
   app.post("/api/dtus/:id/fork", requireAuth(), asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     const forkId = uid("dtu");
     const fork = JSON.parse(JSON.stringify(dtu));
     fork.id = forkId;
@@ -667,10 +673,10 @@ export default function registerHelpersExtendedRoutes(app, {
 
   app.post("/api/dtus/:id/merge", requireAuth(), asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     const { sourceId } = req.body;
     const source = STATE.dtus?.get(sourceId);
-    if (!source) return res.status(404).json({ ok: false, error: "source_not_found" });
+    if (!source || !ctxMayReadDtu(req, source)) return res.status(404).json({ ok: false, error: "source_not_found" });
     // Merge tags, claims, definitions
     dtu.tags = [...new Set([...(dtu.tags || []), ...(source.tags || [])])];
     if (dtu.core && source.core) {
@@ -686,16 +692,16 @@ export default function registerHelpersExtendedRoutes(app, {
 
   app.get("/api/dtus/:id/related", asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     const tags = new Set(dtu.tags || []);
-    const related = dtusArray().filter(d => d.id !== dtu.id && (d.tags || []).some(t => tags.has(t)))
+    const related = dtusArray().filter(d => d.id !== dtu.id && ctxMayReadDtu(req, d) && (d.tags || []).some(t => tags.has(t)))
       .slice(0, 20).map(d => ({ id: d.id, title: d.title, tier: d.tier, sharedTags: (d.tags || []).filter(t => tags.has(t)) }));
     res.json({ ok: true, related });
   }));
 
   app.get("/api/dtus/:id/history", asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "not_found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     res.json({ ok: true, id: dtu.id, history: {
       createdAt: dtu.createdAt, updatedAt: dtu.updatedAt,
       tier: dtu.tier, lineage: dtu.lineage,
