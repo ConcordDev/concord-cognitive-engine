@@ -4,8 +4,9 @@
 //      keyId → base64 raw Ed25519 public key. No private material.
 // POST /api/receipts/verify
 //      { receipt } or the receipt object itself → { valid, reason }.
-//      Unauthenticated. The caller supplies the rate-limit middleware.
-//      Verification does not write anything.
+//      Unauthenticated. CSRF-exempt on this exact path only
+//      (middleware/csrf.js — not a prefix). The caller supplies the
+//      rate-limit middleware. Verification does not write anything.
 
 import express from "express";
 import { publicKeyDocument, verifyAttestation } from "../lib/receipts/attest.js";
