@@ -18,6 +18,18 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+// The page waits for /api/auth/me and mounts the console only for an
+// operator. These cases exercise the populated dashboard, so the viewer
+// is an admin whose session has already resolved.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'u1', username: 'tester', email: 'tester@test.local', role: 'admin' },
+    isLoading: false,
+    isAuthenticated: true,
+    logout: async () => {},
+    refresh: async () => {},
+  }),
+}));
 // LivenessPanel does its own independent fetch('/api/admin/liveness') on
 // mount — stub it out so this test file's fetch mock only has to answer the
 // endpoints ops-telemetry's own refresh() calls directly.
