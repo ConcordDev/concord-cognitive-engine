@@ -95,18 +95,36 @@ const { calls, postMock, lens, dtus, commands, dyn, execPlan, llmPlan, forgePlan
 });
 
 vi.mock('@/lib/api/client', () => ({ api: { post: postMock }, lensRun: vi.fn(async () => ({ data: { ok: true, result: {} } })) }));
-vi.mock('next/dynamic', () => ({
-  default: () => function Dyn(props: {
-    onChange?: (v: string) => void;
-    onEditorReady?: (ed: unknown) => void;
-    onSelectionChange?: (s: { text: string; startLine: number; endLine: number }) => void;
-    inlineCompletion?: (q: { textBeforeCursor: string; textAfterCursor: string; language: string }) => Promise<string>;
-    value?: string;
-  }) {
-    if (props && typeof props.inlineCompletion === 'function') dyn.editor = props;
-    return <div data-testid="dyn" />;
-  },
-}));
+vi.mock('next/dynamic', async () => {
+  const { createElement, useEffect, useState } = await import('react');
+  return {
+    default: (loader: () => Promise<unknown>) => {
+      const src = Function.prototype.toString.call(loader);
+      const isPanel = /SnippetsLibrary|SourceControlPanel|GitHubConnectPanel|PushProposalsPanel|CodeWorkbenchSection/.test(src);
+      if (!isPanel) {
+        return function Dyn(props: { inlineCompletion?: unknown }) {
+          if (props && typeof props.inlineCompletion === 'function') dyn.editor = props;
+          return createElement('div', { 'data-testid': 'dyn' });
+        };
+      }
+      return function PanelDyn(props: Record<string, unknown>) {
+        const [Comp, setComp] = useState<((p: Record<string, unknown>) => unknown) | null>(null);
+        useEffect(() => {
+          let live = true;
+          Promise.resolve(loader()).then((mod) => {
+            if (!live || mod == null) return;
+            const resolved = typeof mod === 'function'
+              ? mod
+              : (mod as { default?: (p: Record<string, unknown>) => unknown }).default;
+            if (typeof resolved === 'function') setComp(() => resolved);
+          });
+          return () => { live = false; };
+        }, []);
+        return Comp ? createElement(Comp, props) : null;
+      };
+    },
+  };
+});
 vi.mock('@/hooks/useLensCommand', () => ({
   useLensCommand: (list: Array<{ id: string; action: () => void }>) => { commands.list = list; },
 }));
@@ -456,13 +474,13 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     cmd('open-settings');
     cmd('fullscreen');
     cmd('snippets');
-    fireEvent.click(screen.getByRole('button', { name: 'insert snippet' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'insert snippet' }));
     cmd('source-control');
-    fireEvent.click(screen.getByRole('button', { name: 'jump tab' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'jump tab' }));
     fireEvent.click(screen.getByRole('button', { name: 'commit all' }));
     await waitFor(() => expect(calls.some((c) => c.action === 'commit-snapshot')).toBe(true));
     fireEvent.click(screen.getByRole('button', { name: 'GitHub' }));
-    expect(screen.getByText('github')).toBeTruthy();
+    expect(await screen.findByText('github')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'AI agent' }));
     const agentInput = document.getElementById('multi-file-agent-input') as HTMLTextAreaElement;
     fireEvent.change(agentInput, { target: { value: 'validate inputs' } });
@@ -479,7 +497,7 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Extensions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Explorer' }));
     cmd('project-workspace');
-    expect(screen.getByText('workbench')).toBeTruthy();
+    expect(await screen.findByText('workbench')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('tab', { name: 'Scratch' })[0]);
     cmd('scratch-workspace');
 

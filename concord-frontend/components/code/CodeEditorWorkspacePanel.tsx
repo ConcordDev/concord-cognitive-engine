@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SafeCard } from '@/components/common/SafeCard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
-import { CodeWorkbenchSection } from '@/components/code/CodeWorkbenchSection';
 import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -16,15 +15,8 @@ import BYOKeyDrawer from '@/components/chat/BYOKeyDrawer';
 import CitationChips from '@/components/chat/CitationChips';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
-const MonacoDiffViewer = dynamic(() => import('@/components/code/MonacoDiffViewer'), { ssr: false });
-const TerminalPanel = dynamic(() => import('@/components/code/TerminalPanel').then(m => m.TerminalPanel), { ssr: false });
 import SettingsPanel, { loadSettings as loadCodeSettings, DEFAULT_SETTINGS as DEFAULT_CODE_SETTINGS, type CodeLensSettings } from '@/components/code/SettingsPanel';
 import { ActivityBar, type Activity } from '@/components/code/ActivityBar';
-import { SnippetsLibrary } from '@/components/code/SnippetsLibrary';
-import { SourceControlPanel } from '@/components/code/SourceControlPanel';
-import { GitHubConnectPanel } from '@/components/code/GitHubConnectPanel';
-import { PushProposalsPanel } from '@/components/code/PushProposalsPanel';
 import { BrainStatusBadge } from '@/components/code/BrainStatusBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -55,6 +47,17 @@ import type { CodeExecResult } from '@/components/code/codeRunReport';
 import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
+
+const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
+const MonacoDiffViewer = dynamic(() => import('@/components/code/MonacoDiffViewer'), { ssr: false });
+const TerminalPanel = dynamic(() => import('@/components/code/TerminalPanel').then(m => m.TerminalPanel), { ssr: false });
+// Default screen is the scratch editor on the files activity. These panels
+// mount only after a mode or activity switch, so they stay out of that chunk.
+const CodeWorkbenchSection = dynamic(() => import('@/components/code/CodeWorkbenchSection').then((m) => m.CodeWorkbenchSection));
+const SnippetsLibrary = dynamic(() => import('@/components/code/SnippetsLibrary').then((m) => m.SnippetsLibrary));
+const SourceControlPanel = dynamic(() => import('@/components/code/SourceControlPanel').then((m) => m.SourceControlPanel));
+const GitHubConnectPanel = dynamic(() => import('@/components/code/GitHubConnectPanel').then((m) => m.GitHubConnectPanel));
+const PushProposalsPanel = dynamic(() => import('@/components/code/PushProposalsPanel').then((m) => m.PushProposalsPanel));
 
 interface FileNode {
   id: string;
@@ -1025,10 +1028,6 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     window.addEventListener('concord:code-run', onRun);
     return () => window.removeEventListener('concord:code-run', onRun);
   }, [runScriptMutation]);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('concord:code-run-state', { detail: { running: runScriptMutation.isPending } }));
-  }, [runScriptMutation.isPending]);
 
   useLensCommand(
     [
