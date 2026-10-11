@@ -42,6 +42,8 @@ export function ArtStudioSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', preset: 0, background: '#ffffff' });
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const refresh = useCallback(async () => {
     const r = await lensRun('art', 'artwork-list', {});
@@ -58,9 +60,14 @@ export function ArtStudioSection() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const createArtwork = async () => {
+    const title = form.title.trim();
+    if (!title) {
+      setError('Name this canvas before creating it.');
+      return;
+    }
     const preset = CANVAS_PRESETS[form.preset];
     const r = await lensRun('art', 'artwork-create', {
-      title: form.title.trim() || 'Untitled',
+      title,
       width: preset.width, height: preset.height, background: form.background,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
@@ -69,6 +76,15 @@ export function ArtStudioSection() {
     await refresh();
     const newArtworkId = r.data?.result?.artwork?.id;
     if (newArtworkId) setOpenArtwork(newArtworkId);
+  };
+
+  const commitRename = async (id: string) => {
+    const title = renameDraft.trim();
+    setRenamingId(null);
+    if (!title) return;
+    const r = await lensRun('art', 'artwork-rename', { id, title });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not rename.'); return; }
+    await refresh();
   };
 
   const delArtwork = async (id: string) => {
@@ -111,7 +127,7 @@ export function ArtStudioSection() {
               <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
                 <h3 className="text-xs font-semibold text-zinc-300">New canvas</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  <input placeholder="Canvas name" aria-label="Canvas name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                     className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                   <select value={form.preset} onChange={(e) => setForm({ ...form, preset: Number(e.target.value) })}
                     className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -122,8 +138,8 @@ export function ArtStudioSection() {
                     <input type="color" value={form.background} onChange={(e) => setForm({ ...form, background: e.target.value })}
                       className="w-7 h-7 bg-transparent cursor-pointer" />
                   </label>
-                  <button type="button" onClick={createArtwork}
-                    className="flex items-center justify-center gap-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg">
+                  <button type="button" onClick={createArtwork} disabled={!form.title.trim()}
+                    className="flex items-center justify-center gap-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
                     <Plus className="w-3.5 h-3.5" /> Create
                   </button>
                 </div>
@@ -149,7 +165,25 @@ export function ArtStudioSection() {
                       </button>
                       <div className="flex items-center justify-between px-2.5 py-1.5">
                         <div className="min-w-0">
-                          <p className="text-xs text-zinc-100 truncate">{a.title}</p>
+                          {renamingId === a.id ? (
+                            <input
+                              autoFocus
+                              aria-label={`Rename ${a.title}`}
+                              value={renameDraft}
+                              onChange={(e) => setRenameDraft(e.target.value)}
+                              onBlur={() => void commitRename(a.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void commitRename(a.id);
+                                if (e.key === 'Escape') setRenamingId(null);
+                              }}
+                              className="w-full bg-zinc-950 border border-violet-600 rounded px-1 py-0.5 text-xs text-zinc-100"
+                            />
+                          ) : (
+                            <button type="button" onClick={() => { setRenamingId(a.id); setRenameDraft(a.title); }}
+                              className="text-xs text-zinc-100 truncate text-left hover:text-violet-300" title="Rename">
+                              {a.title}
+                            </button>
+                          )}
                           <p className="text-[10px] text-zinc-400">{a.width}×{a.height} · {a.strokeCount} strokes</p>
                         </div>
                         <button aria-label="Delete" type="button" onClick={() => delArtwork(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">

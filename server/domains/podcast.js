@@ -4,6 +4,8 @@
 // production checklist, monetization calc) plus real iTunes Search
 // API for the Apple Podcasts directory. Free, no API key.
 
+import { readMediaDurationSec, setMediaPrivacy } from "../lib/media-dtu.js";
+
 const ITUNES_SEARCH = "https://itunes.apple.com/search";
 const ITUNES_LOOKUP = "https://itunes.apple.com/lookup";
 
@@ -261,21 +263,31 @@ export default function registerPodcastActions(registerLensAction) {
     const title = pcclean(params.title, 200);
     if (!title) return { ok: false, error: "episode title required" };
     const status = EPISODE_STATUSES.includes(params.status) ? params.status : "draft";
+    const seasonNumber = Math.max(0, Math.round(pcnum(params.seasonNumber))) || null;
+    const existing = s.episodes.get(show.id) || [];
+    const episodeNumber = resolveEpisodeNumber(existing, params.episodeNumber, seasonNumber);
+    const mediaId = pcclean(params.mediaId, 120) || null;
+    let durationSec = Math.max(0, Math.round(pcnum(params.durationSec)));
+    if (durationSec <= 0 && mediaId) {
+      const probed = readMediaDurationSec(globalThis._concordSTATE, mediaId);
+      if (probed > 0) durationSec = probed;
+    }
     const ep = {
       id: pcid("ep"), showId: show.id, showTitle: show.title, title,
       description: pcclean(params.description, 2000) || null,
-      durationSec: Math.max(0, Math.round(pcnum(params.durationSec))),
+      durationSec,
       publishDate: pcclean(params.publishDate, 10) || pcclean(pcnow(), 10),
-      episodeNumber: Math.max(0, Math.round(pcnum(params.episodeNumber))) || null,
-      seasonNumber: Math.max(0, Math.round(pcnum(params.seasonNumber))) || null,
+      episodeNumber,
+      seasonNumber,
       coverArtUrl: pcclean(params.coverArtUrl, 500) || null,
-      mediaId: pcclean(params.mediaId, 120) || null,
+      mediaId,
       audioUrl: pcclean(params.audioUrl, 500) || null,
       tags: Array.isArray(params.tags) ? params.tags.map((t) => pcclean(t, 40)).filter(Boolean).slice(0, 20) : [],
       status,
       createdAt: pcnow(),
       createdBy: pcaid(ctx),
     };
+    syncEpisodeMediaPrivacy(ep);
     pclistB(s.episodes, show.id).push(ep);
     savePodState();
     return { ok: true, result: { episode: ep } };
@@ -286,8 +298,10 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
+    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can change this episode's status" };
     if (!EPISODE_STATUSES.includes(params.status)) return { ok: false, error: `status must be one of ${EPISODE_STATUSES.join(", ")}` };
     ep.status = params.status;
+    syncEpisodeMediaPrivacy(ep);
     savePodState();
     return { ok: true, result: { episodeId: ep.id, status: ep.status } };
   });
@@ -315,11 +329,56 @@ export default function registerPodcastActions(registerLensAction) {
     return n;
   };
 
+  // Drafts are the creator's private desk. Anyone else listing the show
+  // must not see them. Status-less rows (RSS ingest) stay public.
+  function canSeeEpisode(ep, userId) {
+    if (!ep) return false;
+    if (ep.status !== "draft") return true;
+    return !!ep.createdBy && ep.createdBy === userId;
+  }
+
+  function seasonOf(epOrNumber) {
+    const raw = epOrNumber && typeof epOrNumber === "object" ? epOrNumber.seasonNumber : epOrNumber;
+    const n = Math.round(pcnum(raw));
+    return n > 0 ? n : 1;
+  }
+
+  function sameEpisodeSeason(ep, seasonNumber) {
+    return seasonOf(ep) === seasonOf(seasonNumber);
+  }
+
+  function maxEpisodeNumber(list, seasonNumber) {
+    let max = 0;
+    for (const e of list) {
+      if (!sameEpisodeSeason(e, seasonNumber)) continue;
+      const n = Math.round(pcnum(e.episodeNumber));
+      if (n > max) max = n;
+    }
+    return max;
+  }
+
+  // Missing / 0 → next number. A repeated explicit number (the create form
+  // reloads at 1) also advances, so two creates never share a number.
+  function resolveEpisodeNumber(list, requested, seasonNumber) {
+    const n = Math.round(pcnum(requested));
+    const explicit = requested != null && requested !== "" && Number.isFinite(Number(requested)) && n > 0;
+    const next = maxEpisodeNumber(list, seasonNumber) + 1;
+    if (!explicit) return next;
+    const taken = list.some((e) => sameEpisodeSeason(e, seasonNumber) && Math.round(pcnum(e.episodeNumber)) === n);
+    return taken ? next : n;
+  }
+
+  function syncEpisodeMediaPrivacy(ep) {
+    if (!ep?.mediaId) return;
+    const privacy = ep.status === "published" ? "public" : "private";
+    setMediaPrivacy(globalThis._concordSTATE, ep.mediaId, privacy);
+  }
+
   function episodeView(s, userId, ep) {
     const prog = (s.playback.get(userId) || []).find((p) => p.episodeId === ep.id);
     const queue = s.queue.get(userId) || [];
     const dls = s.downloads.get(userId) || [];
-    return {
+    const view = {
       ...ep,
       positionSec: prog ? prog.positionSec : 0,
       played: prog ? prog.played : false,
@@ -328,6 +387,12 @@ export default function registerPodcastActions(registerLensAction) {
       downloaded: dls.includes(ep.id),
       playCount: playCountFor(s, ep.id),
     };
+    const unpublished = ep.status === "draft" || ep.status === "scheduled";
+    if (unpublished && ep.createdBy && ep.createdBy !== userId) {
+      view.mediaId = null;
+      view.audioUrl = null;
+    }
+    return view;
   }
 
   registerLensAction("podcast", "episode-list", (ctx, _a, params = {}) => {
@@ -335,6 +400,7 @@ export default function registerPodcastActions(registerLensAction) {
     if (!s.shows.has(String(params.showId))) return { ok: false, error: "show not found" };
     const userId = pcaid(ctx);
     const episodes = (s.episodes.get(String(params.showId)) || [])
+      .filter((e) => canSeeEpisode(e, userId))
       .map((e) => episodeView(s, userId, e))
       .sort((a, b) => String(b.publishDate).localeCompare(String(a.publishDate)));
     return { ok: true, result: { episodes, count: episodes.length } };
@@ -344,7 +410,7 @@ export default function registerPodcastActions(registerLensAction) {
   try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.id));
-    if (!ep) return { ok: false, error: "episode not found" };
+    if (!ep || !canSeeEpisode(ep, pcaid(ctx))) return { ok: false, error: "episode not found" };
     return { ok: true, result: { episode: episodeView(s, pcaid(ctx), ep) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -571,7 +637,7 @@ export default function registerPodcastActions(registerLensAction) {
     const episodes = [];
     for (const showId of subs) {
       for (const e of s.episodes.get(showId) || []) {
-        if (!played.has(e.id)) episodes.push(episodeView(s, userId, e));
+        if (!played.has(e.id) && canSeeEpisode(e, userId)) episodes.push(episodeView(s, userId, e));
       }
     }
     episodes.sort((a, b) => String(b.publishDate).localeCompare(String(a.publishDate)));
@@ -739,7 +805,7 @@ export default function registerPodcastActions(registerLensAction) {
   try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
-    if (!ep) return { ok: false, error: "episode not found" };
+    if (!ep || !canSeeEpisode(ep, pcaid(ctx))) return { ok: false, error: "episode not found" };
     const userId = pcaid(ctx);
     const prog = (s.playback.get(userId) || []).find((p) => p.episodeId === ep.id);
     if (!ep.audioUrl) return { ok: false, error: "episode has no audio enclosure — refresh the show's RSS feed" };

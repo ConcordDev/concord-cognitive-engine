@@ -1058,10 +1058,12 @@ export function PersistentChatRail({
                       onViewContext={() => setContextOverlayOpen(true)}
                       onForgeDTU={async (content) => {
                         try {
-                          await api.post('/api/chat/forge/message', {
+                          const res = await api.post('/api/chat/forge/message', {
                             content,
                             sessionId,
                           });
+                          const id = res?.data?.dtuId || res?.data?.dtu?.id;
+                          return typeof id === 'string' ? id : undefined;
                         } catch (e) { console.error('[Chat] Failed to forge DTU:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to forge DTU' }); }
                       }}
                     />

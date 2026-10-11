@@ -31,6 +31,8 @@ describe("Phase 4.1 SRS wire — server routes", () => {
     assert.ok(/app\.get\("\/api\/srs\/due"/.test(serverJs), "GET /api/srs/due route");
     assert.ok(/app\.post\("\/api\/srs\/:dtuId\/add"/.test(serverJs), "POST /api/srs/:dtuId/add route");
     assert.ok(/app\.post\("\/api\/srs\/:dtuId\/review"/.test(serverJs), "POST /api/srs/:dtuId/review route");
+    assert.ok(/app\.delete\("\/api\/srs\/:dtuId"/.test(serverJs), "DELETE /api/srs/:dtuId route");
+    assert.ok(/removeFromSRS\(req\.params\.dtuId\)/.test(serverJs), "DELETE must call removeFromSRS");
   });
 
   it("review endpoint reads quality from body", async () => {
@@ -47,6 +49,7 @@ describe("Phase 4.1 SRS wire — apiHelpers contract", () => {
     assert.ok(/api\.get\(['"]\/api\/srs\/due['"]\)/.test(client), "due → GET /api/srs/due");
     assert.ok(/api\.post\(`?\/api\/srs\/\$\{?dtuId\}?\/add`?,/.test(client), "add → POST /api/srs/:dtuId/add");
     assert.ok(/api\.post\(`?\/api\/srs\/\$\{?dtuId\}?\/review`?,/.test(client), "review → POST /api/srs/:dtuId/review");
+    assert.ok(/api\.delete\(`\/api\/srs\/\$\{dtuId\}`\)/.test(client), "remove → DELETE /api/srs/:dtuId");
   });
 });
 
@@ -62,5 +65,6 @@ describe("Phase 4.1 SRS wire — frontend lens", () => {
     assert.ok(/apiHelpers\.srs\.due/.test(lens), "lens calls apiHelpers.srs.due");
     assert.ok(/apiHelpers\.srs\.add/.test(lens), "lens calls apiHelpers.srs.add");
     assert.ok(/apiHelpers\.srs\.review/.test(lens), "lens calls apiHelpers.srs.review");
+    assert.ok(/apiHelpers\.srs\.remove/.test(lens), "lens calls apiHelpers.srs.remove");
   });
 });

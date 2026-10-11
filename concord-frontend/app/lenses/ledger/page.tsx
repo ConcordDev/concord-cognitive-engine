@@ -3,8 +3,6 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { BookOpen } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Ledger lens — the analytical overlay you toggle to see the flows the Curtain
@@ -32,8 +30,6 @@ import { toCsv, download, type Anomalies } from '@/components/ledger/ledger-shar
 const WORLD_OPTIONS = ['sere', 'concordia-hub', 'tunya'];
 
 export default function LedgerLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('sere');
   const [data, setData] = useState<Anomalies | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,9 +111,9 @@ export default function LedgerLensPage() {
     <LensShell lensId="ledger" asMain={false}>
       <NorthStarFrame
         lensId="ledger"
-        crumb="Ledger"
-        title={who ? `What the books say, ${who}` : 'What the books say'}
-        subtitle="The flows the Curtain keeps off the public record. Nothing here is told to you — it is read from the books."
+        crumb="Concordia"
+        title="Concordia world ledger (game world)"
+        subtitle="Concordia game-world economy. Faction funding and extraction liens, read from the world books."
         cta={{ label: 'Re-read the books', icon: BookOpen, onClick: () => void load(), title: `Re-run the anomaly audit for ${worldId}`, disabled: loading }}
       >
         <div className="space-y-5">

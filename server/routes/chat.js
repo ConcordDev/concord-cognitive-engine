@@ -10,6 +10,7 @@ import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRE
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
 import { scrubChatFields } from '../lib/chat-governance-leak.js';
+import { visionImageGate } from '../lib/vision-inference.js';
 
 function chatUserText(body) {
   const b = body || {};
@@ -49,6 +50,12 @@ export default function registerChatRoutes(app, {
   app.post("/api/chat", chatRateLimit, validate("chat"), asyncHandler(async (req, res) => {
     const errorId = uid("err");
     try {
+      // Run on the raw body, before mode normalization rewrites "vision" to
+      // "chat" and before any LLM reply can be written.
+      const visionGate = visionImageGate(req.body);
+      if (!visionGate.ok) {
+        return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";
       const ctx = makeCtx(req);
@@ -129,7 +136,7 @@ export default function registerChatRoutes(app, {
       // Non-blocking rolling window compression (after response is ready)
       const _sess = sessionId ? STATE.sessions?.get(sessionId) : null;
       if (_sess && needsWindowCompression(_sess)) {
-        compressRollingWindow(STATE, sessionId, {}).catch(err =>
+        compressRollingWindow(STATE, sessionId, { userId: ctx?.actor?.userId || null }).catch(err =>
           logger?.debug?.('[chat] window compression failed', { err: err?.message })
         );
       }
@@ -222,6 +229,10 @@ export default function registerChatRoutes(app, {
   app.post("/api/chat/stream", asyncHandler(async (req, res) => {
     const errorId = uid("err");
     try {
+      const visionGate = visionImageGate(req.body);
+      if (!visionGate.ok) {
+        return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
       enforceEthosInvariant("chat_stream");
       if (!STATE.__chicken3?.streamingEnabled) {
         // Streaming not enabled — return standard JSON response instead of throwing

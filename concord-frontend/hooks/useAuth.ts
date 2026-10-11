@@ -17,6 +17,10 @@ export interface AuthUser {
   email: string;
   role: string;
   scopes?: string[];
+  /** IANA zone when the account profile has one. Absent means "use the browser zone". */
+  timezone?: string | null;
+  timeZone?: string | null;
+  preferences?: { timezone?: string | null; timeZone?: string | null };
 }
 
 interface UseAuthReturn {
@@ -43,12 +47,16 @@ export function useAuth(): UseAuthReturn {
       const data = resp.data;
       if (mountedRef.current) {
         if (data.ok && data.user) {
+          const prefs = data.user.preferences;
           setUser({
             id: data.user.id,
             username: data.user.username,
             email: data.user.email,
             role: data.user.role,
             scopes: data.user.scopes,
+            ...(typeof data.user.timezone === 'string' ? { timezone: data.user.timezone } : {}),
+            ...(typeof data.user.timeZone === 'string' ? { timeZone: data.user.timeZone } : {}),
+            ...(prefs && typeof prefs === 'object' ? { preferences: prefs } : {}),
           });
         } else {
           setUser(null);

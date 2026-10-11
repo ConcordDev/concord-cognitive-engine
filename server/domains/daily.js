@@ -69,6 +69,16 @@ export default function registerDailyActions(registerLensAction) {
   const dyId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const dyNow = () => new Date().toISOString();
   const dyToday = () => new Date().toISOString().slice(0, 10);
+  // A client-supplied calendar day (profile zone or browser local). UTC
+  // `dyToday()` is only the fallback when the caller did not say which day
+  // "today" is — otherwise an evening west of UTC files and reads tomorrow.
+  const dyExplicitDay = (value) => (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+  const dyClientToday = (params) => dyExplicitDay(params?.today) || dyToday();
+  const dyShiftDay = (iso, delta) => {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    const dt = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + delta));
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+  };
   const dyActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const dyClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const dyList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
@@ -223,10 +233,11 @@ export default function registerDailyActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
-  registerLensAction("daily", "on-this-day", (ctx, _a, _params = {}) => {
+  registerLensAction("daily", "on-this-day", (ctx, _a, params = {}) => {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const md = dyToday().slice(5); // MM-DD
-    const year = dyToday().slice(0, 4);
+    const ref = dyExplicitDay(params.date) || dyExplicitDay(params.today) || dyToday();
+    const md = ref.slice(5); // MM-DD
+    const year = ref.slice(0, 4);
     const entries = dyList(s.entries, dyActor(ctx))
       .filter((e) => e.date.slice(5) === md && e.date.slice(0, 4) !== year)
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -259,21 +270,22 @@ export default function registerDailyActions(registerLensAction) {
     return { ok: true, result: { trend, averageMood: avg, entriesWithMood: withMood.length } };
   });
 
-  registerLensAction("daily", "daily-dashboard", (ctx, _a, _params = {}) => {
+  registerLensAction("daily", "daily-dashboard", (ctx, _a, params = {}) => {
   try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     const entries = dyList(s.entries, userId);
     const dates = new Set(entries.map((e) => e.date));
-    // current journaling streak ending today or yesterday
+    const today = dyClientToday(params);
+    // current journaling streak ending today or yesterday, in calendar days
     let streak = 0;
     for (let i = 0; i < 366; i++) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      const d = dyShiftDay(today, -i);
       if (dates.has(d)) streak += 1;
       else if (i === 0) continue; // today not yet written is OK
       else break;
     }
-    const thisMonth = dyToday().slice(0, 7);
+    const thisMonth = today.slice(0, 7);
     return {
       ok: true,
       result: {
@@ -282,7 +294,7 @@ export default function registerDailyActions(registerLensAction) {
         daysJournaled: dates.size,
         currentStreak: streak,
         entriesThisMonth: entries.filter((e) => e.date.startsWith(thisMonth)).length,
-        wroteToday: dates.has(dyToday()),
+        wroteToday: dates.has(today),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -420,21 +432,21 @@ export default function registerDailyActions(registerLensAction) {
     return { ok: true, result: { habit } };
   });
 
-  registerLensAction("daily", "habit-list", (ctx, _a, _params = {}) => {
+  registerLensAction("daily", "habit-list", (ctx, _a, params = {}) => {
   try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     const habits = dyList(s.habits, userId).filter((h) => !h.archived);
     const checkins = dyList(s.checkins, userId);
-    const today = dyToday();
-    const weekStart = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const today = dyClientToday(params);
+    const weekStart = dyShiftDay(today, -6);
     const enriched = habits.map((h) => {
       const hc = checkins.filter((c) => c.habitId === h.id).map((c) => c.date);
       const set = new Set(hc);
       // current streak counting only days the habit was due
       let streak = 0;
       for (let i = 0; i < 366; i++) {
-        const date = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const date = dyShiftDay(today, -i);
         if (!habitDueToday(h, date)) continue;
         if (set.has(date)) streak += 1;
         else if (i === 0) continue; // today not yet done is OK

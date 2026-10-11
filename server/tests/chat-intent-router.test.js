@@ -85,6 +85,12 @@ describe("classifyIntent — tool-action", () => {
     assert.equal(r.domainHint, "dtu");
   });
 
+  it("routes 'save a DTU titled … with content …' to tool-action", () => {
+    const r = classifyIntent("save a DTU titled Sweep Note with content the body, then tell me its id");
+    assert.equal(r.intent, "tool-action");
+    assert.equal(r.domainHint, "dtu");
+  });
+
   it("routes 'search my archive for Y' to tool-action", () => {
     const r = classifyIntent("search my archive for cooking notes");
     assert.equal(r.intent, "tool-action");

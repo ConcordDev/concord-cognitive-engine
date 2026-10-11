@@ -81,7 +81,11 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
   };
 
   const delMedia = async (id: string) => {
-    await lensRun('film-studios', 'media-delete', { id });
+    const r = await lensRun('film-studios', 'media-delete', { id });
+    if (r.data?.ok === false) {
+      setError(String(r.data?.error || 'delete failed').replace(/_/g, ' '));
+      return;
+    }
     setGrpPick((p) => p.filter((x) => x !== id));
     await refresh();
   };

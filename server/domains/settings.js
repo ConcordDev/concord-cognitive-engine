@@ -132,6 +132,26 @@ function resolvePrefs(userId) {
   return out;
 }
 
+/**
+ * Portable settings for an account export. Preferences are the resolved
+ * values (stored over defaults). Keybindings and the 2FA flag are included
+ * only when this user has a record — nothing is invented, and no secret
+ * (password hash, recovery code) is copied.
+ */
+export function settingsExportForUser(userId) {
+  if (!userId) return null;
+  const s = store();
+  const sec = s.security.get(userId);
+  const binds = s.keybinds.get(userId);
+  return {
+    preferences: resolvePrefs(userId),
+    keybindings: binds ? { ...binds } : null,
+    security: sec
+      ? { twoFactorEnabled: !!sec.twoFactorEnabled, lastPasswordChange: sec.lastPasswordChange || null }
+      : null,
+  };
+}
+
 // Validate a single (key, value) against the schema. Returns the coerced
 // value or throws an Error with a human-readable message.
 function validatePref(key, value) {

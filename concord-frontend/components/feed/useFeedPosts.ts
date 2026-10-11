@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import type { CandidatePost } from '@/components/feed/FeedToolsPanel';
 
 export type FeedTab = 'for-you' | 'following' | 'releases' | 'trending';
@@ -59,6 +59,8 @@ export interface FeedPost {
     sellerId?: string;
   }[];
   linkedDTUs?: { dtuId: string; title: string; type?: string }[];
+  /** Audience on this instance. Missing means public (legacy posts). */
+  privacy?: 'public' | 'followers' | 'private' | string;
 }
 
 const gradients = [
@@ -76,7 +78,7 @@ export const pickGrad = (i: number) => gradients[i % gradients.length];
 
 const PAGE_SIZE = 20;
 
-export function useFeedPosts(tab: FeedTab, fallbackItems: FeedPost[] = []) {
+export function useFeedPosts(tab: FeedTab, _fallbackItems: FeedPost[] = []) {
   const query = useInfiniteQuery<FeedPost[]>({
     queryKey: ['feed-posts', tab],
     initialPageParam: 0,
@@ -92,69 +94,42 @@ export function useFeedPosts(tab: FeedTab, fallbackItems: FeedPost[] = []) {
         const socialRes = await api
           .get(endpoint, { params: { limit: PAGE_SIZE, offset } })
           .catch(() => null);
-        const socialPosts = socialRes?.data?.posts || socialRes?.data || [];
-        if (Array.isArray(socialPosts) && socialPosts.length > 0) {
-          return socialPosts.map((p: Record<string, unknown>, i: number) => ({
-            id: (p.id as string) || `sp-${offset + i}`,
-            type: ((p.mediaType as string) || 'text') as PostType,
-            author: {
-              id: (p.userId as string) || 'user',
-              name: (p.displayName as string) || 'User',
-              handle: (p.userId as string) || 'user',
-              gradient: pickGrad(offset + i),
-              verified: false,
-            },
-            content: (p.content as string) || (p.title as string) || '',
-            createdAt: (p.createdAt as string) || new Date().toISOString(),
-            likes: (p.reactionCount as number) || 0,
-            comments: (p.commentCount as number) || 0,
-            reposts: (p.shareCount as number) || 0,
-            shares: (p.shareCount as number) || 0,
-            views: (p.viewCount as number) || 0,
-            liked: false,
-            reposted: false,
-            bookmarked: false,
-            tags: (p.tags as string[]) || [],
-            dtuId: p.id as string,
-            taggedProducts: (p.taggedProducts as FeedPost['taggedProducts']) || [],
-            linkedDTUs: (p.linkedDTUs as FeedPost['linkedDTUs']) || [],
-          }));
-        }
-        if (offset === 0) {
-          const dtuRes = await apiHelpers.dtus
-            .paginated({ limit: PAGE_SIZE })
-            .catch(() => ({ data: { dtus: [] } }));
-          if (dtuRes?.data?.dtus?.length) {
-            return dtuRes.data.dtus.map((dtu: Record<string, unknown>, i: number) => ({
-              id: dtu.id as string,
-              type: 'text' as PostType,
-              author: {
-                id: (dtu.authorId as string) || 'user',
-                name: (dtu.authorName as string) || 'User',
-                handle: (dtu.authorHandle as string) || 'user',
-                gradient: pickGrad(i),
-                verified: false,
-              },
-              content: (dtu.content as string)?.slice(0, 400) || (dtu.title as string) || '',
-              createdAt: (dtu.createdAt as string) || new Date().toISOString(),
-              likes: 0,
-              comments: 0,
-              reposts: 0,
-              shares: 0,
-              views: 0,
-              liked: false,
-              reposted: false,
-              bookmarked: false,
-              dtuId: dtu.id as string,
-              dtuSource: dtu.source as string | undefined,
-              dtuMeta: dtu.meta as Record<string, unknown> | undefined,
-            }));
-          }
-          return fallbackItems;
-        }
-        return [];
+        const socialPosts = socialRes?.data?.posts || [];
+        if (!Array.isArray(socialPosts)) return [];
+        const mapped = socialPosts.map((p: Record<string, unknown>, i: number) => ({
+          id: (p.id as string) || `sp-${offset + i}`,
+          type: ((p.mediaType as string) || 'text') as PostType,
+          author: {
+            id: (p.userId as string) || 'user',
+            name: (p.displayName as string) || (p.username as string) || 'Member',
+            handle: (p.username as string) || (p.displayName as string) || 'member',
+            gradient: pickGrad(offset + i),
+            verified: false,
+          },
+          content: (p.content as string) || (p.title as string) || '',
+          createdAt: (p.createdAt as string) || new Date().toISOString(),
+          likes: (p.reactionCount as number) || 0,
+          comments: (p.commentCount as number) || 0,
+          reposts: (p.shareCount as number) || 0,
+          shares: (p.shareCount as number) || 0,
+          views: (p.viewCount as number) || 0,
+          liked: false,
+          reposted: false,
+          bookmarked: false,
+          tags: (p.tags as string[]) || [],
+          privacy: (p.privacy as string) || 'public',
+          dtuId: p.id as string,
+          taggedProducts: (p.taggedProducts as FeedPost['taggedProducts']) || [],
+          linkedDTUs: (p.linkedDTUs as FeedPost['linkedDTUs']) || [],
+        }));
+        // Server already filters. Drop anything that still says private
+        // (and followers-only on Explore) so a stale client can't paint it.
+        return mapped.filter((post) => {
+          if (tab === 'trending') return post.privacy !== 'private' && post.privacy !== 'followers';
+          if (tab === 'following') return post.privacy !== 'private';
+          return true;
+        });
       } catch {
-        if (offset === 0 && fallbackItems.length > 0) return fallbackItems;
         return [];
       }
     },

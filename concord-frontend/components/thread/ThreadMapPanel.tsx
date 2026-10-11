@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { ThreadNodeActions } from '@/components/thread/ThreadNodeActions';
 
@@ -77,6 +78,24 @@ interface TreeNode {
 }
 
 type ViewMode = 'tree' | 'timeline' | 'linear';
+
+interface ComposerDraft {
+  id: string;
+  title?: string;
+}
+
+function composerDraftsFrom(value: unknown): ComposerDraft[] {
+  if (!Array.isArray(value)) return [];
+  const out: ComposerDraft[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as { id?: unknown }).id;
+    if (typeof id !== 'string' || !id) continue;
+    const title = (row as { title?: unknown }).title;
+    out.push({ id, title: typeof title === 'string' ? title : undefined });
+  }
+  return out;
+}
 
 function buildForest(nodes: RawThreadNode[]): TreeNode[] {
   const byParent = new Map<string, RawThreadNode[]>();
@@ -168,7 +187,7 @@ function InlineComposer({
   );
 }
 
-export function ThreadMapPanel() {
+export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void } = {}) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const newThreadInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
@@ -204,6 +223,24 @@ export function ThreadMapPanel() {
 
   const [threadActionResult, setThreadActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
   const [threadActiveAction, setThreadActiveAction] = useState<string | null>(null);
+  const [composerDrafts, setComposerDrafts] = useState<ComposerDraft[]>([]);
+  const [draftsLoaded, setDraftsLoaded] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void lensRun('thread', 'draft-list', {})
+      .then((r) => {
+        if (!live) return;
+        setComposerDrafts(composerDraftsFrom(r.data?.result?.drafts));
+      })
+      .catch(() => {
+        if (live) setComposerDrafts([]);
+      })
+      .finally(() => {
+        if (live) setDraftsLoaded(true);
+      });
+    return () => { live = false; };
+  }, []);
 
   // Deep-link: `?node=<id>` selects the thread + node that owns it. Real —
   // the "Link" action below only ever copies a link this effect can resolve.
@@ -759,10 +796,33 @@ export function ThreadMapPanel() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">
-              <div className="text-center">
+              <div className="text-center max-w-sm px-4">
                 <MessageSquare className="w-16 h-16 mx-auto mb-4 text-neon-purple/30" />
-                <p className="text-lg font-medium mb-2">No thread selected</p>
-                <p className="text-sm">Select a thread from the sidebar or press N to create one</p>
+                {threadItems.length > 0 ? (
+                  <p className="text-sm">Loading thread…</p>
+                ) : composerDrafts.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onOpenComposer?.()}
+                      className="text-lg font-medium mb-2 text-neon-purple hover:underline"
+                    >
+                      {`Drafts (${composerDrafts.length}) -> Composer`}
+                    </button>
+                    <ul className="mt-3 space-y-1 text-left text-sm text-gray-300">
+                      {composerDrafts.map((draft) => (
+                        <li key={draft.id} className="truncate">{draft.title || 'Untitled draft'}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : draftsLoaded ? (
+                  <>
+                    <p className="text-lg font-medium mb-2">No thread selected</p>
+                    <p className="text-sm">Select a thread from the sidebar or press N to create one</p>
+                  </>
+                ) : (
+                  <p className="text-sm">Loading drafts…</p>
+                )}
               </div>
             </div>
           )}

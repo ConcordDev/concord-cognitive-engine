@@ -17,13 +17,14 @@ import { ReplyTree } from './ReplyTree';
 interface PostDetailProps {
   postId: string;
   username: string;
+  currentUserId?: string;
   onBack: () => void;
   onOpenHashtag: (tag: string) => void;
   onOpenDetail: (postId: string) => void;
   onQuote: (post: SocialPost) => void;
 }
 
-export function PostDetail({ postId, username, onBack, onOpenHashtag, onOpenDetail, onQuote }: PostDetailProps) {
+export function PostDetail({ postId, username, currentUserId, onBack, onOpenHashtag, onOpenDetail, onQuote }: PostDetailProps) {
   const [post, setPost] = useState<SocialPost | null>(null);
   const [quoted, setQuoted] = useState<SocialPost | null>(null);
   const [permalink, setPermalink] = useState('');
@@ -97,6 +98,7 @@ export function PostDetail({ postId, username, onBack, onOpenHashtag, onOpenDeta
               <PostCard
                 post={quoted}
                 username={username}
+                currentUserId={currentUserId}
                 onChanged={load}
                 onQuote={onQuote}
                 onOpenHashtag={onOpenHashtag}
@@ -107,6 +109,7 @@ export function PostDetail({ postId, username, onBack, onOpenHashtag, onOpenDeta
           <PostCard
             post={post}
             username={username}
+            currentUserId={currentUserId}
             onChanged={load}
             onQuote={onQuote}
             onOpenHashtag={onOpenHashtag}

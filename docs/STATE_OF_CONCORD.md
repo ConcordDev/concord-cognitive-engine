@@ -43,7 +43,7 @@ Still reclassifies 10 data-modules (172k lines, e.g. the deprecated 145k-line
 | Macro domains | **547** | verifier `macroDomains` |
 | Route prefixes | **2,983** | verifier `routePrefixes` |
 | Backend domain files | **442** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **465 files** (highest `466`) | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Numbered migrations | **469 files** (highest `471`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **137** | `ls server/routes/*.js \| wc -l` |
 | Lib modules | **811** top (`ls server/lib/*.js \| wc -l`) · **1,353** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
 | `server/server.js` | **88,803 lines** | `wc -l server/server.js` |

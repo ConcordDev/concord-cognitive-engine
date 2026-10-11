@@ -27,6 +27,7 @@ import {
   DIM_LABELS,
   applyWorkspaceCommand,
   describeStudy,
+  formatWorkspaceLead,
   parseWorkspaceCommand,
   studyContext,
   type BeamDims,
@@ -126,6 +127,9 @@ export function ConKayWorkspace() {
   const [paramsOpen, setParamsOpen] = useState(() => typeof window === 'undefined' || window.matchMedia('(min-width: 640px)').matches);
   const [mobileTab, setMobileTab] = useState<'model' | 'chat' | 'browse'>('model');
   const [speak, setSpeak] = useState<{ id: string; text: string } | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const saveTouched = useRef(false);
   const paramRef = useRef<ParameterPanelHandle>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<WsMessage[]>([]);
@@ -217,6 +221,26 @@ export function ConKayWorkspace() {
     return out.result;
   }, [push, reply, result, ws]);
 
+  const persistModel = useCallback(async (name?: string) => {
+    const id = push({ role: 'assistant', text: 'Saving model…', pending: true });
+    const out = await ws.saveModel(name);
+    if ('error' in out) reply(id, `Not saved. ${out.error}`, { error: true });
+    else {
+      reply(id, `Saved “${out.name}” to Models (${out.id}).`);
+      setInputs((s) => (s.name === out.name ? s : { ...s, name: out.name }));
+      setRefreshKey((k) => k + 1);
+    }
+    return out;
+  }, [push, reply, setInputs, ws]);
+
+  const openSave = useCallback(async () => {
+    saveTouched.current = false;
+    setSaveOpen(true);
+    setSaveName(inputs.name);
+    const suggestion = await ws.suggestName();
+    if (!saveTouched.current) setSaveName(suggestion);
+  }, [inputs.name, ws]);
+
   const keep = useCallback(async (msgId?: string) => {
     setKeeping(true);
     const id = msgId ?? push({ role: 'assistant', text: 'Keeping this study as a private DTU…', pending: true });
@@ -275,20 +299,18 @@ export function ConKayWorkspace() {
       let solved: BeamStudyResult | null = null;
       if (cmd.changes.length > 0 || cmd.run) {
         const next = { ...inputs, ...applyWorkspaceCommand(cmd, inputs) };
-        solved = await runStudy(next, cmd.changes.length ? `Update applied: ${cmd.changes.join(', ')}. ` : '');
+        solved = await runStudy(next, formatWorkspaceLead(cmd));
         if (!solved && (cmd.save || cmd.keep)) return;
       }
       if (cmd.save) {
-        const id = push({ role: 'assistant', text: 'Saving model…', pending: true });
-        const out = await ws.saveModel();
-        if ('error' in out) reply(id, `Not saved. ${out.error}`, { error: true });
-        else { reply(id, `Saved “${out.name}” to Models (${out.id}).`); setRefreshKey((k) => k + 1); }
+        const out = await persistModel();
+        if (!('error' in out)) setSaveOpen(false);
       }
       if (cmd.keep) await keep();
     } finally {
       setBusy(false);
     }
-  }, [askAgent, busy, inputs, keep, materials, push, reply, runStudy, ws]);
+  }, [askAgent, busy, inputs, keep, materials, persistModel, push, reply, runStudy]);
 
   // Open a DTU in the workspace: read it, and when it is a kept beam study,
   // load the exact inputs it recorded (results stay hidden until re-solved).
@@ -493,16 +515,45 @@ export function ConKayWorkspace() {
             </button>
             <button
               type="button"
-              onClick={() => void send('save model')}
+              onClick={() => void openSave()}
               disabled={busy}
               title="Save model"
               aria-label="Save model"
+              aria-expanded={saveOpen}
               className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-50"
             >
               <Save className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>
+        {saveOpen && (
+          <form
+            className="absolute inset-x-0 top-10 z-20 flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#06101c]/95 px-3 py-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (busy || !saveName.trim()) return;
+              setBusy(true);
+              void persistModel(saveName).then((out) => {
+                if (!('error' in out)) setSaveOpen(false);
+              }).finally(() => setBusy(false));
+            }}
+          >
+            <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-slate-300">
+              Model name
+              <input
+                aria-label="Model name"
+                value={saveName}
+                maxLength={80}
+                onChange={(e) => { saveTouched.current = true; setSaveName(e.target.value.slice(0, 80)); }}
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-sm text-slate-100 focus:border-sky-400/50 focus:outline-none"
+              />
+            </label>
+            <button type="submit" disabled={busy || !saveName.trim()} className="rounded-md bg-sky-500/90 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => setSaveOpen(false)} className="px-1 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
+          </form>
+        )}
 
         <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} />
 

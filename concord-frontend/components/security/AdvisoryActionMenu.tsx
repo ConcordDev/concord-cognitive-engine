@@ -19,6 +19,7 @@
  */
 
 import { useState } from 'react';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import {
   X, ShieldAlert, Sparkles, Send, FileText, Globe, Wand2,
   Loader2, Check, AlertTriangle, AlertOctagon,
@@ -151,7 +152,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
             patch: {
               advisoryRef: advisory.ghsa_id,
               status: 'planned',
-              targetDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+              targetDate: shiftDateKey(calendarDateKey(), 7),
               steps: [
                 'Confirm exposure (search dependency graph for affected package)',
                 'Plan rollout window (off-peak; staged by environment)',

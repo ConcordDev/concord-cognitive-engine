@@ -15,7 +15,9 @@ import {
   History, MessageSquare, Share2, Table2, Sparkles, Link2, Users,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
+import { setDocsWorkspaceSnapshot } from './docsSession';
 import { BlockEditorRow } from './BlockEditorRow';
 import { TemplatePicker } from './TemplatePicker';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
@@ -56,6 +58,8 @@ export function requestNewDoc() {
 export function DocsWorkspace() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [active, setActive] = useState<Page | null>(null);
+  const { restore, persist } = useLensStatePersistence('docs');
+  const didRestore = useRef(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<{ id: string; title: string; icon: string; snippet?: string }[] | null>(null);
@@ -71,10 +75,25 @@ export function DocsWorkspace() {
   }, []);
   useEffect(() => { void refreshTree(); }, [refreshTree]);
 
+  useEffect(() => {
+    setDocsWorkspaceSnapshot({ pages, active });
+  }, [pages, active]);
+
   const openPage = useCallback(async (id: string) => {
     const r = await lensRun('docs', 'page-detail', { id });
-    if (r.data?.ok) setActive(r.data.result?.page as Page);
-  }, []);
+    if (r.data?.ok && r.data.result?.page) {
+      setActive(r.data.result.page as Page);
+      persist({ pageId: id });
+    }
+  }, [persist]);
+
+  useEffect(() => {
+    if (loading || didRestore.current) return;
+    didRestore.current = true;
+    const saved = restore();
+    const id = typeof saved?.pageId === 'string' ? saved.pageId : '';
+    if (id && pages.some((p) => p.id === id)) void openPage(id);
+  }, [loading, pages, restore, openPage]);
   const reloadActive = useCallback(async () => {
     if (active) {
       const r = await lensRun('docs', 'page-detail', { id: active.id });
@@ -115,7 +134,10 @@ export function DocsWorkspace() {
 
   async function deletePage(id: string) {
     await lensRun('docs', 'page-delete', { id });
-    if (active?.id === id) setActive(null);
+    if (active?.id === id) {
+      setActive(null);
+      persist({ pageId: '' });
+    }
     await refreshTree();
   }
   async function renamePage(title: string) {

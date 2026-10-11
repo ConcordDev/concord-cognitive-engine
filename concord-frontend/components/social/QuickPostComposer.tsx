@@ -50,12 +50,13 @@ type FederationVisibility = 'local' | 'followers' | 'public';
 
 export interface QuickPostComposerProps {
   currentUserId: string;
+  username?: string | null;
   /** Called after a successful post — useful for invalidating downstream queries. */
   onPosted?: (postId: string | null) => void;
   className?: string;
 }
 
-export function QuickPostComposer({ currentUserId, onPosted, className }: QuickPostComposerProps) {
+export function QuickPostComposer({ currentUserId, username, onPosted, className }: QuickPostComposerProps) {
   const [content, setContent] = useState('');
   const [tagsRaw, setTagsRaw] = useState('');
   const [mode, setMode] = useState<'post' | 'story'>('post');
@@ -168,7 +169,7 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
           <Sparkles className="inline w-2.5 h-2.5 mr-0.5" /> 24h Story
         </button>
         <span className="ml-auto text-[10px] text-zinc-400 font-mono">
-          {currentUserId === 'current-user' ? '@you' : `@${currentUserId.slice(0, 12)}`}
+          {username && username !== currentUserId ? `@${username}` : '@you'}
         </span>
       </header>
 

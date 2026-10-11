@@ -11,11 +11,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Heart, Repeat2, MessageSquare, Share2, MoreHorizontal, Quote,
-  Link2, Flag, VolumeX, Ban, Check, BarChart3,
+  Link2, Flag, VolumeX, Ban, Check, BarChart3, Trash2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { SocialPost, PollOption } from './types';
+import { authorLabel } from './authorLabel';
 import { ReplyTree } from './ReplyTree';
 
 // Emoji presentation per reaction id — purely cosmetic, kept local. The
@@ -45,13 +46,14 @@ function relTime(iso: string): string {
 interface PostCardProps {
   post: SocialPost;
   username: string;
+  currentUserId?: string;
   onChanged: () => void;
   onQuote: (post: SocialPost) => void;
   onOpenHashtag: (tag: string) => void;
   onOpenDetail: (postId: string) => void;
 }
 
-export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, onOpenDetail }: PostCardProps) {
+export function PostCard({ post, username, currentUserId, onChanged, onQuote, onOpenHashtag, onOpenDetail }: PostCardProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -149,11 +151,26 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
   }, [post.id]);
 
   const totalVotes = poll ? poll.options.reduce((n, o) => n + o.votes, 0) : 0;
+  const author = authorLabel(post.userId, post.username, post.displayName);
+  const mine = !!currentUserId && post.userId === currentUserId;
+
+  const removePost = useCallback(async () => {
+    setShowMenu(false);
+    const r = await lensRun<{ id: string; deleted: boolean }>('social', 'deletePost', { postId: post.id });
+    const denied = r.data?.ok === false || (r.data?.result as { ok?: boolean } | undefined)?.ok === false;
+    if (denied) {
+      const err = r.data?.error || (r.data?.result as { error?: string } | undefined)?.error;
+      setNotice(err || 'Could not delete this post.');
+      return;
+    }
+    onChanged();
+  }, [post.id, onChanged]);
 
   return (
     <article className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/20 transition-colors">
       <div className="flex items-baseline gap-2">
-        <span className="text-sm font-medium text-zinc-100">@{post.username}</span>
+        <span className="text-sm font-medium text-zinc-100">{author.name}</span>
+        {author.handle && author.handle !== author.name && <span className="text-xs text-zinc-500">@{author.handle}</span>}
         <span className="text-[10px] text-zinc-400">{relTime(post.createdAt)}</span>
         <div className="relative ml-auto">
           <button
@@ -166,11 +183,16 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
           </button>
           {showMenu && (
             <div className="absolute right-0 top-7 z-20 w-44 rounded-lg border border-zinc-800 bg-zinc-950 py-1 text-xs shadow-xl">
+              {mine && (
+                <button type="button" onClick={() => void removePost()} className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-300 hover:bg-zinc-900">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete post
+                </button>
+              )}
               <button type="button" onClick={() => void moderate('mute')} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
-                <VolumeX className="w-3.5 h-3.5" /> Mute @{post.username}
+                <VolumeX className="w-3.5 h-3.5" /> Mute {author.handle ? `@${author.handle}` : author.name}
               </button>
               <button type="button" onClick={() => void moderate('block')} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
-                <Ban className="w-3.5 h-3.5" /> Block @{post.username}
+                <Ban className="w-3.5 h-3.5" /> Block {author.handle ? `@${author.handle}` : author.name}
               </button>
               <button type="button" onClick={() => { setShowReports((v) => !v); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-400 hover:bg-zinc-900">
                 <Flag className="w-3.5 h-3.5" /> Report post

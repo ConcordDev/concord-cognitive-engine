@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { CalendarClock, Loader2, AlertCircle, Clock, CalendarX } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { Skeleton } from '@/components/ui';
@@ -54,7 +55,7 @@ function toIso(d: string | Date | undefined): string | null {
 
 export function ScheduleAnalyzer() {
   const { items: events, isLoading } = useLensData<CalendarEventArtifact>('calendar', 'event', { seed: [] });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
   const [date, setDate] = useState(today);
   const [workStart, setWorkStart] = useState(9);
   const [workEnd, setWorkEnd] = useState(17);

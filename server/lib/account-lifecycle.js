@@ -11,6 +11,8 @@ import { anonymizeAttribution } from "./consent.js";
 import { listProtectedDtuIdsForOwner } from "./dtu-protection.js";
 import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
 import { economyAudit } from "../economy/audit.js";
+import { privacyExportForUser } from "../domains/privacy.js";
+import { settingsExportForUser } from "../domains/settings.js";
 
 function uid(prefix = "al") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -33,12 +35,17 @@ function nowISO() {
 // - Deletion is irreversible
 
 const BALANCE_FORFEIT_DAYS = 90;
+// Every account, including a zero balance, gets a cancellable window before
+// executeAccountDeletion runs. A positive balance keeps the longer forfeit
+// countdown so the wallet can be withdrawn first.
+export const DELETION_GRACE_DAYS = 7;
 
 /**
- * Initiate account deletion. If user has a balance, starts the 90-day
- * forfeit countdown. Otherwise, proceeds to immediate deletion.
+ * Initiate account deletion. Always schedules — never deletes in this call.
+ * A positive balance uses the 90-day forfeit countdown. A zero balance uses
+ * DELETION_GRACE_DAYS. Cancel is truthful in both cases.
  *
- * @returns {{ ok, scheduled?, deletedImmediately?, balance?, forfeitDate? }}
+ * @returns {{ ok, scheduled?, graceDays?, balance?, forfeitDate? }}
  */
 export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
   if (!userId) return { ok: false, error: "missing_user_id" };
@@ -69,31 +76,28 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
   } catch (err) { console.warn('[account-lifecycle] could not compute wallet balance (economy tables may not exist)', { userId, err: err.message }); }
 
   const now = nowISO();
+  const graceDays = balance > 0.01 ? BALANCE_FORFEIT_DAYS : DELETION_GRACE_DAYS;
+  const forfeitDate = new Date(Date.now() + graceDays * 86400000).toISOString().replace("T", " ").replace("Z", "");
+  db.prepare(`
+    INSERT INTO account_deletion_requests (id, user_id, status, balance_at_request, forfeit_date, requested_at)
+    VALUES (?, ?, 'scheduled', ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET status = 'scheduled', balance_at_request = ?, forfeit_date = ?, requested_at = ?
+  `).run(uid("del"), userId, balance, forfeitDate, now, balance, forfeitDate, now);
 
-  if (balance > 0.01) {
-    // Schedule deletion — 90 day grace period for balance withdrawal
-    const forfeitDate = new Date(Date.now() + BALANCE_FORFEIT_DAYS * 86400000).toISOString().replace("T", " ").replace("Z", "");
-    db.prepare(`
-      INSERT INTO account_deletion_requests (id, user_id, status, balance_at_request, forfeit_date, requested_at)
-      VALUES (?, ?, 'scheduled', ?, ?, ?)
-      ON CONFLICT(user_id) DO UPDATE SET status = 'scheduled', balance_at_request = ?, forfeit_date = ?, requested_at = ?
-    `).run(uid("del"), userId, balance, forfeitDate, now, balance, forfeitDate, now);
+  auditDeletionRequest(db, userId, { ip, userAgent, outcome: "scheduled", balance, forfeitDate, graceDays });
 
-    auditDeletionRequest(db, userId, { ip, userAgent, outcome: "scheduled", balance, forfeitDate });
+  const detail = balance > 0.01
+    ? `Account deletion scheduled. You have ${graceDays} days to withdraw your balance of ${balance} CC. After that, it will be forfeited and the account deleted. You can cancel until then.`
+    : `Account deletion scheduled. You have ${graceDays} days to cancel. After that, the account is permanently deleted.`;
 
-    return {
-      ok: true,
-      scheduled: true,
-      balance,
-      forfeitDate,
-      detail: `Account deletion scheduled. You have ${BALANCE_FORFEIT_DAYS} days to withdraw your balance of ${balance} CC. After that, it will be forfeited.`,
-    };
-  }
-
-  // No balance — delete immediately
-  const result = executeAccountDeletion(db, userId);
-  auditDeletionRequest(db, userId, { ip, userAgent, outcome: "deleted_immediately", balance });
-  return { ok: true, deletedImmediately: true, ...result };
+  return {
+    ok: true,
+    scheduled: true,
+    balance,
+    forfeitDate,
+    graceDays,
+    detail,
+  };
 }
 
 /**
@@ -470,14 +474,22 @@ export function exportUserData(db, userId) {
     consentAuditLog: [],
     messages: [],
     socialPosts: [],
+    chats: { sessions: [], messages: [] },
+    sessions: { auth: [], lens: [] },
+    settings: null,
+    privacy: null,
   };
 
-  // DTUs
+  // DTUs — SQL rows this user owns, plus any in-memory DTU with the same owner.
+  // System and ownerless rows stay out. That is the same "my vault" cut the
+  // DTU browser uses (owner === me), not the global library.
   try {
     data.dtus = db.prepare(
       "SELECT id, title, body_json, tags_json, visibility, tier, created_at, updated_at FROM dtus WHERE owner_user_id = ? ORDER BY created_at DESC"
     ).all(userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export DTUs', { userId, err: err.message }); }
+  try { mergeOwnedMemoryDtus(data, userId); }
+  catch (err) { console.warn('[account-lifecycle] data export: failed to merge in-memory DTUs', { userId, err: err.message }); }
 
   // Transactions
   try {
@@ -521,14 +533,105 @@ export function exportUserData(db, userId) {
     ).all(userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export messages', { userId, err: err.message }); }
 
-  // Social posts
+  // Social posts — SQL rows plus the live in-memory feeds. Lens posts and
+  // the REST social layer both live in STATE and were omitted when only
+  // social_posts was read (that table stays empty unless a write landed).
   try {
     data.socialPosts = db.prepare(
       "SELECT id, content, created_at FROM social_posts WHERE user_id = ? OR author_id = ? ORDER BY created_at DESC LIMIT 5000"
     ).all(userId, userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export social posts', { userId, err: err.message }); }
+  try { mergeOwnedMemorySocialPosts(data, userId); }
+  catch (err) { console.warn('[account-lifecycle] data export: failed to merge in-memory social posts', { userId, err: err.message }); }
+
+  // Chats — sessions this user owns, and the messages in those sessions.
+  try {
+    data.chats.sessions = db.prepare(
+      "SELECT session_id, title, last_lens, created_at, updated_at, msg_count FROM chat_sessions WHERE owner_id = ? ORDER BY updated_at DESC"
+    ).all(userId);
+  } catch (err) { console.warn('[account-lifecycle] data export: failed to export chat sessions', { userId, err: err.message }); }
+  try {
+    data.chats.messages = db.prepare(
+      "SELECT m.id, m.session_id, m.role, m.content, m.ts FROM chat_messages m INNER JOIN chat_sessions s ON s.session_id = m.session_id WHERE s.owner_id = ? ORDER BY m.ts DESC LIMIT 5000"
+    ).all(userId);
+  } catch (err) { console.warn('[account-lifecycle] data export: failed to export chat messages', { userId, err: err.message }); }
+
+  // Sign-in sessions (no token hash) and lens sessions.
+  try {
+    data.sessions.auth = db.prepare(
+      "SELECT id, created_at, expires_at, ip_address, user_agent, is_revoked FROM sessions WHERE user_id = ? ORDER BY created_at DESC"
+    ).all(userId);
+  } catch (err) { console.warn('[account-lifecycle] data export: failed to export auth sessions', { userId, err: err.message }); }
+  try {
+    data.sessions.lens = db.prepare(
+      "SELECT id, lens_id, title, status, current_step, step_count, created_at, updated_at, closed_at FROM lens_sessions WHERE user_id = ? ORDER BY updated_at DESC"
+    ).all(userId);
+  } catch (err) { console.warn('[account-lifecycle] data export: failed to export lens sessions', { userId, err: err.message }); }
+
+  try { data.settings = settingsExportForUser(userId); }
+  catch (err) { console.warn('[account-lifecycle] data export: failed to export settings', { userId, err: err.message }); }
+  try { data.privacy = privacyExportForUser(userId); }
+  catch (err) { console.warn('[account-lifecycle] data export: failed to export privacy bundle', { userId, err: err.message }); }
 
   return { ok: true, data };
+}
+
+function portableDtu(d) {
+  let body = d.body_json ?? d.body ?? d.content ?? d.creti ?? d.human?.summary ?? null;
+  if (body != null && typeof body !== "string") {
+    try { body = JSON.stringify(body); } catch { body = null; }
+  }
+  if (typeof body === "string" && body.length > 200000) body = body.slice(0, 200000);
+  let tags = d.tags_json;
+  if (tags == null) {
+    try { tags = JSON.stringify(d.tags || []); } catch { tags = "[]"; }
+  }
+  return {
+    id: d.id,
+    title: d.title || "Untitled",
+    body_json: body,
+    tags_json: tags,
+    visibility: d.visibility || d.meta?.visibility || null,
+    tier: d.tier || null,
+    created_at: d.created_at || d.createdAt || null,
+    updated_at: d.updated_at || d.updatedAt || null,
+  };
+}
+
+function mergeOwnedMemorySocialPosts(data, userId) {
+  if (!Array.isArray(data.socialPosts)) data.socialPosts = [];
+  const seen = new Set(data.socialPosts.map((p) => p.id));
+  const state = globalThis._concordSTATE;
+  const buckets = [];
+  const lens = state?.socialLens?.posts;
+  if (lens && typeof lens.values === "function") buckets.push(...lens.values());
+  const rest = state?._social?.posts;
+  if (rest && typeof rest.values === "function") buckets.push(...rest.values());
+  for (const p of buckets) {
+    if (!p || p.id == null || seen.has(p.id)) continue;
+    const owner = p.userId || p.authorId || p.author_id || null;
+    if (owner !== userId) continue;
+    data.socialPosts.push({
+      id: p.id,
+      content: p.content || p.body || "",
+      created_at: p.created_at ?? p.createdAt ?? null,
+      user_id: owner,
+    });
+    seen.add(p.id);
+  }
+}
+
+function mergeOwnedMemoryDtus(data, userId) {
+  const mem = globalThis._concordSTATE && globalThis._concordSTATE.dtus;
+  if (!mem || typeof mem.values !== "function") return;
+  const seen = new Set(data.dtus.map((d) => d.id));
+  for (const d of mem.values()) {
+    if (!d || d.id == null || seen.has(d.id)) continue;
+    const owner = d.ownerId || d.owner_user_id || d.createdBy || d.authorId || null;
+    if (owner !== userId) continue;
+    data.dtus.push(portableDtu(d));
+    seen.add(d.id);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

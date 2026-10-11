@@ -9,16 +9,19 @@ import {
   dtuReadBackCall,
   dtuReadBackMatches,
   dtuRecordId,
+  draftEventInThreadCall,
+  draftEventInThreadOutcome,
   sendEventDtuOutcome,
   sendEventDtuToTimelineCall,
   type KeptEvent,
 } from './calendarKeep';
 
 export function CalendarKeepMenu({ event, onSaved }: { event: KeptEvent; onSaved?: (id: string) => void }) {
-  const [busy, setBusy] = useState<'save' | 'send' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'send' | 'draft' | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
   const [postId, setPostId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   async function save() {
     if (busy) return;
@@ -80,6 +83,27 @@ export function CalendarKeepMenu({ event, onSaved }: { event: KeptEvent; onSaved
     }
   }
 
+  async function draft() {
+    if (busy || !savedDtuId) return;
+    const call = draftEventInThreadCall(event, savedDtuId);
+    if (!call) {
+      setNote('Not drafted. This DTU is not a saved calendar event. Nothing was posted.');
+      return;
+    }
+    setBusy('draft');
+    setNote(null);
+    try {
+      const response = await lensRun({ domain: call.domain, name: call.action, input: call.input });
+      const outcome = draftEventInThreadOutcome(savedDtuId, response.data);
+      if (outcome.claimed) setDraftId(outcome.draftId);
+      setNote(outcome.text);
+    } catch (err) {
+      setNote(`Not drafted. ${err instanceof Error ? err.message : 'Request failed.'} Nothing was posted.`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -100,6 +124,21 @@ export function CalendarKeepMenu({ event, onSaved }: { event: KeptEvent; onSaved
           >
             {busy === 'send' ? 'Sending…' : 'Send this DTU to Timeline'}
           </button>
+        )}
+        {savedDtuId && (
+          <button
+            type="button"
+            onClick={() => { void draft(); }}
+            disabled={busy !== null}
+            className="text-[11px] text-teal-300 hover:underline disabled:opacity-40"
+          >
+            {busy === 'draft' ? 'Drafting…' : 'Draft in Thread'}
+          </button>
+        )}
+        {draftId && (
+          <Link href="/lenses/thread" className="text-[11px] text-zinc-300 hover:underline">
+            Open Thread draft {draftId}
+          </Link>
         )}
         {postId && (
           <Link href="/lenses/timeline?tab=feed" className="text-[11px] text-zinc-300 hover:underline">

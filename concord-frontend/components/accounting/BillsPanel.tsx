@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle, Sparkles, Truck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -260,7 +261,7 @@ export function BillsPanel() {
           ) : (
             <ul className="divide-y divide-white/5">
               {bills.map(b => {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = calendarDateKey();
                 const overdue = b.status === 'open' && b.dueAt < today;
                 return (
                   <li key={b.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-3">

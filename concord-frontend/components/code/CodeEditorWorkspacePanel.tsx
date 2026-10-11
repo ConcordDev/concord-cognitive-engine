@@ -52,6 +52,9 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
+import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
+import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
+import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
 interface FileNode {
   id: string;
@@ -228,17 +231,34 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   // read the backend workspace, so we mirror the active buffer into an ephemeral
   // per-session project (debounced, like LSP didChange) and feed MonacoWrapper a
   // `semantic` context. `files-write` auto-creates the project bucket.
-  const LIVE_PROJECT_ID = 'code-lens-live';
+  // Read the saved snippet before any write, or the empty mount clobbers it.
   const runCodeMacro = useCallback(async (action: string, input: Record<string, unknown>) => {
     try {
       const res = await api.post('/api/lens/run', { domain: 'code', action, input });
       return (res.data?.result as Record<string, unknown>) ?? null;
     } catch { return null; }
   }, []);
+  const [liveReady, setLiveReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const read = await runCodeMacro('files-read', { projectId: LIVE_PROJECT_ID, path: LIVE_SNIPPET_PATH });
+      if (cancelled) return;
+      const saved = snippetFromFilesRead(read);
+      if (saved) {
+        setTabs((prev) => tabAfterSnippetRead(prev, 'main', saved).map((t) => (
+          t.id === 'main' && t.content === saved ? { ...t, isDirty: false } : t
+        )));
+      }
+      setLiveReady(true);
+    })();
+    return () => { cancelled = true; };
+  }, [runCodeMacro]);
   // Debounced mirror of the active buffer → backend, so hover/completions/
   // diagnostics reflect what's on screen (LSP didChange semantics).
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!liveReady) return;
     if (syncTimer.current) clearTimeout(syncTimer.current);
     const path = activeTab.name;
     const content = activeTab.content;
@@ -246,7 +266,12 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
       void runCodeMacro('files-write', { projectId: LIVE_PROJECT_ID, path, content });
     }, 350);
     return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
-  }, [activeTab.name, activeTab.content, runCodeMacro]);
+  }, [activeTab.name, activeTab.content, runCodeMacro, liveReady]);
+  const [exec, setExec] = useState<CodeExecStatus | null>(() => readExecStatus());
+  useEffect(() => subscribeExecStatus(setExec), []);
+  const execOff = exec?.enabled === false;
+  const execUnknown = exec == null;
+  const execReason = execOff ? (exec?.reason || 'Live code execution is disabled in this environment.') : '';
   const semanticCtx = useMemo(
     () => ({ projectId: LIVE_PROJECT_ID, path: activeTab.name, run: runCodeMacro }),
     [activeTab.name, runCodeMacro],
@@ -417,36 +442,22 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Derive the per-user sessionId once auth resolves. Hydrate prior
-  // history from /api/chat/messages so AI Chat survives tab close +
-  // device switch. Anon users keep component-state-only history.
+  // history only when `code-ai-<userId>` is already a session — a missing
+  // id is not probed with GET /api/chat/messages (that 404s on every load).
+  // Anon users keep component-state-only history.
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
     if (aiChatHistoryHydratedRef.current) return;
-    const sid = `code-ai-${user.id}`;
+    const sid = codeAiSessionId(user.id);
     codeAiSessionIdRef.current = sid;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sid)}&limit=200`, {
-          credentials: 'include',
-        });
-        if (!res.ok || cancelled) return;
-        const json = (await res.json()) as { ok: boolean; messages?: Array<{ role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
-        if (cancelled || !json.ok || !Array.isArray(json.messages)) return;
-        const hydrated: ChatMsg[] = json.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => {
-            const meta = (m.meta || {}) as Record<string, unknown>;
-            return {
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-              ts: new Date(m.ts).getTime() || Date.now(),
-              dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as ChatMsg['dtuRefs']) : undefined,
-            };
-          });
-        if (hydrated.length > 0) setAiChatHistory(hydrated);
+        const loaded = await fetchCodeAiHistory(sid, (url, init) => fetch(url, init));
+        if (cancelled) return;
         aiChatHistoryHydratedRef.current = true;
-      } catch { /* anon, offline, or 403 — leave empty */ }
+        if (loaded.messages.length > 0) setAiChatHistory(loaded.messages);
+      } catch { /* offline — leave empty, and do not probe a missing session */ }
     })();
     return () => { cancelled = true; };
   }, [isAuthenticated, user?.id]);
@@ -1007,7 +1018,10 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   }, [tabs]);
 
   useEffect(() => {
-    const onRun = () => runScriptMutation.mutate();
+    const onRun = () => {
+      if (readExecStatus()?.enabled === false) return;
+      runScriptMutation.mutate();
+    };
     window.addEventListener('concord:code-run', onRun);
     return () => window.removeEventListener('concord:code-run', onRun);
   }, [runScriptMutation]);
@@ -1020,7 +1034,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     [
       { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
       { id: 'palette-shift',    keys: 'mod+shift+p', description: 'Command palette (commands)',   category: 'navigation', action: () => setPaletteOpen(true), global: true },
-      { id: 'run',              keys: 'mod+enter',   description: 'Run script',                    category: 'actions',    action: () => runScriptMutation.mutate(), global: true },
+      { id: 'run',              keys: 'mod+enter',   description: 'Run script',                    category: 'actions',    action: () => { if (readExecStatus()?.enabled !== false) runScriptMutation.mutate(); }, global: true },
       { id: 'toggle-tree',      keys: 'mod+b',       description: 'Toggle file tree',              category: 'navigation', action: () => setShowFileTree((v) => !v), global: true },
       { id: 'toggle-output',    keys: 'mod+j',       description: 'Toggle output panel',           category: 'navigation', action: () => setShowOutput((v) => !v),   global: true },
       { id: 'toggle-terminal',  keys: 'ctrl+`',      description: 'Toggle terminal',               category: 'navigation', action: () => setTerminalOpen((v) => !v), global: true },
@@ -1193,17 +1207,18 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           </div>
 
           <button
-            onClick={() => runScriptMutation.mutate()}
-            disabled={runScriptMutation.isPending}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors"
-            title="Run (⌘↵)"
+            type="button"
+            onClick={() => { if (!execOff && !execUnknown) runScriptMutation.mutate(); }}
+            disabled={runScriptMutation.isPending || execOff || execUnknown}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
+            title={execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Play className="w-4 h-4 fill-current" />
             )}
-            Run
+            {runScriptMutation.isPending ? 'Running…' : execOff ? 'Execution disabled' : 'Run'}
           </button>
 
           <button

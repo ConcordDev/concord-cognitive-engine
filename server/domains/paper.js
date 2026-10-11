@@ -202,63 +202,166 @@ export default function registerPaperActions(registerLensAction) {
     if (!(s.collections instanceof Map)) s.collections = new Map(); // userId -> Array
     return s;
   }
-  function savePaper() {
+  // Keyed by the paperLens object, not stored on it. A restart deletes
+  // paperLens, so the next access re-reads SQLite. Keeping the set on the
+  // state object would survive lens-state serialization and skip a newer row.
+  const loadedFor = new WeakMap();
+  const ppId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const ppNow = () => new Date().toISOString();
+  const ppActor = (ctx) => String(ctx?.actor?.userId || ctx?.userId || "anon");
+  const ppClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  function readKind(ctx, userId, kind) {
+    const db = ctx && ctx.db;
+    if (!db || typeof db.prepare !== "function") return null;
+    try {
+      const row = db.prepare(
+        "SELECT data_json FROM paper_library WHERE user_id = ? AND kind = ?",
+      ).get(String(userId), kind);
+      if (!row) return null;
+      const parsed = JSON.parse(row.data_json);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  function hydrateLibrary(s, ctx) {
+    const userId = ppActor(ctx);
+    let set = loadedFor.get(s);
+    if (!set) { set = new Set(); loadedFor.set(s, set); }
+    if (set.has(userId)) return userId;
+    set.add(userId);
+    // A stored row wins: it was written synchronously and is newer than the
+    // debounced lens-state snapshot. No row keeps whatever memory/snapshot
+    // already has, so a fresh table does not wipe an older library.
+    const dbPapers = readKind(ctx, userId, "papers");
+    const dbCols = readKind(ctx, userId, "collections");
+    if (dbPapers) s.papers.set(userId, dbPapers);
+    else if (!s.papers.has(userId)) s.papers.set(userId, []);
+    if (dbCols) s.collections.set(userId, dbCols);
+    else if (!s.collections.has(userId)) s.collections.set(userId, []);
+    return userId;
+  }
+  function persistLibrary(ctx, s) {
+    const db = ctx && ctx.db;
+    if (!db || typeof db.prepare !== "function") return;
+    const userId = ppActor(ctx);
+    if (!s.papers.has(userId) && !s.collections.has(userId)) return;
+    try {
+      const stmt = db.prepare(
+        `INSERT INTO paper_library (user_id, kind, data_json, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(user_id, kind) DO UPDATE SET
+           data_json = excluded.data_json,
+           updated_at = excluded.updated_at`,
+      );
+      const now = ppNow();
+      if (s.papers.has(userId)) stmt.run(userId, "papers", JSON.stringify(s.papers.get(userId) || []), now);
+      if (s.collections.has(userId)) stmt.run(userId, "collections", JSON.stringify(s.collections.get(userId) || []), now);
+    } catch { /* table missing on a DB that has not migrated yet */ }
+  }
+  function savePaper(ctx) {
+    const s = getPaperState();
+    if (s && ctx) persistLibrary(ctx, s);
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
-  const ppId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const ppNow = () => new Date().toISOString();
-  const ppActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
-  const ppClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
-  const ppList = (s, userId) => { if (!s.papers.has(userId)) s.papers.set(userId, []); return s.papers.get(userId); };
-  const ppCollections = (s, userId) => { if (!s.collections.has(userId)) s.collections.set(userId, []); return s.collections.get(userId); };
+  const ppList = (s, ctx) => {
+    const userId = hydrateLibrary(s, ctx);
+    if (!s.papers.has(userId)) s.papers.set(userId, []);
+    return s.papers.get(userId);
+  };
+  const ppCollections = (s, ctx) => {
+    const userId = hydrateLibrary(s, ctx);
+    if (!s.collections.has(userId)) s.collections.set(userId, []);
+    return s.collections.get(userId);
+  };
+  const ppAuthors = (v) => {
+    const list = Array.isArray(v) ? v : (typeof v === "string" ? v.split(",") : []);
+    return list.map((a) => ppClean(a, 120)).filter(Boolean).slice(0, 30);
+  };
+  // Flat fields win. Also accept { params } / { input } envelopes so a caller
+  // that nested title/authors/year still saves instead of failing closed.
+  function paperInput(params, artifact) {
+    const out = {};
+    const take = (obj) => {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === "input" || k === "params" || k === "artifact" || k === "data") continue;
+        if (v !== undefined) out[k] = v;
+      }
+    };
+    take(artifact && artifact.data);
+    take(params);
+    take(params && params.input);
+    take(params && params.params);
+    take(artifact && artifact.data && artifact.data.input);
+    take(artifact && artifact.data && artifact.data.params);
+    return out;
+  }
+  // Missing ownerId is the bucket owner (libraries saved before the column).
+  // Someone else's paper is listed only when they marked it public.
+  function paperVisibleTo(p, userId) {
+    const owner = p && p.ownerId != null ? String(p.ownerId) : String(userId);
+    if (owner !== String(userId)) return p?.visibility === "public";
+    return true;
+  }
   const READ_STATUS = ["to_read", "reading", "read"];
 
-  registerLensAction("paper", "paper-save", (ctx, _a, params = {}) => {
+  function saveLibraryPaper(ctx, artifact, params = {}) {
   try {
+    const raw = paperInput(params, artifact);
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const title = ppClean(params.title, 400);
+    const title = ppClean(raw.title, 400);
     if (!title) return { ok: false, error: "paper title required" };
-    const list = ppList(s, ppActor(ctx));
-    const refId = ppClean(params.refId, 120) || title.toLowerCase();
+    const userId = ppActor(ctx);
+    const list = ppList(s, ctx);
+    const refId = ppClean(raw.refId, 120) || title.toLowerCase();
     if (list.some((p) => p.refId === refId)) return { ok: false, error: "paper already in your library" };
+    const yearN = Number(raw.year);
     const paper = {
       id: ppId("pp"),
       refId,
       title,
-      authors: Array.isArray(params.authors) ? params.authors.map((a) => ppClean(a, 120)).filter(Boolean).slice(0, 30) : [],
-      year: Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null,
-      venue: ppClean(params.venue, 200) || null,
-      abstract: ppClean(params.abstract, 6000) || "",
-      url: ppClean(params.url, 600) || null,
-      doi: ppClean(params.doi, 120) || null,
+      authors: ppAuthors(raw.authors),
+      year: Number.isFinite(yearN) ? Math.round(yearN) : null,
+      venue: ppClean(raw.venue, 200) || null,
+      abstract: ppClean(raw.abstract, 6000) || "",
+      url: ppClean(raw.url, 600) || null,
+      doi: ppClean(raw.doi, 120) || null,
       status: "to_read",
       rating: null,
-      tags: Array.isArray(params.tags) ? params.tags.map((t) => ppClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8) : [],
+      tags: Array.isArray(raw.tags) ? raw.tags.map((t) => ppClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8) : [],
       notes: "",
       collectionIds: [],
+      ownerId: userId,
+      visibility: raw.visibility === "public" ? "public" : "private",
       addedAt: ppNow(),
     };
     list.push(paper);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paper } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  }
+  // paper-save is the existing macro. paper-add is the same write: the library
+  // form's add path calls it, and older callers keep paper-save.
+  registerLensAction("paper", "paper-save", saveLibraryPaper);
+  registerLensAction("paper", "paper-add", saveLibraryPaper);
 
   registerLensAction("paper", "paper-list", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let papers = [...ppList(s, ppActor(ctx))];
+    const userId = ppActor(ctx);
+    let papers = [...ppList(s, ctx)].filter((p) => paperVisibleTo(p, userId));
     if (params.status && READ_STATUS.includes(params.status)) papers = papers.filter((p) => p.status === params.status);
-    if (params.collectionId) papers = papers.filter((p) => p.collectionIds.includes(params.collectionId));
+    if (params.collectionId) papers = papers.filter((p) => Array.isArray(p.collectionIds) && p.collectionIds.includes(params.collectionId));
     if (params.tag) {
       const t = ppClean(params.tag, 30).toLowerCase();
-      papers = papers.filter((p) => p.tags.includes(t));
+      papers = papers.filter((p) => Array.isArray(p.tags) && p.tags.includes(t));
     }
     const q = ppClean(params.query, 120).toLowerCase();
-    if (q) papers = papers.filter((p) => p.title.toLowerCase().includes(q) || p.abstract.toLowerCase().includes(q));
-    papers.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    if (q) papers = papers.filter((p) => String(p.title || "").toLowerCase().includes(q) || String(p.abstract || "").toLowerCase().includes(q));
+    papers.sort((a, b) => String(b.addedAt || "").localeCompare(String(a.addedAt || "")));
     return { ok: true, result: { papers, count: papers.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -266,7 +369,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-detail", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.id);
+    const paper = ppList(s, ctx).find((p) => p.id === params.id);
     if (!paper) return { ok: false, error: "paper not found" };
     return { ok: true, result: { paper } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -275,24 +378,24 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-update", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.id);
+    const paper = ppList(s, ctx).find((p) => p.id === params.id);
     if (!paper) return { ok: false, error: "paper not found" };
     if (params.status != null && READ_STATUS.includes(params.status)) paper.status = params.status;
     if (params.rating != null) paper.rating = Number.isFinite(Number(params.rating)) ? Math.max(1, Math.min(5, Math.round(Number(params.rating)))) : null;
     if (params.notes != null) paper.notes = ppClean(params.notes, 8000);
     if (Array.isArray(params.tags)) paper.tags = params.tags.map((t) => ppClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paper } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
   registerLensAction("paper", "paper-delete", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = ppList(s, ppActor(ctx));
+    const arr = ppList(s, ctx);
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "paper not found" };
     arr.splice(i, 1);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { deleted: params.id } };
   });
 
@@ -301,8 +404,8 @@ export default function registerPaperActions(registerLensAction) {
     const name = ppClean(params.name, 120);
     if (!name) return { ok: false, error: "collection name required" };
     const collection = { id: ppId("col"), name, createdAt: ppNow() };
-    ppCollections(s, ppActor(ctx)).push(collection);
-    savePaper();
+    ppCollections(s, ctx).push(collection);
+    savePaper(ctx);
     return { ok: true, result: { collection } };
   });
 
@@ -310,8 +413,8 @@ export default function registerPaperActions(registerLensAction) {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
-    const papers = ppList(s, userId);
-    const collections = ppCollections(s, userId).map((c) => ({
+    const papers = ppList(s, ctx);
+    const collections = ppCollections(s, ctx).map((c) => ({
       ...c, paperCount: papers.filter((p) => p.collectionIds.includes(c.id)).length,
     }));
     return { ok: true, result: { collections, count: collections.length } };
@@ -321,16 +424,16 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "collection-assign", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
-    const paper = ppList(s, userId).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
-    const collection = ppCollections(s, userId).find((c) => c.id === params.collectionId);
+    const collection = ppCollections(s, ctx).find((c) => c.id === params.collectionId);
     if (!collection) return { ok: false, error: "collection not found" };
     if (params.remove === true) {
       paper.collectionIds = paper.collectionIds.filter((id) => id !== collection.id);
     } else if (!paper.collectionIds.includes(collection.id)) {
       paper.collectionIds.push(collection.id);
     }
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paperId: paper.id, collectionIds: paper.collectionIds } };
   });
 
@@ -338,7 +441,7 @@ export default function registerPaperActions(registerLensAction) {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
-    const papers = ppList(s, userId);
+    const papers = ppList(s, ctx).filter((p) => paperVisibleTo(p, userId));
     return {
       ok: true,
       result: {
@@ -346,7 +449,7 @@ export default function registerPaperActions(registerLensAction) {
         toRead: papers.filter((p) => p.status === "to_read").length,
         reading: papers.filter((p) => p.status === "reading").length,
         read: papers.filter((p) => p.status === "read").length,
-        collections: ppCollections(s, userId).length,
+        collections: ppCollections(s, ctx).length,
         withNotes: papers.filter((p) => p.notes && p.notes.trim()).length,
       },
     };
@@ -359,7 +462,7 @@ export default function registerPaperActions(registerLensAction) {
 
   registerLensAction("paper", "paper-pdf-attach", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const dataUrl = String(params.dataUrl || "");
     if (!dataUrl.startsWith("data:application/pdf")) return { ok: false, error: "expected a data:application/pdf base64 URL" };
@@ -371,14 +474,14 @@ export default function registerPaperActions(registerLensAction) {
       sizeBytes: Math.round((dataUrl.length * 3) / 4),
       attachedAt: ppNow(),
     };
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paperId: paper.id, fileName: paper.pdf.fileName, sizeBytes: paper.pdf.sizeBytes } };
   });
 
   registerLensAction("paper", "paper-pdf-get", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     if (!paper.pdf) return { ok: true, result: { hasPdf: false } };
     return { ok: true, result: { hasPdf: true, ...paper.pdf } };
@@ -387,10 +490,10 @@ export default function registerPaperActions(registerLensAction) {
 
   registerLensAction("paper", "paper-pdf-remove", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     delete paper.pdf;
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paperId: paper.id, removed: true } };
   });
 
@@ -404,7 +507,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-annotate", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const quote = ppClean(params.quote, 2000);
     if (!quote) return { ok: false, error: "highlighted text (quote) required" };
@@ -419,7 +522,7 @@ export default function registerPaperActions(registerLensAction) {
     };
     paper.annotations.push(annot);
     paper.annotations.sort((a, b) => a.page - b.page || a.createdAt.localeCompare(b.createdAt));
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { annotation: annot, total: paper.annotations.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -427,7 +530,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-annotations", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     return { ok: true, result: { annotations: paper.annotations || [], count: (paper.annotations || []).length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -435,19 +538,19 @@ export default function registerPaperActions(registerLensAction) {
 
   registerLensAction("paper", "paper-annotation-delete", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const arr = paper.annotations || [];
     const i = arr.findIndex((an) => an.id === params.annotationId);
     if (i < 0) return { ok: false, error: "annotation not found" };
     arr.splice(i, 1);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { deleted: params.annotationId, remaining: arr.length } };
   });
 
   registerLensAction("paper", "paper-annotations-sync", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const annots = paper.annotations || [];
     if (annots.length === 0) return { ok: false, error: "no annotations to sync" };
@@ -461,7 +564,7 @@ export default function registerPaperActions(registerLensAction) {
     const base = (paper.notes || "").replace(/\n*## Highlights[\s\S]*$/, "").trim();
     paper.notes = (base ? base + "\n\n" : "") + digest;
     paper.notes = paper.notes.slice(0, 8000);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { paperId: paper.id, synced: annots.length, notes: paper.notes } };
   });
 
@@ -477,7 +580,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-version-save", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const content = ppClean(params.content, 8000);
     if (!content) return { ok: false, error: "content required" };
@@ -486,7 +589,7 @@ export default function registerPaperActions(registerLensAction) {
     const versionNumber = (paper.versions[paper.versions.length - 1]?.versionNumber || 0) + 1;
     const version = { id: ppId("ver"), versionNumber, content, label, createdAt: ppNow() };
     paper.versions.push(version);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { version, total: paper.versions.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -494,7 +597,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-version-list", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const versions = [...(paper.versions || [])].sort((a, b) => a.versionNumber - b.versionNumber);
     return { ok: true, result: { versions, count: versions.length } };
@@ -504,7 +607,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-version-diff", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const fromVersion = Number(params.fromVersion);
     const toVersion = Number(params.toVersion);
@@ -540,7 +643,7 @@ export default function registerPaperActions(registerLensAction) {
       const title = ppClean(Array.isArray(w.title) ? w.title[0] : w.title, 400) || "Untitled work";
       const authors = (w.author || []).map((a) => [a.given, a.family].filter(Boolean).join(" ") || a.name).filter(Boolean).slice(0, 30);
       const year = w.issued?.["date-parts"]?.[0]?.[0] || w["published-print"]?.["date-parts"]?.[0]?.[0] || null;
-      const list = ppList(s, ppActor(ctx));
+      const list = ppList(s, ctx);
       const refId = `doi:${doi.toLowerCase()}`;
       if (list.some((p) => p.refId === refId)) return { ok: false, error: "paper already in your library" };
       const paper = {
@@ -558,11 +661,13 @@ export default function registerPaperActions(registerLensAction) {
         tags: (w.subject || []).slice(0, 6).map((t) => ppClean(t, 30).toLowerCase()),
         notes: "",
         collectionIds: [],
+        ownerId: ppActor(ctx),
+        visibility: "private",
         citationCount: w["is-referenced-by-count"] ?? null,
         addedAt: ppNow(),
       };
       list.push(paper);
-      savePaper();
+      savePaper(ctx);
       return { ok: true, result: { paper, source: "crossref" } };
     } catch (e) {
       return { ok: false, error: `capture failed: ${e?.message || "network"}` };
@@ -575,7 +680,7 @@ export default function registerPaperActions(registerLensAction) {
 
   registerLensAction("paper", "paper-enrich", async (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    const paper = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     const lookup = paper.doi ? `DOI:${paper.doi}` : (paper.refId?.startsWith("arxiv:") ? `arXiv:${paper.refId.slice(6)}` : null);
     if (!lookup) return { ok: false, error: "paper has no DOI or arXiv id to enrich" };
@@ -600,7 +705,7 @@ export default function registerPaperActions(registerLensAction) {
       };
       paper.enrichment = enrichment;
       if (enrichment.citationCount != null) paper.citationCount = enrichment.citationCount;
-      savePaper();
+      savePaper(ctx);
       return { ok: true, result: { paperId: paper.id, enrichment } };
     } catch (e) {
       return { ok: false, error: `enrich failed: ${e?.message || "network"}` };
@@ -616,7 +721,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-find-duplicates", (ctx, _a, _params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const papers = ppList(s, ppActor(ctx));
+    const papers = ppList(s, ctx);
     const byKey = new Map();
     for (const p of papers) {
       const key = p.doi ? `doi:${p.doi.toLowerCase()}` : `title:${ppNormTitle(p.title)}`;
@@ -640,7 +745,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-merge-duplicates", (ctx, _a, params = {}) => {
   try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const list = ppList(s, ppActor(ctx));
+    const list = ppList(s, ctx);
     const ids = Array.isArray(params.ids) ? params.ids.filter(Boolean) : [];
     if (ids.length < 2) return { ok: false, error: "provide at least 2 paper ids to merge" };
     const members = ids.map((id) => list.find((p) => p.id === id)).filter(Boolean);
@@ -665,7 +770,7 @@ export default function registerPaperActions(registerLensAction) {
       const i = list.findIndex((p) => p.id === d.id);
       if (i >= 0) list.splice(i, 1);
     }
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { kept: keep, droppedIds: dropped.map((d) => d.id), droppedCount: dropped.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -697,7 +802,7 @@ export default function registerPaperActions(registerLensAction) {
       createdAt: ppNow(),
     };
     groups.set(group.id, group);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { group } };
   });
 
@@ -724,7 +829,7 @@ export default function registerPaperActions(registerLensAction) {
     if (!group) return { ok: false, error: "no group with that share code" };
     if (group.members.includes(userId)) return { ok: false, error: "already a member" };
     group.members.push(userId);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { group: groupSummary(group, userId) } };
   });
 
@@ -735,7 +840,7 @@ export default function registerPaperActions(registerLensAction) {
     const group = getGroups(s).get(params.groupId);
     if (!group) return { ok: false, error: "group not found" };
     if (!group.members.includes(userId)) return { ok: false, error: "not a member of this group" };
-    const src = ppList(s, userId).find((p) => p.id === params.paperId);
+    const src = ppList(s, ctx).find((p) => p.id === params.paperId);
     if (!src) return { ok: false, error: "paper not found in your library" };
     const dupKey = src.doi ? `doi:${src.doi.toLowerCase()}` : `title:${ppNormTitle(src.title)}`;
     if (group.papers.some((p) => (p.doi ? `doi:${p.doi.toLowerCase()}` : `title:${ppNormTitle(p.title)}`) === dupKey)) {
@@ -748,7 +853,7 @@ export default function registerPaperActions(registerLensAction) {
       addedBy: userId, addedAt: ppNow(),
     };
     group.papers.push(shared);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { groupId: group.id, paper: shared, paperCount: group.papers.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -771,7 +876,7 @@ export default function registerPaperActions(registerLensAction) {
     const i = group.papers.findIndex((p) => p.id === params.paperId);
     if (i < 0) return { ok: false, error: "paper not in group" };
     group.papers.splice(i, 1);
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { groupId: group.id, removed: params.paperId, paperCount: group.papers.length } };
   });
 
@@ -782,7 +887,7 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-check-alerts", async (ctx, _a, _params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
-    const papers = ppList(s, userId);
+    const papers = ppList(s, ctx);
     if (!Array.isArray(s.alerts)) s.alerts = [];
     let checked = 0;
     const newAlerts = [];
@@ -814,7 +919,7 @@ export default function registerPaperActions(registerLensAction) {
     }
     s.alerts = s.alerts.slice(0, 200);
     s.alertsCheckedAt = ppNow();
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { checked, newAlerts, newAlertCount: newAlerts.length, checkedAt: s.alertsCheckedAt } };
   });
 
@@ -824,7 +929,7 @@ export default function registerPaperActions(registerLensAction) {
     // Alerts are stored per-state with a paperId that belongs to a user's
     // library; filter to only this user's papers.
     const userId = ppActor(ctx);
-    const myIds = new Set(ppList(s, userId).map((p) => p.id));
+    const myIds = new Set(ppList(s, ctx).map((p) => p.id));
     let alerts = (s.alerts || []).filter((a) => myIds.has(a.paperId));
     if (params.unreadOnly === true) alerts = alerts.filter((a) => !a.read);
     return { ok: true, result: { alerts, count: alerts.length, unread: alerts.filter((a) => !a.read).length, checkedAt: s.alertsCheckedAt || null } };
@@ -834,17 +939,17 @@ export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "paper-alert-read", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
-    const myIds = new Set(ppList(s, userId).map((p) => p.id));
+    const myIds = new Set(ppList(s, ctx).map((p) => p.id));
     if (params.all === true) {
       let n = 0;
       (s.alerts || []).forEach((a) => { if (myIds.has(a.paperId) && !a.read) { a.read = true; n++; } });
-      savePaper();
+      savePaper(ctx);
       return { ok: true, result: { markedRead: n } };
     }
     const alert = (s.alerts || []).find((a) => a.id === params.alertId && myIds.has(a.paperId));
     if (!alert) return { ok: false, error: "alert not found" };
     alert.read = true;
-    savePaper();
+    savePaper(ctx);
     return { ok: true, result: { alertId: alert.id, read: true } };
   });
 
@@ -876,7 +981,7 @@ export default function registerPaperActions(registerLensAction) {
         });
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(it.DOI); }
       }
-      savePaper();
+      savePaper(ctx);
       return { ok: true, result: { ingested, skipped, source: "crossref", dtuIds } };
     } catch (e) {
       return { ok: false, error: `crossref unreachable: ${e instanceof Error ? e.message : String(e)}` };

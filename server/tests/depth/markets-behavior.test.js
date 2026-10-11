@@ -158,9 +158,15 @@ describe("markets — prediction-market parimutuel substrate (shared ctx)", () =
     const yesPos = await lensRun("markets", "position-open", { params: { marketId, side: "yes", stakeSparks: 10 } }, ctx);
     const noPos  = await lensRun("markets", "position-open", { params: { marketId, side: "no",  stakeSparks: 10 } }, ctx);
     // After both bets: poolYes = 15, poolNo = 15.
-    const res = await lensRun("markets", "market-resolve", {
+    const resolver = await depthCtx("markets-pm-resolver");
+    const blocked = await lensRun("markets", "market-resolve", {
       params: { marketId, outcome: "yes", evidence: "Observed YES per the official record." },
     }, ctx);
+    assert.equal(blocked.result.ok, false);
+    assert.match(blocked.result.error, /creator cannot resolve/);
+    const res = await lensRun("markets", "market-resolve", {
+      params: { marketId, outcome: "yes", evidence: "Observed YES per the official record." },
+    }, resolver);
     assert.equal(res.ok, true);
     assert.equal(res.result.market.status, "resolved");
     assert.equal(res.result.market.outcome, "yes");
@@ -177,16 +183,42 @@ describe("markets — prediction-market parimutuel substrate (shared ctx)", () =
     assert.ok(Math.abs(won.payoutSparks - 20) < 0.01, `winner payout ${won.payoutSparks} != ~20`);
   });
 
-  it("market-resolve is creator-only: a different user cannot resolve", async () => {
+  it("market-resolve blocks the creator and accepts a neutral resolver", async () => {
     const created = await lensRun("markets", "market-create", {
-      params: { question: "Creator-only resolution market question", resolutionCriteria: "Resolves on evidence." },
+      params: { question: "Neutral resolver market question here", resolutionCriteria: "Resolves on evidence." },
     }, ctx);
     const other = await depthCtx("markets-pm-other");
+    const self = await lensRun("markets", "market-resolve", {
+      params: { marketId: created.result.market.id, outcome: "yes", evidence: "Some evidence string." },
+    }, ctx);
+    assert.equal(self.result.ok, false);
+    assert.match(self.result.error, /creator cannot resolve/);
     const res = await lensRun("markets", "market-resolve", {
       params: { marketId: created.result.market.id, outcome: "yes", evidence: "Some evidence string." },
     }, other);
-    assert.equal(res.result.ok, false);
-    assert.match(res.result.error, /only the market creator can resolve/);
+    assert.equal(res.ok, true);
+    assert.equal(res.result.market.status, "resolved");
+  });
+
+  it("market-cancel succeeds with no positions and fails once a position exists", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: { question: "Cancel empty market question test", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    const marketId = created.result.market.id;
+    const other = await depthCtx("markets-pm-cancel-other");
+    const notCreator = await lensRun("markets", "market-cancel", { params: { marketId } }, other);
+    assert.equal(notCreator.result.ok, false);
+    const cancelled = await lensRun("markets", "market-cancel", { params: { marketId } }, ctx);
+    assert.equal(cancelled.ok, true);
+    assert.equal(cancelled.result.market.status, "cancelled");
+
+    const live = await lensRun("markets", "market-create", {
+      params: { question: "Cancel blocked market question test", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    await lensRun("markets", "position-open", { params: { marketId: live.result.market.id, side: "yes", stakeSparks: 4 } }, other);
+    const blocked = await lensRun("markets", "market-cancel", { params: { marketId: live.result.market.id } }, ctx);
+    assert.equal(blocked.result.ok, false);
+    assert.match(blocked.result.error, /has positions/);
   });
 
   it("order-place rests then order-book aggregates it; order-cancel closes it", async () => {
@@ -388,9 +420,10 @@ describe("markets — position-cashout + market-resolution + leaderboard (shared
     const before = await lensRun("markets", "market-resolution", { params: { marketId } }, ctx);
     assert.equal(before.result.resolved, false);
     assert.equal(before.result.status, "open");
+    const resolver = await depthCtx("markets-resolution-view");
     await lensRun("markets", "market-resolve", {
       params: { marketId, outcome: "yes", evidence: "Observed YES per the record." },
-    }, ctx);
+    }, resolver);
     const after = await lensRun("markets", "market-resolution", { params: { marketId } }, ctx);
     assert.equal(after.result.resolved, true);
     assert.equal(after.result.resolution.outcome, "yes");

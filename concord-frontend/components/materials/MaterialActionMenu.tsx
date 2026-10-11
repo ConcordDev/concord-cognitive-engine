@@ -17,6 +17,7 @@
  */
 
 import { useState } from 'react';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import {
   X, Sparkles, Send, GitCompare, Globe, Wand2,
   Loader2, Check, AlertTriangle, Atom,
@@ -58,7 +59,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
   const [supplierId, setSupplierId] = useState('');
   const [quoteQty, setQuoteQty] = useState('100');
   const [quoteUnit, setQuoteUnit] = useState('kg');
-  const [quoteDate, setQuoteDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
+  const [quoteDate, setQuoteDate] = useState(() => shiftDateKey(calendarDateKey(), 14));
   const [compareTarget, setCompareTarget] = useState('');
   const [compareResult, setCompareResult] = useState<string | null>(null);
   const [useCase, setUseCase] = useState('');

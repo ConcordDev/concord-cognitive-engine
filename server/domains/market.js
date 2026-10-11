@@ -389,18 +389,63 @@ export default function registerMarketActions(registerLensAction) {
   ];
 
   // Yahoo Finance quote endpoint — free, no API key, server-side fetch.
-  // Returns: { quoteResponse: { result: [{ symbol, regularMarketPrice,
-  //   regularMarketChange, regularMarketChangePercent, marketCap, trailingPE,
-  //   epsTrailingTwelveMonths, regularMarketVolume, longName, fiftyTwoWeekChangePercent }] } }
+  // v7 /quote now returns 401. markets.quote-history already reads the v8
+  // chart endpoint successfully, so a refused v7 response falls back there.
+  // A thrown fetch stays an error (the network never answered). Chart meta
+  // often lacks market cap and trailing PE — those stay null.
+  async function fetchYahooChartQuote(symbol) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
+    const r = await globalThis.fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta || meta.regularMarketPrice == null) return null;
+    const price = meta.regularMarketPrice;
+    const prev = meta.previousClose ?? meta.chartPreviousClose ?? null;
+    const pct = (typeof prev === "number" && prev !== 0) ? ((price - prev) / prev) * 100 : null;
+    return {
+      symbol: meta.symbol || symbol,
+      longName: meta.longName || null,
+      shortName: meta.shortName || null,
+      regularMarketPrice: price,
+      regularMarketChangePercent: pct,
+      fiftyTwoWeekChangePercent: meta.fiftyTwoWeekChangePercent ?? null,
+      regularMarketVolume: meta.regularMarketVolume ?? null,
+      marketCap: meta.marketCap ?? null,
+      trailingPE: meta.trailingPE ?? null,
+      epsTrailingTwelveMonths: meta.epsTrailingTwelveMonths ?? null,
+      ytdReturn: meta.ytdReturn ?? null,
+    };
+  }
+
   async function fetchYahooQuotesMkt(symbols) {
     if (typeof globalThis.fetch !== "function") throw new Error("fetch unavailable");
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(","))}`;
     const r = await globalThis.fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (Concord-OS/1.0)" },
     });
-    if (!r.ok) throw new Error(`yahoo finance ${r.status}`);
-    const data = await r.json();
-    return data?.quoteResponse?.result || [];
+    if (r.ok) {
+      const data = await r.json();
+      return { quotes: data?.quoteResponse?.result || [], source: "yahoo-finance" };
+    }
+    if (r.status === 401 || r.status === 403) {
+      const quotes = [];
+      for (const sym of symbols) {
+        try {
+          const q = await fetchYahooChartQuote(sym);
+          if (q) quotes.push(q);
+        } catch { /* one symbol failing does not invent a price */ }
+      }
+      if (quotes.length === 0) {
+        const err = new Error("quotes unavailable");
+        err.code = "quotes_unavailable";
+        throw err;
+      }
+      return { quotes, source: "yahoo-finance-chart" };
+    }
+    throw new Error(`yahoo finance ${r.status}`);
   }
 
   // Range → Yahoo Finance field. Yahoo returns 1D pct on
@@ -412,9 +457,11 @@ export default function registerMarketActions(registerLensAction) {
     const range = ["1D", "1W", "1M", "YTD"].includes(params.range) ? params.range : "1D";
     let quotes;
     try {
-      quotes = await fetchYahooQuotesMkt(SECTOR_ETFS.map((s) => s.etf));
+      quotes = (await fetchYahooQuotesMkt(SECTOR_ETFS.map((s) => s.etf))).quotes;
     } catch (e) {
-      return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      const msg = e instanceof Error ? e.message : String(e);
+      if (e?.code === "quotes_unavailable") return { ok: false, error: "quotes unavailable" };
+      return { ok: false, error: `yahoo finance unreachable: ${msg}` };
     }
     const byEtf = new Map(quotes.map((q) => [q.symbol, q]));
     const sectors = [];
@@ -461,9 +508,13 @@ export default function registerMarketActions(registerLensAction) {
       : [];
     if (symbols.length === 0) return { ok: true, result: { quotes: [], source: "yahoo-finance" } };
     let raw;
+    let source = "yahoo-finance";
     try {
-      raw = await fetchYahooQuotesMkt(symbols);
+      const fetched = await fetchYahooQuotesMkt(symbols);
+      raw = fetched.quotes;
+      source = fetched.source;
     } catch (e) {
+      if (e?.code === "quotes_unavailable") return { ok: false, error: "quotes unavailable" };
       return { ok: false, error: `yahoo finance unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
     const bySym = new Map(raw.map((q) => [q.symbol, q]));
@@ -484,7 +535,7 @@ export default function registerMarketActions(registerLensAction) {
         eps: q.epsTrailingTwelveMonths ?? null,
       };
     });
-    return { ok: true, result: { quotes, source: "yahoo-finance" } };
+    return { ok: true, result: { quotes, source } };
   });
 
   // ─── Competitor / market-research substrate (per-user, STATE) ───────

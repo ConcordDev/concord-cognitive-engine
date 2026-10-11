@@ -53,16 +53,50 @@ describe("finance.net-worth-history (real user snapshots only)", () => {
     const r = call("net-worth-history", ctxA, { range: "1Y" });
     assert.equal(r.ok, true);
     assert.equal(r.result.snapshots.length, 0);
-    assert.match(r.result.notes, /No snapshots logged/);
+    assert.match(r.result.notes, /No snapshots yet/);
+    assert.doesNotMatch(r.result.notes, /finance\./);
   });
 
   it("manual snapshot persists and feeds history", () => {
     const r = call("net-worth-snapshot", ctxA, { cash: 5000, investments: 80000, realEstate: 0, crypto: 1000, liabilities: 10000 });
     assert.equal(r.ok, true);
     assert.equal(r.result.snapshot.total, 76000);
+    assert.match(r.result.snapshot.date, /^\d{4}-\d{2}-\d{2}$/);
     const hist = call("net-worth-history", ctxA, { range: "all" });
     assert.ok(hist.result.snapshots.length >= 1);
     assert.ok(hist.result.snapshots.some(s => s.total === 76000));
+  });
+
+  it("stores a bare YYYY-MM-DD as the local calendar day without a UTC shift", () => {
+    const r = call("net-worth-snapshot", ctxA, {
+      cash: 1, investments: 0, realEstate: 0, crypto: 0, liabilities: 0, date: "2026-10-10",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.snapshot.date, "2026-10-10");
+  });
+});
+
+describe("finance.net-worth-snapshot-delete", () => {
+  it("removes one date and a second history read does not bring it back", () => {
+    const date = "2026-10-01";
+    const saved = call("net-worth-snapshot", ctxA, { date, cash: 100, investments: 0, liabilities: 0 });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.snapshot.date, date);
+    const before = call("net-worth-history", ctxA, { range: "all" });
+    assert.ok(before.result.snapshots.some((s) => s.date === date));
+
+    const removed = call("net-worth-snapshot-delete", ctxA, { date });
+    assert.equal(removed.ok, true);
+    assert.equal(removed.result.deleted, true);
+    const after = call("net-worth-history", ctxA, { range: "all" });
+    assert.equal(after.result.snapshots.some((s) => s.date === date), false);
+  });
+
+  it("refuses an unknown date and another user's row", () => {
+    call("net-worth-snapshot", ctxA, { date: "2026-10-02", cash: 50 });
+    assert.equal(call("net-worth-snapshot-delete", ctxA, { date: "1999-01-01" }).ok, false);
+    assert.equal(call("net-worth-snapshot-delete", ctxB, { date: "2026-10-02" }).error, "snapshot not found");
+    assert.equal(call("net-worth-history", ctxA, { range: "all" }).result.snapshots.some((s) => s.date === "2026-10-02"), true);
   });
 });
 
@@ -70,7 +104,8 @@ describe("finance.investment-checkup (real holdings required)", () => {
   it("returns error when user has no holdings (no SAMPLE_PORTFOLIO fallback)", () => {
     const r = call("investment-checkup", ctxA, {});
     assert.equal(r.ok, false);
-    assert.match(r.error, /no holdings/);
+    assert.match(r.error, /No holdings yet/);
+    assert.doesNotMatch(r.error, /finance\./);
   });
 });
 
