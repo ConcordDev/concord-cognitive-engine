@@ -25,6 +25,7 @@ import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { triggerCrisis, CRISIS_TYPES } from "../lib/world-crisis.js";
 import { mirrorToGateways } from "../lib/gateway-fanout.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 // Fail-CLOSED numeric guard (parity with server/domains/literary.js):
 // returns the first poisoned key (NaN/Infinity/1e308/negative/over-cap) or
@@ -48,8 +49,10 @@ function stores() {
   if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
   const S = globalThis._concordSTATE;
   if (!S.crisisPlaybookProgress) S.crisisPlaybookProgress = new Map(); // userId -> Map<crisisId, Set<stepId>>
+  // assignedBy / by stay on the stored rows so unassign can check authority.
+  // Responses project them to a display name + isMe and never return the raw id.
   if (!S.crisisTeams) S.crisisTeams = new Map(); // crisisId -> [{ id, responder, role, assignedBy, assignedAt }]
-  if (!S.crisisTimelines) S.crisisTimelines = new Map(); // crisisId -> [{ id, kind, note, by, at }]
+  if (!S.crisisTimelines) S.crisisTimelines = new Map(); // crisisId -> [{ id, kind, note, by, at, authority? }]
   if (!S.crisisAlertAcks) S.crisisAlertAcks = new Map(); // userId -> Set<alertId>
   if (!S.crisisResources) S.crisisResources = new Map(); // userId -> Map<resId, resource>
   return S;
@@ -148,6 +151,93 @@ const COMMAND_ROLES = [
   "safety_officer",
   "responder",
 ];
+
+// Mutating roster/log actions require a real world_crises row. The crisis-ops
+// lens only ever passes ids from crisis.active_for_player (that table). An
+// ad-hoc string is not a crisis. Reads stay open: an unknown id is an empty
+// roster / empty log, which is how the command deck renders "nothing yet".
+function requireExistingCrisis(db, crisisId) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, error: "no_db" };
+  try {
+    const row = db.prepare(`SELECT id FROM world_crises WHERE id = ?`).get(String(crisisId));
+    if (!row) return { ok: false, error: "crisis_not_found" };
+    return null;
+  } catch (err) {
+    return { ok: false, error: "query_failed", err: String(err?.message || err) };
+  }
+}
+
+// Public label for an actor id. Same rule as classroomPublicTeacherName
+// (INC-19c): lookupUserIdentity prefers display_name, then the @handle, and
+// never invents a name from the raw id. A stored name that IS the id is not
+// a public label. "system" is the synthetic timeline head, not a user.
+function crisisPublicName(ident, userId) {
+  const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+  const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+  if (display && display !== userId) return display;
+  if (handle && handle !== userId) return handle;
+  return null;
+}
+
+function publicActorLabel(db, actorId, viewerId) {
+  if (!actorId || actorId === "system") {
+    return { name: actorId === "system" ? "system" : null, isMe: false };
+  }
+  const name = crisisPublicName(lookupUserIdentity(db, actorId), actorId);
+  return { name, isMe: viewerId != null && actorId === viewerId };
+}
+
+// Roster removal. The roster is shared world state: any signed-in player
+// may read it and may add to a real crisis. Removing a row is not shared.
+// A caller may remove an entry when any one of these holds:
+//   1. Assigner — entry.assignedBy is the caller (the account that created
+//      this row).
+//   2. Incident commander — the caller is assignedBy on the roster row
+//      whose role is currently incident_commander. The command role is a
+//      free-text responder label; the only account this model binds to
+//      that slot is the user who appointed them, and that account holds
+//      command over the whole roster.
+//   3. Declarer — the caller is `by` on a timeline event this module marked
+//      authority:"declarer". Only crisis.declare writes that flag. A client
+//      log_event cannot set it. A crisis inserted straight into world_crises
+//      has no declarer.
+function mayUnassign(crisisId, entry, userId) {
+  if (!userId || !entry) return false;
+  if (entry.assignedBy && entry.assignedBy === userId) return true;
+  const team = stores().crisisTeams.get(crisisId) || [];
+  const ic = team.find((m) => m.role === "incident_commander");
+  if (ic?.assignedBy && ic.assignedBy === userId) return true;
+  const tl = stores().crisisTimelines.get(crisisId) || [];
+  for (const ev of tl) {
+    if (ev.authority === "declarer" && ev.by === userId) return true;
+  }
+  return false;
+}
+
+function projectMember(db, member, viewerId, crisisId) {
+  const pub = publicActorLabel(db, member.assignedBy, viewerId);
+  return {
+    id: member.id,
+    responder: member.responder,
+    role: member.role,
+    assignedAt: member.assignedAt,
+    assignedByName: pub.name,
+    assignedByIsMe: pub.isMe,
+    canUnassign: mayUnassign(crisisId, member, viewerId),
+  };
+}
+
+function projectEvent(db, event, viewerId) {
+  const pub = publicActorLabel(db, event.by, viewerId);
+  return {
+    id: event.id,
+    kind: event.kind,
+    note: event.note,
+    at: event.at,
+    byName: pub.name,
+    byIsMe: pub.isMe,
+  };
+}
 
 // ---- severity / priority triage scoring -----------------------------
 const TYPE_WEIGHT = {
@@ -281,7 +371,16 @@ export default function registerCrisisMacros(register) {
       try {
         const S = stores();
         const tl = S.crisisTimelines.get(res.id) || [];
-        tl.push({ id: crypto.randomUUID(), kind: "started", note: `Crisis declared (${type})`, by: userId, at: Date.now() });
+        // authority:"declarer" is server-stamped. log_event never copies it,
+        // so a client cannot appoint themselves declarer by logging "started".
+        tl.push({
+          id: crypto.randomUUID(),
+          kind: "started",
+          note: `Crisis declared (${type})`,
+          by: userId,
+          at: Date.now(),
+          authority: "declarer",
+        });
         S.crisisTimelines.set(res.id, tl);
         persist();
       } catch { /* best effort */ }
@@ -454,6 +553,8 @@ export default function registerCrisisMacros(register) {
       if (!userId) return { ok: false, error: "no_actor" };
       const { crisisId, responder, role } = input || {};
       if (!crisisId || !responder) return { ok: false, error: "missing_crisis_or_responder" };
+      const missing = requireExistingCrisis(ctx?.db, crisisId);
+      if (missing) return missing;
       const useRole = COMMAND_ROLES.includes(role) ? role : "responder";
       const S = stores();
       const team = S.crisisTeams.get(crisisId) || [];
@@ -475,47 +576,60 @@ export default function registerCrisisMacros(register) {
       tl.push({ id: crypto.randomUUID(), kind: "assignment", note: `${entry.responder} assigned as ${useRole}`, by: userId, at: Date.now() });
       S.crisisTimelines.set(crisisId, tl);
       persist();
-      return { ok: true, result: { entry, teamSize: team.length, roles: COMMAND_ROLES } };
+      return {
+        ok: true,
+        result: {
+          entry: projectMember(ctx?.db, entry, userId, crisisId),
+          teamSize: team.length,
+          roles: COMMAND_ROLES,
+        },
+      };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }
-  }, { note: "Assign a responder to a crisis with a command role." });
+  }, { note: "Assign a responder to a real world crisis with a command role. Refuses an unknown crisisId." });
 
-  register("crisis", "team", async (_ctx, input = {}) => {
+  register("crisis", "team", async (ctx, input = {}) => {
     try {
       const { crisisId } = input || {};
       if (!crisisId) return { ok: false, error: "missing_crisis_id" };
+      const viewerId = ctx?.actor?.userId || null;
       const S = stores();
-      const team = S.crisisTeams.get(crisisId) || [];
+      const team = (S.crisisTeams.get(crisisId) || []).map((m) => projectMember(ctx?.db, m, viewerId, crisisId));
       const byRole = {};
       for (const r of COMMAND_ROLES) byRole[r] = team.filter((m) => m.role === r);
       return { ok: true, result: { crisisId, team, byRole, roles: COMMAND_ROLES, count: team.length } };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }
-  }, { note: "List the responder roster for a crisis." });
+  }, { note: "List the responder roster for a crisis. Actor ids are display names plus isMe, never raw user ids." });
 
   register("crisis", "unassign", async (ctx, input = {}) => {
     try {
       const userId = ctx?.actor?.userId;
+      if (!userId) return { ok: false, error: "no_actor" };
       const { crisisId, entryId } = input || {};
       if (!crisisId || !entryId) return { ok: false, error: "missing_crisis_or_entry" };
+      const missing = requireExistingCrisis(ctx?.db, crisisId);
+      if (missing) return missing;
       const S = stores();
       const team = S.crisisTeams.get(crisisId) || [];
       const removed = team.find((m) => m.id === entryId);
+      if (!removed) return { ok: false, error: "entry_not_found" };
+      if (!mayUnassign(crisisId, removed, userId)) {
+        return { ok: false, error: "not_authorized" };
+      }
       const next = team.filter((m) => m.id !== entryId);
       S.crisisTeams.set(crisisId, next);
-      if (removed) {
-        const tl = S.crisisTimelines.get(crisisId) || [];
-        tl.push({ id: crypto.randomUUID(), kind: "assignment", note: `${removed.responder} removed from roster`, by: userId || "system", at: Date.now() });
-        S.crisisTimelines.set(crisisId, tl);
-      }
+      const tl = S.crisisTimelines.get(crisisId) || [];
+      tl.push({ id: crypto.randomUUID(), kind: "assignment", note: `${removed.responder} removed from roster`, by: userId, at: Date.now() });
+      S.crisisTimelines.set(crisisId, tl);
       persist();
-      return { ok: true, result: { crisisId, removed: !!removed, teamSize: next.length } };
+      return { ok: true, result: { crisisId, removed: true, teamSize: next.length } };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }
-  }, { note: "Remove a responder from a crisis roster." });
+  }, { note: "Remove a roster entry. Only the assigner, the incident-commander appointer, or the declarer may remove it." });
 
   // ---- timeline / status log ----------------------------------------
   register("crisis", "log_event", async (ctx, input = {}) => {
@@ -524,6 +638,8 @@ export default function registerCrisisMacros(register) {
       if (!userId) return { ok: false, error: "no_actor" };
       const { crisisId, kind, note } = input || {};
       if (!crisisId || !note) return { ok: false, error: "missing_crisis_or_note" };
+      const missing = requireExistingCrisis(ctx?.db, crisisId);
+      if (missing) return missing;
       const S = stores();
       const tl = S.crisisTimelines.get(crisisId) || [];
       const entry = {
@@ -536,11 +652,11 @@ export default function registerCrisisMacros(register) {
       tl.push(entry);
       S.crisisTimelines.set(crisisId, tl);
       persist();
-      return { ok: true, result: { entry, count: tl.length } };
+      return { ok: true, result: { entry: projectEvent(ctx?.db, entry, userId), count: tl.length } };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }
-  }, { note: "Append a status-log entry to a crisis timeline." });
+  }, { note: "Append a status-log entry to a real crisis timeline. Any signed-in player may log; an unknown crisisId is refused." });
 
   register("crisis", "timeline", async (ctx, input = {}) => {
     try {
@@ -559,7 +675,8 @@ export default function registerCrisisMacros(register) {
           }
         } catch { /* best effort */ }
       }
-      const full = started ? [started, ...events] : events;
+      const viewerId = ctx?.actor?.userId || null;
+      const full = (started ? [started, ...events] : events).map((ev) => projectEvent(db, ev, viewerId));
       return { ok: true, result: { crisisId, events: full, count: full.length } };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };

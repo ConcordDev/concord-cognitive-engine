@@ -1,9 +1,14 @@
 'use client';
 
 import { Users } from 'lucide-react';
-import type { EmergentRole } from './types';
+import type { CatalogStatus, EmergentRole } from './types';
+import { UnavailableCard } from './bridge-helpers';
 
-export function EmergentsPanel({ emergents }: { emergents: EmergentRole[] }) {
+export function EmergentsPanel({ emergents, status }: { emergents: EmergentRole[]; status: CatalogStatus }) {
+  if (status === 'unavailable') {
+    return <UnavailableCard icon={<Users />} message="Emergent roles unavailable" hint="The emergent-role catalog could not be loaded. This is not a count of zero roles." />;
+  }
+  if (status !== 'ready') return null;
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {emergents.map(em => (

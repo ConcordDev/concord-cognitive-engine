@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { compressedByteLength } from './dtu-at-rest.js';
 import { detectKind } from './dtu-attachment.js';
 import { enrichDtuOnWrite } from './dtu-cognitive-schema.js';
+import { scrubStoredTags } from './dtu-tags.js';
 
 
 /**
@@ -205,6 +206,7 @@ export function createDTUStore(db, memoryMap, opts = {}) {
     const s = stmts();
     if (!s) return;
     try {
+      if (dtu && Array.isArray(dtu.tags)) dtu.tags = scrubStoredTags(dtu.tags);
       const now = new Date().toISOString();
       const bodyJson = JSON.stringify(dtu.body || dtu.content || dtu);
       const content_hash = crypto.createHash("sha256").update(bodyJson).digest("hex");

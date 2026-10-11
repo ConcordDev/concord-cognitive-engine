@@ -32,6 +32,14 @@ on:
 permissions:
   contents: read
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   structural-audits:
     runs-on: ubuntu-latest
@@ -48,7 +56,7 @@ jobs:
     timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # MUST be 22: `node --test` only expands the recursive `tests/**/*.test.js`
           # glob natively on Node >= 21. On Node 20 the suite silently collapses to
@@ -397,7 +405,7 @@ jobs:
     needs: structural-audits
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'

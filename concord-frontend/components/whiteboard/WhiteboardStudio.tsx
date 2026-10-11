@@ -39,6 +39,8 @@ import { WhiteboardMoodboardPanel } from './WhiteboardMoodboardPanel';
 import { WhiteboardArrangementPanel } from './WhiteboardArrangementPanel';
 import { WhiteboardCreateForm } from './WhiteboardCreateForm';
 import { WhiteboardKeepMenu } from './WhiteboardKeepMenu';
+import { BoardOwnerMenu } from './BoardOwnerMenu';
+import { axiosStatus } from './boardOwner';
 import {
   type BoardMode,
   type SketchTool as Tool,
@@ -72,7 +74,7 @@ export function WhiteboardStudio({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { isError: isError, error: error, refetch: refetch, items: boardArtifacts, create: createBoardArtifact } = useLensData('whiteboard', 'board', { noSeed: true });
+  const { isError: isError, error: error, refetch: refetch, items: boardArtifacts } = useLensData('whiteboard', 'board', { noSeed: true });
 
   const [showCreate, setShowCreate] = useState(false);
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
@@ -129,7 +131,17 @@ export function WhiteboardStudio({
 
   const { data: selectedWb, isError: isError3, error: error3, refetch: refetch3,} = useQuery({
     queryKey: ['whiteboard', selectedWbId],
-    queryFn: () => apiHelpers.whiteboard.get(selectedWbId!).then(r => r.data),
+    queryFn: async () => {
+      try {
+        const r = await apiHelpers.whiteboard.get(selectedWbId!);
+        return r.data;
+      } catch (err) {
+        // A missing or not-owned board is a real 404. Keep the studio up;
+        // the canvas simply has no payload to draw.
+        if (axiosStatus(err) === 404) return { ok: false, error: 'Whiteboard not found', status: 404 };
+        throw err;
+      }
+    },
     enabled: !!selectedWbId,
   });
 
@@ -161,12 +173,13 @@ export function WhiteboardStudio({
 
   const createMutation = useMutation({
     mutationFn: async (data: { title: string; linkedDtus: string[] }) => {
-      const res = await apiHelpers.whiteboard.create(data);
-      await createBoardArtifact({ title: data.title, data: { linkedDtus: data.linkedDtus, createdAt: new Date().toISOString() } as Record<string, unknown> });
-      return res;
+      // One write. The server mirrors a linked lens artifact (type board)
+      // and keeps that shadow in step on rename and delete.
+      return apiHelpers.whiteboard.create(data);
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['whiteboards'] });
+      queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] });
       setSelectedWbId(res.data.dtuId);
       setShowCreate(false);
     },
@@ -879,6 +892,12 @@ export function WhiteboardStudio({
                     <button type="button" role="menuitem" onClick={() => { setShowModeMenu(false); exportCanvas(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06]">Export PNG</button>
                     <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportSVG(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Export SVG</button>
                     <button type="button" role="menuitem" disabled={elements.length === 0} onClick={() => { setShowModeMenu(false); exportClipboardJSON(); }} className="flex w-full rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40">Copy JSON</button>
+                    <BoardOwnerMenu
+                      boardId={selectedWbId}
+                      title={boardName(boardListItems.find((b) => b.id === selectedWbId)?.title ?? selectedWb?.whiteboard?.title)}
+                      onRenamed={() => { queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['whiteboard', selectedWbId] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
+                      onDeleted={() => { setSelectedWbId(null); setShowModeMenu(false); queryClient.invalidateQueries({ queryKey: ['whiteboards'] }); queryClient.invalidateQueries({ queryKey: ['lens', 'whiteboard'] }); }}
+                    />
                   </>
                 )}
               </motion.div>

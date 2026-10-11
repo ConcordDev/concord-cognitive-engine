@@ -13,9 +13,10 @@ const makeMockHeaders = () => {
   return { set: vi.fn((k: string, v: string) => store.set(k, v)), get: (k: string) => store.get(k) };
 };
 
-const mockRedirect = vi.fn().mockImplementation((url: URL) => ({
+const mockRedirect = vi.fn().mockImplementation((url: URL, status?: number) => ({
   type: 'redirect',
   url: url.toString(),
+  status,
   headers: makeMockHeaders(),
 }));
 
@@ -23,7 +24,7 @@ const mockNext = vi.fn().mockImplementation(() => ({ type: 'next', headers: make
 
 vi.mock('next/server', () => ({
   NextResponse: {
-    redirect: (url: URL) => mockRedirect(url),
+    redirect: (url: URL, status?: number) => mockRedirect(url, status),
     next: () => mockNext(),
   },
 }));
@@ -48,6 +49,38 @@ describe('Auth Middleware', () => {
     vi.resetModules();
     const mod = await import('@/middleware');
     middleware = mod.middleware as typeof middleware;
+  });
+
+  describe('tabLabel lens aliases (308)', () => {
+    it('redirects /lenses/threads to /lenses/thread', () => {
+      middleware(makeRequest('/lenses/threads'));
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      const [url, status] = mockRedirect.mock.calls[0];
+      expect(url.pathname).toBe('/lenses/thread');
+      expect(status).toBe(308);
+    });
+
+    it('redirects /lenses/visuals to /lenses/fractal', () => {
+      middleware(makeRequest('/lenses/visuals'));
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      const [url, status] = mockRedirect.mock.calls[0];
+      expect(url.pathname).toBe('/lenses/fractal');
+      expect(status).toBe(308);
+    });
+
+    it('leaves temporary aliases on 307', () => {
+      middleware(makeRequest('/chat'));
+      expect(mockRedirect.mock.calls[0][0].pathname).toBe('/lenses/chat');
+      expect(mockRedirect.mock.calls[0][1]).toBe(307);
+    });
+
+    it('308s a signed-in /lenses/threads visit before the page renders', () => {
+      middleware(makeRequest('/lenses/threads', { concord_auth: 'tok' }));
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRedirect.mock.calls[0][0].pathname).toBe('/lenses/thread');
+      expect(mockRedirect.mock.calls[0][1]).toBe(308);
+    });
   });
 
   describe('public paths', () => {
@@ -199,6 +232,20 @@ describe('Auth Middleware', () => {
       expect(csp).toContain(`font-src 'self' data: https://cdn.jsdelivr.net`);
       expect(csp).not.toMatch(/style-src[^;]*https:(?!\/\/cdn\.jsdelivr\.net)/);
       expect(csp).toContain('frame-ancestors');
+    });
+
+    it('does not allow the Cloudflare Web Analytics beacon', () => {
+      // docs/PRIVACY_POLICY.md: no analytics, no web beacons, no third-party
+      // scripts. The edge may still try to inject static.cloudflareinsights.com;
+      // this policy must keep refusing it. 'strict-dynamic' would ignore a
+      // host allowlist for that parser-inserted tag anyway.
+      const response = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      const csp = response.headers.get('Content-Security-Policy') || '';
+      expect(csp).not.toMatch(/cloudflareinsights\.com/);
+      const scriptSrc = csp.split(';').find((d) => d.trim().startsWith('script-src')) || '';
+      const connectSrc = csp.split(';').find((d) => d.trim().startsWith('connect-src')) || '';
+      expect(scriptSrc).not.toMatch(/cloudflareinsights/);
+      expect(connectSrc).not.toMatch(/cloudflareinsights/);
     });
 
     it('covers the two verified external iframe destinations via frame-src', () => {

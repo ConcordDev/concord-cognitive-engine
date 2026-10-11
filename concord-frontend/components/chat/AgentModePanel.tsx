@@ -317,12 +317,12 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                 <div className="space-y-2 px-1">
                   <span className="text-[10px] uppercase tracking-wide text-zinc-400">Artifacts</span>
                   {turn.agent.artifacts!.map((a, ai) => {
-                    if (a.kind === 'image' && a.image_b64) {
+                    if (a.kind === 'image' && (a.url || a.image_b64)) {
                       return (
                         <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={`data:image/png;base64,${a.image_b64}`}
+                            src={a.url || `data:image/png;base64,${a.image_b64}`}
                             alt={a.prompt || 'Generated image'}
                             className="w-full h-auto"
                           />

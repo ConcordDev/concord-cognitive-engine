@@ -137,19 +137,23 @@ describe("crisis.playbook + playbook_step", () => {
   });
 });
 
+function ctxOn(id) {
+  return { ...ctxA, db: makeDb([{ id, type: "flood", description: "d", origin_world_id: "w1", started_at: NOW }]) };
+}
+
 describe("crisis.assign / team / unassign", () => {
   it("assigns a responder and lists the roster", async () => {
-    const a = await call("assign", ctxA, { crisisId: "cr_team", responder: "Maya", role: "incident_commander" });
+    const a = await call("assign", ctxOn("cr_team"), { crisisId: "cr_team", responder: "Maya", role: "incident_commander" });
     assert.equal(a.ok, true);
-    const t = await call("team", ctxA, { crisisId: "cr_team" });
+    const t = await call("team", ctxOn("cr_team"), { crisisId: "cr_team" });
     assert.equal(t.ok, true);
     assert.equal(t.result.count, 1);
     assert.equal(t.result.byRole.incident_commander.length, 1);
   });
 
   it("unassigns a responder", async () => {
-    const a = await call("assign", ctxA, { crisisId: "cr_team2", responder: "Leo", role: "responder" });
-    const r = await call("unassign", ctxA, { crisisId: "cr_team2", entryId: a.result.entry.id });
+    const a = await call("assign", ctxOn("cr_team2"), { crisisId: "cr_team2", responder: "Leo", role: "responder" });
+    const r = await call("unassign", ctxOn("cr_team2"), { crisisId: "cr_team2", entryId: a.result.entry.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.teamSize, 0);
   });
@@ -162,7 +166,7 @@ describe("crisis.assign / team / unassign", () => {
 
 describe("crisis.log_event + timeline", () => {
   it("appends an event and reads the timeline", async () => {
-    const e = await call("log_event", ctxA, { crisisId: "cr_log", kind: "update", note: "Shelter opened" });
+    const e = await call("log_event", ctxOn("cr_log"), { crisisId: "cr_log", kind: "update", note: "Shelter opened" });
     assert.equal(e.ok, true);
     const tl = await call("timeline", { ...ctxA, db: makeDb() }, { crisisId: "cr_log" });
     assert.equal(tl.ok, true);

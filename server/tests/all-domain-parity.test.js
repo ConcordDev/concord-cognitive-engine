@@ -184,10 +184,75 @@ describe("all legacy macros", () => {
     assert.equal(r.result.totalDtus, 2);
     assert.equal(r.result.domains, 2);
   });
+  it("counts domainType when domain is unset (seed corpus shape)", () => {
+    globalThis._concordSTATE.dtus.set("seed1", {
+      id: "seed1",
+      title: "civilization",
+      createdAt: "2026-05-01T10:00:00.000Z",
+      domainType: "historical.world",
+    });
+    const r = call("domainStats", ctxA, {});
+    assert.equal(r.result.topDomains[0].domain, "historical.world");
+    assert.equal(r.result.topDomains.some((d) => d.domain === "unknown"), false);
+  });
+  it("treats the lens_id default 'unknown' as missing and prefers domainType", () => {
+    globalThis._concordSTATE.dtus.set("hydrated", {
+      id: "hydrated",
+      domain: "unknown",
+      domainType: "formal.math",
+      createdAt: "2026-05-01T10:00:00.000Z",
+    });
+    const r = call("domainStats", ctxA, {});
+    assert.equal(r.result.topDomains[0].domain, "formal.math");
+  });
+  it("reads meta._domain.domainType when the top-level field was not copied", () => {
+    globalThis._concordSTATE.dtus.set("metaOnly", {
+      id: "metaOnly",
+      createdAt: "2026-05-01T10:00:00.000Z",
+      meta: { _domain: { domainType: "empirical.physics" } },
+    });
+    const r = call("domainStats", ctxA, {});
+    assert.equal(r.result.topDomains[0].domain, "empirical.physics");
+  });
+  it("labels a DTU with no classification unclassified, including general.note", () => {
+    globalThis._concordSTATE.dtus.set("bare", {
+      id: "bare",
+      createdAt: "2026-05-01T10:00:00.000Z",
+    });
+    globalThis._concordSTATE.dtus.set("note", {
+      id: "note",
+      domainType: "general.note",
+      createdAt: "2026-05-02T10:00:00.000Z",
+    });
+    const r = call("domainStats", ctxA, {});
+    assert.equal(r.result.domains, 1);
+    assert.equal(r.result.topDomains[0].domain, "unclassified");
+    assert.equal(r.result.topDomains[0].count, 2);
+  });
+  it("keeps an explicit non-lens domain stamp such as combat", () => {
+    globalThis._concordSTATE.dtus.set("c1", {
+      id: "c1",
+      domain: "combat",
+      createdAt: "2026-05-01T10:00:00.000Z",
+    });
+    const r = call("domainStats", ctxA, {});
+    assert.equal(r.result.topDomains[0].domain, "combat");
+  });
   it("recentActivity returns a newest-first feed", () => {
     seedDtu("code", "d1", "2026-05-01T10:00:00.000Z");
     seedDtu("music", "d2", "2026-05-02T10:00:00.000Z");
     const r = call("recentActivity", ctxA, {});
     assert.equal(r.result.feed[0].dtuId, "d2");
+  });
+  it("recentActivity reports domainType when domain is the unknown sentinel", () => {
+    globalThis._concordSTATE.dtus.set("seed1", {
+      id: "seed1",
+      title: "axiom",
+      domain: "unknown",
+      domainType: "formal.math",
+      createdAt: "2026-05-03T10:00:00.000Z",
+    });
+    const r = call("recentActivity", ctxA, {});
+    assert.equal(r.result.feed[0].domain, "formal.math");
   });
 });

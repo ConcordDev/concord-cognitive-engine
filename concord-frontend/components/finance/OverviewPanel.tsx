@@ -178,14 +178,17 @@ function CashFlowMini({ trend }: { trend: MonthlyTrend | null }) {
 
 export function OverviewPanel({
   indices,
-  isLive,
+  feedStatus = 'loading',
   history,
   trend,
+  hideMarketMonitor = false,
 }: {
   indices: IndexQuote[];
-  isLive: boolean;
+  feedStatus?: 'loading' | 'live' | 'stale' | 'unavailable';
   history: NetWorthSnapshot[];
   trend: MonthlyTrend | null;
+  /** North star hides the index grid on the book. Prices stay unrendered. */
+  hideMarketMonitor?: boolean;
 }) {
   const { density } = useDensity();
   const tableDensity: 'compact' | 'comfortable' = density === 'low' ? 'comfortable' : 'compact';
@@ -213,13 +216,13 @@ export function OverviewPanel({
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <Panel
+      {!hideMarketMonitor && <Panel
         title="Market monitor — live indices"
         right={
           <StatusDot
-            state={isLive ? 'live' : 'idle'}
+            state={feedStatus === 'live' ? 'live' : feedStatus === 'stale' ? 'warning' : feedStatus === 'unavailable' ? 'offline' : 'connecting'}
             size="sm"
-            label={isLive ? 'Live' : 'Offline'}
+            label={feedStatus === 'live' ? 'Live' : feedStatus === 'stale' ? 'Stale' : feedStatus === 'unavailable' ? 'Unavailable' : 'Loading'}
             showLabel
           />
         }
@@ -227,11 +230,11 @@ export function OverviewPanel({
         {indices.length === 0 ? (
           <EmptyState
             compact
-            title={isLive ? 'Awaiting first market tick…' : 'Market feed offline.'}
+            title={feedStatus === 'unavailable' ? 'Price feed unavailable.' : feedStatus === 'stale' ? 'Price feed stale.' : 'Awaiting first market tick…'}
             description={
-              isLive
-                ? 'Connected — the live index feed will populate on the next tick.'
-                : 'The realtime market feed (Yahoo Finance indices) is not currently connected. No prices are shown rather than fabricated ones.'
+              feedStatus === 'unavailable' || feedStatus === 'stale'
+                ? 'No prices are shown rather than fabricated ones.'
+                : 'The price feed will fill in on the next tick.'
             }
             ariaLabel="Market monitor empty"
           />
@@ -258,7 +261,7 @@ export function OverviewPanel({
             )}
           </>
         )}
-      </Panel>
+      </Panel>}
 
       <Panel title="Net-worth trajectory — your snapshots">
         <NetWorthChart snapshots={history} />

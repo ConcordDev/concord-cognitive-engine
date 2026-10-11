@@ -21,6 +21,7 @@ import {
   Flame, ListOrdered, LogOut, Gavel, ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import { ChartKit } from '@/components/viz';
 import { Skeleton, EmptyState } from '@/components/ui';
 import DepthChart from '@/components/markets/DepthChart';
@@ -535,7 +536,9 @@ function MarketDetail({
   const [side, setSide] = useState<'yes' | 'no'>('yes');
   const [limitPrice, setLimitPrice] = useState('0.50');
   const [busy, setBusy] = useState(false);
-  // resolution form (creator)
+  const { user, isLoading: authLoading } = useAuth();
+  const me = user?.id ?? null;
+  const isCreator = !!market && !!me && market.creatorId === me;
   const [resolveOutcome, setResolveOutcome] = useState<'yes' | 'no'>('yes');
   const [evidence, setEvidence] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
@@ -600,6 +603,16 @@ function MarketDetail({
     if (d.ok) {
       const s = (d.result as { settlement: { winners: number; totalPaidSparks: number } }).settlement;
       flash(`✓ Resolved ${resolveOutcome.toUpperCase()} · ${s.winners} winners paid ${s.totalPaidSparks} ⚡`);
+      await refresh(); await onChanged();
+    } else flash(`Failed: ${d.error}`);
+  };
+
+  const cancelMarket = async () => {
+    setBusy(true);
+    const d = await run('market-cancel', { marketId });
+    setBusy(false);
+    if (d.ok) {
+      flash('✓ Market cancelled');
       await refresh(); await onChanged();
     } else flash(`Failed: ${d.error}`);
   };
@@ -740,10 +753,22 @@ function MarketDetail({
                   </div>
                 )}
 
-                {/* Resolution (creator only — server enforces) */}
+                {authLoading ? null : isCreator ? (
+                  <div className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
+                    <p className="text-[11px] text-gray-300">
+                      A neutral resolver settles this market. You can cancel it while nobody holds a position.
+                    </p>
+                    <button
+                      type="button" onClick={cancelMarket} disabled={busy}
+                      className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-50"
+                    >
+                      Cancel market
+                    </button>
+                  </div>
+                ) : me ? (
                 <details className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
                   <summary className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-gray-300">
-                    <Gavel className="h-3 w-3" /> Resolve market (creator only)
+                    <Gavel className="h-3 w-3" /> Resolve market
                   </summary>
                   <div className="mt-2 space-y-2">
                     <div className="flex gap-2">
@@ -778,6 +803,9 @@ function MarketDetail({
                     </button>
                   </div>
                 </details>
+                ) : (
+                  <p className="text-[11px] text-gray-400">Sign in to resolve this market.</p>
+                )}
               </>
             )}
 

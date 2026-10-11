@@ -10,23 +10,73 @@
 
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
+import logger from "../logger.js";
+import { topicLabel } from "../lib/trending-topics.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
+  // JSON.stringify(new Set(["id"])) is "{}". A snapshot written before nested
+  // Sets were enveloped comes back as a plain object. `new Set(obj)` throws
+  // "object is not iterable". Arrays and Set envelopes still restore; a plain
+  // object has no remaining members (they were erased on that write).
+  function asSet(value) {
+    if (value instanceof Set) return value;
+    if (Array.isArray(value)) return new Set(value);
+    if (value && typeof value === "object" && value.__type === "Set" && Array.isArray(value.values)) {
+      return new Set(value.values);
+    }
+    return new Set();
+  }
+  function asMap(value) {
+    if (value instanceof Map) return value;
+    if (value && typeof value === "object" && value.__type === "Map" && Array.isArray(value.entries)) {
+      try { return new Map(value.entries); } catch { return new Map(); }
+    }
+    if (Array.isArray(value)) {
+      const m = new Map();
+      for (const entry of value) {
+        if (Array.isArray(entry) && entry.length >= 2) m.set(entry[0], entry[1]);
+      }
+      return m;
+    }
+    if (value && typeof value === "object") return new Map(Object.entries(value));
+    return new Map();
+  }
   function getSocialState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.socialLens) STATE.socialLens = {};
+    if (!STATE.socialLens || typeof STATE.socialLens !== "object") STATE.socialLens = {};
     const s = STATE.socialLens;
-    if (!(s.posts instanceof Map)) s.posts = new Map();           // postId -> post
-    if (!(s.replies instanceof Map)) s.replies = new Map();       // postId -> Array<reply>
-    if (!(s.reactions instanceof Map)) s.reactions = new Map();   // postId -> Map(userId -> reaction)
-    if (!(s.reposts instanceof Map)) s.reposts = new Map();       // postId -> Set<userId>
-    if (!(s.dms instanceof Map)) s.dms = new Map();               // threadKey -> { participants, messages }
-    if (!(s.moderation instanceof Map)) s.moderation = new Map(); // userId -> { muted:Set, blocked:Set }
-    if (!(s.reports instanceof Map)) s.reports = new Map();       // reportId -> report
-    if (!(s.streams instanceof Map)) s.streams = new Map();       // streamId -> stream
-    if (!(s.streamViewers instanceof Map)) s.streamViewers = new Map(); // streamId -> Set<userId>
+    s.posts = asMap(s.posts);                 // postId -> post
+    s.replies = asMap(s.replies);             // postId -> Array<reply>
+    s.reactions = asMap(s.reactions);         // postId -> Map(userId -> reaction)
+    s.reposts = asMap(s.reposts);             // postId -> Set<userId>
+    s.dms = asMap(s.dms);                     // threadKey -> { participants, messages }
+    s.moderation = asMap(s.moderation);       // userId -> { muted:Set, blocked:Set }
+    s.reports = asMap(s.reports);             // reportId -> report
+    s.streams = asMap(s.streams);             // streamId -> stream
+    s.streamViewers = asMap(s.streamViewers); // streamId -> Set<userId>
+    // Nested collections are not always Map/Set after a snapshot load.
+    // Repair in place so a later react/repost/mute does not throw, and so
+    // the next save writes real collections instead of another `{}`.
+    for (const [postId, reactions] of s.reactions) {
+      const map = asMap(reactions);
+      if (map !== reactions) s.reactions.set(postId, map);
+    }
+    for (const [postId, reposts] of s.reposts) {
+      const set = asSet(reposts);
+      if (set !== reposts) s.reposts.set(postId, set);
+    }
+    for (const [streamId, viewers] of s.streamViewers) {
+      const set = asSet(viewers);
+      if (set !== viewers) s.streamViewers.set(streamId, set);
+    }
+    for (const bucket of s.moderation.values()) {
+      if (!bucket || typeof bucket !== "object" || bucket instanceof Set || bucket instanceof Map) continue;
+      bucket.muted = asSet(bucket.muted);
+      bucket.blocked = asSet(bucket.blocked);
+    }
     return s;
   }
   function save() {
@@ -51,27 +101,67 @@ export default function registerSocialActions(registerLensAction) {
   const dmKey = (a, b) => [String(a), String(b)].sort().join("::");
 
   function modBucket(s, userId) {
+    if (!(s.moderation instanceof Map)) s.moderation = asMap(s.moderation);
     if (!s.moderation.has(userId)) {
       s.moderation.set(userId, { muted: new Set(), blocked: new Set() });
     }
     const b = s.moderation.get(userId);
-    if (!(b.muted instanceof Set)) b.muted = new Set(b.muted || []);
-    if (!(b.blocked instanceof Set)) b.blocked = new Set(b.blocked || []);
+    if (!b || typeof b !== "object") {
+      const fresh = { muted: new Set(), blocked: new Set() };
+      s.moderation.set(userId, fresh);
+      return fresh;
+    }
+    b.muted = asSet(b.muted);
+    b.blocked = asSet(b.blocked);
     return b;
   }
 
+  function authorIdentity(ctx, userId, clientUsername, clientDisplay) {
+    const idn = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId);
+    const client = clip(clientUsername, 60);
+    const clientOk = client && client !== userId ? client : "";
+    const dbHandle = idn.username && idn.username !== userId ? idn.username : "";
+    const username = clientOk || dbHandle || userId;
+    const named = clientDisplay && clientDisplay !== userId ? clientDisplay : "";
+    const dbName = idn.displayName && idn.displayName !== userId ? idn.displayName : "";
+    const displayName = named || dbName || clientOk || dbHandle || null;
+    return { username, displayName };
+  }
+
+  function persistSocialRow(ctx, post) {
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    if (!db || typeof db.prepare !== "function" || !post?.id) return;
+    try {
+      const created = Number.isFinite(Date.parse(post.createdAt))
+        ? Math.floor(Date.parse(post.createdAt) / 1000)
+        : Math.floor(Date.now() / 1000);
+      db.prepare(
+        `INSERT OR REPLACE INTO social_posts (id, user_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+      ).run(post.id, post.userId, post.userId, post.body || "", created);
+    } catch { /* social_posts may be absent on a minimal DB */ }
+  }
+
   // Hydrate one post into a wire-shape object with engagement counts and
-  // the viewer's own reaction/repost state attached.
-  function hydratePost(s, postId, viewerId) {
+  // the viewer's own reaction/repost state attached. A stored user id is
+  // replaced with the account's display name and @username when the users
+  // table has them.
+  function hydratePost(s, postId, viewerId, ctx) {
     const post = s.posts.get(postId);
     if (!post) return null;
-    const reactMap = s.reactions.get(postId) || new Map();
+    const reactMap = asMap(s.reactions.get(postId));
     const reactionCounts = {};
-    for (const r of reactMap.values()) reactionCounts[r] = (reactionCounts[r] || 0) + 1;
-    const repostSet = s.reposts.get(postId) || new Set();
-    const replyList = s.replies.get(postId) || [];
+    for (const r of reactMap.values()) {
+      if (typeof r !== "string" || !r) continue;
+      reactionCounts[r] = (reactionCounts[r] || 0) + 1;
+    }
+    const repostSet = asSet(s.reposts.get(postId));
+    const replyRaw = s.replies.get(postId);
+    const replyList = Array.isArray(replyRaw) ? replyRaw : [];
+    const who = authorIdentity(ctx, post.userId, post.username, post.displayName);
     return {
       ...post,
+      username: who.username,
+      displayName: who.displayName,
       replyCount: replyList.length,
       reactionCounts,
       reactionTotal: reactMap.size,
@@ -122,10 +212,12 @@ export default function registerSocialActions(registerLensAction) {
     if (!body && media.length === 0 && !poll && !quoteOf) {
       return { ok: false, error: "post needs a body, media, a poll, or a quoted post" };
     }
+    const who = authorIdentity(ctx, userId, params.username, params.displayName);
     const post = {
       id: sid("post"),
       userId,
-      username: clip(params.username, 60) || userId,
+      username: who.username,
+      displayName: who.displayName,
       body,
       media,
       poll,
@@ -134,22 +226,52 @@ export default function registerSocialActions(registerLensAction) {
       createdAt: now(),
     };
     s.posts.set(post.id, post);
+    persistSocialRow(ctx, post);
     save();
-    return { ok: true, result: { post: hydratePost(s, post.id, userId) } };
+    return { ok: true, result: { post: hydratePost(s, post.id, userId, ctx) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
   registerLensAction("social", "feed", (ctx, _a, params = {}) => {
+    try {
+      const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const viewerId = actor(ctx);
+      const mod = modBucket(s, viewerId);
+      const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
+      const items = [...s.posts.values()]
+        .filter((p) => p && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+        .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
+        .slice(0, limit)
+        .map((p) => hydratePost(s, p.id, viewerId, ctx))
+        .filter(Boolean);
+      return { ok: true, result: { posts: items, count: items.length } };
+    } catch (e) {
+      const message = String(e?.message || e);
+      try { logger.error("social", "social.feed failed", { error: message, stack: e?.stack }); }
+      catch { /* logging must not mask the failure */ }
+      return { ok: false, error: message };
+    }
+  });
+
+  registerLensAction("social", "deletePost", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const viewerId = actor(ctx);
-    const mod = modBucket(s, viewerId);
-    const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
-    const items = [...s.posts.values()]
-      .filter((p) => !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, limit)
-      .map((p) => hydratePost(s, p.id, viewerId));
-    return { ok: true, result: { posts: items, count: items.length } };
+    const userId = actor(ctx);
+    const postId = String(params.postId || "");
+    const post = s.posts.get(postId);
+    if (!post) return { ok: false, error: "post not found" };
+    if (post.userId !== userId) return { ok: false, error: "only the author can delete this post" };
+    s.posts.delete(postId);
+    s.replies.delete(postId);
+    s.reactions.delete(postId);
+    s.reposts.delete(postId);
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    if (db && typeof db.prepare === "function") {
+      try {
+        db.prepare("DELETE FROM social_posts WHERE id = ? AND (user_id = ? OR author_id = ?)").run(postId, userId, userId);
+      } catch { /* table may be absent */ }
+    }
+    save();
+    return { ok: true, result: { id: postId, deleted: true } };
   });
 
   // ── 1. Threaded replies / comment trees ─────────────────────────────
@@ -165,12 +287,14 @@ export default function registerSocialActions(registerLensAction) {
       return { ok: false, error: "parent reply not found" };
     }
     const userId = actor(ctx);
+    const who = authorIdentity(ctx, userId, params.username, params.displayName);
     const reply = {
       id: sid("reply"),
       postId,
       parentId,
       userId,
-      username: clip(params.username, 60) || userId,
+      username: who.username,
+      displayName: who.displayName,
       body,
       createdAt: now(),
     };
@@ -180,12 +304,16 @@ export default function registerSocialActions(registerLensAction) {
     return { ok: true, result: { reply } };
   });
 
-  registerLensAction("social", "replyTree", (_ctx, _a, params = {}) => {
+  registerLensAction("social", "replyTree", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
     if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const flat = (s.replies.get(postId) || []).slice()
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => {
+        const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
+        return { ...r, username: who.username, displayName: who.displayName };
+      });
     const byId = new Map(flat.map((r) => [r.id, { ...r, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
@@ -344,7 +472,7 @@ export default function registerSocialActions(registerLensAction) {
       .filter((p) => p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
-      .map((p) => hydratePost(s, p.id, viewerId));
+      .map((p) => hydratePost(s, p.id, viewerId, ctx));
     const contributors = new Set(posts.map((p) => p.userId)).size;
     return { ok: true, result: { tag, posts, count: posts.length, contributors } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -355,10 +483,13 @@ export default function registerSocialActions(registerLensAction) {
     const limit = Math.min(50, Math.max(1, parseInt(params.limit, 10) || 12));
     const counts = new Map();
     for (const p of s.posts.values()) {
-      for (const t of p.hashtags) {
-        const e = counts.get(t) || { tag: t, posts: 0 };
+      const tags = Array.isArray(p?.hashtags) ? p.hashtags : [];
+      for (const t of tags) {
+        const label = topicLabel(t);
+        if (!label) continue;
+        const e = counts.get(label) || { tag: label, posts: 0 };
         e.posts++;
-        counts.set(t, e);
+        counts.set(label, e);
       }
     }
     const trending = [...counts.values()]
@@ -374,16 +505,20 @@ export default function registerSocialActions(registerLensAction) {
     const postId = String(params.postId || "");
     if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const viewerId = actor(ctx);
-    const post = hydratePost(s, postId, viewerId);
+    const post = hydratePost(s, postId, viewerId, ctx);
     const flat = (s.replies.get(postId) || []).slice()
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => {
+        const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
+        return { ...r, username: who.username, displayName: who.displayName };
+      });
     const byId = new Map(flat.map((r) => [r.id, { ...r, children: [] }]));
     const roots = [];
     for (const node of byId.values()) {
       if (node.parentId && byId.has(node.parentId)) byId.get(node.parentId).children.push(node);
       else roots.push(node);
     }
-    const quoted = post.quoteOf ? hydratePost(s, post.quoteOf, viewerId) : null;
+    const quoted = post.quoteOf ? hydratePost(s, post.quoteOf, viewerId, ctx) : null;
     return {
       ok: true,
       result: {

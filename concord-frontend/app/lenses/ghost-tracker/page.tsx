@@ -30,6 +30,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { ResidueDetail } from '@/components/ghost-tracker/ResidueDetail';
 import { ResidueMap } from '@/components/ghost-tracker/ResidueMap';
 import { HunterLeaderboard } from '@/components/ghost-tracker/HunterLeaderboard';
@@ -367,9 +368,11 @@ export default function GhostTrackerPage() {
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <HunterLeaderboard refreshKey={refreshKey} />
             </section>
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <HauntingsFeed />
-            </section>
+            <CommunityRedditSlot>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <HauntingsFeed />
+              </section>
+            </CommunityRedditSlot>
           </div>
         )}
       </NorthStarFrame>

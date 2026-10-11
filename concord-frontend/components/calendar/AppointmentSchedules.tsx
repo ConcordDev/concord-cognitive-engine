@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, Plus, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
 
@@ -23,9 +24,7 @@ interface Booking { id: string; slotStart: string; bookerName: string; note: str
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function todayPlus(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return shiftDateKey(calendarDateKey(), days);
 }
 
 export function AppointmentSchedules() {

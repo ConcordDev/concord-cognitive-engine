@@ -20,6 +20,13 @@ import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
 import { replicatorDynamics } from "../lib/game-theory/replicator.js";
 import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
 
+// Snapshot bounds for predictionMarkets. A rejected create returns before
+// `seq` advances and before a pool changes, so accepted bets keep the
+// existing stake and odds formulas. priceHistory is already capped at 500.
+export const PM_MARKET_CAP = 200;
+export const PM_POSITION_CAP = 500;
+export const PM_ORDER_CAP = 200;
+
 // ──────────────────────────────────────────────────────────────
 // Black-Scholes pure JS (Abramowitz & Stegun rational approx).
 // ──────────────────────────────────────────────────────────────
@@ -480,6 +487,11 @@ export default function registerMarketsActions(registerLensAction) {
   function pmActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function pmNow() { return Date.now(); }
   function pmId(s, prefix) { s.seq += 1; return `${prefix}_${s.seq.toString(36)}_${Date.now().toString(36)}`; }
+  function countByUser(map, userId) {
+    let n = 0;
+    for (const row of map.values()) if (row && row.userId === userId) n += 1;
+    return n;
+  }
 
   // Implied probability from pool balance. AMM-style: YES% = noPool / total
   // is the wrong direction — in a parimutuel pool the payout odds favour the
@@ -549,6 +561,7 @@ export default function registerMarketsActions(registerLensAction) {
       if (closesAt != null && (!Number.isFinite(closesAt) || closesAt <= pmNow())) {
         return { ok: false, error: "closesAt must be a future timestamp (ms)" };
       }
+      if (s.markets.size >= PM_MARKET_CAP) return { ok: false, error: "market_cap" };
       // Seed liquidity so the first bet has a meaningful price. The creator
       // funds a tiny symmetric seed split YES/NO; this is real (creator-owned)
       // liquidity, not fabricated volume.
@@ -722,6 +735,9 @@ export default function registerMarketsActions(registerLensAction) {
       const stake = Number(params.stakeSparks);
       if (!Number.isFinite(stake) || stake < 1) return { ok: false, error: "stakeSparks must be >= 1" };
       if (stake > 100000) return { ok: false, error: "stake exceeds cap (100000)" };
+      // Snapshot cap. Before the pool moves, so a rejected bet does not
+      // change odds or anyone else's stake.
+      if (countByUser(s.positions, userId) >= PM_POSITION_CAP) return { ok: false, error: "position_cap" };
       // entry price = implied probability of the chosen side BEFORE this stake
       const probBefore = impliedProbability(m.poolYes, m.poolNo);
       const entryPrice = side === "yes" ? probBefore : 1 - probBefore;
@@ -841,7 +857,38 @@ export default function registerMarketsActions(registerLensAction) {
     }
   });
 
-  // ── Resolve a market (creator-only) with evidence ──
+  // ── Cancel an open market (creator-only, and only with zero positions) ──
+  // Seed liquidity is not a position. Resting orders are cancelled with the market.
+  registerLensAction("markets", "market-cancel", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getPredictionState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pmActor(ctx);
+      const m = s.markets.get(String(params.marketId || ""));
+      if (!m) return { ok: false, error: "market not found" };
+      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can cancel" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
+      const hasPosition = [...s.positions.values()].some((p) => p.marketId === m.id);
+      if (hasPosition) return { ok: false, error: "cannot cancel a market that has positions" };
+      let cancelledOrders = 0;
+      for (const o of s.orders.values()) {
+        if (o.marketId === m.id && o.status === "open") {
+          o.status = "cancelled";
+          o.closedAt = pmNow();
+          cancelledOrders += 1;
+        }
+      }
+      m.status = "cancelled";
+      m.cancelledAt = pmNow();
+      saveMarketsState();
+      return { ok: true, result: { market: summariseMarket(m), cancelledOrders } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Resolve a market. The creator cannot settle their own market. ──
+  // Any other user may resolve, with the same evidence rules (yes/no, >= 8 chars).
   registerLensAction("markets", "market-resolve", (ctx, _artifact, params = {}) => {
     try {
       const s = getPredictionState();
@@ -849,8 +896,9 @@ export default function registerMarketsActions(registerLensAction) {
       const userId = pmActor(ctx);
       const m = s.markets.get(String(params.marketId || ""));
       if (!m) return { ok: false, error: "market not found" };
-      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can resolve" };
+      if (m.creatorId === userId) return { ok: false, error: "the market creator cannot resolve their own market" };
       if (m.status === "resolved") return { ok: false, error: "market already resolved" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
       const outcome = String(params.outcome || "").toLowerCase();
       if (outcome !== "yes" && outcome !== "no") return { ok: false, error: "outcome must be yes or no" };
       const evidence = String(params.evidence || "").trim();
@@ -997,6 +1045,7 @@ export default function registerMarketsActions(registerLensAction) {
       }
       const stake = Number(params.stakeSparks);
       if (!Number.isFinite(stake) || stake < 1) return { ok: false, error: "stakeSparks must be >= 1" };
+      if (countByUser(s.orders, userId) >= PM_ORDER_CAP) return { ok: false, error: "order_cap" };
       const id = pmId(s, "ord");
       const order = {
         id,

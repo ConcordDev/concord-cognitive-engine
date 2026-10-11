@@ -18,6 +18,7 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ParentingSection } from '@/components/parenting/ParentingSection';
 import { ChildBriefPanel } from '@/components/parenting/ChildBriefPanel';
 import { ParentingFeed } from '@/components/parenting/ParentingFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { PgFamilyCalendarPanel } from '@/components/parenting/PgFamilyCalendarPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -77,9 +78,11 @@ export default function ParentingLensPage() {
         {destination === 'community' && (
           <div className="space-y-4">
             <LensFeedButton domain="parenting" label="Child-safety product recalls (CPSC)" />
-            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <ParentingFeed />
-            </div>
+            <CommunityRedditSlot>
+              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <ParentingFeed />
+              </div>
+            </CommunityRedditSlot>
           </div>
         )}
       </NorthStarFrame>

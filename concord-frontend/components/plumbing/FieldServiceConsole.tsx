@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { ClientAutocomplete } from '@/components/plumbing/ClientAutocomplete';
@@ -154,7 +155,7 @@ export function FieldServiceConsole() {
   const [jobClientId, setJobClientId] = useState<string | null>(null);
   const [jobAddr, setJobAddr] = useState('');
   const [jobTech, setJobTech] = useState('');
-  const [jobDate, setJobDate] = useState(new Date().toISOString().slice(0, 10));
+  const [jobDate, setJobDate] = useState(() => calendarDateKey());
   const [jobHour, setJobHour] = useState('8');
   const [jobDur, setJobDur] = useState('2');
   const [jobPriority, setJobPriority] = useState('normal');
@@ -183,7 +184,7 @@ export function FieldServiceConsole() {
   const [planTitle, setPlanTitle] = useState('');
   const [planCadence, setPlanCadence] = useState('annual');
   const [planFee, setPlanFee] = useState('');
-  const [planStart, setPlanStart] = useState(new Date().toISOString().slice(0, 10));
+  const [planStart, setPlanStart] = useState(() => calendarDateKey());
 
   const [ntfClient, setNtfClient] = useState('');
   const [ntfKind, setNtfKind] = useState('confirmation');
@@ -529,7 +530,7 @@ export function FieldServiceConsole() {
       id: p.id,
       label: `${p.client} · ${p.title}`,
       time: p.nextVisit,
-      tone: p.nextVisit <= new Date().toISOString().slice(0, 10) ? 'warn' : 'info',
+      tone: p.nextVisit <= calendarDateKey() ? 'warn' : 'info',
       detail: `${p.cadence} · $${p.fee} · ${p.visitsCompleted} visits done`,
     })),
     [plans],
