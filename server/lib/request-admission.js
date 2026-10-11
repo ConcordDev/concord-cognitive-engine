@@ -58,6 +58,19 @@ let _sheddableStrikes = 0;
 let _protectedStrikes = 0;
 let _interactiveWaiters = 0;
 
+// Shedding-rate / admitting signals for the repair cortex. A handful of
+// counters only: one observe() per window once 503s cross a small threshold,
+// and one observe() per admitting true↔false transition. Never per request.
+let _shedWindowStart = 0;
+let _shedWindowCount = 0;
+let _shedWindowEmitted = false;
+let _admittingKnown = true;
+let _signalNow = () => Date.now();
+/** @type {((err: Error, context: string) => void) | null} */
+let _signalObserve = null;
+/** @type {Promise<((err: Error, context: string) => void) | null> | null} */
+let _observeLoader = null;
+
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;
   return process.env.CONCORD_LOAD_SHED_ENABLED === "0";
@@ -145,6 +158,86 @@ export function _resetAdmissionForTest() {
   _sheddableStrikes = 0;
   _protectedStrikes = 0;
   _interactiveWaiters = 0;
+  _shedWindowStart = 0;
+  _shedWindowCount = 0;
+  _shedWindowEmitted = false;
+  _admittingKnown = true;
+  _signalNow = () => Date.now();
+  _signalObserve = null;
+}
+
+/** Test-only: freeze the shedding-window clock. */
+export function _setAdmissionSignalClockForTest(fn) {
+  _signalNow = typeof fn === "function" ? fn : () => Date.now();
+}
+
+/**
+ * Test-only: replace the observe() sink. Pass null to use the real cortex.
+ * @param {((err: Error, context: string) => void) | null | undefined} fn
+ */
+export function _setAdmissionObserveForTest(fn) {
+  _signalObserve = typeof fn === "function" ? fn : null;
+}
+
+function getShedSignalMin() {
+  // Floor of 2 so a mis-set threshold cannot collapse to one event per request.
+  return Math.max(2, Math.floor(_positiveNumber(process.env.CONCORD_SHED_SIGNAL_MIN, 5)));
+}
+
+function getShedSignalWindowMs() {
+  return _positiveNumber(process.env.CONCORD_SHED_SIGNAL_WINDOW_MS, 10_000);
+}
+
+function _emitAdmissionSignal(message, context) {
+  const err = new Error(message);
+  err.name = "AdmissionSignal";
+  if (typeof _signalObserve === "function") {
+    try { _signalObserve(err, context); } catch { /* best-effort */ }
+    return;
+  }
+  if (!_observeLoader) {
+    _observeLoader = import("../emergent/repair-cortex.js")
+      .then((mod) => (typeof mod.observe === "function" ? mod.observe : null))
+      .catch(() => null);
+  }
+  _observeLoader.then((observe) => {
+    try { observe?.(err, context); } catch { /* cortex must not affect admission */ }
+  }).catch(() => {});
+}
+
+/** Count one real 503. Emits at most once per window, after the threshold. */
+function noteShedSignal(priority, reason) {
+  const now = _signalNow();
+  const windowMs = getShedSignalWindowMs();
+  if (!_shedWindowStart || now - _shedWindowStart >= windowMs) {
+    _shedWindowStart = now;
+    _shedWindowCount = 0;
+    _shedWindowEmitted = false;
+  }
+  _shedWindowCount += 1;
+  if (_shedWindowCount < getShedSignalMin() || _shedWindowEmitted) return;
+  _shedWindowEmitted = true;
+  const pri = String(priority || "unknown").slice(0, 32);
+  const why = String(reason || "pressure").slice(0, 64);
+  _emitAdmissionSignal(
+    `shedding ${_shedWindowCount} requests over ${windowMs}ms (${pri}/${why})`,
+    "request_admission:shedding",
+  );
+}
+
+/**
+ * `/ready`'s `admitting` flag. One observe() when it flips, none while it holds.
+ * @param {boolean} admitting
+ */
+export function noteAdmittingTransition(admitting) {
+  const next = !!admitting;
+  if (next === _admittingKnown) return;
+  const prev = _admittingKnown;
+  _admittingKnown = next;
+  _emitAdmissionSignal(
+    `admitting flipped ${prev ? "true" : "false"} -> ${next ? "true" : "false"}`,
+    "request_admission:admitting",
+  );
 }
 
 /** Test-only: force both strike counters. */
@@ -216,6 +309,7 @@ function _warmingFlag() {
 }
 
 function _writeShed(res, { decision, priority, code, message, retryAfterS, queuedMs }) {
+  try { noteShedSignal(priority, decision?.reason); } catch { /* signal never blocks the 503 */ }
   const warming = _warmingFlag();
   res.set("Retry-After", String(retryAfterS));
   return res.status(503).json({

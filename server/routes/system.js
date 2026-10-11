@@ -12,6 +12,7 @@ import { assertSessionAccessible } from "../lib/session-access.js";
 import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
 import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
+import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
@@ -233,6 +234,7 @@ export default function registerSystemRoutes(app, {
     // `admitting` is reported for observability only.
     const ready = Object.values(checks).every(v => v === true || v === "no_db");
     checks.admitting = !overBar;
+    try { noteAdmittingTransition(checks.admitting); } catch { /* admission signal is best-effort */ }
     res.status(ready ? 200 : 503).json({
       ready,
       checks,
