@@ -211,7 +211,10 @@ export function finalizeActivityFeed(activities, actor, { limit = 50, offset = 0
     delete rest._parties;
     return redactLogValue(rest);
   });
-  return { ok: true, events: page, total: owned.length, limit: lim, offset: off };
+  // `events` is the live server.js shape. `items` is the guidance-panel
+  // shape (ActivityFeed, SystemGuidePanel, UndoTimeline). Same page, so a
+  // member's own rows still render after the anonymous 401.
+  return { ok: true, events: page, items: page, total: owned.length, limit: lim, offset: off };
 }
 
 export function projectTraces(traces, actor, { limit = 50, minDuration = 0 } = {}) {

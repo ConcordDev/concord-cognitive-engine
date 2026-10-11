@@ -1913,6 +1913,7 @@ function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -33831,24 +33832,27 @@ register("settings", "set", (ctx, input) => {
     }
   }, { description: "Knowledge-gap analysis (mirrors GET /api/ai/gaps).", note: "intentional_shadow_ok" });
   if (!MACROS.get("brain")?.has("status")) {
-    register("brain", "status", (_ctx, _input = {}) => {
+    register("brain", "status", (ctx, _input = {}) => {
       try {
         if (typeof getBrainStatus === "function") {
-          return { ok: true, ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined, aliasOf: "GET /api/brain/status" };
+          const raw = { ...getBrainStatus(), llmReady: (typeof LLM_READY !== "undefined") ? LLM_READY : undefined };
+          return authenticatedBrainStatus(raw, ctx?.actor, { aliasOf: "GET /api/brain/status" });
         }
         return _honest("brain.status", "no_macro_substrate", "getBrainStatus unavailable");
       } catch (e) {
         return _honest("brain.status", "handler_error", String(e?.message || e));
       }
-    }, { description: "Per-brain health (mirrors GET /api/brain/status)." });
+    }, { description: "Per-brain health (mirrors GET /api/brain/status). Anonymous refused; members get no URLs or model names." });
   }
   if (!MACROS.get("brain")?.has("health")) {
-    register("brain", "health", async (_ctx, _input = {}) => {
+    register("brain", "health", async (ctx, _input = {}) => {
       // Lightweight projection — full probe is GET /api/brain/health (expensive).
       try {
         if (typeof getBrainStatus === "function") {
-          const s = getBrainStatus();
-          return { ok: true, ...s, note: "macro projection; for live Ollama probes use GET /api/brain/health", aliasOf: "getBrainStatus" };
+          return authenticatedBrainStatus(getBrainStatus(), ctx?.actor, {
+            note: "macro projection; for live Ollama probes use GET /api/brain/health",
+            aliasOf: "getBrainStatus",
+          });
         }
         return _honest("brain.health", "no_macro_substrate", "use GET /api/brain/health");
       } catch (e) {
@@ -56080,12 +56084,12 @@ app.get("/api/lattice/beacon", (_req, res) => {
 });
 
 // System health — guidance panel + resonance lens
-app.get("/api/system/health", (_req, res) => {
+app.get("/api/system/health", (req, res) => {
   try {
     const dtus = dtusArray();
     const total = dtus.length;
     const sessions = STATE.sessions?.size || 0;
-    const brainStatus = typeof getBrainStatus === "function" ? getBrainStatus() : {};
+    const brainStatus = brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user);
     const uptime = process.uptime();
 
     // Heartbeat liveness. `__governorTickAt` is stamped on EVERY governorTick
@@ -65119,9 +65123,9 @@ app.get("/api/social/trending/domains", (_req, res) => {
 });
 
 // Platform status
-app.get("/api/platform/status", (_req, res) => {
+app.get("/api/platform/status", (req, res) => {
   try {
-    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: typeof getBrainStatus === "function" ? getBrainStatus() : {}, dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
+    res.json({ ok: true, platform: { status: "operational", version: VERSION, uptime: Math.floor(process.uptime()), brains: brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user), dtus: STATE.dtus?.size || 0, sessions: STATE.sessions?.size || 0 } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -66568,18 +66572,13 @@ app.post("/api/brain/wants/decay", (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Per-brain health and stats endpoint
-app.get("/api/brain/status", (_req, res) => {
-  try {
-    // getBrainStatus() (defined above) is the single source of truth for
-    // mode/onlineCount/avgResponseMs/embeddings — it was already used by
-    // the chat-context builder and /api/platform/status but this route
-    // hand-rolled a stripped-down duplicate missing those fields, which is
-    // why the frontend's BrainMonitor badge always showed "Fallback 0/N"
-    // regardless of real brain state.
-    res.json({ ...getBrainStatus(), llmReady: LLM_READY });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
+// Per-brain health and stats endpoint.
+// getBrainStatus() is the single source of truth for mode/onlineCount/
+// avgResponseMs/embeddings. URLs and model names inside it are operator
+// diagnostics: anonymous callers get 401, members get the same health
+// fields with those stripped, admins get the raw object.
+// See lib/brain-status-public.js (stricter than PR #1098's URL-only redaction).
+mountBrainStatusRoute(app, () => ({ ...getBrainStatus(), llmReady: LLM_READY }));
 
 // Spontaneous message endpoints
 app.get("/api/brain/spontaneous/status", (_req, res) => {
@@ -66972,7 +66971,10 @@ app.post("/api/brain/entity/explore", asyncHandler(async (req, res) => {
 // Tracks consecutive failures per brain to avoid marking offline on a single timeout
 const _brainHealthFailures = {};
 const BRAIN_HEALTH_FAILURE_THRESHOLD = 3; // Only mark offline after 3 consecutive failures
-app.get("/api/brain/health", asyncHandler(async (_req, res) => {
+app.get("/api/brain/health", asyncHandler(async (req, res) => {
+  const _brainDenied = denyAnonymousBrainRead(req);
+  if (_brainDenied) return res.status(_brainDenied.status).json(_brainDenied.body);
+  const _sendBrainHealth = (body) => res.json(brainStatusForViewer(body, req.user));
   // CI / no-Ollama deployments set CONCORD_DISABLE_BRAINS=true. Skip the
   // 5×8 s parallel Ollama probes that would otherwise return useless
   // failure rows + leave the event loop holding 5 dead sockets during
@@ -66983,7 +66985,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
     for (const [name, brain] of Object.entries(BRAIN)) {
       health[name] = { online: false, healthy: false, model: brain.model, error: "brains_disabled" };
     }
-    return res.json({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
+    return _sendBrainHealth({ ok: true, allHealthy: false, brains_disabled: true, ...health, brains: health });
   }
   const health = {};
   const probes = Object.entries(BRAIN).map(async ([name, brain]) => {
@@ -67048,7 +67050,7 @@ app.get("/api/brain/health", asyncHandler(async (_req, res) => {
   });
   await Promise.all(probes);
   const allHealthy = Object.values(health).every(r => r.online);
-  res.json({ ok: true, allHealthy, ...health, brains: health });
+  _sendBrainHealth({ ok: true, allHealthy, ...health, brains: health });
 }));
 
 // LLM Fallback health — shows active tiers and available fallback layers
