@@ -99,8 +99,8 @@ export function useFeedPosts(tab: FeedTab, fallbackItems: FeedPost[] = []) {
             type: ((p.mediaType as string) || 'text') as PostType,
             author: {
               id: (p.userId as string) || 'user',
-              name: (p.displayName as string) || 'User',
-              handle: (p.userId as string) || 'user',
+              name: (p.displayName as string) || (p.username as string) || 'Member',
+              handle: (p.username as string) || (p.displayName as string) || 'member',
               gradient: pickGrad(offset + i),
               verified: false,
             },

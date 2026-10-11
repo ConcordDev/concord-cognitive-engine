@@ -65293,7 +65293,12 @@ app.get("/api/social/post/:postId", (req, res) => {
 app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
   try {
     const userId = req.user?.id || req.actor?.userId || "anon";
-    res.json(socialDeletePost(STATE, { userId, postId: req.params.postId }));
+    const result = socialDeletePost(STATE, { userId, postId: req.params.postId });
+    if (!result.ok) {
+      const status = result.error === "Post not found" ? 404 : 403;
+      return res.status(status).json(result);
+    }
+    res.json(result);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

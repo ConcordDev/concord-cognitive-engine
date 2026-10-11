@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import Database from "better-sqlite3";
 import createAccountLifecycleRouter from "../routes/account-lifecycle.js";
+import { exportUserData } from "../lib/account-lifecycle.js";
 
 function createDb() {
   const db = new Database(":memory:");
@@ -203,5 +204,64 @@ describe("GET /api/account/export and deletion grace", () => {
     const after = await fetch(base + "/api/account/deletion", { headers: { "x-user-id": "user-a" } });
     const afterBody = await after.json();
     assert.equal(afterBody.scheduled, false);
+  });
+});
+
+describe("exportUserData includes live social posts", () => {
+  let prior;
+  before(() => { prior = globalThis._concordSTATE; });
+  after(() => { globalThis._concordSTATE = prior; });
+
+  it("merges this user's memory posts with SQL rows and leaves other users out", () => {
+    const db = createDb();
+    const now = new Date().toISOString();
+    db.prepare("INSERT INTO users (id, username, email, role, created_at) VALUES (?,?,?,?,?)")
+      .run("user-a", "ada", "ada@example.com", "member", now);
+    db.exec(`
+      CREATE TABLE social_posts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        author_id TEXT,
+        content TEXT,
+        created_at INTEGER
+      );
+    `);
+    db.prepare("INSERT INTO social_posts (id, user_id, author_id, content, created_at) VALUES (?,?,?,?,?)")
+      .run("sql-1", "user-a", "user-a", "stored in sql", 10);
+    globalThis._concordSTATE = {
+      socialLens: {
+        posts: new Map([
+          ["mem-1", { id: "mem-1", userId: "user-a", body: "lens post", createdAt: "2026-10-10T12:00:00.000Z" }],
+          ["mem-b", { id: "mem-b", userId: "user-b", body: "not mine", createdAt: "2026-10-10T12:00:00.000Z" }],
+        ]),
+      },
+      _social: {
+        posts: new Map([
+          ["rest-1", { id: "rest-1", userId: "user-a", content: "rest post", createdAt: "2026-10-10T13:00:00.000Z" }],
+        ]),
+      },
+    };
+    const r = exportUserData(db, "user-a");
+    assert.equal(r.ok, true);
+    const ids = r.data.socialPosts.map((p) => p.id).sort();
+    assert.deepEqual(ids, ["mem-1", "rest-1", "sql-1"]);
+    assert.equal(r.data.socialPosts.find((p) => p.id === "mem-1").content, "lens post");
+    assert.equal(r.data.socialPosts.some((p) => p.id === "mem-b"), false);
+    db.close();
+  });
+
+  it("still returns memory posts when the social_posts table is missing", () => {
+    const db = createDb();
+    const now = new Date().toISOString();
+    db.prepare("INSERT INTO users (id, username, email, role, created_at) VALUES (?,?,?,?,?)")
+      .run("user-a", "ada", "ada@example.com", "member", now);
+    globalThis._concordSTATE = {
+      socialLens: { posts: new Map([["mem-2", { id: "mem-2", userId: "user-a", body: "only memory", createdAt: "2026-10-10T12:00:00.000Z" }]]) },
+    };
+    const r = exportUserData(db, "user-a");
+    assert.equal(r.ok, true);
+    assert.equal(r.data.socialPosts.length, 1);
+    assert.equal(r.data.socialPosts[0].content, "only memory");
+    db.close();
   });
 });

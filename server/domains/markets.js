@@ -841,7 +841,38 @@ export default function registerMarketsActions(registerLensAction) {
     }
   });
 
-  // ── Resolve a market (creator-only) with evidence ──
+  // ── Cancel an open market (creator-only, and only with zero positions) ──
+  // Seed liquidity is not a position. Resting orders are cancelled with the market.
+  registerLensAction("markets", "market-cancel", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getPredictionState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pmActor(ctx);
+      const m = s.markets.get(String(params.marketId || ""));
+      if (!m) return { ok: false, error: "market not found" };
+      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can cancel" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
+      const hasPosition = [...s.positions.values()].some((p) => p.marketId === m.id);
+      if (hasPosition) return { ok: false, error: "cannot cancel a market that has positions" };
+      let cancelledOrders = 0;
+      for (const o of s.orders.values()) {
+        if (o.marketId === m.id && o.status === "open") {
+          o.status = "cancelled";
+          o.closedAt = pmNow();
+          cancelledOrders += 1;
+        }
+      }
+      m.status = "cancelled";
+      m.cancelledAt = pmNow();
+      saveMarketsState();
+      return { ok: true, result: { market: summariseMarket(m), cancelledOrders } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Resolve a market. The creator cannot settle their own market. ──
+  // Any other user may resolve, with the same evidence rules (yes/no, >= 8 chars).
   registerLensAction("markets", "market-resolve", (ctx, _artifact, params = {}) => {
     try {
       const s = getPredictionState();
@@ -849,8 +880,9 @@ export default function registerMarketsActions(registerLensAction) {
       const userId = pmActor(ctx);
       const m = s.markets.get(String(params.marketId || ""));
       if (!m) return { ok: false, error: "market not found" };
-      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can resolve" };
+      if (m.creatorId === userId) return { ok: false, error: "the market creator cannot resolve their own market" };
       if (m.status === "resolved") return { ok: false, error: "market already resolved" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
       const outcome = String(params.outcome || "").toLowerCase();
       if (outcome !== "yes" && outcome !== "no") return { ok: false, error: "outcome must be yes or no" };
       const evidence = String(params.evidence || "").trim();

@@ -17,6 +17,7 @@ import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { localCalendarDay } from '@/lib/finance/local-day';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -87,7 +88,7 @@ export function FinanceActionPanel() {
     if (!a.length) { err('Add asset lines.'); return; }
     setBusy('snapshot'); setFeedback(null);
     try {
-      const r = await callMacro<NetWorthResult>('net-worth-snapshot', { assets: a, liabilities: l });
+      const r = await callMacro<NetWorthResult>('net-worth-snapshot', { assets: a, liabilities: l, date: localCalendarDay() });
       if (r.ok && r.result) { setNetWorthResult(r.result); pipe.publish('finance.netWorth', r.result, { label: `Net worth $${(r.result.netWorth ?? 0).toLocaleString()}` }); ok(`Net worth $${(r.result.netWorth ?? 0).toLocaleString()}.`); }
       else err(r.error ?? 'snapshot failed');
     } catch (e) { err(pickMessage(e)); }
@@ -142,7 +143,7 @@ export function FinanceActionPanel() {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: withContentLicense({
-          title: `Finance snapshot — ${new Date().toISOString().slice(0, 10)}`,
+          title: `Finance snapshot — ${localCalendarDay()}`,
           tags: ['finance', 'snapshot', netWorthResult?.netWorth != null ? `nw:${Math.round(netWorthResult.netWorth)}` : ''],
           source: 'finance:snapshot:mint',
           meta: { visibility: 'private', consent: { allowCitations: false }, finance: { netWorth: netWorthResult, tax: taxResult, monteCarlo: mcResult, subscriptions: subsResult, envCreated } },
@@ -221,11 +222,11 @@ export function FinanceActionPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'snapshot', label: 'Net worth',  desc: 'net-worth-snapshot from assets/liabs',        icon: TrendingUp,  accent: '#22c55e', handler: actSnapshot },
-    { id: 'envelope', label: '+ Envelope', desc: 'envelopes-create budget bucket',              icon: PiggyBank,   accent: '#06b6d4', handler: actEnvelope },
-    { id: 'tax',      label: 'Tax est',    desc: 'tax-estimate income + status',                icon: Calculator,  accent: '#eab308', handler: actTax },
-    { id: 'mc',       label: 'Retire MC',  desc: 'retirement-monte-carlo 10k runs',             icon: Briefcase,   accent: '#8b5cf6', handler: actMc },
-    { id: 'subs',     label: 'Subs',       desc: 'subscriptions-detect monthly drain',          icon: DollarSign,  accent: '#f97316', handler: actSubs },
+    { id: 'snapshot', label: 'Net worth',  desc: 'Record net worth from the asset and liability lines', icon: TrendingUp,  accent: '#22c55e', handler: actSnapshot },
+    { id: 'envelope', label: '+ Envelope', desc: 'Create a monthly budget envelope',            icon: PiggyBank,   accent: '#06b6d4', handler: actEnvelope },
+    { id: 'tax',      label: 'Tax est',    desc: 'Estimate tax from income and filing status', icon: Calculator,  accent: '#eab308', handler: actTax },
+    { id: 'mc',       label: 'Retire MC',  desc: 'Retirement projection, 10,000 simulated paths', icon: Briefcase,   accent: '#8b5cf6', handler: actMc },
+    { id: 'subs',     label: 'Subs',       desc: 'Find recurring subscriptions',                icon: DollarSign,  accent: '#f97316', handler: actSubs },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private finance DTU',                       icon: Sparkles,    accent: '#3b82f6', handler: actMint },
     { id: 'dm',       label: 'DM',         desc: 'Send finance summary',                        icon: Send,        accent: '#ec4899', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish MC',    desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Anonymized retirement scenario DTU',           icon: Globe,       accent: '#15803d', handler: actPublish, disabled: !mcResult },

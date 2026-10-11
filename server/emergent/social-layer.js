@@ -5,6 +5,8 @@
  * cited-by counters, trending DTUs, discovery loops.
  */
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 
 // ── Realtime emit hookup (Phase 11, Item 4) ─────────────────────────────
 //
@@ -148,7 +150,15 @@ export function getProfile(STATE, userId) {
   profile.stats.publicDtuCount = publicDtuCount;
   profile.stats.citationCount = citationCount;
 
-  return { ok: true, profile };
+  const who = publicIdentity(userId, profile);
+  return {
+    ok: true,
+    profile: {
+      ...profile,
+      displayName: who.displayName || profile.displayName,
+      username: who.username,
+    },
+  };
 }
 
 export function listProfiles(STATE, options = {}) {
@@ -224,7 +234,8 @@ export function getFollowers(STATE, userId, limit = 50) {
   const followerSet = social.followers.get(userId) || new Set();
   const followers = Array.from(followerSet).slice(0, limit).map(id => {
     const profile = social.profiles.get(id);
-    return { userId: id, displayName: profile?.displayName || id };
+    const who = publicIdentity(id, profile);
+    return { userId: id, displayName: who.displayName || "Member", username: who.username };
   });
   return { ok: true, userId, followers, total: followerSet.size };
 }
@@ -234,7 +245,8 @@ export function getFollowing(STATE, userId, limit = 50) {
   const followSet = social.follows.get(userId) || new Set();
   const following = Array.from(followSet).slice(0, limit).map(id => {
     const profile = social.profiles.get(id);
-    return { userId: id, displayName: profile?.displayName || id };
+    const who = publicIdentity(id, profile);
+    return { userId: id, displayName: who.displayName || "Member", username: who.username };
   });
   return { ok: true, userId, following, total: followSet.size };
 }
@@ -514,14 +526,18 @@ export function discoverUsers(STATE, userId, limit = 10) {
 
   return {
     ok: true,
-    suggestions: candidates.slice(0, limit).map(c => ({
+    suggestions: candidates.slice(0, limit).map(c => {
+      const who = publicIdentity(c.userId, c.profile);
+      return {
       userId: c.userId,
-      displayName: c.profile.displayName,
+      displayName: who.displayName || c.profile.displayName,
+      username: who.username,
       bio: c.profile.bio,
       followerCount: c.profile.stats?.followerCount || 0,
       citationCount: c.profile.stats?.citationCount || 0,
       matchScore: c.score,
-    })),
+    };
+    }),
   };
 }
 
@@ -575,6 +591,7 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
   };
 
   social.posts.set(id, post);
+  persistSocialPostRow(post);
 
   // Create mention notifications
   if (post.mentionedUsers.length) {
@@ -605,6 +622,30 @@ export function setFederationDispatcher(fn) {
   _federationDispatcher = typeof fn === 'function' ? fn : null;
 }
 
+function persistSocialPostRow(post) {
+  const db = globalThis._concordSTATE?.db;
+  if (!db || typeof db.prepare !== "function" || !post?.id) return;
+  try {
+    const created = Number.isFinite(Date.parse(post.createdAt))
+      ? Math.floor(Date.parse(post.createdAt) / 1000)
+      : Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT OR REPLACE INTO social_posts (id, user_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+    ).run(post.id, post.userId, post.userId, post.content || "", created);
+  } catch { /* social_posts may be absent */ }
+}
+
+function publicIdentity(userId, profile) {
+  const idn = lookupUserIdentity(globalThis._concordSTATE?.db, userId);
+  const profileName = profile?.displayName && profile.displayName !== userId ? profile.displayName : null;
+  const username = idn.username && idn.username !== userId ? idn.username : null;
+  const displayName = profileName
+    || (idn.displayName && idn.displayName !== userId ? idn.displayName : null)
+    || username
+    || null;
+  return { username, displayName };
+}
+
 function serializePost(post) {
   const reactions = {};
   if (post.reactions) {
@@ -612,9 +653,14 @@ function serializePost(post) {
       reactions[type] = users.size;
     }
   }
+  const who = publicIdentity(post.userId, null);
+  const storedHandle = post.username && post.username !== post.userId ? post.username : null;
+  const storedName = post.displayName && post.displayName !== post.userId ? post.displayName : null;
   return {
     id: post.id,
     userId: post.userId,
+    username: storedHandle || who.username,
+    displayName: storedName || who.displayName || storedHandle || who.username,
     content: post.content,
     title: post.title,
     mediaType: post.mediaType,

@@ -48,6 +48,7 @@ import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useAuth } from '@/hooks/useAuth';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -331,6 +332,7 @@ export function FeedTimelinePanel({
     isLive,
     lastUpdated,
   } = useRealtimeLens('feed');
+  const { user: feedUser } = useAuth();
 
   // ── Feed presence ──────────────────────────────────────────
   // Who's on the feed right now. 30s poll against /api/presence/active
@@ -1131,6 +1133,7 @@ export function FeedTimelinePanel({
                                 exit={{ opacity: 0, scale: 0.95, y: -4 }}
                                 className="absolute right-0 top-8 z-20 w-44 bg-lattice-surface border border-lattice-border rounded-xl shadow-lg overflow-hidden"
                               >
+                                {feedUser?.id && post.author?.id === feedUser.id && (
                                 <button
                                   onClick={() => {
                                     deletePostMutation.mutate(post.id);
@@ -1139,6 +1142,7 @@ export function FeedTimelinePanel({
                                 >
                                   <Trash2 className="w-4 h-4" /> Delete Post
                                 </button>
+                                )}
                                 <button
                                   onClick={() => {
                                     bookmarkMutation.mutate({ postId: post.id, authorId: post.author?.id });

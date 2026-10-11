@@ -102,6 +102,51 @@ describe("market parity macros (real Yahoo Finance feeds)", () => {
     assert.deepEqual(r.result.quotes, []);
   });
 
+  it("quotes-batch falls back to the v8 chart when v7 returns 401", async () => {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/v7/finance/quote")) {
+        return { ok: false, status: 401, json: async () => ({}) };
+      }
+      assert.match(u, /\/v8\/finance\/chart\/AAPL/);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          chart: {
+            result: [{
+              meta: {
+                symbol: "AAPL",
+                shortName: "Apple",
+                regularMarketPrice: 190,
+                chartPreviousClose: 180,
+                regularMarketVolume: 1000,
+              },
+            }],
+          },
+        }),
+      };
+    };
+    const r = await call("quotes-batch", ctxA, { symbols: ["AAPL"] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "yahoo-finance-chart");
+    assert.equal(r.result.quotes[0].price, 190);
+    assert.equal(r.result.quotes[0].name, "Apple");
+    assert.equal(r.result.quotes[0].marketCap, null);
+    assert.ok(Math.abs(r.result.quotes[0].pctChange1d - (10 / 180) * 100) < 0.01);
+  });
+
+  it("quotes-batch says quotes unavailable when v7 is 401 and the chart has no price", async () => {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/v7/finance/quote")) return { ok: false, status: 401, json: async () => ({}) };
+      return { ok: true, status: 200, json: async () => ({ chart: { result: [{ meta: {} }] } }) };
+    };
+    const r = await call("quotes-batch", ctxA, { symbols: ["AAPL"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "quotes unavailable");
+  });
+
   it("quotes-batch flags unknown symbols rather than synthesizing", async () => {
     mockYahoo({});
     const r = await call("quotes-batch", ctxA, { symbols: ["FAKE123"] });

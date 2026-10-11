@@ -37,6 +37,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { PriceFeedProvider, priceFeedLabel, useSharedPriceFeed, type PriceFeedStatus } from '@/lib/finance/price-feed';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
@@ -110,15 +111,32 @@ const fmtUsd = (v: number, opts: Intl.NumberFormatOptions = {}) =>
   }).format(v);
 
 export default function FinanceTerminalPage() {
+  return (
+    <PriceFeedProvider>
+      <FinanceTerminal />
+    </PriceFeedProvider>
+  );
+}
+
+function feedDot(status: PriceFeedStatus): 'live' | 'warning' | 'offline' | 'connecting' {
+  if (status === 'live') return 'live';
+  if (status === 'stale') return 'warning';
+  if (status === 'unavailable') return 'offline';
+  return 'connecting';
+}
+
+function FinanceTerminal() {
   useLensNav('finance');
   useLensIdentity('finance');
+  const priceFeed = useSharedPriceFeed();
+  const feedStatus: PriceFeedStatus = priceFeed?.status ?? 'loading';
 
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('overview');
   const [showSnapshot, setShowSnapshot] = useState(false);
 
-  const { latestData, isLive, lastUpdated } = useRealtimeLens('finance');
+  const { latestData } = useRealtimeLens('finance');
   const indices: IndexQuote[] = useMemo(() => {
     const quotes = ((latestData as { quotes?: Array<Record<string, unknown>> } | null)?.quotes) || [];
     return quotes.map((q) => {
@@ -198,7 +216,7 @@ export default function FinanceTerminalPage() {
     switch (group) {
       case 'overview':
         return function OverviewBody() {
-          return <OverviewPanel indices={indices} isLive={isLive} history={history} trend={trend} />;
+          return <OverviewPanel indices={indices} feedStatus={feedStatus} history={history} trend={trend} />;
         };
       case 'positions':
         return PositionsGroupPanel;
@@ -217,7 +235,7 @@ export default function FinanceTerminalPage() {
       default:
         return function Empty() { return null; };
     }
-  }, [group, indices, isLive, history, trend]);
+  }, [group, indices, feedStatus, history, trend]);
 
   return (
     <LensShell lensId="finance" asMain={false}>
@@ -229,9 +247,8 @@ export default function FinanceTerminalPage() {
               {current.title}{group === 'overview' && who ? `, ${who}` : ''}
             </h1>
             <div className="mt-2 flex items-center gap-2 text-[12px] text-zinc-500">
-              <StatusDot state={isLive ? 'live' : 'idle'} size="xs" />
-              <span>{isLive ? 'Market feed live' : 'Market feed idle'}</span>
-              {lastUpdated && <span className="text-zinc-600">· {new Date(lastUpdated).toLocaleTimeString()}</span>}
+              <StatusDot state={feedDot(feedStatus)} size="xs" />
+              <span>{priceFeedLabel(feedStatus)}</span>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 pt-2">

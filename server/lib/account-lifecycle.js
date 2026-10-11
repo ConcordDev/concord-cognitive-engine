@@ -533,12 +533,16 @@ export function exportUserData(db, userId) {
     ).all(userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export messages', { userId, err: err.message }); }
 
-  // Social posts
+  // Social posts — SQL rows plus the live in-memory feeds. Lens posts and
+  // the REST social layer both live in STATE and were omitted when only
+  // social_posts was read (that table stays empty unless a write landed).
   try {
     data.socialPosts = db.prepare(
       "SELECT id, content, created_at FROM social_posts WHERE user_id = ? OR author_id = ? ORDER BY created_at DESC LIMIT 5000"
     ).all(userId, userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export social posts', { userId, err: err.message }); }
+  try { mergeOwnedMemorySocialPosts(data, userId); }
+  catch (err) { console.warn('[account-lifecycle] data export: failed to merge in-memory social posts', { userId, err: err.message }); }
 
   // Chats — sessions this user owns, and the messages in those sessions.
   try {
@@ -592,6 +596,29 @@ function portableDtu(d) {
     created_at: d.created_at || d.createdAt || null,
     updated_at: d.updated_at || d.updatedAt || null,
   };
+}
+
+function mergeOwnedMemorySocialPosts(data, userId) {
+  if (!Array.isArray(data.socialPosts)) data.socialPosts = [];
+  const seen = new Set(data.socialPosts.map((p) => p.id));
+  const state = globalThis._concordSTATE;
+  const buckets = [];
+  const lens = state?.socialLens?.posts;
+  if (lens && typeof lens.values === "function") buckets.push(...lens.values());
+  const rest = state?._social?.posts;
+  if (rest && typeof rest.values === "function") buckets.push(...rest.values());
+  for (const p of buckets) {
+    if (!p || p.id == null || seen.has(p.id)) continue;
+    const owner = p.userId || p.authorId || p.author_id || null;
+    if (owner !== userId) continue;
+    data.socialPosts.push({
+      id: p.id,
+      content: p.content || p.body || "",
+      created_at: p.created_at ?? p.createdAt ?? null,
+      user_id: owner,
+    });
+    seen.add(p.id);
+  }
 }
 
 function mergeOwnedMemoryDtus(data, userId) {
