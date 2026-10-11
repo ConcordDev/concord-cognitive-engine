@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
+import { loadBoardTags } from '@/lib/dtu/list-pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowBigUp,
@@ -322,7 +323,10 @@ export function BoardPanel() {
 
   // API queries for supplementary real-data integration
   useQuery({ queryKey: ['forum-posts-api', selectedCommunity, sortMode], queryFn: () => apiHelpers.dtus.paginated({ tags: selectedCommunity !== 'all' ? selectedCommunity : undefined, pageSize: 50 }).then(r => r.data) });
-  useQuery({ queryKey: ['communities-api'], queryFn: () => apiHelpers.dtus.list().then(r => { const tags = new Set<string>(); (r.data?.dtus || []).forEach((d: Record<string, unknown>) => ((d.tags as string[]) || []).forEach(t => tags.add(t))); return { tags: Array.from(tags) }; }) });
+  const { data: boardTags = [] } = useQuery({
+    queryKey: ['board-dtu-tags'],
+    queryFn: () => loadBoardTags((params) => apiHelpers.dtus.list(params).then((r) => r.data)),
+  });
 
   // ----- Filtered & sorted posts -----
   const displayPosts = useMemo(() => {
@@ -818,6 +822,24 @@ export function BoardPanel() {
             ))}
           </div>
         </div>
+
+        {boardTags.length > 0 && (
+          <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 panel">
+            <h3 className="font-bold text-white mb-2 text-sm flex items-center gap-2"><Hash className="w-4 h-4" />Tags</h3>
+            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+              {boardTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => { setSearchQuery(tag); if (viewMode !== 'feed') backToFeed(); }}
+                  className="px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded-full text-[10px] text-orange-300 font-medium"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Lattice Rules */}
         <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 panel">

@@ -24,6 +24,7 @@ import {
   type BudgetSimulation,
 } from '@/lib/council/council-audit';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { loadCouncilDtus } from '@/lib/dtu/list-pages';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -523,8 +524,8 @@ export default function CouncilLensPage() {
     error: error3,
     refetch: refetch3,
   } = useQuery({
-    queryKey: ['dtus'],
-    queryFn: () => api.get('/api/dtus').then((r) => r.data),
+    queryKey: ['dtus', 'council-pages'],
+    queryFn: () => loadCouncilDtus((params) => api.get('/api/dtus', { params }).then((r) => r.data)),
   });
 
   const debateMutation = useMutation({
@@ -543,7 +544,7 @@ export default function CouncilLensPage() {
   const runArtifact = useRunArtifact('council');
 
   const personas: Persona[] = personasData?.personas || [];
-  const dtus: DTU[] = useMemo(() => dtusData?.dtus?.slice(0, 50) || [], [dtusData]);
+  const dtus: DTU[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
 
   // ----- Computed -----
   const selectedProposal = selectedProposalId

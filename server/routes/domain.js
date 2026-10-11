@@ -379,7 +379,7 @@ export default function registerDomainRoutes(app, {
       res.json({ ok: true, local: sz, marketplace: 0, global: sz, total: sz, localCount: sz, globalCount: sz, error: e.message, timeout: true });
     }
   }));
-  app.get("/api/scope/dtus/:scope", asyncHandler(async (req,res)=> res.json(await runMacro("emergent","scope.listByScope", { scope: req.params.scope, limit: Number(req.query.limit||50) }, makeCtx(req)))));
+  app.get("/api/scope/dtus/:scope", asyncHandler(async (req,res)=> res.json(await runMacro("emergent","scope.listByScope", { scope: req.params.scope, limit: Number(req.query.limit||50), offset: Number(req.query.offset||0) }, makeCtx(req)))));
   app.get("/api/scope/overrides", asyncHandler(async (req,res)=> res.json(await runMacro("emergent","scope.overrideLog", { limit: Number(req.query.limit||50) }, makeCtx(req)))));
   app.get("/api/scope/marketplace-analytics", asyncHandler(async (req,res)=> res.json(await runMacro("emergent","scope.marketplaceAnalytics", { limit: Number(req.query.limit||50) }, makeCtx(req)))));
 

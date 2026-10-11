@@ -766,7 +766,7 @@ export const apiHelpers = {
 
   // DTU operations (note: endpoint is /api/dtus - plural)
   dtus: {
-    list: (params?: { scope?: string }) => api.get('/api/dtus', { params }),
+    list: (params?: { scope?: string; limit?: number; offset?: number }) => api.get('/api/dtus', { params }),
     paginated: (params: {
       limit?: number;
       offset?: number;
@@ -2021,7 +2021,8 @@ export const apiHelpers = {
   // ---- Scope Operations (v5.2.0+) ----
   scope: {
     metrics: () => api.get('/api/scope/metrics'),
-    dtus: (scope: string) => api.get(`/api/scope/dtus/${scope}`),
+    dtus: (scope: string, params?: { limit?: number; offset?: number }) =>
+      api.get(`/api/scope/dtus/${scope}`, { params }),
     promote: (data: { dtuId: string; targetScope: string; reason?: string }) =>
       api.post('/api/scope/promote', data),
     validateGlobal: (data: { dtuId: string }) =>

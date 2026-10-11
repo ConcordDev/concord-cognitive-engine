@@ -1921,7 +1921,7 @@ import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
-import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -26035,15 +26035,24 @@ register("dtu", "list", async (ctx, input) => {
           lastWriteAt: globalThis._dtuLastWriteAt || 0,
           now: Date.now(),
         });
-        if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
-          const items = narrowListedDtus(r.dtus).slice(0, limit);
+        // Domain and kind are not sidecar params. They run in narrowListedDtus
+        // after the sidecar has already counted. Using that count makes
+        // mine+domain report the unfiltered total (1 docs row, total 46).
+        // Recount only when the body is the full candidate set. A partial
+        // page falls through to the in-process list, which filters first.
+        const postFilter = Boolean(domainWant || kindWant);
+        const pageComplete = sidecarCandidatePageIsComplete(r, offset);
+        if (!fallback && r && r.ok && Array.isArray(r.dtus) && (!postFilter || pageComplete)) {
+          const narrowed = narrowListedDtus(r.dtus);
+          const items = narrowed.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          return { ok: true, dtus: items, limit, offset, total: sidecarListTotal(r), _source: "dtu-sidecar" };
+          const total = postFilter ? narrowed.length : sidecarListTotal(r);
+          return { ok: true, dtus: items, limit, offset, total, _source: "dtu-sidecar" };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
