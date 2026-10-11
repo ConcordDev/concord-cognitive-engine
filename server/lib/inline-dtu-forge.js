@@ -25,6 +25,7 @@
 
 import crypto from "crypto";
 import { ACTION_TYPES, WRITE_ACTION_TYPES } from "./lens-manifest.js";
+import { applyPrivateOwner } from "./dtu-read-access.js";
 
 // ── Forge Detection ──────────────────────────────────────────────────────
 
@@ -368,6 +369,10 @@ export function wrapAsDTU(opts) {
   } catch {
     dtu.hash = `hash_${Date.now().toString(36)}`;
   }
+
+  // Keep scope "local". Visibility private so a forged artifact that
+  // contains the user's request is not an anonymous-readable DTU.
+  applyPrivateOwner(dtu, opts.userId);
 
   return dtu;
 }
