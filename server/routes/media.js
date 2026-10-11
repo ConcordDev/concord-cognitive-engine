@@ -45,6 +45,13 @@ import {
 } from "../lib/media-dtu.js";
 import { storeArtifact, retrieveArtifact, isSupportedType } from "../lib/artifact-store.js";
 import { screenForPublish, screenLocalSync } from "../lib/content-safety/index.js";
+import {
+  normalizeTiers,
+  pricedCreateOrCommercial,
+  resolvePlaybackBuffer,
+  sendRangedBuffer,
+  viewerMayStreamFull,
+} from "../lib/media-preview-window.js";
 
 // A content-classifier / CSAM provider is configured → run the full async screen.
 function _mediaProviderConfigured() {
@@ -179,6 +186,9 @@ export default function createMediaRouter({ STATE }) {
       privacy,
       tier,
       data,
+      previewStart,
+      previewDuration,
+      tiers,
     } = req.body;
 
     if (!title) throw new ValidationError("title is required");
@@ -264,6 +274,9 @@ export default function createMediaRouter({ STATE }) {
       privacy,
       tier,
       artifactRef,
+      previewStart,
+      previewDuration,
+      tiers: normalizeTiers(tiers),
     });
 
     if (!result.ok) {
@@ -428,33 +441,22 @@ export default function createMediaRouter({ STATE }) {
       // already the right behaviour for a missing artifact.
       const buffer = retrieveArtifact(mediaDTU.id, artifactRef);
       if (buffer && Buffer.isBuffer(buffer)) {
-        const total = buffer.length;
-        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
-        const range = req.headers.range;
-
-        if (range) {
-          const parts = range.replace(/bytes=/, "").split("-");
-          const start = parseInt(parts[0], 10) || 0;
-          const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
-          const chunkSize = end - start + 1;
-          res.status(206);
-          res.set({
-            "Content-Range": `bytes ${start}-${end}/${total}`,
-            "Accept-Ranges": "bytes",
-            "Content-Length": String(chunkSize),
-            "Content-Type": contentType,
-          });
-          return res.end(buffer.subarray(start, end + 1));
+        const resolved = resolvePlaybackBuffer(buffer, mediaDTU, viewerId, STATE);
+        if (!resolved.ok) {
+          return res.status(resolved.status).json({ ok: false, error: resolved.error });
         }
-
-        res.set({
-          "Content-Type": contentType,
-          "Content-Length": String(total),
-          "Accept-Ranges": "bytes",
-          "Cache-Control": "public, max-age=86400",
+        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
+        const priced = pricedCreateOrCommercial(mediaDTU);
+        return sendRangedBuffer(res, resolved.buffer, contentType, req.headers.range, {
+          privateCache: resolved.preview || priced,
         });
-        return res.end(buffer);
       }
+    }
+
+    // Priced Create/Commercial with no bytes on disk must not fall through to
+    // a metadata body that describes the full file to a non-licensee.
+    if (pricedCreateOrCommercial(mediaDTU) && !viewerMayStreamFull(STATE, mediaDTU, viewerId)) {
+      return res.status(403).json({ ok: false, error: "license_required" });
     }
 
     // Metadata-only fallback for legacy / unsigned media DTUs that were
@@ -694,7 +696,13 @@ export default function createMediaRouter({ STATE }) {
     const result = deleteMediaDTU(STATE, req.params.id, authorId);
     if (!result.ok) {
       if (result.error === "Media not found") throw new NotFoundError("Media", req.params.id);
-      throw new ValidationError(result.error);
+      // Return the status directly. Throwing ValidationError here is caught by
+      // the later chat-shaped error handler (mounted after this router) and
+      // rewritten as HTTP 200 { mode, sessionId, llmUsed }.
+      return res.status(403).json({
+        ok: false,
+        error: result.error || "Not authorized to delete this media",
+      });
     }
 
     res.json(result);

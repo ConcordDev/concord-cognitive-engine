@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import createMediaRouter from "../routes/media.js";
+import { grantMediaLicense } from "../lib/media-preview-window.js";
 
 /**
  * Mock Express Router + request/response for testing route handlers.
@@ -135,6 +136,9 @@ describe("routes/media", () => {
       let statusCode = 200;
       let responseBody = null;
       const sentHeaders = {};
+      // asyncHandler does not return its promise (errors go to next). Settle
+      // when the response is actually written, not when the wrapper returns.
+      let settle = () => {};
 
       const req = {
         body: opts.body || {},
@@ -147,45 +151,47 @@ describe("routes/media", () => {
 
       const res = {
         status(code) { statusCode = code; return res; },
-        json(data) { responseBody = data; return res; },
-        set(key, val) { sentHeaders[key] = val; return res; },
-        send(data) { responseBody = data; return res; },
+        json(data) { responseBody = data; settle(); return res; },
+        set(key, val) {
+          if (val === undefined && key && typeof key === "object") Object.assign(sentHeaders, key);
+          else sentHeaders[key] = val;
+          return res;
+        },
+        send(data) { responseBody = data; settle(); return res; },
+        end(data) { if (data !== undefined) responseBody = data; settle(); return res; },
       };
 
       for (const handler of handlers) {
-        let resolved = false;
-
         await new Promise((resolve) => {
+          let done = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          settle = finish;
           const next = (err) => {
-            if (err) {
-              if (err.statusCode) {
-                statusCode = err.statusCode;
-                responseBody = { ok: false, error: err.message, code: err.code };
-              }
+            if (err && err.statusCode) {
+              statusCode = err.statusCode;
+              responseBody = { ok: false, error: err.message, code: err.code };
             }
-            resolved = true;
-            resolve();
+            finish();
           };
 
           try {
             const result = handler(req, res, next);
-            if (result && typeof result.then === "function") {
-              result.then(() => { if (!resolved) resolve(); }).catch((e) => {
+            if (responseBody !== null) finish();
+            else if (result && typeof result.then === "function") {
+              result.then(() => finish()).catch((e) => {
                 if (e.statusCode) {
                   statusCode = e.statusCode;
                   responseBody = { ok: false, error: e.message, code: e.code };
                 }
-                resolve();
+                finish();
               });
-            } else if (!resolved) {
-              resolve();
             }
           } catch (e) {
             if (e.statusCode) {
               statusCode = e.statusCode;
               responseBody = { ok: false, error: e.message, code: e.code };
             }
-            resolve();
+            finish();
           }
         });
 
@@ -513,6 +519,155 @@ describe("routes/media", () => {
       });
 
       assert.equal(res.body.ok, true);
+    });
+
+    it("returns 403 JSON when the caller is not the author", async () => {
+      const upload = await router.call("post", "/upload", {
+        user: { id: "user-a" },
+        body: {
+          title: "Owned",
+          mediaType: "audio",
+          mimeType: "audio/mpeg",
+        },
+      });
+      const mediaId = upload.body.mediaDTU.id;
+
+      const res = await router.call("delete", "/:id", {
+        user: { id: "user-b" },
+        params: { id: mediaId },
+      });
+
+      assert.equal(res.status, 403);
+      assert.equal(res.body.ok, false);
+      assert.equal(typeof res.body.error, "string");
+      assert.ok(res.body.error.length > 0);
+      assert.equal(res.body.mode, undefined);
+      assert.equal(res.body.sessionId, undefined);
+      assert.equal(res.body.llmUsed, undefined);
+
+      const still = await router.call("get", "/:id", {
+        user: { id: "user-a" },
+        params: { id: mediaId },
+      });
+      assert.equal(still.status, 200);
+      assert.equal(still.body.mediaDTU.id, mediaId);
+    });
+  });
+
+  // ── Priced stream paywall ──────────────────────────────────────────
+
+  describe("GET /:id/stream paywall", () => {
+    const pricedTiers = [
+      { tier: "listen", enabled: true, price: 0 },
+      { tier: "create", enabled: true, price: 9.99 },
+      { tier: "commercial", enabled: true, price: 99.99 },
+    ];
+
+    function pcmWav(seconds = 3, sampleRate = 8000) {
+      const dataSize = seconds * sampleRate;
+      const buf = Buffer.alloc(44 + dataSize);
+      buf.write("RIFF", 0);
+      buf.writeUInt32LE(36 + dataSize, 4);
+      buf.write("WAVE", 8);
+      buf.write("fmt ", 12);
+      buf.writeUInt32LE(16, 16);
+      buf.writeUInt16LE(1, 20);
+      buf.writeUInt16LE(1, 22);
+      buf.writeUInt32LE(sampleRate, 24);
+      buf.writeUInt32LE(sampleRate, 28);
+      buf.writeUInt16LE(1, 32);
+      buf.writeUInt16LE(8, 34);
+      buf.write("data", 36);
+      buf.writeUInt32LE(dataSize, 40);
+      return buf;
+    }
+
+    async function uploadPriced(extra = {}) {
+      const wav = pcmWav();
+      const upload = await router.call("post", "/upload", {
+        user: { id: "user-a" },
+        body: {
+          title: "Priced tone",
+          mediaType: "audio",
+          mimeType: "audio/wav",
+          duration: 3,
+          fileSize: wav.length,
+          previewStart: 0,
+          previewDuration: 1,
+          tiers: pricedTiers,
+          data: wav.toString("base64"),
+          ...extra,
+        },
+      });
+      assert.equal(upload.status, 201, JSON.stringify(upload.body));
+      return { upload, wav, mediaId: upload.body.mediaDTU.id };
+    }
+
+    it("serves the owner the full file even on an oversized Range", async () => {
+      const { mediaId, wav } = await uploadPriced();
+      const res = await router.call("get", "/:id/stream", {
+        user: { id: "user-a" },
+        params: { id: mediaId },
+        headers: { range: "bytes=0-999999" },
+      });
+      assert.equal(res.status, 206);
+      assert.equal(res.body.length, wav.length);
+      assert.equal(res.headers["Content-Range"], `bytes 0-${wav.length - 1}/${wav.length}`);
+    });
+
+    it("serves a non-owner only the preview window, including oversized Range", async () => {
+      const { mediaId } = await uploadPriced();
+      const res = await router.call("get", "/:id/stream", {
+        user: { id: "user-b" },
+        params: { id: mediaId },
+        headers: { range: "bytes=0-999999" },
+      });
+      assert.equal(res.status, 206);
+      assert.ok(Buffer.isBuffer(res.body));
+      // 1s of 8 kHz 8-bit mono = 8000 samples + 44-byte PCM header.
+      assert.equal(res.body.length, 8044);
+      assert.equal(res.body.toString("ascii", 0, 4), "RIFF");
+      assert.equal(res.body.toString("ascii", 8, 12), "WAVE");
+      assert.equal(res.body.readUInt32LE(40), 8000);
+      assert.equal(res.headers["Content-Range"], "bytes 0-8043/8044");
+      assert.equal(res.headers["Cache-Control"], "private, no-store");
+    });
+
+    it("rejects a Range that starts past the preview window", async () => {
+      const { mediaId } = await uploadPriced();
+      const res = await router.call("get", "/:id/stream", {
+        user: { id: "user-b" },
+        params: { id: mediaId },
+        headers: { range: "bytes=20000-24043" },
+      });
+      assert.equal(res.status, 416);
+      assert.equal(res.body.ok, false);
+      assert.equal(res.body.error, "range_not_satisfiable");
+      assert.equal(res.headers["Content-Range"], "bytes */8044");
+    });
+
+    it("serves the full file to a license holder", async () => {
+      const { mediaId, wav } = await uploadPriced();
+      grantMediaLicense(STATE, mediaId, "user-b");
+      const res = await router.call("get", "/:id/stream", {
+        user: { id: "user-b" },
+        params: { id: mediaId },
+        headers: { range: "bytes=0-999999" },
+      });
+      assert.equal(res.status, 206);
+      assert.equal(res.body.length, wav.length);
+    });
+
+    it("returns 403 when a priced track has no preview window", async () => {
+      const { mediaId } = await uploadPriced({ previewDuration: 0 });
+      const res = await router.call("get", "/:id/stream", {
+        user: { id: "user-b" },
+        params: { id: mediaId },
+        headers: { range: "bytes=0-999999" },
+      });
+      assert.equal(res.status, 403);
+      assert.equal(res.body.ok, false);
+      assert.equal(res.body.error, "license_required");
     });
   });
 });
