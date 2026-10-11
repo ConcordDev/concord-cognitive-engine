@@ -204,7 +204,9 @@ export function VirtualDTUList({
                 )}
                 <span className="flex items-center gap-0.5">
                   <Clock className="w-3 h-3" />
-                  {formatRelativeTime(dtu.updatedAt)}
+                  {dtu.createdAt && !Number.isNaN(dtu.createdAt.getTime()) && dtu.createdAt.getTime() > 0
+                    ? formatRelativeTime(dtu.createdAt)
+                    : ''}
                 </span>
               </div>
             </div>

@@ -10,6 +10,14 @@ import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
 import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
+function respondDtuMutation(res, out) {
+  const error = String(out?.error || "");
+  if (out && out.ok === false && (out.status === 403 || /^unauthorized\b/i.test(error))) {
+    return res.status(403).json(out);
+  }
+  return res.json(out);
+}
+
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
 
   /** Parse limit/offset query params with sensible defaults and bounds. */
@@ -238,13 +246,13 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   // Extended DTU endpoints
   app.put("/api/dtus/:id", validate("dtuUpdate"), asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "update", { id: req.params.id, ...req.body }, makeCtx(req));
-    return res.json(out);
+    return respondDtuMutation(res, out);
   }));
 
   // PATCH is an alias for PUT — frontend client.ts sends PATCH for partial updates
   app.patch("/api/dtus/:id", asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "update", { id: req.params.id, ...req.body }, makeCtx(req));
-    return res.json(out);
+    return respondDtuMutation(res, out);
   }));
 
   app.delete("/api/dtus/:id", asyncHandler(async (req, res) => {
@@ -259,7 +267,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
       });
     }
 
-    return res.json(out);
+    return respondDtuMutation(res, out);
   }));
 
   app.post("/api/dtus/cluster", asyncHandler(async (req, res) => {

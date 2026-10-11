@@ -8,9 +8,10 @@
  * Page is a thin shell.
  */
 
-import { useCallback, useMemo, useState, type ComponentType } from 'react';
+import { Suspense, useCallback, useMemo, useState, type ComponentType } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Database, Wrench, TrendingUp, Cpu, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -23,7 +24,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { cn } from '@/lib/utils';
 import { BrowserPanel } from '@/components/dtus/BrowserPanel';
 import { WorkbenchPanel } from '@/components/dtus/WorkbenchPanel';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
@@ -31,11 +31,11 @@ import { OpsPanel } from '@/components/dtus/OpsPanel';
 
 type DtusView = 'browser' | 'workbench' | 'trending' | 'ops';
 
-const VIEWS: { id: DtusView; label: string; keys: string; title: string; hint: string; icon: typeof Database }[] = [
-  { id: 'browser', title: 'One unit of thought', label: 'Browser', keys: '1', hint: 'Vault list · compute actions', icon: Database },
-  { id: 'workbench', title: 'Cite it, trace it, layer it', label: 'Workbench', keys: '2', hint: 'Citation · lineage · bulk · layers', icon: Wrench },
-  { id: 'trending', title: 'What the lattice is reading', label: 'Trending', keys: '3', hint: 'Discovery trending', icon: TrendingUp },
-  { id: 'ops', title: 'Probe the substrate', label: 'Operations', keys: '4', hint: 'Substrate macro probes', icon: Cpu },
+const VIEWS: { id: DtusView; label: string; keys: string; title: string; hint: string }[] = [
+  { id: 'browser', title: 'One unit of thought', label: 'Browser', keys: '1', hint: 'Vault list · compute actions' },
+  { id: 'workbench', title: 'Cite it, trace it, layer it', label: 'Workbench', keys: '2', hint: 'Citation · lineage · bulk · layers' },
+  { id: 'trending', title: 'What the lattice is reading', label: 'Trending', keys: '3', hint: 'Discovery trending' },
+  { id: 'ops', title: 'Probe the substrate', label: 'Operations', keys: '4', hint: 'Substrate macro probes' },
 ];
 
 function TrendingPane() {
@@ -53,9 +53,11 @@ const PANELS: Record<DtusView, ComponentType> = {
   ops: OpsPanel,
 };
 
-export default function DTUBrowserPage() {
+function DTUBrowserPageInner() {
   useLensNav('dtus');
   useLensIdentity('dtus');
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
   const reduceMotion = useReducedMotion();
   const { isLive, lastUpdated } = useRealtimeLens('dtus');
   const { user } = useAuth();
@@ -116,34 +118,10 @@ export default function DTUBrowserPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="DTU views">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            const on = active === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setActive(v.id)}
-                aria-current={on ? 'page' : undefined}
-                title={`${v.hint} (${v.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {v.label}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{v.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
         <main className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
-              <Panel />
+              {active === 'browser' ? <BrowserPanel initialQuery={initialQuery} /> : <Panel />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -161,5 +139,13 @@ export default function DTUBrowserPage() {
         </button>
       </div>
     </LensShell>
+  );
+}
+
+export default function DTUBrowserPage() {
+  return (
+    <Suspense fallback={null}>
+      <DTUBrowserPageInner />
+    </Suspense>
   );
 }

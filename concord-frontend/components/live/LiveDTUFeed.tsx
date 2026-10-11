@@ -7,6 +7,7 @@ import { subscribe, connectSocket } from '@/lib/realtime/socket';
 import { isInViewport } from '@/lib/utils';
 import { Zap, Sparkles, Star, Ghost, Tag } from 'lucide-react';
 import { TierBadge } from '@/components/dtu/TierBadge';
+import { dtuEventTime } from '@/lib/dtu/display';
 
 interface DTUEvent {
   id: string;
@@ -30,8 +31,10 @@ const TIER_CONFIG: Record<string, { icon: typeof Zap; color: string; label: stri
 };
 
 function formatTimeAgo(dateStr: string): string {
+  if (!dateStr) return '';
   const now = Date.now();
   const then = new Date(dateStr).getTime();
+  if (Number.isNaN(then)) return '';
   const diffMs = now - then;
   const diffSec = Math.floor(diffMs / 1000);
   if (diffSec < 60) return 'just now';
@@ -100,7 +103,7 @@ function LiveDTUFeed({
           emergent: d.emergent || d.actor || '',
           source: d.source || '',
           tags: Array.isArray(d.tags) ? d.tags : [],
-          timestamp: d.timestamp || new Date().toISOString(),
+          timestamp: dtuEventTime(d),
           isNew: false,
         }))
       );
@@ -121,7 +124,7 @@ function LiveDTUFeed({
         emergent: (data.emergent as string) || (data.actor as string) || '',
         source: (data.source as string) || '',
         tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-        timestamp: (data.timestamp as string) || new Date().toISOString(),
+        timestamp: dtuEventTime({ createdAt: data.createdAt, timestamp: data.timestamp }),
         isNew: true,
       };
 
