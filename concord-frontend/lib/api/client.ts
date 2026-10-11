@@ -564,6 +564,8 @@ api.interceptors.response.use(
           const code = data?.code;
           if (code === 'CSRF_FAILED') {
             store.addToast({ type: 'warning', message: 'Session security token expired. Refresh the page and try again.' });
+          } else if (code === 'not_owner') {
+            store.addToast({ type: 'error', message: 'That belongs to another account.' });
           } else if (code === 'PERMISSION_DENIED' && data?.permission) {
             store.addToast({ type: 'error', message: `Permission denied: ${data.permission}` });
           } else if (!isBackgroundFetch) {
@@ -1525,6 +1527,7 @@ export const apiHelpers = {
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),
+    remove: (dtuId: string) => api.delete(`/api/srs/${dtuId}`),
   },
 
   // Commonsense knowledge

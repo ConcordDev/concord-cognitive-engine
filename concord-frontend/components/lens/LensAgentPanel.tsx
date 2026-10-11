@@ -409,11 +409,11 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
               {(turn.agent.artifacts || []).length > 0 && (
                 <div className="space-y-2 px-1">
                   {turn.agent.artifacts!.map((a, ai) => {
-                    if (a.kind === 'image' && a.image_b64) {
+                    if (a.kind === 'image' && (a.url || a.image_b64)) {
                       return (
                         <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={`data:image/png;base64,${a.image_b64}`} alt={a.prompt || 'Generated'} className="w-full h-auto" />
+                          <img src={a.url || `data:image/png;base64,${a.image_b64}`} alt={a.prompt || 'Generated'} className="w-full h-auto" />
                         </div>
                       );
                     }

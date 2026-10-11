@@ -1,27 +1,22 @@
+import type { ComponentProps } from 'react';
 import { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
 import { PublicDTUView } from './PublicDTUView';
+import { fetchOwnerDtu } from '@/lib/dtu/public-fetch';
 
 /**
- * Public DTU Sharing Page — /dtu/[id]
+ * Public DTU page — /dtu/[id]
  *
- * Read-only view of a DTU accessible without login.
- * Generates OG metadata from DTU content for social sharing.
- * Server-side data fetch for SEO + generateMetadata.
+ * Server fetch goes to the backend with the viewer's cookies and a 5s
+ * timeout. A miss or a timeout calls notFound() so the owner is not
+ * shown "DTU Not Found" after a 60s hang, and everyone else gets the
+ * app 404 page.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-async function fetchDTU(id: string) {
-  try {
-    const res = await fetch(`${API_BASE}/api/dtus/${id}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.dtu || data || null;
-  } catch {
-    return null;
-  }
+async function loadDtu(id: string) {
+  const jar = await cookies();
+  return fetchOwnerDtu(id, jar.toString());
 }
 
 export async function generateMetadata({
@@ -30,7 +25,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const dtu = await fetchDTU(id);
+  const { dtu } = await loadDtu(id);
 
   if (!dtu) {
     return {
@@ -39,13 +34,11 @@ export async function generateMetadata({
     };
   }
 
-  const title = dtu.title || dtu.name || 'Untitled DTU';
+  const title = (typeof dtu.title === 'string' && dtu.title) || (typeof dtu.name === 'string' && dtu.name) || 'Untitled DTU';
   const description =
-    (typeof dtu.content === 'string' ? dtu.content : dtu.summary || dtu.description || '').slice(
-      0,
-      200
-    ) || 'A thought unit on Concord OS';
-  const tierLabel = dtu.tier ? `${dtu.tier.toUpperCase()} DTU` : 'DTU';
+    (typeof dtu.content === 'string' ? dtu.content : typeof dtu.summary === 'string' ? dtu.summary : '').slice(0, 200)
+    || 'A thought unit on Concord OS';
+  const tierLabel = typeof dtu.tier === 'string' ? `${dtu.tier.toUpperCase()} DTU` : 'DTU';
 
   return {
     title: `${title} | ${tierLabel} | Concord OS`,
@@ -55,14 +48,7 @@ export async function generateMetadata({
       description,
       type: 'article',
       siteName: 'Concord OS',
-      images: [
-        {
-          url: '/og-image.png',
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -75,18 +61,7 @@ export async function generateMetadata({
 
 export default async function PublicDTUPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  let dtu = null;
-  let fetchError: string | null = null;
-  try {
-    dtu = await fetchDTU(id);
-  } catch (err) {
-    fetchError = err instanceof Error ? err.message : 'Failed to load';
-  }
-
-  if (fetchError) {
-    return <div className="p-8 text-center text-red-400">Error: {fetchError}</div>;
-  }
-
-  return <PublicDTUView dtu={dtu} dtuId={id} />;
+  const { dtu, status } = await loadDtu(id);
+  if (!dtu || status === 404) notFound();
+  return <PublicDTUView dtu={dtu as unknown as ComponentProps<typeof PublicDTUView>['dtu']} dtuId={id} />;
 }

@@ -31,6 +31,7 @@
 
 import logger from '../logger.js';
 import { TASK_PROMPTS } from './prompt-registry.js';
+import { privateDtuHiddenFrom, privateOwnerStamp, realDtuOwnerId } from './dtu-read-access.js';
 
 const DEFAULT_STATS = {
   queriesResolved: 0,
@@ -626,8 +627,9 @@ export function createOracleEngine(opts = {}) {
    * primary domains, prefer DTUs tagged with those; otherwise take the
    * first N DTUs from the store.
    */
-  function _buildCandidates(analysis, limit = 500) {
+  function _buildCandidates(analysis, limit = 500, visible = null) {
     if (!dtuStore || typeof dtuStore.values !== 'function') return [];
+    const ok = typeof visible === 'function' ? visible : () => true;
 
     const primaryDomains = (analysis?.primaryDomains || []).map(d => String(d).toLowerCase());
     const candidates = [];
@@ -636,6 +638,7 @@ export function createOracleEngine(opts = {}) {
     if (primaryDomains.length > 0) {
       for (const dtu of dtuStore.values()) {
         if (!dtu || typeof dtu !== 'object') continue;
+        if (!ok(dtu)) continue;
         const tags = (dtu.tags || []).map(t => String(t).toLowerCase());
         const inDomain = primaryDomains.some(d => tags.includes(d))
           || primaryDomains.some(d => String(dtu.id || '').toLowerCase().includes(d));
@@ -650,6 +653,7 @@ export function createOracleEngine(opts = {}) {
     if (candidates.length < limit) {
       for (const dtu of dtuStore.values()) {
         if (!dtu || typeof dtu !== 'object') continue;
+        if (!ok(dtu)) continue;
         if (seen.has(dtu.id)) continue;
         candidates.push(dtu);
         if (candidates.length >= limit) break;
@@ -668,9 +672,17 @@ export function createOracleEngine(opts = {}) {
    *
    * @param {string} query
    * @param {object} analysis
+   * @param {string|null} [readerId] real user id of the asker; private DTUs
+   *   belonging to anyone else stay out of synthesis
    * @returns {Promise<object>}
    */
-  async function retrieve(query, analysis) {
+  async function retrieve(query, analysis, readerId = null) {
+    const reader = realDtuOwnerId(readerId);
+    // Non-DTU handler rows are not prompt captures; leave them in place.
+    const visible = (d) => {
+      if (!d || typeof d !== 'object') return true;
+      return !privateDtuHiddenFrom(d, reader);
+    };
     if (!dtuStore || typeof dtuStore.values !== 'function') {
       return {
         dtus: [],
@@ -715,6 +727,7 @@ export function createOracleEngine(opts = {}) {
     if (isDeep) {
       const scored = [];
       for (const dtu of dtuStore.values()) {
+        if (!visible(dtu)) continue;
         if (!_isAnswerSeedDTU(dtu)) continue;
         const base = _scoreAnswerDTU(query, dtu);
         const boosted = Math.min(1, base * 2);
@@ -729,7 +742,7 @@ export function createOracleEngine(opts = {}) {
 
     // ── Semantic search ─────────────────────────────────────────────────
     let semantic = [];
-    const candidates = _buildCandidates(analysis, 500);
+    const candidates = _buildCandidates(analysis, 500, visible);
     try {
       const emb = await _getEmbeddings();
       if (emb && typeof emb.semanticSearch === 'function' && typeof emb.isEmbeddingAvailable === 'function' && emb.isEmbeddingAvailable()) {
@@ -757,7 +770,7 @@ export function createOracleEngine(opts = {}) {
           if (qVec) {
             const res = await qd.search(qVec, 50);
             if (res?.ok && Array.isArray(res.hits) && res.hits.length) {
-              semantic = res.hits.map((h) => dtuStore.get(h.dtuId)).filter(Boolean);
+              semantic = res.hits.map((h) => dtuStore.get(h.dtuId)).filter(visible);
               stats.embeddingSearches++;
             }
           }
@@ -771,6 +784,7 @@ export function createOracleEngine(opts = {}) {
     if (!Array.isArray(semantic) || semantic.length === 0) {
       semantic = _tagTermSearch(q, candidates, 24);
     }
+    semantic = (Array.isArray(semantic) ? semantic : []).filter(visible);
 
     // ── Domain-specific retrieval ───────────────────────────────────────
     const domainSpecific = [];
@@ -786,8 +800,8 @@ export function createOracleEngine(opts = {}) {
         else if (typeof handler === 'function') listFn = handler;
         if (!listFn) continue;
         const result = await listFn({ query: q, domain, analysis });
-        if (Array.isArray(result)) domainSpecific.push(...result);
-        else if (result && Array.isArray(result.items)) domainSpecific.push(...result.items);
+        if (Array.isArray(result)) domainSpecific.push(...result.filter(visible));
+        else if (result && Array.isArray(result.items)) domainSpecific.push(...result.items.filter(visible));
       } catch (e) {
         log('debug', 'retrieve_domain_list_failed', { domain, error: e?.message });
       }
@@ -799,7 +813,7 @@ export function createOracleEngine(opts = {}) {
       const qLower = q.toLowerCase();
       const qTerms = qLower.split(/\W+/).filter(t => t.length > 3);
       for (const dtu of dtuStore.values()) {
-        if (!dtu || typeof dtu !== 'object') continue;
+        if (!visible(dtu)) continue;
         if (dtu.type !== 'oracle_answer') continue;
         const prevQ = String(dtu.core?.query || '').toLowerCase();
         if (!prevQ) continue;
@@ -850,20 +864,21 @@ export function createOracleEngine(opts = {}) {
     try {
       const emb = await _getEmbeddings();
       if (emb && typeof emb.findCrossDomainConnections === 'function') {
-        const allDTUs = Array.from(dtuStore.values());
+        const allDTUs = Array.from(dtuStore.values()).filter(visible);
         const seeds = [
           primaryAnswerDTU,
           ...(Array.isArray(semantic) ? semantic.slice(0, 3) : []),
-        ].filter(Boolean);
+        ].filter(visible);
         const seenIds = new Set();
         for (const seed of seeds) {
           if (!seed?.id) continue;
           const conns = await emb.findCrossDomainConnections(seed.id, allDTUs, 3);
           for (const c of (conns || [])) {
-            if (c?.id && !seenIds.has(c.id)) {
-              crossDomainConnections.push(c);
-              seenIds.add(c.id);
-            }
+            if (!c?.id || seenIds.has(c.id)) continue;
+            const full = typeof dtuStore.get === 'function' ? (dtuStore.get(c.id) || c) : c;
+            if (!visible(full) || (c.dtu && !visible(c.dtu))) continue;
+            crossDomainConnections.push(c);
+            seenIds.add(c.id);
           }
           if (crossDomainConnections.length >= 8) break;
         }
@@ -877,6 +892,7 @@ export function createOracleEngine(opts = {}) {
     const mergedIds = new Set();
     const push = (d) => {
       if (!d || typeof d !== 'object') return;
+      if (!visible(d)) return;
       if (!d.id || mergedIds.has(d.id)) return;
       merged.push(d);
       mergedIds.add(d.id);
@@ -1866,6 +1882,15 @@ export function createOracleEngine(opts = {}) {
   async function record(query, answer, citations, validation, stsvk, extras = {}) {
     if (!dtuStore || typeof dtuStore.set !== 'function') return null;
 
+    // The prompt and the answer are the user's. Persist only when a real
+    // requester can own the row. An ownerless oracle_answer is anonymous-
+    // readable under the private-read gate and the chat consent filter.
+    const stamp = privateOwnerStamp(extras?.userId);
+    if (!stamp) {
+      log('debug', 'oracle_record_skipped_no_owner', {});
+      return null;
+    }
+
     const id = `dtu_oracle_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const nowISO = new Date().toISOString();
 
@@ -1919,6 +1944,7 @@ export function createOracleEngine(opts = {}) {
       },
       machine: {
         kind: 'oracle_answer',
+        userId: stamp.ownerId,
         validation,
         stsvk: stsvk || null,
         regime,
@@ -1927,6 +1953,7 @@ export function createOracleEngine(opts = {}) {
       },
       createdAt: nowISO,
       updatedAt: nowISO,
+      ...stamp,
     };
 
     let recordedId = null;
@@ -2038,7 +2065,8 @@ export function createOracleEngine(opts = {}) {
     // Annotate analysis with deep-question flag for downstream consumers.
     try { analysis.deepQuestion = detectDeepQuestion(query, analysis); } catch { /* noop */ }
 
-    const retrieval = await retrieve(query, analysis);
+    const readerId = realDtuOwnerId(context?.userId);
+    const retrieval = await retrieve(query, analysis, readerId);
     const computation = await compute(query, analysis, retrieval);
     const stsvk = computation?.stsvk || null;
 

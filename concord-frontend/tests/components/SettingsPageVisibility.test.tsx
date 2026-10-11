@@ -1,23 +1,11 @@
 /**
- * Pins the DET-C batch 8 fix: the Settings > Privacy "World Visible to
- * Others" toggle used to be pure localStorage decoration — nothing ever
- * emitted `player:visibility` (server.js's BD#27 ghost/appear-offline
- * handler), so `player:visibility:ack` / `player:visibility:nack` were
- * genuinely dead broadcasts. Saving a changed toggle now emits the real
- * socket request and surfaces the honest ack/nack/timeout result.
+ * World visibility is a live `player:visibility` request. Apply does
+ * nothing until the toggle actually changes, so a saved volume form
+ * cannot be the thing that writes this.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-
-const mockBack = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ back: mockBack, push: vi.fn(), replace: vi.fn(), forward: vi.fn(), refresh: vi.fn() }),
-}));
-
-vi.mock('@/components/system/DomainProbeCard', () => ({
-  DomainProbeCard: () => null,
-}));
 
 type Listener = (data: unknown) => void;
 const listeners: Record<string, Listener[]> = {};
@@ -38,37 +26,35 @@ function fireServerEvent(event: string, data: unknown) {
   for (const cb of listeners[event] || []) cb(data);
 }
 
-import SettingsPage from '@/app/settings/page';
+import { WorldVisibilityControl } from '@/components/settings/WorldVisibilityControl';
 
 beforeEach(() => {
-  localStorage.clear();
   emitMock.mockClear();
-  mockBack.mockClear();
   Object.keys(listeners).forEach((k) => delete listeners[k]);
 });
 
-function clickWorldVisibilityToggle() {
-  fireEvent.click(screen.getByText('Privacy'));
-  const toggleRow = screen.getByText('World Visible to Others').closest('div')!;
-  const toggleBtn = toggleRow.querySelector('button')!;
-  fireEvent.click(toggleBtn);
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+function toggleVisibility() {
+  const row = screen.getByText('World Visible to Others').closest('div')!;
+  fireEvent.click(row.querySelector('button')!);
 }
 
-describe('SettingsPage — live world-visibility round trip', () => {
-  it('does not emit player:visibility when saving without a privacy change', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Privacy');
-    fireEvent.click(screen.getByText('Apply'));
-    expect(emitMock).not.toHaveBeenCalledWith('player:visibility', expect.anything());
-    expect(mockBack).toHaveBeenCalled();
+describe('WorldVisibilityControl — live world-visibility round trip', () => {
+  it('starts visible and does not emit when Apply is pressed unchanged', () => {
+    render(<WorldVisibilityControl />);
+    expect(screen.getByText('On')).toBeTruthy();
+    expect(screen.getByTestId('visibility-apply')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
+    expect(emitMock).not.toHaveBeenCalled();
   });
 
-  it('emits player:visibility and shows the honest ack result when the toggle changes', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Privacy');
-
-    clickWorldVisibilityToggle();
-    fireEvent.click(screen.getByText('Apply'));
+  it('emits player:visibility and shows the honest ack when the toggle changes', async () => {
+    render(<WorldVisibilityControl />);
+    toggleVisibility();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
 
     expect(emitMock).toHaveBeenCalledWith('player:visibility', { mode: 'hidden' });
 
@@ -81,12 +67,30 @@ describe('SettingsPage — live world-visibility round trip', () => {
     });
   });
 
-  it('shows an honest not-connected message on nack, never a fabricated success', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Privacy');
+  it('emits visible again after the player turns presence back on', async () => {
+    render(<WorldVisibilityControl />);
+    toggleVisibility();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
+    await act(async () => {
+      fireServerEvent('player:visibility:ack', { mode: 'hidden' });
+    });
+    await screen.findByRole('status');
 
-    clickWorldVisibilityToggle();
-    fireEvent.click(screen.getByText('Apply'));
+    toggleVisibility();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
+    expect(emitMock).toHaveBeenCalledWith('player:visibility', { mode: 'visible' });
+    await act(async () => {
+      fireServerEvent('player:visibility:ack', { mode: 'visible' });
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toMatch(/visible to other players/);
+    });
+  });
+
+  it('shows an honest not-connected message on nack', async () => {
+    render(<WorldVisibilityControl />);
+    toggleVisibility();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
 
     await act(async () => {
       fireServerEvent('player:visibility:nack', { reason: 'invalid_mode' });
@@ -95,5 +99,16 @@ describe('SettingsPage — live world-visibility round trip', () => {
     await waitFor(() => {
       expect(screen.getByRole('status').textContent).toMatch(/Could not apply live visibility/);
     });
+  });
+
+  it('says the world socket is down when the ack never arrives', async () => {
+    vi.useFakeTimers();
+    render(<WorldVisibilityControl />);
+    toggleVisibility();
+    fireEvent.click(screen.getByTestId('visibility-apply'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+    expect(screen.getByRole('status').textContent).toMatch(/Not connected to a world/);
   });
 });

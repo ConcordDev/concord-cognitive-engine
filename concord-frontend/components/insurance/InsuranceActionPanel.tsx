@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check, Receipt, ClipboardCheck, LineChart, Plus, X } from 'lucide-react';
+import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check, Receipt, ClipboardCheck, LineChart, Plus, X, Wrench } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -70,6 +70,7 @@ export function InsuranceActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
   const err = (t: string) => setFeedback({ kind: 'err', text: t });
@@ -246,20 +247,41 @@ export function InsuranceActionPanel() {
         <button type="button" onClick={addHistoryRow} className="text-[11px] inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"><Plus className="w-3 h-3" /> Add renewal point</button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {actions.map(a => {
-          const Icon = a.icon; const isBusy = busy === a.id;
-          return (
-            <button key={a.id} type="button" disabled={!!busy} onClick={a.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
-              <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
-                {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-              </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
-            </button>
-          );
-        })}
+      <div className="relative">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={toolsOpen}
+          aria-controls="insurance-tools-menu"
+          onClick={() => setToolsOpen((open) => !open)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[12px] font-medium text-zinc-100 hover:bg-zinc-800"
+        >
+          <Wrench className="h-3.5 w-3.5" />
+          Tools
+        </button>
+        {toolsOpen && (
+          <div id="insurance-tools-menu" role="menu" aria-label="Insurance tools" className="absolute left-0 z-20 mt-1 w-64 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-950 p-1 shadow-lg">
+            {actions.map(a => {
+              const Icon = a.icon; const isBusy = busy === a.id;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="menuitem"
+                  disabled={!!busy}
+                  onClick={() => { setToolsOpen(false); void a.handler(); }}
+                  className={cn('flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-zinc-800', 'disabled:opacity-40 disabled:cursor-not-allowed')}
+                >
+                  {isBusy ? <Loader2 className="mt-0.5 h-3.5 w-3.5 animate-spin" /> : <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: a.accent }} />}
+                  <span>
+                    <span className="block text-[12px] font-medium text-zinc-100">{a.label}</span>
+                    <span className="block text-[10px] text-zinc-400">{a.desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">

@@ -103,14 +103,17 @@ export function TrackCard({
       } catch { /* Web Audio not available */ }
       return;
     }
+    const player = getPlayer();
     if (isCurrentTrack) {
-      const player = getPlayer();
       if (isPlaying) player.pause();
-      else player.play();
+      else void player.play().catch(() => {});
     } else {
+      void player.primeAndPlay(track).catch(() => {});
       playTrack(track);
     }
   };
+
+  const playLabel = isPlaying ? `Pause ${track.title}` : `Play ${track.title}`;
 
   const handleAddToQueue = () => {
     addToQueue(track);
@@ -135,7 +138,9 @@ export function TrackCard({
 
           {/* Play overlay */}
           <button
+            type="button"
             onClick={handlePlay}
+            aria-label={playLabel}
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30"
           >
             <div className="w-12 h-12 rounded-full bg-neon-cyan flex items-center justify-center shadow-lg shadow-neon-cyan/30">
@@ -234,7 +239,9 @@ export function TrackCard({
       >
         {/* Play button / track number */}
         <button
+          type="button"
           onClick={handlePlay}
+          aria-label={playLabel}
           className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-400 group-hover:text-white transition-colors relative"
         >
           {isPlaying ? (

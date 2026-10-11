@@ -47,6 +47,8 @@ export function Toasts() {
           id={toast.id}
           type={toast.type}
           message={toast.message}
+          href={toast.href}
+          linkLabel={toast.linkLabel}
           duration={toast.duration}
           onClose={() => removeToast(toast.id)}
         />
@@ -59,11 +61,13 @@ interface ToastProps {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
+  href?: string;
+  linkLabel?: string;
   duration?: number;
   onClose: () => void;
 }
 
-function Toast({ type, message, duration = TOAST_DURATION, onClose }: ToastProps) {
+function Toast({ type, message, href, linkLabel, duration = TOAST_DURATION, onClose }: ToastProps) {
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(onClose, duration);
@@ -106,6 +110,11 @@ function Toast({ type, message, duration = TOAST_DURATION, onClose }: ToastProps
     >
       <Icon className={`w-5 h-5 ${text} flex-shrink-0`} />
       <p className="flex-1 text-sm text-white">{message}</p>
+      {href && href.startsWith('/') && (
+        <a href={href} className={`text-sm underline ${text}`}>
+          {linkLabel || 'Open'}
+        </a>
+      )}
       <button
         onClick={onClose}
         className="p-1 rounded hover:bg-white/10 transition-colors flex-shrink-0"

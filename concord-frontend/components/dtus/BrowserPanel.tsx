@@ -6,7 +6,7 @@
  * duplicateDetection via lensRun; REST via apiHelpers.dtus.*.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,14 +15,12 @@ import type { DTU, DTUTier } from '@/lib/api/generated-types';
 import { VirtualDTUList } from '@/components/lists/VirtualDTUList';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { DTUQuickCreate } from '@/components/dtu/DTUQuickCreate';
-import { LiveDTUFeed } from '@/components/live/LiveDTUFeed';
 import { Skeleton, SkeletonTableRows, EmptyState, ErrorState } from '@/components/ui';
-import { useLatticeStore, selectDTUsByTier, selectFilteredDTUs } from '@/store/lattice';
-import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
+import { dtuCreatedAt, formatDtuPageCount, resolveDtuTotal } from '@/lib/dtu/display';
 import {
-  Database, Plus, RefreshCw, ChevronLeft, ChevronRight,
-  Search, Filter, Zap, LayoutGrid, List, Tag, Clock,
+  Database, RefreshCw, ChevronLeft, ChevronRight,
+  Search, Zap, LayoutGrid, List, Plus,
   Loader2, XCircle, GitFork, Award, Network, Layers, Copy, BarChart3, AlertTriangle,
 } from 'lucide-react';
 
@@ -92,18 +90,17 @@ function buildComputeActionInput(action: string, target: DTU | undefined, target
   }
 }
 
-export function BrowserPanel() {
+export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
 
   const queryClient = useQueryClient();
 
   // State
   const [page, setPage] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [tierFilter, setTierFilter] = useState<DTUTier | 'all'>('all');
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [showFeed, setShowFeed] = useState(true);
   // Default to the viewer's own vault — not the shared global substrate, which
   // carries feed-ingested + system DTUs a user never created.
   const [scope, setScope] = useState<'mine' | 'global'>('mine');
@@ -117,7 +114,6 @@ export function BrowserPanel() {
       { id: 'view-list', keys: 'l', description: 'List view', category: 'view', action: () => setViewMode('list') },
       { id: 'view-grid', keys: 'g', description: 'Grid view', category: 'view', action: () => setViewMode('grid') },
       { id: 'new-dtu', keys: 'n', description: 'New DTU', category: 'actions', action: () => setShowCreateForm(true) },
-      { id: 'toggle-feed', keys: 'f', description: 'Toggle live feed', category: 'view', action: () => setShowFeed((v) => !v) },
       { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
       { id: 'tier-all',     keys: 'shift+1', description: 'All tiers',     category: 'view', action: () => setTierFilter('all') },
       { id: 'tier-regular', keys: 'shift+2', description: 'Regular tier',  category: 'view', action: () => setTierFilter('regular') },
@@ -130,6 +126,7 @@ export function BrowserPanel() {
   // Backend action wiring
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Target resolution: the DTU the user explicitly selected, falling back to
   // the first row of the real loaded corpus (never a generic lens-artifact
@@ -165,6 +162,7 @@ export function BrowserPanel() {
         items?: DTU[];
         total?: number;
         hasMore?: boolean;
+        pagination?: { total?: number; hasNext?: boolean };
       };
     },
     staleTime: 15_000,
@@ -173,7 +171,7 @@ export function BrowserPanel() {
   const dtus: DTU[] = useMemo(() => data?.dtus || data?.items || [], [data?.dtus, data?.items]);
 
   const handleDtusAction = useCallback(async (action: string) => {
-    const targetId = selectedDtuId || dtus[0]?.id;
+    const targetId = selectedDtuId;
     if (!targetId) return;
     setIsRunning(action);
     try {
@@ -199,29 +197,12 @@ export function BrowserPanel() {
     setIsRunning(null);
   }, [selectedDtuId, dtus]);
 
-  // Real-time tier counts from the lattice store (populated by socket events)
-  // zustand v5: these selectors build a fresh object/array each call, so they
-  // MUST go through useShallow or v5's useSyncExternalStore throws the
-  // "maximum update depth" infinite-loop error (React #185) — which is exactly
-  // what was crashing this lens.
-  const tierCounts = useLatticeStore(useShallow(selectDTUsByTier));
-
-  // Sync page filters into the lattice store so selectFilteredDTUs stays current
-  const setTierFilterStore = useLatticeStore((s) => s.setTierFilter);
-  const setSearchQueryStore = useLatticeStore((s) => s.setSearchQuery);
-  useEffect(() => { setTierFilterStore(tierFilter); }, [tierFilter, setTierFilterStore]);
-  useEffect(() => { setSearchQueryStore(searchQuery); }, [searchQuery, setSearchQueryStore]);
-
-  // Filtered DTUs from the lattice store (real-time, reflecting socket-pushed DTUs)
-  const filteredStoreDTUs = useLatticeStore(useShallow(selectFilteredDTUs));
-
-  const total = data?.total || 0;
+  const total = resolveDtuTotal(data);
+  const pageCountLabel = formatDtuPageCount(page, PAGE_SIZE, total);
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const hasMore = data?.hasMore ?? (page + 1) < totalPages;
+  const hasMore = data?.hasMore ?? data?.pagination?.hasNext ?? (page + 1) < totalPages;
 
-  // What the Compute Actions panel will actually run against — the user's
-  // explicit selection, or the first row of the real loaded corpus.
-  const computeActionTargetId = selectedDtuId || dtus[0]?.id || null;
+  const computeActionTargetId = selectedDtuId;
   const computeActionTargetLabel = dtus.find((d) => d.id === computeActionTargetId)?.title
     || dtus.find((d) => d.id === computeActionTargetId)?.summary
     || computeActionTargetId;
@@ -233,8 +214,8 @@ export function BrowserPanel() {
     excerpt: d.summary || d.content?.slice(0, 120),
     tier: (d.tier || 'regular') as 'regular' | 'mega' | 'hyper' | 'shadow',
     tags: d.tags || [],
-    createdAt: new Date(d.timestamp || Date.now()),
-    updatedAt: new Date(d.updatedAt || d.timestamp || Date.now()),
+    createdAt: dtuCreatedAt(d) ?? new Date(0),
+    updatedAt: dtuCreatedAt(d) ?? new Date(0),
     resonance: d.resonance,
     connectionCount: (d.children?.length || 0) + (d.parents?.length || 0),
     isFavorite: false,
@@ -256,6 +237,46 @@ export function BrowserPanel() {
     refetch();
   }, [queryClient, refetch]);
 
+  const handleDeleteDtu = useCallback(async (row: { id: string; title?: string }) => {
+    const name = row.title || 'this DTU';
+    if (typeof window !== 'undefined' && !window.confirm(`Delete “${name}”? This cannot be undone.`)) return;
+    setDeleteError(null);
+    try {
+      await apiHelpers.dtus.delete(row.id);
+      if (selectedDtuId === row.id) setSelectedDtuId(null);
+      queryClient.setQueriesData({ queryKey: ['dtus-browser'] }, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old;
+        const body = old as {
+          items?: DTU[];
+          dtus?: DTU[];
+          total?: number;
+          pagination?: { total?: number; hasNext?: boolean };
+        };
+        const drop = (list?: DTU[]) => (Array.isArray(list) ? list.filter((d) => d.id !== row.id) : list);
+        const items = drop(body.items);
+        const removed = Array.isArray(body.items) && Array.isArray(items) && items.length < body.items.length;
+        const prevTotal = body.pagination?.total ?? body.total;
+        const nextTotal = removed && typeof prevTotal === 'number' ? Math.max(0, prevTotal - 1) : prevTotal;
+        return {
+          ...body,
+          items,
+          dtus: drop(body.dtus),
+          total: typeof nextTotal === 'number' ? nextTotal : body.total,
+          pagination: body.pagination
+            ? { ...body.pagination, total: typeof nextTotal === 'number' ? nextTotal : body.pagination.total }
+            : body.pagination,
+        };
+      });
+      await queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
+    } catch (err) {
+      const status = (err as { response?: { status?: number }; status?: number })?.response?.status
+        ?? (err as { status?: number })?.status;
+      setDeleteError(status === 403
+        ? 'You can only delete your own DTUs.'
+        : 'Delete failed.');
+    }
+  }, [queryClient, selectedDtuId]);
+
   return (
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
@@ -268,24 +289,20 @@ export function BrowserPanel() {
               </div>
               <div>
                 <h1 className="text-xl font-bold">DTU Browser</h1>
-                <p className="text-xs text-gray-400">
-                  <span className="tabular-nums">{total}</span> discrete thought units
+                <p className="text-xs text-gray-400 tabular-nums">
+                  {pageCountLabel}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowFeed(!showFeed)}
-                className={cn(
-                  'px-3 py-1.5 text-xs rounded-lg border transition-colors',
-                  showFeed
-                    ? 'border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan'
-                    : 'border-lattice-border text-gray-400 hover:text-white'
-                )}
+                type="button"
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-teal-400 px-3 py-1.5 text-sm font-medium text-black hover:bg-teal-300 transition-colors"
               >
-                <Zap className="w-3.5 h-3.5 inline mr-1" />
-                Live Feed
+                <Plus className="w-4 h-4" />
+                New DTU
               </button>
               <button
                 onClick={() => refetch()}
@@ -294,13 +311,6 @@ export function BrowserPanel() {
                 title="Refresh"
               >
                 <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
-              </button>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neon-blue/20 text-neon-blue border border-neon-blue/30 rounded-lg hover:bg-neon-blue/30 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                New DTU
               </button>
             </div>
           </div>
@@ -355,24 +365,19 @@ export function BrowserPanel() {
               ))}
             </div>
 
-            {/* Tier filter */}
-            <div className="flex items-center gap-1">
-              <Filter className="w-4 h-4 text-gray-400 mr-1" />
-              {(['all', 'regular', 'mega', 'hyper', 'shadow'] as const).map(tier => (
-                <button
-                  key={tier}
-                  onClick={() => { setTierFilter(tier); setPage(0); }}
-                  className={cn(
-                    'px-2 py-1 text-xs rounded transition-colors capitalize',
-                    tierFilter === tier
-                      ? 'bg-neon-cyan/20 text-neon-cyan'
-                      : 'text-gray-400 hover:text-white'
-                  )}
-                >
-                  {tier}
-                </button>
-              ))}
-            </div>
+            <label className="flex items-center gap-2 text-xs text-gray-400">
+              Tier
+              <select
+                aria-label="Tier"
+                value={tierFilter}
+                onChange={(e) => { setTierFilter(e.target.value as DTUTier | 'all'); setPage(0); }}
+                className="bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-gray-200 capitalize"
+              >
+                {(['all', 'regular', 'mega', 'hyper', 'shadow'] as const).map(tier => (
+                  <option key={tier} value={tier}>{tier}</option>
+                ))}
+              </select>
+            </label>
 
             {/* View mode */}
             <div className="flex items-center border border-lattice-border rounded-lg overflow-hidden">
@@ -399,34 +404,9 @@ export function BrowserPanel() {
         </div>
       </header>
 
-      {/* Stats Row — uses real-time tier counts from lattice store when available, falls back to page counts */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-        <div className="grid grid-cols-4 gap-4">
-          <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
-            <Database className="w-5 h-5 text-neon-blue" />
-            <div><p className="text-lg font-bold tabular-nums">{total}</p><p className="text-xs text-gray-400">Total DTUs</p></div>
-          </div>
-          <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
-            <Tag className="w-5 h-5 text-neon-purple" />
-            <div>
-              <p className="text-lg font-bold tabular-nums">{(tierCounts.mega + tierCounts.hyper) || dtus.filter(d => d.tier === 'mega' || d.tier === 'hyper').length}</p>
-              <p className="text-xs text-gray-400">Mega/Hyper</p>
-            </div>
-          </div>
-          <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
-            <Zap className="w-5 h-5 text-neon-cyan" />
-            <div><p className="text-lg font-bold tabular-nums">{tierCounts.regular || dtus.filter(d => d.tier === 'regular').length}</p><p className="text-xs text-gray-400">Regular</p></div>
-          </div>
-          <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
-            <Clock className="w-5 h-5 text-gray-400" />
-            <div><p className="text-lg font-bold tabular-nums">{tierCounts.shadow || dtus.filter(d => d.tier === 'shadow').length}</p><p className="text-xs text-gray-400">Shadow</p></div>
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <div className={cn('flex gap-6', showFeed ? '' : '')}>
+        <div className="flex gap-6">
           {/* Main list area */}
           <div className="flex-1 min-w-0">
             {isError ? (
@@ -444,6 +424,7 @@ export function BrowserPanel() {
                     dtus={listDtus}
                     selectedId={selectedDtuId || undefined}
                     onSelect={handleSelectDtu}
+                    onDelete={handleDeleteDtu}
                     showFilters={false}
                     emptyMessage="No DTUs found"
                   />
@@ -460,7 +441,7 @@ export function BrowserPanel() {
                 icon={<Database className="w-5 h-5" aria-hidden="true" />}
                 title="No DTUs found"
                 description="Adjust the search or tier filter, or create the first DTU to seed this corpus."
-                action={{ label: 'New DTU', onClick: () => setShowCreateForm(true) }}
+                action={{ label: 'Browse', onClick: () => searchInputRef.current?.focus() }}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -499,7 +480,7 @@ export function BrowserPanel() {
                       {dtu.summary || dtu.content?.slice(0, 100)}
                     </p>
                     <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
-                      <span className="tabular-nums">{new Date(dtu.timestamp).toLocaleDateString()}</span>
+                      <span className="tabular-nums">{dtuCreatedAt(dtu)?.toLocaleDateString() ?? ''}</span>
                       {dtu.tags?.length > 0 && (
                         <span>#{dtu.tags[0]}</span>
                       )}
@@ -514,10 +495,14 @@ export function BrowserPanel() {
               </div>
             )}
 
+            {deleteError && (
+              <p role="alert" className="mt-3 text-xs text-red-400">{deleteError}</p>
+            )}
+
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4 px-2">
               <span className="text-xs text-gray-400 tabular-nums">
-                Showing {page * PAGE_SIZE + 1}--{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+                {pageCountLabel}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -543,23 +528,14 @@ export function BrowserPanel() {
             </div>
           </div>
 
-          {/* Right sidebar: live feed */}
-          {showFeed && (
-            <aside className="w-80 flex-shrink-0 hidden xl:block space-y-3">
-              <LiveDTUFeed limit={15} onDtuClick={(id) => setSelectedDtuId(id)} />
-              {filteredStoreDTUs.length > 0 && (
-                <div className="px-3 py-2 rounded-lg border border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
-                  <Zap className="w-3 h-3 inline mr-1 text-neon-cyan" />
-                  {filteredStoreDTUs.length} DTUs match current filters in real-time store
-                </div>
-              )}
-            </aside>
-          )}
         </div>
       </div>
 
-      {/* ── Backend Action Panels ── */}
+      {/* Compute actions stay off the default cockpit until a unit is selected. */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-4">
+        {!selectedDtuId ? (
+          <p className="text-sm text-zinc-500">No unit selected</p>
+        ) : (
         <div className="rounded-xl bg-lattice-deep border border-lattice-border p-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -750,6 +726,7 @@ export function BrowserPanel() {
             </motion.div>
           )}
         </div>
+        )}
       </div>
 
       {/* DTU Detail View (modal) */}

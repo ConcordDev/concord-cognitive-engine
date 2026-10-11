@@ -30,8 +30,7 @@ export default function ProjectsLensPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[14px] text-zinc-500">Projects</p>
-          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">What is moving{who ? `, ${who}` : ''}</h1>
-          <p className="mt-2 max-w-2xl text-[13px] text-zinc-500">Backlog, sprints, timeline, planning, team, reports and portfolio for every project.</p>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">What&apos;s in flight{who ? `, ${who}` : ''}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

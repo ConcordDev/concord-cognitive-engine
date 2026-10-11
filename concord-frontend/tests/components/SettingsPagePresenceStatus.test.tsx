@@ -1,23 +1,11 @@
 /**
- * V1.2 Wave A — Society & Presence. Pins the Settings > Presence Status
- * control: clicking a status button emits the real `player:presence-status`
- * socket request (server.js) and surfaces the honest ack/nack/timeout
- * result, mirroring the established `player:visibility` round trip
- * (SettingsPageVisibility.test.tsx) rather than being localStorage-only
- * decoration.
+ * Presence status is a live socket request, applied on click.
+ * The control used to live on `/settings`; that route now redirects to
+ * the lens, and this panel is the same round trip.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-
-const mockBack = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ back: mockBack, push: vi.fn(), replace: vi.fn(), forward: vi.fn(), refresh: vi.fn() }),
-}));
-
-vi.mock('@/components/system/DomainProbeCard', () => ({
-  DomainProbeCard: () => null,
-}));
 
 type Listener = (data: unknown) => void;
 const listeners: Record<string, Listener[]> = {};
@@ -38,72 +26,82 @@ function fireServerEvent(event: string, data: unknown) {
   for (const cb of listeners[event] || []) cb(data);
 }
 
-import SettingsPage from '@/app/settings/page';
+import { PresenceStatusControl } from '@/components/settings/PresenceStatusControl';
 
 beforeEach(() => {
   localStorage.clear();
   emitMock.mockClear();
-  mockBack.mockClear();
   Object.keys(listeners).forEach((k) => delete listeners[k]);
 });
 
-describe('SettingsPage — presence status round trip', () => {
-  it('renders all four status options with none pre-selected but "available" as default state', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Presence Status');
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('PresenceStatusControl — presence status round trip', () => {
+  it('renders all four status options with available pressed by default', () => {
+    render(<PresenceStatusControl />);
     for (const label of ['Available', 'Away', 'Busy', 'Do Not Disturb']) {
       expect(screen.getByText(label)).toBeTruthy();
     }
-    const availableBtn = screen.getByText('Available').closest('button')!;
-    expect(availableBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Available').closest('button')!.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('emits player:presence-status immediately on click (not gated behind Save/Apply)', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Presence Status');
+  it('ignores a stored value that is not one of the four statuses', () => {
+    localStorage.setItem('concord:presenceStatus', 'invisible');
+    render(<PresenceStatusControl />);
+    expect(screen.getByText('Available').closest('button')!.getAttribute('aria-pressed')).toBe('true');
+  });
 
+  it('emits player:presence-status immediately on click', () => {
+    render(<PresenceStatusControl />);
     fireEvent.click(screen.getByText('Busy'));
-
     expect(emitMock).toHaveBeenCalledWith('player:presence-status', { status: 'busy' });
-    // Applied live, immediately — no need to click the form's Apply button.
-    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('does not re-emit when the already selected status is clicked again', () => {
+    render(<PresenceStatusControl />);
+    fireEvent.click(screen.getByText('Available'));
+    expect(emitMock).not.toHaveBeenCalled();
   });
 
   it('shows the honest ack result and updates the selected pill', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Presence Status');
-
+    render(<PresenceStatusControl />);
     fireEvent.click(screen.getByText('Away'));
     await act(async () => {
       fireServerEvent('player:presence-status:ack', { status: 'away' });
     });
 
     await waitFor(() => {
-      const notes = screen.getAllByRole('status');
-      expect(notes.some((n) => /Status set to away/.test(n.textContent || ''))).toBe(true);
+      expect(screen.getByRole('status').textContent).toMatch(/Status set to away/);
     });
-    const awayBtn = screen.getByText('Away').closest('button')!;
-    expect(awayBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Away').closest('button')!.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('shows an honest not-connected message on nack, never a fabricated success', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Presence Status');
-
+  it('shows an honest not-connected message on nack', async () => {
+    render(<PresenceStatusControl />);
     fireEvent.click(screen.getByText('Do Not Disturb'));
     await act(async () => {
       fireServerEvent('player:presence-status:nack', { reason: 'invalid_status' });
     });
 
     await waitFor(() => {
-      const notes = screen.getAllByRole('status');
-      expect(notes.some((n) => /Could not apply status live/.test(n.textContent || ''))).toBe(true);
+      expect(screen.getByRole('status').textContent).toMatch(/Could not apply status live/);
     });
   });
 
-  it('persists the last chosen status to localStorage for next session', async () => {
-    render(<SettingsPage />);
-    await screen.findByText('Presence Status');
+  it('says the world socket is down when the ack never arrives', async () => {
+    vi.useFakeTimers();
+    render(<PresenceStatusControl />);
+    fireEvent.click(screen.getByText('Busy'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+    expect(screen.getByRole('status').textContent).toMatch(/Not connected to a world/);
+  });
+
+  it('persists the last chosen status to localStorage', () => {
+    render(<PresenceStatusControl />);
     fireEvent.click(screen.getByText('Busy'));
     expect(localStorage.getItem('concord:presenceStatus')).toBe('busy');
   });

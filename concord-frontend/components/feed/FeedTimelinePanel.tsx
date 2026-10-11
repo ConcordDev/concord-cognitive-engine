@@ -21,7 +21,6 @@ import {
   BarChart3,
   Verified,
   Search,
-  Sparkles,
   Link2,
   Newspaper,
   Palette,
@@ -44,8 +43,7 @@ import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useUIStore } from '@/store/ui';
-import { useLensDTUs } from '@/hooks/useLensDTUs';
-import { LensContextPanel } from '@/components/lens/LensContextPanel';
+import { useAuth } from '@/hooks/useAuth';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -317,6 +315,40 @@ export function requestFeedCompose() {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
+function YourPosts({
+  items,
+  userId,
+}: {
+  items: Array<{ id: string; ownerId?: string; title?: string; data?: Record<string, unknown> }>;
+  userId: string | null;
+}) {
+  const mine = userId ? items.filter((li) => li.ownerId === userId) : [];
+  return (
+    <div className="panel p-4 space-y-2">
+      <h2 className="font-semibold text-sm text-white">Your posts</h2>
+      {mine.length === 0 ? (
+        <p className="text-xs text-gray-400">
+          {userId
+            ? 'Posts you publish show up here. Nothing of yours is in this list yet.'
+            : 'Sign in to see the posts you published.'}
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {mine.slice(0, 8).map((li) => {
+            const body = typeof li.data?.content === 'string' ? li.data.content : '';
+            const label = li.title || body || 'Untitled post';
+            return (
+              <li key={li.id} className="text-sm text-gray-200 truncate">
+                {label}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function FeedTimelinePanel({
   tab,
   onDiscover,
@@ -347,16 +379,7 @@ export function FeedTimelinePanel({
     refetchInterval: 30_000,
   });
   const presenceUsers = presenceResp?.users || [];
-
-  const {
-    hyperDTUs,
-    megaDTUs,
-    regularDTUs,
-    tierDistribution,
-    publishToMarketplace,
-    isLoading: dtusLoading,
-    refetch: refetchDTUs,
-  } = useLensDTUs({ lens: 'feed' });
+  const { user: authUser } = useAuth();
 
   const queryClient = useQueryClient();
 
@@ -411,6 +434,7 @@ export function FeedTimelinePanel({
   };
 
   const [newPost, setNewPost] = useState('');
+  const [postPrivacy, setPostPrivacy] = useState<'public' | 'private'>('public');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const composeRef = useRef<HTMLTextAreaElement>(null);
@@ -531,14 +555,15 @@ export function FeedTimelinePanel({
   });
 
   const postMutation = useMutation({
-    mutationFn: (content: string) =>
+    mutationFn: ({ content, privacy }: { content: string; privacy: 'public' | 'private' }) =>
       api.post('/api/social/post', {
         content,
         mediaType: 'text',
         tags: [],
+        privacy,
         taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
       }),
-    onSuccess: (_data, content) => {
+    onSuccess: (_data, { content }) => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
       createLensPost({
         title: content.slice(0, 80),
@@ -783,17 +808,6 @@ export function FeedTimelinePanel({
             <div className="flex items-center gap-2">
               <StreakIndicator userId="current-user" className="mr-1" />
               <DMIndicator userId="current-user" />
-              {dtusLoading && (
-                <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
-              )}
-              <button
-                onClick={() => refetchDTUs()}
-                disabled={dtusLoading}
-                className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors"
-                title="Refresh DTUs"
-              >
-                <Sparkles className="w-5 h-5 text-neon-cyan" />
-              </button>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -895,13 +909,39 @@ export function FeedTimelinePanel({
                     }}
                   />
                 </div>
-                <button
-                  onClick={() => postMutation.mutate(newPost)}
-                  disabled={!newPost.trim() || postMutation.isPending}
-                  className="px-5 py-1.5 bg-neon-cyan text-black font-bold rounded-full hover:bg-neon-cyan/90 disabled:opacity-40 transition-colors text-sm"
-                >
-                  {postMutation.isPending ? 'Posting...' : 'Post'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-full border border-lattice-border overflow-hidden text-xs" role="group" aria-label="Post audience">
+                    <button
+                      type="button"
+                      onClick={() => setPostPrivacy('public')}
+                      aria-pressed={postPrivacy === 'public'}
+                      className={cn(
+                        'px-3 py-1',
+                        postPrivacy === 'public' ? 'bg-neon-cyan text-black font-bold' : 'text-gray-400 hover:text-white',
+                      )}
+                    >
+                      Public
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPostPrivacy('private')}
+                      aria-pressed={postPrivacy === 'private'}
+                      className={cn(
+                        'px-3 py-1',
+                        postPrivacy === 'private' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white',
+                      )}
+                    >
+                      Private
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => postMutation.mutate({ content: newPost, privacy: postPrivacy })}
+                    disabled={!newPost.trim() || postMutation.isPending}
+                    className="px-5 py-1.5 bg-neon-cyan text-black font-bold rounded-full hover:bg-neon-cyan/90 disabled:opacity-40 transition-colors text-sm"
+                  >
+                    {postMutation.isPending ? 'Posting...' : 'Post'}
+                  </button>
+                </div>
               </div>
 
               {/* Tagged Products Display */}
@@ -1608,16 +1648,8 @@ export function FeedTimelinePanel({
       </aside>
       </div>
 
-      {/* DTU Context */}
       <div className="mt-6 space-y-3">
-        <LensContextPanel
-          hyperDTUs={hyperDTUs}
-          megaDTUs={megaDTUs}
-          regularDTUs={regularDTUs}
-          tierDistribution={tierDistribution}
-          onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
-          title="Feed DTUs"
-        />
+        <YourPosts items={postLensItems} userId={authUser?.id || null} />
         <FeedbackWidget targetType="lens" targetId="feed" />
 
         {/* Real-time Data Panel */}
