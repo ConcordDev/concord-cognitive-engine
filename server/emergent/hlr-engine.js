@@ -1288,6 +1288,7 @@ export function listTraces(limit = 20) {
 
   return all.slice(0, cap).map(t => ({
     traceId: t.traceId,
+    userId: t.input?.userId || null,
     topic: t.input?.topic || null,
     question: t.input?.question || null,
     mode: t.input?.mode || null,
