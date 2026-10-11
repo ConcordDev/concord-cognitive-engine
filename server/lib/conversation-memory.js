@@ -26,6 +26,15 @@
 
 import crypto from "crypto";
 import { BRAIN_CONFIG } from "./brain-config.js";
+import { applyPrivateOwner, realDtuOwnerId } from "./dtu-read-access.js";
+
+function memoryOwnerId(dtu) {
+  return realDtuOwnerId(dtu?.ownerId)
+    || realDtuOwnerId(dtu?.author)
+    || realDtuOwnerId(dtu?.userId)
+    || realDtuOwnerId(dtu?.createdBy)
+    || realDtuOwnerId(dtu?.machine?.userId);
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,6 +91,12 @@ export async function compressRollingWindow(STATE, sessionId, opts = {}) {
   if (!sess || !sess.messages || sess.messages.length < WINDOW_THRESHOLD) {
     return { ok: false, error: "below_threshold" };
   }
+
+  // Prompt text is about to be copied into a shared DTU. Without a real
+  // owner that row is anonymous-readable, so refuse before the session is
+  // trimmed and before the utility brain sees the window.
+  const owner = realDtuOwnerId(opts.userId);
+  if (!owner) return { ok: false, error: "owner_required" };
 
   // Extract the oldest messages to compress
   const toCompress = sess.messages.slice(0, COMPRESSION_BATCH);
@@ -190,7 +205,7 @@ Be precise. Extract actual content, not generic descriptions.`;
     // Single DTU for the whole batch
     const dtu = buildConversationMemoryDTU({
       sessionId,
-      userId: opts.userId,
+      userId: owner,
       messageRange,
       topics: extracted.topics,
       insights: extracted.insights || [],
@@ -211,7 +226,7 @@ Be precise. Extract actual content, not generic descriptions.`;
 
       const dtu = buildConversationMemoryDTU({
         sessionId,
-        userId: opts.userId,
+        userId: owner,
         messageRange,
         topics: topicSlice,
         insights: extracted.insights?.slice(i * 2, (i + 1) * 2) || [],
@@ -255,10 +270,13 @@ Be precise. Extract actual content, not generic descriptions.`;
     windowSize: sess.messages.length,
   });
 
-  // Check if topic consolidation into MEGAs is needed (async, non-blocking)
-  checkTopicConsolidation(STATE, sessionId, opts).catch(e =>
-    log("warn", "topic_consolidation_error", { error: e?.message })
-  );
+  // Consolidation is part of this promise so a caller that awaits the
+  // compress sees the private mega. The chat route does not await it.
+  try {
+    await checkTopicConsolidation(STATE, sessionId, { ...opts, userId: owner });
+  } catch (e) {
+    log("warn", "topic_consolidation_error", { error: e?.message });
+  }
 
   return {
     ok: true,
@@ -285,7 +303,7 @@ function buildConversationMemoryDTU(opts) {
   const now = new Date().toISOString();
   const topicLabel = topics.slice(0, 3).join(", ");
 
-  return {
+  const dtu = {
     id,
     title: `Conversation: ${topicLabel}`,
     tier: "regular",
@@ -336,6 +354,10 @@ function buildConversationMemoryDTU(opts) {
       .update(`${sessionId}:${messageRange.from}:${messageRange.to}`)
       .digest("hex").slice(0, 16),
   };
+  applyPrivateOwner(dtu, userId);
+  const owned = realDtuOwnerId(userId);
+  if (owned) dtu.machine.userId = owned;
+  return dtu;
 }
 
 // ── Fallback Extraction ─────────────────────────────────────────────────────
@@ -386,34 +408,39 @@ function extractFallback(messages) {
 async function checkTopicConsolidation(STATE, sessionId, opts = {}) {
   const log = opts.structuredLog || (() => {});
 
-  // Collect all conversation memory DTUs
+  if (!STATE?.dtus) return;
+
+  // Ownerless rows stay untouched. Grouping them by topic would merge
+  // every user's prompts into one public mega.
   const memoryDTUs = [];
-  for (const [_id, dtu] of STATE.dtus) {
-    if (dtu.machine?.kind === "conversation_memory") {
-      memoryDTUs.push(dtu);
-    }
+  for (const dtu of STATE.dtus.values()) {
+    if (dtu?.machine?.kind !== "conversation_memory") continue;
+    if (!memoryOwnerId(dtu)) continue;
+    memoryDTUs.push(dtu);
   }
 
-  if (memoryDTUs.length < MEGA_TOPIC_THRESHOLD) return;
-
-  // Group by topic
-  const topicGroups = {};
+  const topicGroups = new Map();
   for (const dtu of memoryDTUs) {
+    const rowOwner = memoryOwnerId(dtu);
     for (const topic of (dtu.machine?.topics || [])) {
-      if (!topicGroups[topic]) topicGroups[topic] = [];
-      topicGroups[topic].push(dtu);
+      const key = `${rowOwner}\0${topic}`;
+      if (!topicGroups.has(key)) topicGroups.set(key, []);
+      topicGroups.get(key).push(dtu);
     }
   }
 
-  // Check each topic for MEGA promotion
-  for (const [topic, dtus] of Object.entries(topicGroups)) {
+  for (const [key, dtus] of topicGroups) {
     if (dtus.length < MEGA_TOPIC_THRESHOLD) continue;
+    const sep = key.indexOf("\0");
+    const rowOwner = key.slice(0, sep);
+    const topic = key.slice(sep + 1);
 
-    // Check if a MEGA already exists for this topic
-    const megaId = `convmega_${crypto.createHash("sha256").update(topic).digest("hex").slice(0, 12)}`;
+    // Owner is in the hash so this does not update the old public mega
+    // whose id was a 12-hex hash of the topic alone.
+    const megaId = `convmega_${crypto.createHash("sha256").update(`${rowOwner}:${topic}`).digest("hex").slice(0, 16)}`;
     if (STATE.dtus.has(megaId)) {
-      // Update existing MEGA
       const mega = STATE.dtus.get(megaId);
+      if (memoryOwnerId(mega) !== rowOwner) continue;
       mega.machine.sourceCount = dtus.length;
       mega.machine.lastUpdated = new Date().toISOString();
       mega.updatedAt = new Date().toISOString();
@@ -425,7 +452,9 @@ async function checkTopicConsolidation(STATE, sessionId, opts = {}) {
         }
       }
       mega.machine.insights = Array.from(existingInsights).slice(0, 15);
+      mega.machine.userId = rowOwner;
       mega.human.summary = mega.machine.insights.slice(0, 5).join(". ");
+      applyPrivateOwner(mega, rowOwner);
       continue;
     }
 
@@ -475,6 +504,7 @@ async function checkTopicConsolidation(STATE, sessionId, opts = {}) {
         decisions: [...new Set(allDecisions)].slice(0, 8),
         claims: [...new Set(allClaims)].slice(0, 8),
         preferences: [...new Set(allPreferences)].slice(0, 5),
+        userId: rowOwner,
         consolidatedAt: now,
         lastUpdated: now,
       },
@@ -487,8 +517,9 @@ async function checkTopicConsolidation(STATE, sessionId, opts = {}) {
       createdAt: now,
       updatedAt: now,
       authority: { model: "consolidation", score: 0.6 },
-      hash: crypto.createHash("sha256").update(`mega:${topic}:${dtus.length}`).digest("hex").slice(0, 16),
+      hash: crypto.createHash("sha256").update(`mega:${rowOwner}:${topic}:${dtus.length}`).digest("hex").slice(0, 16),
     };
+    applyPrivateOwner(mega, rowOwner);
 
     STATE.dtus.set(megaId, mega);
 
@@ -500,68 +531,70 @@ async function checkTopicConsolidation(STATE, sessionId, opts = {}) {
     });
   }
 
-  // Check for HYPER promotion (multiple MEGAs on related topics)
-  const megas = [];
-  for (const [_id, dtu] of STATE.dtus) {
-    if (dtu.machine?.kind === "conversation_memory_mega") {
-      megas.push(dtu);
-    }
+  // One hyper per owner. The old `convhyper_${userId||"global"}` id rolled
+  // every user's megas into a single public row; leave those ids alone.
+  const megasByOwner = new Map();
+  for (const dtu of STATE.dtus.values()) {
+    if (dtu?.machine?.kind !== "conversation_memory_mega") continue;
+    const rowOwner = memoryOwnerId(dtu);
+    if (!rowOwner) continue;
+    if (!megasByOwner.has(rowOwner)) megasByOwner.set(rowOwner, []);
+    megasByOwner.get(rowOwner).push(dtu);
   }
 
-  if (megas.length >= HYPER_MEGA_THRESHOLD) {
-    // Group MEGAs by user (via sessionIds overlap)
-    // For now, if enough MEGAs exist, create a HYPER that encompasses all
-    const hyperId = `convhyper_${opts.userId || "global"}`;
-    if (!STATE.dtus.has(hyperId)) {
-      const allTopics = megas.map(m => m.machine?.topic).filter(Boolean);
-      const allInsights = megas.flatMap(m => m.machine?.insights || []);
-      const now = new Date().toISOString();
+  for (const [rowOwner, megas] of megasByOwner) {
+    if (megas.length < HYPER_MEGA_THRESHOLD) continue;
+    const hyperId = `convhyper_owned_${crypto.createHash("sha256").update(rowOwner).digest("hex").slice(0, 16)}`;
+    if (STATE.dtus.has(hyperId)) continue;
+    const allTopics = megas.map(m => m.machine?.topic).filter(Boolean);
+    const allInsights = megas.flatMap(m => m.machine?.insights || []);
+    const now = new Date().toISOString();
 
-      const hyper = {
-        id: hyperId,
-        title: `Complete conversation history: ${allTopics.slice(0, 4).join(", ")}`,
-        tier: "hyper",
-        tags: ["conversation_memory", "hyper", ...allTopics.slice(0, 8)],
-        human: {
-          summary: `Comprehensive knowledge from ${megas.length} topic areas spanning all conversations.`,
-          bullets: allTopics.map(t => `Domain: ${t}`).slice(0, 10),
-          examples: [],
-        },
-        core: {
-          definitions: [],
-          invariants: [],
-          claims: megas.flatMap(m => m.core?.claims || []).slice(0, 10),
-          examples: [],
-          nextActions: [],
-        },
-        machine: {
-          kind: "conversation_memory_hyper",
-          userId: opts.userId || null,
-          megaCount: megas.length,
-          megaIds: megas.map(m => m.id),
-          topics: allTopics,
-          topInsights: [...new Set(allInsights)].slice(0, 20),
-          consolidatedAt: now,
-        },
-        lineage: {
-          parents: [],
-          children: megas.map(m => m.id),
-        },
-        source: "conversation-memory",
-        meta: { conversationMemory: true, hyperConsolidated: true },
-        createdAt: now,
-        updatedAt: now,
-        authority: { model: "consolidation", score: 0.8 },
-        hash: crypto.createHash("sha256").update(`hyper:${allTopics.join(":")}`).digest("hex").slice(0, 16),
-      };
-
-      STATE.dtus.set(hyperId, hyper);
-      log("info", "conversation_hyper_created", {
-        hyperId,
+    const hyper = {
+      id: hyperId,
+      title: `Complete conversation history: ${allTopics.slice(0, 4).join(", ")}`,
+      tier: "hyper",
+      tags: ["conversation_memory", "hyper", ...allTopics.slice(0, 8)],
+      human: {
+        summary: `Comprehensive knowledge from ${megas.length} topic areas spanning all conversations.`,
+        bullets: allTopics.map(t => `Domain: ${t}`).slice(0, 10),
+        examples: [],
+      },
+      core: {
+        definitions: [],
+        invariants: [],
+        claims: megas.flatMap(m => m.core?.claims || []).slice(0, 10),
+        examples: [],
+        nextActions: [],
+      },
+      machine: {
+        kind: "conversation_memory_hyper",
+        userId: rowOwner,
         megaCount: megas.length,
+        megaIds: megas.map(m => m.id),
         topics: allTopics,
-      });
-    }
+        topInsights: [...new Set(allInsights)].slice(0, 20),
+        consolidatedAt: now,
+      },
+      lineage: {
+        parents: [],
+        children: megas.map(m => m.id),
+      },
+      source: "conversation-memory",
+      meta: { conversationMemory: true, hyperConsolidated: true },
+      createdAt: now,
+      updatedAt: now,
+      authority: { model: "consolidation", score: 0.8 },
+      hash: crypto.createHash("sha256").update(`hyper:${rowOwner}:${allTopics.join(":")}`).digest("hex").slice(0, 16),
+    };
+    applyPrivateOwner(hyper, rowOwner);
+
+    STATE.dtus.set(hyperId, hyper);
+    log("info", "conversation_hyper_created", {
+      hyperId,
+      megaCount: megas.length,
+      topics: allTopics,
+    });
   }
 }
 

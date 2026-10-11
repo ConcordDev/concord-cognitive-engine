@@ -126,6 +126,10 @@ export function createMediaDTU(STATE, params) {
     tags = [],
     privacy = "public",
     tier = "regular",
+    previewStart = 0,
+    previewDuration = 0,
+    tiers = [],
+    licensedUserIds = [],
   } = params;
 
   // Validate
@@ -171,6 +175,10 @@ export function createMediaDTU(STATE, params) {
     fileSize,
     originalFilename,
     privacy,
+    previewStart: Math.max(0, Number(previewStart) || 0),
+    previewDuration: Math.max(0, Number(previewDuration) || 0),
+    tiers: Array.isArray(tiers) ? tiers : [],
+    licensedUserIds: Array.isArray(licensedUserIds) ? licensedUserIds : [],
 
     // Thumbnail
     thumbnail: null,

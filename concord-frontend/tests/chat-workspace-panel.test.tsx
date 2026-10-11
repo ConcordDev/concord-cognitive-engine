@@ -19,6 +19,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { lensRun } from '@/lib/api/client';
 
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
@@ -515,6 +516,7 @@ beforeEach(() => {
   apiPut.mockReset().mockResolvedValue({ data: {} });
   feedbackFn.mockReset().mockResolvedValue({ data: {} });
   forgeFn.mockReset().mockResolvedValue({ data: { dtu: { id: 'dtu-9', title: 'Forged insight' } } });
+  vi.mocked(lensRun).mockReset().mockResolvedValue({ data: { ok: true, result: {} } });
   lensDeleteFn.mockReset().mockResolvedValue({ data: {} });
   cogStatusFn.mockReset().mockResolvedValue({ data: { llm: { enabled: true } } });
   runArtifactMutateAsync.mockReset();
@@ -1130,7 +1132,37 @@ describe('ChatWorkspacePanel — message actions', () => {
     await screen.findByText('It is four.');
     fireEvent.click(screen.getByLabelText('Forge to DTU'));
     expect(await screen.findByText('Forged to DTU: Forged insight')).toBeInTheDocument();
-    expect(forgeFn).toHaveBeenCalledWith({ content: 'It is four.', tags: ['chat-forged'], source: 'chat-lens' });
+    expect(forgeFn).toHaveBeenCalledWith({
+      content: 'It is four.',
+      prompt: 'It is four.',
+      tags: ['chat-forged'],
+      source: 'chat-lens',
+    });
+    expect(screen.getByRole('button', { name: 'Draft in Thread' })).toBeDisabled();
+    expect(await screen.findByText(/read-back did not return it/)).toBeInTheDocument();
+  });
+
+  it('Draft in Thread cites the forged DTU after it reads back', async () => {
+    vi.mocked(lensRun).mockImplementation(async (domain: string, action: string, input?: { id?: string; citedDtuId?: string }) => {
+      if (domain === 'dtu' && action === 'get') {
+        return { data: { ok: true, result: { dtu: { id: input?.id } } } };
+      }
+      return {
+        data: {
+          ok: true,
+          result: { draft: { id: 'th_9', status: 'draft', citedDtuId: input?.citedDtuId } },
+        },
+      };
+    });
+    renderPanel();
+    await screen.findByText('It is four.');
+    fireEvent.click(screen.getByLabelText('Forge to DTU'));
+    const draft = await screen.findByRole('button', { name: 'Draft in Thread' });
+    await waitFor(() => expect(draft).toBeEnabled());
+    fireEvent.click(draft);
+    expect(await screen.findByText(/Drafted in Thread as th_9/)).toBeInTheDocument();
+    const call = vi.mocked(lensRun).mock.calls.find((c) => c[0] === 'thread');
+    expect(call?.[2]).toMatchObject({ citedDtuId: 'dtu-9' });
   });
 
   it('a failed forge raises an error toast', async () => {

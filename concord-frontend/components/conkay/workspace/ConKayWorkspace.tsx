@@ -27,6 +27,7 @@ import {
   DIM_LABELS,
   applyWorkspaceCommand,
   describeStudy,
+  formatWorkspaceLead,
   parseWorkspaceCommand,
   studyContext,
   type BeamDims,
@@ -275,7 +276,7 @@ export function ConKayWorkspace() {
       let solved: BeamStudyResult | null = null;
       if (cmd.changes.length > 0 || cmd.run) {
         const next = { ...inputs, ...applyWorkspaceCommand(cmd, inputs) };
-        solved = await runStudy(next, cmd.changes.length ? `Update applied: ${cmd.changes.join(', ')}. ` : '');
+        solved = await runStudy(next, formatWorkspaceLead(cmd));
         if (!solved && (cmd.save || cmd.keep)) return;
       }
       if (cmd.save) {

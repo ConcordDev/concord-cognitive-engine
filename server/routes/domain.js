@@ -12,6 +12,7 @@
 import path from "path";
 import { asyncHandler } from "../lib/async-handler.js";
 import { assertSessionAccessible } from "../lib/session-access.js";
+import { gateLogRead, gateLogAdmin, sendGate, httpStatusForLogMacro } from "../lib/log-access.js";
 export default function registerDomainRoutes(app, {
   STATE,
   makeCtx,
@@ -265,7 +266,14 @@ export default function registerDomainRoutes(app, {
 
   // ---- Interface + Logs ----
   app.get("/api/interface/tabs", asyncHandler(async (req,res)=> res.json(await runMacro("interface","tabs", {}, makeCtx(req)))));
-  app.get("/api/logs", asyncHandler(async (req,res)=> res.json(await runMacro("log","list", { limit: req.query.limit }, makeCtx(req)))));
+  app.get("/api/logs", asyncHandler(async (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
+    const out = await runMacro("log", "list", { limit: req.query.limit }, makeCtx(req));
+    const status = httpStatusForLogMacro(out);
+    if (status) return res.status(status).json(out);
+    return res.json(out);
+  }));
 
   // ---- Crawl + Autocrawl ----
   app.post("/api/crawl", asyncHandler(async (req,res)=> {
@@ -420,11 +428,15 @@ export default function registerDomainRoutes(app, {
 
   // ---- Audit ----
   app.get("/api/audit", asyncHandler(async (req, res) => {
+    const gate = gateLogAdmin(req);
+    if (!gate.ok) return sendGate(res, gate);
     const out = await runMacro("audit", "query", {
       limit: req.query.limit,
       domain: req.query.domain,
       contains: req.query.contains
     }, makeCtx(req));
+    const status = httpStatusForLogMacro(out);
+    if (status) return res.status(status).json(out);
     return res.json(out);
   }));
 
@@ -1136,7 +1148,11 @@ export default function registerDomainRoutes(app, {
     return res.json(out);
   }));
   app.get("/api/admin/logs", asyncHandler(async (req, res) => {
+    const gate = gateLogRead(req);
+    if (!gate.ok) return sendGate(res, gate);
     const out = await runMacro("admin", "logs", { limit: req.query.limit, type: req.query.type }, makeCtx(req));
+    const status = httpStatusForLogMacro(out);
+    if (status) return res.status(status).json(out);
     if (out?.ok === false) return res.status(403).json(out);
     return res.json(out);
   }));
