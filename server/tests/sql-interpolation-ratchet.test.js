@@ -275,6 +275,10 @@ const REVIEWED = {
   "lib/trivia.js": 1,
   "lib/understanding-consumers.js": 1,
   "lib/understanding-evolve.js": 3,
+  // lib/user-identity.js (1) — `display` is either "" or the literal
+  // ", display_name AS displayName", chosen only when PRAGMA table_info
+  // lists that column. The user id is bound with `?`.
+  "lib/user-identity.js": 1,
   "lib/vassalage.js": 1,
   "lib/verified-human.js": 1,
   "lib/world-snapshot.js": 3,
