@@ -310,7 +310,8 @@ describe("frontend-error intake", { concurrency: false }, () => {
     app.post("/api/repair/frontend-error", (_req, res) => res.json({ ok: true }));
     app.post("/api/not-limited", (_req, res) => res.json({ ok: true }));
 
-    const server = app.listen(0, "127.0.0.1");
+    const server = http.createServer(app);
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
     const post = (urlPath, body) => new Promise((resolve, reject) => {
       const data = Buffer.from(body);
