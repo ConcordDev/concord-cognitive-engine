@@ -1,5 +1,6 @@
 // server/domains/gamedesign.js
 import { registerCitation } from "../economy/royalty-cascade.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerGameDesignActions(registerLensAction) {
   registerLensAction("game-design", "mechanicsAnalysis", (ctx, artifact, _params) => {
@@ -2492,13 +2493,23 @@ export default function registerGameDesignActions(registerLensAction) {
     const dtuId = params.dtuId ? String(params.dtuId) : "";
     if (!dtuId) return { ok: false, error: "dtuId required" };
     const fetched = await ctx.macro.run("dtu", "get", { id: dtuId });
-    if (!fetched?.ok) return { ok: false, error: fetched?.error || "dtu not found" };
-    const dtu = fetched.dtu;
+    const dtu = fetched?.ok ? fetched.dtu : null;
+    // Same object a missing id produces. Do not consult STATE, and do not
+    // return the body: a different status or error would confirm the id exists.
+    const miss = { ok: false, error: "DTU not found" };
+    if (!dtu || !ctxMayReadDtu(ctx, dtu)) return miss;
+    // A private row owned by someone else is the same miss, even if an
+    // inner read handed the body back. not_authorized is only for a DTU
+    // this caller can already read that scene-load still will not rebuild.
+    const owner = dtu.ownerId || dtu.author || dtu.userId || dtu.createdBy;
+    const privatelyHeld = dtu.visibility === "private"
+      || dtu.privacy === "private"
+      || dtu.privacy === "followers-only"
+      || dtu.scope === "user";
+    if (privatelyHeld && owner && owner !== userId) return miss;
     if (dtu.meta?.type !== GD_LEVEL_DESIGN_DTU_TYPE) {
       return { ok: false, error: "not_a_level_design_dtu" };
     }
-    // Honest ownership gate — a private level-design snapshot can only be
-    // reconstructed by its owner, or by anyone if the author made it public.
     if (dtu.ownerId && dtu.ownerId !== userId && dtu.visibility !== "public") {
       return { ok: false, error: "not_authorized" };
     }

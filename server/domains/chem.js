@@ -5,11 +5,16 @@
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerChemActions(registerLensAction) {
+  const CHEM_STRUCTURE_CAP = 400;
+
   // ── Per-user persistent state (structures, lab notebook) ──
+  // chemStructures and chemLabNotebook are in LENS_STATE_KEYS, so saved
+  // structures and notebook entries survive a restart. Structures reject
+  // past 400 per user; the notebook already keeps 500 entries.
   function chemState() {
     const g = globalThis._concordSTATE || (globalThis._concordSTATE = {});
-    if (!g.chemStructures) g.chemStructures = new Map();  // userId -> Map<id, structure>
-    if (!g.chemLabNotebook) g.chemLabNotebook = new Map(); // userId -> Array<entry>
+    if (!(g.chemStructures instanceof Map)) g.chemStructures = new Map();  // userId -> Map<id, structure>
+    if (!(g.chemLabNotebook instanceof Map)) g.chemLabNotebook = new Map(); // userId -> Array<entry>
     return g;
   }
   function chemActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
@@ -1292,6 +1297,7 @@ export default function registerChemActions(registerLensAction) {
     const s = chemState();
     if (!s.chemStructures.has(userId)) s.chemStructures.set(userId, new Map());
     const map = s.chemStructures.get(userId);
+    if (map.size >= CHEM_STRUCTURE_CAP) return { ok: false, error: "structure_cap" };
     const id = chemId("struct");
     const record = {
       id, name, smiles, formula: formatHill(counts),

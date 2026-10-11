@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { useReportRouteError } from '@/lib/use-report-route-error';
 
 export default function GlobalError({
   error,
@@ -11,6 +12,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportRouteError(error, 'root');
   useEffect(() => {
     // Log error to console in development
     console.error('Global error:', error);

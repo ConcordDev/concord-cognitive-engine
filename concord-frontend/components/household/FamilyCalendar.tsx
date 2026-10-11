@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Plus, Trash2, Edit3, Bell, MapPin, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface CalEvent {
@@ -37,14 +38,14 @@ function monthGrid(year: number, month: number) {
   const cells: { date: string; day: number; inMonth: boolean }[] = [];
   for (let i = startPad - 1; i >= 0; i--) {
     const d = new Date(year, month, -i);
-    cells.push({ date: d.toISOString().slice(0, 10), day: d.getDate(), inMonth: false });
+    cells.push({ date: calendarDateKey(d), day: d.getDate(), inMonth: false });
   }
   for (let d = 1; d <= lastDate; d++) {
-    cells.push({ date: new Date(year, month, d).toISOString().slice(0, 10), day: d, inMonth: true });
+    cells.push({ date: calendarDateKey(new Date(year, month, d)), day: d, inMonth: true });
   }
   while (cells.length % 7 !== 0) {
     const d = new Date(year, month, lastDate + (cells.length - startPad - lastDate) + 1);
-    cells.push({ date: d.toISOString().slice(0, 10), day: d.getDate(), inMonth: false });
+    cells.push({ date: calendarDateKey(d), day: d.getDate(), inMonth: false });
   }
   return cells;
 }
@@ -75,7 +76,7 @@ export function FamilyCalendar() {
     return m;
   }, [events]);
   const monthLabel = new Date(cursor.y, cursor.m, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
 
   async function save() {
     if (!editing || !editing.title.trim() || !editing.date) return;

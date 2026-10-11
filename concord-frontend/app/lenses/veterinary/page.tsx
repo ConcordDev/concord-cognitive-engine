@@ -39,6 +39,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { VetFeed } from '@/components/veterinary/VetFeed';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { DashboardPanel } from '@/components/veterinary/DashboardPanel';
 import { PatientsPanel } from '@/components/veterinary/PatientsPanel';
 import { AppointmentsPanel } from '@/components/veterinary/AppointmentsPanel';
@@ -173,9 +174,11 @@ export default function VeterinaryLensPage() {
           {activeMode === 'Owner Portal' && <OwnerPortalPanel />}
           {activeMode === 'Calculators' && <CalculatorsPanel />}
 
-          <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <VetFeed />
-          </section>
+          <CommunityRedditSlot>
+            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <VetFeed />
+            </section>
+          </CommunityRedditSlot>
           <LensFeedButton domain="veterinary" label="Live animal & veterinary safety feed" />
         </div>
       </NorthStarFrame>

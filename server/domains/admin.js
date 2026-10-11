@@ -217,7 +217,10 @@ export default function registerAdminActions(registerLensAction) {
 
     // Build permission universe
     const allPermissions = new Set();
-    const rolePermMap = {};
+    // Null prototype: a role named "constructor" or "__proto__" must be
+    // an own entry. On a plain object the missing-key lookup is the
+    // inherited function, and `for...of` throws "is not iterable".
+    const rolePermMap = Object.create(null);
     for (const role of roles) {
       rolePermMap[role.name] = new Set(role.permissions || []);
       for (const perm of (role.permissions || [])) allPermissions.add(perm);
@@ -225,9 +228,9 @@ export default function registerAdminActions(registerLensAction) {
 
     // Build role-permission matrix
     const permList = [...allPermissions].sort();
-    const matrix = {};
+    const matrix = Object.create(null);
     for (const role of roles) {
-      matrix[role.name] = {};
+      matrix[role.name] = Object.create(null);
       for (const perm of permList) {
         matrix[role.name][perm] = rolePermMap[role.name].has(perm);
       }
@@ -291,8 +294,9 @@ export default function registerAdminActions(registerLensAction) {
     for (const user of users) {
       const userPerms = new Set();
       for (const roleName of (user.roles || [])) {
-        if (rolePermMap[roleName]) {
-          for (const perm of rolePermMap[roleName]) userPerms.add(perm);
+        const rolePerms = Object.hasOwn(rolePermMap, roleName) ? rolePermMap[roleName] : null;
+        if (rolePerms && typeof rolePerms[Symbol.iterator] === "function" && typeof rolePerms !== "function") {
+          for (const perm of rolePerms) userPerms.add(perm);
         }
       }
 

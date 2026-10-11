@@ -28,6 +28,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { DiyLibraryPanel } from '@/components/diy/DiyLibraryPanel';
 import { ProjectWorkshop } from '@/components/diy/ProjectWorkshop';
 import { DiyShowcase } from '@/components/diy/DiyShowcase';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { type DiyView, type ModeTab } from '@/components/diy/diy-shared';
 
 const VIEWS: { id: DiyView; label: string; keys: string; hint: string; icon: typeof Wrench }[] = [
@@ -53,9 +54,10 @@ export default function DIYLensPage() {
   const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DiyView>('projects');
+  const navViews = omitCommunityRedditViews(VIEWS, ['showcase']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -101,7 +103,7 @@ export default function DIYLensPage() {
             <DTUExportButton domain="diy" data={{}} compact />
           </>
         )}
-        tabs={VIEWS}
+        tabs={navViews}
         activeTab={active}
         onTab={(id) => setActive(id as DiyView)}
         tabsLabel="DIY views"

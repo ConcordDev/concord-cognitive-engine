@@ -55,6 +55,13 @@ describe('Electrical north-star workspace', () => {
     expect(queryByRole('navigation', { name: 'Electrical job tools' })).toBeNull();
   });
 
+  it('opens NEC calculators from the empty desk without a job', () => {
+    const { getByRole, getByTestId } = render(<ElectricalLensPage />);
+    fireEvent.click(getByRole('button', { name: 'NEC Calculators' }));
+    expect(getByTestId('size-tool')).toBeInTheDocument();
+    expect(persist).toHaveBeenCalledWith({ opened: true, tool: 'calculators' });
+  });
+
   it('opens the real Job editor from + New job and persists workspace state', () => {
     const { getByText, getByTestId } = render(<ElectricalLensPage />);
     fireEvent.click(getByText('+ New job'));

@@ -55,4 +55,21 @@ describe('reportFrontendError', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
     await expect(reportFrontendError({ message: 'boom' })).resolves.toBeUndefined();
   });
+
+  it('sends digest and route, and strips tokens, emails, and query secrets', async () => {
+    const token = 'sk_live_abcd1234EFGH5678';
+    const email = 'ramaj@example.com';
+    await reportFrontendError(
+      { message: `failed for ${email} key ${token}`, stack: 'at foo', name: 'Error', digest: 'abc123' },
+      { route: `/lenses/world?access_token=${token}`, lens: 'world' },
+    );
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(init.body as string);
+    expect(body.error.digest).toBe('abc123');
+    expect(body.route).toBe('/lenses/world');
+    expect(body.error.message).not.toContain(token);
+    expect(body.error.message).not.toContain(email);
+    expect(body.error.message).toContain('[redacted]');
+    expect(JSON.stringify(body)).not.toContain(token);
+  });
 });

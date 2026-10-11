@@ -6,9 +6,31 @@
 import type { ReceiptCall } from '@/components/wallet/walletReceipt';
 import { SUPPORT_LABELS, formatForce, type BeamStudyResult } from './workspace-commands';
 
+function spanClaimsMm(text: string): number[] {
+  const out: number[] = [];
+  const re = /(\d+(?:\.\d+)?)\s*(mm|cm|m|ft|feet|foot)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const n = Number(m[1]);
+    const u = m[2].toLowerCase();
+    if (u === 'mm') out.push(n);
+    else if (u === 'cm') out.push(n * 10);
+    else if (u === 'm') out.push(n * 1000);
+    else out.push(n * 304.8);
+  }
+  return out;
+}
+
+/** Lead with the solved span when the study name claims a different one. */
+export function beamReportHeadline(r: BeamStudyResult): string {
+  const claims = spanClaimsMm(r.name || '');
+  if (!r.name || claims.some((mm) => Math.abs(mm - r.dims.length) > 1)) return `${r.dims.length} mm span`;
+  return r.name;
+}
+
 export function beamReportSentence(r: BeamStudyResult): string {
   const d = r.dims;
-  return `${r.name}: ${d.height}×${d.flangeWidth} I-beam (t_f ${d.flangeThickness}, t_w ${d.webThickness} mm), `
+  return `${beamReportHeadline(r)}: ${d.height}×${d.flangeWidth} I-beam (t_f ${d.flangeThickness}, t_w ${d.webThickness} mm), `
     + `${d.length} mm ${SUPPORT_LABELS[r.support].toLowerCase()}, ${formatForce(r.loadN)} — `
     + `${r.maxStressMPa.toFixed(1)} MPa, ${(r.utilization * 100).toFixed(1)}% of ${r.material.label} yield, `
     + `${r.pass ? 'passes' : 'fails'}.`;

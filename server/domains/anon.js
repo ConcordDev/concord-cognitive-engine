@@ -2,17 +2,25 @@
 // Domain actions for anonymization/privacy: k-anonymity, re-identification
 // risk assessment, and differential privacy noise injection.
 //
-// Plus a real end-to-end encrypted pseudonymous messaging substrate:
-// X25519 ECDH key exchange, AES-256-GCM sealed-sender envelopes, safety
-// numbers, group conversations, server-side ephemeral sweeping, and
+// Plus pseudonymous messaging: X25519 ECDH + AES-256-GCM sealed envelopes,
+// safety numbers, group conversations, server-side ephemeral sweeping, and
 // per-conversation disappearing-message defaults.
+//
+// Default custody is NOT end-to-end. Concord generates both keypairs, stores
+// the private keys, and accepts plaintext on sendMessage before sealing it.
+// Callers can read that plaintext back. The UI must say so.
+//
+// CONCORD_ANON_CLIENT_E2E=1 opts in a second path: the browser supplies an
+// X25519 public key, the private key never arrives, and sendMessage accepts
+// ciphertext envelopes only. Identities that already exist keep their
+// server-held keys so older conversations still open.
 
 import crypto from "node:crypto";
 
 export default function registerAnonActions(registerLensAction) {
 
   // ─────────────────────────────────────────────────────────────────
-  //  E2E messaging substrate — persistent per-user state in _concordSTATE
+  //  Pseudonymous messaging substrate — persistent per-user state in _concordSTATE
   // ─────────────────────────────────────────────────────────────────
 
   function getAnonState() {
@@ -40,9 +48,10 @@ export default function registerAnonActions(registerLensAction) {
 
   // Real-time delivery: emit to each member's per-user socket room so a
   // sent message lands on every recipient's open client without polling.
-  // The stored record is still ciphertext-only — the socket payload
-  // carries only metadata + the recipient's own sealed envelope, never
-  // plaintext, preserving the E2E + sealed-sender guarantees.
+  // The socket payload is metadata only. That is not end-to-end encryption:
+  // on the default path the HTTP request already carried plaintext, and
+  // Concord holds the private keys. Client-held sends never put plaintext
+  // in the request; the socket still carries only metadata.
   function emitToUser(userId, name, payload) {
     const REALTIME = globalThis._concordREALTIME;
     try {
@@ -121,25 +130,121 @@ export default function registerAnonActions(registerLensAction) {
     return groups;
   }
 
-  // Lazily mint / fetch a user's pseudonymous identity (X25519 keypair).
-  function ensureIdentity(s, userId) {
-    let ident = s.identities.get(userId);
-    if (ident) return ident;
+  // Client-held keys are off unless the operator sets this. Default keeps
+  // generating and storing private keys so existing conversations still open.
+  function clientE2EEnabled() {
+    return process.env.CONCORD_ANON_CLIENT_E2E === "1";
+  }
+
+  // Accept only a real X25519 SPKI public key. Returns canonical SPKI base64
+  // or null. The private key is never accepted on this path.
+  function importClientPublicKey(b64) {
+    if (typeof b64 !== "string" || b64.length < 32 || b64.length > 4096) return null;
+    try {
+      const key = crypto.createPublicKey({
+        key: Buffer.from(b64, "base64"),
+        format: "der",
+        type: "spki",
+      });
+      if (key.asymmetricKeyType !== "x25519") return null;
+      return key.export({ type: "spki", format: "der" }).toString("base64");
+    } catch {
+      return null;
+    }
+  }
+
+  // Missing keyCustody on identities minted before this field existed are
+  // server-held: they have a private key on the record.
+  function keyCustodyOf(ident) {
+    if (!ident) return "server";
+    if (ident.keyCustody === "client" || ident.privateKey == null) return "client";
+    return "server";
+  }
+
+  function memberView(s, member) {
+    const ident = findIdentityByAnonId(s, member.anonId);
+    if (!ident) {
+      return {
+        anonId: member.anonId,
+        alias: member.alias,
+        publicKey: member.publicKey || null,
+        keyCustody: "server",
+      };
+    }
+    return {
+      anonId: ident.anonId,
+      alias: ident.alias,
+      publicKey: ident.publicKey,
+      keyCustody: keyCustodyOf(ident),
+    };
+  }
+
+  // Structural check for browser-sealed envelopes. Copies only ciphertext,
+  // iv, and tag — extra fields are dropped so a client cannot smuggle
+  // plaintext alongside the envelope.
+  function parseClientEnvelopes(raw, memberAnonIds) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const out = {};
+    for (const anonId of memberAnonIds) {
+      const env = raw[anonId];
+      if (!env || typeof env !== "object") return null;
+      const ciphertext = anClean(env.ciphertext, 16000);
+      const iv = anClean(env.iv, 80);
+      const tag = anClean(env.tag, 80);
+      if (!ciphertext || !iv || !tag) return null;
+      const ivBuf = Buffer.from(iv, "base64");
+      const tagBuf = Buffer.from(tag, "base64");
+      const ctBuf = Buffer.from(ciphertext, "base64");
+      if (ivBuf.length !== 12 || tagBuf.length !== 16 || ctBuf.length === 0) return null;
+      out[anonId] = { ciphertext, iv, tag };
+    }
+    return out;
+  }
+
+  function mintServerIdentity(userId) {
     const { publicKey, privateKey } = crypto.generateKeyPairSync("x25519");
     const pub = publicKey.export({ type: "spki", format: "der" }).toString("base64");
     const priv = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
-    const alias = `anon-${crypto.randomBytes(4).toString("hex")}`;
-    ident = {
+    return {
       userId,
-      alias,
+      alias: `anon-${crypto.randomBytes(4).toString("hex")}`,
       anonId: anId("aid"),
       publicKey: pub,
       privateKey: priv,
+      keyCustody: "server",
       fingerprint: crypto.createHash("sha256").update(pub).digest("hex").slice(0, 16),
       createdAt: anNow(),
       rotatedAt: null,
-      verifiedPeers: {}, // peerAnonId -> true once safety number confirmed
+      verifiedPeers: {},
     };
+  }
+
+  function mintClientIdentity(userId, publicKey) {
+    return {
+      userId,
+      alias: `anon-${crypto.randomBytes(4).toString("hex")}`,
+      anonId: anId("aid"),
+      publicKey,
+      privateKey: null,
+      keyCustody: "client",
+      fingerprint: crypto.createHash("sha256").update(publicKey).digest("hex").slice(0, 16),
+      createdAt: anNow(),
+      rotatedAt: null,
+      verifiedPeers: {},
+    };
+  }
+
+  // Lazily mint / fetch a user's pseudonymous identity (X25519 keypair).
+  // An existing identity is never replaced — that would orphan envelopes
+  // sealed to its current anonId. A client public key is stored only when
+  // the flag is on AND this user has no identity yet.
+  function ensureIdentity(s, userId, opts) {
+    let ident = s.identities.get(userId);
+    if (ident) return ident;
+    const supplied = opts?.publicKey && clientE2EEnabled()
+      ? importClientPublicKey(String(opts.publicKey))
+      : null;
+    ident = supplied ? mintClientIdentity(userId, supplied) : mintServerIdentity(userId);
     s.identities.set(userId, ident);
     return ident;
   }
@@ -680,17 +785,28 @@ export default function registerAnonActions(registerLensAction) {
   });
 
   // ═══════════════════════════════════════════════════════════════════
-  //  E2E ENCRYPTED PSEUDONYMOUS MESSAGING
+  //  PSEUDONYMOUS MESSAGING
+  //  Default: Concord holds both private keys and receives plaintext.
+  //  CONCORD_ANON_CLIENT_E2E=1: browser public key only, ciphertext in.
   // ═══════════════════════════════════════════════════════════════════
 
   /**
    * identity — fetch (lazily mint) the caller's pseudonymous identity.
    * Returns the public-facing identity only — never the private key.
+   * params.publicKey — when CONCORD_ANON_CLIENT_E2E=1 and this user has no
+   * identity yet, store that public key and no private key. An identity
+   * that already exists is returned unchanged.
    */
-  registerLensAction("anon", "identity", (ctx) => {
+  registerLensAction("anon", "identity", (ctx, _artifact, params) => {
     try {
       const s = getAnonState();
-      const me = ensureIdentity(s, anUid(ctx));
+      const userId = anUid(ctx);
+      if (!s.identities.get(userId) && params?.publicKey && clientE2EEnabled()) {
+        if (!importClientPublicKey(String(params.publicKey))) {
+          return { ok: false, error: "invalid publicKey" };
+        }
+      }
+      const me = ensureIdentity(s, userId, { publicKey: params?.publicKey });
       saveAnonState();
       return {
         ok: true,
@@ -699,6 +815,7 @@ export default function registerAnonActions(registerLensAction) {
           alias: me.alias,
           publicKey: me.publicKey,
           fingerprint: me.fingerprint,
+          keyCustody: keyCustodyOf(me),
           createdAt: me.createdAt,
           rotatedAt: me.rotatedAt,
           verifiedPeerCount: Object.keys(me.verifiedPeers).length,
@@ -714,24 +831,26 @@ export default function registerAnonActions(registerLensAction) {
    * Old conversations remain readable only with re-keying; this mints a
    * fresh anonId so prior traffic can no longer be linked to the caller.
    */
-  registerLensAction("anon", "rotateIdentity", (ctx) => {
+  registerLensAction("anon", "rotateIdentity", (ctx, _artifact, params) => {
     try {
       const s = getAnonState();
       const userId = anUid(ctx);
-      const { publicKey, privateKey } = crypto.generateKeyPairSync("x25519");
-      const pub = publicKey.export({ type: "spki", format: "der" }).toString("base64");
-      const priv = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
-      const ident = {
-        userId,
-        alias: `anon-${crypto.randomBytes(4).toString("hex")}`,
-        anonId: anId("aid"),
-        publicKey: pub,
-        privateKey: priv,
-        fingerprint: crypto.createHash("sha256").update(pub).digest("hex").slice(0, 16),
-        createdAt: anNow(),
-        rotatedAt: anNow(),
-        verifiedPeers: {},
-      };
+      // Explicit rotate only. A client public key is honored when the flag
+      // is on; otherwise this still mints a server-held keypair, matching
+      // the historical rotate (fresh anonId, prior envelopes unlinkable).
+      let ident;
+      const supplied = params?.publicKey && clientE2EEnabled()
+        ? importClientPublicKey(String(params.publicKey))
+        : null;
+      if (params?.publicKey && clientE2EEnabled() && !supplied) {
+        return { ok: false, error: "invalid publicKey" };
+      }
+      if (supplied) {
+        ident = mintClientIdentity(userId, supplied);
+      } else {
+        ident = mintServerIdentity(userId);
+      }
+      ident.rotatedAt = anNow();
       s.identities.set(userId, ident);
       saveAnonState();
       return {
@@ -741,6 +860,7 @@ export default function registerAnonActions(registerLensAction) {
           alias: ident.alias,
           publicKey: ident.publicKey,
           fingerprint: ident.fingerprint,
+          keyCustody: keyCustodyOf(ident),
           rotatedAt: ident.rotatedAt,
           note: "Identity rotated — prior traffic is now unlinkable.",
         },
@@ -751,9 +871,9 @@ export default function registerAnonActions(registerLensAction) {
   });
 
   /**
-   * safetyNumber — compute the verified key-exchange safety number for a
-   * peer. Both parties compare the same 12-group code out-of-band; a match
-   * proves no man-in-the-middle. params.peerAnonId
+   * safetyNumber — 12-group code over the two stored public keys.
+   * On the default path Concord holds both private keys, so a match does
+   * not prove Concord cannot read the messages. params.peerAnonId
    */
   registerLensAction("anon", "safetyNumber", (ctx, _artifact, params) => {
     try {
@@ -862,7 +982,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: convId,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((m) => ({ anonId: m.anonId, alias: m.alias })),
+          members: conv.members.map((m) => memberView(s, m)),
           disappearDefaultSec,
         },
       };
@@ -892,7 +1012,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: conv.id,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((m) => ({ anonId: m.anonId, alias: m.alias })),
+          members: conv.members.map((m) => memberView(s, m)),
           memberCount: conv.members.length,
           disappearDefaultSec: conv.disappearDefaultSec,
           messageCount: conv.messages.length,
@@ -909,10 +1029,14 @@ export default function registerAnonActions(registerLensAction) {
   });
 
   /**
-   * sendMessage — encrypt + persist a message into a conversation.
-   * Each recipient gets a per-recipient AES-256-GCM envelope sealed under
-   * an X25519 ECDH shared secret. Plaintext is NEVER stored.
-   * params.conversationId, params.content
+   * sendMessage — persist a message into a conversation.
+   * Server-held identities: the request carries plaintext (`content`). Concord
+   * seals a per-recipient AES-256-GCM envelope and stores only ciphertext.
+   * Concord can read the message because it holds the private keys.
+   * Client-held identities (CONCORD_ANON_CLIENT_E2E=1): the request must
+   * carry `envelopes` and must not carry plaintext. Concord stores the
+   * ciphertext and cannot open it.
+   * params.conversationId, params.content | params.envelopes
    * params.ephemeralSec (overrides conversation disappearing default)
    * params.sealedSender (bool — strip sender metadata from stored record)
    */
@@ -925,8 +1049,6 @@ export default function registerAnonActions(registerLensAction) {
       if (!conv.memberUserIds.includes(me.userId)) {
         return { ok: false, error: "not a member of this conversation" };
       }
-      const content = anClean(params?.content, 4000);
-      if (!content) return { ok: false, error: "content required" };
 
       const now = anNow();
       const ttlSec = params?.ephemeralSec != null
@@ -934,13 +1056,26 @@ export default function registerAnonActions(registerLensAction) {
         : conv.disappearDefaultSec;
       const sealedSender = !!params?.sealedSender;
 
-      // Per-recipient sealed envelopes — sender's own copy included so they
-      // can decrypt their sent history.
-      const envelopes = {};
-      for (const member of conv.members) {
-        const recipient = findIdentityByAnonId(s, member.anonId);
-        if (!recipient) continue;
-        envelopes[member.anonId] = sealEnvelope(me.privateKey, recipient.publicKey, content);
+      let envelopes;
+      if (keyCustodyOf(me) === "client") {
+        // Refuse plaintext even if envelopes were also attached. Do not
+        // store, log, or echo the rejected body.
+        if (params?.content != null && String(params.content).trim() !== "") {
+          return { ok: false, error: "plaintext_not_accepted" };
+        }
+        envelopes = parseClientEnvelopes(params?.envelopes, conv.members.map((m) => m.anonId));
+        if (!envelopes) return { ok: false, error: "envelopes required" };
+      } else {
+        const content = anClean(params?.content, 4000);
+        if (!content) return { ok: false, error: "content required" };
+        // Per-recipient sealed envelopes — sender's own copy included so they
+        // can decrypt their sent history. Concord holds the private key.
+        envelopes = {};
+        for (const member of conv.members) {
+          const recipient = findIdentityByAnonId(s, member.anonId);
+          if (!recipient) continue;
+          envelopes[member.anonId] = sealEnvelope(me.privateKey, recipient.publicKey, content);
+        }
       }
 
       const msg = {
@@ -955,9 +1090,9 @@ export default function registerAnonActions(registerLensAction) {
       };
       conv.messages.push(msg);
       saveAnonState();
-      // Real-time fan-out: push a delivery ping to every member's socket
-      // room. Plaintext is never on the wire — clients call readConversation
-      // to decrypt their own envelope. Sealed-sender hides fromAnonId.
+      // Real-time fan-out: metadata only. Server-held callers still received
+      // plaintext on this HTTP request. Client-held callers did not.
+      // Sealed-sender hides fromAnonId.
       for (const member of conv.members) {
         const recipient = findIdentityByAnonId(s, member.anonId);
         if (!recipient) continue;
@@ -989,9 +1124,10 @@ export default function registerAnonActions(registerLensAction) {
   });
 
   /**
-   * readConversation — decrypt every message in a conversation for the
-   * caller. Sweeps expired messages first. Plaintext only ever leaves the
-   * server for the authenticated member who holds the matching key.
+   * readConversation — return a conversation for the caller.
+   * Server-held callers get plaintext Concord decrypted with the private
+   * key it stores. Client-held callers get their ciphertext envelope and
+   * no plaintext; the browser decrypts. Sweeps expired messages first.
    * params.conversationId
    */
   registerLensAction("anon", "readConversation", (ctx, _artifact, params) => {
@@ -1006,21 +1142,22 @@ export default function registerAnonActions(registerLensAction) {
       const now = anNow();
       const swept = sweepConversation(conv, now);
 
+      const clientHeld = keyCustodyOf(me) === "client";
       const messages = conv.messages.map((m) => {
         const env = m.envelopes[me.anonId];
         let content = null;
         let decryptError = null;
-        if (env) {
+        if (!env) {
+          decryptError = "no envelope for this identity";
+        } else if (!clientHeld) {
           try {
             content = openEnvelope(me.privateKey, m.senderPublicKey, env);
           } catch (e) {
             decryptError = e.message;
           }
-        } else {
-          decryptError = "no envelope for this identity";
         }
         const mine = !m.sealedSender && m.fromAnonId === me.anonId;
-        return {
+        const row = {
           id: m.id,
           fromAnonId: m.fromAnonId,
           fromAlias: m.fromAlias,
@@ -1032,6 +1169,12 @@ export default function registerAnonActions(registerLensAction) {
           expiresAt: m.expiresAt,
           encrypted: true,
         };
+        if (clientHeld) {
+          row.envelope = env || null;
+          row.senderPublicKey = m.senderPublicKey;
+          row.clientDecrypt = true;
+        }
+        return row;
       });
       saveAnonState();
       return {
@@ -1040,7 +1183,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: conv.id,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((mm) => ({ anonId: mm.anonId, alias: mm.alias })),
+          members: conv.members.map((mm) => memberView(s, mm)),
           disappearDefaultSec: conv.disappearDefaultSec,
           messages,
           messageCount: messages.length,
@@ -1128,6 +1271,8 @@ export default function registerAnonActions(registerLensAction) {
           anonId: ident.anonId,
           alias: ident.alias,
           fingerprint: ident.fingerprint,
+          publicKey: ident.publicKey,
+          keyCustody: keyCustodyOf(ident),
           verified: !!me.verifiedPeers[ident.anonId],
         });
       }

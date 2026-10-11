@@ -60,6 +60,14 @@ permissions:
   contents: read
   security-events: write
 
+# One group per workflow per PR, or per ref for push/schedule/dispatch.
+# A newer pull_request run cancels the older in-flight run. Push, schedule,
+# and workflow_dispatch do not: an in-progress main deploy or publish is
+# left to finish. GitHub still drops older queued runs in the same group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   semgrep-sast:
     name: SAST — Semgrep (rules in .semgrep.yml)
@@ -101,7 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -149,7 +157,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -244,7 +252,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
@@ -361,7 +369,7 @@ jobs:
         # visualization, so a 429 here shouldn't gate merges.
         continue-on-error: true
         if: always()
-        uses: github/codeql-action/upload-sarif@v4.37.3
+        uses: github/codeql-action/upload-sarif@v4.38.2
         with:
           sarif_file: 'trivy-results-${{ matrix.name }}.sarif'
           category: 'trivy-${{ matrix.name }}'

@@ -102,6 +102,22 @@ export function deriveEarnings(
   return { totalEarned, tips, bounties, sales, thisMonth, lastMonth };
 }
 
+export interface TestCreditAvailability {
+  ok: boolean;
+  available: boolean;
+  gross: number | null;
+}
+
+export function useWalletTestCreditAvailability() {
+  return useQuery({
+    queryKey: ['wallet-test-credit'],
+    queryFn: () =>
+      api.get('/api/economy/test-credit').then((r) => r.data as TestCreditAvailability),
+    retry: false,
+    staleTime: 60_000,
+  });
+}
+
 export function useWalletInvalidate() {
   const queryClient = useQueryClient();
   return useMemo(
@@ -110,6 +126,7 @@ export function useWalletInvalidate() {
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['wallet-withdrawals'] });
       queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-test-credit'] });
     },
     [queryClient],
   );

@@ -13,28 +13,46 @@
 // related-question suggestions, file/text upload as a query source,
 // and markdown / shareable-link answer export.
 //
-// Persistence: per-user Maps hung off globalThis._concordSTATE so a
-// user's threads, spaces, and uploads survive across requests within
-// the process. No DB schema is added; no migrations. Every value
-// returned is real (user input, a real brain call, a real web fetch,
-// or deterministic computation) — no seed/mock/demo data.
+// Persistence: per-user Maps on globalThis._concordSTATE.expertModeLens.
+// That key is in LENS_STATE_KEYS, so the process snapshot
+// (server.js#_serializeState / _hydrateState via
+// lib/lens-state-persistence.js) round-trips threads, spaces, uploads,
+// and share tokens across a restart. Maps are stored as
+// { __type: "Map", entries } envelopes — a bare JSON.stringify(Map) is
+// "{}". No new table and no migration. Upload text is capped at
+// 200_000 characters per document (the ask path still feeds the brain
+// only the first 12_000). Every value returned is real (user input, a
+// real brain call, a real web fetch, or deterministic computation) —
+// no seed/mock/demo data.
 
 import crypto from "node:crypto";
-import { expertAnswer, gatherSourcesForQuery, extractCitationIndices } from "../lib/expert-mode.js";
+import { expertAnswer, gatherSourcesForQuery, extractCitationIndices, EXPERT_SOURCE_TEXT_CAP } from "../lib/expert-mode.js";
 
 // ---- store ---------------------------------------------------------------
 
+// Per-document cap. The snapshot stores this text, so the cap is also
+// the durability bound — a larger paste is rejected, not truncated.
+const UPLOAD_TEXT_CAP = 200_000;
+
 function store() {
   const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
-  if (!STATE._expertMode) {
-    STATE._expertMode = {
+  // Registered as expertModeLens (not a private _expertMode bag) so the
+  // snapshot walker persists it. Hydration replaces this object with
+  // rehydrated Maps; only a missing or non-object value is created fresh.
+  if (!STATE.expertModeLens || typeof STATE.expertModeLens !== "object" || Array.isArray(STATE.expertModeLens)) {
+    STATE.expertModeLens = {
       threads: new Map(),   // threadId -> { id, userId, title, focus, turns[], createdAt, updatedAt }
       spaces: new Map(),    // spaceId  -> { id, userId, name, description, answers[], shareToken, createdAt }
       uploads: new Map(),   // uploadId -> { id, userId, name, kind, text, chars, createdAt }
       shares: new Map(),    // shareToken -> { kind:'space'|'answer', refId, userId }
     };
   }
-  return STATE._expertMode;
+  const s = STATE.expertModeLens;
+  if (!(s.threads instanceof Map)) s.threads = new Map();
+  if (!(s.spaces instanceof Map)) s.spaces = new Map();
+  if (!(s.uploads instanceof Map)) s.uploads = new Map();
+  if (!(s.shares instanceof Map)) s.shares = new Map();
+  return s;
 }
 
 function uid(prefix) {
@@ -100,8 +118,10 @@ async function liveWebSources(query, limit) {
     return (results || []).slice(0, limit).map((r) => ({
       id: `web_${crypto.createHash("sha1").update(r.url || r.title || query).digest("hex").slice(0, 12)}`,
       title: r.title || query,
+      // snippet stays the short search blurb for the source card.
+      // content is the lead extract (height, capital, …) the answer prompt reads.
       snippet: (r.snippet || r.content || "").slice(0, 240),
-      content: (r.content || r.snippet || "").slice(0, 1200),
+      content: (r.content || r.snippet || "").slice(0, EXPERT_SOURCE_TEXT_CAP),
       url: r.url || "",
       creator_id: null,
       scope: "web",
@@ -237,11 +257,18 @@ export default function registerExpertModeMacros(register) {
     const contextQuery = threadContextQuery(thread, String(query).trim());
     const augmented = `${contextQuery}${mode.directive ? `\n\n[Focus directive] ${mode.directive}` : ""}`;
 
+    // Web pages have to be in the numbered source list BEFORE the brain
+    // answers. Fetching them afterwards left the card showing Wikipedia
+    // while the prompt still said the sources do not address the question.
+    const web = wantWeb
+      ? await liveWebSources(`${query}${mode.queryAugment}`, Math.min(5, cap))
+      : [];
+
     let answerRes;
     try {
       answerRes = await expertAnswer({
         db, userId, query: augmented,
-        opts: { maxSources: cap },
+        opts: { maxSources: cap, extraSources: web, refuseWhenNoSources: wantWeb },
       });
     } catch (e) {
       return { ok: false, reason: "brain_failed", error: String(e?.message || e) };
@@ -250,28 +277,8 @@ export default function registerExpertModeMacros(register) {
       return { ok: false, reason: "brain_failed", error: answerRes?.error || "unknown" };
     }
 
-    // Live web sources are appended after the DTU sources, renumbered so
-    // citation chips stay contiguous across the merged list.
-    let sources = Array.isArray(answerRes.sources) ? [...answerRes.sources] : [];
-    let webCount = 0;
-    if (wantWeb) {
-      const web = await liveWebSources(`${query}${mode.queryAugment}`, Math.min(5, cap));
-      webCount = web.length;
-      const offset = sources.length;
-      sources = sources.concat(web.map((w, i) => ({
-        idx: offset + i + 1,
-        id: w.id,
-        title: w.title,
-        creatorId: null,
-        scope: "web",
-        origin: "web",
-        url: w.url,
-        sourceName: w.source_name,
-        snippet: w.snippet,
-        mintedByProvider: null,
-        mintedByModel: null,
-      })));
-    }
+    const sources = Array.isArray(answerRes.sources) ? answerRes.sources : [];
+    const webCount = sources.filter((s) => s.origin === "web" || s.scope === "web").length;
 
     const turn = {
       id: uid("turn"),
@@ -489,7 +496,7 @@ export default function registerExpertModeMacros(register) {
     const name = String(input?.name || "Untitled").slice(0, 200);
     const text = String(input?.text || "");
     if (!text.trim()) return { ok: false, reason: "missing_text" };
-    if (text.length > 200_000) return { ok: false, reason: "too_large" };
+    if (text.length > UPLOAD_TEXT_CAP) return { ok: false, reason: "too_large" };
     const st = store();
     const upload = {
       id: uid("upl"),

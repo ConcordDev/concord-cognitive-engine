@@ -24,6 +24,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ShieldCheck, Zap, Check } from 'lucide-react';
+import { highPowerConfirmCopy } from '@/components/byo-keys/slotRouteCopy';
 
 type BrainMode = 'private' | 'high_power';
 
@@ -57,6 +58,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
   // it server-side regardless, so this default is display-only, never
   // the enforcement point.
   const [highPowerAllowed, setHighPowerAllowed] = useState(true);
+  const [confirmHighPower, setConfirmHighPower] = useState(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<BrainModeResult>('byo_keys', 'get_brain_mode', {});
@@ -76,9 +78,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const choose = async (next: BrainMode) => {
-    if (next === mode) return;
-    if (next === 'high_power' && !highPowerAllowed) return;
+  const commit = async (next: BrainMode) => {
     setBusy(true);
     setError(null);
     const r = await lensRun<BrainModeResult>('byo_keys', 'set_brain_mode', { brainMode: next });
@@ -91,31 +91,78 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
     }
   };
 
+  const choose = (next: BrainMode) => {
+    if (next === mode || busy) return;
+    if (next === 'high_power' && !highPowerAllowed) return;
+    if (next === 'high_power') {
+      setConfirmHighPower(true);
+      return;
+    }
+    void commit(next);
+  };
+
+  const confirmLeavePrivate = () => {
+    setConfirmHighPower(false);
+    void commit('high_power');
+  };
+
   const isPrivate = mode === 'private';
 
   if (compact) {
     const next: BrainMode = isPrivate ? 'high_power' : 'private';
     const canToggle = next === 'private' || highPowerAllowed;
     return (
-      <button
-        type="button"
-        data-testid="brain-mode-panel"
-        onClick={() => canToggle && choose(next)}
-        disabled={busy || !canToggle}
-        title={
-          isPrivate
-            ? 'Private — every response from Concord’s own brains; nothing leaves. Tap to switch to High Power.'
-            : 'High Power — messages may go to Google/Mistral/Groq. Tap to switch back to Private.'
-        }
-        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60 ${
-          isPrivate
-            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-500/70'
-            : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70'
-        }`}
-      >
-        {isPrivate ? <ShieldCheck className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-        <span className="hidden sm:inline">{isPrivate ? 'Private' : 'High Power'}</span>
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          data-testid="brain-mode-panel"
+          onClick={() => canToggle && choose(next)}
+          disabled={busy || !canToggle}
+          title={
+            isPrivate
+              ? 'Private — every response from Concord’s own brains; nothing leaves. Tap to switch to High Power.'
+              : 'High Power — messages may go to Google/Mistral/Groq. Tap to switch back to Private.'
+          }
+          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60 ${
+            isPrivate
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-500/70'
+              : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70'
+          }`}
+        >
+          {isPrivate ? <ShieldCheck className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+          <span className="hidden sm:inline">{isPrivate ? 'Private' : 'High Power'}</span>
+        </button>
+        {confirmHighPower && (
+          <div
+            role="dialog"
+            aria-labelledby="brain-mode-confirm-title"
+            data-testid="brain-mode-confirm"
+            className="absolute right-0 z-20 mt-2 w-72 rounded-lg border border-amber-500/40 bg-zinc-950 p-3"
+          >
+            <p id="brain-mode-confirm-title" className="text-xs font-medium text-amber-200">Leave Private mode?</p>
+            <p className="mt-1 text-[11px] text-zinc-300 leading-snug">{highPowerConfirmCopy()}</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                data-testid="brain-mode-confirm-high-power"
+                onClick={confirmLeavePrivate}
+                disabled={busy}
+                className="rounded-md bg-amber-400 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+              >
+                Send to those providers
+              </button>
+              <button
+                type="button"
+                data-testid="brain-mode-cancel-high-power"
+                onClick={() => setConfirmHighPower(false)}
+                className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
+              >
+                Stay private
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -203,6 +250,41 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
           )}
         </button>
       </div>
+
+      {confirmHighPower && (
+        <div
+          role="dialog"
+          aria-labelledby="brain-mode-confirm-title"
+          data-testid="brain-mode-confirm"
+          className="mt-3 rounded-lg border border-amber-500/40 bg-zinc-950 p-3"
+        >
+          <p id="brain-mode-confirm-title" className="text-xs font-medium text-amber-200">
+            Leave Private mode?
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-300 leading-snug" data-testid="brain-mode-confirm-copy">
+            {highPowerConfirmCopy()}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              data-testid="brain-mode-confirm-high-power"
+              onClick={confirmLeavePrivate}
+              disabled={busy}
+              className="rounded-md bg-amber-400 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+            >
+              Send to those providers
+            </button>
+            <button
+              type="button"
+              data-testid="brain-mode-cancel-high-power"
+              onClick={() => setConfirmHighPower(false)}
+              className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
+            >
+              Stay private
+            </button>
+          </div>
+        </div>
+      )}
 
       {!isPrivate && (
         <p className="mt-3 text-[11px] text-amber-400/80">

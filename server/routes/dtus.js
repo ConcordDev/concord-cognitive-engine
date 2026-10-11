@@ -8,8 +8,25 @@ import { logAudit } from "../lib/audit-logger.js";
 import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
+
+  /**
+   * Map a macro denial onto an HTTP status. dtu.update/delete/assignCustody
+   * return { ok:false, status: 401|403 } for auth failures. A bare
+   * "unauthorized: ..." string is 403 so an older caller still can't look
+   * like a success.
+   */
+  function respondDtuWrite(res, out) {
+    if (out && out.ok === false) {
+      const status = Number.isInteger(out.status)
+        ? out.status
+        : (typeof out.error === "string" && /^unauthorized\b/i.test(out.error) ? 403 : null);
+      if (status && status >= 400 && status < 600) return res.status(status).json(out);
+    }
+    return res.json(out);
+  }
 
   /** Parse limit/offset query params with sensible defaults and bounds. */
   function parsePagination(query, defaultLimit = 50, maxLimit = 200) {
@@ -22,7 +39,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.get("/api/dtu_view/:id", (req, res) => {
     const id = req.params.id;
     const d = STATE.dtus.get(id);
-    if (!d) return res.status(404).json({ ok:false, error:"DTU not found" });
+    if (!d || !ctxMayReadDtu(req, d)) return res.status(404).json({ ok:false, error:"DTU not found" });
     return res.json({ ok:true, dtu: dtuForClient(d, { raw: req.query.raw === "1" }) });
   });
 
@@ -40,7 +57,18 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.get("/api/dtus", asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);
-      const out = await runMacro("dtu","list",{ q:req.query.q, tier:req.query.tier || "any", limit:req.query.limit, offset:req.query.offset, scope: req.query.scope || null, mine: req.query.mine, owner: req.query.owner }, ctx);
+      const out = await runMacro("dtu","list",{
+        q: req.query.q || req.query.search || "",
+        tag: req.query.tag || req.query.tags || "",
+        tier: req.query.tier || "any",
+        limit: req.query.limit,
+        offset: req.query.offset,
+        scope: req.query.scope || null,
+        mine: req.query.mine,
+        owner: req.query.owner,
+        domain: req.query.domain || null,
+        kind: req.query.kind || null,
+      }, ctx);
       res.json(out);
     } catch (e) {
       const { status, clientMsg } = sanitizeMacroError(e, "dtu.list");
@@ -131,6 +159,37 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
+  }));
+
+  // Literal one-segment GETs must be registered before /api/dtus/:id.
+  // Express matches in registration order. These three used to sit after
+  // that param route (shadow later in this function; recent and search in
+  // helpers-extended.js, which server.js mounts afterward), so live
+  // requests for them hit dtu.get and returned 404 "DTU not found".
+  app.get("/api/dtus/shadow", asyncHandler(async (req, res) => {
+    const out = await runMacro("dtu", "listShadow", { limit: req.query.limit, q: req.query.q }, makeCtx(req));
+    return res.json(out);
+  }));
+
+  app.get("/api/dtus/recent", asyncHandler(async (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const all = dtusArray()
+      .filter(d => ctxMayReadDtu(req, d))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    res.json({ ok: true, dtus: all.slice(0, limit).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain, createdAt: d.createdAt })) });
+  }));
+
+  app.get("/api/dtus/search", asyncHandler(async (req, res) => {
+    const q = (req.query.q || "").toLowerCase();
+    if (!q) return res.json({ ok: true, results: [], total: 0 });
+    const results = dtusArray().filter(d =>
+      ctxMayReadDtu(req, d) && (
+        (d.title || "").toLowerCase().includes(q) ||
+        (d.human?.summary || "").toLowerCase().includes(q) ||
+        (d.tags || []).some(t => t.toLowerCase().includes(q))
+      )
+    ).slice(0, 50).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain }));
+    res.json({ ok: true, results, total: results.length });
   }));
 
   app.get("/api/dtus/:id", asyncHandler(async (req, res) => {
@@ -234,16 +293,29 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     res.json({ ok:true, hypers: out, total: all.length, limit, offset });
   });
 
+  // Admin custody — set visibility and owner on existing DTUs by id.
+  // Registered before /api/dtus/:id so "admin" is not captured as an id
+  // by a later param route of the same method. Owner/admin/founder
+  // required. The macro re-checks the role, audit-logs, and persists
+  // through upsertDTU. dryRun writes nothing.
+  const _requireCustodyAdmin = requireRole
+    ? requireRole("owner", "admin", "founder")
+    : ((req, res) => res.status(403).json({ ok: false, error: "Insufficient permissions" }));
+  app.post("/api/dtus/admin/custody", _requireCustodyAdmin, asyncHandler(async (req, res) => {
+    const out = await runMacro("dtu", "assignCustody", req.body || {}, makeCtx(req));
+    return respondDtuWrite(res, out);
+  }));
+
   // Extended DTU endpoints
   app.put("/api/dtus/:id", validate("dtuUpdate"), asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "update", { id: req.params.id, ...req.body }, makeCtx(req));
-    return res.json(out);
+    return respondDtuWrite(res, out);
   }));
 
   // PATCH is an alias for PUT — frontend client.ts sends PATCH for partial updates
   app.patch("/api/dtus/:id", asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "update", { id: req.params.id, ...req.body }, makeCtx(req));
-    return res.json(out);
+    return respondDtuWrite(res, out);
   }));
 
   app.delete("/api/dtus/:id", asyncHandler(async (req, res) => {
@@ -258,7 +330,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
       });
     }
 
-    return res.json(out);
+    return respondDtuWrite(res, out);
   }));
 
   app.post("/api/dtus/cluster", asyncHandler(async (req, res) => {
@@ -274,11 +346,6 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.post("/api/dtus/define", asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "define", req.body, makeCtx(req));
     return res.json(_withAck(out, req, ["dtus"], ["/api/dtus"], null, { panel: "define" }));
-  }));
-
-  app.get("/api/dtus/shadow", asyncHandler(async (req, res) => {
-    const out = await runMacro("dtu", "listShadow", { limit: req.query.limit, q: req.query.q }, makeCtx(req));
-    return res.json(out);
   }));
 
   app.post("/api/dtus/gap-promote", asyncHandler(async (req, res) => {
@@ -322,7 +389,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   // GET /api/dtu/:id/export — pack a DTU as a portable container archive
   app.get("/api/dtu/:id/export", asyncHandler(async (req, res) => {
     const dtu = dtusArray().find(d => d.id === req.params.id);
-    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "DTU not found" });
     const artifactRootDir = path.join(process.cwd(), "data", "artifacts");
     const containerPath = await packDTUContainer(dtu, artifactRootDir);
     res.download(containerPath, `dtu-${req.params.id}.tar.gz`, err => {

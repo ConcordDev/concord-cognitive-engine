@@ -727,6 +727,21 @@ describe("Query Helpers", () => {
     assert.equal(r.total, 3);
   });
 
+  it("listDtusByScope: offset returns the next page and keeps the full total", () => {
+    const s = freshState();
+    for (const [id, updatedAt] of [["p0", "2020-01-01T00:00:00.000Z"], ["p1", "2021-01-01T00:00:00.000Z"], ["p2", "2022-01-01T00:00:00.000Z"]]) {
+      const dtu = makeDtu({ id, scope: "local" });
+      dtu.updatedAt = updatedAt;
+      addDtu(s, dtu);
+    }
+    const page = listDtusByScope(s, "local", { limit: 1, offset: 1 });
+    assert.equal(page.ok, true);
+    assert.equal(page.total, 3);
+    assert.equal(page.dtus.length, 1);
+    assert.equal(page.dtus[0].id, "p1");
+    assert.equal(page.offset, 1);
+  });
+
   it("listDtusByScope: rejects invalid scope", () => {
     const r = listDtusByScope(STATE, "bogus");
     assert.ok(!r.ok);
