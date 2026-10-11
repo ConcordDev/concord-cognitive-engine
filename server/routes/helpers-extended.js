@@ -622,26 +622,9 @@ export default function registerHelpersExtendedRoutes(app, {
     res.json({ ok: true, results, processed: results.length });
   }));
 
-  app.get("/api/dtus/recent", asyncHandler(async (req, res) => {
-    const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const all = dtusArray()
-      .filter(d => ctxMayReadDtu(req, d))
-      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    res.json({ ok: true, dtus: all.slice(0, limit).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain, createdAt: d.createdAt })) });
-  }));
-
-  app.get("/api/dtus/search", asyncHandler(async (req, res) => {
-    const q = (req.query.q || "").toLowerCase();
-    if (!q) return res.json({ ok: true, results: [], total: 0 });
-    const results = dtusArray().filter(d =>
-      ctxMayReadDtu(req, d) && (
-        (d.title || "").toLowerCase().includes(q) ||
-        (d.human?.summary || "").toLowerCase().includes(q) ||
-        (d.tags || []).some(t => t.toLowerCase().includes(q))
-      )
-    ).slice(0, 50).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain }));
-    res.json({ ok: true, results, total: results.length });
-  }));
+  // GET /api/dtus/recent and GET /api/dtus/search are registered in
+  // routes/dtus.js, ahead of /api/dtus/:id. This module mounts later
+  // (server.js), so a copy here never ran in production.
 
   app.get("/api/dtus/:id/children", asyncHandler(async (req, res) => {
     const dtu = STATE.dtus?.get(req.params.id);
