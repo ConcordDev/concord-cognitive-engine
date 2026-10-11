@@ -76,7 +76,8 @@ describe("mesh direct / group messaging", () => {
     const nodeId = call("addNode", ctx, { name: "Bob" }).result.node.id;
     const sent = call("sendMessage", ctx, { to: nodeId, body: "hello over mesh" });
     assert.equal(sent.ok, true);
-    assert.equal(sent.result.message.state, "delivered");
+    assert.equal(sent.result.message.state, "recorded");
+    assert.equal(sent.result.message.transmitted, false);
     const thread = call("conversation", ctx, { with: nodeId });
     assert.equal(thread.ok, true);
     assert.equal(thread.result.messages.length, 1);
@@ -91,7 +92,8 @@ describe("mesh direct / group messaging", () => {
     const r = call("sendMessage", freshCtx(), { to: "broadcast", body: "all stations" });
     assert.equal(r.ok, true);
     assert.equal(r.result.message.kind, "broadcast");
-    assert.equal(r.result.message.state, "delivered");
+    assert.equal(r.result.message.state, "recorded");
+    assert.equal(r.result.message.transmitted, false);
   });
 });
 

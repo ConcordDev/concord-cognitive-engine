@@ -28,7 +28,7 @@ import { sectionAreas, meshChecks } from "../lib/conkay/aero/stl-sections.js";
 import { profilePolygon } from "../lib/conkay/physics/solvers/aero-drag.js";
 import { buildCarFromLibrary, carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 import { openDesign } from "../lib/conkay/index.js";
-import { kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
+import { resolveKernelPython } from "../lib/conkay/cad/body-kernel.js";
 
 const rel = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.abs(b), `${msg}: ${a} vs ${b} (rel ${(Math.abs(a - b) / Math.abs(b)).toExponential(2)})`);
 
@@ -201,8 +201,15 @@ describe("the library car: Cd from its CAD body", () => {
 
   let s = null, skip = null;
   before(async () => {
-    if (!(await kernelPythonPath())) { skip = "no OCC kernel Python"; return; }
+    const py = await resolveKernelPython();
+    if (!py) { skip = "no OCC kernel Python"; return; }
     s = (await carAcceptanceAsync(BRIEF)).session;
+    const body = s.result("cad.body@BODY_SHELL");
+    const drag = s.result("aero.drag-buildup@VEH");
+    const why = [body?.reason, body?.error, drag?.reason].filter(Boolean).join(" ");
+    if (!body || /no Python with OCP|unavailable/i.test(why)) {
+      skip = why || "OCC kernel did not compute the body";
+    }
   });
 
   it("computes a Cd range from the solid and re-runs top speed on it (needs the OCC kernel)", (t) => {

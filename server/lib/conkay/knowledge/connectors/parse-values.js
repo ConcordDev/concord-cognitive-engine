@@ -17,7 +17,9 @@ export const toKelvin = (v, u) => (u === "C" ? v + 273.15 : u === "F" ? (v - 32)
 /** Half the last printed digit of a number string (its reported resolution). */
 export function resolution(s) {
   const m = String(s).match(/\.(\d+)/);
-  return 0.5 * 10 ** -(m ? m[1].length : 0);
+  const places = m ? m[1].length : 0;
+  // 0.5 * 10**(-places) is not the decimal half-digit: 0.5 * 1e-4 !== 0.00005.
+  return Number(`5e-${places + 1}`);
 }
 
 /** Pressure in Pa from text like "at 760 mm Hg", "@760 [mm Hg]", "101.3 kPa". */

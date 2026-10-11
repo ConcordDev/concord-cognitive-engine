@@ -99,7 +99,7 @@ describe("platform — deployment CRUD", () => {
     assert.equal(created.ok, true);
     assert.equal(created.result.deployment.service, "api");
     assert.equal(created.result.deployment.active, true);
-    assert.equal(created.result.deployment.status, "ready");
+    assert.equal(created.result.deployment.status, "recorded");
     const id = created.result.deployment.id;
 
     const list = await lensRun("platform", "deploy-list", { params: { service: "api" } }, ctx);
@@ -108,7 +108,7 @@ describe("platform — deployment CRUD", () => {
 
     const logs = await lensRun("platform", "deploy-logs", { params: { id } }, ctx);
     assert.equal(logs.ok, true);
-    assert.ok(logs.result.logs.some((l) => l.msg.toLowerCase().includes("deployment ready")));
+    assert.ok(logs.result.logs.some((l) => /release recorded/i.test(l.msg)));
   });
 
   it("deploy-rollback: a superseded deploy can be re-promoted to active", async () => {
@@ -169,10 +169,13 @@ describe("platform — env + domain CRUD", () => {
     const ok = await lensRun("platform", "domain-attach", { params: { host: "app.example.com", service: "web" } }, ctx);
     assert.equal(ok.ok, true);
     assert.equal(ok.result.domain.host, "app.example.com");
+    assert.equal(ok.result.domain.verified, false);
+    assert.equal(ok.result.domain.sslStatus, "not_managed");
     const id = ok.result.domain.id;
+    // Verification is a real DNS TXT lookup. example.com has no Concord record.
     const verified = await lensRun("platform", "domain-verify", { params: { id } }, ctx);
-    assert.equal(verified.result.domain.verified, true);
-    assert.equal(verified.result.domain.sslStatus, "issued");
+    assert.equal(verified.result.ok, false);
+    assert.match(String(verified.result.error), /DNS lookup|TXT record/i);
   });
 });
 
@@ -201,12 +204,13 @@ describe("platform — alerting + usage + audit", () => {
   });
 
   it("usage-summary: derives quota line items including build minutes from deploys", async () => {
-    await lensRun("platform", "deploy-create", { params: { service: "billable", ref: "main" } }, ctx);
+    await lensRun("platform", "deploy-create", { params: { service: "billable", ref: "main", buildSeconds: 120 } }, ctx);
     const r = await lensRun("platform", "usage-summary", { params: { plan: "pro" } }, ctx);
     assert.equal(r.ok, true);
     assert.equal(r.result.plan, "pro");
     assert.equal(r.result.basePlanCost, 20);
-    assert.ok(r.result.lineItems.some((l) => l.label === "Build minutes" && l.used > 0));
+    // Build minutes come from the caller's reported buildSeconds, not a simulated build.
+    assert.ok(r.result.lineItems.some((l) => l.label === "Build minutes" && l.used === 2));
     assert.ok(r.result.counts.deployments >= 1);
   });
 

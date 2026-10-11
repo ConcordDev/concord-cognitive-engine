@@ -101,21 +101,24 @@ test("mesh.sendMessage requires a body", async () => {
   assert.ok(r.result.error.includes("body"));
 });
 
-test("mesh.sendMessage to broadcast delivers immediately (not queued)", async () => {
+test("mesh.sendMessage to broadcast is recorded immediately (not queued)", async () => {
   const ctx = await depthCtx("mesh:bcast");
   const r = await lensRun("mesh", "sendMessage",
     { params: { to: "broadcast", body: "all-points" } }, ctx);
-  assert.equal(r.result.message.state, "delivered");
+  // Chat is a per-user mesh log. A reachable destination is recorded, not transmitted.
+  assert.equal(r.result.message.state, "recorded");
+  assert.equal(r.result.message.transmitted, false);
   assert.equal(r.result.message.kind, "broadcast");
   assert.equal(r.result.queued, false);
 });
 
-test("mesh.sendMessage to an online node delivers; to unknown node queues store-and-forward", async () => {
+test("mesh.sendMessage to an online node is recorded; to unknown node queues store-and-forward", async () => {
   const ctx = await depthCtx("mesh:saf");
   const online = await lensRun("mesh", "addNode", { params: { name: "Up" } }, ctx);
   const del = await lensRun("mesh", "sendMessage",
     { params: { to: online.result.node.id, body: "hi" } }, ctx);
-  assert.equal(del.result.message.state, "delivered");
+  assert.equal(del.result.message.state, "recorded");
+  assert.equal(del.result.message.transmitted, false);
   assert.equal(del.result.queued, false);
 
   // Unknown destination → offline → queued.
