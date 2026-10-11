@@ -6,6 +6,7 @@ import { ShieldCheck, Loader2, ExternalLink, ArrowUp, MessageSquare } from 'luci
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Post { id: string; title: string; permalink: string; author: string; score: number; num_comments: number; link_flair_text?: string; }
+interface FeedResult { posts: Post[]; unavailable: boolean; }
 
 const SUBS = [
   { id: 'Insurance', label: 'r/Insurance' },
@@ -21,16 +22,23 @@ export function InsurancePolicyTalk() {
 
   const posts = useQuery({
     queryKey: ['reddit-insurance', sub, windowKey],
-    queryFn: async () => {
-      const r = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}&limit=25`);
-      if (!r.ok) throw new Error(`reddit ${r.status}`);
-      const j = await r.json();
-      return (j?.data?.children || []).map((c: { data: Post }) => c.data) as Post[];
+    retry: false,
+    queryFn: async (): Promise<FeedResult> => {
+      try {
+        const r = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}&limit=25`);
+        if (!r.ok) return { posts: [], unavailable: true };
+        const j = await r.json();
+        const list = (j?.data?.children || []).map((c: { data: Post }) => c.data) as Post[];
+        return { posts: list, unavailable: false };
+      } catch {
+        return { posts: [], unavailable: true };
+      }
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const list = posts.data || [];
+  const unavailable = posts.data?.unavailable === true;
+  const list = posts.data?.posts || [];
   const totalScore = list.reduce((a, p) => a + (p.score || 0), 0);
 
   return (
@@ -43,12 +51,16 @@ export function InsurancePolicyTalk() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="reddit-insurance-pol" apiUrl={`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}`} title={`r/${sub} — top ${windowKey} (${list.length})`} content={list.slice(0, 20).map((p, i) => `${i + 1}. [${p.score}↑ · ${p.num_comments}💬] ${p.title}\n   https://reddit.com${p.permalink}`).join('\n\n')} extraTags={['insurance', 'reddit', sub.toLowerCase(), windowKey]} rawData={{ sub, window: windowKey, posts: list }} />}
         </div>
       </header>
-      {posts.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Reddit unreachable.</div>}
-      <div className="grid grid-cols-2 gap-2">
+      {unavailable && (
+        <p role="status" className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300">
+          Community feed unavailable
+        </p>
+      )}
+      {!unavailable && <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Posts</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Upvotes</div><div className="mt-0.5 font-mono text-lg text-sky-300">{totalScore.toLocaleString()}</div></div>
-      </div>
-      <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
+      </div>}
+      {!unavailable && <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((p) => (
           <a key={p.id} href={`https://reddit.com${p.permalink}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-sky-500/20 bg-sky-500/5 p-2.5 hover:border-sky-500/40">
             <p className="line-clamp-2 text-[12px] text-zinc-100">{p.title}</p>
@@ -61,8 +73,8 @@ export function InsurancePolicyTalk() {
             </div>
           </a>
         ))}
-        {list.length === 0 && !posts.isPending && !posts.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No posts.</div>}
-      </div>
+        {list.length === 0 && !posts.isPending && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No posts.</div>}
+      </div>}
       {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
