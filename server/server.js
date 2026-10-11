@@ -3230,10 +3230,25 @@ function throttledInterval(fn, ms, name) {
 
 import { stopFeedManager } from "./lib/feed-manager.js";
 import { feedWriteStats, shutdownFeedPersistence } from "./emergent/feed.js";
+import { runShutdownDurability, writeShutdownLine } from "./lib/shutdown-durability.js";
+import {
+  beginShutdownHttp,
+  getInflightResponses,
+  rollbackOpenWrite,
+  sealDatabaseWrites,
+  shutdownHttpMiddleware,
+  SHUTDOWN_INFLIGHT_BUDGET_MS,
+  trySendShutdownError,
+  waitForInflight,
+} from "./lib/shutdown-http.js";
 
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  // Before server.close and before db.close. A request that still reaches
+  // the app from here on is 503 shutting_down; one already past the
+  // middleware keeps running until the inflight window below.
+  beginShutdownHttp();
 
   structuredLog("info", "shutdown_received", { signal });
 
@@ -3261,6 +3276,54 @@ async function gracefulShutdown(signal) {
     }
   } catch (e) {
     structuredLog("warn", "shutdown_governor_timer_clear_failed", { error: e.message });
+  }
+
+  // Stop accepting before any further database work. server.close() only
+  // stops accept; the close callback fires later. The shutting-down guard
+  // is already set. Both happen before db.close.
+  if (global.httpServer) {
+    try {
+      global.httpServer.close(() => {
+        structuredLog("info", "shutdown_http_closed", {});
+      });
+    } catch (e) {
+      structuredLog("error", "shutdown_http_close_failed", { error: e?.message, stack: e?.stack });
+    }
+  }
+
+  // Requests already inside the app get one short window to finish before
+  // the handle closes. The wait is their own finish/close events plus one
+  // monotonic deadline (clamped to 1.5s inside waitForInflight) — not a
+  // timer poll. Nothing in flight: do not schedule the deadline at all, so
+  // a queued stall cannot run ahead of db.close. This window is before the
+  // state snapshot: an explicit BEGIN left open shares this connection, and
+  // a snapshot written inside it would vanish if we later roll the
+  // transaction back. Anything still open after the deadline is rolled
+  // back here (no partial commit), then the snapshot is its own transaction.
+  let inflight = [];
+  try { inflight = getInflightResponses(); }
+  catch (e) { structuredLog("error", "shutdown_inflight_snapshot_failed", { error: e?.message, stack: e?.stack }); }
+  let inflightDrain = { waited_ms: 0, remaining: 0 };
+  if (inflight.length > 0) {
+    const requested = Number(process.env.SHUTDOWN_INFLIGHT_MS ?? SHUTDOWN_INFLIGHT_BUDGET_MS);
+    inflightDrain = await waitForInflight(inflight, { budgetMs: requested });
+  }
+  structuredLog("info", "shutdown_inflight_drained", {
+    waited_ms: Math.round(Number(inflightDrain.waited_ms) * 1000) / 1000,
+    remaining: inflightDrain.remaining,
+  });
+  if (inflightDrain.remaining > 0) {
+    structuredLog("warn", "shutdown_drain_deferred", {
+      activeRequests: inflightDrain.remaining,
+      reason: "inflight window elapsed; database close runs before the post-close drain",
+    });
+  }
+  try {
+    if (db && rollbackOpenWrite(db)) {
+      structuredLog("warn", "shutdown_open_write_rolled_back", {});
+    }
+  } catch (e) {
+    structuredLog("error", "shutdown_open_write_rollback_failed", { error: e?.message, stack: e?.stack });
   }
 
   // Flush state to disk immediately — critical for OOM kills and SIGTERM
@@ -3340,15 +3403,17 @@ async function gracefulShutdown(signal) {
   // callback — so those writes hit a closed handle and log
   // "[feed] DB write failed: The database connection is not open".
   //
-  // Stop and flush without yielding to the macrotask queue. A dynamic
-  // import() of feed-manager, and the old setTimeout drain, both let an
-  // already-queued synchronous stall run first (measured: 250ms stall
-  // inside the import; a 50ms flush budget took 700ms). The process was
-  // gone ~5s after SIGTERM — launchd bootout's user-agent kill, which an
-  // ExitTimeOut can raise — with the log stuck at shutdown_timers_cleared,
-  // so db.close() and the timer-cleanup callback never ran. Static
-  // bindings plus shutdownFeedPersistence's microtask window keep this
-  // stretch inside a few milliseconds even when that stall is queued.
+  // Feed stop stays synchronous: a dynamic import() of feed-manager let a
+  // queued stall run before db.close, and launchd bootout killed the
+  // process at shutdown_timers_cleared. The flush that follows awaits
+  // tracked feed-job promises until they settle or FEED_SHUTDOWN_FLUSH_MS
+  // expires on a monotonic clock. An idle microtask pump used to return
+  // drained=false in ~1ms with pending still 1 (bootout 2026-10-11
+  // 11:02:53Z: timeoutMs=2000, ms=1.276), and db.close then dropped the
+  // write. Nothing pending: the flush does not arm a timer. The long
+  // post-close request drain still runs only after db.close. The short
+  // inflight window (finish/close, capped at 1.5s, skipped when nothing
+  // is in flight) sits between stop-accept and this flush.
   const _feedClock = () => process.hrtime.bigint();
   const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
   const _feedT0 = _feedClock();
@@ -3361,65 +3426,77 @@ async function gracefulShutdown(signal) {
   };
   try { stopFeedIngress(); }
   catch (e) { structuredLog("warn", "shutdown_feed_ingress_stop_failed", { error: e?.message }); }
-  structuredLog("info", "shutdown_feed_stopped", { ms: _feedMs(_feedT0) });
+  let activeRequests = null;
+  try { activeRequests = getActiveRequests(); }
+  catch (e) { structuredLog("error", "shutdown_active_requests_failed", { error: e?.message, stack: e?.stack }); }
+  structuredLog("info", "shutdown_feed_stopped", { ms: _feedMs(_feedT0), activeRequests });
 
-  // Stop repair cortex loop
-  try { stopRepairLoop(); } catch (_e) { logger.debug('server', 'best-effort', { error: _e?.message }); }
+  // Stop repair cortex loop. logger.debug in the catch used to be able to
+  // reject this function; the production unhandledRejection handler then
+  // called gracefulShutdown again, which returned immediately because
+  // isShuttingDown was already set, so db.close never ran.
+  try { stopRepairLoop(); }
+  catch (e) { structuredLog("warn", "shutdown_repair_stop_failed", { error: e?.message, stack: e?.stack }); }
 
-  // Stop accepting new connections
-  if (global.httpServer) {
-    global.httpServer.close(() => {
-      structuredLog("info", "shutdown_http_closed", {});
-    });
-  }
-
-  // Wait for in-flight requests to drain
-  const drainStart = Date.now();
-  const drainTimeout = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
-  while (getActiveRequests() > 0 && (Date.now() - drainStart) < drainTimeout) {
-    await new Promise((r) => { setTimeout(r, 500); });
-  }
-  if (getActiveRequests() > 0) {
-    structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
-  }
+  // Accept is already stopped and the inflight window already ran, before
+  // the state snapshot. Feed flush and db.close are still ahead. The long
+  // post-close drain stays inside afterClose, so a stuck count cannot push
+  // db.close out toward launchd's ~5s kill.
 
   // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
-  // is the first callback. The flush does not wait on timers (see
-  // shutdownFeedPersistence); ms here is subtracted from SHUTDOWN_TIMEOUT_MS
-  // below so a real wait would not extend the kill_timeout budget.
+  // is the first callback, so it does not run while a feed write is still
+  // pending unless the flush deadline expired. Expired flushes log warn
+  // with drained=false, the pending count, and elapsed ms — not a clean
+  // drain. ms is subtracted from SHUTDOWN_TIMEOUT_MS below so the wait
+  // stays inside the kill_timeout budget.
   let feedFlushMs = 0;
-  try {
-    const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
-    const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
-    const flushStart = _feedClock();
-    structuredLog("info", "shutdown_feed_flushing", {
-      timeoutMs,
-      pendingJobs: feedWriteStats().pendingJobs,
-    });
-    const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
-    feedFlushMs = Number(process.hrtime.bigint() - flushStart) / 1e6;
-    structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
-      drained: feedDrain.drained,
-      pending: feedDrain.pending,
-      dropped: feedDrain.dropped,
-      timeoutMs,
-      ms: _feedMs(flushStart),
-    });
-  } catch (e) {
-    structuredLog("warn", "shutdown_feed_flush_failed", { error: e?.message });
-  }
-
-  // Run registered callbacks
-  for (const callback of shutdownCallbacks) {
-    try {
-      await callback();
-    } catch (e) {
-      console.error("[Shutdown] Callback error:", e.message);
-    }
-  }
+  await runShutdownDurability({
+    async flushFeed() {
+      const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
+      const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+      const flushStart = _feedClock();
+      structuredLog("info", "shutdown_feed_flushing", {
+        timeoutMs,
+        pendingJobs: feedWriteStats().pendingJobs,
+      });
+      const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
+      feedFlushMs = Number(process.hrtime.bigint() - flushStart) / 1e6;
+      structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
+        drained: feedDrain.drained,
+        pending: feedDrain.pending,
+        dropped: feedDrain.dropped,
+        timeoutMs,
+        ms: _feedMs(flushStart),
+      });
+    },
+    onFlushError(e) {
+      structuredLog("error", "shutdown_feed_flush_failed", { error: e?.message, stack: e?.stack });
+    },
+    callbacks: shutdownCallbacks,
+    onCallbackError(e) {
+      structuredLog("error", "shutdown_callback_failed", { error: e?.message, stack: e?.stack });
+    },
+    onExitRaced({ code, stack }) {
+      structuredLog("error", "shutdown_exit_raced", { code: code ?? null, stack });
+    },
+    onFatal(e) {
+      structuredLog("error", "shutdown_failed", { signal, error: e?.message, stack: e?.stack });
+    },
+    async afterClose() {
+      const drainStart = Date.now();
+      const drainTimeout = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
+      while (getActiveRequests() > 0 && (Date.now() - drainStart) < drainTimeout) {
+        await new Promise((r) => { setTimeout(r, 500); });
+      }
+      if (getActiveRequests() > 0) {
+        structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
+      }
+    },
+  });
 
   // Give pending requests time to complete. Subtract feed-flush time so
   // the drain + flush + this wait still fit inside the kill_timeout budget.
+  // This wait is after db.close. It must not move back in front of it.
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
   const postWait = Math.max(0, timeout - feedFlushMs);
   await new Promise(resolve => { setTimeout(resolve, postWait); });
@@ -3461,9 +3538,29 @@ function _crashMemorySnapshot() {
   }
 }
 
+function runShutdownCallbacksSync() {
+  for (const callback of shutdownCallbacks) {
+    try { callback(); }
+    catch (e) {
+      try { structuredLog("error", "shutdown_callback_failed", { error: e?.message, stack: e?.stack }); }
+      catch { /* last-chance path */ }
+    }
+  }
+}
+
+function onShutdownSignal(signal) {
+  gracefulShutdown(signal).catch((err) => {
+    try {
+      structuredLog("error", "shutdown_failed", { signal, error: err?.message, stack: err?.stack });
+    } catch { /* */ }
+    runShutdownCallbacksSync();
+    process.exit(1);
+  });
+}
+
 // Register shutdown handlers
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => onShutdownSignal("SIGTERM"));
+process.on("SIGINT", () => onShutdownSignal("SIGINT"));
 process.on("uncaughtException", (err) => {
   structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack, memory: _crashMemorySnapshot() });
   // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
@@ -3476,6 +3573,16 @@ process.on("uncaughtException", (err) => {
     const diagnosis = matchErrorPattern(err.message);
     if (diagnosis?.fixes?.[0]) addToRepairMemory(err.message, diagnosis.fixes[0]);
   } catch { /* the repair cortex must never crash the crash handler */ }
+  // A second entry used to call gracefulShutdown, which returns immediately
+  // once isShuttingDown is set, and then nothing closed the database.
+  if (isShuttingDown) {
+    try {
+      structuredLog("error", "shutdown_uncaught_during_shutdown", { error: err.message, stack: err.stack });
+    } catch { /* */ }
+    runShutdownCallbacksSync();
+    process.exit(1);
+    return;
+  }
   gracefulShutdown("uncaughtException");
 });
 process.on("unhandledRejection", (reason, _promise) => {
@@ -3490,6 +3597,14 @@ process.on("unhandledRejection", (reason, _promise) => {
   } catch (_e) { logger.debug('server', 'repair cortex must never crash the crash handler', { error: _e?.message }); }
   if ((process.env.NODE_ENV || "development") === "production") {
     console.error("[FATAL] Unhandled promise rejection in production — exiting for clean restart.");
+    if (isShuttingDown) {
+      try {
+        structuredLog("error", "shutdown_unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
+      } catch { /* */ }
+      runShutdownCallbacksSync();
+      process.exit(1);
+      return;
+    }
     gracefulShutdown("unhandledRejection");
   }
 });
@@ -3511,6 +3626,16 @@ function structuredLog(level, event, data = {}) {
     version: "1.0.0",
     ...data
   };
+
+  // Shutdown lines go out with writeSync. console.log on a pipe stays in
+  // the stream buffer, and process.exit (or a kill during the post-close
+  // wait) drops that buffer. A regular file is already synchronous; the
+  // writeSync path keeps a pipe honest too. Fall through if the fd is gone.
+  if (isShuttingDown) {
+    try {
+      return writeShutdownLine(level, event, data, { json: LOG_FORMAT === "json" });
+    } catch { /* fd missing or not writable */ }
+  }
 
   if (LOG_FORMAT === "json") {
     console.log(JSON.stringify(entry));
@@ -6502,11 +6627,25 @@ if (_DTU_STORE_READY) {
 // firing during the shutdown drain/timeout waits and blocked the event
 // loop long enough to blow past pm2's kill_timeout. Kept the ms timing
 // here — cheap, and it's exactly what proved db.close() wasn't the culprit.)
+let _shutdownDbClosed = false;
 if (db) {
   registerShutdownCallback(() => {
+    if (_shutdownDbClosed) return;
+    // Roll back a multi-statement write still open, and refuse any SQL
+    // that has not started. Then close. Feed flush already ran.
+    try { sealDatabaseWrites(db); }
+    catch (e) {
+      structuredLog("error", "shutdown_database_seal_failed", { error: e?.message, stack: e?.stack });
+    }
     structuredLog("info", "shutdown_closing_database", {});
     const __t0 = process.hrtime.bigint();
-    db.close();
+    try {
+      db.close();
+    } catch (e) {
+      structuredLog("error", "shutdown_database_close_failed", { error: e?.message, stack: e?.stack });
+      return;
+    }
+    _shutdownDbClosed = true;
     const __ms = Number(process.hrtime.bigint() - __t0) / 1e6;
     structuredLog("info", "shutdown_database_closed", { ms: __ms });
   });
@@ -37084,6 +37223,11 @@ const app = express();
 // key on req.ip, so they follow this. See lib/trusted-client-ip.js.
 installTrustedClientIp(app);
 
+// Shutting-down guard. Mounted before auth and routes so a request that
+// arrives after beginShutdownHttp() does not touch SQLite on its way to
+// a 500. In-flight requests have already passed this middleware.
+app.use(shutdownHttpMiddleware);
+
 // ---- Production Middleware (extracted to ./middleware/index.js) ----
 configureMiddleware(app, {
   express,
@@ -37155,6 +37299,7 @@ app.use(createLoadSheddingMiddleware({
               const msg = String(err?.message || err);
               log("async.error", `Unhandled async error on ${req.method} ${req.path}: ${msg}`, { stack: String(err?.stack || "").slice(0, 500) });
               if (!res.headersSent) {
+                if (trySendShutdownError(err, res)) return;
                 const status = msg.startsWith("forbidden") ? 403 : msg.includes("not found") ? 404 : 500;
                 res.status(status).json({ ok: false, error: msg });
               }
@@ -37968,6 +38113,13 @@ registerAtlasSignalRoutes(app, {
 // Error handler
 app.use((err, req, res, _next) => {
   if (res.headersSent) return;
+
+  if (trySendShutdownError(err, res)) {
+    structuredLog("warn", "shutdown_request_after_close", {
+      requestId: req.id, method: req.method, path: req.path, error: String(err?.message || err),
+    });
+    return;
+  }
 
   // Handle ConcordError subclasses with proper HTTP status and code
   if (err instanceof ConcordError) {
@@ -41326,6 +41478,14 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
 app.use((err, req, res, _next) => {
   if (res.headersSent) return;
+  if (trySendShutdownError(err, res)) {
+    try {
+      structuredLog("warn", "shutdown_request_after_close", {
+        method: req.method, path: req.path, error: String(err?.message || err),
+      });
+    } catch { /* response already 503 */ }
+    return;
+  }
   // Routes mounted after the earlier error handler (including DELETE
   // /api/media/:id) land here. ConcordError already carries the right status
   // (404 not found, 403 forbidden, 400 validation). res.json() without a

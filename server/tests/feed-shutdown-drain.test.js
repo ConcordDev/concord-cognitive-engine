@@ -46,7 +46,7 @@ function openFeedDb() {
   };
 }
 
-describe("feed shutdown drain", () => {
+describe("feed shutdown drain", { concurrency: 1 }, () => {
   let warns;
   let errors;
   let origWarn;
@@ -127,16 +127,19 @@ describe("feed shutdown drain", () => {
       );
     })());
 
+    const t0 = process.hrtime.bigint();
     const drain = await shutdownFeedPersistence({
       stopNewWork() {},
       timeoutMs: 30,
     });
+    const elapsed = Number(process.hrtime.bigint() - t0) / 1e6;
 
     assert.equal(drain.drained, false);
+    assert.ok(elapsed >= 20, `deadline miss returned in ${elapsed}ms, timeout is 30ms`);
     assert.equal(drain.pending, 1);
     assert.equal(feed.count(), 0, "the write has not happened yet");
     assert.equal(warns.length, 1);
-    assert.match(warns[0], /\[feed\] DB write skipped: 1 feed event\(s\) not persisted \(shutdown timeout 30ms\)/);
+    assert.match(warns[0], /\[feed\] DB write skipped: 1 feed event\(s\) not persisted \(shutdown timeout 30ms elapsed \d+ms pending 1\)/);
 
     feed.db.close();
     release();
@@ -205,58 +208,100 @@ describe("feed shutdown drain", () => {
     scheduler.stop();
   });
 
-  it("closes the database inside the budget while the event loop is stalled and a feed job is still in flight", async () => {
-    const feed = openFeedDb();
-    // Longer than the close budget. Queued before shutdown, so any
-    // setTimeout/import yield runs this busy-loop before db.close.
+  it("does not arm a timer when no feed write is pending", async () => {
     const STALL_MS = 300;
-    const BUDGET_MS = 150;
     let stallRan = false;
-    let releaseStall;
-    const stallDone = new Promise((resolve) => { releaseStall = resolve; });
     setTimeout(() => {
       stallRan = true;
       const end = Date.now() + STALL_MS;
       while (Date.now() < end) {}
-      releaseStall();
     }, 0);
 
-    // Stop itself must not wait on a macrotask either.
-    let releaseStop;
-    const stopGate = new Promise((resolve) => { releaseStop = resolve; });
+    const t0 = process.hrtime.bigint();
+    const drain = await shutdownFeedPersistence({
+      stopNewWork() {},
+      timeoutMs: 2000,
+    });
+    const elapsed = Number(process.hrtime.bigint() - t0) / 1e6;
 
+    assert.equal(stallRan, false, "an empty feed queue must not yield to a queued stall");
+    assert.ok(elapsed < 50, `empty flush returned in ${elapsed}ms`);
+    assert.equal(drain.drained, true);
+    assert.equal(drain.pending, 0);
+    assert.equal(drain.sealed, true);
+    assert.equal(warns.length, 0);
+  });
+
+  it("waits for a slow in-flight feed write and reports drained=false only after the timeout", async () => {
+    const msSince = (t0) => Number(process.hrtime.bigint() - t0) / 1e6;
+
+    const feed = openFeedDb();
+    const SLOW_MS = 200;
+    let closedBeforeWrite = false;
     const job = trackFeedJob((async () => {
-      await new Promise((resolve) => { setTimeout(resolve, 80); });
+      await new Promise((resolve) => { setTimeout(resolve, SLOW_MS); });
+      closedBeforeWrite = feed.db.open === false;
       emitFeedEvent(
-        { type: "observation", emergentId: "e-busy", data: { observation: "after-close" } },
+        { type: "observation", emergentId: "e-slow", data: { observation: "kept" } },
         feed.db,
         null,
       );
     })());
 
-    const t0 = Date.now();
+    const t0 = process.hrtime.bigint();
     const drain = await shutdownFeedPersistence({
-      stopNewWork: () => stopGate,
+      stopNewWork() {},
       timeoutMs: 2000,
     });
-    feed.db.close();
-    const elapsed = Date.now() - t0;
+    const elapsed = msSince(t0);
 
-    assert.equal(stallRan, false, "a queued stall must not run before db.close");
-    assert.ok(elapsed < BUDGET_MS, `db.close ran in ${elapsed}ms; budget is ${BUDGET_MS}ms`);
-    assert.equal(drain.sealed, true);
-    assert.equal(drain.drained, false, "a timer-blocked feed job is not flushed");
+    assert.equal(drain.drained, true);
+    assert.equal(drain.pending, 0);
+    assert.equal(closedBeforeWrite, false, "the handle was open when the write ran");
+    assert.equal(feed.db.open !== false, true, "db.close has not run yet");
+    assert.equal(feed.count(), 1, "the row is persisted before db.close");
+    assert.ok(elapsed >= SLOW_MS - 40, `flush returned in ${elapsed}ms, before the ${SLOW_MS}ms write`);
+    assert.ok(elapsed < 1500, `flush waited ${elapsed}ms, past the write and toward the 2000ms cap`);
+    assert.equal(warns.length, 0, "a write that finished inside the cap is a clean drain");
+
+    feed.db.close();
+    await job;
     assert.equal(feed.prepareWhileClosed(), 0);
 
-    releaseStop();
-    await stallDone;
-    await job;
+    resetFeedShutdownForTests();
+    const late = openFeedDb();
+    const WRITE_MS = 800;
+    const TIMEOUT_MS = 120;
+    const lateJob = trackFeedJob((async () => {
+      await new Promise((resolve) => { setTimeout(resolve, WRITE_MS); });
+      emitFeedEvent(
+        { type: "observation", emergentId: "e-late", data: { observation: "missed" } },
+        late.db,
+        null,
+      );
+    })());
 
-    assert.equal(stallRan, true);
-    assert.equal(feed.prepareWhileClosed(), 0, "the late write must not prepare on the closed handle");
+    const t1 = process.hrtime.bigint();
+    const expired = await shutdownFeedPersistence({
+      stopNewWork() {},
+      timeoutMs: TIMEOUT_MS,
+    });
+    const expiredMs = msSince(t1);
+
+    assert.equal(expired.drained, false);
+    assert.equal(expired.pending, 1);
+    assert.equal(late.count(), 0, "the slow write has not landed");
+    assert.equal(late.db.open !== false, true, "caller closes only after the flush returns");
+    assert.ok(expiredMs >= TIMEOUT_MS * 0.6, `drained=false after ${expiredMs}ms; timeout is ${TIMEOUT_MS}ms`);
+    assert.ok(expiredMs < WRITE_MS, `waited ${expiredMs}ms for a ${WRITE_MS}ms write`);
+    assert.equal(warns.length, 1);
+    assert.match(warns[0], /shutdown timeout 120ms/);
+    assert.match(warns[0], /pending 1/);
+
+    late.db.close();
+    await lateJob;
+    assert.equal(late.prepareWhileClosed(), 0, "the late write must not prepare on the closed handle");
     assert.equal(errors.filter((line) => line.includes("[feed] DB write failed")).length, 0);
-    assert.equal(warns.length, 1, "dropped in-flight writes are one warning");
-    assert.match(warns[0], /\[feed\] DB write skipped: 1 feed event\(s\) not persisted \(shutdown timeout 2000ms\)/);
   });
 
   it("gracefulShutdown does not dynamic-import on the way to db.close", () => {
