@@ -7,6 +7,7 @@ import { getBalance, getBalancePreferSidecar, CREDIT_ROW_PREDICATE } from "./bal
 import { getTransactions, getAllTransactions } from "./ledger.js";
 import { FEES, PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { executeTransfer, executePurchase, executeMarketplacePurchase, executeReversal } from "./transfer.js";
+import { attachWalletClarityRoutes, coerceTransferRecipient } from "./wallet-clarity.js";
 import {
   requestWithdrawal, approveWithdrawal, rejectWithdrawal,
   processWithdrawal, cancelWithdrawal, getUserWithdrawals, getAllWithdrawals,
@@ -58,6 +59,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   // Initialise chargeback reserve schema (idempotent)
   initReservesSchema(db);
+  attachWalletClarityRoutes(app, db, { log });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ECONOMY ENDPOINTS
@@ -189,14 +191,20 @@ export function registerEconomyRoutes(app, db, opts = {}) {
   app.post("/api/economy/transfer", (req, res) => {
     try {
       const from = req.user?.id;
-      const to = req.body.to;
+      const rawTo = typeof req.body.to === "string" ? req.body.to.trim() : "";
       const amount = Math.round(parseFloat(req.body.amount) * 100) / 100;
 
       if (!from) return res.status(400).json({ ok: false, error: "missing_sender" });
-      if (!to) return res.status(400).json({ ok: false, error: "missing_recipient" });
+      if (!rawTo) return res.status(400).json({ ok: false, error: "missing_recipient" });
       if (!Number.isFinite(amount) || amount <= 0) {
         return res.status(400).json({ ok: false, error: "invalid_amount" });
       }
+
+      // Validation only: @username and email become an active user id.
+      // A raw user id is passed through to executeTransfer unchanged.
+      const coerced = coerceTransferRecipient(db, rawTo);
+      if (!coerced.ok) return res.status(400).json({ ok: false, error: coerced.error });
+      const to = coerced.id;
 
       const ctx = auditCtx(req);
       const result = executeTransfer(db, {
