@@ -2,7 +2,9 @@
 // SNAPSHOT_EXCLUDED_STATE_KEYS. Same restart as a clean shutdown:
 // write through the real macros, JSON-round-trip serializeLensState,
 // drop the live STATE, hydrate a fresh one. meshChannels stays out
-// (channel PSKs). Money stores and meshConsensusDags stay out.
+// (channel PSKs). meshConsensusDags stays out (Ed25519 keypairs).
+// The five money-adjacent stores are persisted by the owner-approved
+// snapshot (#1156); they are not in SNAPSHOT_EXCLUDED_STATE_KEYS.
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -121,15 +123,16 @@ beforeEach(() => {
 });
 
 describe("INC-32 follow-up snapshot membership", () => {
-  it("walks the newly persisted stores and still excludes credentials and money", () => {
+  it("walks the newly persisted stores and still excludes channel credentials", () => {
     for (const key of PERSISTED) assert.ok(LENS_STATE_KEYS.includes(key), key);
     assert.equal(LENS_STATE_KEYS.includes("meshChannels"), false);
-    for (const key of [
-      "meshChannels", "meshConsensusDags",
-      "predictionMarkets", "inheritPacts", "insAms", "serviceListings", "serviceOrders",
-    ]) {
+    for (const key of ["meshChannels", "meshConsensusDags"]) {
       assert.equal(typeof SNAPSHOT_EXCLUDED_STATE_KEYS[key], "string", key);
       assert.equal(LENS_STATE_KEYS.includes(key), false, key);
+    }
+    for (const key of ["predictionMarkets", "inheritPacts", "insAms", "serviceListings", "serviceOrders"]) {
+      assert.equal(LENS_STATE_KEYS.includes(key), true, key);
+      assert.equal(Object.hasOwn(SNAPSHOT_EXCLUDED_STATE_KEYS, key), false, key);
     }
     assert.ok(SNAPSHOT_STORE_CAPS.notaryRecords.max === 400);
     assert.ok(SNAPSHOT_STORE_CAPS.federation.moderation.max === 500);

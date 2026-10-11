@@ -12,6 +12,39 @@
 // mechanism (server.js _serializeState/_hydrateState). No new SQLite tables
 // needed — the existing state_snapshots table already holds the JSON blob.
 
+// Owner-approved 2026-10-11: in-memory financial records that round-trip
+// through the process snapshot. They are not the CC ledger. Money keys take
+// both denylists: SNAPSHOT_SECRET_FIELDS (the INC-32 scrub, on serialize and
+// hydrate) and MONEY_SNAPSHOT_SECRET_FIELDS (this list, also both directions).
+// The two lists are a union of names to drop. Signer email, policy numbers,
+// and Sparks amounts are the records themselves. Size bounds are the
+// reject-before-write caps in the domain modules, not SNAPSHOT_STORE_CAPS.
+export const MONEY_SNAPSHOT_KEYS = Object.freeze([
+  "predictionMarkets",
+  "inheritPacts",
+  "insAms",
+  "serviceListings",
+  "serviceOrders",
+]);
+
+export const MONEY_SNAPSHOT_SECRET_FIELDS = Object.freeze([
+  "token",
+  "accessToken",
+  "refreshToken",
+  "apiKey",
+  "api_key",
+  "secret",
+  "password",
+  "privateKey",
+  "paymentRef",
+  "paymentIntentId",
+  "clientSecret",
+  "authorization",
+  "stripePaymentIntent",
+]);
+
+const MONEY_SNAPSHOT_SECRET_FIELD_SET = new Set(MONEY_SNAPSHOT_SECRET_FIELDS);
+
 // Canonical list of lens state keys. Add new entries here when a new
 // lens domain file ships its own STATE.<x>Lens store.
 export const LENS_STATE_KEYS = Object.freeze([
@@ -180,8 +213,9 @@ export const LENS_STATE_KEYS = Object.freeze([
   "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
   // INC-32 follow-up: the remaining user-authored stores. Caps and the
   // federation actorKeys omission live in preparePersistedState below.
-  // meshChannels stays excluded (channel PSKs). Money-adjacent stores and
-  // meshConsensusDags stay excluded for a human decision.
+  // meshChannels stays excluded (channel PSKs). meshConsensusDags stays
+  // excluded (Ed25519 keypairs). The five money-adjacent stores are
+  // included; see MONEY_SNAPSHOT_KEYS.
   "affectMood", "cognitiveReplay", "districtSnapshots", "filmLensX", "newsParity",
   "notaryRecords", "seasonalChallenges", "seasonalCompetitions",
   "sentinelCases", "sentinelMonitors", "sentinelTimeline", "sentinelScanConfig",
@@ -196,6 +230,9 @@ export const LENS_STATE_KEYS = Object.freeze([
   "globalSavedViews",
   "inheritanceEstates", "inheritanceNotices",
   "federation",
+  // Sparks prediction positions, inheritance pacts, agency AMS records,
+  // and service-market listings/orders. See MONEY_SNAPSHOT_KEYS.
+  ...MONEY_SNAPSHOT_KEYS,
 ]);
 
 // User-record STATE keys a domain assigns that this snapshot intentionally
@@ -208,11 +245,6 @@ export const SNAPSHOT_EXCLUDED_STATE_KEYS = Object.freeze({
   settings: "process settings bag already written by _serializeState (disabledHeartbeats), not a per-user record store",
   presenceHeartbeats: "ephemeral live presence; a heartbeat outside the online window is not a kept record",
   concordLinkFrontier: "SQLite is the restart record; the Map is a cache",
-  predictionMarkets: "deferred for a human decision: Sparks-denominated positions and limit orders, not CC, but they are financial positions",
-  inheritPacts: "deferred for a human decision: Sparks-denominated inheritance pacts and payout history, not CC",
-  insAms: "deferred for a human decision: carrier roster, renewal pipeline, FNOL, statements, and certificates read as agency financial records",
-  serviceListings: "deferred for a human decision: listing prices and orders are a marketplace, currency not proven to be demo credit",
-  serviceOrders: "deferred for a human decision: orders carry prices against service listings",
   stakingAprHistory: "intentionally memory-only: cosmetic APR chart samples, not positions; stake positions are ledger rows",
   lensArtifacts: "SQLite write-through store; _serializeState omits it on purpose so hydration does not replace the live store with a plain Map",
   meshConsensusDags: "excluded: each entry holds an Ed25519 keypair generated on first use; private keys must not enter the snapshot",
@@ -332,7 +364,17 @@ export const SNAPSHOT_STORE_CAPS = Object.freeze({
   },
 });
 
-const SECRET_SCRUB_KEYS = new Set(Object.keys(SNAPSHOT_STORE_CAPS));
+const MONEY_SNAPSHOT_KEY_SET = new Set(MONEY_SNAPSHOT_KEYS);
+
+// INC-32 cap stores, plus the five money stores. Money keys are not in
+// SNAPSHOT_STORE_CAPS — their bounds are reject-before-write in the domain
+// modules — but they still take the SNAPSHOT_SECRET_FIELDS scrub. The money
+// denylist is applied on top (omitMoneySecretFields / stripMoneySecretFields),
+// so a money row loses the union of the two lists.
+const SECRET_SCRUB_KEYS = new Set([
+  ...Object.keys(SNAPSHOT_STORE_CAPS),
+  ...MONEY_SNAPSHOT_KEYS,
+]);
 
 function takeArray(arr, max, keep) {
   if (!Array.isArray(arr) || arr.length <= max) return arr;
@@ -599,6 +641,32 @@ function stripSecretFields(v, seen = new WeakSet()) {
   }
 }
 
+// Money denylist on a hydrated value. Map keys (user ids, record ids) stay;
+// only object fields are removed. SNAPSHOT_SECRET_FIELDS are already gone
+// via stripSecretFields when the key is in SECRET_SCRUB_KEYS.
+function stripMoneySecretFields(v, seen = new WeakSet()) {
+  if (!v || typeof v !== "object") return;
+  if (seen.has(v)) return;
+  seen.add(v);
+  if (v instanceof Map) {
+    for (const child of v.values()) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (v instanceof Set) {
+    for (const child of v) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (Array.isArray(v)) {
+    for (const child of v) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (!isPlainObject(v)) return;
+  for (const key of Object.keys(v)) {
+    if (MONEY_SNAPSHOT_SECRET_FIELD_SET.has(key)) delete v[key];
+    else stripMoneySecretFields(v[key], seen);
+  }
+}
+
 function isPlainObject(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   const proto = Object.getPrototypeOf(v);
@@ -668,6 +736,28 @@ function deserializeValue(v) {
   return out;
 }
 
+// Drop secret-shaped property names from an already-serialized value.
+// Map keys (user ids, record ids) are kept; only object fields are removed.
+function omitMoneySecretFields(v) {
+  if (Array.isArray(v)) return v.map((item) => omitMoneySecretFields(item));
+  if (!v || typeof v !== "object") return v;
+  if (v.__type === "Map" && Array.isArray(v.entries)) {
+    return {
+      __type: "Map",
+      entries: v.entries.map(([k, vv]) => [k, omitMoneySecretFields(vv)]),
+    };
+  }
+  if (v.__type === "Set" && Array.isArray(v.values)) {
+    return { __type: "Set", values: v.values.map((item) => omitMoneySecretFields(item)) };
+  }
+  const out = {};
+  for (const [k, vv] of Object.entries(v)) {
+    if (MONEY_SNAPSHOT_SECRET_FIELD_SET.has(k)) continue;
+    out[k] = omitMoneySecretFields(vv);
+  }
+  return out;
+}
+
 // Walk every registered lens key on STATE, serialize nested Map/Set into
 // JSON-safe envelopes. Returns a plain object suitable for JSON.stringify.
 export function serializeLensState(STATE) {
@@ -697,6 +787,9 @@ export function serializeLensState(STATE) {
     }
     out[key] = lensOut;
   }
+  for (const key of MONEY_SNAPSHOT_KEYS) {
+    if (out[key] != null) out[key] = omitMoneySecretFields(out[key]);
+  }
   return out;
 }
 
@@ -724,10 +817,12 @@ export function hydrateLensState(STATE, persisted) {
       const lensOut = {};
       for (const [field, val] of Object.entries(lensPersisted)) {
         if (SECRET_SCRUB_KEYS.has(key) && SNAPSHOT_SECRET_FIELDS.has(field)) continue;
+        if (MONEY_SNAPSHOT_KEY_SET.has(key) && MONEY_SNAPSHOT_SECRET_FIELD_SET.has(field)) continue;
         lensOut[field] = deserializeValue(val);
       }
       STATE[key] = lensOut;
     }
     if (SECRET_SCRUB_KEYS.has(key)) stripSecretFields(STATE[key]);
+    if (MONEY_SNAPSHOT_KEY_SET.has(key)) stripMoneySecretFields(STATE[key]);
   }
 }
