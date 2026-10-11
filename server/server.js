@@ -2053,6 +2053,20 @@ import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-ro
 // ~line 26290); see server/lib/csl-router.js for the gate contract and
 // docs/SPRINT-33-SPECS.md "Worker: cc-sonnet" Task 4 for the design.
 import { createCslToolGate } from "./lib/csl-router.js";
+import {
+  parseExplicitDtuSave,
+  isPdfCreateRequest,
+  explicitDtuCreateInput,
+  savedDtuReply,
+  PDF_CAPABILITY_MESSAGE,
+} from "./lib/chat/dtu-save-intent.js";
+import {
+  shouldSkipToolFollowup,
+  composeToolTurnReply,
+  toolFollowUpUserMessage,
+  followUpFailureReply,
+  ensureCreatedDtuIds,
+} from "./lib/chat/tool-turn-reply.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -25476,6 +25490,7 @@ register("dtu", "create", async (ctx, input) => {
   const isUserInitiated = source === "user" ||
     source === "forge" ||
     source === "lens" ||
+    source === "chat_tool" ||
     (actorRole && actorRole !== "system" && actorRole !== "internal");
   const _promotePublic = (
     input.promotePublic === true ||
@@ -27753,6 +27768,31 @@ let localReply = formatCrispResponse({
   }
   // ===== END DTU CONTEXT PIPELINE =====
 
+  // An explicit "save/create a DTU titled … with content …" is fulfilled
+  // here, before the brain. The model used to answer from retrieved notes
+  // (and the CSL gate then rejected create_dtu as not_formal_intent). The
+  // id in the reply is the id that was stored. A PDF request has no tool
+  // on this path — say so, instead of inventing a file.
+  let _explicitDtu = null;
+  let _lockedReply = null;
+  const _explicitSave = parseExplicitDtuSave(prompt);
+  if (_explicitSave) {
+    try {
+      const created = await runMacro("dtu", "create", explicitDtuCreateInput(_explicitSave, sessionId), ctx);
+      const id = created?.dtu?.id || created?.id;
+      if (created?.ok && id) {
+        _explicitDtu = { id, title: created.dtu?.title || _explicitSave.title };
+        _lockedReply = savedDtuReply(_explicitDtu);
+      } else {
+        _lockedReply = `I couldn't save that DTU. ${created?.error || created?.reason || "The record store refused it."}`;
+      }
+    } catch (e) {
+      _lockedReply = `I couldn't save that DTU. ${e?.message || "create failed"}`;
+    }
+  } else if (isPdfCreateRequest(prompt)) {
+    _lockedReply = PDF_CAPABILITY_MESSAGE;
+  }
+
   let finalReply = localReply;
   let llmUsed = false;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
@@ -27797,6 +27837,7 @@ let localReply = formatCrispResponse({
         return rt.executeTurn({
           userId: cslOpts?.userId, sessionId: cslOpts?.sessionId, turnText,
           domainHint: cslOpts?.domainHint, macroHint: cslOpts?.macroHint,
+          userPrompt: cslOpts?.userPrompt,
         });
       };
     }
@@ -27806,6 +27847,7 @@ let localReply = formatCrispResponse({
     sessionId,
     userId: ctx?.actor?.userId,
     clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
+    userText: prompt,
   });
 
   // Operator-only prompt segments (lib/runtime/operator-gate.js): the V6 observe
@@ -27943,18 +27985,24 @@ ${_operatorV6Block}` : "";
           };
         }
         case "create_dtu": {
-          const dtuResult = await runMacro("dtu", "create", {
-            title: String(call.params.title || "Untitled"),
-            human: { summary: String(call.params.summary || ""), bullets: [] },
-            tags: Array.isArray(call.params.tags) ? call.params.tags : [],
-            tier: "regular",
-            source: "chat_tool",
-            sessionId,
-          }, ctx);
-          if (!dtuResult?.ok) {
-            return { tool: call.tool, ok: false, error: dtuResult?.error || "create_dtu failed" };
+          // The explicit-save path already minted one private DTU. A second
+          // tool call in the same turn must not mint another.
+          if (_explicitDtu?.id) {
+            return { tool: call.tool, ok: true, dtuId: _explicitDtu.id, title: _explicitDtu.title };
           }
-          return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
+          const title = String(call.params.title || "Untitled");
+          const summary = String(call.params.summary || call.params.content || title);
+          const createdInput = explicitDtuCreateInput({ title, content: summary }, sessionId);
+          if (Array.isArray(call.params.tags) && call.params.tags.length) {
+            createdInput.tags = call.params.tags.map((t) => String(t));
+          }
+          const dtuResult = await runMacro("dtu", "create", createdInput, ctx);
+          if (!dtuResult?.ok) {
+            return { tool: call.tool, ok: false, error: dtuResult?.error || dtuResult?.reason || "create_dtu failed" };
+          }
+          const dtuId = dtuResult.dtu?.id || dtuResult.id;
+          if (!dtuId) return { tool: call.tool, ok: false, error: "create_dtu returned no id" };
+          return { tool: call.tool, ok: true, dtuId, title: dtuResult.dtu?.title || title };
         }
         case "run_compute": {
           // Normalize model-invented shapes ("multiply", {expression}) onto the
@@ -28155,7 +28203,9 @@ ${_operatorV6Block}` : "";
     verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
   });
   const _conversationalChat = isConversationalChatMode(mode);
-  if (_deterministicAnswer) {
+  if (_lockedReply) {
+    finalReply = _lockedReply;
+  } else if (_deterministicAnswer) {
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
@@ -28447,20 +28497,22 @@ ${_operatorV6Block}` : "";
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
-        // Strip tool call markers from the initial response
-        // A JSON-only first reply (bare tool object, often with a GUESSED
-        // "answer" beside it) must not be fed back — it anchors the follow-up.
-        const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
-
         if (_arithOnly) {
           finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else if (shouldSkipToolFollowup(_toolResults)) {
+          // A failed tool, or a plain DTU save, is answered from the tool
+          // result. The pre-tool assistant draft is retrieved-note context
+          // and must not become the visible reply.
+          const _toolResultsText = _formatToolResults(_toolResults);
+          finalReply = composeToolTurnReply(_toolResults) || followUpFailureReply(_toolResults, _toolResultsText);
+          ctx.log("chat_tools", "Skipped follow-up brain call; answering from tool results", { toolCount: _toolResults.length });
         } else {
-        // Build follow-up messages with tool results
+        // Follow-up sees the user prompt and the tool results only — not
+        // the pre-tool assistant draft, which is where unrelated retrieved
+        // notes were leaking into the visible reply.
         const _toolResultsText = _formatToolResults(_toolResults);
         const _followUpMessages = [
-          { role: "user", content: `User prompt:\n${prompt}` },
-          { role: "assistant", content: _cleanedInitialReply || "(tool calls issued)" },
-          { role: "user", content: `Tool results:\n${_toolResultsText}\n\nGROUNDING RULES (mandatory):\n- If web_search results include numbered snippets with title/url/excerpt, your answer MUST cite at least one real title and full https URL from those snippets. Refusing to cite when URLs are present is wrong.\n- Quote or paraphrase only from the provided excerpts — do NOT invent Google Cloud docs, API pages, or other sources not listed.\n- Only say you cannot verify when snippets are empty or clearly irrelevant to the question.\n- Do NOT output any [TOOL_CALL:] markers. Respond naturally.` }
+          { role: "user", content: toolFollowUpUserMessage(prompt, _toolResultsText) },
         ];
 
         // Make a follow-up brain call with tool results
@@ -28496,25 +28548,16 @@ ${_operatorV6Block}` : "";
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (_fuRes.ok && _fuJson.message?.content) {
             _replyDoneReason = _fuJson.done_reason || null;
-            finalReply = _enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText);
+            finalReply = ensureCreatedDtuIds(_enforceWebSearchCite(_fuJson.message.content.trim(), _toolResultsText), _toolResults);
             ctx.log("chat_tools", "Follow-up brain call with tool results succeeded", { elapsed: _fuElapsed, toolCount: _toolResults.length, citeEnforce: true });
           } else {
-            // Follow-up failed — use the cleaned initial reply + inline tool results
             BRAIN.conscious.stats.errors++;
-            finalReply = _cleanedInitialReply + "\n\n" + _toolResults
-              .filter(r => r.ok)
-              .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-              .join("\n\n");
+            finalReply = followUpFailureReply(_toolResults, _toolResultsText);
             ctx.log("chat_tools", "Follow-up brain call failed, using inline results", { status: _fuRes.status });
           }
         } catch (_fuErr) {
           BRAIN.conscious.stats.errors++;
-          // Graceful degradation: append tool results to the cleaned reply
-          const _cleanReply = _stripToolCalls(finalReply);
-          finalReply = _cleanReply + "\n\n" + _toolResults
-            .filter(r => r.ok)
-            .map(r => r.tool === "web_search" ? `Search results:\n${r.result}` : r.tool === "create_dtu" ? `Created DTU: "${r.title}"` : JSON.stringify(r.result || r).slice(0, 2000))
-            .join("\n\n");
+          finalReply = followUpFailureReply(_toolResults, _toolResultsText);
           ctx.log("chat_tools", "Follow-up brain call threw, using inline results", { error: String(_fuErr?.message || _fuErr) });
         }
         } // end non-arithmetic follow-up
@@ -28573,7 +28616,7 @@ ${_operatorV6Block}` : "";
   // brain's reply doesn't carry that number (4 significant figures), the
   // engine's answer is the reply — a model's re-derivation is never trusted
   // over the engine for a fully-specified problem.
-  if (_deterministicAnswer && typeof finalReply === "string") {
+  if (!_lockedReply && _deterministicAnswer && typeof finalReply === "string") {
     const _dv = _deterministicAnswer.value;
     const _carries = typeof _dv === "number"
       ? [String(Number(_dv.toPrecision(4))), String(Number(_dv.toPrecision(3)))].some((v) => finalReply.replace(/,(?=\d{3})/g, "").includes(v))
@@ -28582,7 +28625,7 @@ ${_operatorV6Block}` : "";
   }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
-  if (!llmUsed && localReply && finalReply === localReply) {
+  if (!_lockedReply && !llmUsed && localReply && finalReply === localReply) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -28604,7 +28647,7 @@ ${_operatorV6Block}` : "";
   // A length stop is not a finished reply. One short continuation, then
   // trim to the last complete sentence or list item. Persist only that
   // text — the next turn must not be handed a mid-sentence stub.
-  if (llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
+  if (!_lockedReply && llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
     try {
       const _finished = await finishLengthLimitedReply(finalReply, {
         doneReason: _replyDoneReason,
@@ -28644,6 +28687,11 @@ ${_operatorV6Block}` : "";
       ctx.log("chat", "Length-stop finish failed; trimmed.", { error: String(_finErr?.message || _finErr) });
     }
   }
+
+  if (!_lockedReply && _toolCallsExecuted.length) {
+    finalReply = ensureCreatedDtuIds(finalReply, _toolCallsExecuted);
+  }
+  if (_lockedReply) finalReply = _lockedReply;
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
