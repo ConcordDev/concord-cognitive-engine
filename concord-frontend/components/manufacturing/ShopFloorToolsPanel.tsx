@@ -5,9 +5,8 @@
  *
  * manufacturing.advanceStep / defectAnalysis / generateTraveler / logDowntime
  * are compute-on-supplied-data macros (they read `artifact.data`, they don't
- * own a persisted work-order table of their own — manufacturing.work-orders
- * is an empty-by-design placeholder until a real ERP feed is wired, per its
- * own `source:"empty"` response). Previously these were only reachable
+ * read the per-user work-order list that manufacturing.work-order-create
+ * writes and manufacturing.work-orders lists). Previously these were only reachable
  * through the page's fabricated generic-artifact CRUD system, which meant
  * they were permanently dead on a fresh install (no artifact ever existed)
  * and field-shape-mismatched even when one did (a fake "WorkOrder" artifact
