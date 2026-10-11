@@ -44,6 +44,8 @@ interface Take {
   isBest: boolean;
   waveformHeights: number[];
   transcript: string | null;
+  /** Private media row. After reload, play uses /api/media/:mediaId/stream. */
+  mediaId?: string | null;
 }
 
 interface EffectNode {
@@ -127,6 +129,67 @@ async function computeWaveformFromBlob(blob: Blob, buckets = 16): Promise<number
   }
 }
 
+function readBlobBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('empty recording'));
+        return;
+      }
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('read failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function mediaIdFromUpload(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const record = body as { mediaDTU?: { id?: unknown }; id?: unknown };
+  const id = record.mediaDTU?.id ?? record.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+/** Owner-only playback URL. The take stores the id; the path is derived. */
+export function takeStreamPath(mediaId: string): string {
+  return `/api/media/${encodeURIComponent(mediaId)}/stream`;
+}
+
+async function uploadPrivateTake(blob: Blob, takeNum: number, duration: number): Promise<string | null> {
+  try {
+    const base64 = await readBlobBase64(blob);
+    const uploaded = await api.post('/api/media/upload', {
+      title: `Take ${takeNum}`,
+      mediaType: 'audio',
+      mimeType: 'audio/webm',
+      fileSize: blob.size,
+      originalFilename: `voice-take-${takeNum}-${Date.now()}.webm`,
+      tags: ['voice', 'recording'],
+      privacy: 'private',
+      duration,
+      data: base64,
+    });
+    const mediaId = mediaIdFromUpload((uploaded as { data?: unknown })?.data);
+    if (!mediaId) {
+      useUIStore.getState().addToast({
+        type: 'error',
+        message: 'The recording uploaded without a media id, so it cannot play after reload.',
+      });
+    }
+    return mediaId;
+  } catch (err) {
+    console.error('[Voice] Upload failed:', err);
+    useUIStore.getState().addToast({
+      type: 'error',
+      message: 'The take was saved, but the audio upload failed. It will not play after reload.',
+    });
+    return null;
+  }
+}
+
 const DEFAULT_EFFECTS: EffectNode[] = [
   { id: 'noise-gate', name: 'Noise Gate', enabled: false, paramLabel: 'Threshold', paramValue: -40, paramMin: -80, paramMax: 0, paramUnit: 'dB' },
   { id: 'compressor', name: 'Compressor', enabled: false, paramLabel: 'Ratio', paramValue: 4, paramMin: 1, paramMax: 20, paramUnit: ':1' },
@@ -153,6 +216,8 @@ export function VoiceBoothPanel() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
+  const wantPlayRef = useRef(false);
 
   // Takes — persisted artifacts plus this-session overlays (no sync-effect).
   const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake } = useLensData<Take>('voice', 'take', {
@@ -208,7 +273,13 @@ export function VoiceBoothPanel() {
   const voiceAnalyserRef = useRef<AnalyserNode | null>(null);
   const voiceFreqDataRef = useRef<Uint8Array | null>(null);
 
-  const activeTake = takes.find((t) => t.id === activeTakeId) || null;
+  // A saved selection wins. Otherwise the newest take is the play target,
+  // including after reload when the session blob is gone.
+  const resolvedActiveId =
+    activeTakeId && takes.some((t) => t.id === activeTakeId)
+      ? activeTakeId
+      : (takes[takes.length - 1]?.id ?? null);
+  const activeTake = takes.find((t) => t.id === resolvedActiveId) || null;
   const displayBars = status === 'recording' ? waveformBars : REST_BARS;
   const displayLevelL = status === 'recording' ? levelL : 0;
   const displayLevelR = status === 'recording' ? levelR : 0;
@@ -335,32 +406,13 @@ export function VoiceBoothPanel() {
         const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
         takeBlobsRef.current.set(takeId, blob);
 
-        // Upload to backend
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64 = (reader.result as string).split(',')[1];
-          try {
-            await api.post('/api/media/upload', {
-              title: `Take ${takeNum}`,
-              mediaType: 'audio',
-              mimeType: 'audio/webm',
-              fileSize: blob.size,
-              originalFilename: `voice-take-${takeNum}-${Date.now()}.webm`,
-              tags: ['voice', 'recording'],
-              privacy: 'private',
-              duration,
-              data: base64,
-            });
-          } catch (err) {
-            console.error('[Voice] Upload failed:', err);
-          }
-        };
-        reader.readAsDataURL(blob);
-
-        // Real waveform, decoded from the actual recorded samples — not a
-        // fabricated sine curve. Computed async so the take isn't created
-        // (and persisted) until its waveform reflects the real audio.
-        void computeWaveformFromBlob(blob).then((waveformHeights) => {
+        // Waveform + private upload finish together so the persisted take
+        // carries the media id. A reload then plays /api/media/:id/stream
+        // instead of the session blob, which does not survive.
+        void Promise.all([
+          computeWaveformFromBlob(blob),
+          uploadPrivateTake(blob, takeNum, duration),
+        ]).then(([waveformHeights, mediaId]) => {
           const newTake: Take = {
             id: takeId,
             number: takeNum,
@@ -371,6 +423,7 @@ export function VoiceBoothPanel() {
             isBest: false,
             waveformHeights,
             transcript: null,
+            mediaId,
           };
           setTakes((prev) => [...prev, newTake]);
           setActiveTakeId(takeId);
@@ -394,31 +447,55 @@ export function VoiceBoothPanel() {
       // Stop playback
       if (playbackAudioRef.current) {
         playbackAudioRef.current.pause();
-        playbackAudioRef.current = null;
       }
+      wantPlayRef.current = false;
       setIsPlaying(false);
     }
   }, [status, recordingTime, takes.length, createTake]);
 
+  const resolveTakeSrc = useCallback((takeId: string): string | null => {
+    const blob = takeBlobsRef.current.get(takeId);
+    if (blob) return URL.createObjectURL(blob);
+    const take = takes.find((t) => t.id === takeId);
+    return take?.mediaId ? takeStreamPath(take.mediaId) : null;
+  }, [takes]);
+
   const handlePlayPause = useCallback(() => {
     if (status === 'recording') return;
-    if (!activeTakeId) return;
+    if (!resolvedActiveId) return;
+    const audio = playbackAudioRef.current;
     if (isPlaying) {
-      playbackAudioRef.current?.pause();
-      playbackAudioRef.current = null;
+      audio?.pause();
+      wantPlayRef.current = false;
       setIsPlaying(false);
-    } else {
-      const blob = takeBlobsRef.current.get(activeTakeId);
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => { setIsPlaying(false); playbackAudioRef.current = null; };
-        audio.play().catch(() => { setIsPlaying(false); });
-        playbackAudioRef.current = audio;
+      return;
+    }
+    const url = resolveTakeSrc(resolvedActiveId);
+    if (!url) return;
+    if (audio && playbackSrc === url) {
+      const pending = audio.play();
+      if (pending && typeof pending.then === 'function') {
+        pending.then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      } else {
         setIsPlaying(true);
       }
+      return;
     }
-  }, [status, activeTakeId, isPlaying]);
+    wantPlayRef.current = true;
+    setPlaybackSrc(url);
+  }, [status, resolvedActiveId, isPlaying, playbackSrc, resolveTakeSrc]);
+
+  useEffect(() => {
+    const audio = playbackAudioRef.current;
+    if (!audio || !playbackSrc || !wantPlayRef.current) return;
+    wantPlayRef.current = false;
+    const pending = audio.play();
+    if (pending && typeof pending.then === 'function') {
+      pending.then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    } else {
+      setIsPlaying(true);
+    }
+  }, [playbackSrc]);
 
   // Header CTA: starts a take, even when the booth view was not mounted yet.
   const recordRef = useRef(handleRecord);
@@ -465,7 +542,7 @@ export function VoiceBoothPanel() {
 
   const deleteTake = (id: string) => {
     setTakes((prev) => prev.filter((t) => t.id !== id));
-    if (activeTakeId === id) setActiveTakeId(null);
+    if (resolvedActiveId === id) setActiveTakeId(null);
   };
 
   const startRename = (take: Take) => {
@@ -599,7 +676,7 @@ export function VoiceBoothPanel() {
                 onClick={() => setActiveTakeId(take.id)}
                 className={cn(
                   'px-4 py-3 border-b border-white/5 cursor-pointer transition-colors group',
-                  activeTakeId === take.id
+                  resolvedActiveId === take.id
                     ? 'bg-neon-cyan/5 border-l-2 border-l-neon-cyan'
                     : 'hover:bg-white/[0.03] border-l-2 border-l-transparent'
                 )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -669,7 +746,7 @@ export function VoiceBoothPanel() {
                       key={i}
                       className={cn(
                         'flex-1 rounded-sm transition-colors',
-                        activeTakeId === take.id ? 'bg-neon-cyan/60' : 'bg-gray-700'
+                        resolvedActiveId === take.id ? 'bg-neon-cyan/60' : 'bg-gray-700'
                       )}
                       style={{ height: `${h * 100}%` }}
                     />
@@ -711,6 +788,8 @@ export function VoiceBoothPanel() {
 
           {/* Record button */}
           <motion.button
+            type="button"
+            aria-label={status === 'recording' ? 'Stop' : 'Record'}
             onClick={status === 'recording' ? handleStop : handleRecord}
             disabled={status === 'processing'}
             className={cn(
@@ -791,10 +870,18 @@ export function VoiceBoothPanel() {
 
           {/* Transport controls */}
           <div className="flex items-center gap-3 mb-8">
+            <audio
+              ref={playbackAudioRef}
+              src={playbackSrc ?? undefined}
+              preload="none"
+              className="sr-only"
+              onEnded={() => setIsPlaying(false)}
+            />
             <button
+              type="button"
               onClick={() => {
                 if (takes.length === 0) return;
-                const currentIdx = takes.findIndex(t => t.id === activeTakeId);
+                const currentIdx = takes.findIndex(t => t.id === resolvedActiveId);
                 const prevIdx = currentIdx > 0 ? currentIdx - 1 : takes.length - 1;
                 setActiveTakeId(takes[prevIdx].id);
               }}
@@ -804,6 +891,8 @@ export function VoiceBoothPanel() {
               <SkipBack className="w-5 h-5" />
             </button>
             <button
+              type="button"
+              aria-label={status === 'recording' ? 'Stop' : 'Record'}
               onClick={status === 'recording' ? handleStop : status === 'processing' ? undefined : handleRecord}
               disabled={status === 'processing'}
               className={cn(
@@ -820,6 +909,8 @@ export function VoiceBoothPanel() {
               )}
             </button>
             <button
+              type="button"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
               onClick={handlePlayPause}
               disabled={status === 'recording'}
               className={cn(
@@ -833,7 +924,7 @@ export function VoiceBoothPanel() {
             <button
               onClick={() => {
                 if (takes.length === 0) return;
-                const currentIdx = takes.findIndex(t => t.id === activeTakeId);
+                const currentIdx = takes.findIndex(t => t.id === resolvedActiveId);
                 const nextIdx = currentIdx < takes.length - 1 ? currentIdx + 1 : 0;
                 setActiveTakeId(takes[nextIdx].id);
               }}
@@ -962,7 +1053,7 @@ export function VoiceBoothPanel() {
                     if (editingTranscript) {
                       setTakes((prev) =>
                         prev.map((t) =>
-                          t.id === activeTakeId ? { ...t, transcript: transcriptDraft } : t
+                          t.id === resolvedActiveId ? { ...t, transcript: transcriptDraft } : t
                         )
                       );
                       setEditingTranscript(false);
@@ -1015,7 +1106,7 @@ export function VoiceBoothPanel() {
                 <button
                   key={fmt}
                   onClick={() => {
-                    const blob = activeTakeId ? takeBlobsRef.current.get(activeTakeId) : undefined;
+                    const blob = resolvedActiveId ? takeBlobsRef.current.get(resolvedActiveId) : undefined;
                     if (!blob) {
                       useUIStore.getState().addToast({
                         type: 'info',

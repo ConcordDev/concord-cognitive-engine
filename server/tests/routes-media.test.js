@@ -321,6 +321,36 @@ describe("routes/media", () => {
 
       assert.equal(res.status, 404);
     });
+
+    it("returns 404 when another account streams a private upload", async () => {
+      const upload = await router.call("post", "/upload", {
+        user: { id: "owner-a" },
+        body: {
+          title: "Private take",
+          mediaType: "audio",
+          mimeType: "audio/webm",
+          privacy: "private",
+        },
+      });
+      assert.equal(upload.status, 201);
+      const mediaId = upload.body.mediaDTU.id;
+
+      const other = await router.call("get", "/:id/stream", {
+        params: { id: mediaId },
+        user: { id: "other-b" },
+        query: {},
+        headers: {},
+      });
+      assert.equal(other.status, 404);
+
+      const owner = await router.call("get", "/:id/stream", {
+        params: { id: mediaId },
+        user: { id: "owner-a" },
+        query: {},
+        headers: {},
+      });
+      assert.equal(owner.status, 200);
+    });
   });
 
   // ── Feed endpoint pagination ───────────────────────────────────────
