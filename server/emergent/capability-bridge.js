@@ -392,15 +392,25 @@ export function runBeaconCheck(STATE) {
   // Check 3: Hypothesis engine not stalling (if initialized)
   if (STATE.hypothesisEngine) {
     const he = STATE.hypothesisEngine;
-    const _hypCount = he.hypotheses instanceof Map ? he.hypotheses.size : 0;
     const proposed = he.stats?.proposed || 0;
     const decided = (he.stats?.supported || 0) + (he.stats?.refuted || 0) + (he.stats?.inconclusive || 0);
-    const ratio = proposed > 0 ? decided / proposed : 1;
-    checks.push({
-      name: "hypothesis_throughput",
-      pass: ratio >= 0.1 || proposed < 5,
-      detail: `${decided}/${proposed} decided (${(ratio * 100).toFixed(0)}%)`,
-    });
+    // 0/0 is not a pass. The old `proposed > 0 ? decided/proposed : 1` painted
+    // "0/0 decided (100%)" on a cold engine that had never proposed anything.
+    if (!(proposed > 0)) {
+      checks.push({
+        name: "hypothesis_throughput",
+        pass: true,
+        noData: true,
+        detail: "no data yet",
+      });
+    } else {
+      const ratio = decided / proposed;
+      checks.push({
+        name: "hypothesis_throughput",
+        pass: ratio >= 0.1 || proposed < 5,
+        detail: `${decided}/${proposed} decided (${(ratio * 100).toFixed(0)}%)`,
+      });
+    }
   }
 
   // Check 4: Meta-learning has strategies (if initialized)
