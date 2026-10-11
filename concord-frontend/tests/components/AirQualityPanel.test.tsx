@@ -63,13 +63,13 @@ describe('AirQualityPanel', () => {
 
     await waitFor(() => {
       expect(lensRun).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('42')).toBeInTheDocument();
     });
     expect(lensRun).toHaveBeenCalledWith({
       domain: 'environment',
       name: 'live_air_quality',
       input: { zipCode: '94110' },
     });
-    expect(screen.getByText('42')).toBeInTheDocument();
     expect(screen.getByText('Good')).toBeInTheDocument();
     expect(screen.getByText('8.1')).toBeInTheDocument();
     expect(screen.getByText('12.4')).toBeInTheDocument();
