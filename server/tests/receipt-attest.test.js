@@ -267,6 +267,10 @@ describe("conkay demo design responses", () => {
       assert.equal(res.status, 200);
       assert.equal(res.body.design.id, "car");
       assert.equal(verifyAttestation(res.body.design).valid, true);
+      const again = await getJson(srv.port, "/api/conkay/demo/designs/car");
+      assert.equal(again.body.design.issuedAt, res.body.design.issuedAt);
+      assert.equal(again.body.design.signature.signature, res.body.design.signature.signature);
+      assert.equal(verifyAttestation(again.body.design).valid, true);
       res.body.design.headline = { ...res.body.design.headline, verdict: "edited" };
       assert.equal(verifyAttestation(res.body.design).valid, false);
       assert.equal(verifyAttestation(res.body.design).reason, "digest_mismatch");

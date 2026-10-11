@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { assemblyFromIr } from "../lib/conkay/assembly/build.js";
+import { studioHeroCamera } from "../../concord-frontend/lib/conkay/hero-camera.mjs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const root = join(__dir, "..", "..");
@@ -19,6 +20,7 @@ const brief = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people
 const built = buildCarFromLibrary(brief);
 if (built.error) throw new Error(built.error);
 const assembly = assemblyFromIr(built.ir);
+const heroCam = studioHeroCamera(assembly.surface.mesh.bounds, 1280 / 800);
 mkdirSync(outDir, { recursive: true });
 const html = `<!doctype html>
 <html><head><meta charset="utf-8"/>
@@ -101,11 +103,16 @@ function geo(mesh, index) {
 
 const explode = view === "exploded" ? 0.72 : 0;
 const engineering = view === "engineering";
-const showInterior = engineering || explode > 0.02 || view === "section";
+const showInterior = engineering || explode > 0.02 || view === "section" || view === "section-x";
 let clip = [];
 if (view === "section") {
   const y = 0.05;
   clip = [new THREE.Plane(new THREE.Vector3(0, 0, 1), y)];
+}
+if (view === "section-x") {
+  // Default viewer cut: vehicle x = 2, shifted by the same centring as the group.
+  const cut = 2;
+  clip = [new THREE.Plane(new THREE.Vector3(1, 0, 0), -(cut - cx))];
 }
 
 const paintMat = engineering
@@ -137,25 +144,30 @@ if (assembly.surface.mesh.arch && assembly.surface.mesh.arch.positions) {
 }
 
 const wheels = assembly.components.filter((c) => c.role === "wheel");
-const parts = [
-  ["tire", new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.94, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["rim", new THREE.MeshPhysicalMaterial({ color: 0x8a8e94, metalness: 1, roughness: 0.22, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["disc", new THREE.MeshStandardMaterial({ color: 0x3e4248, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["caliper", new THREE.MeshStandardMaterial({ color: 0xc45c26, metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide, clippingPlanes: clip })],
-];
-const dummy = new THREE.Object3D();
-for (const [name, mat] of parts) {
-  const mesh = new THREE.InstancedMesh(geo(assembly.wheel[name]), mat, wheels.length);
-  mesh.castShadow = true;
-  wheels.forEach((w, i) => {
-    const [x, y, z] = shift(w, explode);
-    const [tx, ty, tz] = toThree(x, y, z);
-    dummy.position.set(tx, ty, tz);
-    dummy.scale.set(1, 1, w.placement.y < 0 ? -1 : 1);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-  });
-  group.add(mesh);
+const wheelGeos = {
+  tire: geo(assembly.wheel.tire),
+  rim: geo(assembly.wheel.rim),
+  disc: geo(assembly.wheel.disc),
+  caliper: geo(assembly.wheel.caliper),
+};
+const wheelMats = {
+  tire: new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.94, side: THREE.DoubleSide, clippingPlanes: clip }),
+  rim: new THREE.MeshPhysicalMaterial({ color: 0x8a8e94, metalness: 1, roughness: 0.22, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip }),
+  disc: new THREE.MeshStandardMaterial({ color: 0x3e4248, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide, clippingPlanes: clip }),
+  caliper: new THREE.MeshStandardMaterial({ color: 0xc45c26, metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide, clippingPlanes: clip }),
+};
+for (const w of wheels) {
+  const [x, y, z] = shift(w, explode);
+  const [tx, ty, tz] = toThree(x, y, z);
+  const holder = new THREE.Group();
+  holder.position.set(tx, ty, tz);
+  holder.scale.set(1, 1, w.placement.y < 0 ? -1 : 1);
+  for (const name of ["tire", "rim", "disc", "caliper"]) {
+    const mesh = new THREE.Mesh(wheelGeos[name], wheelMats[name]);
+    mesh.castShadow = true;
+    holder.add(mesh);
+  }
+  group.add(holder);
 }
 
 const groupColor = { exterior: 0x9aa3ad, wheels: 0x2a2a2a, chassis: 0x8d6a45, powertrain: 0xc45c26, interior: 0x4c6b8a, storage: 0x6b7c5a };
@@ -242,12 +254,18 @@ if (!engineering) {
 }
 
 const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.05, 80);
+const hero = ${JSON.stringify(heroCam)};
 // Section camera sits on the clipped side (negative three Z, +vehicle Y) so the cut face is what we look at.
 if (view === "section") camera.position.set(nose + 0.6, 0.72, -2.6);
 else if (view === "exploded") camera.position.set(nose - 0.4, 1.7, 4.2);
 else if (view === "side") camera.position.set(0.2, 0.72, 7.2);
-else camera.position.set(nose - 1.8, 0.92, 2.6);
-camera.lookAt(view === "side" ? 0 : nose * 0.2, view === "side" ? 0.58 : 0.5, 0);
+else {
+  camera.fov = hero.fov;
+  camera.position.set(hero.position[0], hero.position[1], hero.position[2]);
+  camera.updateProjectionMatrix();
+}
+const look = view === "side" ? [0, 0.58, 0] : (view === "studio" || view === "section-x") ? hero.target : [nose * 0.2, 0.5, 0];
+camera.lookAt(look[0], look[1], look[2]);
 renderer.render(scene, camera);
 requestAnimationFrame(() => { renderer.render(scene, camera); window.__ready = true; });
 </script></body></html>`;
@@ -281,7 +299,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const shots = {};
-for (const view of ["studio", "exploded", "section", "engineering", "side"]) {
+for (const view of ["studio", "exploded", "section", "section-x", "engineering", "side"]) {
   await page.goto(`http://127.0.0.1:${port}/studio.html?view=${view}`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
   await page.waitForTimeout(250);

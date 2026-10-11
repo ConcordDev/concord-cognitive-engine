@@ -16,6 +16,8 @@ import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
 
 /** Hydrated showcase designs, keyed by the cached snapshot object. */
 const hydratedDesigns = new WeakMap();
+/** Signed body per snapshot revision. The car is about 5 MB; canonicalizing it on every request costs ~0.4 s. */
+const signedByRevision = new Map();
 
 const DIM_KEYS = ["length", "height", "flangeWidth", "flangeThickness", "webThickness"];
 
@@ -82,9 +84,15 @@ export default function createConkayDemoRouter({ rateLimit }) {
         : snap;
       hydratedDesigns.set(snap, design);
     }
-    // Sign a copy. The cached snapshot on disk stays the content hash the
-    // file route checks; issuedAt is the moment this response was issued.
-    res.json({ ok: true, design: attestReceipt(design) });
+    // Sign once per design revision. issuedAt belongs to that attestation,
+    // not to the clock of each HTTP request. The on-disk snapshot is unchanged.
+    const rev = typeof design.snapshotSha256 === "string" ? design.snapshotSha256 : null;
+    let signed = rev ? signedByRevision.get(rev) : null;
+    if (!signed) {
+      signed = attestReceipt(design);
+      if (rev) signedByRevision.set(rev, signed);
+    }
+    res.json({ ok: true, design: signed });
   });
 
   router.get("/designs/:id/files/:name", limit, (req, res) => {

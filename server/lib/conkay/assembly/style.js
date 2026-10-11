@@ -355,6 +355,13 @@ export function styleControls(spec, pins = {}) {
   const riseZ = noseZ + (hood - noseZ) * 0.42;
   const leadX = nose + Math.min(0.48, (ax - nose) * 0.55);
   const leadZ = noseZ + (hood - noseZ) * 0.82;
+  // The hood after the fast rise is one plane. A single C1 spline from that
+  // plane into the 60° glass averages the two slopes and sags the hood by
+  // about 15 mm just ahead of the windshield. A knot 5 cm before the cowl
+  // keeps that bend on the glass line.
+  const hoodSlope = (hood - leadZ) / Math.max(0.05, ax - leadX);
+  const onHoodPlane = (x) => hood + hoodSlope * (x - ax);
+  const plainX = Math.max(ax + 0.08, cowlX - 0.05);
   const fastX = lerp(rearHeadX, kammX, 0.55);
   const fastZ = lerp(rearRoof, kammZ, 0.62);
 
@@ -363,7 +370,8 @@ export function styleControls(spec, pins = {}) {
     ctrl("nose-rise", riseX, under(riseZ)),
     ctrl("hood-lead", leadX, under(leadZ)),
     ctrl("hood-axle", ax, under(hood)),
-    ctrl("cowl", cowlX, under(cowlZ)),
+    ctrl("hood-plain", plainX, under(onHoodPlane(plainX))),
+    ctrl("cowl", cowlX, under(onHoodPlane(cowlX))),
     ctrl("ws-mid", lerp(cowlX, headerX, 0.5), under(lerp(cowlZ, headerZ, 0.5))),
     ctrl("header", headerX, under(headerZ)),
     ctrl("roof-peak", peakX, under(peakZ)),

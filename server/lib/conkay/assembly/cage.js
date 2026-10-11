@@ -43,11 +43,10 @@ function sillWeight(spec, x) {
 function sectionRows(spec, profileAt, x) {
   const p = profileAt(x);
   const archW = archWeight(spec, x);
-  const onHood = x < spec.cowlX - 0.02 && x > spec.noseX - 0.02;
-  const hoodT = onHood
-    ? Math.sin(Math.PI * clamp((x - spec.noseX) / Math.max(0.2, spec.cowlX - spec.noseX), 0, 1))
-    : 0;
-  const crownZ = p.crownZ + 0.011 * hoodT;
+  // The crown follows the styling spline. A longitudinal sine on top of it
+  // rose through the middle of the hood and fell back to zero at the cowl,
+  // which is the ripple ahead of the windshield.
+  const crownZ = p.crownZ;
   const shoulderY = p.shoulderY * (1 + 0.055 * archW);
   let shoulderZ = p.shoulderZ;
   // The fender crown sits on the tyre circle plus the arch gap, so the

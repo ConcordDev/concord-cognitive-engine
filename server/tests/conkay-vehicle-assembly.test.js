@@ -11,6 +11,7 @@ import { j941Centroid } from "../lib/conkay/assembly/j941.js";
 import { buildPackagingSheet } from "../lib/conkay/drawings/ga-drawing.js";
 import { toSvg } from "../lib/conkay/drawings/sheet.js";
 import { frameTorsionSummary, carChatSummary } from "../lib/conkay/assembly/summary.js";
+import { makeSpline } from "../lib/conkay/assembly/style.js";
 
 const BRIEF = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.";
 
@@ -238,6 +239,19 @@ describe("assembly of the library car", () => {
     assert.ok(quality.panelHighlightMaxDeg <= 8, `panel highlight ${quality.panelHighlightMaxDeg}° ${quality.detail}`);
     assert.ok(quality.highlightMaxDeg <= 16, `fillet highlight ${quality.highlightMaxDeg}° ${quality.detail}`);
     assert.deepEqual(doc.surface.spec.pushes, []);
+    const spec = doc.surface.spec;
+    const ev = makeSpline(spec.crownKeys);
+    const axle = spec.frontAxleX;
+    const cowl = spec.cowlX;
+    const end = cowl - 0.08;
+    const z0 = ev(axle);
+    const z1 = ev(end);
+    let hollow = 0;
+    for (let x = axle; x <= end; x += 0.02) {
+      const t = (x - axle) / (end - axle);
+      hollow = Math.max(hollow, z0 + (z1 - z0) * t - ev(x));
+    }
+    assert.ok(hollow < 0.006, `hood hollow ahead of the glass ${hollow.toFixed(4)} m`);
     assert.ok(doc.components.some((c) => c.id === "SEAT_1" && c.role === "seat"));
     assert.ok(doc.components.some((c) => c.id === "OCC_SEAT_1_M95" && c.role === "occupant"));
   });
