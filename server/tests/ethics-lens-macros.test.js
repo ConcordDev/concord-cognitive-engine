@@ -424,6 +424,22 @@ describe("ethics INC-53 — opinion author, verdict lock, owner-only deletes", (
     assert.equal(objectLabel.result.opinions[2].by, "eth_user_a");
     assert.equal(Object.hasOwn(objectLabel.result.opinions[2], "perspective"), false);
     assert.equal(JSON.stringify(objectLabel.result.opinions[2]).includes("Someone Else"), false);
+
+    const noisy = call("addReviewOpinion", ctxA, {
+      reviewId: rev.id,
+      stance: "reject",
+      rationale: "z",
+      perspective: "devil\u0000's advocate",
+    });
+    assert.equal(noisy.result.opinions[3].perspective, "devil's advocate");
+
+    const capped = call("addReviewOpinion", ctxA, {
+      reviewId: rev.id,
+      stance: "approve",
+      rationale: "long",
+      perspective: "p".repeat(100),
+    });
+    assert.equal(capped.result.opinions[4].perspective.length, 80);
   });
 
   it("refuses a second verdict and leaves the first one in place", () => {
