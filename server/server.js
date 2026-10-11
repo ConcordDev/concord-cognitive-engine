@@ -15543,31 +15543,37 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   });
 }, { public:false });
 
-register("multimodal","image_generate", (ctx, input={}) => {
-  enforceEthosInvariant("generate_image");
-  const flags = _c3sessionFlags(ctx);
-  if (!ctx.state.__chicken3?.multimodalEnabled) return { ok:false, error:"multimodal disabled" };
-  if (!flags.multimodalOptIn) return { ok:false, error:"session multimodal opt-in required" };
-
-  const prompt = String(input.prompt || "");
-  if (!prompt) return { ok:false, error:"prompt required" };
-
-  return governedCall(ctx, "multimodal.image_generate", async () => {
-
-  // Local-first: Stable Diffusion / ComfyUI HTTP if configured
-  const SD_URL = process.env.SD_URL || process.env.COMFYUI_URL || process.env.A1111_URL || "";
-  if (SD_URL) {
-    const body = { prompt, steps: clamp(Number(input.steps || 30), 5, 80) };
-    const r = await fetch(SD_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) }).catch(_e=>null);
-    if (r && r.ok) {
-      const j = await r.json().catch(()=>null);
-      const img = j?.images?.[0] || j?.image || j?.data?.[0] || null;
-      return { ok:true, image: img, source: "stable_diffusion", raw: j };
-    }
+register("multimodal","image_generate", async (_ctx, input={}) => {
+  // Pod GPU only. The previous body touched session flags before any
+  // image was made, so the agent loop (ctx has no session) surfaced
+  // macro_uncaught_throw — twice, when the model retried. It also told
+  // the caller to configure an outside diffusion URL. This handler never
+  // throws and never names an outside service.
+  try {
+    enforceEthosInvariant("generate_image");
+    const prompt = String(input.prompt || "").trim();
+    if (!prompt) return { ok:false, error:"prompt required" };
+    const { produceGpuImage } = await import("./lib/chat/image-router.js");
+    const gen = await produceGpuImage({
+      prompt,
+      width: input.width,
+      height: input.height,
+      seed: input.seed,
+    });
+    if (!gen.ok) return { ok:false, error: gen.error, reason: gen.reason };
+    return {
+      ok: true,
+      image_b64: gen.artifact.image_b64,
+      image: gen.artifact.image_b64,
+      url: `data:image/png;base64,${gen.artifact.image_b64}`,
+      source: gen.source,
+      width: gen.artifact.width,
+      height: gen.artifact.height,
+      prompt: gen.prompt,
+    };
+  } catch (e) {
+    return { ok: false, error: "handler_error", message: String(e?.message || e) };
   }
-
-  return { ok:false, error:"No image generation backend configured. Set SD_URL (Stable Diffusion) or COMFYUI_URL or A1111_URL" };
-  });
 }, { public:false });
 
 register("voice","transcribe", async (ctx, input={}) => {
@@ -27886,8 +27892,10 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- generate_image: Generate an image on Concord's GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
 ${_operatorToolLines}
 Rules for tool use:
+- For an explicit request to make, draw, or generate an image, use generate_image. Never recommend DALL-E, Midjourney, Stable Diffusion, or any outside image service. If the GPU server is down, say exactly: GPU image generation is offline.
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
 - Use browse_url when the user provides a URL or asks about a specific page.
@@ -27928,6 +27936,10 @@ ${_operatorV6Block}` : "";
   // Set when a deterministic engine answered the question outright (e.g. a
   // written beam-deflection problem); enforced after the brain replies.
   let _deterministicAnswer = null;
+  // Set when an explicit image request was answered by the pod GPU. The
+  // reply is the image (or the offline sentence). A later brain turn must
+  // not replace it with a recommendation for an outside image service.
+  let _imageTurn = null;
   // Compute-don't-guess on ANY model (lib/chat/compute-router.js): a fully
   // specified computational question (arithmetic, calculus, units, beam /
   // column / electrical / hydraulic / HVAC, stats, chemistry, finance…) is
@@ -27937,6 +27949,16 @@ ${_operatorV6Block}` : "";
     const _routed = _routeComputeQuestion(prompt);
     if (_routed) _deterministicAnswer = { value: _routed.value, text: _composeRoutedReply(_routed), route: _routed.route };
   } catch { /* never block chat on a compute failure */ }
+  if (!_deterministicAnswer) {
+    try {
+      const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
+      const _image = await _fulfillImageRequest(prompt);
+      if (_image) {
+        _imageTurn = _image;
+        _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
+      }
+    } catch { /* never block chat on an image-router failure */ }
+  }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
     _parseObserveCalls = _v6.parseObserveCalls;
@@ -28071,6 +28093,12 @@ ${_operatorV6Block}` : "";
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
         }
+        case "generate_image": {
+          // Same GPU-only path as the agent loop. Never the old
+          // multimodal.image_generate macro (it threw without ctx.state).
+          const { executeToolCall: _imageTool } = await import("./lib/chat-agent.js");
+          return _imageTool(ctx, runMacro, LENS_ACTIONS, call);
+        }
         case "list_capabilities":
         case "invoke_capability": {
           // Concord Runtime — one implementation, shared with the agent loop
@@ -28168,6 +28196,7 @@ ${_operatorV6Block}` : "";
       if (r.tool === "browse_url") return `[TOOL_RESULT: browse_url url=${r.url}]\nTitle: ${r.title}\n${r.text}`;
       if (r.tool === "create_dtu") return `[TOOL_RESULT: create_dtu] Created DTU "${r.title}" (id: ${r.dtuId})`;
       if (r.tool === "run_lens_action") return `[TOOL_RESULT: run_lens_action] ${JSON.stringify(r.result).slice(0, 4000)}`;
+      if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image] Image generated and attached.`;
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 4000)}`;
     }).join("\n\n");
   };
@@ -28502,8 +28531,22 @@ ${_operatorV6Block}` : "";
         // "answer" beside it) must not be fed back — it anchors the follow-up.
         const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
 
+        const _genImages = _toolResults.filter((r) => r.tool === "generate_image");
         if (_arithOnly) {
           finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else if (_genImages.length > 0) {
+          // The image is the reply. A follow-up brain call restates it as
+          // "I can't generate images, try DALL-E" and drops the artifact.
+          const { markdownImageReply: _markdownImageReply } = await import("./lib/chat/image-router.js");
+          const _imgHit = _genImages.find((r) => r.artifact?.image_b64);
+          if (_imgHit) {
+            finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.image_b64);
+            _imageTurn = { ok: true, reply: finalReply, artifact: _imgHit.artifact, prompt: _imgHit.prompt };
+          } else {
+            finalReply = String(_genImages.find((r) => !r.ok)?.error || "GPU image generation is offline");
+            _imageTurn = { ok: false, offline: finalReply === "GPU image generation is offline", reply: finalReply };
+          }
+          _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
         } else {
         // Build follow-up messages with tool results
         const _toolResultsText = _formatToolResults(_toolResults);
@@ -28632,7 +28675,7 @@ ${_operatorV6Block}` : "";
   }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
-  if (!llmUsed && localReply && finalReply === localReply) {
+  if (!llmUsed && localReply && finalReply === localReply && !_deterministicAnswer?.image) {
     // Extract the user's actual question. `messages` is only in scope when
     // the LLM-enabled branch above ran — fall through to prompt directly
     // when LLM_READY is false, so we don't hit a TDZ ReferenceError in
@@ -28930,6 +28973,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
       tool: t.tool, ok: t.ok,
       params: t.params || {},

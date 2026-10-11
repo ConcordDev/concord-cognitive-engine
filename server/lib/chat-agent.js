@@ -268,8 +268,9 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "read_zip", "params": {"dtuId": "dtu_abc123"}}]
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
   Example: [TOOL_CALL: {"tool": "expert_mode", "params": {"query": "what does the substrate say about X?"}}]
-- generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
+- generate_image: Generate an image on Concord's own GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
   Example: [TOOL_CALL: {"tool": "generate_image", "params": {"prompt": "a blue circle on a white background"}}]
+  This is the only image generator. Never recommend DALL-E, Midjourney, Stable Diffusion, Pollinations, or any outside service. If the GPU server is down, say exactly: GPU image generation is offline.
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
   Example: [TOOL_CALL: {"tool": "mcp_connect", "params": {"serverId": "github", "url": "https://mcp.github.com/http"}}]
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
@@ -286,6 +287,7 @@ Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
 - Never claim a source you did not actually retrieve. Cite only titles and URLs that came back from web_search, browse_url, or expert_mode. If the tool result is only a Wikipedia page, attribute Wikipedia — do not say the answer was confirmed by an official site (for example the official Node.js page) unless that page was actually in the tool result. If a tool failed or returned nothing, say that.
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
+- For an explicit request to make, draw, or generate an image, use generate_image. Never tell the user to use an outside image service.
 - For any math/calculation use run_compute. Never guess at numbers.
 - For current events / facts you don't know, use web_search.
 - For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
@@ -613,6 +615,27 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const domain = String(call.params.domain || "");
         const action = String(call.params.action || "");
         const actionInput = call.params.params || {};
+        // multimodal.image_generate reads ctx.state and throws
+        // macro_uncaught_throw on this loop's ctx. chat.image-generate
+        // still falls through to Pollinations. Both are image requests:
+        // answer them on the pod GPU and never dispatch the macro.
+        if ((domain === "multimodal" || domain === "chat") && /^(?:image_generate|image-generate)$/i.test(action)) {
+          const { produceGpuImage } = await import("./chat/image-router.js");
+          const gen = await produceGpuImage({
+            prompt: actionInput.prompt || actionInput.text || "",
+            width: actionInput.width,
+            height: actionInput.height,
+            seed: actionInput.seed,
+          });
+          if (!gen.ok) {
+            return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason, domain, action };
+          }
+          return {
+            tool: call.tool, ok: true, key: `${domain}.${action}`, domain, action, input: actionInput,
+            result: { ok: true, image_b64: gen.artifact.image_b64, source: gen.source, prompt: gen.prompt },
+            artifact: gen.artifact,
+          };
+        }
         // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS —
         // the same precedence server.js's runMcpTool / /api/lens/run use.
         // `strict` (default) verifies the pair is ACTUALLY registered: a
@@ -827,48 +850,26 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_image": {
-        // Pod GPU FLUX only. The old multimodal.image_generate macro reads
-        // ctx.state (undefined on this loop's ctx) and only talks to SD_URL.
-        // Pollinations is watermarked and is not a fallback: if the GPU
-        // server is down, say so.
-        const prompt = String(call.params.prompt || "");
-        const { generateViaLocalGpu } = await import("./pollinations-image.js");
+        // Pod GPU FLUX only. Does not call multimodal.image_generate
+        // (that macro threw macro_uncaught_throw when ctx.state was missing)
+        // and does not fall back to Pollinations or any outside service.
+        const { produceGpuImage } = await import("./chat/image-router.js");
         let width;
         let height;
         const size = String(call.params.size || "");
         const sizeMatch = size.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
         if (sizeMatch) { width = Number(sizeMatch[1]); height = Number(sizeMatch[2]); }
-        const gen = await generateViaLocalGpu({ prompt, width, height, seed: call.params.seed });
-        const GPU_OFFLINE = "image generation is temporarily unavailable (GPU offline)";
-        const external = gen?.provider === "pollinations"
-          || /pollinations\.ai/i.test(String(gen?.url || ""));
-        if (!gen?.ok || external) {
-          if (external || gen?.reason === "local_gpu_unreachable" || gen?.reason === "weights_missing") {
-            return { tool: call.tool, ok: false, error: GPU_OFFLINE, reason: gen?.reason || "local_gpu_unreachable" };
-          }
-          return { tool: call.tool, ok: false, error: gen?.error || gen?.reason || "generate_image failed", reason: gen?.reason };
+        const gen = await produceGpuImage({ prompt: call.params.prompt, width, height, seed: call.params.seed });
+        if (!gen.ok) {
+          return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason };
         }
-        const dataUrl = typeof gen.url === "string" && gen.url.startsWith("data:") ? gen.url : "";
-        const image_b64 = gen.imageB64 || (dataUrl ? dataUrl.slice(dataUrl.indexOf(",") + 1) : "");
-        if (!image_b64) {
-          return { tool: call.tool, ok: false, error: GPU_OFFLINE, reason: "no_image" };
-        }
-        const source = gen.provider || "local_gpu_flux";
         return {
           tool: call.tool, ok: true,
-          prompt,
-          source,
+          prompt: gen.prompt,
+          source: gen.source,
           // Bytes live on the artifact the UI renders. The model only hears
           // that an image was attached (formatToolResults).
-          artifact: {
-            kind: "image",
-            source,
-            prompt,
-            mimeType: "image/png",
-            image_b64,
-            ...(gen.width ? { width: gen.width } : {}),
-            ...(gen.height ? { height: gen.height } : {}),
-          },
+          artifact: gen.artifact,
         };
       }
       case "mcp_list": {
@@ -1153,6 +1154,38 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         model: routed.engine,
         ...provenanceFrom({ provider: "concord-engine", model: routed.engine }),
       };
+    }
+  } catch { /* fall through to the brain */ }
+
+  // Explicit image requests go to the pod GPU before any model turn, same
+  // as Chat. Otherwise a small model says it cannot generate images and
+  // names an outside service while :7870 is up, or emits a lens action that
+  // used to throw macro_uncaught_throw.
+  try {
+    const { explicitImagePrompt, fulfillImageRequest } = await import("./chat/image-router.js");
+    if (explicitImagePrompt(message)) {
+      const image = await fulfillImageRequest(message);
+      if (image) {
+        const artifact = image.artifact || null;
+        const toolCall = {
+          tool: "generate_image",
+          ok: Boolean(image.ok),
+          prompt: image.prompt,
+          ...(image.ok ? { source: image.source || "local_gpu_flux" } : { error: image.reply, reason: image.reason }),
+          ...(artifact ? { artifact } : {}),
+        };
+        emit("tool_call", toolCall);
+        return {
+          ok: true,
+          answer: image.reply,
+          toolCalls: [toolCall],
+          artifacts: artifact ? [artifact] : [],
+          turns: 0,
+          provider: "local_gpu_flux",
+          model: "flux",
+          ...provenanceFrom({ provider: "local_gpu_flux", model: "flux" }),
+        };
+      }
     }
   } catch { /* fall through to the brain */ }
 

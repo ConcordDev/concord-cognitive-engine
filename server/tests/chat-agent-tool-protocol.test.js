@@ -351,13 +351,14 @@ test("generate_image reports GPU offline and never calls Pollinations", async ()
       params: { prompt: "a red cube" },
     });
     assert.equal(offline.ok, false);
-    assert.equal(offline.error, "image generation is temporarily unavailable (GPU offline)");
+    assert.equal(offline.error, "GPU image generation is offline");
     assert.equal(offline.artifact, undefined);
     assert.ok(urls.some((u) => u.includes("127.0.0.1:9")));
     assert.ok(urls.every((u) => !/pollinations/i.test(u)));
     const rendered = formatToolResults([offline]);
-    assert.match(rendered, /image generation is temporarily unavailable \(GPU offline\)/);
+    assert.match(rendered, /GPU image generation is offline/);
     assert.ok(!/pollinations/i.test(rendered));
+    assert.ok(!/dall-?e|stable diffusion|midjourney/i.test(rendered));
   } finally {
     globalThis.fetch = origFetch;
     if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL;
@@ -365,4 +366,51 @@ test("generate_image reports GPU offline and never calls Pollinations", async ()
     if (saved.force === undefined) delete process.env.CONCORD_FORCE_POLLINATIONS;
     else process.env.CONCORD_FORCE_POLLINATIONS = saved.force;
   }
+});
+
+test("generate_image and the lens image action never surface macro_uncaught_throw", async () => {
+  await withRegistries(async () => {
+    const png = Buffer.from("red-bicycle").toString("base64");
+    const srv = await startGen((url) => (url === "/health" ? { ok: true, weights: { flux_schnell: true } } : { ok: true, png_b64: png, provider: "local_gpu_flux" }));
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-img-throw-"));
+    const saved = { gen: process.env.CONCORD_GEN_URL, data: process.env.DATA_DIR };
+    const prev = globalThis._concordMACROS;
+    const bucket = new Map([["image_generate", {}]]);
+    globalThis._concordMACROS = new Map([["multimodal", bucket], ["chat", new Map([["image-generate", {}]])]]);
+    const macroCalls = [];
+    const runMacro = async (domain, action) => {
+      macroCalls.push(`${domain}.${action}`);
+      return { ok: false, error: "macro_uncaught_throw", message: "Cannot read properties of undefined (reading '__chicken3')" };
+    };
+    process.env.DATA_DIR = dataDir;
+    process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+    try {
+      const calls = [
+        { tool: "generate_image", params: { prompt: "a red bicycle" } },
+        { tool: "generate_image", params: { prompt: "a red bicycle" } },
+        { tool: "run_lens_action", params: { domain: "multimodal", action: "image_generate", params: { prompt: "a red bicycle" } } },
+        { tool: "run_lens_action", params: { domain: "chat", action: "image-generate", params: { prompt: "a red bicycle" } } },
+      ];
+      const results = [];
+      for (const call of calls) results.push(await executeToolCall({}, runMacro, new Map(), call));
+      assert.deepEqual(macroCalls, []);
+      assert.equal(results.length, 4);
+      for (const r of results) {
+        assert.equal(r.ok, true, JSON.stringify(r));
+        assert.notEqual(r.error, "macro_uncaught_throw");
+        assert.equal(r.artifact.kind, "image");
+        assert.equal(r.artifact.image_b64, png);
+        assert.ok(!/macro_uncaught_throw|dall-?e|stable diffusion|pollinations/i.test(JSON.stringify({ ...r, artifact: { ...r.artifact, image_b64: "png" } })));
+      }
+    } finally {
+      srv.close();
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      if (prev === undefined) delete globalThis._concordMACROS;
+      else globalThis._concordMACROS = prev;
+      if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL;
+      else process.env.CONCORD_GEN_URL = saved.gen;
+      if (saved.data === undefined) delete process.env.DATA_DIR;
+      else process.env.DATA_DIR = saved.data;
+    }
+  });
 });
