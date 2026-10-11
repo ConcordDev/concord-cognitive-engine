@@ -286,6 +286,7 @@ export function middleware(request: NextRequest) {
     '/marketplace': '/lenses/marketplace',
     '/world': '/lenses/world',
     '/graph': '/lenses/graph',
+    '/settings': '/lenses/settings',
     '/hermes': '/agents',
     '/dila': '/agents',
     '/lenses': '/hub',
