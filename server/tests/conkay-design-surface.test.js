@@ -178,10 +178,10 @@ describe("drag, roof height and zebra on the CAD skin", { skip: !HAVE_KERNEL && 
     const re = surface.outputs.recheck.value;
     const aero = session.result("aero.drag-buildup@VEH");
     const cad = session.result("cad.body@BODY_SHELL");
-    assert.equal(aero.solver.version, DRAG_BUILDUP_VERSION);
     assert.equal(DRAG_BUILDUP_VERSION, "1.0.0");
+    assert.equal(aero.solver.version, "1.1.0", "aero.drag-buildup reports the calibrated build-up");
     assert.equal(re.drag.state, "computed", re.drag.reason);
-    assert.equal(re.drag.solverVersion, "1.0.0");
+    assert.equal(re.drag.solverVersion, aero.solver.version);
     assert.equal(re.drag.low, aero.outputs.dragCoefficient.value.low);
     assert.equal(re.drag.centre, aero.outputs.dragCoefficient.value.centre);
     assert.equal(re.drag.high, aero.outputs.dragCoefficient.value.high);

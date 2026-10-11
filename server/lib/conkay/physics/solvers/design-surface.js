@@ -81,7 +81,7 @@ function dragOf(aero, vehicle) {
     solverVersion: aero.solver?.version || null,
     status: aero.status,
     low: cd.low, centre: cd.centre, high: cd.high,
-    note: "aero.drag-buildup on this branch (version on the solver). The calibrated drag build-up is not on this branch. The skin was not reshaped, so this is the package's range. Not CFD.",
+    note: "the range aero.drag-buildup reports (its version is on the solver). The skin was not reshaped, so this is the package's range. Not CFD.",
   };
 }
 

@@ -104,8 +104,15 @@ describe("the smaller tail face on the CAD solid", { skip: !HAVE_KERNEL && "no P
     const cad = session.result("cad.body@BODY_SHELL");
     assert.equal(shape.status, "WARN", shape.reason || shape.error);
     assert.equal(shape.margins.length, 0);
-    assert.equal(aero.solver.version, "1.0.0");
-    assert.equal(shape.outputs.v2Stacked.value, false);
+    assert.equal(aero.solver.version, "1.1.0");
+    assert.equal(shape.outputs.v2Stacked.value, true);
+    assert.equal(shape.inputs.dragModel.value, "1.0.0");
+    const m = shape.outputs.measured.value;
+    // the v1 re-evaluation on the same areas is the drag solver's own previousEnvelope
+    assert.ok(Math.abs(m.cd.low - aero.outputs.previousEnvelope.value.low) < 1e-12);
+    assert.ok(Math.abs(m.cd.high - aero.outputs.previousEnvelope.value.high) < 1e-12);
+    assert.ok(Math.abs(m.cd.centre - aero.outputs.previousEnvelope.value.centre) < 1e-12);
+    assert.deepEqual(shape.outputs.reportedCd.value, aero.outputs.dragCoefficient.value);
     assert.equal(cad.inputs.parameters.value.kammAreaRatio, 0.45);
     assert.equal(cad.inputs.parameters.value.fastbackDeg, 18);
     assert.equal(cad.inputs.parameters.value.beltMax, 0.85);
@@ -116,8 +123,9 @@ describe("the smaller tail face on the CAD solid", { skip: !HAVE_KERNEL && "no P
       base: aero.inputs.baseAreaM2.value,
       frontal: aero.inputs.frontalAreaM2.value,
       wetted: aero.inputs.wettedAreaM2.value,
-      cd: aero.outputs.dragCoefficient.value,
-      terms: aero.outputs.terms.value,
+      cd: m.cd,
+      reportedCd: aero.outputs.dragCoefficient.value,
+      terms: m.terms,
       lift: aero.outputs.sectionLift.value.sign,
       cl: [aero.outputs.sectionLift.value.kuttaUpperCorner.cl2d, aero.outputs.sectionLift.value.kuttaLowerCorner.cl2d],
       height: cad.outputs.dimensions.value.heightM,
@@ -127,8 +135,9 @@ describe("the smaller tail face on the CAD solid", { skip: !HAVE_KERNEL && "no P
     assert.equal(v.supported, true, JSON.stringify({ v, report }));
     assert.ok(aero.inputs.rearSlantDeg.value <= 12.5);
     assert.ok(aero.inputs.baseAreaM2.value < KAMM50_BASELINE.baseAreaM2);
-    const cd = aero.outputs.dragCoefficient.value;
+    const cd = m.cd;
     assert.ok(cd.low < KAMM50_BASELINE.cd.low && cd.centre < KAMM50_BASELINE.cd.centre && cd.high < KAMM50_BASELINE.cd.high);
+    assert.equal(m.terms.high.slant, 0);
     assert.equal(aero.outputs.terms.value.high.slant, 0);
     assert.ok(["lift", "downforce", "indeterminate"].includes(aero.outputs.sectionLift.value.sign));
     assert.equal(shape.outputs.sectionLift.value.sign, aero.outputs.sectionLift.value.sign);
