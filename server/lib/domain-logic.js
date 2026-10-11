@@ -362,7 +362,11 @@ DOMAIN_RULES.set("feed", {
 
 // === Forum ===
 DOMAIN_RULES.set("forum", {
-  types: ["thread", "reply", "announcement", "poll"],
+  // `post` and `community` are the artifact types BoardPanel actually
+  // creates through POST /api/lens/forum. They were missing, so every
+  // create returned validation_failed and the board only looked populated
+  // until refresh.
+  types: ["thread", "reply", "announcement", "poll", "post", "community"],
   validStatuses: ["open", "closed", "pinned", "locked", "archived"],
   transitions: {
     open: ["closed", "pinned", "locked", "archived"],

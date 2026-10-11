@@ -27,6 +27,7 @@ import {
   AlertCircle, Wallet,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { Skeleton } from '@/components/ui';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
@@ -267,7 +268,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
   isPending: boolean;
 }) {
   const [emailInput, setEmailInput] = useState(invoice.customerEmail || '');
-  const isOverdue = invoice.status === 'open' && invoice.dueAt && invoice.dueAt < new Date().toISOString().slice(0, 10);
+  const isOverdue = invoice.status === 'open' && invoice.dueAt && invoice.dueAt < calendarDateKey();
   const hasStripe = !!invoice.stripeHostedInvoiceUrl;
 
   const statusClass =

@@ -14,9 +14,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Star, Zap, Target, Users, Crown,
@@ -60,18 +60,56 @@ interface Quest {
   description: string;
   icon: string;
   xpReward: number;
-  // Difficulty is a real, user-chosen field only for locally-authored custom
-  // challenges. The /api/game/challenges daily-challenge feed has no
-  // difficulty concept server-side, so it's optional — never fabricated.
+  // Difficulty is whatever the author stored on the quest artifact.
   difficulty?: 'easy' | 'medium' | 'hard';
   type: 'daily' | 'weekly' | 'challenge';
   status: QuestStatus;
   timeLeft?: string;
-  // Real progress/target from /api/game/challenges (server-computed from
-  // actual DTU/vote activity) — undefined for locally-authored quests until
-  // the server round-trips them.
+  // Present only when the artifact itself stores them.
   progress?: number;
   target?: number;
+}
+
+interface QuestPayload {
+  title?: string;
+  name?: string;
+  description?: string;
+  icon?: string;
+  xpReward?: number;
+  difficulty?: Quest['difficulty'];
+  type?: Quest['type'];
+  status?: string;
+  timeLeft?: string;
+  progress?: number;
+  target?: number;
+}
+
+function artifactToQuest(item: LensItem<QuestPayload>): Quest {
+  const data = item.data || {};
+  const status: QuestStatus =
+    data.status === 'accepted' || data.status === 'completed' || data.status === 'available'
+      ? data.status
+      : 'available';
+  const type: Quest['type'] =
+    data.type === 'daily' || data.type === 'weekly' || data.type === 'challenge' ? data.type : 'challenge';
+  const difficulty =
+    data.difficulty === 'easy' || data.difficulty === 'medium' || data.difficulty === 'hard'
+      ? data.difficulty
+      : undefined;
+  const xpReward = Number(data.xpReward);
+  return {
+    id: item.id,
+    name: item.title || data.name || data.title || 'Untitled challenge',
+    description: data.description || '',
+    icon: data.icon || '🎯',
+    xpReward: Number.isFinite(xpReward) ? xpReward : 0,
+    difficulty,
+    type,
+    status,
+    timeLeft: data.timeLeft,
+    progress: typeof data.progress === 'number' ? data.progress : undefined,
+    target: typeof data.target === 'number' ? data.target : undefined,
+  };
 }
 
 // Matches the real /api/game/leaderboard response shape exactly — the
@@ -128,8 +166,6 @@ const INITIAL_PROFILE = {
 const INITIAL_XP_HISTORY: { day: string; xp: number; label: string }[] = [];
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [];
-
-const INITIAL_QUESTS: Quest[] = [];
 
 const INITIAL_LEADERBOARD: LeaderboardPlayer[] = [];
 
@@ -683,27 +719,20 @@ export default function GameApp() {
     rarity: (a.rarity as Achievement['rarity']) || 'common',
   }));
 
-  // Fetch challenges/quests from /api/game/challenges
-  const { data: challengesResp, isError: isError2, error: error2, refetch: refetch2 } = useQuery({
-    queryKey: ['game', 'challenges'],
-    queryFn: () => api.get('/api/game/challenges').then(r => r.data),
-  });
-  const { create: createQuest } = useLensData<Quest>('game', 'quest', { noSeed: true });
-  // /api/game/challenges has no difficulty/type-cadence concept server-side —
-  // only these four fields are real. `progress`/`target` ARE real (computed
-  // from live DTU/vote activity), so a challenge whose progress already
-  // cleared its target starts 'completed' instead of always 'available'.
-  const quests: Quest[] = (challengesResp?.challenges || INITIAL_QUESTS).map((c: Record<string, unknown>) => ({
-    id: c.id as string,
-    name: c.name as string,
-    description: c.description as string,
-    icon: '⚡',
-    xpReward: (c.reward as number) || 100,
-    type: 'challenge' as Quest['type'],
-    status: (((c.progress as number) || 0) >= ((c.target as number) || Infinity) ? 'completed' : 'available') as QuestStatus,
-    progress: c.progress as number | undefined,
-    target: c.target as number | undefined,
-  }));
+  // Quests are lens artifacts (domain game, type quest). Create, list,
+  // accept, and complete all read and write that store. noSeed keeps the
+  // list empty until the signed-in user creates a challenge. Private
+  // artifacts stay invisible to other accounts via lens.list.
+  const {
+    items: questArtifacts,
+    create: createQuest,
+    update: updateQuest,
+    isLoading: questsLoading,
+    isError: questsError,
+    error: questsErrorObj,
+    refetch: refetchQuests,
+  } = useLensData<QuestPayload>('game', 'quest', { noSeed: true });
+  const quests: Quest[] = questArtifacts.map(artifactToQuest);
 
   // Fetch profile from /api/game/profile
   const { data: profileResp, isError: isError3, error: error3, refetch: refetch3 } = useQuery({
@@ -727,39 +756,46 @@ export default function GameApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileData]);
 
-  const { update: updateQuest } = useLensData<Quest>('game', 'quest', { noSeed: true });
-  const completeQuestMutation = useMutation({
-    mutationFn: (questId: string) => {
-      const quest = quests.find(q => q.id === questId);
-      return api.post(`/api/game/quests/${questId}/complete`, { xpReward: quest?.xpReward || 100 }).then(r => r.data);
-    },
-    onSuccess: () => { refetch2(); refetch3(); },
-    onError: (err) => {
-      console.error('Failed to complete quest:', err instanceof Error ? err.message : err);
-    },
-  });
-
-  // Local quest status overrides (optimistic UI)
+  // Optimistic status until the artifact list refetches the saved status.
   const [questStatusOverrides, setQuestStatusOverrides] = useState<Record<string, QuestStatus>>({});
   const effectiveQuests = useMemo(() =>
-    quests.map(q => questStatusOverrides[q.id] ? { ...q, status: questStatusOverrides[q.id] } : q),
+    quests.map(q => {
+      const override = questStatusOverrides[q.id];
+      if (!override || override === q.status) return q;
+      return { ...q, status: override };
+    }),
     [quests, questStatusOverrides]
   );
 
-  // Quest flow
   const acceptQuest = useCallback((id: string) => {
-    setQuestStatusOverrides(prev => ({ ...prev, [id]: 'accepted' as QuestStatus }));
-    updateQuest(id, { data: { status: 'accepted' } as unknown as Partial<Quest> })
-      .catch(err => { console.error('Failed to accept quest:', err instanceof Error ? err.message : err); showToast('error', 'Failed to accept quest'); });
+    setQuestStatusOverrides(prev => ({ ...prev, [id]: 'accepted' }));
+    updateQuest(id, { data: { status: 'accepted' } })
+      .catch(err => {
+        setQuestStatusOverrides(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        console.error('Failed to accept quest:', err instanceof Error ? err.message : err);
+        showToast('error', 'Failed to accept quest');
+      });
   }, [updateQuest]);
 
   const completeQuest = useCallback((id: string) => {
-    const quest = quests.find((q) => q.id === id);
-    if (!quest) return;
-    setQuestStatusOverrides(prev => ({ ...prev, [id]: 'completed' as QuestStatus }));
-    setPlayerXp((prev) => prev + quest.xpReward);
-    completeQuestMutation.mutate(id);
-  }, [quests, completeQuestMutation]);
+    const quest = effectiveQuests.find((q) => q.id === id);
+    if (!quest || quest.status === 'completed') return;
+    const previous = quest.status;
+    setQuestStatusOverrides(prev => ({ ...prev, [id]: 'completed' }));
+    setPlayerXp((xp) => xp + quest.xpReward);
+    updateQuest(id, { data: { status: 'completed' } })
+      .then(() => refetch3())
+      .catch(err => {
+        setQuestStatusOverrides(prev => ({ ...prev, [id]: previous }));
+        setPlayerXp((xp) => Math.max(0, xp - quest.xpReward));
+        console.error('Failed to complete quest:', err instanceof Error ? err.message : err);
+        showToast('error', 'Failed to complete quest');
+      });
+  }, [effectiveQuests, updateQuest, refetch3, setPlayerXp]);
 
   // Achievement unlock (optimistic UI - will refresh from API on next fetch)
   const [achievementOverrides, setAchievementOverrides] = useState<Record<string, boolean>>({});
@@ -775,25 +811,49 @@ export default function GameApp() {
     setTimeout(() => setUnlockAnim(null), 2000);
   }, [achievements]);
 
-  // Create custom challenge (local-only, added to local quest list)
-  const [localQuests, setLocalQuests] = useState<Quest[]>([]);
-  const allQuests = useMemo(() => [...effectiveQuests, ...localQuests], [effectiveQuests, localQuests]);
   const submitChallenge = useCallback(() => {
-    if (!newChallenge.name.trim()) return;
-    const questData: Quest = { id: `q-custom-${Date.now()}`, name: newChallenge.name, description: newChallenge.description, icon: '🎯', xpReward: newChallenge.xpReward, difficulty: newChallenge.difficulty, type: 'challenge', status: 'available' };
-    setLocalQuests((prev) => [...prev, questData]);
-    createQuest({ title: questData.name, data: questData as unknown as Record<string, unknown>, meta: { status: 'active', tags: ['challenge', questData.difficulty] } })
-      .then(() => { refetch2(); })
-      .catch(err => { console.error('Failed to persist challenge:', err instanceof Error ? err.message : err); showToast('error', 'Challenge submission failed'); });
+    const name = newChallenge.name.trim();
+    if (!name) return;
+    const difficulty = newChallenge.difficulty;
+    const xpReward = Number.isFinite(Number(newChallenge.xpReward)) ? Number(newChallenge.xpReward) : 0;
     setNewChallenge({ name: '', description: '', difficulty: 'medium', xpReward: 300 });
     setShowCreateChallenge(false);
-  }, [newChallenge, createQuest, refetch2]);
+    createQuest({
+      title: name,
+      data: {
+        title: name,
+        name,
+        description: newChallenge.description,
+        icon: '🎯',
+        xpReward,
+        difficulty,
+        type: 'challenge',
+        status: 'available',
+      },
+      meta: {
+        status: 'active',
+        visibility: 'private',
+        tags: ['challenge', difficulty].filter((tag): tag is string => Boolean(tag)),
+      },
+    }).catch(err => {
+      console.error('Failed to persist challenge:', err instanceof Error ? err.message : err);
+      showToast('error', 'Challenge submission failed');
+    });
+  }, [newChallenge, createQuest]);
 
   // Computed
   const filteredQuests = useMemo(() => {
-    if (questFilter === 'all') return allQuests;
-    return allQuests.filter((q) => q.type === questFilter);
-  }, [allQuests, questFilter]);
+    if (questFilter === 'all') return effectiveQuests;
+    return effectiveQuests.filter((q) => q.type === questFilter);
+  }, [effectiveQuests, questFilter]);
+  const acceptedQuests = useMemo(
+    () => effectiveQuests.filter((q) => q.status === 'accepted'),
+    [effectiveQuests],
+  );
+  const completedQuestCount = useMemo(
+    () => effectiveQuests.filter((q) => q.status === 'completed').length,
+    [effectiveQuests],
+  );
 
   const sortedLeaderboard = useMemo(() => {
     const apiPlayers = (leaderboardData || []) as unknown as LeaderboardPlayer[];
@@ -844,10 +904,10 @@ export default function GameApp() {
     );
   }
 
-  if (isError || isError2 || isError3 || isError4) {
+  if (isError || questsError || isError3 || isError4) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message || error4?.message} onRetry={() => { refetch(); refetch2(); refetch3(); refetch4(); }} />
+        <ErrorState error={error?.message || (questsErrorObj instanceof Error ? questsErrorObj.message : undefined) || error3?.message || error4?.message} onRetry={() => { refetch(); refetchQuests(); refetch3(); refetch4(); }} />
       </div>
     );
   }
@@ -952,7 +1012,7 @@ export default function GameApp() {
               for either, so they used to render a permanent, misleading "0". */}
           <div className="grid grid-cols-2 gap-4 max-w-md">
             {[
-              { label: 'Quests Done', value: profile.questsCompleted || quests.filter(q => q.status === 'completed').length, icon: Target, color: 'text-neon-cyan' },
+              { label: 'Quests Done', value: completedQuestCount, icon: Target, color: 'text-neon-cyan' },
               { label: 'Global Rank', value: myRank ? `#${myRank}` : '—', icon: ArrowUp, color: 'text-neon-blue' },
             ].map((s) => (
               <div key={s.label} className="lens-card text-center">
@@ -989,7 +1049,7 @@ export default function GameApp() {
               <button onClick={() => setActiveTab('quests')} className="text-xs text-neon-cyan hover:underline">View all</button>
             </div>
             <div className="space-y-2">
-              {quests.filter((q) => q.status === 'accepted').slice(0, 3).map((q) => (
+              {acceptedQuests.slice(0, 3).map((q) => (
                 <div key={q.id} className="flex items-center justify-between bg-lattice-surface rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span>{q.icon}</span>
@@ -998,7 +1058,10 @@ export default function GameApp() {
                   <button onClick={() => completeQuest(q.id)} className="btn-neon text-xs py-1 px-3">Complete</button>
                 </div>
               ))}
-              {quests.filter((q) => q.status === 'accepted').length === 0 && (
+              {questsLoading && acceptedQuests.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">Loading quests…</p>
+              )}
+              {!questsLoading && acceptedQuests.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-4">No active quests. Accept some from the Quests tab!</p>
               )}
             </div>
@@ -1046,6 +1109,12 @@ export default function GameApp() {
             </button>
           </div>
 
+          {questsLoading && filteredQuests.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-8">Loading quests…</p>
+          )}
+          {!questsLoading && filteredQuests.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-8">No quests yet. New challenge saves a private quest on your account.</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredQuests.map((quest) => (
               <motion.div
@@ -1313,7 +1382,7 @@ export default function GameApp() {
                 <Target className="w-5 h-5 text-neon-purple" />
                 Target Blitz
               </h3>
-              <p className="text-sm text-gray-400">Click targets before they fade! Chain hits for combo multipliers. Earn XP based on your score.</p>
+              <p className="text-sm text-gray-400">Click targets before they fade! Chain hits for combo multipliers. The score becomes practice XP for this session only — it is not profile XP.</p>
             </div>
             <div className="flex items-center gap-3">
               {mgState === 'idle' && (
@@ -1358,7 +1427,7 @@ export default function GameApp() {
                 <div className="text-center space-y-3">
                   <Target className="w-16 h-16 text-neon-purple/50 mx-auto" />
                   <p className="text-gray-400 text-sm">Press <span className="text-white font-semibold">Start Game</span> to begin</p>
-                  <p className="text-gray-400 text-xs">30 seconds &middot; Click targets &middot; Build combos &middot; Earn XP</p>
+                  <p className="text-gray-400 text-xs">30 seconds &middot; Click targets &middot; Build combos &middot; Practice XP only</p>
                 </div>
               </div>
             )}

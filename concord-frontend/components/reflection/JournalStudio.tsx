@@ -21,6 +21,7 @@ import {
   AlertTriangle, CalendarRange, Map as MapIcon, Trash2, Plus,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { TimelineView, MapView } from '@/components/viz';
 import type { TimelineEvent, MapMarker } from '@/components/viz';
 
@@ -184,7 +185,7 @@ function ComposeTab({
     if (!body.trim()) { err('Write something first.'); return; }
     setBusy('create');
     const r = await rf<{ entry: RfEntry }>('entry-create', {
-      text: body.trim(), title: title.trim() || undefined, mood,
+      text: body.trim(), title: title.trim() || undefined, mood, date: calendarDateKey(),
     });
     setBusy(null);
     if (r.ok && r.result) {
@@ -532,6 +533,7 @@ function VoiceRecorder({
     });
     if (!audioUrl) { setBusy(false); err('Recording capture failed.'); return; }
     const r = await rf<{ entry: RfEntry }>('voice-entry-create', {
+      date: calendarDateKey(),
       audioUrl, durationSec, mime: 'audio/webm', bytes: blob.size,
       transcript: transcriptRef.current || undefined,
       cleanup: !!transcriptRef.current, mood,
@@ -669,7 +671,7 @@ function RemindersTab({ ok, err }: { ok: (t: string) => void; err: (t: string) =
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await rf<ReminderResult>('reminder-status', {});
+    const r = await rf<ReminderResult>('reminder-status', { today: calendarDateKey() });
     if (r.ok && r.result) {
       setStatus(r.result);
       if (r.result.reminder) {

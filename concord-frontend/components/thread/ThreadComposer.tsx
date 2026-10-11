@@ -249,7 +249,7 @@ export function ThreadComposer() {
                 <Check className="w-3 h-3" />I posted this
               </button>
               <button onClick={() => { void saveDtu(); }} disabled={dtuBusy !== null} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-40">
-                {dtuBusy === 'save' ? 'Saving DTU…' : 'Save draft as DTU'}
+                {dtuBusy === 'save' ? 'Saving DTU…' : 'Save as DTU'}
               </button>
               {savedDtuId && (
                 <button onClick={() => { void sendDtu(); }} disabled={dtuBusy !== null} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-40">

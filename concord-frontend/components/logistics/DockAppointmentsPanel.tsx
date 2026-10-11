@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Anchor, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Dock { id: string; name: string; facility: string; kind: string; status: string; hoursStart: string; hoursEnd: string }
@@ -12,7 +13,7 @@ export function DockAppointmentsPanel() {
   const [docks, setDocks] = useState<Dock[]>([]);
   const [appts, setAppts] = useState<Appt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => calendarDateKey());
   const [dockForm, setDockForm] = useState({ name: '', facility: '', kind: 'loading' });
   const [aptForm, setAptForm] = useState({ dockId: '', startTime: '09:00', durationMin: '60', truckNumber: '', kind: 'delivery' as 'pickup' | 'delivery' });
 

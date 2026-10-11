@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, Sun, Home, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 interface SolarEntry { id: string; kwh: number; date: string; value: number }
 interface SelfConsumption {
@@ -31,7 +32,7 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
   const [exportRate, setExportRate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ kwh: '', date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ kwh: '', date: calendarDateKey() });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,7 +60,7 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
     if (!(Number(form.kwh) >= 0) || form.kwh === '') { setError('Enter the kWh produced.'); return; }
     const r = await lensRun('energy', 'solar-log', { kwh: Number(form.kwh), date: form.date });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ kwh: '', date: new Date().toISOString().slice(0, 10) });
+    setForm({ kwh: '', date: calendarDateKey() });
     setError(null);
     await refresh();
   };

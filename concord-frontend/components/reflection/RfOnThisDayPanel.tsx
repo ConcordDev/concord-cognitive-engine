@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, CalendarClock } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ErrorState } from '@/components/ui';
 
 interface Entry {
@@ -22,7 +23,7 @@ export function RfOnThisDayPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('reflection', 'on-this-day', {});
+    const r = await lensRun('reflection', 'on-this-day', { date: calendarDateKey() });
     if (r.data?.ok === false) {
       setLoadError(r.data?.error || 'Could not load past entries.');
       setLoading(false);

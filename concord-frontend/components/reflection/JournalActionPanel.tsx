@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -81,7 +82,7 @@ export function JournalActionPanel() {
     if (!ready) { err('Write the entry first.'); return; }
     setBusy('save'); setFeedback(null);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = calendarDateKey();
       const r = await lensRun({
         domain: 'dtu', name: 'create',
         input: withContentLicense({
@@ -134,18 +135,19 @@ export function JournalActionPanel() {
     if (!ready) { err('Write the entry first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
+      const today = calendarDateKey();
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
           input: withContentLicense({
-            title: `Gratitude — ${entryTitle.trim() || new Date().toISOString().slice(0, 10)}`,
+            title: `Gratitude — ${entryTitle.trim() || today}`,
             tags: ['reflection', 'gratitude', 'public'],
             source: 'reflection:gratitude:publish',
             meta: {
               visibility: 'public',
               consent: { allowCitations: true },
               gratitude: {
-                date: new Date().toISOString().slice(0, 10),
+                date: today,
                 mood,
                 body: entryBody.trim().slice(0, 2000),
               },

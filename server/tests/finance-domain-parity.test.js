@@ -76,6 +76,30 @@ describe("finance.net-worth-history (real user snapshots only)", () => {
   });
 });
 
+describe("finance.net-worth-snapshot-delete", () => {
+  it("removes one date and a second history read does not bring it back", () => {
+    const date = "2026-10-01";
+    const saved = call("net-worth-snapshot", ctxA, { date, cash: 100, investments: 0, liabilities: 0 });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.snapshot.date, date);
+    const before = call("net-worth-history", ctxA, { range: "all" });
+    assert.ok(before.result.snapshots.some((s) => s.date === date));
+
+    const removed = call("net-worth-snapshot-delete", ctxA, { date });
+    assert.equal(removed.ok, true);
+    assert.equal(removed.result.deleted, true);
+    const after = call("net-worth-history", ctxA, { range: "all" });
+    assert.equal(after.result.snapshots.some((s) => s.date === date), false);
+  });
+
+  it("refuses an unknown date and another user's row", () => {
+    call("net-worth-snapshot", ctxA, { date: "2026-10-02", cash: 50 });
+    assert.equal(call("net-worth-snapshot-delete", ctxA, { date: "1999-01-01" }).ok, false);
+    assert.equal(call("net-worth-snapshot-delete", ctxB, { date: "2026-10-02" }).error, "snapshot not found");
+    assert.equal(call("net-worth-history", ctxA, { range: "all" }).result.snapshots.some((s) => s.date === "2026-10-02"), true);
+  });
+});
+
 describe("finance.investment-checkup (real holdings required)", () => {
   it("returns error when user has no holdings (no SAMPLE_PORTFOLIO fallback)", () => {
     const r = call("investment-checkup", ctxA, {});

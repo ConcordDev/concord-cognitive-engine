@@ -853,14 +853,17 @@ export default function registerArActions(registerLensAction) {
     }
   });
 
-  /** sceneDelete — remove a scene the caller owns. */
+  /** sceneDelete — remove a scene the caller owns.
+   *  sceneList returns `id`; older clients send `sceneId`. Accept either.
+   *  The store is per-user, so another account's id is not found here. */
   registerLensAction("ar", "sceneDelete", (ctx, artifact, params) => {
     try {
       const scenes = sceneStore(ctx);
-      const id = params && params.sceneId;
+      const id = params && (params.sceneId || params.id);
       if (!id) return { ok: false, error: "sceneId is required" };
       const existed = scenes.delete(id);
-      return { ok: true, result: { deleted: existed, sceneId: id } };
+      if (!existed) return { ok: false, error: "scene not found" };
+      return { ok: true, result: { deleted: true, sceneId: id } };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
     }

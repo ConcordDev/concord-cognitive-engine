@@ -5,9 +5,10 @@ Reproduce the macro list:
 
 ## Reference apps
 
-- **Signal** — the E2E messaging shape this lens genuinely implements: X25519
-  ECDH + AES-256-GCM sealed-per-recipient envelopes, safety-number
-  verification, disappearing messages, sealed sender.
+- **Signal** — the messaging shape this lens is measured against (sealed
+  envelopes, safety numbers, disappearing messages, sealed sender). The
+  default implementation is not Signal-style end-to-end encryption: Concord
+  holds both private keys and receives plaintext on send. See `docs/lens-specs/anon.md`.
 - **ARX / a k-anonymity + differential-privacy engineering tool** — real
   generalization-hierarchy k-anonymity, prosecutor/journalist/marketer
   re-identification risk scoring, and Laplace-mechanism differential privacy
@@ -22,10 +23,11 @@ Before this pass:
   of the 11 identity/messaging macros (identity, rotateIdentity,
   safetyNumber, verifyPeer, startConversation, listConversations,
   sendMessage, readConversation, setDisappearing, sweepEphemeral,
-  directory) — genuine X25519 keypairs, genuine AES-256-GCM sealed
-  envelopes verified server-side (`server/domains/anon.js`), safety-number
-  compare-and-verify flow, disappearing-message timers, sealed sender. Left
-  untouched.
+  directory) — X25519 keypairs and AES-256-GCM sealed envelopes in
+  `server/domains/anon.js`. Concord holds the private keys on the default
+  path and can decrypt; the UI says so. Safety-number compare, disappearing
+  timers, and sealed sender are real. Left in place, with the encryption
+  claim corrected.
 - `TorNetworkStatus` pulls real live data from `onionoo.torproject.org`
   (relay/bridge counts, flag distribution). Left untouched.
 - The three privacy-compute macros (`anonymize`, `privacyRisk`,

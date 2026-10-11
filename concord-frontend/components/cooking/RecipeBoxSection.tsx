@@ -13,6 +13,7 @@ import {
   Sparkles, BookOpen, Check, Scaling, FolderHeart, ChevronLeft,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry' | 'collections';
@@ -33,10 +34,8 @@ const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
 const AISLE_ORDER = ['produce', 'meat', 'seafood', 'dairy', 'bakery', 'frozen', 'pantry', 'beverages', 'other'];
 
 function weekDates(start: Date): string[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start); d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
+  const startKey = calendarDateKey(start);
+  return Array.from({ length: 7 }, (_, i) => shiftDateKey(startKey, i));
 }
 
 export function RecipeBoxSection() {

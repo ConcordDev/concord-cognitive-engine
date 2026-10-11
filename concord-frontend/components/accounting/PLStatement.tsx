@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PieChart as PieIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,7 @@ interface PL {
   netIncome: number; netMarginPct: number;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => calendarDateKey();
 
 export function PLStatement() {
   const [pl, setPL] = useState<PL | null>(null);

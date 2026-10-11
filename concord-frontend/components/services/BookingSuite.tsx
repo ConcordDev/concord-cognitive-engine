@@ -21,6 +21,7 @@ import {
   Plus, RefreshCw, X, Check, AlertTriangle, Trash2, ArrowUpRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -107,7 +108,7 @@ const SUB_TOOLS: { id: SubTool; label: string; icon: typeof CalendarDays }[] = [
   { id: 'recurring', label: 'Recurring + Waitlist', icon: Repeat },
 ];
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const todayKey = () => calendarDateKey();
 
 /* run a services macro; returns result or null on error */
 async function svc<T>(action: string, input: Record<string, unknown>): Promise<{ result: T | null; error: string | null }> {
@@ -123,7 +124,7 @@ const GRID_OPEN = 9 * 60;
 const GRID_CLOSE = 19 * 60;
 
 function BookingGrid() {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(todayKey());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [lanes, setLanes] = useState<string[]>([]);
   const [util, setUtil] = useState<Record<string, number>>({});
@@ -240,7 +241,7 @@ function BookingGrid() {
 /* ------------------------------------------------------------------ */
 
 function SelfBooking() {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(todayKey());
   const [duration, setDuration] = useState(60);
   const [staff, setStaff] = useState('');
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -479,7 +480,7 @@ function POSPayments() {
 function Reminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [form, setForm] = useState({ client: '', channel: 'sms', target: '', sendAt: `${TODAY}T09:00`, body: 'Appointment reminder' });
+  const [form, setForm] = useState({ client: '', channel: 'sms', target: '', sendAt: `${todayKey()}T09:00`, body: 'Appointment reminder' });
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -551,7 +552,7 @@ function Reminders() {
 /* ------------------------------------------------------------------ */
 
 function StaffShifts() {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(todayKey());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [hoursByStaff, setHoursByStaff] = useState<Record<string, number>>({});
   const [form, setForm] = useState({ staff: '', start: '09:00', end: '17:00', role: '' });
@@ -757,7 +758,7 @@ function ClientProfiles() {
 /* ------------------------------------------------------------------ */
 
 function RecurringWaitlist() {
-  const [recForm, setRecForm] = useState({ client: '', service: '', staff: '', date: TODAY, time: '10:00', duration: 60, frequency: 'weekly', occurrences: 4, price: 0 });
+  const [recForm, setRecForm] = useState({ client: '', service: '', staff: '', date: todayKey(), time: '10:00', duration: 60, frequency: 'weekly', occurrences: 4, price: 0 });
   const [recResult, setRecResult] = useState<{ createdCount: number; skipped: { date: string; reason: string }[] } | null>(null);
   const [waitlist, setWaitlist] = useState<WaitEntry[]>([]);
   const [wlCounts, setWlCounts] = useState<Record<string, number>>({});

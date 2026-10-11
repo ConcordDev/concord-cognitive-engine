@@ -12,14 +12,14 @@
 import { useState } from 'react';
 import { Plus, Trash2, Fuel, Wrench, Car } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 
 interface FillUp { date: string; mileage: string; gallons: string; pricePerGallon: string }
 interface Repair { name: string; partsCost: string; laborHours: string; priority: 'low' | 'medium' | 'high' }
 interface FuelResult { avgMPG?: number; bestMPG?: number; worstMPG?: number; totalGallons?: number; totalFuelCost?: number; costPerMile?: number; readings?: Array<{ date?: string; mpg: number; miles: number; gallons: number }> }
 interface RepairResult { repairs?: Array<{ repair: string; partsCost: number; laborHours: number; laborRate: number; laborCost: number; total: number; priority: string }>; subtotalParts?: number; subtotalLabor?: number; grandTotal?: number; tax?: number; totalWithTax?: number; recommendation?: string }
 
-const today = new Date();
-const dayOffset = (n: number) => new Date(today.getTime() - n * 86400000).toISOString().slice(0, 10);
+const dayOffset = (n: number) => shiftDateKey(calendarDateKey(), -n);
 
 const prBadge = (p: string) => {
   if (p === 'high') return 'bg-rose-500/20 text-rose-200';

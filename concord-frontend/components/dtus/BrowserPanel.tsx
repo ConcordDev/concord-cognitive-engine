@@ -17,10 +17,10 @@ import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { DTUQuickCreate } from '@/components/dtu/DTUQuickCreate';
 import { Skeleton, SkeletonTableRows, EmptyState, ErrorState } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { dtuCreatedAt, resolveDtuTotal } from '@/lib/dtu/display';
+import { dtuCreatedAt, formatDtuPageCount, resolveDtuTotal } from '@/lib/dtu/display';
 import {
   Database, RefreshCw, ChevronLeft, ChevronRight,
-  Search, Zap, LayoutGrid, List,
+  Search, Zap, LayoutGrid, List, Plus,
   Loader2, XCircle, GitFork, Award, Network, Layers, Copy, BarChart3, AlertTriangle,
 } from 'lucide-react';
 
@@ -126,6 +126,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
   // Backend action wiring
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Target resolution: the DTU the user explicitly selected, falling back to
   // the first row of the real loaded corpus (never a generic lens-artifact
@@ -197,6 +198,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
   }, [selectedDtuId, dtus]);
 
   const total = resolveDtuTotal(data);
+  const pageCountLabel = formatDtuPageCount(page, PAGE_SIZE, total);
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasMore = data?.hasMore ?? data?.pagination?.hasNext ?? (page + 1) < totalPages;
 
@@ -235,6 +237,46 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
     refetch();
   }, [queryClient, refetch]);
 
+  const handleDeleteDtu = useCallback(async (row: { id: string; title?: string }) => {
+    const name = row.title || 'this DTU';
+    if (typeof window !== 'undefined' && !window.confirm(`Delete “${name}”? This cannot be undone.`)) return;
+    setDeleteError(null);
+    try {
+      await apiHelpers.dtus.delete(row.id);
+      if (selectedDtuId === row.id) setSelectedDtuId(null);
+      queryClient.setQueriesData({ queryKey: ['dtus-browser'] }, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old;
+        const body = old as {
+          items?: DTU[];
+          dtus?: DTU[];
+          total?: number;
+          pagination?: { total?: number; hasNext?: boolean };
+        };
+        const drop = (list?: DTU[]) => (Array.isArray(list) ? list.filter((d) => d.id !== row.id) : list);
+        const items = drop(body.items);
+        const removed = Array.isArray(body.items) && Array.isArray(items) && items.length < body.items.length;
+        const prevTotal = body.pagination?.total ?? body.total;
+        const nextTotal = removed && typeof prevTotal === 'number' ? Math.max(0, prevTotal - 1) : prevTotal;
+        return {
+          ...body,
+          items,
+          dtus: drop(body.dtus),
+          total: typeof nextTotal === 'number' ? nextTotal : body.total,
+          pagination: body.pagination
+            ? { ...body.pagination, total: typeof nextTotal === 'number' ? nextTotal : body.pagination.total }
+            : body.pagination,
+        };
+      });
+      await queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
+    } catch (err) {
+      const status = (err as { response?: { status?: number }; status?: number })?.response?.status
+        ?? (err as { status?: number })?.status;
+      setDeleteError(status === 403
+        ? 'You can only delete your own DTUs.'
+        : 'Delete failed.');
+    }
+  }, [queryClient, selectedDtuId]);
+
   return (
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
@@ -247,13 +289,21 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
               </div>
               <div>
                 <h1 className="text-xl font-bold">DTU Browser</h1>
-                <p className="text-xs text-gray-400">
-                  <span className="tabular-nums">{total}</span> discrete thought units
+                <p className="text-xs text-gray-400 tabular-nums">
+                  {pageCountLabel}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-teal-400 px-3 py-1.5 text-sm font-medium text-black hover:bg-teal-300 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New DTU
+              </button>
               <button
                 onClick={() => refetch()}
                 disabled={isLoading}
@@ -374,6 +424,7 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
                     dtus={listDtus}
                     selectedId={selectedDtuId || undefined}
                     onSelect={handleSelectDtu}
+                    onDelete={handleDeleteDtu}
                     showFilters={false}
                     emptyMessage="No DTUs found"
                   />
@@ -444,10 +495,14 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
               </div>
             )}
 
+            {deleteError && (
+              <p role="alert" className="mt-3 text-xs text-red-400">{deleteError}</p>
+            )}
+
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4 px-2">
               <span className="text-xs text-gray-400 tabular-nums">
-                Showing {page * PAGE_SIZE + 1}--{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+                {pageCountLabel}
               </span>
               <div className="flex items-center gap-2">
                 <button

@@ -61,3 +61,18 @@ export function resolveDtuTotal(data: DtuTotalSource | null | undefined): number
   if (typeof reported === 'number' && Number.isFinite(reported)) return reported;
   return 0;
 }
+
+/**
+ * Header/page count. An en dash, never "1--20 / 20 of 20 DTUs".
+ * page is 0-based.
+ */
+export function formatDtuPageCount(page: number, pageSize: number, total: number): string {
+  const safeTotal = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
+  if (safeTotal === 0) return '0 DTUs';
+  const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 20;
+  const p = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0;
+  const start = p * size + 1;
+  if (start > safeTotal) return `${safeTotal} DTUs`;
+  const end = Math.min((p + 1) * size, safeTotal);
+  return `Showing ${start}–${end} of ${safeTotal}`;
+}

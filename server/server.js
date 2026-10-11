@@ -42,6 +42,8 @@ import {
   isLogAdmin,
   actorFromReq,
 } from "./lib/log-access.js";
+import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -89,10 +91,16 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu } from "./lib/dtu-read-access.js";
+import { validateMimeType } from "./lib/upload-mime.js";
+import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
+import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
+import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
+import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
@@ -100,8 +108,18 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import { pruneDatedDbBackups, pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
+import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
 import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
+import {
+  assessDbBackupDisk,
+  finalizeVerifiedGzip,
+  cleanStaleDbBackupTemps,
+  evaluateStartupBackup,
+  recordDbBackupRunStatus,
+  applyDbBackupRetention,
+  dbBackupKeepCount,
+  dbBackupStartupIntervalMs,
+} from "./lib/db-snapshot-backup.js";
 import { pipeline } from "node:stream/promises";
 import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
@@ -19363,6 +19381,12 @@ function addToSRS(dtuId) {
   return { ok: true, dtuId, message: "Added to SRS" };
 }
 
+function removeFromSRS(dtuId) {
+  if (!dtuId || !SRS.cards.has(dtuId)) return { ok: false, error: "Not in review" };
+  SRS.cards.delete(dtuId);
+  return { ok: true, dtuId };
+}
+
 // ---- Chat with Lattice (RAG) ----
 async function chatWithLattice(query, { contextLimit = 5, sessionId: _sessionId = "" } = {}) {
   // Retrieve relevant context using semantic search
@@ -25520,6 +25544,11 @@ register("dtu", "create", async (ctx, input) => {
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
+    // Detail view and dtu.get read `content`. A caller that passed a body
+    // expects that exact string back, not only the notes side channel.
+    if (dtu.content == null) {
+      dtu.content = typeof input.content === "string" ? input.content : rawText;
+    }
   }
 
   // User-initiated direct writes get a lower council threshold (1
@@ -25572,6 +25601,13 @@ register("dtu", "create", async (ctx, input) => {
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
   _beat("persisting");
+  if (input.skipAutoTag === true || meta?.skipAutoTag === true) {
+    dtu._skipAutoTag = true;
+    dtu.skipAutoTag = true;
+    if (!dtu.meta || typeof dtu.meta !== "object") dtu.meta = {};
+    dtu.meta.skipAutoTag = true;
+  }
+
   const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true, userInitiated: isUserInitiated, promotePublic: typeof _promotePublic !== 'undefined' && _promotePublic, contentClass: dtu.contentClass });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
@@ -25942,6 +25978,14 @@ register("dtu", "list", async (ctx, input) => {
   // never other users' published DTUs. Used by the dashboard "My Activity"
   // chart so the creation rhythm is the signed-in user's, not the global feed.
   const mineOnly = input.mine === true || input.mine === "true" || input.owner === "me";
+  const domainWant = input.domain ? String(input.domain) : "";
+  const kindWant = input.kind ? String(input.kind).toLowerCase() : "";
+  const narrowListedDtus = (rows) => {
+    let out = rows;
+    if (domainWant) out = out.filter((d) => dtuMatchesDomain(d, domainWant));
+    if (kindWant) out = out.filter((d) => dtuKind(d) === kindWant);
+    return out;
+  };
 
   // Concurrency Refactor Phase 3: run the visibility filter in the Rust sidecar
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
@@ -25970,7 +26014,7 @@ register("dtu", "list", async (ctx, input) => {
           now: Date.now(),
         });
         if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
-          const items = r.dtus;
+          const items = narrowListedDtus(r.dtus);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
@@ -26037,6 +26081,7 @@ register("dtu", "list", async (ctx, input) => {
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
   if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
+  items = narrowListedDtus(items);
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -41145,6 +41190,18 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
 app.use((err, req, res, _next) => {
+  if (res.headersSent) return;
+  // Routes mounted after the earlier error handler (including DELETE
+  // /api/media/:id) land here. ConcordError already carries the right status
+  // (404 not found, 403 forbidden, 400 validation). res.json() without a
+  // status is HTTP 200, which made those deletes look successful.
+  if (err instanceof ConcordError) {
+    return res.status(err.statusCode || 500).json({
+      ok: false,
+      error: err.message,
+      code: err.code,
+    });
+  }
   const errorId = uid("err");
   const msg = String(err?.message || err || "Unknown error");
   const out = {
@@ -46887,76 +46944,17 @@ app.get("/api/feedback-review", asyncHandler(async (req, res) => {
 }));
 
 // ── Artifact API Endpoints ──
-app.post("/api/artifact/upload", async (req, res) => {
-  try {
-    // Storage quota gate. Artifact uploads are the byte-heavy path —
-    // cooking and combat DTUs are tiny, but a single audio/video can
-    // be hundreds of MB. The 5 GiB baseline + earned expansion is
-    // enforced here. Anonymous uploads are not permitted (no user to
-    // bill bytes against).
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
-
-    const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
-    if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
-
-    // Handle raw body or multipart
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const buffer = Buffer.concat(chunks);
-
-    // Quota check before write. Must come AFTER reading the body so we
-    // know the actual byte count, but BEFORE storeArtifact so we don't
-    // commit to disk just to fail.
-    try {
-      assertHasSpaceFor(db, userId, buffer.length);
-    } catch (e) {
-      if (e?.code === "quota_exceeded") return res.status(413).json(e.payload);
-      throw e;
-    }
-
-    const contentType = req.headers["content-type"] || "application/octet-stream";
-    const filename = req.headers["x-filename"] || `upload_${Date.now()}`;
-    const domain = req.headers["x-domain"] || "general";
-    const title = req.headers["x-title"] || filename;
-
-    // MIME allowlist + magic bytes validation
-    const mimeCheck = validateMimeType(contentType, buffer);
-    if (!mimeCheck.ok) return res.status(400).json({ ok: false, error: mimeCheck.error });
-
-    const dtuId = uid("artifact");
-    const artifactRef = await artifactMod.storeArtifact(dtuId, buffer, contentType, filename);
-
-    const dtu = {
-      id: dtuId,
-      tier: "regular",
-      scope: "local",
-      domain: artifactMod.inferDomainFromType(contentType) || domain,
-      human: { summary: title, bullets: [] },
-      core: { definitions: [], claims: [], examples: [] },
-      machine: { kind: artifactMod.inferKindFromType(contentType), verifier: { format: contentType, sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
-      artifact: artifactRef,
-      lineage: { parents: [], children: [] },
-      authority: { score: 0.5 },
-      meta: { createdBy: userId, lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
-    };
-
-    STATE.dtus.set(dtuId, dtu);
-    // Record byte delta for the user. Best-effort — counter drift won't
-    // crash the upload pipeline if it happens.
-    recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
-    // Surface thumbnail URL when one was synchronously generated
-    // (currently: video → ffmpeg frame extraction; falsy otherwise).
-    const hasThumb = !!artifactRef.thumbnail && typeof artifactRef.thumbnail === "string" && contentType.startsWith("video/");
-    res.json({
-      ok: true,
-      dtuId,
-      artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes },
-      thumbnailUrl: hasThumb ? `/api/artifact/${dtuId}/thumbnail` : null,
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: String(err?.message || err) });
-  }
+// Raw file body (Content-Type: file MIME, x-filename / x-title / x-domain)
+// or multipart/form-data. Both land in the same owner-stamped DTU path.
+mountArtifactUploadRoutes(app, {
+  db,
+  STATE,
+  uid,
+  assertHasSpaceFor,
+  recordStorageDelta,
+  STORAGE_REASONS,
+  validateMimeType,
+  saveState: () => { try { saveStateDebounced(); } catch { /* best-effort */ } },
 });
 
 // Thumbnail/poster bytes for an artifact. Currently populated for
@@ -47000,6 +46998,21 @@ app.get("/api/artifact/:dtuId/stream", async (req, res) => {
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
     if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
 
+    // Priced art: non-licensees get a watermarked preview, never the original.
+    if (!viewerHasFullArtAccess(dtu, req.user?.id || null, db)) {
+      const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
+      if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+      const gated = await bytesForViewer({
+        dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+      });
+      if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
+
     const stream = artifactMod.retrieveArtifactStream(dtu.artifact);
     if (!stream) return res.status(404).json({ ok: false, error: "file_not_found" });
 
@@ -47037,6 +47050,18 @@ app.get("/api/artifact/:dtuId/download", async (req, res) => {
 
     const buffer = artifactMod.retrieveArtifact(req.params.dtuId, dtu.artifact);
     if (!buffer) return res.status(404).json({ ok: false, error: "file_not_found" });
+
+    const gated = await bytesForViewer({
+      dtu, userId: req.user?.id || null, db, buffer, contentType: dtu.artifact.type,
+    });
+    if (gated.access === "denied") return res.status(gated.status || 402).json(gated.body);
+    if (gated.access === "preview") {
+      res.setHeader("Content-Type", gated.contentType || "image/png");
+      res.setHeader("X-Art-Access", "preview");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `inline; filename="preview-${dtu.artifact.filename || "art.png"}"`);
+      return res.send(gated.buffer);
+    }
 
     res.setHeader("Content-Type", dtu.artifact.type);
     res.setHeader("Content-Disposition", `attachment; filename="${dtu.artifact.filename}"`);
@@ -47633,14 +47658,17 @@ app.get("/api/lens/stats", (req, res) => {
 // register() macros) would otherwise DOUBLE-nest, so a raw `api.post` caller reading
 // `data.result.<field>` gets the inner wrapper, not the payload (blank calc
 // workbenches, dropped results — the systemic bug found by running the app, 2026-06-03).
-// Unwrap exactly ONE envelope layer here so the response is single-nested:
-//   - lensRun() tolerates single OR double, so its callers are unaffected;
-//   - defensive `data.result.X ?? data.X` readers resolve on the single-nest;
-//   - an { ok:false, error } shape (no `result` key) passes through so errors surface;
-//   - a bare payload (no `ok`+`result`) passes through unchanged.
+// Success envelopes peel exactly one `{ ok, result }` layer so the response
+// stays single-nested. Failures do NOT peel: a handler `{ ok:false, error,
+// result }` (staking insufficient_balance includes the live balance) used to
+// be reduced to the inner object and re-wrapped as `{ ok:true, result }`,
+// HTTP 200. The route now sends `_shapeLensRunHttp` (4xx + top-level
+// `{ ok:false, error }`). This helper remains for any caller that still
+// wants the success payload only.
 function _unwrapLensEnvelope(r) {
-  if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
-  return r;
+  const shaped = _shapeLensRunHttp(r);
+  if (shaped.body.ok === false) return shaped.body;
+  return shaped.body.result;
 }
 
 // Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
@@ -47738,8 +47766,17 @@ app.post("/api/lens/run", async (req, res) => {
       const _lensT0 = Date.now();
       const lensRaw = await lensHandler(ctx, virtualArtifact, rest);
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
-      const result = _unwrapLensEnvelope(lensRaw);
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      // Ownership refusals (engineering.deletePart / renamePart) carry
+      // status 403 and an error that starts with "forbidden". That is an
+      // HTTP 403, not a 200 envelope that looks like success.
+      const _httpErr = _httpErrorFromLensAction(lensRaw);
+      if (_httpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
+        return res.status(_httpErr.status).json(_httpErr.body);
+      }
+      const shaped = _shapeLensRunHttp(lensRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       // R5/E22 — ConKay spatial mode (Godot Hub): a real, non-fabricated
       // capability-tier fact for the two verdict-producing macros only. See
       // lib/conkay-verdict-bridge.js's header for why this reuses the SAME
@@ -47747,7 +47784,7 @@ app.post("/api/lens/run", async (req, res) => {
       // use (already mirrored to a connected Godot client — no new room).
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
@@ -47755,11 +47792,18 @@ app.post("/api/lens/run", async (req, res) => {
     // reason.verify/reason.evaluate_answer themselves register, so this is
     // the branch that actually fires the conkay:verdict emit below today.)
     if (MACROS.get(domain)?.get(action)) {
-      const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
-      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
+      const macroRaw = await runMacro(domain, action, rest, ctx);
+      const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
+      if (_macroHttpErr) {
+        emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
+        return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
+      }
+      const shaped = _shapeLensRunHttp(macroRaw);
+      const result = shaped.body.ok ? shaped.body.result : shaped.body;
+      emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
       const _verdictEmit = _deriveConkayVerdictEmit(domain, action, result);
       if (_verdictEmit) emitMacroLife("conkay:verdict", _verdictEmit);
-      return res.json({ ok: true, result });
+      return res.status(shaped.status).json(shaped.body);
     }
     // No registered macro for this (domain, action).
     //
@@ -47852,7 +47896,7 @@ app.get("/api/lens/:domain/:id", async (req, res) => {
 app.post("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47862,7 +47906,7 @@ app.post("/api/lens/:domain", async (req, res) => {
 app.put("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47872,7 +47916,7 @@ app.put("/api/lens/:domain/:id", async (req, res) => {
 app.delete("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "delete", { id: req.params.id }, ctx));
+    _respondMacroResult(res, await runMacro("lens", "delete", { id: req.params.id }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -52289,44 +52333,11 @@ app.get("/api/chat/messages", requireAuth(), async (req, res) => {
     const db = STATE.db;
     if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
 
-    // Owner gate — the chat_sessions row must belong to the caller.
-    // Anonymous (NULL owner_id) sessions can't be cross-loaded; they're
-    // per-browser and localStorage-scoped by design.
-    let ownerRow;
-    try {
-      ownerRow = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-    if (!ownerRow) return res.status(404).json({ ok: false, error: "session_not_found" });
-    if (!ownerRow.owner_id || ownerRow.owner_id !== userId) {
-      return res.status(403).json({ ok: false, error: "session_forbidden" });
-    }
-
-    let rows;
-    try {
-      rows = db.prepare(`
-        SELECT role, content, ts, meta_json
-        FROM chat_messages
-        WHERE session_id = ?
-        ORDER BY ts ASC
-        LIMIT ?
-      `).all(sessionId, limit);
-    } catch {
-      return res.status(503).json({ ok: false, error: "db_query_failed" });
-    }
-
-    const messages = (rows || []).map(r => {
-      let meta = null;
-      try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
-      return {
-        role: r.role,
-        content: r.content,
-        ts: new Date(r.ts).toISOString(),
-        meta: meta || undefined,
-      };
-    });
-    res.json({ ok: true, sessionId, messages });
+    // Unknown session → 200 empty list (the code lens asks before the first
+    // message). Another user's session stays 403. See chat-messages-read.js.
+    const { readChatMessages } = await import("./lib/chat-messages-read.js");
+    const read = readChatMessages(db, { userId, sessionId, limit });
+    return res.status(read.status).json(read.body);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -55107,6 +55118,52 @@ register("whiteboard", "list", (ctx, _input) => {
   return { ok: true, whiteboards, count: whiteboards.length };
 });
 
+// Delete and rename are owner-only. A missing ownerId is not ownership:
+// legacy boards stay readable, but a stranger cannot remove them.
+function _wbCallerId(ctx) {
+  return ctx?.actor?.userId || ctx?.userId || null;
+}
+function _wbMutateGate(dtu, ctx) {
+  if (!dtu || dtu.machine?.kind !== "whiteboard") return { ok: false, error: "Whiteboard not found", status: 404 };
+  const owner = dtu.ownerId || null;
+  const caller = _wbCallerId(ctx);
+  if (!owner || !caller || owner !== caller) return { ok: false, error: "owner_required", status: 403 };
+  return null;
+}
+
+register("whiteboard", "rename", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  const next = String(input?.title || "").trim();
+  if (!next) return { ok: false, error: "title required", status: 400 };
+  const wb = dtu.machine.data || {};
+  wb.title = next;
+  wb.updatedAt = nowISO();
+  dtu.machine.data = wb;
+  dtu.title = `Whiteboard: ${next}`;
+  dtu.updatedAt = wb.updatedAt;
+  STATE.dtus.set(whiteboardId, dtu);
+  saveStateDebounced();
+  return { ok: true, whiteboard: wb };
+});
+
+register("whiteboard", "delete", (ctx, input) => {
+  const whiteboardId = input?.whiteboardId;
+  const dtu = STATE.dtus.get(whiteboardId);
+  const denied = _wbMutateGate(dtu, ctx);
+  if (denied) return denied;
+  STATE.dtus.delete(whiteboardId);
+  saveStateDebounced();
+  return { ok: true, deleted: true, id: whiteboardId };
+});
+
+function _wbHttp(res, result) {
+  const status = result && result.ok === false && Number.isInteger(result.status) ? result.status : 200;
+  return res.status(status).json(result);
+}
+
 app.post("/api/collab/session", asyncHandler(async (req, res) => res.json(await runMacro("collab", "createSession", req.body, makeCtx(req)))));
 app.post("/api/collab/join", asyncHandler(async (req, res) => res.json(await runMacro("collab", "join", req.body, makeCtx(req)))));
 app.post("/api/collab/edit", asyncHandler(async (req, res) => res.json(await runMacro("collab", "edit", req.body, makeCtx(req)))));
@@ -55117,6 +55174,8 @@ app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await r
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
 app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
 app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
+app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
 
 structuredLog("info", "module_loaded", { module: "Wave 5: Collaboration & Whiteboard" });
@@ -56040,7 +56099,7 @@ app.get("/api/events/paginated", (req, res) => {
 
     return res.json(finalizeActivityFeed(filtered, gate.actor, { limit, offset }));
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json(emptyEventsPage(String(e?.message || e), { limit, offset }));
   }
 });
 
@@ -57270,6 +57329,15 @@ app.post("/api/srs/:dtuId/review", (req, res) => {
   try {
     const result = reviewSRSCard(req.params.dtuId, Number(req.body.quality));
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete("/api/srs/:dtuId", (req, res) => {
+  try {
+    const result = removeFromSRS(req.params.dtuId);
+    res.status(result.ok ? 200 : 404).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -63477,6 +63545,40 @@ function getGameProfile(userId) {
   return STATE.gameProfiles.get(userId);
 }
 
+// Quest XP is the xpReward stored on the owner's completed game/quest
+// artifacts — the same rows the Quests tab lists. Clamped to the create
+// form's 0–2000 range so a crafted artifact cannot mint unbounded XP.
+function sumCompletedQuestXp(userId) {
+  let xp = 0;
+  let completed = 0;
+  if (!userId) return { xp, completed };
+  for (const art of _lensDomainArtifacts("game")) {
+    if (!art || art.type !== "quest" || art.ownerId !== userId) continue;
+    if (art.data?.status !== "completed") continue;
+    completed += 1;
+    const reward = Number(art.data?.xpReward);
+    if (Number.isFinite(reward)) xp += Math.max(0, Math.min(2000, reward));
+  }
+  return { xp, completed };
+}
+
+function refreshGameProfile(userId) {
+  const profile = getGameProfile(userId);
+  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
+  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
+  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
+  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
+  const quests = sumCompletedQuestXp(userId);
+  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + quests.xp;
+  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
+  profile.questsCompleted = quests.completed;
+  const achievements = computeAchievements(userId);
+  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
+  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: quests.completed, questXp: quests.xp };
+  profile.lastActivityAt = profile.lastActivityAt || null;
+  return profile;
+}
+
 function computeAchievements(userId) {
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
   const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
@@ -63494,18 +63596,7 @@ function computeAchievements(userId) {
 
 app.get("/api/game/profile", (req, res) => {
   const userId = req.user?.id || "anon";
-  const profile = getGameProfile(userId);
-  // Calculate XP from DTU count plus quest completions
-  const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
-  const megaCount = dtusArray().filter(d => d.tier === "mega" && (d.authorId === userId || d.source === userId)).length;
-  const hyperCount = dtusArray().filter(d => d.tier === "hyper" && (d.authorId === userId || d.source === userId)).length;
-  const voteCount = Array.from(STATE.councilVotes?.values() || []).flat().filter(v => v.voterId === userId).length;
-  profile.xp = (dtuCount * 10) + (megaCount * 50) + (hyperCount * 100) + (voteCount * 5) + ((profile.questsCompleted || 0) * 100);
-  profile.level = Math.floor(Math.sqrt(profile.xp / 100)) + 1;
-  const achievements = computeAchievements(userId);
-  profile.badges = achievements.filter(a => a.earned).map(a => a.id);
-  profile.stats = { dtus: dtuCount, megas: megaCount, hypers: hyperCount, votes: voteCount, questsCompleted: profile.questsCompleted || 0 };
-  profile.lastActivityAt = profile.lastActivityAt || null;
+  const profile = refreshGameProfile(userId);
   res.json({ ok: true, profile });
 });
 
@@ -63518,7 +63609,8 @@ app.get("/api/game/achievements", (req, res) => {
 });
 
 app.get("/api/game/challenges", (req, res) => {
-  // Generate challenges from current system state
+  // Activity goals from DTU/vote counts. The Game lens Quests tab does not
+  // read this list — a custom challenge is a private game/quest artifact.
   const userId = req.user?.id || "anon";
   const dtuCount = STATE.dtus.size;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
@@ -63543,7 +63635,8 @@ app.get("/api/game/leaderboard", (req, res) => {
     if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
     const p = STATE.gameProfiles.get(uid);
     const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + ((p.questsCompleted || 0) * 100);
+    const questXp = sumCompletedQuestXp(uid).xp;
+    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
     p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
     p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
   }
@@ -63554,20 +63647,26 @@ app.get("/api/game/leaderboard", (req, res) => {
   res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size });
 });
 
-// POST /api/game/quests/:questId/complete — mark a quest complete and grant XP
+// POST /api/game/quests/:questId/complete — mark the quest artifact completed.
+// XP is not taken from the request body. The next profile read sums
+// xpReward on completed game/quest artifacts owned by this user.
 app.post("/api/game/quests/:questId/complete", (req, res) => {
   try {
-    const userId = req.user?.id || "default";
-    if (!STATE.gameProfiles) STATE.gameProfiles = new Map();
-    if (!STATE.gameProfiles.has(userId)) {
-      STATE.gameProfiles.set(userId, { userId, xp: 0, level: 1, questsCompleted: 0, badges: [] });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const artifact = STATE.lensArtifacts?.get(req.params.questId);
+    if (!artifact || artifact.domain !== "game" || artifact.type !== "quest") {
+      return res.status(404).json({ ok: false, error: "quest not found" });
     }
-    const profile = STATE.gameProfiles.get(userId);
-    const xpGain = Number(req.body?.xpReward) || 100;
-    profile.xp = (profile.xp || 0) + xpGain;
-    profile.questsCompleted = (profile.questsCompleted || 0) + 1;
-    // Level up every 1000 XP
-    profile.level = Math.floor(profile.xp / 1000) + 1;
+    if (artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== userId) {
+      return res.status(403).json({ ok: false, error: "not your quest" });
+    }
+    if (artifact.data?.status !== "completed") {
+      artifact.data = { ...(artifact.data || {}), status: "completed" };
+      artifact.updatedAt = nowISO();
+      saveStateDebounced();
+    }
+    const profile = refreshGameProfile(userId);
     res.json({ ok: true, profile });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -65287,7 +65386,10 @@ app.post("/api/social/post", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/post/:postId", (req, res) => {
-  try { res.json(socialGetPost(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPost(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
@@ -65303,7 +65405,10 @@ app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/posts/user/:userId", (req, res) => {
-  try { res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Reactions ----
@@ -65348,7 +65453,10 @@ app.delete("/api/social/comment/:postId/:commentId", requireAuth(), (req, res) =
 });
 
 app.get("/api/social/comments/:postId", (req, res) => {
-  try { res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50), viewerId }));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Shares ----
@@ -65360,7 +65468,10 @@ app.post("/api/social/share", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/shares/:postId", (req, res) => {
-  try { res.json(socialGetShares(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetShares(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Bookmarks ----
@@ -65597,7 +65708,10 @@ app.post("/api/social/poll/vote", requireAuth(), (req, res) => {
 });
 
 app.get("/api/social/poll/:postId", (req, res) => {
-  try { res.json(socialGetPollResults(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(socialGetPollResults(STATE, req.params.postId, viewerId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Social Notifications ----
@@ -83144,49 +83258,7 @@ function ensureArtistryState() {
   return STATE.artistry;
 }
 
-// ── File Upload MIME Allowlist & Magic Bytes ────────────────────────────────
-
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
-  'video/mp4', 'video/webm',
-  'application/pdf',
-  'text/plain', 'text/markdown', 'text/csv',
-  'application/json',
-  'application/octet-stream', // fallback for unknown binary
-]);
-
-const MAGIC_BYTES = {
-  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
-  'image/png': [[0x89, 0x50, 0x4E, 0x47]],
-  'image/gif': [[0x47, 0x49, 0x46, 0x38]],
-  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF
-  'audio/mpeg': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 + ID3
-  'audio/ogg': [[0x4F, 0x67, 0x67, 0x53]],
-  'audio/flac': [[0x66, 0x4C, 0x61, 0x43]],
-  'video/mp4': [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
-  'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
-};
-
-function validateMimeType(mimeType, dataOrBuffer) {
-  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-    return { ok: false, error: `File type not allowed: ${mimeType}` };
-  }
-  // Check magic bytes if we have rules for this type
-  const rules = MAGIC_BYTES[mimeType];
-  if (rules && dataOrBuffer) {
-    const buf = typeof dataOrBuffer === 'string'
-      ? Buffer.from(dataOrBuffer.slice(0, 100), 'base64')
-      : (Buffer.isBuffer(dataOrBuffer) ? dataOrBuffer.slice(0, 100) : null);
-    if (buf && buf.length >= 2) {
-      const matches = rules.some(magic => magic.every((byte, i) => i < buf.length && buf[i] === byte));
-      if (!matches) {
-        return { ok: false, error: 'File content does not match declared type' };
-      }
-    }
-  }
-  return { ok: true };
-}
+// MIME allowlist lives in server/lib/upload-mime.js.
 
 // ── Blob Storage Engine ─────────────────────────────────────────────────────
 
@@ -85074,7 +85146,7 @@ function autoClassifyDTU(dtu) {
  */
 function applyAutoTagging(dtu) {
   try {
-    if (!dtu || dtu._skipAutoTag) return;
+    if (dtuSkipsAutoTag(dtu)) return;
     const autoDomains = autoClassifyDTU(dtu);
     if (autoDomains.length === 0) return;
     const existing = new Set(dtu.tags || []);
@@ -85145,16 +85217,18 @@ async function retroTagAllDTUs() {
     let processed = 0;
 
     for (const dtu of dtus) {
-      // Auto-classify and merge tags
-      const domains = autoClassifyDTU(dtu);
-      if (domains.length > 0) {
-        const existing = new Set(dtu.tags || []);
-        const before = existing.size;
-        for (const d of domains) existing.add(d);
-        if (existing.size > before) {
-          dtu.tags = Array.from(existing);
-          dtu.updatedAt = new Date().toISOString();
-          tagged++;
+      // Authored DTUs that set skipAutoTag keep the tags they were saved with.
+      if (!dtuSkipsAutoTag(dtu)) {
+        const domains = autoClassifyDTU(dtu);
+        if (domains.length > 0) {
+          const existing = new Set(dtu.tags || []);
+          const before = existing.size;
+          for (const d of domains) existing.add(d);
+          if (existing.size > before) {
+            dtu.tags = Array.from(existing);
+            dtu.updatedAt = new Date().toISOString();
+            tagged++;
+          }
         }
       }
 
@@ -85996,7 +86070,9 @@ app.get("/api/search", (req, res) => {
 // ── Automated Backup System ──────────────────────────────────────────────────
 // BACKUP_DIR already declared at top-level (line ~4626)
 const _BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const _BACKUP_RETENTION_DAYS = 1; // 2026-09-05: keep newest only (disk pressure)
+// Dated YYYY-MM-DD copies to keep after a verified publish. Default 2 so a
+// same-day rewrite still leaves the previous day. CONCORD_DB_BACKUP_KEEP.
+const _BACKUP_RETENTION_DAYS = dbBackupKeepCount();
 
 async function runBackup() {
   try {
@@ -86068,26 +86144,49 @@ async function runBackup() {
     // page-by-page under a read transaction and yields a consistent, valid
     // database even under concurrent writes. Snapshot to a temp file, gzip
     // that, delete it.
+    // Gzip goes to concord.db.gz.tmp-<pid> in this directory, then fsync +
+    // gzip-test + rename onto concord.db.gz. createWriteStream on the final
+    // path truncated the only good copy for the whole multi-GB write.
+    let dbGzipVerified = false;
+    let dbSkip = null;
+    let gzipPath = null;
     try {
       const _db = STATE?.db || globalThis._concordDB;
-      const gzipPath = `${backupDir}/concord.db.gz`;
-      if (_db && typeof _db.backup === "function") {
-        const snapPath = `${backupDir}/.concord.db.snapshot`;
+      const finalGzipPath = `${backupDir}/concord.db.gz`;
+      gzipPath = `${backupDir}/concord.db.gz.tmp-${process.pid}`;
+      const disk = await assessDbBackupDisk(DB_PATH, backupDir);
+      if (!disk.ok) {
+        dbSkip = { skipped: true, reason: "low_disk", message: disk.message };
+        structuredLog("warn", "backup_db_skipped_low_disk", {
+          message: disk.message,
+          needBytes: disk.needBytes,
+          freeBytes: disk.freeBytes,
+          dbBytes: disk.dbBytes,
+          source: DB_PATH,
+        });
+        try {
+          await recordDbBackupRunStatus(BACKUP_DIR, {
+            result: "skipped",
+            reason: "low_disk",
+            message: disk.message,
+            needBytes: disk.needBytes,
+            freeBytes: disk.freeBytes,
+            dbBytes: disk.dbBytes,
+            at: new Date().toISOString(),
+          });
+        } catch (statusErr) {
+          structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+        }
+      } else if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot.tmp-${process.pid}`;
         // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
         // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
         // to; and copying 100 pages per step, SQLite restarts the backup
         // whenever another connection writes (two backends share this DB),
         // so it spun for hours holding a partial multi-GB file. Refuse
-        // honestly when there's no room. The one-step copy still runs, but
-        // in a worker: on the main thread an ~8.9 GB snapshot blocked the
-        // loop for up to 8.4s and the shedder 503'd login during warmup.
-        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
-        let freeBytes = Infinity;
-        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
-        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
-        if (freeBytes < needBytes) {
-          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
-        }
+        // honestly when there's no room (free < db × 1.3). The one-step copy
+        // still runs, but in a worker: on the main thread an ~8.9 GB snapshot
+        // blocked the loop for up to 8.4s and the shedder 503'd login during warmup.
         try {
           await backupDatabaseOffLoop(DB_PATH, snapPath);
           await pipeline(
@@ -86095,8 +86194,10 @@ async function runBackup() {
             zlib.createGzip({ level: 6 }),
             fs.createWriteStream(gzipPath),
           );
+          await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+          dbGzipVerified = true;
           const { size: sourceBytes } = await fs.promises.stat(snapPath);
-          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
           structuredLog("info", "backup_db_captured", {
             source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
           });
@@ -86111,8 +86212,10 @@ async function runBackup() {
           zlib.createGzip({ level: 6 }),
           fs.createWriteStream(gzipPath),
         );
+        await finalizeVerifiedGzip(gzipPath, finalGzipPath);
+        dbGzipVerified = true;
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
-        const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+        const { size: compressedBytes } = await fs.promises.stat(finalGzipPath);
         structuredLog("info", "backup_db_captured", {
           source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
@@ -86123,28 +86226,76 @@ async function runBackup() {
       }
     } catch (e) {
       structuredLog("error", "backup_db_failed", { error: String(e?.message || e), source: DB_PATH });
+      if (gzipPath) await fs.promises.rm(gzipPath, { force: true }).catch(() => {});
     }
 
-    // Keep the newest dated DB directories only. Do not readdir+sort the
-    // whole folder: JSON state backups live here too, and digit-leading
-    // YYYY-MM-DD names sort first, so retention 1 deleted the directory
-    // this run just wrote whenever any backup-*.json / auto-*.json existed.
-    try {
-      pruneDatedDbBackups(BACKUP_DIR, {
-        retentionDays: _BACKUP_RETENTION_DAYS,
-        protectName: timestamp,
-      });
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    // Keep the newest N dated DB directories only after the new gzip is
+    // verified. Do not readdir+sort the whole folder: JSON state backups
+    // live here too, and digit-leading YYYY-MM-DD names sort first, so the
+    // old retention deleted the directory this run just wrote whenever any
+    // backup-*.json / auto-*.json existed. backups-legacy is not a date name.
+    if (dbGzipVerified) {
+      try {
+        await recordDbBackupRunStatus(BACKUP_DIR, {
+          result: "ok",
+          reason: null,
+          message: null,
+          at: new Date().toISOString(),
+          filename: `${timestamp}/concord.db.gz`,
+        });
+      } catch (statusErr) {
+        structuredLog("warn", "backup_status_record_failed", { error: String(statusErr?.message || statusErr) });
+      }
+      try {
+        applyDbBackupRetention(BACKUP_DIR, {
+          keep: _BACKUP_RETENTION_DAYS,
+          protectName: timestamp,
+          verified: dbGzipVerified,
+        });
+      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+    }
 
-    structuredLog("info", "backup_complete", { backupDir });
-    return { ok: true, path: backupDir, timestamp };
+    structuredLog("info", "backup_complete", { backupDir, dbVerified: dbGzipVerified, dbSkip: dbSkip?.reason ?? null });
+    return {
+      ok: true,
+      path: backupDir,
+      timestamp,
+      dbVerified: dbGzipVerified,
+      ...(dbSkip ? { skipped: true, reason: dbSkip.reason, message: dbSkip.message } : {}),
+    };
   } catch (e) {
     console.error("[Backup] Failed:", String(e?.message || e));
     return { ok: false, error: String(e?.message || e) };
   }
 }
 
-// Run backup on startup (delayed) and periodically
+// Scheduled backup stays on _BACKUP_INTERVAL_MS and always runs runBackup.
+// Boot does not: a deploy restart used to rewrite a 9GB gzip in place every
+// time. Skip when the newest verified snapshot is younger than
+// CONCORD_DB_BACKUP_STARTUP_INTERVAL_HOURS (default 6).
+async function _backupOnStartup() {
+  try {
+    await cleanStaleDbBackupTemps(BACKUP_DIR);
+  } catch (e) {
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) });
+  }
+  let decision = { skip: false, reason: "no_decision" };
+  try {
+    decision = await evaluateStartupBackup(BACKUP_DIR, { intervalMs: dbBackupStartupIntervalMs() });
+  } catch (e) {
+    decision = { skip: false, reason: "decision_failed", error: String(e?.message || e) };
+  }
+  if (decision.skip) {
+    // Do not overwrite a low_disk status: a young verified backup is why boot
+    // skipped, and the admin status should still show the last disk refusal
+    // until a backup actually succeeds.
+    structuredLog("info", "backup_startup_skipped", decision);
+    return { ok: true, skipped: true, reason: "fresh_verified_backup" };
+  }
+  structuredLog("info", "backup_startup_running", { reason: decision.reason || "due" });
+  return runBackup();
+}
+
 // `.catch` rather than try/catch: runBackup is async now, so a rejection is
 // NOT caught by a synchronous try block around the call — it would surface as
 // an unhandled rejection instead. runBackup already returns `{ok:false}` on
@@ -86155,7 +86306,14 @@ const _backupTick = () => {
       structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 };
-_unrefInTest(setTimeout(_backupTick, 60000)); // 1 min after start
+_unrefInTest(setTimeout(() => {
+  cleanStaleDbBackupTemps(BACKUP_DIR).catch((e) =>
+    structuredLog("warn", "backup_tmp_cleanup_failed", { error: String(e?.message || e) }));
+}, 0));
+_unrefInTest(setTimeout(() => {
+  Promise.resolve(_backupOnStartup()).catch((e) =>
+    structuredLog("error", "backup_tick_failed", { error: String(e?.message || e) }));
+}, 60000)); // 1 min after start, gated on the newest verified backup
 _unrefInTest(setInterval(_backupTick, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
@@ -89052,6 +89210,7 @@ export function __clearActiveTimersForTest() {
 export const __TEST__ = Object.freeze({
   VERSION,
   STATE,
+  app,
   ensureQueues,
   enqueueNotification,
   realtimeEmit,
@@ -89155,5 +89314,7 @@ export const __TEST__ = Object.freeze({
   getEthosEnforcementSnapshot,
   ETHOS_ENFORCEMENT_HISTORY_CAP,
   initGhostFleet,
+  sumCompletedQuestXp,
+  refreshGameProfile,
 });
 // Test commit

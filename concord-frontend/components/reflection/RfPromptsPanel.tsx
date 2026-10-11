@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Lightbulb, Shuffle, FileText, PenLine } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -27,7 +28,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const [pt, lib, tpl] = await Promise.all([
-      lensRun('reflection', 'prompt-today', {}),
+      lensRun('reflection', 'prompt-today', { date: calendarDateKey() }),
       lensRun('reflection', 'prompt-library', {}),
       lensRun('reflection', 'templates-list', {}),
     ]);
@@ -52,7 +53,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
   };
 
   const applyTemplate = async (id: string) => {
-    const r = await lensRun('reflection', 'entry-from-template', { templateId: id });
+    const r = await lensRun('reflection', 'entry-from-template', { templateId: id, date: calendarDateKey() });
     if (r.data?.ok === false) { setNote(r.data?.error || 'Failed'); return; }
     setNote('Draft entry created from template — find it in Entries.');
     onChange();

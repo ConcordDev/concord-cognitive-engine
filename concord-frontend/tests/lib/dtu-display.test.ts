@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dtuCreatedAt, dtuEventTime, dtuFullContent, resolveDtuTotal } from '@/lib/dtu/display';
+import { dtuCreatedAt, dtuEventTime, dtuFullContent, formatDtuPageCount, resolveDtuTotal } from '@/lib/dtu/display';
 
 describe('dtu display', () => {
   it('falls back from content to creti text, summary, and notes, and skips score objects', () => {
@@ -30,5 +30,13 @@ describe('dtu display', () => {
     expect(resolveDtuTotal({ total: 0, dtus: [] })).toBe(0);
     expect(resolveDtuTotal(null)).toBe(0);
     expect(resolveDtuTotal({ total: 4 })).toBe(4);
+  });
+
+  it('formats a page range with an en dash', () => {
+    expect(formatDtuPageCount(0, 20, 20)).toBe('Showing 1–20 of 20');
+    expect(formatDtuPageCount(1, 20, 40)).toBe('Showing 21–40 of 40');
+    expect(formatDtuPageCount(0, 20, 0)).toBe('0 DTUs');
+    expect(formatDtuPageCount(0, 20, 20)).not.toContain('--');
+    expect(formatDtuPageCount(0, 20, 20)).not.toContain('/');
   });
 });

@@ -80,7 +80,8 @@ export default function createSocialExtendedRouter({ STATE, requireAuth }) {
   });
 
   router.get("/pinned/:userId", (req, res) => {
-    res.json({ ok: true, ...getPinnedPosts(STATE, req.params.userId) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getPinnedPosts(STATE, req.params.userId, viewerId) });
   });
 
   // ─── Scheduling ────────────────────────────────────────────────────────────
@@ -118,19 +119,23 @@ export default function createSocialExtendedRouter({ STATE, requireAuth }) {
 
   // ─── Analytics ─────────────────────────────────────────────────────────────
   router.get("/analytics/creator/:userId", (req, res) => {
-    res.json({ ok: true, ...getCreatorAnalytics(STATE, req.params.userId) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getCreatorAnalytics(STATE, req.params.userId, viewerId) });
   });
 
   router.get("/analytics/post/:postId", (req, res) => {
-    res.json({ ok: true, ...getPostAnalytics(STATE, req.params.postId) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getPostAnalytics(STATE, req.params.postId, viewerId) });
   });
 
   router.get("/analytics/post/:postId/earnings", (req, res) => {
-    res.json({ ok: true, ...getPostEarnings(STATE, req.params.postId) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getPostEarnings(STATE, req.params.postId, viewerId) });
   });
 
   router.get("/analytics/post/:postId/sales", (req, res) => {
-    res.json({ ok: true, ...getPostSales(STATE, req.params.postId) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getPostSales(STATE, req.params.postId, viewerId) });
   });
 
   // ─── Watch time ────────────────────────────────────────────────────────────

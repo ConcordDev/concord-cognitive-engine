@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { showToast } from '@/components/common/Toasts';
 import { ReportButton } from '@/components/common/ReportButton';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -404,7 +405,13 @@ export function BoardPanel() {
       pinned: false, locked: false, removed: false, awards: [], saved: false, comments: [], views: 1,
     };
     setPosts(prev => [newPost, ...prev]);
-    createForumPost({ title: newPost.title, data: newPost as unknown as Record<string, unknown>, meta: { status: 'active', tags: newPost.tags } });
+    // 'open' is a real forum status. 'active' is not, so the row used to
+    // appear locally and disappear on refresh (HTTP 200 validation_failed).
+    createForumPost({ title: newPost.title, data: newPost as unknown as Record<string, unknown>, meta: { status: 'open', tags: newPost.tags } })
+      .catch((err) => {
+        setPosts(prev => prev.filter(p => p.id !== newPost.id));
+        showToast('error', err instanceof Error ? err.message : 'Failed to create post');
+      });
     setShowCreatePost(false);
     setNewPostTitle(''); setNewPostContent(''); setNewPostCommunity(''); setNewPostTags(''); setNewPostFlair(null);
   }, [newPostTitle, newPostContent, newPostCommunity, newPostTags, newPostFlair, createForumPost]);
@@ -414,7 +421,11 @@ export function BoardPanel() {
     const slug = newCommName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const newComm: Community = { id: slug, name: newCommName, description: newCommDesc, memberCount: 1, icon: '\uD83D\uDCAC', banner: 'from-neon-cyan to-neon-purple', joined: true, rules: ['Be respectful', 'Stay on topic'], createdAt: new Date().toISOString(), moderators: [DEFAULT_AUTHOR.username] };
     setCommunities(prev => [...prev, newComm]);
-    createForumCommunity({ title: newComm.name, data: newComm as unknown as Record<string, unknown>, meta: { status: 'active' } });
+    createForumCommunity({ title: newComm.name, data: newComm as unknown as Record<string, unknown>, meta: { status: 'open' } })
+      .catch((err) => {
+        setCommunities(prev => prev.filter(c => c.id !== newComm.id));
+        showToast('error', err instanceof Error ? err.message : 'Failed to create community');
+      });
     setShowCreateCommunity(false);
     setNewCommName(''); setNewCommDesc('');
   }, [newCommName, newCommDesc, createForumCommunity]);

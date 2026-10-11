@@ -14,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -246,7 +247,7 @@ export function ComplianceReportsPanel() {
         setError('Add at least one driver with today’s hours.');
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
+      const today = calendarDateKey();
       const payload = valid.map((d, i) => ({
         driverId: `adhoc_${i}`,
         name: d.name.trim(),

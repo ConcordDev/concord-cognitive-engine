@@ -181,11 +181,14 @@ export function OverviewPanel({
   feedStatus = 'loading',
   history,
   trend,
+  hideMarketMonitor = false,
 }: {
   indices: IndexQuote[];
   feedStatus?: 'loading' | 'live' | 'stale' | 'unavailable';
   history: NetWorthSnapshot[];
   trend: MonthlyTrend | null;
+  /** North star hides the index grid on the book. Prices stay unrendered. */
+  hideMarketMonitor?: boolean;
 }) {
   const { density } = useDensity();
   const tableDensity: 'compact' | 'comfortable' = density === 'low' ? 'comfortable' : 'compact';
@@ -213,7 +216,7 @@ export function OverviewPanel({
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <Panel
+      {!hideMarketMonitor && <Panel
         title="Market monitor — live indices"
         right={
           <StatusDot
@@ -258,7 +261,7 @@ export function OverviewPanel({
             )}
           </>
         )}
-      </Panel>
+      </Panel>}
 
       <Panel title="Net-worth trajectory — your snapshots">
         <NetWorthChart snapshots={history} />
