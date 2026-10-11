@@ -448,9 +448,10 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     assert.equal(seen.ok, true);
     const row = seen.studying.find((s) => s.id === c.cohortId);
     assert.ok(row);
-    assert.equal(row.teacher_user_id, "classroom-list-owner");
+    assert.equal(Object.hasOwn(row, "teacher_user_id"), false);
     // No users row for this teacher: do not invent a display name from the id.
     assert.equal(row.teacher_display_name, null);
+    assert.equal(JSON.stringify(seen).includes("classroom-list-owner"), false);
   });
 
   it("list_cohorts: studying rows carry the teacher's username when a user row exists", async () => {
@@ -466,7 +467,64 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     const seen = await rms("classroom", "list_cohorts", {}, stu);
     const row = seen.studying.find((s) => s.id === c.cohortId);
     assert.equal(row.teacher_display_name, "Ada Lovelace");
-    assert.equal(row.teacher_user_id, "classroom-named-teacher");
+    assert.equal(Object.hasOwn(row, "teacher_user_id"), false);
+    assert.equal(JSON.stringify(seen).includes("classroom-named-teacher"), false);
+  });
+
+  it("list_cohorts: a student's studying rows name the teacher and never include the raw user id", async () => {
+    const teacherId = "496291b0-7c3a-4e1d-9f20-deadbeef0001";
+    const { runMacro: rm, ctx: owner } = await macroRuntime(teacherId);
+    db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, created_at)
+      VALUES (?, ?, ?, 'x', datetime('now'))
+    `).run(teacherId, "ada-uuid", `ada-${teacherId}@classroom.test`);
+    const userCols = new Set(db.prepare("PRAGMA table_info(users)").all().map((c) => c.name));
+    if (userCols.has("display_name")) {
+      db.prepare("UPDATE users SET display_name = ? WHERE id = ?").run("Ada Lovelace", teacherId);
+    }
+    const c = await rm("classroom", "create_cohort", { name: "UUID Teacher" }, owner);
+    const { runMacro: rms, ctx: stu } = await macroRuntime("classroom-uuid-student");
+    const joined = await rms("classroom", "enrol", { cohortId: c.cohortId }, stu);
+    assert.equal(joined.ok, true);
+
+    const seen = await rms("classroom", "list_cohorts", {}, stu);
+    assert.equal(seen.ok, true);
+    const row = seen.studying.find((s) => s.id === c.cohortId);
+    assert.ok(row);
+    assert.equal(row.teacher_display_name, userCols.has("display_name") ? "Ada Lovelace" : "ada-uuid");
+    assert.equal(Object.hasOwn(row, "teacher_user_id"), false);
+    const blob = JSON.stringify(seen);
+    assert.equal(blob.includes(teacherId), false);
+    assert.equal(blob.includes(teacherId.slice(0, 8)), false);
+    for (const value of Object.values(row)) {
+      if (typeof value === "string") assert.equal(value.includes(teacherId), false);
+    }
+
+    // The teacher's own teaching list still carries the cohort and its count.
+    const teaching = await rm("classroom", "list_cohorts", {}, owner);
+    const taught = teaching.teaching.find((t) => t.id === c.cohortId);
+    assert.ok(taught);
+    assert.equal(taught.name, "UUID Teacher");
+    assert.equal(taught.enrolled, 1);
+    assert.equal(JSON.stringify(teaching.teaching).includes(teacherId), false);
+  });
+
+  it("list_cohorts: a username that is only the raw user id is not echoed to students", async () => {
+    const teacherId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const { runMacro: rm, ctx: owner } = await macroRuntime(teacherId);
+    db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, created_at)
+      VALUES (?, ?, ?, 'x', datetime('now'))
+    `).run(teacherId, teacherId, `same-${teacherId}@classroom.test`);
+    const c = await rm("classroom", "create_cohort", { name: "Id As Name" }, owner);
+    const { runMacro: rms, ctx: stu } = await macroRuntime("classroom-idname-student");
+    assert.equal((await rms("classroom", "enrol", { cohortId: c.cohortId }, stu)).ok, true);
+    const seen = await rms("classroom", "list_cohorts", {}, stu);
+    const row = seen.studying.find((s) => s.id === c.cohortId);
+    assert.ok(row);
+    assert.equal(row.teacher_display_name, null);
+    assert.equal(Object.hasOwn(row, "teacher_user_id"), false);
+    assert.equal(JSON.stringify(seen).includes(teacherId), false);
   });
 
   it("enrol: a cohort that does not exist is refused and writes no row", async () => {
