@@ -32,6 +32,7 @@ interface DashboardResult {
 }
 interface DebateSummary {
   id: string; title: string; claim: string; branch: string; status: string; postCount: number;
+  public?: boolean; mine?: boolean; authorName?: string | null;
 }
 interface Overview {
   dashboard: DashboardResult;
@@ -157,6 +158,10 @@ export function PhilosophyOverview({ onJump }: { onJump: (destination: Destinati
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-white truncate">{t.title}</span>
                   <span className="text-[9px] uppercase text-zinc-500">{t.branch}</span>
+                  <span className="text-[9px] text-zinc-500">{t.public === true ? 'public' : 'private'}</span>
+                  {(t.mine || t.authorName) && (
+                    <span className="text-[9px] text-zinc-500">{t.mine ? 'you' : t.authorName}</span>
+                  )}
                   {t.status === 'resolved' && <span className="text-[9px] text-emerald-400">resolved</span>}
                   <span className="ml-auto text-[9px] text-zinc-500">{t.postCount} posts</span>
                 </div>
