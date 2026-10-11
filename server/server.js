@@ -2090,6 +2090,7 @@ import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
 import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
 import { isStrongShareToken } from "./lib/share-token.js";
 import { ingestClientError } from "./lib/client-error-intake.js";
+import { ingestFrontendError } from "./lib/frontend-error-intake.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
 
@@ -2242,6 +2243,15 @@ import {
 } from "./emergent/repair-cortex.js";
 import { createRoleGate } from "./lib/role-gate.js";
 import { registerRepairCortexStatusRoutes } from "./lib/repair-cortex-status-routes.js";
+import {
+  handleMacroHandlerThrow,
+  noteStructuredLog,
+  reportHttpFailure,
+} from "./lib/cortex-failure-signals.js";
+import {
+  createEarlyRouteErrorHandler,
+  createLateRouteErrorHandler,
+} from "./lib/route-error-handlers.js";
 import { logAbsentGovernorMacrosOnce, tickGovernorOptionalMacros } from "./lib/governor-optional-macros.js";
 
 // ---- "Everything Real" imports: migration runner + durable endpoints ----
@@ -3632,6 +3642,8 @@ const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 };
 function structuredLog(level, event, data = {}) {
   if (LOG_LEVELS[level] < LOG_LEVELS[LOG_LEVEL]) return;
 
+  try { noteStructuredLog(level, event, data); } catch { /* cortex must never break logging */ }
+
   const entry = {
     timestamp: new Date().toISOString(),
     level,
@@ -3689,6 +3701,10 @@ function requestLoggerMiddleware(req, res, next) {
 
     // ---- P95 Tracking (Category 5: Observability) ----
     _LATENCY.record(duration, req.path, req.method);
+
+    if (res.statusCode >= 500 || res.statusCode === 403 || res.statusCode === 422 || res.statusCode === 429) {
+      try { reportHttpFailure(req, null, res.statusCode); } catch { /* cortex must never break the response */ }
+    }
 
     // Log response (skip health checks to reduce noise)
     if (!req.path.startsWith("/health") && !req.path.startsWith("/ready")) {
@@ -15245,26 +15261,12 @@ async function runMacro(domain, name, input, ctx) {
   try {
     result = await m.fn(ctx, input ?? {});
   } catch (macroErr) {
-    // Avoidance learning: record macro failures for pattern learning.
-    try {
-      const painMod = await import("./emergent/avoidance-learning.js").catch(() => null);
-      if (painMod?.recordPain) painMod.recordPain({ domain, name, error: String(macroErr?.message || macroErr) });
-    } catch (e) { observe(e, "macro_failure_pain_recording"); }
     // Contract: runMacro never throws — every caller treats the response
     // as an `{ ok: boolean, ... }` envelope. A handler that throws on bad
     // input would force every caller to add try/catch and lose the pain-
-    // learning hook above. Convert to structured failure instead.
-    structuredLog("warn", "macro_uncaught_throw", {
-      domain, name,
-      error: String(macroErr?.message || macroErr),
-    });
-    return {
-      ok: false,
-      error: "macro_uncaught_throw",
-      message: String(macroErr?.message || macroErr),
-      domain,
-      name,
-    };
+    // learning hook. Convert to structured failure instead. observe() +
+    // recordPain run inside handleMacroHandlerThrow and cannot throw out.
+    return handleMacroHandlerThrow(macroErr, domain, name, structuredLog);
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
 
@@ -29376,15 +29378,17 @@ ${_operatorV6Block}` : "";
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
   // An outage notice is not knowledge — don't mint a DTU from it.
   try {
-    if (!_aiUnavailable) createOutputDTU(STATE, {
-      sessionId,
-      response: finalReply,
-      entityId: null,
-      brain: llmUsed ? "conscious" : "local",
-      confidence: llmUsed ? 0.8 : 0.5,
-      workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
-      userId: ctx?.actor?.userId || null,
-    });
+    if (!_aiUnavailable) {
+      createOutputDTU(STATE, {
+        sessionId,
+        response: finalReply,
+        entityId: null,
+        brain: llmUsed ? "conscious" : "local",
+        confidence: llmUsed ? 0.8 : 0.5,
+        workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+        userId: ctx?.actor?.userId || null,
+      });
+    }
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
   try {
@@ -37585,6 +37589,7 @@ app.use(createLoadSheddingMiddleware({
               if (!res.headersSent) {
                 if (trySendShutdownError(err, res)) return;
                 const status = msg.startsWith("forbidden") ? 403 : msg.includes("not found") ? 404 : 500;
+                try { reportHttpFailure(req, err, status); } catch { /* cortex must never break the response */ }
                 res.status(status).json({ ok: false, error: msg });
               }
             });
@@ -38395,49 +38400,12 @@ registerAtlasSignalRoutes(app, {
 });
 
 // Error handler
-app.use((err, req, res, _next) => {
-  if (res.headersSent) return;
-
-  if (trySendShutdownError(err, res)) {
-    structuredLog("warn", "shutdown_request_after_close", {
-      requestId: req.id, method: req.method, path: req.path, error: String(err?.message || err),
-    });
-    return;
-  }
-
-  // Handle ConcordError subclasses with proper HTTP status and code
-  if (err instanceof ConcordError) {
-    structuredLog(
-      err.statusCode >= 500 ? "error" : "warn",
-      "request_error",
-      { requestId: req.id, method: req.method, path: req.path, statusCode: err.statusCode, code: err.code, error: err.message, ...(err.statusCode >= 500 ? { stack: err.stack } : {}), ...err.context }
-    );
-    return res.status(err.statusCode).json(err.toJSON());
-  }
-
-  // Handle CORS/Origin blocks
-  if (err?.code === "ORIGIN_BLOCKED") {
-    structuredLog("warn", "origin_blocked", { ip: req.ip, reason: err?.reason });
-    return res.status(403).json({ ok:false, error:"Origin blocked", code:"ORIGIN_BLOCKED" });
-  }
-
-  // Fallback for unknown errors — log full stack, return safe message
-  const msg = String(err?.message || err);
-  structuredLog("error", "unhandled_route_error", { requestId: req.id, method: req.method, path: req.path, error: msg, stack: String(err?.stack || "") });
-  res.status(500).json({ ok:false, error: "An unexpected error occurred", code: "INTERNAL_ERROR" });
-
-  // Trigger repair cortex in background for 500-level errors
-  if (typeof repairError === "function") {
-    repairError({
-      type: "api-error",
-      message: msg,
-      stack: String(err?.stack || ""),
-      file: extractFileFromStack?.(String(err?.stack || "")) || null,
-      line: extractLineFromStack?.(String(err?.stack || "")) || null,
-      meta: { method: req.method, path: req.path },
-    }).catch(() => {});
-  }
-});
+app.use(createEarlyRouteErrorHandler({
+  structuredLog,
+  repairError,
+  extractFileFromStack,
+  extractLineFromStack,
+}));
 
 // ---- heartbeat (Scope Separation: Local tick + Global tick, no Marketplace tick) ----
 // Worker Thread Architecture: cognitive pipeline tasks run off-thread so HTTP is never blocked.
@@ -41760,46 +41728,13 @@ app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
 
 
 // ---- Invariant Enforcement: No-Crash (global Express error handler) ----
-app.use((err, req, res, _next) => {
-  if (res.headersSent) return;
-  if (trySendShutdownError(err, res)) {
-    try {
-      structuredLog("warn", "shutdown_request_after_close", {
-        method: req.method, path: req.path, error: String(err?.message || err),
-      });
-    } catch { /* response already 503 */ }
-    return;
-  }
-  // Routes mounted after the earlier error handler (including DELETE
-  // /api/media/:id) land here. ConcordError already carries the right status
-  // (404 not found, 403 forbidden, 400 validation). res.json() without a
-  // status is HTTP 200, which made those deletes look successful.
-  if (err instanceof ConcordError) {
-    return res.status(err.statusCode || 500).json({
-      ok: false,
-      error: err.message,
-      code: err.code,
-    });
-  }
-  const errorId = uid("err");
-  const msg = String(err?.message || err || "Unknown error");
-  const out = {
-    ok: false,
-    error: msg,
-    mode: req?.body?.mode || "chat",
-    sessionId: req?._concordSessionId || req?.body?.sessionId || req?.query?.sessionId || "default",
-    llmUsed: false
-  };
-  try {
-    return uiJson(res, _withAck(out, req, ["logs"], ["/api/logs"], { id: errorId, status: "error" }, { errorId }), req, { errorId });
-  } catch {
-    return res.status(500).json({
-      ok: false,
-      reply: "Internal error.",
-      meta: { sessionId: out.sessionId, mode: out.mode, llmUsed: false, version: VERSION, errorId }
-    });
-  }
-});
+app.use(createLateRouteErrorHandler({
+  structuredLog,
+  uid,
+  uiJson,
+  withAck: _withAck,
+  version: VERSION,
+}));
 // ===== CHICKEN3: Autonomous Lattice Cron + Federation Hooks (additive) =====
 function _c3internalCtx() {
   const ctx = makeInternalCtx("chicken3_cron");
@@ -56833,9 +56768,9 @@ app.get("/api/events", (req, res) => {
 app.get("/api/events/paginated", (req, res) => {
   const gate = gateLogRead(req);
   if (!gate.ok) return sendGate(res, gate);
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Number(req.query.offset) || 0;
   try {
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
-    const offset = Number(req.query.offset) || 0;
     const domain = req.query.domain;
     const entityType = req.query.entityType;
     const activities = [];
@@ -64647,19 +64582,16 @@ app.get("/api/sovereign/audit/gates", async (req, res) => {
 });
 
 // === v3.1 Repair Cortex API ===
-app.post("/api/repair/frontend-error", async (req, res) => {
+app.post("/api/repair/frontend-error", perEndpointRateLimit("write.frontend-error"), async (req, res) => {
   try {
-    const { error, componentStack, lens, url, timestamp } = req.body;
-    const { ERROR_CONTEXT: EC, REPAIR_QUEUE: RQ } = await import("./emergent/repair-cortex.js");
-    const entry = EC.capture(new Error(error?.message || "Frontend error"), {
-      module: `frontend:${lens || "unknown"}`,
-      function: url || lens || "unknown",
-      trigger: "frontend_render",
-      params: { componentStack: componentStack?.slice(0, 500) },
-    });
-    RQ.push(entry);
-    res.json({ ok: true, errorId: entry.id });
-  } catch (e) { res.status(500).json({ ok: false, errorId: null, error: String(e?.message || e) }); }
+    const result = ingestFrontendError(req.body);
+    if (result.limited) {
+      res.set("Retry-After", "60");
+      return res.status(429).json({ ok: false, errorId: null, error: "rate_limited" });
+    }
+    if (!result.ok) return res.status(500).json({ ok: false, errorId: null, error: "ingest_failed" });
+    res.json({ ok: true, errorId: result.errorId });
+  } catch { res.status(500).json({ ok: false, errorId: null, error: "ingest_failed" }); }
 });
 
 app.post("/api/repair/frontend-recovery", async (req, res) => {

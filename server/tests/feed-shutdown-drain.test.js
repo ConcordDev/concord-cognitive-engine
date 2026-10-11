@@ -214,7 +214,9 @@ describe("feed shutdown drain", { concurrency: 1 }, () => {
     setTimeout(() => {
       stallRan = true;
       const end = Date.now() + STALL_MS;
-      while (Date.now() < end) {}
+      while (Date.now() < end) {
+        // Busy-wait so db.close has to run while the event loop is stalled.
+      }
     }, 0);
 
     const t0 = process.hrtime.bigint();

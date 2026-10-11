@@ -327,10 +327,14 @@ describe("shutdown inflight window", { concurrency: 1 }, () => {
     const closing = src.indexOf("shutdown_closing_database", seal);
     const close = src.indexOf("db.close()", closing);
     assert.ok(seal > 0 && closing > seal && close > closing);
-    const first = src.indexOf("trySendShutdownError(err, res)");
-    const second = src.indexOf("trySendShutdownError(err, res)", first + 1);
-    const third = src.indexOf("trySendShutdownError(err, res)", second + 1);
-    assert.ok(first > 0 && second > first && third > second, "async wrapper and both error handlers");
+    const asyncWrap = src.indexOf("trySendShutdownError(err, res)");
+    assert.ok(asyncWrap > 0, "async wrapper maps the closed handle");
+    const handlers = fs.readFileSync(new URL("../lib/route-error-handlers.js", import.meta.url), "utf8");
+    const first = handlers.indexOf("trySendShutdownError(err, res)");
+    const second = handlers.indexOf("trySendShutdownError(err, res)", first + 1);
+    assert.ok(first > 0 && second > first, "both error handlers map the closed handle");
+    assert.match(src, /createEarlyRouteErrorHandler\(/);
+    assert.match(src, /createLateRouteErrorHandler\(/);
     assert.match(src, /app\.use\(shutdownHttpMiddleware\)/);
   });
 });

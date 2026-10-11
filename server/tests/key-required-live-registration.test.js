@@ -7,6 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import registerKeyRequiredLiveMacros from '../domains/key-required-live.js';
+import { httpStatusForLensFailure, shapeLensRunHttp } from '../lib/lens-run-http.js';
 
 function makeRegistry() {
   const seen = new Map();
@@ -63,6 +64,34 @@ test('weather.live_forecast returns missing_api_key envelope', async () => {
   assert.equal(r.ok, false);
   assert.equal(r.envVar, 'OPENWEATHERMAP_API_KEY');
   assert.match(r.signupUrl, /openweathermap/);
+});
+
+test('missing_api_key shapes to HTTP 200 with the honest envelope, not 422', async () => {
+  delete process.env.FRED_API_KEY;
+  delete process.env.EPA_AIRNOW_API_KEY;
+  delete process.env.NPS_API_KEY;
+  delete process.env.OPENWEATHERMAP_API_KEY;
+  const cases = [
+    ['finance.live_fred_series', 'FRED_API_KEY', /stlouisfed\.org/],
+    ['environment.live_air_quality', 'EPA_AIRNOW_API_KEY', /airnow/],
+    ['travel.live_nps_parks', 'NPS_API_KEY', /nps\.gov/],
+    ['weather.live_forecast', 'OPENWEATHERMAP_API_KEY', /openweathermap/],
+  ];
+  for (const [key, envVar, urlRe] of cases) {
+    const raw = await seen.get(key).fn({}, {});
+    const shaped = shapeLensRunHttp(raw);
+    assert.equal(shaped.status, 200, key);
+    assert.equal(shaped.body.ok, false);
+    assert.equal(shaped.body.reason, 'missing_api_key');
+    assert.equal(shaped.body.error, 'missing_api_key');
+    assert.equal(shaped.body.envVar, envVar);
+    assert.match(shaped.body.signupUrl, urlRe);
+    assert.equal(shaped.body.observations, undefined);
+    assert.equal(shaped.body.forecasts, undefined);
+    assert.equal(shaped.body.parks, undefined);
+  }
+  assert.equal(httpStatusForLensFailure('missing_inputs'), 422);
+  assert.equal(httpStatusForLensFailure('missing_query'), 422);
 });
 
 test('missing-key envelope is never fake — no observations/forecasts/parks/series', async () => {

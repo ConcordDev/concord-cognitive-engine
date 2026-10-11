@@ -200,6 +200,29 @@ async function waitForEvt(ws, evtName, timeoutMs = 15000) {
   }
 }
 
+async function getDtuHttp(token, id) {
+  const res = await fetch(`${API_BASE}/api/dtus/${encodeURIComponent(id)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await res.json();
+  return { status: res.status, body };
+}
+
+async function lensRunHttp(token, domain, action, input) {
+  const res = await fetch(`${API_BASE}/api/lens/run`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ domain, action, input }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await res.json();
+  return { status: res.status, body };
+}
+
 async function registerUser(username) {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
@@ -943,7 +966,7 @@ test("D20 — scene-save/scene-load round-trips a level design (with a placed en
   } finally { ws.close(); }
 });
 
-test("D20 — scene-load rejects a non-level-design DTU and an unauthorized private DTU honestly", async () => {
+test("D20 — scene-load rejects a non-level-design DTU, and a private DTU the caller cannot read is the same 404 as a missing id", async () => {
   const { token: tokenA, userId: userIdA } = await registerUser(`godotit_${TS}_q1`);
   const { token: tokenB } = await registerUser(`godotit_${TS}_q2`);
   const wsA = await connect(WS_URL);
@@ -994,13 +1017,63 @@ test("D20 — scene-load rejects a non-level-design DTU and an unauthorized priv
     const dtuId = saveFrame.data.result.dtuId;
     assert.equal(__TEST__.STATE.dtus.get(dtuId).visibility, "private", "a level-design DTU defaults to private");
 
-    // ...and User B (a different user) must be honestly rejected trying to
-    // load it — never silently reconstructed for a non-owner.
+    // User B cannot read A's private level. That answer must be the same
+    // plain 404 as a DTU that does not exist — a different error would
+    // confirm the private id is real. Compare the payloads after the
+    // gateway's per-frame ts/_seq/_evt stamps.
     sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId } });
-    const forbiddenFrame = await waitForEvt(wsB, "design_command:result");
-    assert.equal(forbiddenFrame.data.ok, false);
-    assert.equal(forbiddenFrame.data.error, "not_authorized");
+    const hiddenFrame = await waitForEvt(wsB, "design_command:result");
+    sendMsg(wsB, "design_command", { action: "scene-load", params: { dtuId: `missing-${TS}-never` } });
+    const missingFrame = await waitForEvt(wsB, "design_command:result");
+    const denial = (frame) => {
+      const rest = { ...frame.data };
+      delete rest.ts;
+      delete rest._seq;
+      delete rest._evt;
+      return rest;
+    };
+    const hidden = denial(hiddenFrame);
+    const missing = denial(missingFrame);
+    assert.deepEqual(hidden, { action: "scene-load", ok: false, error: "DTU not found" });
+    assert.deepEqual(hidden, missing);
+
+    // HTTP status and body, not just the gateway frame. Another user's
+    // private id and a random missing id must be the same 404. The owner
+    // still loads the level.
+    const hiddenHttp = await lensRunHttp(tokenB, "game-design", "scene-load", { dtuId });
+    const missingHttp = await lensRunHttp(tokenB, "game-design", "scene-load", { dtuId: `missing-${TS}-http` });
+    assert.equal(hiddenHttp.status, 404);
+    assert.deepEqual(hiddenHttp, missingHttp);
+    assert.deepEqual(hiddenHttp.body, { ok: false, error: "DTU not found" });
+    const ownerHttp = await lensRunHttp(tokenA, "game-design", "scene-load", { dtuId });
+    assert.equal(ownerHttp.status, 200, JSON.stringify(ownerHttp.body));
+    assert.equal(ownerHttp.body.ok, true);
+    assert.equal(ownerHttp.body.result.restoredFromDtuId, dtuId);
+    assert.equal(ownerHttp.body.result.level.name, "Private Level");
   } finally { wsA.close(); wsB.close(); }
+});
+
+test("a public DTU created by id is readable logged in and logged out", async () => {
+  const { token } = await registerUser(`godotit_${TS}_pub`);
+  const created = await lensRunHttp(token, "dtu", "create", {
+    title: "Public readback",
+    visibility: "public",
+    core: {
+      definitions: ["A public DTU readable by id."],
+      claims: ["Logged-in and logged-out reads return this row."],
+    },
+  });
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  const dtu = created.body?.result?.dtu;
+  assert.equal(dtu?.visibility, "public", JSON.stringify(created.body));
+  assert.ok(dtu.id);
+
+  const loggedIn = await getDtuHttp(token, dtu.id);
+  const loggedOut = await getDtuHttp(null, dtu.id);
+  assert.equal(loggedIn.status, 200, JSON.stringify(loggedIn.body));
+  assert.equal(loggedOut.status, 200, JSON.stringify(loggedOut.body));
+  assert.equal(loggedIn.body.dtu?.id || loggedIn.body.id, dtu.id);
+  assert.equal(loggedOut.body.dtu?.id || loggedOut.body.id, dtu.id);
 });
 
 test("D21 — design:mode playtest toggle round-trips ack/nack over /godot-ws (mirrors player:mode's discipline)", async () => {

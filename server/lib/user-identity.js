@@ -9,20 +9,24 @@ export function lookupUserIdentity(db, userId) {
   const empty = { username: null, displayName: null };
   if (!db || !userId || typeof db.prepare !== "function") return empty;
   try {
-    const row = db.prepare(
-      "SELECT username, display_name AS displayName FROM users WHERE id = ?",
-    ).get(userId);
+    // display_name is not on the migrated users table. The fragment is the
+    // literal column, included only when PRAGMA reports it. The id is bound.
+    // A stub that only implements prepare().get() (no .all()) still answers
+    // the username select — skipping introspection must not look like a miss.
+    let display = "";
+    const info = db.prepare("PRAGMA table_info(users)");
+    if (info && typeof info.all === "function") {
+      const cols = info.all() || [];
+      const names = new Set(cols.map((c) => c && c.name).filter(Boolean));
+      if (!names.has("username")) return empty;
+      if (names.has("display_name")) display = ", display_name AS displayName";
+    }
+    const row = db.prepare(`SELECT username${display} FROM users WHERE id = ?`).get(userId);
     if (!row) return empty;
     const username = row.username || null;
     const displayName = row.displayName || username;
     return { username, displayName };
   } catch {
-    try {
-      const row = db.prepare("SELECT username FROM users WHERE id = ?").get(userId);
-      if (!row || !row.username) return empty;
-      return { username: row.username, displayName: row.username };
-    } catch {
-      return empty;
-    }
+    return empty;
   }
 }

@@ -49,11 +49,13 @@ export function shuttingDownBody() {
 }
 
 export function shuttingDownError() {
-  const err = new Error("shutting_down");
-  err.code = "shutting_down";
-  err.reason = "shutting_down";
-  err.statusCode = 503;
-  return err;
+  // Error has no code/reason/statusCode in the lib typings. Object.assign
+  // returns the intersection so checkJs can see the fields the callers read.
+  return Object.assign(new Error("shutting_down"), {
+    code: "shutting_down",
+    reason: "shutting_down",
+    statusCode: 503,
+  });
 }
 
 export function isShutdownDbError(err) {
@@ -73,9 +75,12 @@ export function isShutdownDbError(err) {
 export function sendShuttingDown(res) {
   const body = shuttingDownBody();
   if (res.headersSent) return res;
-  if (typeof res.status === "function" && typeof res.set === "function" && typeof res.json === "function") {
-    res.set("Retry-After", String(SHUTDOWN_RETRY_AFTER_S));
-    return res.status(503).json(body);
+  // The param is Express Response | node ServerResponse. Narrow through a
+  // cast: reading `.status` on the union is a TS2339 even inside typeof.
+  const expressRes = /** @type {import("express").Response} */ (res);
+  if (typeof expressRes.status === "function" && typeof expressRes.set === "function" && typeof expressRes.json === "function") {
+    expressRes.set("Retry-After", String(SHUTDOWN_RETRY_AFTER_S));
+    return expressRes.status(503).json(body);
   }
   res.statusCode = 503;
   if (typeof res.setHeader === "function") {
