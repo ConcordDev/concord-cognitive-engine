@@ -19,6 +19,7 @@
 // Schema lives in migrations/193_chat_sessions.js.
 
 import logger from "../logger.js";
+import { stripGovernanceLeak } from "./chat-governance-leak.js";
 
 // Override via CONCORD_CHAT_HYDRATE_LIMIT env var. Default 200 — large
 // enough that a power user with weeks of history rehydrates the full
@@ -123,7 +124,16 @@ export function persistChatTurn(db, sessionId, { ownerId, lastLens, userMsg, ass
     } catch { /* non-fatal */ }
 
     if (userMsg) persistChatMessage(db, sessionId, { ...userMsg, ts: userMsg.ts || now });
-    if (assistantMsg) persistChatMessage(db, sessionId, { ...assistantMsg, ts: assistantMsg.ts || (now + 1) });
+    if (assistantMsg) {
+      const _assistantContent = assistantMsg.content == null
+        ? assistantMsg.content
+        : stripGovernanceLeak(assistantMsg.content, { userText: userMsg?.content || "" });
+      persistChatMessage(db, sessionId, {
+        ...assistantMsg,
+        content: _assistantContent,
+        ts: assistantMsg.ts || (now + 1),
+      });
+    }
   } catch (err) {
     logger.debug?.("chat-session-store", "persistChatTurn_failed", { sessionId, error: err?.message });
   }
@@ -165,16 +175,22 @@ export function hydrateSession(db, STATE, sessionId, { ownerId = null } = {}) {
       });
       return false;
     }
+    let _hydrateUser = "";
     STATE.sessions.set(sessionId, {
       ownerId: sess.owner_id || ownerId,
       participantIds: sess.owner_id ? new Set([sess.owner_id]) : new Set(),
       createdAt: new Date(sess.created_at).toISOString(),
-      messages: rows.map(r => ({
-        role: r.role,
-        content: r.content,
-        ts: new Date(r.ts).toISOString(),
-        meta: _parseMeta(r.meta_json) || undefined,
-      })),
+      messages: rows.map(r => {
+        let content = r.content;
+        if (r.role === "assistant") content = stripGovernanceLeak(content, { userText: _hydrateUser });
+        else if (r.role === "user") _hydrateUser = String(r.content || "");
+        return {
+          role: r.role,
+          content,
+          ts: new Date(r.ts).toISOString(),
+          meta: _parseMeta(r.meta_json) || undefined,
+        };
+      }),
       currentLens: sess.last_lens || null,
       lensHistory: sess.last_lens ? [{ lens: sess.last_lens, enteredAt: new Date(sess.created_at).toISOString() }] : [],
       crossDomainContext: {},
