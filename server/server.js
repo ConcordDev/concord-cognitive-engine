@@ -2223,6 +2223,9 @@ import {
   observe,
   logRepairDTU,
   getErrorAccumulator,
+  getRepairObservationStatus,
+  flushRepairObservations,
+  stopRepairObservationFlush,
   startRepairLoop,
   stopRepairLoop,
   forceRepairCycle,
@@ -2238,6 +2241,8 @@ import {
   shouldSkipExecution,
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
+import { createRoleGate } from "./lib/role-gate.js";
+import { registerRepairCortexStatusRoutes } from "./lib/repair-cortex-status-routes.js";
 import {
   handleMacroHandlerThrow,
   noteStructuredLog,
@@ -3462,6 +3467,15 @@ async function gracefulShutdown(signal) {
   let feedFlushMs = 0;
   await runShutdownDurability({
     async flushFeed() {
+      // Signature counts are coalesced in memory. Flush them in this same
+      // pre-close window so a deploy restart does not drop the batch, and
+      // stop the interval so it cannot write after db.close.
+      try {
+        flushRepairObservations();
+        stopRepairObservationFlush();
+      } catch (e) {
+        structuredLog("warn", "shutdown_repair_observations_flush_failed", { error: e?.message });
+      }
       const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
       const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
       const flushStart = _feedClock();
@@ -3782,6 +3796,10 @@ const AUTH_MODE_RAW = String(process.env.AUTH_MODE || "").toLowerCase().trim();
 const AUTH_MODE = AUTH_MODE_VALUES.has(AUTH_MODE_RAW)
   ? AUTH_MODE_RAW
   : (AUTH_MODE_RAW ? "hybrid" : (LEGACY_AUTH_ENABLED ? "hybrid" : "public"));
+// Assigned before any route calls requireAuth/requireRole. The function
+// declarations below are hoisted, but their bodies run at registration time,
+// which is after this line.
+const _roleGate = createRoleGate(() => AUTH_MODE);
 const AUTH_USES_JWT = AUTH_MODE === "jwt" || AUTH_MODE === "hybrid";
 const AUTH_USES_APIKEY = AUTH_MODE === "apikey" || AUTH_MODE === "hybrid";
 
@@ -8622,34 +8640,14 @@ function authMiddleware(req, res, next) {
 // Detect by argument shape: real middleware invocation has (req, res, next)
 // with next as a function. Anything else is treated as factory-mode.
 function requireAuth(...args) {
-  const handle = (req, res, next) => {
-    if (AUTH_MODE === "public") return next();
-    if (!req.user) return res.status(401).json({ ok: false, error: "Unauthorized" });
-    return next();
-  };
-  // Direct-middleware pattern: Express calls (req, res, next).
-  if (args.length >= 3 && typeof args[2] === "function" && args[0] && typeof args[0] === "object" && "headers" in args[0]) {
-    return handle(args[0], args[1], args[2]);
-  }
-  // Factory pattern: return a middleware closure.
-  return handle;
+  return _roleGate.requireAuth(...args);
 }
 
 // Permission check helper — simplified 4-role model:
 // sovereign > admin > member > spectator (unauthenticated)
 // Internal system calls (ctx.internal) always pass.
 function requireRole(...roles) {
-  return (req, res, next) => {
-    // Internal system calls always pass (emergent ticks, autogen, repair cortex)
-    if (req.ctx?.internal === true) return next();
-    if (AUTH_MODE === "public") return next();
-    if (!req.user) return res.status(401).json({ ok: false, error: "Authentication required" });
-    if (req.user.role === "sovereign") return next(); // sovereign passes ALL role checks
-    if (roles.length === 0 || roles.includes(req.user.role) || req.user.scopes?.includes("*")) {
-      return next();
-    }
-    return res.status(403).json({ ok: false, error: "Insufficient permissions", requiredRoles: roles });
-  };
+  return _roleGate.requireRole(...roles);
 }
 
 // Production write-auth: enforce authentication on all mutating requests in production
@@ -68439,23 +68437,17 @@ app.post("/api/admin/repair/report", _repairReportLimiter, asyncHandler(async (r
   res.json({ received: true, repaired: result.success });
 }));
 
-// Repair status
-app.get("/api/admin/repair/status", requireAuth(), requireRole("owner"), (_req, res) => {
-  res.json({
-    sleeping: REPAIR_STATE.sleeping,
-    currentFix: REPAIR_STATE.currentFix,
-    totalFixes: REPAIR_STATE.totalFixes,
-    knownPatterns: REPAIR_STATE.knownPatterns.length,
-    consecutiveFailures: REPAIR_STATE.consecutiveFailures,
-    maxConsecutiveFailures: REPAIR_STATE.maxConsecutiveFailures,
-    recentFixes: REPAIR_STATE.fixHistory.slice(-20),
-    repairBrainOnline: BRAIN.repair.enabled,
-    // Runtime repair cortex (new — unified system)
-    cortex: {
-      errorAccumulator: getErrorAccumulator(),
-      repairMemory: getRepairMemoryStats(),
-    },
-  });
+// Repair status + full cortex status. Owner-only; signature counts ride
+// these existing admin responses (no new public route).
+registerRepairCortexStatusRoutes(app, {
+  requireAuth,
+  requireRole,
+  repairState: REPAIR_STATE,
+  brain: BRAIN,
+  getErrorAccumulator,
+  getRepairMemoryStats,
+  getRepairObservationStatus,
+  getFullRepairStatus,
 });
 
 // View learned patterns
