@@ -23,7 +23,7 @@ mkdirSync(outDir, { recursive: true });
 const html = `<!doctype html>
 <html><head><meta charset="utf-8"/>
 <script type="importmap">{ "imports": { "three": "/three/build/three.module.js" } }</script>
-<style>html,body,canvas{margin:0;width:100%;height:100%;display:block;background:#d8d9db}</style>
+<style>html,body,canvas{margin:0;width:100%;height:100%;display:block;background:#3c3e42}</style>
 </head><body>
 <script type="module">
 import * as THREE from "three";
@@ -45,15 +45,30 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(1.5);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = view === "engineering" ? 1.05 : 0.86;
 renderer.localClippingEnabled = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
+function studioBackdrop() {
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 256;
+  const g = c.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, "#8d9096");
+  grd.addColorStop(0.42, "#5e6166");
+  grd.addColorStop(1, "#3c3e42");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(view === "engineering" ? 0xececec : 0xd8d9db);
+scene.background = view === "engineering" ? new THREE.Color(0xececec) : studioBackdrop();
 const pmrem = new THREE.PMREMGenerator(renderer);
 if (view !== "engineering") scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
@@ -96,15 +111,16 @@ if (view === "section") {
 const paintMat = engineering
   ? new THREE.MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true, transparent: true, opacity: 0.45, clippingPlanes: clip })
   : new THREE.MeshPhysicalMaterial({
-    color: 0xe4e7ee, metalness: 0.92, roughness: 0.11, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.35, clippingPlanes: clip,
+    color: 0x8b9098, metalness: 0.9, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.62, clippingPlanes: clip,
     // Explode keeps the hierarchy shift. The shell is also translucent so the
     // skateboard pack, which only moves a rank-2 step, is still visible inside it.
     transparent: explode > 0, opacity: explode > 0 ? 0.34 : 1, depthWrite: explode === 0,
   });
 const glassMat = new THREE.MeshPhysicalMaterial({
-  color: 0x102028, metalness: 0, roughness: 0.04, transmission: engineering ? 0.15 : 0.48,
-  thickness: 0.8, transparent: true, opacity: engineering ? 0.4 : 1, clippingPlanes: clip,
+  color: 0x07090c, metalness: 0, roughness: 0.08, transmission: engineering ? 0.12 : 0.22,
+  thickness: 0.8, transparent: true, opacity: engineering ? 0.55 : 0.92, clippingPlanes: clip,
 });
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.55, metalness: 0.35, side: THREE.DoubleSide, clippingPlanes: clip });
 const body = new THREE.Mesh(geo(assembly.surface.mesh, assembly.surface.mesh.paint), paintMat);
 body.castShadow = body.receiveShadow = true;
 group.add(body);
@@ -113,6 +129,9 @@ const glassMesh = glassSrc && glassSrc.positions
   ? geo(glassSrc)
   : geo(assembly.surface.mesh, glassSrc);
 group.add(new THREE.Mesh(glassMesh, glassMat));
+if (assembly.surface.mesh.trim && assembly.surface.mesh.trim.positions) {
+  group.add(new THREE.Mesh(geo(assembly.surface.mesh.trim), trimMat));
+}
 if (assembly.surface.mesh.arch && assembly.surface.mesh.arch.positions) {
   group.add(new THREE.Mesh(geo(assembly.surface.mesh.arch), new THREE.MeshStandardMaterial({ color: 0x141618, roughness: 0.92, metalness: 0.05, side: THREE.DoubleSide, clippingPlanes: clip })));
 }
@@ -144,7 +163,7 @@ const outside = new Set((assembly.checks.find((c) => c.id === "containment" && c
 for (const c of assembly.components) {
   if (c.role === "wheel" || c.role === "body" || c.role === "glass" || c.role === "opening" || c.role === "axle" || c.id === "SPARE") continue;
   if (!engineering && outside.has(c.id)) continue;
-  const studioDetail = c.role === "lamp" || c.role === "intake" || c.role === "mirror" || c.role === "handle";
+  const studioDetail = c.role === "lamp" || c.role === "intake" || c.role === "mirror" || c.role === "handle" || c.role === "trim";
   if (!showInterior && !studioDetail) continue;
   if (!c.half && !(c.mesh && c.mesh.positions)) continue;
   const [x, y, z] = shift(c, explode);
@@ -160,7 +179,8 @@ for (const c of assembly.components) {
   if (c.role === "lamp") mat = new THREE.MeshPhysicalMaterial({ color: tail ? 0xffd0d4 : 0xe7eef8, emissive: tail ? 0xff2a3a : 0xf7fbff, emissiveIntensity: engineering ? 0.4 : 1.6, roughness: 0.08, clearcoat: 1, clippingPlanes: clip });
   else if (c.role === "intake") mat = new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.72, metalness: 0.4, clippingPlanes: clip });
   else if (c.role === "mirror") mat = new THREE.MeshPhysicalMaterial({ color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip });
-  else if (c.role === "handle") mat = new THREE.MeshStandardMaterial({ color: 0x2a2e33, metalness: 0.85, roughness: 0.28, clippingPlanes: clip });
+  else if (c.id === "DUCKTAIL") mat = new THREE.MeshPhysicalMaterial({ color: 0x8b9098, metalness: 0.9, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.62, clippingPlanes: clip });
+  else if (c.role === "handle" || c.role === "trim") mat = new THREE.MeshStandardMaterial({ color: 0x1a1c20, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide, clippingPlanes: clip });
   else mat = new THREE.MeshLambertMaterial({ color: groupColor[c.group] || 0x888888, flatShading: engineering, transparent: true, opacity: engineering ? 0.85 : 0.55, clippingPlanes: clip });
   const m = new THREE.Mesh(g, mat);
   m.position.set(tx, ty, tz);
@@ -174,8 +194,8 @@ if (engineering) for (const c of assembly.components.filter((d) => d.role === "o
   void x; void z;
 }
 
-scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.28));
-const key = new THREE.DirectionalLight(0xfff4ea, engineering ? 1 : 1.15);
+scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.1));
+const key = new THREE.DirectionalLight(0xfff6ee, engineering ? 1 : 1.85);
 key.position.set(2.4, 5.2, 3.4);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -188,7 +208,7 @@ key.shadow.camera.bottom = -6;
 key.shadow.bias = -0.0004;
 key.shadow.radius = 8;
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xd7e2f0, 0.42);
+const fill = new THREE.DirectionalLight(0xc5ced8, engineering ? 0.42 : 0.16);
 fill.position.set(-3.2, 2.4, 1.6);
 scene.add(fill);
 const rim = new THREE.DirectionalLight(0xe7eeff, engineering ? 0.15 : 1.35);
@@ -198,7 +218,7 @@ const kicker = new THREE.DirectionalLight(0xfff1e0, engineering ? 0 : 0.55);
 kicker.position.set(4.8, 1.6, -1.2);
 scene.add(kicker);
 
-const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0xd8d9db, roughness: 0.95 }));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0x3e4044, roughness: 0.96 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
