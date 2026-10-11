@@ -358,3 +358,143 @@ describe("questmarket — UI-facing macro shapes", () => {
     assert.equal(r.result.totalDistributed, 80);
   });
 });
+
+// Two-actor regressions for the Verify badge, reject-reopen, and the
+// listQuests / marketStats / guildDetail privacy boundary.
+const ID_A = "11111111-1111-4111-8111-111111111111";
+const ID_B = "22222222-2222-4222-8222-222222222222";
+const ctxPrivA = { actor: { userId: ID_A }, userId: ID_A };
+const ctxPrivB = { actor: { userId: ID_B }, userId: ID_B };
+
+function identityDb(byId) {
+  return {
+    prepare(sql) {
+      if (String(sql).includes("PRAGMA")) {
+        return { all: () => [{ name: "username" }, { name: "display_name" }] };
+      }
+      return {
+        get(id) {
+          const row = byId[id];
+          if (!row) return undefined;
+          return { username: row.username ?? null, displayName: row.displayName ?? null };
+        },
+      };
+    },
+  };
+}
+
+function assertNoRawId(payload, foreignId) {
+  const blob = JSON.stringify(payload);
+  assert.equal(blob.includes(foreignId), false, `response leaked ${foreignId}`);
+}
+
+describe("questmarket — verify badge, reject reopen, privacy", () => {
+  it("myPendingVerification counts only submitted claims on quests the caller posted", () => {
+    const posted = call("postQuest", ctxPrivA, { title: "Awaiting verdict", reward: 0 });
+    const cid = call("acceptQuest", ctxPrivB, { questId: posted.result.quest.id }).result.claim.id;
+    call("submitProof", ctxPrivB, { claimId: cid, summary: "proof" });
+
+    const asPoster = call("marketStats", ctxPrivA);
+    const asClaimant = call("marketStats", ctxPrivB);
+    const asBystander = call("marketStats", ctxC);
+    assert.equal(asPoster.ok, true);
+    assert.equal(asPoster.result.pendingVerification, 1);
+    assert.equal(asPoster.result.myPendingVerification, 1);
+    assert.equal(asClaimant.result.pendingVerification, 1);
+    assert.equal(asClaimant.result.myPendingVerification, 0);
+    assert.equal(asBystander.result.myPendingVerification, 0);
+  });
+
+  it("verifyClaim reject reopens the quest when no accepted or submitted claim remains", () => {
+    const posted = call("postQuest", ctxPrivA, { title: "Reject reopen", reward: 0 });
+    const qid = posted.result.quest.id;
+    const cid = call("acceptQuest", ctxPrivB, { questId: qid }).result.claim.id;
+    call("submitProof", ctxPrivB, { claimId: cid, summary: "weak" });
+    const rejected = call("verifyClaim", ctxPrivA, { claimId: cid, approve: false });
+    assert.equal(rejected.ok, true);
+    assert.equal(rejected.result.outcome, "rejected");
+    assert.equal(rejected.result.quest.status, "open");
+
+    const open = call("listQuests", ctxPrivB, { status: "open" });
+    assert.ok(open.result.quests.some((q) => q.id === qid));
+    const listed = call("listQuests", ctxPrivA, {});
+    assert.equal(listed.result.quests.find((q) => q.id === qid).status, "open");
+
+    const wB = call("walletGet", ctxPrivB);
+    assert.equal(wB.result.balance, 1000);
+  });
+
+  it("verifyClaim reject leaves the quest in_progress while another claim is still active", () => {
+    const posted = call("postQuest", ctxPrivA, { title: "Still claimed", reward: 0, maxClaimants: 2 });
+    const qid = posted.result.quest.id;
+    const c1 = call("acceptQuest", ctxPrivB, { questId: qid }).result.claim.id;
+    call("acceptQuest", ctxC, { questId: qid });
+    call("submitProof", ctxPrivB, { claimId: c1, summary: "weak" });
+    call("verifyClaim", ctxPrivA, { claimId: c1, approve: false });
+    const listed = call("listQuests", ctxPrivA, {});
+    assert.equal(listed.result.quests.find((q) => q.id === qid).status, "in_progress");
+  });
+
+  it("listQuests, marketStats, and guildDetail omit other users' raw ids", () => {
+    const named = {
+      actor: { userId: ID_A },
+      userId: ID_A,
+      db: identityDb({
+        [ID_A]: { username: "ada", displayName: "Ada Lovelace" },
+        [ID_B]: { username: ID_B, displayName: ID_B },
+      }),
+    };
+    const viewer = {
+      actor: { userId: ID_B },
+      userId: ID_B,
+      db: named.db,
+    };
+
+    const posted = call("postQuest", named, { title: "Named bounty", kind: "bounty", reward: 80 });
+    const qid = posted.result.quest.id;
+    const cid = call("acceptQuest", viewer, { questId: qid }).result.claim.id;
+    call("submitProof", viewer, { claimId: cid, summary: "done" });
+
+    const asViewer = call("listQuests", viewer, {});
+    const card = asViewer.result.quests.find((q) => q.id === qid);
+    assert.equal(card.isMine, false);
+    assert.equal(card.posterName, "Ada Lovelace");
+    assert.equal(card.poster, undefined);
+    assertNoRawId(asViewer, ID_A);
+
+    const asPoster = call("listQuests", named, { mine: true });
+    const own = asPoster.result.quests.find((q) => q.id === qid);
+    assert.equal(own.isMine, true);
+    assert.equal(own.posterName, "Ada Lovelace");
+    assert.equal(own.poster, ID_A);
+    assertNoRawId(asPoster, ID_B);
+
+    const g = call("createGuild", named, { name: "Privacy Pact" });
+    const gid = g.result.guild.id;
+    call("joinGuild", viewer, { guildId: gid });
+    const detailViewer = call("guildDetail", viewer, { guildId: gid });
+    assert.equal(detailViewer.result.guild.founderName, "Ada Lovelace");
+    assert.equal(detailViewer.result.guild.founder, undefined);
+    assert.equal(detailViewer.result.guild.isFounder, false);
+    assert.ok(detailViewer.result.members.some((m) => m.isMe && m.displayName === "You"));
+    assert.ok(detailViewer.result.members.some((m) => !m.isMe && m.displayName === "Ada Lovelace" && m.role === "founder"));
+    assertNoRawId(detailViewer, ID_A);
+
+    const detailPoster = call("guildDetail", named, { guildId: gid });
+    assert.equal(detailPoster.result.guild.isFounder, true);
+    assert.ok(detailPoster.result.members.some((m) => m.isMe && m.userId === ID_A));
+    assert.ok(detailPoster.result.members.some((m) => !m.isMe && m.userId === undefined && m.displayName === "Adventurer"));
+    assertNoRawId(detailPoster, ID_B);
+
+    call("verifyClaim", named, { claimId: cid, approve: true });
+    const statsViewer = call("marketStats", viewer);
+    assert.ok(statsViewer.result.recentLedger.some((e) => e.type === "payout"));
+    assert.ok(statsViewer.result.recentLedger.every((e) => e.userId !== ID_A && e.from !== ID_A && e.to !== ID_A));
+    assertNoRawId(statsViewer, ID_A);
+
+    const statsPoster = call("marketStats", named);
+    assert.ok(statsPoster.result.recentLedger.some((e) => e.type === "payout" && e.from === ID_A));
+    assert.ok(statsPoster.result.recentLedger.every((e) => e.userId !== ID_B && e.from !== ID_B && e.to !== ID_B));
+    assertNoRawId(statsPoster, ID_B);
+  });
+});

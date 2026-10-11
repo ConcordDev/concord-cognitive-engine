@@ -26,10 +26,10 @@ its own escrow, independent of the platform CC wallet).
 | `walletGet` | `{balance, escrowed, available, userId}` | **DESIGNED** — `MarketHeader` |
 | `postQuest` | escrows reward, creates `quest` record | **DESIGNED** — `QuestBoard` post modal |
 | `cancelQuest` | refunds escrow if no active claims | **DESIGNED** — `VerifyQueue` |
-| `listQuests` | `{quests[], total, allTags[]}`, filters: kind/status/difficulty/guildId/mine/minReward/tag/search/sort | **DESIGNED** — `QuestBoard` |
+| `listQuests` | `{quests[], total, allTags[]}` (`posterName`, `isMine`; raw `poster` only on the caller's own quests), filters: kind/status/difficulty/guildId/mine/minReward/tag/search/sort | **DESIGNED** — `QuestBoard` |
 | `acceptQuest` | creates `claim`, quest → `in_progress` | **DESIGNED** — `QuestBoard` Accept button |
 | `submitProof` | attaches proof summary/links/artifactIds, claim → `submitted` | **DESIGNED** — `MyClaimsPanel` |
-| `verifyClaim` | approve → payout + XP + reputation + achievements; reject → `rejected` | **DESIGNED** — `VerifyQueue` |
+| `verifyClaim` | approve → payout + XP + reputation + achievements; reject → `rejected`, and the quest reopens when no accepted/submitted claim remains | **DESIGNED** — `VerifyQueue` |
 | `abandonClaim` | claim → `abandoned`, quest re-opens if no other active claim | **DESIGNED** — `MyClaimsPanel` |
 | `myClaims` | `{claims[], total}` joined with quest title/reward/difficulty | **DESIGNED** — `MyClaimsPanel` |
 | `questClaims` | poster-only claim list for one quest | **DESIGNED** — `VerifyQueue` |
@@ -39,7 +39,7 @@ its own escrow, independent of the platform CC wallet).
 | `createGuild` / `joinGuild` / `leaveGuild` | real guild + membership records | **DESIGNED** — `GuildsPanel` |
 | `listGuilds` | `{guilds[], total}` with `isMember`/`myRole` | **DESIGNED** — `GuildsPanel` |
 | `guildDetail` | `{guild, members[], sharedQuests[]}` | **DESIGNED** — `GuildsPanel` expand row |
-| `marketStats` | `{totalQuests, openCount, inProgress, resolved, totalClaims, verifiedClaims, pendingVerification, totalEscrowed, totalPaidOut, guildCount, adventurerCount, recentLedger[]}` | **DESIGNED** — `MarketHeader` |
+| `marketStats` | `{totalQuests, openCount, inProgress, resolved, totalClaims, verifiedClaims, pendingVerification, myPendingVerification, totalEscrowed, totalPaidOut, guildCount, adventurerCount, recentLedger[]}` — `pendingVerification` is market-wide; `myPendingVerification` is submitted claims on quests the caller posted (Verify badge). Ledger rows omit other users' ids | **DESIGNED** — `MarketHeader` + Verify badge |
 | `rewardEconomics` | burn-rate / distribution analysis over a caller-supplied quest list | **DESIGNED** — `RewardsPanel`, fed the user's REAL `listQuests` output (not fabricated input) |
 | `balanceDifficulty` | reward/completion-rate balance suggestion for a hypothetical quest | **DESIGNED** — `RewardsPanel` "Difficulty Balancer" (legitimate forward-planning tool, user-declared hypothetical) |
 | `leaderboardRank` | composite score/tier for a caller-supplied participant roster | **UNSURFACED → WIRED THIS SESSION** — see below |

@@ -62,11 +62,13 @@ export default function QuestmarketLensPage() {
     let cancelled = false;
     (async () => {
       const [stats, mine] = await Promise.all([
-        lensRun<{ pendingVerification: number }>('questmarket', 'marketStats', {}),
+        lensRun<{ myPendingVerification?: number }>('questmarket', 'marketStats', {}),
         lensRun<{ claims: Array<{ status: string }> }>('questmarket', 'myClaims', {}),
       ]);
       if (cancelled) return;
-      if (stats.data?.ok) setPendingVerify(stats.data.result?.pendingVerification ?? 0);
+      // Submitted claims on quests this caller posted. The market-wide
+      // pendingVerification aggregate stays on MarketHeader.
+      if (stats.data?.ok) setPendingVerify(stats.data.result?.myPendingVerification ?? 0);
       if (mine.data?.ok) {
         setActiveClaims((mine.data.result?.claims || []).filter((c) => c.status === 'accepted' || c.status === 'submitted').length);
       }
