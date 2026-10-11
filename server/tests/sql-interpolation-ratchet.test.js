@@ -120,6 +120,10 @@ const REVIEWED = {
   "economy/routes.js": 1,
   "economy/storage.js": 1,
   "economy/treasury-reconciliation.js": 1,
+  // economy/wallet-clarity.js (1) — `SELECT ${fields.join} FROM users WHERE id = ?`.
+  // fields is the literal "role", plus "is_test_account" only when PRAGMA
+  // table_info says that column exists. userId is bound with `?`.
+  "economy/wallet-clarity.js": 1,
   "economy/withdrawals.js": 1,
   "emergent/agent-drift-watch-cycle.js": 1,
   "emergent/environment-sensor.js": 2,
@@ -257,6 +261,12 @@ const REVIEWED = {
   "lib/skill-tree-engine.js": 1,
   "lib/skills/character-level.js": 1,
   "lib/social/reputation.js": 2,
+  // lib/strip-object-object-dtu-tags.js (7) — column lists and SET clauses are
+  // built from the literals id/title/tags/tags_json/data, and only when
+  // PRAGMA table_info reports the column. Table names passed to PRAGMA
+  // table_info are the literals "dtu_store" and "dtus". Every value
+  // (rewritten JSON, row id) is bound with `?`.
+  "lib/strip-object-object-dtu-tags.js": 7,
   "lib/substrate-diffusion.js": 1,
   "lib/temperament-spread.js": 2,
   "lib/tools/sandbox-manager.js": 1,
@@ -271,6 +281,11 @@ const REVIEWED = {
   "lib/world-tenancy.js": 2,
   "lib/world-vehicles.js": 2,
   "routes/evo-asset.js": 3,
+  // routes/frontier-part2.js (2) — WHERE is `title IN (?,?,...)` plus
+  // `owner_user_id = 'system'` / `seller_id = 'system'`. Those column names
+  // are literals chosen after PRAGMA table_info. Listing titles are bound
+  // with `?`. A row with a real owner is not matched.
+  "routes/frontier-part2.js": 2,
   "routes/inference-debug.js": 1,
   "routes/messaging.js": 2,
   "routes/player-trade.js": 5,
@@ -281,10 +296,25 @@ const REVIEWED = {
 };
 
 function walk(dir, out = []) {
-  for (const e of readdirSync(dir)) {
-    if (e === "node_modules" || e === "tests" || e === "migrations" || e === ".git") continue;
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch (err) {
+    if (err && err.code === "ENOENT") return out;
+    throw err;
+  }
+  for (const e of entries) {
+    // data/ holds runtime artifacts (chat images, DTU blobs). A test can
+    // unlink one between readdir and stat; those files are not SQL sources.
+    if (e === "node_modules" || e === "tests" || e === "migrations" || e === ".git" || e === "data") continue;
     const p = path.join(dir, e);
-    const st = statSync(p);
+    let st;
+    try {
+      st = statSync(p);
+    } catch (err) {
+      if (err && err.code === "ENOENT") continue;
+      throw err;
+    }
     if (st.isDirectory()) walk(p, out);
     else if (e.endsWith(".js")) out.push(p);
   }

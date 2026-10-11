@@ -319,6 +319,12 @@ describe('E2E API routes — public auth mode', { timeout: 120000 }, function() 
       input: {
         title: 'E2E roundtrip thought ' + Date.now(),
         source: 'user',
+        // Default visibility is private. This suite is AUTH_MODE=public with
+        // no session, so the actor is the "anon" placeholder, which the
+        // by-id read gate does not treat as an owner. The probe is
+        // persistence (create must land a row get can read), so the DTU is
+        // explicitly public. Owner-only hiding is pinned elsewhere.
+        visibility: 'public',
         human: { summary: 'a real thought created by the e2e round-trip test' },
         core: { definitions: ['roundtrip: a created DTU must be retrievable'] },
       },

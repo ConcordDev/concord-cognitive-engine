@@ -149,9 +149,29 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
     && String(process.env.CONCORD_ALLOW_TEST_EGRESS).toLowerCase() !== "true") {
   const realFetch = globalThis.fetch;
   if (typeof realFetch === "function") {
+    // This machine's own interface addresses are in-process, same as
+    // 127.0.0.1. A test that binds 0.0.0.0 and fetches its non-loopback
+    // NIC (auth-login's untrusted-peer case) is not egress. Anything that
+    // is not one of these addresses still fails immediately.
+    const os = await import("node:os");
+    const ownHosts = new Set();
+    for (const entries of Object.values(os.networkInterfaces())) {
+      for (const info of entries || []) {
+        if (info && info.address) ownHosts.add(String(info.address).toLowerCase());
+      }
+    }
+    const isOwnHost = (u) => {
+      try {
+        const host = new URL(u).hostname.replace(/^\[|\]$/g, "").toLowerCase();
+        return ownHosts.has(host);
+      } catch {
+        return false;
+      }
+    };
     const isLoopback = (u) =>
       /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)([:/?]|$)/i.test(u) ||
-      /^https?:\/\/[^/]*\.local([:/?]|$)/i.test(u);
+      /^https?:\/\/[^/]*\.local([:/?]|$)/i.test(u) ||
+      isOwnHost(u);
     globalThis.fetch = function patchedFetch(input, init) {
       // A call carrying `init.dispatcher` has already gone through
       // lib/ssrf-guard.js#fetchWithPinnedIp: the URL was validated and the
@@ -165,7 +185,9 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
       // through — the World Bank client fetched live GDP data under "no-egress".)
       if (init && init.dispatcher) {
         const pinned = String(init.dispatcher.__concordPinnedIp || "");
-        if (/^(127\.|::1$|::ffff:127\.)/.test(pinned)) return realFetch.call(this, input, init);
+        if (/^(127\.|::1$|::ffff:127\.)/.test(pinned) || ownHosts.has(pinned.toLowerCase())) {
+          return realFetch.call(this, input, init);
+        }
         return Promise.reject(new Error(`external fetch blocked under test (no-egress, pinned ${pinned || "unknown"})`));
       }
       let url = "";
