@@ -21,7 +21,9 @@ interface Guild {
   myRole: string | null;
 }
 interface Member {
-  userId: string;
+  userId?: string;
+  displayName?: string;
+  isMe?: boolean;
   role: string;
   contributedXp: number;
   questsCompleted: number;
@@ -186,11 +188,11 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
                             Members ({detail.members.length})
                           </p>
                           <div className="space-y-1">
-                            {detail.members.map((m) => (
-                              <div key={m.userId}
+                            {detail.members.map((m, i) => (
+                              <div key={m.userId || `${m.displayName || 'member'}-${m.role}-${i}`}
                                 className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5">
                                 <span className="text-[11px] text-white">
-                                  {m.userId}
+                                  {m.displayName || (m.isMe ? 'You' : 'Adventurer')}
                                   <span className="ml-1.5 rounded bg-zinc-800 px-1 py-0.5 text-[9px] text-zinc-400">
                                     {m.role}
                                   </span>
