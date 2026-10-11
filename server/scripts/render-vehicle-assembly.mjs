@@ -96,7 +96,7 @@ if (view === "section") {
 const paintMat = engineering
   ? new THREE.MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true, transparent: true, opacity: 0.45, clippingPlanes: clip })
   : new THREE.MeshPhysicalMaterial({
-    color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip,
+    color: 0xe4e7ee, metalness: 0.92, roughness: 0.11, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.35, clippingPlanes: clip,
     // Explode keeps the hierarchy shift. The shell is also translucent so the
     // skateboard pack, which only moves a rank-2 step, is still visible inside it.
     transparent: explode > 0, opacity: explode > 0 ? 0.34 : 1, depthWrite: explode === 0,
@@ -174,9 +174,9 @@ if (engineering) for (const c of assembly.components.filter((d) => d.role === "o
   void x; void z;
 }
 
-scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.35));
-const key = new THREE.DirectionalLight(0xffffff, engineering ? 1 : 2.4);
-key.position.set(4, 8, 3);
+scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.28));
+const key = new THREE.DirectionalLight(0xfff4ea, engineering ? 1 : 1.15);
+key.position.set(2.4, 5.2, 3.4);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
 key.shadow.camera.near = 0.4;
@@ -186,16 +186,40 @@ key.shadow.camera.right = 6;
 key.shadow.camera.top = 6;
 key.shadow.camera.bottom = -6;
 key.shadow.bias = -0.0004;
-key.shadow.radius = 6;
+key.shadow.radius = 8;
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xd7e2f0, 0.65);
-fill.position.set(-4, 3, -2);
+const fill = new THREE.DirectionalLight(0xd7e2f0, 0.42);
+fill.position.set(-3.2, 2.4, 1.6);
 scene.add(fill);
+const rim = new THREE.DirectionalLight(0xe7eeff, engineering ? 0.15 : 1.35);
+rim.position.set(-3.6, 2.8, -4.2);
+scene.add(rim);
+const kicker = new THREE.DirectionalLight(0xfff1e0, engineering ? 0 : 0.55);
+kicker.position.set(4.8, 1.6, -1.2);
+scene.add(kicker);
 
 const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0xd8d9db, roughness: 0.95 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+if (!engineering) {
+  const blob = document.createElement("canvas");
+  blob.width = 128; blob.height = 128;
+  const gtx = blob.getContext("2d");
+  const grd = gtx.createRadialGradient(64, 64, 6, 64, 64, 62);
+  grd.addColorStop(0, "rgba(0,0,0,0.38)");
+  grd.addColorStop(0.55, "rgba(0,0,0,0.16)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  gtx.fillStyle = grd;
+  gtx.fillRect(0, 0, 128, 128);
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry((bounds.max[0] - bounds.min[0]) * 0.86, (bounds.max[1] - bounds.min[1]) * 1.15),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(blob), transparent: true, depthWrite: false }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.008;
+  scene.add(shadow);
+}
 
 const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.05, 80);
 // Section camera sits on the clipped side (negative three Z, +vehicle Y) so the cut face is what we look at.

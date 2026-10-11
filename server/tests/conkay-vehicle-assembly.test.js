@@ -224,6 +224,10 @@ describe("assembly of the library car", () => {
     assert.ok(quality.ratios.peakM > quality.ratios.hoodAtAxleM + 0.4, "the roof peaks above the hood");
     const controls = Number(quality.detail.match(/^(\d+) styling controls/)?.[1]);
     assert.ok(controls >= 20 && controls <= 40, quality.detail.slice(0, 40));
+    assert.ok(doc.surface.spec.cagePoints >= 300 && doc.surface.spec.cagePoints <= 800, `cage ${doc.surface.spec.cagePoints}`);
+    assert.equal(doc.surface.spec.cageLevels, 3);
+    assert.ok(quality.panelHighlightMaxDeg <= 8, `panel highlight ${quality.panelHighlightMaxDeg}° ${quality.detail}`);
+    assert.ok(quality.highlightMaxDeg <= 16, `fillet highlight ${quality.highlightMaxDeg}° ${quality.detail}`);
     assert.deepEqual(doc.surface.spec.pushes, []);
     assert.ok(doc.components.some((c) => c.id === "SEAT_1" && c.role === "seat"));
     assert.ok(doc.components.some((c) => c.id === "OCC_SEAT_1_M95" && c.role === "occupant"));

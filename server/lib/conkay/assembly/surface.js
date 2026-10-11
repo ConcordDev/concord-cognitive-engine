@@ -3,15 +3,17 @@
 // Parametric body. Vertices stay in the vehicle frame (x rearward, y right,
 // z up). The viewer converts to three.js Y-up.
 //
-// The skin is one closed half-body loft, mirrored and seam-welded on y = 0.
-// Nose, bumper, fenders, hood, roof and floor share one vertex grid. Wheel
-// arches, the cooling opening and the glass are holes in that grid, so the
-// trim and the glass use the same boundary vertices. Glass is offset 4 mm
-// along the smoothed normal. opencascade.js can boot in this environment, but
-// a lofted B-rep with arch and glass booleans is not what the viewer sections;
-// pythonocc-core is not installable from pip here. The loft is the solid.
+// The skin is a low-poly quad cage (shoulder, tumblehome, side crown, fender
+// bulge, rocker undercut, wrapped nose), mirrored and welded on y = 0, then
+// Catmull–Clark subdivided with semi-sharp creases. Arches, the daylight
+// opening and the lower intake are holes in the cage. Glass is its own
+// subdivided patch, offset 4 mm along the normal. opencascade.js can boot
+// here, but a B-rep boolean is not what the viewer sections; pythonocc-core
+// is not installable from pip. The subdivided cage is the solid. It is not
+// a manufactured Class-A surface.
 
 import { sampleSpline } from "./style.js";
+import { buildCageBody, widthAt } from "./cage.js";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -232,7 +234,9 @@ function prof(spec, x) {
 }
 
 export function crownAt(spec, x) {
-  return prof(resolveSpec(spec), x).crownZ;
+  const S = resolveSpec(spec);
+  if (Array.isArray(S.limitCrown) && S.limitCrown.length > 3) return pchip(S.limitCrown, x);
+  return prof(S, x).crownZ;
 }
 
 export function skinApertureTop(spec, x0, x1) {
@@ -249,6 +253,20 @@ export function skinApertureTop(spec, x0, x1) {
  *  that only dips under the floor is not "outside" sideways. */
 export function sectionHalfWidth(spec, x, z) {
   const S = resolveSpec(spec);
+  if (S.limitWidth?.xs?.length) {
+    const y = widthAt(S.limitWidth, x, z);
+    if (Number.isFinite(y)) {
+      // The floor panel tucks in under the rocker. Below the rocker the
+      // envelope is that rocker's limit-surface width, same rule as the
+      // spline section: a box in the underbody is not outside sideways.
+      const rockerZ = prof(S, x).rockerZ;
+      if (z <= rockerZ + 0.01) {
+        const rocker = widthAt(S.limitWidth, x, rockerZ);
+        if (Number.isFinite(rocker)) return Math.max(y, rocker);
+      }
+      return y;
+    }
+  }
   const p = prof(S, x);
   if (z <= p.rockerZ) return p.rockerY;
   if (z <= p.shoulderZ) return lerp(p.rockerY, p.shoulderY, (z - p.rockerZ) / (p.shoulderZ - p.rockerZ || 1));
@@ -274,7 +292,7 @@ export function boxInsideEnvelope(spec, placement, half, tol = 0.05) {
   if (x - hx < S.noseX - tol || x + hx > S.tailX + tol) return false;
   if (z < S.floorZ - 0.08) return false;
   const samples = [x - hx, x, x + hx].map((xx) => clamp(xx, S.noseX, S.tailX));
-  const crowns = samples.map((xx) => prof(S, xx).crownZ);
+  const crowns = samples.map((xx) => crownAt(S, xx));
   const crownAtCenter = crowns[1];
   if (z > crownAtCenter + tol) return false;
   if (crowns.some((crown) => z + hz > crown + tol)) return false;
@@ -295,7 +313,7 @@ export function partInsideEnvelope(spec, part, tol = 0.05) {
       const z = pt[2];
       if (x < S.noseX - tol || x > S.tailX + tol) return false;
       const p = prof(S, x);
-      if (z + hz > p.crownZ + tol) return false;
+      if (z + hz > crownAt(S, x) + tol) return false;
       if (z - hz < S.floorZ - 0.08) return false;
       const zz = clamp(z, S.floorZ, p.crownZ);
       if (Math.abs(y) + hy > sectionHalfWidth(S, x, zz) + tol) return false;
@@ -309,7 +327,7 @@ export function pointInsideEnvelope(spec, x, y, z, tol = 0.04) {
   const S = resolveSpec(spec);
   if (x < S.noseX - tol || x > S.tailX + tol) return false;
   const p = prof(S, x);
-  if (z > p.crownZ + tol || z < -tol) return false;
+  if (z > crownAt(S, x) + tol || z < -tol) return false;
   return Math.abs(y) <= sectionHalfWidth(S, x, z) + tol;
 }
 
@@ -1155,7 +1173,7 @@ export function sectionPoint(spec, x, ang) {
 export function loftBody(specInput, opts = {}) {
   const spec = resolveSpec(specInput);
   spec.quality = opts.quality === "mobile" ? "mobile" : "full";
-  const built = buildShell(spec);
+  const built = buildCageBody(spec, (x) => prof(spec, x));
   const body = built.mesh;
   const glass = built.glass;
   const details = detailList(spec);

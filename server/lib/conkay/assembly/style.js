@@ -584,14 +584,27 @@ export function designQualityCheck(spec) {
     `max silhouette turn ${r.maxTurnDeg.toFixed(1)}° over 80 mm,`,
     `max curvature change ${r.maxCurvatureChange.toFixed(2)} 1/m².`,
     pushes.length ? `Pushes: ${pushes.join("; ")}.` : "No containment push.",
-    flags.length ? `Outside the styling bands: ${flags.join("; ")}.` : "Inside the styling bands used for a modern sedan or GT.",
-  ].join(" ");
+  ];
+  const hl = spec.highlightContinuity;
+  if (hl && Number.isFinite(hl.maxDeg)) {
+    const panel = Number.isFinite(hl.panelMaxDeg) ? hl.panelMaxDeg : hl.maxDeg;
+    detail.push(`Off-crease highlight bend ${hl.maxDeg.toFixed(1)}° at the tightest edge (${hl.over8 || 0} adjacent pairs over 8°). Edges longer than 28 mm stay within ${panel.toFixed(1)}°.`);
+    if (panel > 8) flags.push(`panel highlight bend ${panel.toFixed(1)}° exceeds 8° off the crease lines`);
+    if (hl.maxDeg > 25) flags.push(`highlight bend ${hl.maxDeg.toFixed(1)}° exceeds 25° off the crease lines`);
+  }
+  if (Number.isFinite(spec.cagePoints)) {
+    detail.push(`Half-body cage ${spec.cagePoints} control points, Catmull–Clark level ${spec.cageLevels || 3}.`);
+  }
+  detail.push(flags.length ? `Outside the styling bands: ${flags.join("; ")}.` : "Inside the styling bands used for a modern sedan or GT.");
+  const text = detail.join(" ");
   return {
     id: "design-quality",
     status: flags.length ? "warn" : "info",
-    detail,
+    detail: text,
     maxTurnDeg: Math.round(r.maxTurnDeg * 10) / 10,
     maxCurvatureChange: Math.round(r.maxCurvatureChange * 100) / 100,
+    highlightMaxDeg: hl && Number.isFinite(hl.maxDeg) ? hl.maxDeg : null,
+    panelHighlightMaxDeg: hl && Number.isFinite(hl.panelMaxDeg) ? hl.panelMaxDeg : null,
     ratios: Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === "number" ? Math.round(v * 1000) / 1000 : v])),
     pushes,
   };

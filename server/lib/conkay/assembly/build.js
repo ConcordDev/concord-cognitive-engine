@@ -196,6 +196,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     roofHoldX: skeleton.crown.find((c) => c.id === "roof-peak")?.x ?? draft.headerX,
     backlightX: (rearHead?.[0] ?? scene.sgRPRear.x) + 0.16,
     openings: undefined,
+    packageConflicts: conflicts,
   });
   const loft = loftBody(spec);
   const cowlX = spec.cowlX;
@@ -210,7 +211,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     id: "BODY_SHELL", name: "Body loft", group: "exterior", role: "body",
     placement: { x: (noseX + tailX) / 2, y: 0, z: (spec.floorZ + roofZ) / 2 },
     half: [(tailX - noseX) / 2, halfWidth, (roofZ - spec.floorZ) / 2],
-    geometry: { ...envelope("one closed loft of the solved stations, mirrored and seam-welded on the centreline. Arches, the cooling mouth and the glass are openings in that skin. Not an OpenCascade solid and not a manufactured skin. When cad.body has run, the loft's overall size is that solid's bounding box; the meshes are still not the same."), representation: "loft", mesh: "surface" },
+    geometry: { ...envelope("one closed subdivision cage of the styling skeleton, mirrored and seam-welded on the centreline, then Catmull–Clark subdivided. Arches, the cooling mouth and the glass are openings in the cage. Not an OpenCascade solid and not a manufactured Class-A skin. When cad.body has run, the body's overall size is that solid's bounding box; the meshes are still not the same."), representation: "loft", mesh: "surface" },
     parameters: [
       param("wheelbase", "Wheelbase", rearAxleX - frontAxleX, "m", prov("calculated", "rearAxleX − frontAxleX")),
       param("overallLength", "Overall length", tailX - noseX, "m", heightProvenance.state === "calculated" && measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "nose and tail stations")),
@@ -478,7 +479,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
 
   // Luggage and spare.
   const rearBack = rearM ? (rearM.landmarks.hPoint[0] + 0.25) : scene.sgRPRear.x + 0.3;
-  const trunk = fitTrunk(spec, rearBack, tailX - 0.08, spec.floorZ);
+  const trunk = fitTrunk(loft.spec, rearBack, tailX - 0.08, spec.floorZ);
   const trunkVol = 8 * trunk.half[0] * trunk.half[1] * trunk.half[2];
   components.push(part({
     id: "TRUNK", name: "Trunk volume", group: "storage", role: "volume",
@@ -497,7 +498,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     cool ? cool.placement.x - cool.half[0] : firewall,
     noseUnit ? noseUnit.placement.x - noseUnit.half[0] : firewall,
   );
-  const frunk = fitFrunk(spec, noseX, limitX, spec.floorZ);
+  const frunk = fitFrunk(loft.spec, noseX, limitX, spec.floorZ);
   const frunkVol = 8 * frunk.half[0] * frunk.half[1] * frunk.half[2];
   components.push(part({
     id: "FRUNK", name: "Frunk volume", group: "storage", role: "volume",
@@ -572,7 +573,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   }
 
   const checks = fitChecks({
-    spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX,
+    spec: loft.spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX,
     tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack,
   });
   const standards = standardsTable({ scene, dc, eye, roofZ, spec });
