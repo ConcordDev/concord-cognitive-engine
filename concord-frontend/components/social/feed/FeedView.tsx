@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Sparkles, Hash, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState } from '@/components/ui/ErrorState';
 import type { SocialPost, TrendingHashtag } from './types';
 import { FeedComposer } from './FeedComposer';
 import { PostCard } from './PostCard';
@@ -37,6 +38,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [trending, setTrending] = useState<TrendingHashtag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [quotePost, setQuotePost] = useState<SocialPost | null>(null);
 
   const loadFeed = useCallback(async () => {
@@ -46,8 +48,22 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
       lensRun<{ trending: TrendingHashtag[] }>('social', 'trendingHashtags', { limit: 8 }),
     ]);
     setLoading(false);
-    if (feedR.data?.ok && feedR.data.result) setPosts(feedR.data.result.posts || []);
-    if (trendR.data?.ok && trendR.data.result) setTrending(trendR.data.result.trending || []);
+    if (feedR.data?.ok && feedR.data.result) {
+      setPosts(feedR.data.result.posts || []);
+      setFeedError(null);
+    } else {
+      // A failed feed is not an empty feed. Leave any posts already shown
+      // and surface the real error instead of "No posts yet".
+      setFeedError(feedR.data?.error || 'The feed could not be loaded.');
+    }
+    if (trendR.data?.ok && trendR.data.result) {
+      const rows = (trendR.data.result.trending || []).flatMap((t) => {
+        const tag = typeof t?.tag === 'string' ? t.tag.trim() : '';
+        if (!tag || tag === '[object Object]') return [];
+        return [{ ...t, tag }];
+      });
+      setTrending(rows);
+    }
   }, []);
 
   useEffect(() => { void loadFeed(); }, [loadFeed]);
@@ -147,11 +163,20 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
             </div>
           )}
 
-          {loading ? (
+          {feedError && (
+            <ErrorState
+              title="Feed unavailable"
+              message={feedError}
+              onRetry={() => { void loadFeed(); }}
+              retrying={loading}
+            />
+          )}
+
+          {loading && posts.length === 0 && !feedError ? (
             <div className="flex items-center gap-2 p-8 text-sm text-zinc-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading feed…
             </div>
-          ) : posts.length === 0 ? (
+          ) : posts.length === 0 && !feedError ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
               <Sparkles className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
               <h3 className="text-sm font-medium text-zinc-300">No posts yet</h3>
@@ -159,7 +184,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
                 Write the first post — add media, a poll, or quote an existing post.
               </p>
             </div>
-          ) : (
+          ) : posts.length > 0 ? (
             <div className="space-y-2">
               {posts.map((p) => (
                 <PostCard
@@ -174,7 +199,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </>
       )}
     </div>

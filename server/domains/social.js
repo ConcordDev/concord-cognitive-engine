@@ -11,23 +11,72 @@
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import logger from "../logger.js";
+import { topicLabel } from "../lib/trending-topics.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
+  // JSON.stringify(new Set(["id"])) is "{}". A snapshot written before nested
+  // Sets were enveloped comes back as a plain object. `new Set(obj)` throws
+  // "object is not iterable". Arrays and Set envelopes still restore; a plain
+  // object has no remaining members (they were erased on that write).
+  function asSet(value) {
+    if (value instanceof Set) return value;
+    if (Array.isArray(value)) return new Set(value);
+    if (value && typeof value === "object" && value.__type === "Set" && Array.isArray(value.values)) {
+      return new Set(value.values);
+    }
+    return new Set();
+  }
+  function asMap(value) {
+    if (value instanceof Map) return value;
+    if (value && typeof value === "object" && value.__type === "Map" && Array.isArray(value.entries)) {
+      try { return new Map(value.entries); } catch { return new Map(); }
+    }
+    if (Array.isArray(value)) {
+      const m = new Map();
+      for (const entry of value) {
+        if (Array.isArray(entry) && entry.length >= 2) m.set(entry[0], entry[1]);
+      }
+      return m;
+    }
+    if (value && typeof value === "object") return new Map(Object.entries(value));
+    return new Map();
+  }
   function getSocialState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.socialLens) STATE.socialLens = {};
+    if (!STATE.socialLens || typeof STATE.socialLens !== "object") STATE.socialLens = {};
     const s = STATE.socialLens;
-    if (!(s.posts instanceof Map)) s.posts = new Map();           // postId -> post
-    if (!(s.replies instanceof Map)) s.replies = new Map();       // postId -> Array<reply>
-    if (!(s.reactions instanceof Map)) s.reactions = new Map();   // postId -> Map(userId -> reaction)
-    if (!(s.reposts instanceof Map)) s.reposts = new Map();       // postId -> Set<userId>
-    if (!(s.dms instanceof Map)) s.dms = new Map();               // threadKey -> { participants, messages }
-    if (!(s.moderation instanceof Map)) s.moderation = new Map(); // userId -> { muted:Set, blocked:Set }
-    if (!(s.reports instanceof Map)) s.reports = new Map();       // reportId -> report
-    if (!(s.streams instanceof Map)) s.streams = new Map();       // streamId -> stream
-    if (!(s.streamViewers instanceof Map)) s.streamViewers = new Map(); // streamId -> Set<userId>
+    s.posts = asMap(s.posts);                 // postId -> post
+    s.replies = asMap(s.replies);             // postId -> Array<reply>
+    s.reactions = asMap(s.reactions);         // postId -> Map(userId -> reaction)
+    s.reposts = asMap(s.reposts);             // postId -> Set<userId>
+    s.dms = asMap(s.dms);                     // threadKey -> { participants, messages }
+    s.moderation = asMap(s.moderation);       // userId -> { muted:Set, blocked:Set }
+    s.reports = asMap(s.reports);             // reportId -> report
+    s.streams = asMap(s.streams);             // streamId -> stream
+    s.streamViewers = asMap(s.streamViewers); // streamId -> Set<userId>
+    // Nested collections are not always Map/Set after a snapshot load.
+    // Repair in place so a later react/repost/mute does not throw, and so
+    // the next save writes real collections instead of another `{}`.
+    for (const [postId, reactions] of s.reactions) {
+      const map = asMap(reactions);
+      if (map !== reactions) s.reactions.set(postId, map);
+    }
+    for (const [postId, reposts] of s.reposts) {
+      const set = asSet(reposts);
+      if (set !== reposts) s.reposts.set(postId, set);
+    }
+    for (const [streamId, viewers] of s.streamViewers) {
+      const set = asSet(viewers);
+      if (set !== viewers) s.streamViewers.set(streamId, set);
+    }
+    for (const bucket of s.moderation.values()) {
+      if (!bucket || typeof bucket !== "object" || bucket instanceof Set || bucket instanceof Map) continue;
+      bucket.muted = asSet(bucket.muted);
+      bucket.blocked = asSet(bucket.blocked);
+    }
     return s;
   }
   function save() {
@@ -52,12 +101,18 @@ export default function registerSocialActions(registerLensAction) {
   const dmKey = (a, b) => [String(a), String(b)].sort().join("::");
 
   function modBucket(s, userId) {
+    if (!(s.moderation instanceof Map)) s.moderation = asMap(s.moderation);
     if (!s.moderation.has(userId)) {
       s.moderation.set(userId, { muted: new Set(), blocked: new Set() });
     }
     const b = s.moderation.get(userId);
-    if (!(b.muted instanceof Set)) b.muted = new Set(b.muted || []);
-    if (!(b.blocked instanceof Set)) b.blocked = new Set(b.blocked || []);
+    if (!b || typeof b !== "object") {
+      const fresh = { muted: new Set(), blocked: new Set() };
+      s.moderation.set(userId, fresh);
+      return fresh;
+    }
+    b.muted = asSet(b.muted);
+    b.blocked = asSet(b.blocked);
     return b;
   }
 
@@ -93,11 +148,15 @@ export default function registerSocialActions(registerLensAction) {
   function hydratePost(s, postId, viewerId, ctx) {
     const post = s.posts.get(postId);
     if (!post) return null;
-    const reactMap = s.reactions.get(postId) || new Map();
+    const reactMap = asMap(s.reactions.get(postId));
     const reactionCounts = {};
-    for (const r of reactMap.values()) reactionCounts[r] = (reactionCounts[r] || 0) + 1;
-    const repostSet = s.reposts.get(postId) || new Set();
-    const replyList = s.replies.get(postId) || [];
+    for (const r of reactMap.values()) {
+      if (typeof r !== "string" || !r) continue;
+      reactionCounts[r] = (reactionCounts[r] || 0) + 1;
+    }
+    const repostSet = asSet(s.reposts.get(postId));
+    const replyRaw = s.replies.get(postId);
+    const replyList = Array.isArray(replyRaw) ? replyRaw : [];
     const who = authorIdentity(ctx, post.userId, post.username, post.displayName);
     return {
       ...post,
@@ -174,16 +233,24 @@ export default function registerSocialActions(registerLensAction) {
 });
 
   registerLensAction("social", "feed", (ctx, _a, params = {}) => {
-    const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const viewerId = actor(ctx);
-    const mod = modBucket(s, viewerId);
-    const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
-    const items = [...s.posts.values()]
-      .filter((p) => !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, limit)
-      .map((p) => hydratePost(s, p.id, viewerId, ctx));
-    return { ok: true, result: { posts: items, count: items.length } };
+    try {
+      const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const viewerId = actor(ctx);
+      const mod = modBucket(s, viewerId);
+      const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
+      const items = [...s.posts.values()]
+        .filter((p) => p && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+        .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
+        .slice(0, limit)
+        .map((p) => hydratePost(s, p.id, viewerId, ctx))
+        .filter(Boolean);
+      return { ok: true, result: { posts: items, count: items.length } };
+    } catch (e) {
+      const message = String(e?.message || e);
+      try { logger.error("social", "social.feed failed", { error: message, stack: e?.stack }); }
+      catch { /* logging must not mask the failure */ }
+      return { ok: false, error: message };
+    }
   });
 
   registerLensAction("social", "deletePost", (ctx, _a, params = {}) => {
@@ -416,10 +483,13 @@ export default function registerSocialActions(registerLensAction) {
     const limit = Math.min(50, Math.max(1, parseInt(params.limit, 10) || 12));
     const counts = new Map();
     for (const p of s.posts.values()) {
-      for (const t of p.hashtags) {
-        const e = counts.get(t) || { tag: t, posts: 0 };
+      const tags = Array.isArray(p?.hashtags) ? p.hashtags : [];
+      for (const t of tags) {
+        const label = topicLabel(t);
+        if (!label) continue;
+        const e = counts.get(label) || { tag: label, posts: 0 };
         e.posts++;
-        counts.set(t, e);
+        counts.set(label, e);
       }
     }
     const trending = [...counts.values()]

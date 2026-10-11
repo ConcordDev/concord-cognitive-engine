@@ -165,28 +165,72 @@ export const LENS_STATE_KEYS = Object.freeze([
   "writingLens",
 ]);
 
-function serializeValue(v) {
+function isPlainObject(v) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+}
+
+// Maps and Sets are not JSON-safe: JSON.stringify(new Set(["a"])) === "{}".
+// Walking only the Map/Set at the top of a field left Sets that live INSIDE
+// a plain object (social moderation `{ muted: Set, blocked: Set }`) as live
+// Set instances on the object. The snapshot's JSON.stringify then erased
+// their members, and the next boot did `new Set({})`, which throws
+// "object is not iterable". Recurse through plain objects and arrays so a
+// nested Set/Map is an envelope before stringify. Cycles collapse to an
+// empty collection rather than overflowing the save.
+function serializeValue(v, seen = new WeakSet()) {
   if (v instanceof Map) {
-    return {
-      __type: "Map",
-      entries: Array.from(v.entries()).map(([k, vv]) => [k, serializeValue(vv)]),
-    };
+    if (seen.has(v)) return { __type: "Map", entries: [] };
+    seen.add(v);
+    const entries = Array.from(v.entries()).map(([k, vv]) => [k, serializeValue(vv, seen)]);
+    seen.delete(v);
+    return { __type: "Map", entries };
   }
   if (v instanceof Set) {
-    return { __type: "Set", values: Array.from(v) };
+    if (seen.has(v)) return { __type: "Set", values: [] };
+    seen.add(v);
+    const values = Array.from(v).map((item) => serializeValue(item, seen));
+    seen.delete(v);
+    return { __type: "Set", values };
   }
-  // Arrays of plain objects + plain objects pass through (JSON-safe).
+  if (Array.isArray(v)) {
+    if (seen.has(v)) return [];
+    seen.add(v);
+    const out = v.map((item) => serializeValue(item, seen));
+    seen.delete(v);
+    return out;
+  }
+  if (isPlainObject(v)) {
+    if (seen.has(v)) return {};
+    seen.add(v);
+    const out = {};
+    for (const [k, vv] of Object.entries(v)) {
+      if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+      out[k] = serializeValue(vv, seen);
+    }
+    seen.delete(v);
+    return out;
+  }
   return v;
 }
 
 function deserializeValue(v) {
-  if (v && typeof v === "object" && v.__type === "Map" && Array.isArray(v.entries)) {
+  if (Array.isArray(v)) return v.map((item) => deserializeValue(item));
+  if (!v || typeof v !== "object") return v;
+  if (v.__type === "Map" && Array.isArray(v.entries)) {
     return new Map(v.entries.map(([k, vv]) => [k, deserializeValue(vv)]));
   }
-  if (v && typeof v === "object" && v.__type === "Set" && Array.isArray(v.values)) {
-    return new Set(v.values);
+  if (v.__type === "Set" && Array.isArray(v.values)) {
+    return new Set(v.values.map((item) => deserializeValue(item)));
   }
-  return v;
+  if (!isPlainObject(v)) return v;
+  const out = {};
+  for (const [k, vv] of Object.entries(v)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    out[k] = deserializeValue(vv);
+  }
+  return out;
 }
 
 // Walk every registered lens key on STATE, serialize nested Map/Set into
