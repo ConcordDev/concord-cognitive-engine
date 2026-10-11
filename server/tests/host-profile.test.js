@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   isLowMemoryHost,
   shouldPauseHeavyBackground,
+  shouldRunConsolidation,
   shouldAutoLoadLlmModels,
   getHostIdentity,
   _resetHostProfileCacheForTest,
@@ -91,9 +92,25 @@ describe("host-profile — gates", () => {
     process.env.CONCORD_LOW_MEMORY_HOST = "1";
     assert.equal(shouldPauseHeavyBackground(), true);
     assert.equal(shouldAutoLoadLlmModels(), false);
+    assert.equal(shouldRunConsolidation(), true, "consolidation stays on in low-memory mode");
     process.env.CONCORD_LOW_MEMORY_HOST = "0";
     assert.equal(shouldPauseHeavyBackground(), false);
     assert.equal(shouldAutoLoadLlmModels(), true);
+    assert.equal(shouldRunConsolidation(), true);
+  });
+
+  it("CONCORD_CONSOLIDATION_ON_LOW_MEMORY=0 disables consolidation only on a low-memory host", () => {
+    assert.equal(shouldRunConsolidation({ CONCORD_LOW_MEMORY_HOST: "1" }), true);
+    assert.equal(shouldRunConsolidation({
+      CONCORD_LOW_MEMORY_HOST: "1",
+      CONCORD_CONSOLIDATION_ON_LOW_MEMORY: "0",
+    }), false);
+    assert.equal(shouldRunConsolidation({
+      CONCORD_LOW_MEMORY_HOST: "0",
+      CONCORD_CONSOLIDATION_ON_LOW_MEMORY: "0",
+      NODE_ENV: "production",
+    }), true);
+    delete process.env.CONCORD_CONSOLIDATION_ON_LOW_MEMORY;
   });
 
   it("getHostIdentity names the host and the role env", () => {
@@ -132,15 +149,22 @@ describe("governorTick — low memory does not freeze the liveness counter", () 
     "utf8",
   );
   const start = src.indexOf("async function governorTick(");
-  const body = src.slice(start, start + 3200);
+  const body = src.slice(start, start + 8000);
 
   it("the idle skip uses isIdle, and the tick counter runs before the low-memory pause", () => {
     assert.ok(start > 0, "governorTick present");
     assert.match(body, /presenceIdle\.isIdle\(\)/);
     assert.doesNotMatch(body, /shouldRunHeavyMaintenance\(\)/);
     const inc = body.indexOf("heartbeatTicks?.inc()");
+    const jobs = body.indexOf('runMacro("jobs","tick"');
+    const queue = body.indexOf('runMacro("queue","tick"');
     const pause = body.indexOf('skipped: "low_memory_host"');
     assert.ok(inc > 0, "liveness counter increment present");
-    assert.ok(pause > inc, "low-memory pause must come after the tick is counted");
+    assert.ok(jobs > inc, "jobs tick is exempt from the low-memory return");
+    assert.ok(queue > jobs, "queue tick is exempt from the low-memory return");
+    assert.ok(pause > queue, "low-memory pause must come after the tick is counted and after jobs/queue");
+    const between = body.slice(queue, pause);
+    assert.match(between, /shouldRunConsolidation\(\)/);
+    assert.match(between, /_runDtuConsolidationCycle/);
   });
 });
