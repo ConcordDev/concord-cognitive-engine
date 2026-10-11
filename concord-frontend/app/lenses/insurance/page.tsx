@@ -7,6 +7,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InsuranceWalletSection } from '@/components/insurance/InsuranceWalletSection';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 import { InsuranceActionPanel } from '@/components/insurance/InsuranceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import InsuranceOverviewPanel from '@/components/insurance/InsuranceOverviewPanel';
@@ -157,11 +159,13 @@ export default function InsuranceLensPage() {
           {mode === 'AMS' && <AmsWorkbench />}
           {mode === 'Pacts' && <MutualAidPactsPanel />}
 
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <h2 className="mb-3 text-sm font-semibold text-white">Community discussion (Reddit)</h2>
-              <InsurancePolicyTalk />
-            </section>
+          <div className={isCommunityRedditEnabled() ? 'grid gap-5 xl:grid-cols-2' : 'grid gap-5'}>
+            <CommunityRedditSlot>
+              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                <h2 className="mb-3 text-sm font-semibold text-white">Community discussion (Reddit)</h2>
+                <InsurancePolicyTalk />
+              </section>
+            </CommunityRedditSlot>
             <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <h2 className="mb-3 text-sm font-semibold text-white">More actions</h2>
               <PipingProvider>

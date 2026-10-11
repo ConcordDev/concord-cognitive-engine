@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { useAffectSession } from '@/components/affect/AffectSessionContext';
 import { clamp, DIMS } from '@/components/affect/affect-model';
 
 export function useAffectAts() {
   const { sessionId, setSessionId } = useAffectSession();
   const queryClient = useQueryClient();
-  const bridge = useLensBridge('affect', 'snapshot');
 
   const stateQ = useQuery({
     queryKey: ['affect-state', sessionId],
@@ -65,12 +63,6 @@ export function useAffectAts() {
     const health = healthQ.data;
     return health && typeof health === 'object' ? (health as Record<string, unknown>) : {};
   }, [healthQ.data]);
-
-  useEffect(() => {
-    if (Object.keys(affectState).length > 0) {
-      bridge.sync(affectState as Record<string, unknown>, 'Affect State Snapshot');
-    }
-  }, [affectState, bridge]);
 
   const eventList = useMemo(() => {
     const raw = eventsQ.data?.events || eventsQ.data;

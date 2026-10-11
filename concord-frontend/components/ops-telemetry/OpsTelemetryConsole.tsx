@@ -377,6 +377,10 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
     }
   }, []);
 
+  // The page mounts this console only after /api/auth/me says the viewer is
+  // an operator. This effect, plus the overview panels below, all fetch on
+  // first paint — loading starts false, so a 403 from the probe cannot
+  // prevent LivenessPanel or RuntimeConstellationPanel from requesting.
   useEffect(() => { refresh(); }, [refresh]);
 
   useEffect(() => {

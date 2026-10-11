@@ -82,6 +82,16 @@ const LIGHT_OVERRIDES = new Set([
   // claim-checking instead of a hang, but there's no reason to accept
   // even that degradation for a check this cheap.
   "emergent.bridge.lensValidate",
+  // hypothesis.metrics / add_test / add_evidence are in-memory reads and
+  // writes against emergent/hypothesis-engine.js, which lives in the main
+  // thread's module instance. The worker has no copy of that store, and
+  // the isolated runtime doesn't implement these names, so an HTTP call
+  // either falls through after a round trip or 500s with
+  // worker_no_snapshot when the pool has not synced yet. They are not
+  // the heavy generation path this domain was listed for.
+  "hypothesis.metrics",
+  "hypothesis.add_test",
+  "hypothesis.add_evidence",
 ]);
 
 const workers = [];

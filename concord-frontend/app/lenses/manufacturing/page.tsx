@@ -5,6 +5,8 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { ManufacturingActionPanel } from '@/components/manufacturing/ManufacturingActionPanel';
 import { ShopFloorToolsPanel } from '@/components/manufacturing/ShopFloorToolsPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -173,7 +175,7 @@ export default function ManufacturingLensPage() {
             <DTUExportButton domain="manufacturing" data={{}} compact />
           </>
         )}
-        tabs={MODE_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
+        tabs={omitCommunityRedditViews(MODE_TABS, ['community']).map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys }))}
         activeTab={mode}
         onTab={(id) => setMode(id as ModeTab)}
         tabsLabel="Manufacturing views"
@@ -229,9 +231,11 @@ export default function ManufacturingLensPage() {
               </section>
             )}
             {mode === 'community' && (
-              <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-                <ManufacturingFeed />
-              </section>
+              <CommunityRedditSlot>
+                <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                  <ManufacturingFeed />
+                </section>
+              </CommunityRedditSlot>
             )}
           </div>
         </div>

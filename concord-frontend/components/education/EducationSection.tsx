@@ -22,6 +22,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { calendarDateKey } from '@/lib/calendar-date';
 import {
   GraduationCap,
   Users,
@@ -478,7 +479,7 @@ export function EducationSection() {
 
   /* ---------- attendance state ---------- */
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attendanceDate, setAttendanceDate] = useState(() => calendarDateKey());
 
   /* ---------- curriculum state ---------- */
   const [curriculumWeeks, setCurriculumWeeks] = useState<CurriculumWeek[]>([]);

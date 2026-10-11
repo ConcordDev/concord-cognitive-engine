@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
+import { localCalendarDay } from '@/lib/finance/local-day';
 
 export function SnapshotModal({ onClose, onRecorded }: { onClose: () => void; onRecorded: () => void }) {
   const { status, error, dispatch } = useMacroDispatchFeedback();
@@ -25,6 +26,7 @@ export function SnapshotModal({ onClose, onRecorded }: { onClose: () => void; on
       realEstate: parseFloat(form.realEstate) || 0,
       crypto: parseFloat(form.crypto) || 0,
       liabilities: parseFloat(form.liabilities) || 0,
+      date: localCalendarDay(),
     };
     const res = await dispatch('finance', 'net-worth-snapshot', input);
     if (res) {

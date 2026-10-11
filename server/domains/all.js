@@ -3,6 +3,44 @@
 // launcher substrate for the "All Lenses" hub: per-user recency / frequency
 // tracking, pinned (favorite) lenses, and a fuzzy command-palette index.
 
+/**
+ * Sentinels that are not a DTU classification.
+ * - "unknown" is the SQL `dtus.lens_id` column default (migration 024) and
+ *   the old domainStats fallback (`dtu.domain || "unknown"`). Seed packs
+ *   never set `domain`; hydrate copies that default into `dtu.domain`.
+ * - "general.note" is bootstrap extractDomain's no-keyword-match token.
+ * - "unclassified" is the label this function returns for a missing class.
+ */
+const SUBSTRATE_CLASS_SENTINELS = new Set(["unknown", "unclassified", "general.note"]);
+
+function substrateClassToken(value) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+/**
+ * Classification the Substrate Pulse should count.
+ *
+ * `dtu.domain` is only set when a writer passed one (dtu.create's
+ * input.domain/lens, document.create's "document", and similar). The seed
+ * corpus — the bulk of STATE.dtus — leaves it empty. Bootstrap ingestion
+ * writes the real class to `domainType` (and `meta._domain.domainType`)
+ * and never copies it onto `domain`. Reading `domain` therefore buckets
+ * almost every DTU as the synthetic string "unknown".
+ *
+ * Order: explicit domain (when it is not a sentinel) → domainType →
+ * "unclassified". machine.kind is a different axis (rule / first_order /
+ * formal_model) and is not treated as a domain.
+ */
+export function classifySubstrateDomain(dtu) {
+  const explicit = substrateClassToken(dtu?.domain);
+  if (explicit && !SUBSTRATE_CLASS_SENTINELS.has(explicit.toLowerCase())) return explicit;
+  const typed = substrateClassToken(dtu?.domainType)
+    || substrateClassToken(dtu?.meta?._domain?.domainType);
+  if (typed && !SUBSTRATE_CLASS_SENTINELS.has(typed.toLowerCase())) return typed;
+  return "unclassified";
+}
+
 export default function registerAllActions(registerLensAction) {
   /**
    * crossDomainSearch
@@ -49,7 +87,7 @@ export default function registerAllActions(registerLensAction) {
     let newest = 0;
 
     for (const dtu of STATE.dtus.values?.() ?? []) {
-      const dom = dtu.domain || 'unknown';
+      const dom = classifySubstrateDomain(dtu);
       counts[dom] = (counts[dom] || 0) + 1;
       total++;
       const ts = new Date(dtu.createdAt || 0).getTime();
@@ -89,7 +127,7 @@ export default function registerAllActions(registerLensAction) {
       items.push({
         dtuId: dtu.id,
         title: dtu.title,
-        domain: dtu.domain,
+        domain: classifySubstrateDomain(dtu),
         createdAt: dtu.createdAt,
         creatorId: dtu.creatorId || dtu.ownerId,
       });

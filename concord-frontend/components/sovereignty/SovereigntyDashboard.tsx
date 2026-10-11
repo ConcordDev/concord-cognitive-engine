@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, exportSubstrate } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
+import { ErrorState } from '@/components/common/EmptyState';
 import {
   Shield,
   Lock,
@@ -67,10 +68,11 @@ const CONSENT_OPTIONS: { value: ConsentMode; label: string; desc: string; icon: 
 function SovereigntyDashboard() {
   const qc = useQueryClient();
 
-  const { data: status, isLoading } = useQuery<SovereigntyStatus>({
+  const { data: status, isLoading, isError, error, refetch } = useQuery<SovereigntyStatus>({
     queryKey: ['sovereignty-status'],
     queryFn: () => api.get('/api/sovereignty/status').then((r) => r.data),
     refetchInterval: 30000,
+    retry: false,
   });
 
   const updatePref = useMutation({
@@ -107,11 +109,23 @@ function SovereigntyDashboard() {
     }
   };
 
-  if (isLoading || !status) {
+  if (isLoading) {
     return (
       <div className="p-6 text-center text-gray-400">
         <Shield className="w-8 h-8 mx-auto mb-2 animate-pulse" />
         Loading sovereignty status...
+      </div>
+    );
+  }
+
+  if (isError || !status) {
+    const detail = error instanceof Error ? error.message : 'The status read failed.';
+    return (
+      <div data-testid="sovereignty-dashboard-unavailable">
+        <ErrorState
+          error={`Sovereignty status is unavailable. Counts and consent stay blank until the read succeeds. ${detail}`}
+          onRetry={() => { void refetch(); }}
+        />
       </div>
     );
   }

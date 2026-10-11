@@ -227,6 +227,36 @@ describe("social — polls + quote-posts", () => {
     const detail = call("postDetail", ctxC, { postId: quote.result.post.id });
     assert.ok(detail.result.quoted);
   });
+  it("shows the account username instead of the raw user id", () => {
+    const db = {
+      prepare() {
+        return { get() { return { username: "ada", displayName: "Ada Lovelace" }; } };
+      },
+    };
+    const ctx = { actor: { userId: "user_a" }, userId: "user_a", db };
+    const created = call("createPost", ctx, { body: "hello from ada", username: "user_a" });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.post.username, "ada");
+    assert.equal(created.result.post.displayName, "Ada Lovelace");
+    const feed = call("feed", ctx, {});
+    const row = feed.result.posts.find((p) => p.id === created.result.post.id);
+    assert.equal(row.username, "ada");
+    assert.equal(row.displayName, "Ada Lovelace");
+  });
+
+  it("deletePost is owner-only and removes the post from the feed", () => {
+    const post = newPost(ctxA, { body: "please delete me" });
+    const denied = call("deletePost", ctxB, { postId: post.id });
+    assert.equal(denied.ok, false);
+    assert.match(denied.error, /only the author/);
+    assert.equal(call("feed", ctxA, {}).result.posts.some((p) => p.id === post.id), true);
+    const gone = call("deletePost", ctxA, { postId: post.id });
+    assert.equal(gone.ok, true);
+    assert.equal(gone.result.deleted, true);
+    assert.equal(call("feed", ctxA, {}).result.posts.some((p) => p.id === post.id), false);
+    assert.equal(call("deletePost", ctxA, { postId: post.id }).ok, false);
+  });
+
   it("rejects double-voting the same option", () => {
     const r = call("createPost", ctxA, { body: "q", poll: { question: "q", options: ["A", "B"] } });
     const postId = r.result.post.id;

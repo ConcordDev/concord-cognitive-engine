@@ -19,6 +19,7 @@
 // Returns { ok, scanned, spawned, skipped, reason? } never throws.
 
 import logger from "../logger.js";
+import { shouldPauseHeavyBackground } from "../lib/host-profile.js";
 import { spawnQuestFromAlert, alertSignature } from "../lib/lattice-quest-composer.js";
 import { generateRegionFromAlert } from "../lib/procgen-regions.js";
 
@@ -26,6 +27,7 @@ const MAX_QUESTS_PER_PASS = 6;
 const ELIGIBLE_SEVERITIES = new Set(["warning", "alert", "critical"]);
 
 export async function runLatticeQuestCycle({ db, state, tickCount: _t } = {}) {
+  if (shouldPauseHeavyBackground()) return { ok: true, skipped: "low_memory_host", scanned: 0, spawned: 0 };
   if (process.env.CONCORD_LATTICE_QUESTS === "0") return { ok: false, reason: "disabled" };
   if (!db) return { ok: false, reason: "no_db" };
 

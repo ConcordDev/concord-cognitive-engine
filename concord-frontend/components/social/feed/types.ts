@@ -28,6 +28,7 @@ export interface SocialPost {
   id: string;
   userId: string;
   username: string;
+  displayName?: string | null;
   body: string;
   media: MediaAttachment[];
   poll: SocialPoll | null;
@@ -48,6 +49,7 @@ export interface SocialReply {
   parentId: string | null;
   userId: string;
   username: string;
+  displayName?: string | null;
   body: string;
   createdAt: string;
   children?: SocialReply[];

@@ -341,7 +341,7 @@ export const CORE_LENSES: CoreLensConfig[] = [
     tagline: 'Enter Concordia',
     path: '/lenses/world',
     color: 'neon-cyan',
-    absorbedLensIds: [],
+    absorbedLensIds: ['ledger'],
   },
 ];
 
@@ -3183,7 +3183,7 @@ export const LENS_REGISTRY: LensEntry[] = [
   { id: 'expert-mode', name: 'Expert Mode', icon: Lightbulb, description: 'Deep expert reasoning mode', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/expert-mode', order: 90, keywords: ['expert', 'reasoning', 'deep', 'mode'] },
   { id: 'forecast', name: 'Forecast', icon: TrendingUp, description: 'Predictions and forward-sim', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forecast', order: 90, keywords: ['forecast', 'predict', 'forward', 'sim'] },
   { id: 'forge', name: 'Forge', icon: Hammer, description: 'Single-file app generator', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forge', order: 90, keywords: ['forge', 'app', 'generate', 'build', 'template'] },
-  { id: 'ledger', name: 'The Ledger', icon: Scale, description: 'The flows the Curtain hides — managed parity + extraction liens (Sere)', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ledger', order: 91, keywords: ['ledger', 'sere', 'corruption', 'flows', 'parity', 'lien', 'tessera', 'mercy fund', 'satire'] },
+  { id: 'ledger', name: 'Concordia world ledger (game world)', icon: Scale, description: 'Concordia game-world economy — faction funding and extraction liens, read from the world books', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ledger', order: 91, keywords: ['ledger', 'concordia', 'world', 'game', 'sere', 'corruption', 'flows', 'parity', 'lien', 'tessera', 'mercy fund', 'satire'], coreLens: 'world', tabLabel: 'Concordia world ledger (game world)' },
   { id: 'foundry', name: 'Foundry', icon: Factory, description: 'World-builder substrate', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/foundry', order: 90, keywords: ['foundry', 'world', 'build', 'create'], minExpertise: 'engineering' /* World Lens Phase 5 (Sanctum tier) */ },
   { id: 'gallery', name: 'Gallery', icon: Landmark, description: 'Multi-museum art browsing, deep-zoom, curated exhibits & virtual rooms', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/gallery', order: 90, keywords: ['gallery', 'art', 'museum', 'painting', 'artwork', 'exhibit', 'image'] },
   { id: 'ghost-tracker', name: 'Ghost Tracker', icon: Eye, description: 'Track ghosts in horror mode', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ghost-tracker', order: 90, keywords: ['ghost', 'tracker', 'horror', 'haunt'] },

@@ -7,7 +7,7 @@ import { useVisionAnalysis } from '@/lib/hooks/use-vision-analysis';
 interface Props {
   domain: string;
   prompt?: string;
-  onResult: (result: { analysis: string; suggestedTags?: string[] }) => void;
+  onResult?: (result: { analysis: string; suggestedTags?: string[] }) => void;
   className?: string;
   /**
    * Route through the domain's own `vision` registerLensAction macro
@@ -24,13 +24,22 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMa
   const fileRef = useRef<HTMLInputElement>(null);
   const { analyzeImage, isAnalyzing, result, error, reset } = useVisionAnalysis();
   const [preview, setPreview] = useState<string | null>(null);
+  const [rejected, setRejected] = useState<string | null>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      reset();
+      setPreview(null);
+      setRejected('Vision accepts images only');
+      return;
+    }
+    setRejected(null);
     setPreview(URL.createObjectURL(file));
     const res = await analyzeImage(file, domain, prompt, viaMacro);
-    if (res) onResult(res);
+    if (res) onResult?.(res);
   };
 
   return (
@@ -60,7 +69,7 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMa
           )}
         </div>
       )}
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {(rejected || error) && <p className="mt-1 text-xs text-red-400">{rejected || error}</p>}
     </div>
   );
 }

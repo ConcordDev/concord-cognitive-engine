@@ -152,7 +152,7 @@ function detectFea(text) {
 // recipes" has both → tool-action.
 
 const _TOOL_ACTION_VERBS = [
-  "create", "make", "search", "find", "browse", "list",
+  "create", "save", "make", "search", "find", "browse", "list",
   "open", "start", "generate", "build", "publish", "post",
 ];
 const _TOOL_VERB_RE = new RegExp(`\\b(${_TOOL_ACTION_VERBS.join("|")})\\b`, "i");

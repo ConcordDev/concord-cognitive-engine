@@ -714,7 +714,9 @@ export default function registerEntityActions(registerLensAction) {
   });
 
   // ───────────────────────────────────────────────────────────────────────
-  // Knowledge-graph workbench: per-user persistent entity/relationship store,
+  // Knowledge-graph workbench: per-user persistent entity/relationship store
+  // on STATE.entityGraph (in LENS_STATE_KEYS), so nodes, edges, and schemas
+  // survive a restart. Caps: 5000 nodes, 10000 edges, 200 schemas per user.
   // typed schemas, attribute provenance, path-finding, merge/split, and
   // CSV/JSON + Wikidata import.
   // ───────────────────────────────────────────────────────────────────────
@@ -722,7 +724,9 @@ export default function registerEntityActions(registerLensAction) {
   function getGraphState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.entityGraph) STATE.entityGraph = {};
+    if (!STATE.entityGraph || typeof STATE.entityGraph !== "object" || Array.isArray(STATE.entityGraph)) {
+      STATE.entityGraph = {};
+    }
     const s = STATE.entityGraph;
     for (const k of ["nodes", "edges", "schemas"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
@@ -739,6 +743,10 @@ export default function registerEntityActions(registerLensAction) {
   const userNodes = (s, u) => { if (!s.nodes.has(u)) s.nodes.set(u, []); return s.nodes.get(u); };
   const userEdges = (s, u) => { if (!s.edges.has(u)) s.edges.set(u, []); return s.edges.get(u); };
   const userSchemas = (s, u) => { if (!s.schemas.has(u)) s.schemas.set(u, []); return s.schemas.get(u); };
+  // Snapshot bound. Reject (or skip, on bulk import) past these so one
+  // account cannot grow the process snapshot without a limit.
+  const GRAPH_CAPS = { nodes: 5000, edges: 10000, schemas: 200 };
+  const graphFull = (arr, kind) => arr.length >= GRAPH_CAPS[kind];
 
   /** graph-get — full per-user graph (nodes + edges + schemas). */
   registerLensAction("entity", "graph-get", (ctx, _a, _p = {}) => {
@@ -782,6 +790,7 @@ export default function registerEntityActions(registerLensAction) {
       wikidataId: params.wikidataId ? String(params.wikidataId) : null,
       createdAt: Date.now(),
     };
+    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
     nodes.push(node);
     saveGraphState();
     return { ok: true, result: { node } };
@@ -848,6 +857,7 @@ export default function registerEntityActions(registerLensAction) {
       weight: Number(params.weight) || 1,
       createdAt: Date.now(),
     };
+    if (graphFull(edges, "edges")) return { ok: false, error: "edge_cap" };
     edges.push(edge);
     saveGraphState();
     return { ok: true, result: { edge } };
@@ -899,6 +909,7 @@ export default function registerEntityActions(registerLensAction) {
       return { ok: true, result: { schema: existing } };
     }
     const schema = { id: gid(), className, attributes, createdAt: Date.now() };
+    if (graphFull(schemas, "schemas")) return { ok: false, error: "schema_cap" };
     schemas.push(schema);
     saveGraphState();
     return { ok: true, result: { schema } };
@@ -986,6 +997,8 @@ export default function registerEntityActions(registerLensAction) {
     const splitName = String(params.splitName || "").trim();
     if (!splitName) return { ok: false, error: "splitName required" };
     const keys = Array.isArray(params.attributeKeys) ? params.attributeKeys : [];
+    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
+    if (graphFull(userEdges(s, u), "edges")) return { ok: false, error: "edge_cap" };
     const moved = {};
     for (const k of keys) {
       if (node.attributes[k]) {
@@ -1083,6 +1096,7 @@ export default function registerEntityActions(registerLensAction) {
       if (!row || typeof row !== "object") { skipped.push({ reason: "not an object" }); continue; }
       const name = String(row.name || row.Name || row.label || "").trim();
       if (!name) { skipped.push({ reason: "missing name", row }); continue; }
+      if (graphFull(nodes, "nodes")) { skipped.push({ reason: "node_cap", row }); continue; }
       const entityType = String(row.entityType || row.type || "generic");
       const attributes = {};
       for (const [k, v] of Object.entries(row)) {
@@ -1120,6 +1134,7 @@ export default function registerEntityActions(registerLensAction) {
     const nodes = userNodes(s, u);
     const existing = nodes.find(n => n.wikidataId === wikidataId);
     if (existing) return { ok: false, error: "wikidata entity already imported", existingId: existing.id };
+    if (graphFull(nodes, "nodes")) return { ok: false, error: "node_cap" };
     const attributes = {};
     if (params.description) {
       attributes.description = { value: String(params.description), source: "wikidata", at: Date.now() };
