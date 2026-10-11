@@ -59,6 +59,10 @@ export function draftDtuCall(draft: DraftDtuSource): { domain: string; action: s
     action: 'create',
     input: {
       title: (draft.title || content.split('\n')[0] || 'Thread draft').slice(0, 120),
+      // dtu.create stamps visibility from this field. meta.visibility alone
+      // does not win, and the thread lens is in the social default set, so
+      // an omitted visibility would store a public DTU.
+      visibility: 'private',
       tags: ['thread', 'draft'],
       source: 'thread-lens:draft',
       human: { summary },

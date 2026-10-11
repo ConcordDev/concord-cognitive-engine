@@ -12,6 +12,76 @@
 // (differential, steering, cooling, ...) counts as missing.
 
 import { parseBrief } from "./requirement-parser.js";
+import { solveDesignText, SUPPORTED_PARTS } from "../nlp-design-intent.js";
+
+const SUPPORTED_ARCHITECTURES = "road vehicle (car, truck, suv, van, roadster, coupe, sedan); L-bracket (bracket, angle bracket)";
+
+function libraryMaterialId(intent) {
+  if (intent.material === "aluminum") return "aluminum-6061-t6";
+  if (intent.material === "concrete") return "concrete-30mpa";
+  if (intent.material === "steel" || intent.material === "unknown") return "steel-a36";
+  return null;
+}
+
+/** L-bracket: real plate geometry, tip load, and the screening solve. */
+function compileBracketBrief(brief, parsed, name) {
+  const solved = solveDesignText(brief);
+  if (!solved.ok) {
+    return {
+      error: solved.error,
+      parsed,
+      code: solved.code,
+      supportedParts: [...SUPPORTED_PARTS],
+    };
+  }
+  const s = solved.intent.section;
+  const mat = libraryMaterialId(solved.intent);
+  const P = solved.hand.loadN;
+  const q = (m) => `${m} m`;
+  const plate = (id, label, length) => ({
+    id,
+    kind: "Plate",
+    name: label,
+    ...(mat ? { material: mat } : {}),
+    geometry: { shape: "plate", length: q(length), width: q(s.width), thickness: q(s.thickness) },
+    ...(id === "ARM" ? { props: { support: "cantilever" } } : {}),
+  });
+  return {
+    architecture: "l-bracket",
+    parsed,
+    unmapped: [],
+    assumed: solved.intent.assumed,
+    assumptions: solved.intent.assumptions,
+    solve: { hand: solved.hand, fea: solved.fea, section: s },
+    mesh: {
+      positions: solved.mesh.positions,
+      indices: solved.mesh.indices,
+      kind: solved.mesh.kind,
+      vertexCount: solved.mesh.vertexCount,
+      triangleCount: solved.mesh.triangleCount,
+    },
+    ir: {
+      design: { id: "l-bracket", name: name || "L-bracket" },
+      nodes: [
+        { id: "BRK", kind: "Assembly", name: "L-bracket" },
+        plate("ARM", "Horizontal arm", s.length),
+        plate("LEG", "Vertical leg", s.legHeight),
+      ],
+      edges: [
+        { type: "CONTAINS", from: "BRK", to: "ARM" },
+        { type: "CONTAINS", from: "BRK", to: "LEG" },
+      ],
+      loadCases: [{ id: "service", label: "Service load", loads: [{ target: "ARM", pointLoad: `${P} N` }] }],
+      requirements: [{
+        id: "REQ_yield",
+        label: "Arm bending stress within yield",
+        of: { solver: "bracket.plate", target: "ARM", output: "utilization" },
+        max: { value: 1, unit: "1" },
+      }],
+      brief,
+    },
+  };
+}
 
 function roadVehicle(req) {
   const seats = Math.max(1, Math.round(req.seats?.min?.si || 0)) || null;
@@ -61,8 +131,18 @@ const ARCHITECTURES = [
  */
 export function compileBrief(brief, { name } = {}) {
   const parsed = parseBrief(brief);
+  if (/\b(l[\s-]?bracket|angle\s+bracket|bracket|cantilever\s+plate)\b/i.test(brief)
+    && !/\b(car|vehicle|truck|suv|van|roadster|coupe|sedan)\b/i.test(brief)) {
+    return compileBracketBrief(brief, parsed, name);
+  }
   const arch = ARCHITECTURES.find((a) => a.match.test(brief));
-  if (!arch) return { error: "no architecture for this kind of design yet", parsed };
+  if (!arch) {
+    return {
+      error: `no architecture for this kind of design yet. Supported: ${SUPPORTED_ARCHITECTURES}. Parts you can design directly: ${SUPPORTED_PARTS.join(", ")}.`,
+      parsed,
+      supportedParts: [...SUPPORTED_PARTS],
+    };
+  }
   const req = Object.fromEntries(parsed.requirements.map((r) => [r.metric, r]));
   const a = arch.build(req);
   const requirements = [];

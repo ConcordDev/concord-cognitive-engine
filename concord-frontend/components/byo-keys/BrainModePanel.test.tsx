@@ -86,9 +86,63 @@ describe('BrainModePanel', () => {
     await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('PRIVATE'));
 
     fireEvent.click(screen.getByTestId('brain-mode-select-high-power'));
+    expect(screen.getByTestId('brain-mode-confirm')).toBeInTheDocument();
+    expect(screen.getByTestId('brain-mode-confirm-copy')).toHaveTextContent(/Google Gemini, Mistral, and Groq/);
+    expect(lensRunMock).not.toHaveBeenCalledWith('byo_keys', 'set_brain_mode', expect.anything());
+
+    fireEvent.click(screen.getByTestId('brain-mode-confirm-high-power'));
 
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('byo_keys', 'set_brain_mode', { brainMode: 'high_power' }));
     await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('HIGH POWER'));
+  });
+
+  it('staying private from the confirm dialog does not call set_brain_mode', async () => {
+    lensRunMock.mockResolvedValue({
+      data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null }, error: null },
+    });
+    render(<BrainModePanel />);
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByTestId('brain-mode-select-high-power'));
+    fireEvent.click(screen.getByTestId('brain-mode-cancel-high-power'));
+
+    expect(screen.queryByTestId('brain-mode-confirm')).toBeNull();
+    expect(lensRunMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('PRIVATE');
+  });
+
+  it('switching from High Power back to Private writes immediately, with no confirm', async () => {
+    lensRunMock.mockResolvedValueOnce({
+      data: { ok: true, result: { brainMode: 'high_power', brainModeSetAt: 1 }, error: null },
+    });
+    lensRunMock.mockResolvedValueOnce({
+      data: { ok: true, result: { brainMode: 'private', brainModeSetAt: 2 }, error: null },
+    });
+    render(<BrainModePanel />);
+    await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('HIGH POWER'));
+
+    fireEvent.click(screen.getByTestId('brain-mode-select-private'));
+
+    expect(screen.queryByTestId('brain-mode-confirm')).toBeNull();
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('byo_keys', 'set_brain_mode', { brainMode: 'private' }));
+  });
+
+  it('compact High Power also waits for the named-provider confirm', async () => {
+    lensRunMock.mockResolvedValueOnce({
+      data: { ok: true, result: { brainMode: 'private', brainModeSetAt: null }, error: null },
+    });
+    lensRunMock.mockResolvedValueOnce({
+      data: { ok: true, result: { brainMode: 'high_power', brainModeSetAt: 9 }, error: null },
+    });
+    render(<BrainModePanel compact />);
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByTestId('brain-mode-panel'));
+    expect(screen.getByTestId('brain-mode-confirm')).toHaveTextContent(/Google Gemini, Mistral, and Groq/);
+    expect(lensRunMock).not.toHaveBeenCalledWith('byo_keys', 'set_brain_mode', expect.anything());
+
+    fireEvent.click(screen.getByTestId('brain-mode-confirm-high-power'));
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('byo_keys', 'set_brain_mode', { brainMode: 'high_power' }));
   });
 
   it('calls onModeChange with the loaded mode and again after a save', async () => {
@@ -104,6 +158,8 @@ describe('BrainModePanel', () => {
     await waitFor(() => expect(onModeChange).toHaveBeenCalledWith('private'));
 
     fireEvent.click(screen.getByTestId('brain-mode-select-high-power'));
+    expect(onModeChange).not.toHaveBeenCalledWith('high_power');
+    fireEvent.click(screen.getByTestId('brain-mode-confirm-high-power'));
     await waitFor(() => expect(onModeChange).toHaveBeenCalledWith('high_power'));
   });
 
@@ -132,6 +188,7 @@ describe('BrainModePanel', () => {
     await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('PRIVATE'));
 
     fireEvent.click(screen.getByTestId('brain-mode-select-high-power'));
+    fireEvent.click(screen.getByTestId('brain-mode-confirm-high-power'));
 
     expect(await screen.findByTestId('brain-mode-error')).toHaveTextContent('invalid_brain_mode');
     // The badge must NOT have flipped on a failed write.

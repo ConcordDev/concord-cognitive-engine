@@ -17,6 +17,7 @@
 
 import express from 'express';
 import { createOracleEngine } from '../lib/oracle-engine.js';
+import { ctxMayReadDtu } from '../lib/dtu-read-access.js';
 
 export default function createOracleRoutes({ STATE, requireAuth, dtuStore, domainHandlers }) {
   const router = express.Router();
@@ -81,7 +82,8 @@ export default function createOracleRoutes({ STATE, requireAuth, dtuStore, domai
   router.get('/recent', requireAuth, async (req, res) => {
     try {
       const limit = Math.min(Number(req.query?.limit) || 10, 50);
-      const dtus = STATE.dtus?.list ? STATE.dtus.list({ type: 'oracle_answer', limit }) : [];
+      const listed = STATE.dtus?.list ? STATE.dtus.list({ type: 'oracle_answer', limit }) : [];
+      const dtus = Array.isArray(listed) ? listed.filter((d) => ctxMayReadDtu(req, d)) : [];
       res.json({ ok: true, items: dtus });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
