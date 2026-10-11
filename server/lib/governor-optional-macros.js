@@ -69,8 +69,12 @@ export async function tickGovernorOptionalMacros({
   input,
   ctx,
   synthEnabled = true,
+  include = null,
 }) {
   for (const spec of GOVERNOR_OPTIONAL_MACROS) {
+    // `include` (domains) lets the governor run jobs/queue/synth before its
+    // low-memory early return and ingest/crawl only after it.
+    if (Array.isArray(include) && !include.includes(spec.domain)) continue;
     if (spec.domain === "system" && spec.name === "synth" && !synthEnabled) continue;
     if (!isMacroRegistered(macros, spec.domain, spec.name)) continue;
     try {

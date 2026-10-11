@@ -126,6 +126,22 @@ export function shouldPauseHeavyBackground() {
   return _liveProfile().lowMemory;
 }
 
+/**
+ * Consolidation stays on by default, including on a low-memory host. It is
+ * the memory-management pass; pausing it left a 16GB box with zero megas.
+ * CONCORD_CONSOLIDATION_ON_LOW_MEMORY=0 disables it only while the
+ * low-memory profile is active.
+ *
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function shouldRunConsolidation(env = process.env) {
+  if (String(env.CONCORD_CONSOLIDATION_ON_LOW_MEMORY) !== "0") return true;
+  if (env.CONCORD_LOW_MEMORY_HOST === "0") return true;
+  if (env.CONCORD_LOW_MEMORY_HOST === "1") return false;
+  if (_skipHardwareAutoDetect(env)) return true;
+  return !isLowMemoryHost(undefined, env);
+}
+
 /** LLM model pull/warm stays off on a low-memory host. First request can load on demand. */
 export function shouldAutoLoadLlmModels() {
   return !shouldPauseHeavyBackground();

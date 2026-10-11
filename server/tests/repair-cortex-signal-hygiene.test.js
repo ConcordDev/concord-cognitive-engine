@@ -212,6 +212,31 @@ describe("governor optional-macro tick", () => {
     assert.deepEqual(observed, [{ tag: "governor_jobs_tick", message: "real boom" }]);
   });
 
+  it("include runs only the named domains (governor low-memory split)", async () => {
+    const macros = liveMacroMap();
+    macros.get("jobs").set("tick", { fn() {} });
+    macros.get("ingest").set("tick", { fn() {} });
+    macros.get("crawl").set("tick", { fn() {} });
+    macros.get("system").set("synth", { fn() {} });
+    macros.set("queue", new Map([["tick", { fn() {} }]]));
+    const calls = [];
+    const base = {
+      macros,
+      runMacro: async (domain, name) => { calls.push(`${domain}.${name}`); },
+      observe: () => {},
+      input: {},
+      ctx: {},
+    };
+    await tickGovernorOptionalMacros({ ...base, synthEnabled: false, include: ["jobs", "queue", "system"] });
+    assert.deepEqual(calls, ["jobs.tick", "queue.tick"]);
+    calls.length = 0;
+    await tickGovernorOptionalMacros({ ...base, synthEnabled: true, include: ["jobs", "queue", "system"] });
+    assert.deepEqual(calls, ["jobs.tick", "queue.tick", "system.synth"]);
+    calls.length = 0;
+    await tickGovernorOptionalMacros({ ...base, include: ["ingest", "crawl"] });
+    assert.deepEqual(calls, ["ingest.tick", "crawl.tick"]);
+  });
+
   it("governorTick delegates to the optional-macro tick and does not call the missing macros", () => {
     const start = SERVER_SRC.indexOf("async function governorTick(");
     const end = SERVER_SRC.indexOf("function _startGovernorHeartbeat()");
