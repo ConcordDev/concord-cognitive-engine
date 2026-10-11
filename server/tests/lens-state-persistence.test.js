@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   LENS_STATE_KEYS,
+  SNAPSHOT_EXCLUDED_STATE_KEYS,
   serializeLensState,
   hydrateLensState,
 } from "../lib/lens-state-persistence.js";
@@ -103,6 +104,15 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("consultingLens"));
     assert.ok(LENS_STATE_KEYS.includes("conLens"));
     assert.ok(LENS_STATE_KEYS.includes("expertModeLens"));
+    for (const key of [
+      "_settings", "_personas", "_lawEnforcement",
+      "playerProfiles", "profileVisitors", "_profileVisitorSeq",
+      "game", "entityGraph", "chemStructures", "chemLabNotebook",
+      "mathCAS", "genesisSavedSearches", "digitalTwins",
+      "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
+    ]) {
+      assert.ok(LENS_STATE_KEYS.includes(key), key);
+    }
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {
@@ -1131,6 +1141,19 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(STATE.worldLens.pinnedQuests.get("user_a").has("q1"));
   });
 
+  it("round-trips a root Map and a numeric counter the way player profiles are stored", () => {
+    STATE.playerProfiles = new Map([["user_a", { displayName: "Ada" }]]);
+    STATE.profileVisitors = new Map([["user_a", [{ id: "v1", visitorId: "user_b" }]]]);
+    STATE._profileVisitorSeq = 7;
+    const persisted = JSON.parse(JSON.stringify(serializeLensState(STATE)));
+    freshState();
+    hydrateLensState(STATE, persisted);
+    assert.equal(STATE.playerProfiles.get("user_a").displayName, "Ada");
+    assert.equal(STATE.profileVisitors.get("user_a")[0].visitorId, "user_b");
+    assert.equal(STATE._profileVisitorSeq, 7);
+    assert.equal(STATE.playerProfiles.has("user_b"), false);
+  });
+
   it("every STATE.<x>Lens store a domain file assigns is in LENS_STATE_KEYS", () => {
     const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "domains");
     const re = /\bSTATE\.([a-zA-Z]+Lens)\s*(?:\|\||\?\?)?=[^=]/g;
@@ -1142,4 +1165,59 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     }
     assert.deepEqual([...missing], [], "these lens stores would be wiped on restart: add them to LENS_STATE_KEYS");
   });
+
+  it("every user-record Map a domain hangs off STATE is walked by the snapshot or explicitly excluded", () => {
+    const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "domains");
+    const scanned = new Set();
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith(".js")) continue;
+      for (const key of stateStoreKeysIn(fs.readFileSync(path.join(dir, f), "utf8"))) scanned.add(key);
+    }
+    const unclassified = [];
+    for (const key of scanned) {
+      if (!LENS_STATE_KEYS.includes(key) && !SNAPSHOT_EXCLUDED_STATE_KEYS[key]) unclassified.push(key);
+    }
+    unclassified.sort();
+    assert.deepEqual(
+      unclassified,
+      [],
+      "these STATE stores would be wiped on restart: add them to LENS_STATE_KEYS or SNAPSHOT_EXCLUDED_STATE_KEYS with a reason",
+    );
+    for (const [key, reason] of Object.entries(SNAPSHOT_EXCLUDED_STATE_KEYS)) {
+      assert.equal(typeof reason, "string");
+      assert.ok(reason.length > 20, key);
+      assert.equal(LENS_STATE_KEYS.includes(key), false, `${key} is both persisted and excluded`);
+      assert.ok(scanned.has(key), `exclusion ${key} is not a STATE store assignment in domains/`);
+    }
+    for (const key of [
+      "_settings", "_personas", "_lawEnforcement", "playerProfiles", "profileVisitors",
+      "game", "entityGraph", "chemStructures", "chemLabNotebook", "mathCAS",
+      "genesisSavedSearches", "digitalTwins", "companionNotifications", "companionPushPrefs",
+      "presenceHeartbeats", "affectMood", "federation", "predictionMarkets",
+    ]) {
+      assert.ok(scanned.has(key), `scanner missed ${key}`);
+    }
+  });
 });
+
+// Identifiers bound to globalThis._concordSTATE, then any
+// `<alias>.<key> = new Map` / `??= new Map` / `= {` assignment. That is
+// the shape of a user-record store. *Lens bags and the INC-32 keys both
+// match; a comment that merely names a key does not, because the
+// assignment operator is required.
+function stateStoreKeysIn(src) {
+  const aliases = new Set(["STATE"]);
+  const bindDirect = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\(?\s*(?:globalThis\.)?_concordSTATE\b/g;
+  const bindMember = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\._concordSTATE\b/g;
+  for (const m of src.matchAll(bindDirect)) aliases.add(m[1]);
+  for (const m of src.matchAll(bindMember)) aliases.add(m[1]);
+  const keys = new Set();
+  for (const alias of aliases) {
+    const re = new RegExp(
+      `\\b${alias}\\.([A-Za-z_][A-Za-z0-9_]*)\\s*(?:\\|\\|=\\s*new Map|\\?\\?=\\s*new Map|=\\s*new Map|=\\s*\\{)`,
+      "g",
+    );
+    for (const m of src.matchAll(re)) keys.add(m[1]);
+  }
+  return keys;
+}
