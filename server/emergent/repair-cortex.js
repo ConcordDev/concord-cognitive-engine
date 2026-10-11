@@ -37,7 +37,7 @@ import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
-import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.js";
+import { persistRepairEntry, loadRepairEntry, forgetRepairEntry } from "../lib/repair-memory-store.js";
 
 // Maintenance A — durable Repair Memory. When a db is configured, learned
 // patterns mirror to mig-030 repair_knowledge so the cortex's learning survives
@@ -161,7 +161,9 @@ const GUARDIAN_INTERVALS = Object.freeze({
 // ── Repair Memory ───────────────────────────────────────────────────────────
 // Persistent pattern → fix registry. The system gets smarter over time.
 
-const _repairMemory = new LruMap();
+/** Distinct learned error strings. Oldest is evicted past this ceiling. */
+export const REPAIR_MEMORY_CAP = 1024;
+const _repairMemory = new LruMap(REPAIR_MEMORY_CAP);
 
 function _ensureRepairMemory() {
   try {
@@ -190,6 +192,12 @@ function _syncRepairMemoryToSTATE() {
       for (const [k, v] of _repairMemory) {
         S.repairMemory.set(k, v);
       }
+      // Mirror the live map. Evicted patterns must not linger on STATE.
+      if (S.repairMemory.size > _repairMemory.size) {
+        for (const k of [...S.repairMemory.keys()]) {
+          if (!_repairMemory.has(k)) S.repairMemory.delete(k);
+        }
+      }
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -199,11 +207,15 @@ export function addToRepairMemory(errorPattern, fix) {
     _ensureRepairMemory();
     const key = hashPattern(errorPattern);
     const existing = _repairMemory.get(key);
+    let evictedKey = null;
     if (existing) {
       existing.occurrences++;
       existing.lastSeen = nowISO();
       existing.successRate = existing.successes / existing.occurrences;
     } else {
+      if (_repairMemory.size >= REPAIR_MEMORY_CAP) {
+        evictedKey = _repairMemory.keys().next().value ?? null;
+      }
       // Check if error matches known security vulnerability (CVE tagging)
       let securityRelated = false;
       let cveId = null;
@@ -235,7 +247,11 @@ export function addToRepairMemory(errorPattern, fix) {
       });
     }
     _syncRepairMemoryToSTATE();
-    if (_persistDb) persistRepairEntry(_persistDb, key, _repairMemory.get(key));
+    if (_persistDb) {
+      const live = _repairMemory.get(key);
+      if (live) persistRepairEntry(_persistDb, key, live);
+      if (evictedKey) forgetRepairEntry(_persistDb, evictedKey);
+    }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
 
@@ -328,10 +344,16 @@ const _errorAccumulator = new Map();
  * Silent error sensor. Replaces empty catch blocks.
  * Does NOT throw or disrupt flow. Just observes.
  * The cortex sees everything now.
+ *
+ * opts.learn === false records the accumulator entry and skips repair
+ * memory, repair_knowledge, and security_threat_in_error. Anonymous
+ * frontend reports pass that flag. A "frontend:*" context never learns.
  */
-export function observe(error, context = "unknown") {
+export function observe(error, context = "unknown", opts) {
   try {
     const key = hashPattern(`${context}:${error?.message || error}`);
+    const ctxName = typeof context === "string" ? context : String(context?.module || "");
+    const learn = !(opts && opts.learn === false) && !ctxName.startsWith("frontend:");
 
     const existing = _errorAccumulator.get(key);
     if (existing) {
@@ -370,7 +392,10 @@ export function observe(error, context = "unknown") {
       if (oldestKey) _errorAccumulator.delete(oldestKey);
     }
 
-    // First occurrence — check if repair cortex knows a fix
+    if (!learn) return;
+
+    // First occurrence — check if repair cortex knows a fix.
+    // Skipped for anonymous frontend reports (learn: false / frontend:*).
     const diagnosis = matchErrorPattern(String(error?.message || error));
     if (diagnosis) {
       addToRepairMemory(String(error?.message || error), diagnosis.fixes?.[0]);
@@ -4721,8 +4746,14 @@ class ErrorContext {
     };
     this.errors.push(entry);
     if (this.errors.length > this.maxBuffer) this.errors.shift();
-    // Also feed into the existing error accumulator
-    observe(error, context.module);
+    // Also feed into the existing error accumulator.
+    // learn: false (anonymous frontend reports) stays in this buffer and
+    // the accumulator, and does not teach repair memory.
+    const moduleName = context.module || "unknown";
+    const learn = context.learn !== false
+      && context.trigger !== "frontend_render"
+      && !String(moduleName).startsWith("frontend:");
+    observe(error, moduleName, { learn });
     return entry;
   }
 

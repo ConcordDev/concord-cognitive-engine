@@ -171,6 +171,7 @@ export function ingestFrontendError(body, deps = {}) {
       module: `frontend:${cleaned.lens}`,
       function: cleaned.route || cleaned.lens || "unknown",
       trigger: "frontend_render",
+      learn: false,
       params: {
         componentStack: cleaned.componentStack,
         digest: cleaned.digest,
