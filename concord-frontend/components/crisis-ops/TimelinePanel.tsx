@@ -10,13 +10,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { History, Loader2, Send } from 'lucide-react';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
+import { crisisRefusal } from '@/components/crisis-ops/refusal';
 
 interface LogEntry {
   id: string;
   kind: string;
   note: string;
-  by: string;
   at: number;
+  byName: string | null;
+  byIsMe: boolean;
 }
 interface TimelineResult {
   crisisId: string;
@@ -39,6 +41,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
   const [note, setNote] = useState('');
   const [kind, setKind] = useState('update');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +55,12 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
   const post = useCallback(async () => {
     if (!note.trim()) return;
     setBusy(true);
+    setError(null);
     const r = await lensRun('crisis', 'log_event', {
       crisisId, kind, note: note.trim(),
     });
     if (r.data?.ok) { setNote(''); await load(); }
+    else setError(crisisRefusal(r.data?.error) || 'Log failed.');
     setBusy(false);
   }, [crisisId, kind, note, load]);
 
@@ -105,6 +110,12 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
         </button>
       </div>
 
+      {error && (
+        <p role="alert" className="rounded border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-200">
+          {error}
+        </p>
+      )}
+
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading timeline…
@@ -131,6 +142,11 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
                   </span>
                 </div>
                 <p className="mt-1 text-[12px] text-zinc-200">{e.note}</p>
+                {(e.byName || e.byIsMe) && (
+                  <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                    {e.byName || 'you'}{e.byName && e.byIsMe ? ' (you)' : ''}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
