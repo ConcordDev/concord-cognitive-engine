@@ -5,13 +5,16 @@
 // lib/simulation/fea-solver.js — and the textbook formula for the same case,
 // so the UI can say "FEA agrees with the hand calculation" only when it does.
 //
-// Everything here is deterministic. Nothing is estimated for display: section
+// The study itself is deterministic. Nothing is estimated for display: section
 // properties come from lib/compute/engineering-compute.js#sectionProperties,
 // stiffness and yield from the engineering material library, stresses and
 // deflections from the solver. Units: inputs in mm / N, solver in SI.
+// buildAnalysisReceipt adds an Ed25519 attestation (issuedAt + signature)
+// that is not part of inputHash.
 
 import { createHash } from "node:crypto";
 import { sectionProperties } from "../compute/engineering-compute.js";
+import { attestReceipt } from "../receipts/attest.js";
 
 /** Direct-stiffness beam-frame solver identity (semver from server package). */
 export const FEA_SOLVER_ID = "fea-solver@5.0.0";
@@ -79,13 +82,13 @@ export function hashBeamStudyInputs(input = {}) {
  * @param {{ dims: object, support: string, loadN: number, material: { E: number, yield: number }, segments?: number }} input
  */
 export function buildAnalysisReceipt(input = {}) {
-  return {
+  return attestReceipt({
     solver: FEA_SOLVER_ID,
     inputHash: hashBeamStudyInputs(input),
     units: "SI",
     assumptions: [...BEAM_ASSUMPTIONS],
     outOfScope: [...BEAM_OUT_OF_SCOPE],
-  };
+  });
 }
 
 

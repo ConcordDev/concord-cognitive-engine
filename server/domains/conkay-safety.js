@@ -1,7 +1,9 @@
 // server/domains/conkay-safety.js
 //
 // Lens actions for the ConKay safety-case layer (lib/conkay/safety-case).
-// Pure and deterministic: no database, no network, no model; nothing stored.
+// The case itself is deterministic: no database, no network, no model;
+// nothing stored. Reports returned from case-report, pra-demo, and
+// facility-us600 also carry an Ed25519 attestation, new on each issuance.
 // Screening only: every result carries the banner, and no output status is
 // ever a safety determination.
 //
@@ -22,6 +24,7 @@
 //                                         pull list) from the same model; revision = model hash; unknowns not drawn
 
 import "../lib/conkay/index.js";
+import { attestReport } from "../lib/receipts/attest.js";
 import { runSafetyCaseDemo, renderSafetyCaseMarkdown, minimalCutSets, verifyChain, BANNER, quantifyTree, importance, runPraDemo, renderPraMarkdown, buildUS600Facility, runFacilityScreen, renderFacilityMarkdown, drawFacility } from "../lib/conkay/safety-case/index.js";
 import { toSvg } from "../lib/conkay/drawings/sheet.js";
 
@@ -29,7 +32,7 @@ export default function registerConkaySafetyActions(registerLensAction) {
   registerLensAction("conkay_safety", "case-report", () => {
     const r = runSafetyCaseDemo();
     if (!r.ok) return { ok: false, error: r.errors.join("; "), banner: BANNER };
-    return { ok: true, result: { banner: BANNER, report: r, markdown: renderSafetyCaseMarkdown(r) } };
+    return { ok: true, result: { banner: BANNER, report: attestReport(r), markdown: renderSafetyCaseMarkdown(r) } };
   });
 
   registerLensAction("conkay_safety", "cut-sets", (_ctx, _artifact, params) => {
@@ -56,7 +59,7 @@ export default function registerConkaySafetyActions(registerLensAction) {
   registerLensAction("conkay_safety", "pra-demo", (_ctx, _artifact, params) => {
     const samples = Number.isInteger(params?.samples) && params.samples > 0 && params.samples <= 50000 ? params.samples : 4000;
     const r = runPraDemo({ samples, seed: typeof params?.seed === "string" ? params.seed : "conkay-pra-demo" });
-    return { ok: true, result: { ...r, markdown: renderPraMarkdown(r) } };
+    return { ok: true, result: attestReport({ ...r, markdown: renderPraMarkdown(r) }) };
   });
 
   registerLensAction("conkay_safety", "facility-us600", (_ctx, _artifact, params) => {
@@ -64,7 +67,7 @@ export default function registerConkaySafetyActions(registerLensAction) {
     if (modules < 1 || modules > 12) return { ok: false, error: "modules must be 1..12", banner: BANNER };
     const r = runFacilityScreen(buildUS600Facility({ modules }));
     if (!r.ok) return { ok: false, error: r.errors.join("; "), banner: BANNER };
-    return { ok: true, result: { ...r, markdown: renderFacilityMarkdown(r) } };
+    return { ok: true, result: attestReport({ ...r, markdown: renderFacilityMarkdown(r) }) };
   });
 
   registerLensAction("conkay_safety", "facility-us600-drawing", (_ctx, _artifact, params) => {

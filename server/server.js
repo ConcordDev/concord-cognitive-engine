@@ -8354,6 +8354,9 @@ function authMiddleware(req, res, next) {
     // must be publicly resolvable so federated peers (Mastodon, etc.)
     // can discover Concord actors before any authenticated handshake.
     "/.well-known/webfinger",
+    // Ed25519 public keys for ConKay receipt verification. Exact path only
+    // (not the /.well-known prefix). The document is public key material.
+    "/.well-known/concord-receipt-keys.json",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -8419,6 +8422,10 @@ function authMiddleware(req, res, next) {
   // {name, value, kind} into an anonymous in-memory rolling window, so no
   // identity-resolution discipline is needed here the way it was for /api/chat.
   if (req.method === "POST" && req.path === "/api/metrics/vitals") return next();
+  // Public receipt check. The body is a receipt the caller already has; the
+  // handler verifies a signature and writes nothing. Unconditional so a
+  // stale Authorization header cannot turn a public check into a 401.
+  if (req.method === "POST" && req.path === "/api/receipts/verify") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -8704,6 +8711,10 @@ function productionWriteAuthMiddleware(req, res, next) {
   // rate-limited (write.proof-comment). Deliberately not a prefix entry above,
   // so no other write under /api/public-share/ is ever opened by it.
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
+  // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
+  // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
+  // Rate limit: write.receipt-verify. See routes/receipts.js.
+  if (method === "POST" && req.path === "/api/receipts/verify") return next();
   // In production, require at least an API key or authenticated session for writes
   if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
@@ -15144,6 +15155,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/messaging", "/api/sandbox",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
+    // Public Ed25519 receipt keys (exact path; not an /api prefix).
+    "/.well-known/concord-receipt-keys.json",
     // Three-gate sync: paths added to Gate 1 (publicReadPaths) need to land
     // here too so unauthenticated reads don't get blocked by the Chicken2
     // safeReadBypass check. Test: tests/three-gate-consistency.test.js.
@@ -39950,6 +39963,12 @@ app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 // bypass for /api/conkay/demo/*). Mounted before the signed-in routers.
 import createConkayDemoRouter from "./routes/conkay-demo.js";
 app.use("/api/conkay/demo", createConkayDemoRouter({ rateLimit: perEndpointRateLimit("read.conkay-demo") }));
+// Public Ed25519 receipt keys + POST /api/receipts/verify (no auth, rate-limited).
+import createReceiptRouter from "./routes/receipts.js";
+app.use(createReceiptRouter({
+  readLimit: perEndpointRateLimit("read.receipt-keys"),
+  verifyLimit: perEndpointRateLimit("write.receipt-verify"),
+}));
 // ConKay free-text NLP → design intent → FEA/partMesh mesh arrays (v1 apply_mesh path)
 import createConkayDesignRouter from "./routes/conkay-design.js";
 app.use("/api/conkay", createConkayDesignRouter({ requireAuth, db }));

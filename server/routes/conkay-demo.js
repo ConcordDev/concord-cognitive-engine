@@ -11,6 +11,7 @@
 import express from "express";
 import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/engineering.js";
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
+import { attestReceipt } from "../lib/receipts/attest.js";
 
 const DIM_KEYS = ["length", "height", "flangeWidth", "flangeThickness", "webThickness"];
 
@@ -68,7 +69,9 @@ export default function createConkayDemoRouter({ rateLimit }) {
   router.get("/designs/:id", limit, (req, res) => {
     const snap = loadSnapshot(String(req.params.id));
     if (!snap) return res.status(404).json({ ok: false, error: "no such showcase design" });
-    res.json({ ok: true, design: snap });
+    // Sign a copy. The cached snapshot on disk stays the content hash the
+    // file route checks; issuedAt is the moment this response was issued.
+    res.json({ ok: true, design: attestReceipt(snap) });
   });
 
   router.get("/designs/:id/files/:name", limit, (req, res) => {

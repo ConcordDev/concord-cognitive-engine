@@ -48,6 +48,9 @@ function greedy(ranges, coeff, maximize) {
  * inputs: [{ id, fractionPct | {min,max} (percent), density: { lo, hi } kg/m³ | null, claimRef }]
  * basis: "mass" | "volume"
  * Returns { ok, status, value, range, receipt } or { ok:false, status:"unknown", missing, receipt }.
+ * The receipt is the content record (id is a hash of that record). Ed25519
+ * attestation is applied when a domain returns the enclosing report, so two
+ * calls here stay byte-identical.
  */
 export function ruleOfMixturesDensity({ inputs, basis, pointFractions, assumptions = [], label }) {
   const missing = inputs.filter((x) => !x.density || !(x.density.lo > 0 && x.density.hi >= x.density.lo)).map((x) => x.id);
