@@ -388,7 +388,16 @@ export function registerDurableEndpoints(app, db) {
   app.post("/api/marketplace/listings/:id/purchase", (req, res) => {
     try {
       const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ? AND visibility = 'published'").get(req.params.id);
-      if (!listing) return res.status(404).json({ error: "Published listing not found" });
+      if (!listing) return res.status(404).json({ ok: false, error: "Published listing not found", reason: "listing_not_found" });
+      const ownerId = listing.owner_user_id || listing.user_id || null;
+      const sellerOnlySystem = !ownerId && listing.seller_id === "system";
+      if (ownerId === "system" || sellerOnlySystem) {
+        return res.status(403).json({
+          ok: false,
+          error: "system listings cannot be purchased",
+          reason: "system_listing",
+        });
+      }
 
       const { user_id } = req.body;
       if (!user_id) return res.status(400).json({ error: "user_id required" });
