@@ -17,6 +17,7 @@
 // r.result.ok===false + r.result.error (the handler's verdict).
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx, macroRuntime } from "./_harness.js";
 
 describe("classroom — grade + gradebook math (exact computed values)", () => {
@@ -279,8 +280,42 @@ describe("classroom — CRUD round-trips + validation rejections (shared ctx)", 
 //    homework_submissions / peer_reviews (migration 165) and return the macro's
 //    verdict object DIRECTLY (no lens.run unwrap). r.ok===false on rejection. ──
 describe("classroom — DB cohort lifecycle (create → enrol → submit → review)", () => {
-  let runMacro, teacher;
-  before(async () => { ({ runMacro, ctx: teacher } = await macroRuntime("classroom-teacher")); });
+  let runMacro, teacher, db, STATE;
+  before(async () => {
+    ({ runMacro, ctx: teacher, STATE } = await macroRuntime("classroom-teacher"));
+    db = teacher.db;
+  });
+
+  function seedLiveDtu(ownerId, visibility = "private") {
+    const id = `hw-${randomUUID()}`;
+    STATE.dtus.set(id, {
+      id,
+      title: "Homework",
+      ownerId,
+      author: ownerId,
+      userId: ownerId,
+      createdBy: ownerId,
+      visibility,
+      privacy: visibility === "private" ? "private" : "public",
+      scope: visibility === "private" ? "user" : "global",
+    });
+    return id;
+  }
+
+  function seedTableDtu(ownerId, visibility = "private") {
+    const id = `hwrow-${randomUUID()}`;
+    db.prepare(`
+      INSERT INTO dtus (id, type, title, creator_id, data, visibility, skill_level, total_experience, created_at)
+      VALUES (?, 'knowledge', 'Homework', ?, '{}', ?, 1, 0, unixepoch())
+    `).run(id, ownerId, visibility);
+    return id;
+  }
+
+  function enrolmentRows(cohortId, studentId) {
+    return db.prepare(
+      `SELECT COUNT(*) AS n FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?`
+    ).get(cohortId, studentId).n;
+  }
 
   it("create_cohort: persists a cohort owned by the caller, returns numeric cohortId", async () => {
     const r = await runMacro("classroom", "create_cohort", { name: "Algebra I" }, teacher);
@@ -321,22 +356,28 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     assert.equal(taught.enrolled, 1); // exactly one, not two
   });
 
-  it("submit_homework: an enrolled student gets a submissionId; the same DB row drives peer_review", async () => {
+  it("submit_homework: an enrolled student gets a submissionId; an enrolled classmate's peer_review persists", async () => {
     const { runMacro: rm, ctx: student } = await macroRuntime("classroom-student");
     const c = await runMacro("classroom", "create_cohort", { name: "Homework Cohort" }, teacher);
     // teacher enrols the student
     await runMacro("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-student" }, teacher);
-    // student submits a DTU
-    const sub = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: "dtu-essay-1" }, student);
+    const dtuId = seedLiveDtu("classroom-student");
+    const sub = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId }, student);
     assert.equal(sub.ok, true);
     assert.equal(typeof sub.submissionId, "number");
     assert.ok(sub.submissionId > 0); // a real AUTOINCREMENT rowid
 
-    // round-trip proof the homework row exists: a peer_review against an absent
-    // submissionId would FK-orphan; against this real id it persists cleanly.
+    // A classmate who is actually enrolled may review. The author may not.
     const { runMacro: rmr, ctx: reviewer } = await macroRuntime("classroom-reviewer");
+    await runMacro("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-reviewer" }, teacher);
     const rev = await rmr("classroom", "peer_review", { submissionId: sub.submissionId, score: 87.9, comment: "solid" }, reviewer);
     assert.equal(rev.ok, true);
+    const reviews = db.prepare(
+      `SELECT score, reviewer_user_id FROM peer_reviews WHERE submission_id = ?`
+    ).all(sub.submissionId);
+    assert.equal(reviews.length, 1);
+    assert.equal(reviews[0].reviewer_user_id, "classroom-reviewer");
+    assert.equal(reviews[0].score, 87); // floor(87.9)
   });
 
   it("submit_homework: a non-enrolled student is rejected with not_enroled", async () => {
@@ -366,7 +407,8 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     const { runMacro: rm, ctx: student } = await macroRuntime("classroom-rr-student");
     const c = await runMacro("classroom", "create_cohort", { name: "Re-review" }, teacher);
     await runMacro("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-rr-student" }, teacher);
-    const sub = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: "dtu-rr" }, student);
+    const dtuId = seedLiveDtu("classroom-rr-student");
+    const sub = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId }, student);
     assert.ok(sub.submissionId > 0);
     // first review: 10. second review (same reviewer+submission): an over-range 250
     // → Math.max(0,Math.min(100,floor(250)))=100, accepted, REPLACES rather than
@@ -378,6 +420,12 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     // a negative score is also clamped (to 0), not rejected
     const neg = await runMacro("classroom", "peer_review", { submissionId: sub.submissionId, score: -5 }, teacher);
     assert.equal(neg.ok, true);
+    // three reviews from the teacher replaced one row; the last score clamped to 0
+    const reviews = db.prepare(
+      `SELECT score FROM peer_reviews WHERE submission_id = ? AND reviewer_user_id = ?`
+    ).all(sub.submissionId, "classroom-teacher");
+    assert.equal(reviews.length, 1);
+    assert.equal(reviews[0].score, 0);
   });
 
   it("list_cohorts: teaching shows the teacher's cohorts with live enrolled counts; studying shows enrolments", async () => {
@@ -398,6 +446,188 @@ describe("classroom — DB cohort lifecycle (create → enrol → submit → rev
     const { runMacro: rms, ctx: stu } = await macroRuntime("ls-stu-1");
     const seen = await rms("classroom", "list_cohorts", {}, stu);
     assert.equal(seen.ok, true);
+    const row = seen.studying.find((s) => s.id === c.cohortId);
+    assert.ok(row);
+    assert.equal(row.teacher_user_id, "classroom-list-owner");
+    // No users row for this teacher: do not invent a display name from the id.
+    assert.equal(row.teacher_display_name, null);
+  });
+
+  it("list_cohorts: studying rows carry the teacher's username when a user row exists", async () => {
+    const { runMacro: rm, ctx: owner } = await macroRuntime("classroom-named-teacher");
+    db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, created_at)
+      VALUES (?, ?, ?, 'x', datetime('now'))
+    `).run("classroom-named-teacher", "Ada Lovelace", "ada-classroom-named-teacher@classroom.test");
+    const c = await rm("classroom", "create_cohort", { name: "Named Cohort" }, owner);
+    const { runMacro: rms, ctx: stu } = await macroRuntime("classroom-named-student");
+    const joined = await rms("classroom", "enrol", { cohortId: c.cohortId }, stu);
+    assert.equal(joined.ok, true);
+    const seen = await rms("classroom", "list_cohorts", {}, stu);
+    const row = seen.studying.find((s) => s.id === c.cohortId);
+    assert.equal(row.teacher_display_name, "Ada Lovelace");
+    assert.equal(row.teacher_user_id, "classroom-named-teacher");
+  });
+
+  it("enrol: a cohort that does not exist is refused and writes no row", async () => {
+    const r = await runMacro("classroom", "enrol", { cohortId: 987654 }, teacher);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "cohort_not_found");
+    assert.equal(enrolmentRows(987654, "classroom-teacher"), 0);
+  });
+
+  it("enrol: a non-teacher cannot force another user into a cohort", async () => {
+    const c = await runMacro("classroom", "create_cohort", { name: "Closed Join" }, teacher);
+    const { runMacro: rm, ctx: intruder } = await macroRuntime("classroom-intruder");
+    const r = await rm("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-victim" }, intruder);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "not_teacher");
+    assert.equal(enrolmentRows(c.cohortId, "classroom-victim"), 0);
+    const { runMacro: rv, ctx: victim } = await macroRuntime("classroom-victim");
+    const seen = await rv("classroom", "list_cohorts", {}, victim);
+    assert.equal(seen.studying.some((s) => s.id === c.cohortId), false);
+  });
+
+  it("enrol: self-enrol into an active cohort is allowed; an archived cohort is refused", async () => {
+    const c = await runMacro("classroom", "create_cohort", { name: "Open Join" }, teacher);
+    const { runMacro: rm, ctx: stu } = await macroRuntime("classroom-self-join");
+    const joined = await rm("classroom", "enrol", { cohortId: c.cohortId }, stu);
+    assert.equal(joined.ok, true);
+    assert.equal(joined.studentUserId, "classroom-self-join");
+    assert.equal(enrolmentRows(c.cohortId, "classroom-self-join"), 1);
+    const seen = await rm("classroom", "list_cohorts", {}, stu);
     assert.ok(seen.studying.some((s) => s.id === c.cohortId));
+
+    const archived = await runMacro("classroom", "archive_cohort", { cohortId: c.cohortId }, teacher);
+    assert.equal(archived.ok, true);
+    assert.equal(archived.status, "archived");
+    const { runMacro: rm2, ctx: late } = await macroRuntime("classroom-late-join");
+    const refused = await rm2("classroom", "enrol", { cohortId: c.cohortId }, late);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reason, "cohort_inactive");
+    assert.equal(enrolmentRows(c.cohortId, "classroom-late-join"), 0);
+    // archived cohorts drop out of both lists
+    const teaching = await runMacro("classroom", "list_cohorts", {}, teacher);
+    assert.equal(teaching.teaching.some((t) => t.id === c.cohortId), false);
+    const still = await rm("classroom", "list_cohorts", {}, stu);
+    assert.equal(still.studying.some((s) => s.id === c.cohortId), false);
+  });
+
+  it("archive_cohort: only the teacher can archive, and a second archive stays archived", async () => {
+    const c = await runMacro("classroom", "create_cohort", { name: "Archive Me" }, teacher);
+    const { runMacro: rm, ctx: stu } = await macroRuntime("classroom-archive-student");
+    const stranger = await rm("classroom", "archive_cohort", { cohortId: c.cohortId }, stu);
+    assert.equal(stranger.ok, false);
+    assert.equal(stranger.reason, "not_teacher");
+    assert.equal(db.prepare(`SELECT status FROM classroom_cohorts WHERE id = ?`).get(c.cohortId).status, "active");
+
+    const missing = await runMacro("classroom", "archive_cohort", { cohortId: 987654 }, teacher);
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "cohort_not_found");
+
+    const first = await runMacro("classroom", "archive_cohort", { cohortId: c.cohortId }, teacher);
+    const second = await runMacro("classroom", "archive_cohort", { cohortId: c.cohortId }, teacher);
+    assert.equal(first.ok, true);
+    assert.equal(second.ok, true);
+    assert.equal(second.status, "archived");
+    assert.equal(db.prepare(`SELECT status FROM classroom_cohorts WHERE id = ?`).get(c.cohortId).status, "archived");
+  });
+
+  it("leave_cohort: a student drops their enrolment; an outsider and a missing cohort are refused", async () => {
+    const c = await runMacro("classroom", "create_cohort", { name: "Leave Me" }, teacher);
+    const { runMacro: rm, ctx: stu } = await macroRuntime("classroom-leaver");
+    await rm("classroom", "enrol", { cohortId: c.cohortId }, stu);
+    assert.equal(enrolmentRows(c.cohortId, "classroom-leaver"), 1);
+
+    const { runMacro: ro, ctx: outsider } = await macroRuntime("classroom-leave-outsider");
+    const nope = await ro("classroom", "leave_cohort", { cohortId: c.cohortId }, outsider);
+    assert.equal(nope.ok, false);
+    assert.equal(nope.reason, "not_enroled");
+    assert.equal(enrolmentRows(c.cohortId, "classroom-leaver"), 1);
+
+    const left = await rm("classroom", "leave_cohort", { cohortId: c.cohortId }, stu);
+    assert.equal(left.ok, true);
+    assert.equal(enrolmentRows(c.cohortId, "classroom-leaver"), 0);
+    assert.equal(db.prepare(`SELECT status FROM classroom_cohorts WHERE id = ?`).get(c.cohortId).status, "active");
+    const seen = await rm("classroom", "list_cohorts", {}, stu);
+    assert.equal(seen.studying.some((s) => s.id === c.cohortId), false);
+
+    // self-enrol still works after leaving
+    const again = await rm("classroom", "enrol", { cohortId: c.cohortId }, stu);
+    assert.equal(again.ok, true);
+    assert.equal(enrolmentRows(c.cohortId, "classroom-leaver"), 1);
+
+    const missing = await rm("classroom", "leave_cohort", { cohortId: 987654 }, stu);
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "cohort_not_found");
+  });
+
+  it("submit_homework: refuses a missing DTU, someone else's private DTU, and an archived cohort; allows a readable DTU", async () => {
+    const { runMacro: rm, ctx: student } = await macroRuntime("classroom-dtu-student");
+    const c = await runMacro("classroom", "create_cohort", { name: "DTU Gate" }, teacher);
+    await runMacro("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-dtu-student" }, teacher);
+
+    const missing = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: "dtu-does-not-exist" }, student);
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "dtu_not_found");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM homework_submissions WHERE dtu_id = ?`).get("dtu-does-not-exist").n, 0);
+
+    const secret = seedLiveDtu("someone-else");
+    const stolen = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: secret }, student);
+    assert.equal(stolen.ok, false);
+    assert.equal(stolen.reason, "dtu_not_readable");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM homework_submissions WHERE dtu_id = ?`).get(secret).n, 0);
+
+    const shared = seedLiveDtu("someone-else", "public");
+    const okPublic = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: shared }, student);
+    assert.equal(okPublic.ok, true);
+    assert.equal(typeof okPublic.submissionId, "number");
+
+    const ownRow = seedTableDtu("classroom-dtu-student");
+    const okTable = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: ownRow }, student);
+    assert.equal(okTable.ok, true);
+
+    const otherRow = seedTableDtu("someone-else");
+    const tableStolen = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: otherRow }, student);
+    assert.equal(tableStolen.ok, false);
+    assert.equal(tableStolen.reason, "dtu_not_readable");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM homework_submissions WHERE dtu_id = ?`).get(otherRow).n, 0);
+
+    await runMacro("classroom", "archive_cohort", { cohortId: c.cohortId }, teacher);
+    const own = seedLiveDtu("classroom-dtu-student");
+    const closed = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId: own }, student);
+    assert.equal(closed.ok, false);
+    assert.equal(closed.reason, "cohort_inactive");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM homework_submissions WHERE dtu_id = ?`).get(own).n, 0);
+  });
+
+  it("peer_review: refuses a missing submission, the author, and an outsider, and writes nothing", async () => {
+    const { runMacro: rm, ctx: student } = await macroRuntime("classroom-review-student");
+    const c = await runMacro("classroom", "create_cohort", { name: "Review Gate" }, teacher);
+    await runMacro("classroom", "enrol", { cohortId: c.cohortId, studentUserId: "classroom-review-student" }, teacher);
+    const dtuId = seedLiveDtu("classroom-review-student");
+    const sub = await rm("classroom", "submit_homework", { cohortId: c.cohortId, dtuId }, student);
+    assert.equal(sub.ok, true);
+
+    const missing = await runMacro("classroom", "peer_review", { submissionId: 987654321, score: 10 }, teacher);
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "submission_not_found");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM peer_reviews WHERE submission_id = ?`).get(987654321).n, 0);
+
+    const self = await rm("classroom", "peer_review", { submissionId: sub.submissionId, score: 90 }, student);
+    assert.equal(self.ok, false);
+    assert.equal(self.reason, "own_submission");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM peer_reviews WHERE submission_id = ?`).get(sub.submissionId).n, 0);
+
+    const { runMacro: ro, ctx: outsider } = await macroRuntime("classroom-review-outsider");
+    const refused = await ro("classroom", "peer_review", { submissionId: sub.submissionId, score: 40 }, outsider);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reason, "not_in_cohort");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM peer_reviews WHERE submission_id = ?`).get(sub.submissionId).n, 0);
+
+    // the teacher of the cohort may still review
+    const taught = await runMacro("classroom", "peer_review", { submissionId: sub.submissionId, score: 70 }, teacher);
+    assert.equal(taught.ok, true);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM peer_reviews WHERE submission_id = ?`).get(sub.submissionId).n, 1);
   });
 });

@@ -93,6 +93,7 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { lookupUserIdentity } from "./lib/user-identity.js";
 import { validateMimeType } from "./lib/upload-mime.js";
 import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
 import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
@@ -89177,6 +89178,71 @@ register("dtu_sync", "force_sync", async (ctx, input = {}) => {
 }, { note: "Compose + return a portable pack for the device. Uses Phase 0 universal-format export." });
 
 // #20 Classroom — cohorts + homework + peer review.
+//
+// Self-enrolment is the product behaviour: this macro's original note and the
+// cohort card both treat a blank student id as "join myself". Joining somebody
+// else is only the teacher's act. A missing or inactive cohort writes nothing.
+
+function classroomCohortById(database, cohortId) {
+  return database.prepare(
+    `SELECT id, teacher_user_id, status FROM classroom_cohorts WHERE id = ?`
+  ).get(cohortId) || null;
+}
+
+function classroomDtuRecord(database, dtuId) {
+  const id = String(dtuId);
+  // Live DTUs live in the write-through store (STATE.dtus / dtu_store).
+  // Some subsystems still insert straight into the legacy `dtus` table;
+  // honour that row only when the live store has no object, so a stale
+  // public table row cannot widen a private live DTU.
+  try {
+    const store = globalThis._concordSTATE?.dtus;
+    if (store && typeof store.get === "function") {
+      const hit = store.get(id);
+      if (hit && typeof hit === "object") return hit;
+    }
+  } catch { /* fall through to the legacy table */ }
+  const row = database.prepare(
+    `SELECT id, owner_user_id, creator_id, visibility FROM dtus WHERE id = ?`
+  ).get(id);
+  if (!row) return null;
+  const owner = row.owner_user_id || row.creator_id || null;
+  return {
+    id: row.id,
+    ownerId: owner,
+    owner_user_id: row.owner_user_id || null,
+    creator_id: row.creator_id || null,
+    author: owner,
+    visibility: row.visibility || null,
+  };
+}
+
+function classroomSubmitterMayAttach(dtu, userId) {
+  if (!dtu || !userId) return false;
+  const owners = [dtu.ownerId, dtu.owner_user_id, dtu.creator_id, dtu.author, dtu.userId, dtu.createdBy];
+  for (const owner of owners) {
+    if (typeof owner === "string" && owner && owner !== "anon" && owner === userId) return true;
+  }
+  // Same predicate as the by-id read gate, without the internal-ctx bypass:
+  // this macro is a user action even when a test calls it through makeInternalCtx.
+  if (dtu.visibility === "internal") return false;
+  return !privateDtuHiddenFrom(dtu, userId);
+}
+
+function classroomWithTeacherNames(database, rows) {
+  const names = new Map();
+  for (const row of rows) {
+    const id = row?.teacher_user_id;
+    if (!id || names.has(id)) continue;
+    const ident = lookupUserIdentity(database, id);
+    names.set(id, ident?.displayName || null);
+  }
+  return rows.map((row) => ({
+    ...row,
+    teacher_display_name: names.get(row.teacher_user_id) || null,
+  }));
+}
+
 register("classroom", "create_cohort", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;
@@ -89198,14 +89264,21 @@ register("classroom", "enrol", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { cohortId, studentUserId } = input || {};
   if (!cohortId) return { ok: false, reason: "missing_cohort" };
-  const target = studentUserId || userId;
+  const trimmed = studentUserId == null ? "" : String(studentUserId).trim();
+  const target = trimmed === "" ? userId : trimmed;
   try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    if (target !== userId && cohort.teacher_user_id !== userId) {
+      return { ok: false, reason: "not_teacher" };
+    }
     db.prepare(`
       INSERT OR IGNORE INTO classroom_enrolments (cohort_id, student_user_id) VALUES (?, ?)
-    `).run(cohortId, target);
-    return { ok: true, cohortId, studentUserId: target };
+    `).run(cohort.id, target);
+    return { ok: true, cohortId: cohort.id, studentUserId: target };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Enrol a student in a cohort. Self-enrolment if studentUserId omitted." });
+}, { note: "Enrol in an active cohort. Self-enrolment if studentUserId is omitted. Enrolling someone else requires the teacher." });
 
 register("classroom", "submit_homework", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -89218,13 +89291,19 @@ register("classroom", "submit_homework", (ctx, input = {}) => {
       SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
     `).get(cohortId, userId);
     if (!enroled) return { ok: false, reason: "not_enroled" };
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    const dtu = classroomDtuRecord(db, dtuId);
+    if (!dtu) return { ok: false, reason: "dtu_not_found" };
+    if (!classroomSubmitterMayAttach(dtu, userId)) return { ok: false, reason: "dtu_not_readable" };
     const r = db.prepare(`
       INSERT INTO homework_submissions (cohort_id, student_user_id, dtu_id)
       VALUES (?, ?, ?)
-    `).run(cohortId, userId, dtuId);
+    `).run(cohort.id, userId, String(dtuId));
     return { ok: true, submissionId: r.lastInsertRowid };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Student submits a DTU as homework." });
+}, { note: "Enrolled student submits a DTU they own or can read as homework." });
 
 register("classroom", "peer_review", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -89233,13 +89312,26 @@ register("classroom", "peer_review", (ctx, input = {}) => {
   const { submissionId, score, comment = null } = input || {};
   if (!submissionId || score === undefined) return { ok: false, reason: "missing_inputs" };
   try {
+    const submission = db.prepare(`
+      SELECT id, cohort_id, student_user_id FROM homework_submissions WHERE id = ?
+    `).get(submissionId);
+    if (!submission) return { ok: false, reason: "submission_not_found" };
+    if (submission.student_user_id === userId) return { ok: false, reason: "own_submission" };
+    const cohort = classroomCohortById(db, submission.cohort_id);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.status !== "active") return { ok: false, reason: "cohort_inactive" };
+    const teaches = cohort.teacher_user_id === userId;
+    const enrolled = teaches ? true : !!db.prepare(`
+      SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).get(submission.cohort_id, userId);
+    if (!enrolled) return { ok: false, reason: "not_in_cohort" };
     db.prepare(`
       INSERT OR REPLACE INTO peer_reviews (submission_id, reviewer_user_id, score, comment)
       VALUES (?, ?, ?, ?)
-    `).run(submissionId, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
+    `).run(submission.id, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
     return { ok: true };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Peer review a submission. Reviewer score 0-100." });
+}, { note: "Peer review a real submission. Reviewer must teach or be enrolled in that cohort, and must not be the author. Score 0-100." });
 
 register("classroom", "list_cohorts", (ctx, _input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -89252,16 +89344,53 @@ register("classroom", "list_cohorts", (ctx, _input = {}) => {
       FROM classroom_cohorts WHERE teacher_user_id = ? AND status = 'active'
       ORDER BY created_at DESC
     `).all(userId);
-    const studying = db.prepare(`
+    const studying = classroomWithTeacherNames(db, db.prepare(`
       SELECT c.id, c.name, c.rubric_dtu_id, c.teacher_user_id, e.enroled_at
       FROM classroom_enrolments e
       JOIN classroom_cohorts c ON c.id = e.cohort_id
       WHERE e.student_user_id = ? AND c.status = 'active'
       ORDER BY e.enroled_at DESC
-    `).all(userId);
+    `).all(userId));
     return { ok: true, teaching, studying };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Cohorts where the user teaches or studies." });
+}, { note: "Active cohorts where the user teaches or studies. Studying rows include teacher_display_name when the users table has one." });
+
+register("classroom", "archive_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    if (cohort.teacher_user_id !== userId) return { ok: false, reason: "not_teacher" };
+    if (cohort.status === "archived") return { ok: true, cohortId: cohort.id, status: "archived" };
+    const r = db.prepare(`
+      UPDATE classroom_cohorts SET status = 'archived'
+      WHERE id = ? AND teacher_user_id = ? AND status = 'active'
+    `).run(cohort.id, userId);
+    if (r.changes === 0) return { ok: false, reason: "cohort_inactive" };
+    return { ok: true, cohortId: cohort.id, status: "archived" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Teacher archives their cohort (status). list_cohorts only returns active rows." });
+
+register("classroom", "leave_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  try {
+    const cohort = classroomCohortById(db, cohortId);
+    if (!cohort) return { ok: false, reason: "cohort_not_found" };
+    const r = db.prepare(`
+      DELETE FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).run(cohort.id, userId);
+    if (r.changes === 0) return { ok: false, reason: "not_enroled" };
+    return { ok: true, cohortId: cohort.id };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Remove the caller's enrolment. The cohort row stays." });
 
 // #21 Cross-world physics import — spawn a Forge app as a sub-world.
 register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
