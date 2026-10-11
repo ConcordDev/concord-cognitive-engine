@@ -564,12 +564,86 @@ describe("parenting — caregiver sharing (invite → redeem → list → remove
     const redeem = await lensRun("parenting", "caregiver-redeem", { params: { code: inv.result.code } }, helper);
     const list = await lensRun("parenting", "caregiver-list", {}, owner);
     const member = list.result.caregivers[0];
-    const rm = await lensRun("parenting", "caregiver-remove", { params: { caregiverId: member.caregiverId } }, owner);
-    assert.equal(rm.result.removed, member.caregiverId);
-    const bad = await lensRun("parenting", "caregiver-remove", { params: { caregiverId: "user_nope" } }, owner);
+    const rm = await lensRun("parenting", "caregiver-remove", { params: { id: member.id } }, owner);
+    assert.equal(rm.result.removed, member.id);
+    const bad = await lensRun("parenting", "caregiver-remove", { params: { id: "cg_nope" } }, owner);
     assert.equal(bad.result.ok, false);
     assert.ok(bad.result.error.includes("caregiver not found"));
     void redeem;
+  });
+
+  it("a redeemed caregiver reads and writes the shared child, then loses it on remove", async () => {
+    const owner = await depthCtx("parenting-share-owner");
+    const helper = await depthCtx("parenting-share-helper");
+    helper.actor.displayName = "Nia Nanny";
+    const stranger = await depthCtx("parenting-share-stranger");
+    const add = await lensRun("parenting", "child-add", { params: { name: "Shared", birthDate: birthDateMonthsAgo(6) } }, owner);
+    const childId = add.result.child.id;
+    const sib = await lensRun("parenting", "child-add", { params: { name: "Sibling", birthDate: birthDateMonthsAgo(2) } }, owner);
+    const siblingId = sib.result.child.id;
+    await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle", amountMl: 40 } }, owner);
+
+    const before = await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle", amountMl: 10 } }, helper);
+    assert.equal(before.result.ok, false);
+    assert.ok(before.result.error.includes("child not found"));
+    const beforeHist = await lensRun("parenting", "feed-history", { params: { childId } }, helper);
+    assert.equal(beforeHist.result.count, 0);
+    const beforeList = await lensRun("parenting", "child-list", {}, helper);
+    assert.ok(!beforeList.result.children.some((c) => c.id === childId));
+
+    const inv = await lensRun("parenting", "caregiver-invite", { params: { childId, role: "nanny" } }, owner);
+    const redeem = await lensRun("parenting", "caregiver-redeem", { params: { code: inv.result.code } }, helper);
+    assert.equal(redeem.result.childId, childId);
+    assert.equal(redeem.result.ownerId, undefined);
+    const redeemBlob = JSON.stringify(redeem.result);
+    assert.equal(redeemBlob.includes(owner.actor.userId), false);
+    assert.equal(redeemBlob.includes(helper.actor.userId), false);
+
+    const again = await lensRun("parenting", "caregiver-redeem", { params: { code: inv.result.code } }, stranger);
+    assert.equal(again.result.ok, false);
+    assert.ok(again.result.error.includes("already used"));
+
+    const kids = await lensRun("parenting", "child-list", {}, helper);
+    const shared = kids.result.children.find((c) => c.id === childId);
+    assert.equal(shared.shared, true);
+    assert.ok(!kids.result.children.some((c) => c.id === siblingId));
+    assert.equal(JSON.stringify(kids.result).includes(owner.actor.userId), false);
+
+    const hist = await lensRun("parenting", "feed-history", { params: { childId } }, helper);
+    assert.ok(hist.result.entries.some((e) => e.amountMl === 40));
+    const logged = await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle", amountMl: 80 } }, helper);
+    assert.equal(logged.ok, true);
+    const ownerHist = await lensRun("parenting", "feed-history", { params: { childId } }, owner);
+    assert.ok(ownerHist.result.entries.some((e) => e.amountMl === 80));
+    const sibWrite = await lensRun("parenting", "feed-log", { params: { childId: siblingId, kind: "bottle" } }, helper);
+    assert.equal(sibWrite.result.ok, false);
+    const strangerWrite = await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle" } }, stranger);
+    assert.equal(strangerWrite.result.ok, false);
+
+    const roster = await lensRun("parenting", "caregiver-list", { params: { childId } }, owner);
+    assert.equal(roster.result.caregivers[0].displayName, "Nia Nanny");
+    assert.equal(JSON.stringify(roster.result).includes(helper.actor.userId), false);
+    assert.equal(roster.result.caregivers[0].caregiverId, undefined);
+    const rm = await lensRun("parenting", "caregiver-remove", { params: { id: roster.result.caregivers[0].id } }, owner);
+    assert.equal(rm.result.removed, roster.result.caregivers[0].id);
+    const after = await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle" } }, helper);
+    assert.equal(after.result.ok, false);
+    const afterList = await lensRun("parenting", "child-list", {}, helper);
+    assert.ok(!afterList.result.children.some((c) => c.id === childId));
+  });
+
+  it("an expired share code does not grant access", async () => {
+    const owner = await depthCtx("parenting-expire-owner");
+    const helper = await depthCtx("parenting-expire-helper");
+    const add = await lensRun("parenting", "child-add", { params: { name: "Expire", birthDate: birthDateMonthsAgo(3) } }, owner);
+    const inv = await lensRun("parenting", "caregiver-invite", { params: { childId: add.result.child.id } }, owner);
+    const stored = globalThis._concordSTATE.parentingLens.shareCodes.get(inv.result.code);
+    stored.expiresAt = new Date(Date.now() - 1000).toISOString();
+    const redeem = await lensRun("parenting", "caregiver-redeem", { params: { code: inv.result.code } }, helper);
+    assert.equal(redeem.result.ok, false);
+    assert.ok(redeem.result.error.includes("expired"));
+    const kids = await lensRun("parenting", "child-list", {}, helper);
+    assert.ok(!kids.result.children.some((c) => c.id === add.result.child.id));
   });
 });
 

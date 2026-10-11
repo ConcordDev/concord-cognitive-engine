@@ -27,7 +27,7 @@ import { PgCaregiversPanel } from './PgCaregiversPanel';
 import { PgCarePanel } from './PgCarePanel';
 import { PgImmunizationsPanel } from './PgImmunizationsPanel';
 
-interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number }
+interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number; shared?: boolean }
 type TabId = 'today' | 'timers' | 'sleep' | 'schedule' | 'growth' | 'milestones' | 'care' | 'immunizations' | 'insights' | 'appointments' | 'caregivers';
 const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
   { id: 'today', label: 'Today', icon: ListChecks },
@@ -107,8 +107,10 @@ export function ParentingSection() {
               {children.map((c) => (
                 <span key={c.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
                   activeChild === c.id ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
-                  <button type="button" onClick={() => setActiveChild(c.id)}>{c.name} · {c.ageDisplay}</button>
-                  <button type="button" onClick={() => delChild(c.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                  <button type="button" onClick={() => setActiveChild(c.id)}>{c.name} · {c.ageDisplay}{c.shared ? ' · shared' : ''}</button>
+                  {!c.shared && (
+                    <button type="button" onClick={() => delChild(c.id)} aria-label={`Remove ${c.name}`} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                  )}
                 </span>
               ))}
             </div>

@@ -227,20 +227,45 @@ describe("parenting.growth-chart (WHO bands)", () => {
   });
 });
 
+function assertNoRawUserIds(value, ids) {
+  const blob = JSON.stringify(value);
+  for (const id of ids) {
+    assert.equal(blob.includes(id), false, `response leaked ${id}: ${blob}`);
+  }
+  assert.equal(blob.includes("caregiverUserId"), false);
+  assert.equal(blob.includes("ownerId"), false);
+  assert.equal(blob.includes("redeemedBy"), false);
+}
+
+const ctxHelper = { actor: { userId: "user_b", displayName: "Nia Nanny" }, userId: "user_b" };
+const ctxStranger = { actor: { userId: "user_c", displayName: "Stranger" }, userId: "user_c" };
+const RAW_IDS = ["user_a", "user_b", "user_c"];
+
 describe("parenting.caregiver-* (multi-caregiver sync)", () => {
   it("mints a share code, redeems it, lists and removes the caregiver", () => {
     const id = newChild(ctxA, 6);
     const inv = call("caregiver-invite", ctxA, { childId: id, role: "nanny" });
     assert.equal(inv.ok, true);
     assert.equal(inv.result.code.length, 6);
-    const redeem = call("caregiver-redeem", ctxB, { code: inv.result.code });
+    assert.ok(inv.result.expiresAt);
+    const redeem = call("caregiver-redeem", ctxHelper, { code: inv.result.code });
     assert.equal(redeem.ok, true);
-    assert.equal(redeem.result.ownerId, "user_a");
+    assert.equal(redeem.result.ownerId, undefined);
+    assert.equal(redeem.result.childId, id);
+    assertNoRawUserIds(redeem, RAW_IDS);
     const list = call("caregiver-list", ctxA, { childId: id });
     assert.equal(list.result.count, 1);
+    assert.equal(list.result.canManage, true);
     assert.equal(list.result.caregivers[0].role, "nanny");
-    const rm = call("caregiver-remove", ctxA, { caregiverId: "user_b" });
+    assert.equal(list.result.caregivers[0].displayName, "Nia Nanny");
+    assert.ok(list.result.caregivers[0].id);
+    assert.notEqual(list.result.caregivers[0].id, "user_b");
+    assertNoRawUserIds(list, RAW_IDS);
+    assert.equal(call("caregiver-remove", ctxA, { caregiverId: "user_b" }).ok, false);
+    const rm = call("caregiver-remove", ctxA, { id: list.result.caregivers[0].id });
     assert.equal(rm.ok, true);
+    assert.equal(rm.result.removed, list.result.caregivers[0].id);
+    assertNoRawUserIds(rm, RAW_IDS);
     assert.equal(call("caregiver-list", ctxA, { childId: id }).result.count, 0);
   });
 
@@ -249,6 +274,87 @@ describe("parenting.caregiver-* (multi-caregiver sync)", () => {
     assert.equal(call("caregiver-redeem", ctxB, { code: "BADCOD" }).ok, false);
     const inv = call("caregiver-invite", ctxA, { childId: id });
     assert.equal(call("caregiver-redeem", ctxA, { code: inv.result.code }).ok, false);
+  });
+
+  it("shares one child's log with a redeemed caregiver and revokes it", () => {
+    const id = newChild(ctxA, 8);
+    const sibling = newChild(ctxA, 2);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 40 });
+    assert.equal(call("child-list", ctxHelper, {}).result.children.some((c) => c.id === id), false);
+    assert.equal(call("feed-log", ctxHelper, { childId: id, kind: "bottle", amountMl: 10 }).ok, false);
+    assert.equal(call("feed-history", ctxHelper, { childId: id }).result.count, 0);
+    assert.equal(call("feed-log", ctxStranger, { childId: id, kind: "bottle" }).ok, false);
+
+    const inv = call("caregiver-invite", ctxA, { childId: id, role: "nanny" });
+    const redeem = call("caregiver-redeem", ctxHelper, { code: inv.result.code });
+    assert.equal(redeem.ok, true);
+    assertNoRawUserIds(redeem, RAW_IDS);
+
+    const reused = call("caregiver-redeem", ctxHelper, { code: inv.result.code });
+    assert.equal(reused.ok, false);
+    assert.match(reused.error, /already used/);
+    const stolen = call("caregiver-redeem", ctxStranger, { code: inv.result.code });
+    assert.equal(stolen.ok, false);
+    assert.match(stolen.error, /already used/);
+
+    const shared = call("child-list", ctxHelper, {}).result.children.find((c) => c.id === id);
+    assert.ok(shared);
+    assert.equal(shared.shared, true);
+    assert.equal(call("child-list", ctxA, {}).result.children.find((c) => c.id === id).shared, false);
+    assert.equal(call("child-list", ctxHelper, {}).result.children.some((c) => c.id === sibling), false);
+    assertNoRawUserIds(call("child-list", ctxHelper, {}), RAW_IDS);
+
+    assert.equal(call("feed-history", ctxHelper, { childId: id }).result.entries.some((e) => e.amountMl === 40), true);
+    const logged = call("feed-log", ctxHelper, { childId: id, kind: "bottle", amountMl: 80 });
+    assert.equal(logged.ok, true);
+    assert.equal(call("feed-history", ctxA, { childId: id }).result.entries.some((e) => e.amountMl === 80), true);
+    assert.ok(call("feed-stats", ctxHelper, { childId: id }).result.feedsToday >= 1);
+    assert.equal(call("feed-log", ctxHelper, { childId: sibling, kind: "bottle" }).ok, false);
+    assert.equal(call("feed-history", ctxHelper, { childId: sibling }).result.count, 0);
+    assert.equal(call("feed-log", ctxStranger, { childId: id, kind: "bottle" }).ok, false);
+    assert.equal(call("feed-history", ctxStranger, { childId: id }).result.count, 0);
+
+    assert.equal(call("sleep-log", ctxHelper, { childId: id, type: "nap", durationMin: 30 }).ok, true);
+    assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 1);
+    const timer = call("timer-start", ctxHelper, { childId: id, kind: "nursing", side: "left" });
+    assert.equal(timer.ok, true);
+    assert.equal(call("timer-list", ctxA, { childId: id }).result.count, 1);
+    assert.equal(call("timer-stop", ctxA, { id: timer.result.timer.id }).ok, true);
+    const apt = call("appointment-add", ctxHelper, { childId: id, title: "Well baby", date: "2099-01-02" });
+    assert.equal(apt.ok, true);
+    assert.equal(call("appointment-list", ctxA, { childId: id }).result.count, 1);
+    const ev = call("event-add", ctxHelper, { title: "Library storytime", startAt: "2099-02-02", childId: id });
+    assert.equal(ev.ok, true);
+    assert.ok(call("event-list", ctxA, { childId: id }).result.events.some((e) => e.id === ev.result.event.id));
+    assert.equal(call("event-list", ctxStranger, { childId: id }).result.events.some((e) => e.id === ev.result.event.id), false);
+    assert.equal(call("appointment-list", ctxStranger, { childId: id }).result.count, 0);
+
+    const roster = call("caregiver-list", ctxHelper, { childId: id });
+    assert.equal(roster.result.canManage, false);
+    assertNoRawUserIds(roster, RAW_IDS);
+    assert.equal(call("caregiver-remove", ctxHelper, { id: roster.result.caregivers[0].id }).ok, false);
+
+    const ownerRoster = call("caregiver-list", ctxA, { childId: id });
+    const rm = call("caregiver-remove", ctxA, { id: ownerRoster.result.caregivers[0].id });
+    assert.equal(rm.ok, true);
+    assert.equal(call("child-list", ctxHelper, {}).result.children.some((c) => c.id === id), false);
+    assert.equal(call("feed-log", ctxHelper, { childId: id, kind: "bottle" }).ok, false);
+    assert.equal(call("feed-history", ctxHelper, { childId: id }).result.count, 0);
+    assert.ok(call("feed-history", ctxA, { childId: id }).result.count >= 1);
+    assert.equal(call("caregiver-redeem", ctxHelper, { code: inv.result.code }).ok, false);
+  });
+
+  it("rejects an expired share code before it grants access", () => {
+    const id = newChild(ctxA, 4);
+    const inv = call("caregiver-invite", ctxA, { childId: id, role: "grandparent" });
+    const invite = globalThis._concordSTATE.parentingLens.shareCodes.get(inv.result.code);
+    invite.expiresAt = new Date(Date.now() - 1000).toISOString();
+    const redeem = call("caregiver-redeem", ctxHelper, { code: inv.result.code });
+    assert.equal(redeem.ok, false);
+    assert.match(redeem.error, /expired/);
+    assert.equal(call("child-list", ctxHelper, {}).result.children.some((c) => c.id === id), false);
+    assert.equal(call("feed-log", ctxHelper, { childId: id, kind: "bottle" }).ok, false);
+    assert.equal(call("caregiver-list", ctxA, { childId: id }).result.count, 0);
   });
 });
 
