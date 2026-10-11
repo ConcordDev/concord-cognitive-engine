@@ -71,7 +71,7 @@ function readAirQuality(
     }
   }
   if (data.ok === false) return { ok: false, reason: data.reason || data.error || 'unknown' };
-  if (data.observations) return { ...(data as AQResponse), ok: data.ok !== false };
+  if (data.observations) return { ...(data as AQResponse), ok: true };
   return null;
 }
 
