@@ -12,6 +12,8 @@ import {
   safeUnityRelativePath,
   unityAssetContentType,
   unityAssetIsGzipped,
+  unityPayloadIsGzip,
+  unityPayloadIsLfsPointer,
 } from '@/lib/unity-web-files';
 
 export async function GET(
@@ -43,12 +45,21 @@ export async function GET(
   }
 
   const body = fs.readFileSync(resolvedFile);
+  // A checkout without `git lfs pull` still has the pointer text. Serving it
+  // as JavaScript (and advertising gzip) makes the loader throw
+  // `unityFramework is not defined`. The real export is the gzip blob.
+  if (unityPayloadIsLfsPointer(body)) {
+    return NextResponse.json(
+      { ok: false, reason: 'unity_web_export_not_built' },
+      { status: 404 },
+    );
+  }
   const headers: Record<string, string> = {
     'Content-Type': unityAssetContentType(rel),
     'Cache-Control': 'public, max-age=31536000, immutable',
     'X-Frame-Options': 'SAMEORIGIN',
   };
-  if (unityAssetIsGzipped(rel)) headers['Content-Encoding'] = 'gzip';
+  if (unityAssetIsGzipped(rel) && unityPayloadIsGzip(body)) headers['Content-Encoding'] = 'gzip';
 
   return new NextResponse(body, { status: 200, headers });
 }

@@ -8,6 +8,8 @@ import {
   safeUnityRelativePath,
   unityAssetContentType,
   unityAssetIsGzipped,
+  unityPayloadIsGzip,
+  unityPayloadIsLfsPointer,
 } from '@/lib/unity-web-files';
 
 const repoFrontend = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,5 +37,23 @@ describe('unity web files', () => {
     expect(unityAssetIsGzipped('Build/concordia.wasm.unityweb')).toBe(true);
     expect(unityAssetIsGzipped('Build/concordia.loader.js')).toBe(false);
     expect(unityAssetContentType('Build/concordia.wasm.unityweb')).toBe('application/wasm');
+  });
+
+  it('tells a Git LFS pointer from a gzip Unity blob', () => {
+    const pointer = new TextEncoder().encode('version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 1\n');
+    expect(unityPayloadIsLfsPointer(pointer)).toBe(true);
+    expect(unityPayloadIsGzip(pointer)).toBe(false);
+    const gzip = new Uint8Array([0x1f, 0x8b, 0x08, 0x00]);
+    expect(unityPayloadIsLfsPointer(gzip)).toBe(false);
+    expect(unityPayloadIsGzip(gzip)).toBe(true);
+  });
+
+  it('the committed framework is gzip bytes or an LFS pointer, never both', () => {
+    const file = path.join(repoFrontend, 'public', 'unity-client', 'Build', 'concordia.framework.js.unityweb');
+    const buf = fs.readFileSync(file);
+    const pointer = unityPayloadIsLfsPointer(buf);
+    const gzip = unityPayloadIsGzip(buf);
+    expect(pointer || gzip).toBe(true);
+    expect(pointer && gzip).toBe(false);
   });
 });

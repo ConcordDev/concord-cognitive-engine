@@ -102,6 +102,7 @@ export function BrowserPanel() {
   const [tierFilter, setTierFilter] = useState<DTUTier | 'all'>('all');
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const newDtuRef = useRef<HTMLButtonElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
   // Default to the viewer's own vault — not the shared global substrate, which
@@ -126,6 +127,13 @@ export function BrowserPanel() {
     ],
     { lensId: 'dtus' }
   );
+
+  // Stamp after commit so Playwright can wait until onClick is attached.
+  // A click on the server HTML before this is a no-op under load.
+  useEffect(() => {
+    const el = newDtuRef.current;
+    if (el) el.dataset.hydrated = 'true';
+  }, []);
 
   // Backend action wiring
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -261,7 +269,7 @@ export function BrowserPanel() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur border-b border-lattice-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-neon-blue to-neon-cyan flex items-center justify-center">
                 <Database className="w-6 h-6 text-white" />
@@ -274,7 +282,7 @@ export function BrowserPanel() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowFeed(!showFeed)}
                 className={cn(
@@ -296,6 +304,9 @@ export function BrowserPanel() {
                 <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
               </button>
               <button
+                ref={newDtuRef}
+                type="button"
+                data-hydrated="false"
                 onClick={() => setShowCreateForm(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neon-blue/20 text-neon-blue border border-neon-blue/30 rounded-lg hover:bg-neon-blue/30 transition-colors"
               >

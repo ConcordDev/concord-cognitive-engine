@@ -108,7 +108,7 @@ export function ElectricalWorkspace({ who }: { who: string }) {
       </header>
 
       {!opened ? (
-        <EmptyJob onCreate={newJob} />
+        <EmptyJob onCreate={newJob} onCalculators={() => selectTool('calculators')} />
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[9rem_minmax(0,1fr)]">
           <nav aria-label="Electrical job tools" className="flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
@@ -152,10 +152,20 @@ export function ElectricalWorkspace({ who }: { who: string }) {
   );
 }
 
-function EmptyJob({ onCreate }: { onCreate: () => void }) {
+function EmptyJob({ onCreate, onCalculators }: { onCreate: () => void; onCalculators: () => void }) {
   return (
     <div className="relative mt-8 min-h-[62vh] overflow-hidden rounded-2xl border border-white/10 bg-[#101014] p-8">
       <p className="text-sm text-zinc-400">No job open.</p>
+      <p className="mt-2 max-w-md text-sm text-zinc-500">
+        Size a feeder, conduit, or box from the code tables without opening a job.
+      </p>
+      <button
+        type="button"
+        onClick={onCalculators}
+        className="mt-6 rounded-full border border-white/15 bg-zinc-900 px-5 py-3 text-sm font-semibold text-zinc-100 active:scale-[0.98]"
+      >
+        NEC Calculators
+      </button>
       <div aria-hidden="true" className="mt-6 space-y-6 opacity-60">
         <div className="h-2 w-2/3 rounded-full bg-zinc-900" />
         <div className="h-2 w-2/5 rounded-full bg-zinc-900" />
