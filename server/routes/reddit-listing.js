@@ -9,11 +9,16 @@
  * Sits behind the global auth middleware (not added to the public-read
  * lists). A signed-in browser calls it; an anonymous caller is stopped
  * before this handler.
+ *
+ * Off unless NEXT_PUBLIC_COMMUNITY_REDDIT is "1" or "true". While off,
+ * the handler answers community_feed_disabled and does not call load
+ * (so it does not fetch reddit.com). Auth, URL rejection, and the
+ * sub/sort allowlist stay on the enabled path.
  */
 
 import { Router } from "express";
 import logger from "../logger.js";
-import { loadRedditListing } from "../lib/reddit-listing.js";
+import { communityRedditEnabled, loadRedditListing } from "../lib/reddit-listing.js";
 
 const USER_URL_KEYS = ["url", "uri", "href", "target"];
 
@@ -27,6 +32,10 @@ export function createRedditListingRouter({ load = loadRedditListing } = {}) {
   const router = Router();
 
   router.get("/reddit-listing", async (req, res) => {
+    if (!communityRedditEnabled()) {
+      return res.status(503).json({ ok: false, reason: "community_feed_disabled" });
+    }
+
     const query = req.query || {};
     if (USER_URL_KEYS.some((key) => query[key] != null && query[key] !== "")) {
       return res.status(400).json({ ok: false, reason: "url_not_accepted" });

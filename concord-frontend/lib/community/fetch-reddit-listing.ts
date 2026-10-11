@@ -1,4 +1,6 @@
 /** Same-origin community listing. The browser never calls reddit.com. */
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
+
 export const REDDIT_LISTING_PATH = '/api/community/reddit-listing';
 
 export interface RedditListingPost {
@@ -38,6 +40,9 @@ export async function fetchRedditListing(params: {
   sort?: string;
   limit?: number;
 }): Promise<RedditListing> {
+  if (!isCommunityRedditEnabled()) {
+    throw new Error('community_feed_disabled');
+  }
   const qs = new URLSearchParams({
     sub: params.sub,
     t: params.window || 'week',

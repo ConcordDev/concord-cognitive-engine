@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Home, Loader2, ExternalLink, ArrowUp, MessageSquare } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { fetchRedditListing, RedditCacheLabel } from '@/lib/community/reddit-listing';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 interface Post { id: string; title: string; permalink: string; author: string; score: number; num_comments: number; link_flair_text?: string; }
 
@@ -18,6 +19,11 @@ const SUBS = [
 const WINDOWS = ['day', 'week', 'month'] as const;
 
 export function HomeImprovementFeed() {
+  if (!isCommunityRedditEnabled()) return null;
+  return <HomeImprovementFeedLive />;
+}
+
+function HomeImprovementFeedLive() {
   const [sub, setSub] = useState(SUBS[0].id);
   const [windowKey, setWindowKey] = useState<typeof WINDOWS[number]>('week');
 

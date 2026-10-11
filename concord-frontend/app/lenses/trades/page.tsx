@@ -67,6 +67,7 @@ import ReviewsPanel from '@/components/trades/ReviewsPanel';
 import ReportingPanel from '@/components/trades/ReportingPanel';
 import WorkbenchPanel from '@/components/trades/WorkbenchPanel';
 import { TradesFeed } from '@/components/trades/TradesFeed';
+import { isCommunityRedditEnabled } from '@/lib/community/reddit-flag';
 
 type TradesView =
   | 'project'
@@ -178,9 +179,14 @@ export default function TradesLensPage() {
   );
 
   const Panel = PANELS[active];
+  const groups = isCommunityRedditEnabled()
+    ? GROUPS
+    : GROUPS
+        .map((group) => ({ ...group, items: group.items.filter((item) => item.id !== 'feed') }))
+        .filter((group) => group.items.length > 0);
   const activeLabel = useMemo(
-    () => GROUPS.flatMap((g) => g.items).find((t) => t.id === active)?.label ?? active,
-    [active],
+    () => groups.flatMap((g) => g.items).find((t) => t.id === active)?.label ?? active,
+    [active, groups],
   );
 
   return (
@@ -205,7 +211,7 @@ export default function TradesLensPage() {
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]">
           <nav aria-label="Trades ops" className="space-y-4 rounded-2xl border border-white/10 bg-[#111] p-3 lg:sticky lg:top-3">
-            {GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.label}>
                 <p className="mb-1 px-2 text-[11px] uppercase tracking-wider text-zinc-600">{group.label}</p>
                 <ul className="space-y-0.5">

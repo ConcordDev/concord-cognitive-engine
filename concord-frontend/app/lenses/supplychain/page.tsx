@@ -36,6 +36,8 @@ import { SupplyChainOverview } from '@/components/supplychain/SupplyChainOvervie
 import { SupplyChainPlanner } from '@/components/supplychain/SupplyChainPlanner';
 import { SupplyChainActionPanel } from '@/components/supplychain/SupplyChainActionPanel';
 import { SupplyChainFeed } from '@/components/supplychain/SupplyChainFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { OrgCollabPanel } from '@/components/supplychain/OrgCollabPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -56,6 +58,7 @@ export default function SupplyChainLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('overview');
+  const tabs = omitCommunityRedditViews(TABS, ['pulse']);
 
   // Real navigation shortcuts only — the old "/" focus-search binding
   // targeted the generic CRUD library's search box, which this rebuild
@@ -68,7 +71,9 @@ export default function SupplyChainLensPage() {
       { id: 'goto-tower', keys: 'g t', description: 'Go to Control Tower', category: 'navigation', action: () => setDest('tower') },
       { id: 'goto-scorecards', keys: 'g s', description: 'Go to Scorecards & Analysis', category: 'navigation', action: () => setDest('scorecards') },
       { id: 'goto-team', keys: 'g u', description: 'Go to Team', category: 'navigation', action: () => setDest('team') },
-      { id: 'goto-pulse', keys: 'g p', description: 'Go to Industry Pulse', category: 'navigation', action: () => setDest('pulse') },
+      ...(isCommunityRedditEnabled()
+        ? [{ id: 'goto-pulse', keys: 'g p', description: 'Go to Industry Pulse', category: 'navigation' as const, action: () => setDest('pulse') }]
+        : []),
     ],
     { lensId: 'supplychain' }
   );
@@ -85,7 +90,7 @@ export default function SupplyChainLensPage() {
         crumb="Supply chain"
         title={title}
         subtitle="End-to-end visibility, exception management and what-if planning over your real shipment, network, inventory and procurement state."
-        tabs={TABS}
+        tabs={tabs}
         activeTab={dest}
         onTab={(id) => setDest(id as Destination)}
         tabsLabel="Supply chain destinations"
@@ -114,9 +119,11 @@ export default function SupplyChainLensPage() {
         )}
 
         {dest === 'pulse' && (
-          <section aria-label="Industry pulse" className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <SupplyChainFeed />
-          </section>
+          <CommunityRedditSlot>
+            <section aria-label="Industry pulse" className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <SupplyChainFeed />
+            </section>
+          </CommunityRedditSlot>
         )}
       </NorthStarFrame>
     </LensShell>

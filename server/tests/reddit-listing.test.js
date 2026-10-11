@@ -16,6 +16,7 @@ import {
   REDDIT_USER_AGENT,
   buildRedditListingUrl,
   clearRedditListingCache,
+  communityRedditEnabled,
   loadRedditListing,
 } from "../lib/reddit-listing.js";
 import { createRedditListingRouter } from "../routes/reddit-listing.js";
@@ -53,6 +54,29 @@ const post = {
   link_flair_text: "Discussion",
   created_utc: 1_700_000_000,
 };
+
+test("communityRedditEnabled is on only for 1 and true", () => {
+  assert.equal(communityRedditEnabled({ NEXT_PUBLIC_COMMUNITY_REDDIT: "1" }), true);
+  assert.equal(communityRedditEnabled({ NEXT_PUBLIC_COMMUNITY_REDDIT: "true" }), true);
+  assert.equal(communityRedditEnabled({ NEXT_PUBLIC_COMMUNITY_REDDIT: "TRUE" }), true);
+  assert.equal(communityRedditEnabled({ NEXT_PUBLIC_COMMUNITY_REDDIT: " true " }), true);
+  assert.equal(communityRedditEnabled({}), false);
+  for (const raw of ["0", "false", "yes", "on", "", "  "]) {
+    assert.equal(communityRedditEnabled({ NEXT_PUBLIC_COMMUNITY_REDDIT: raw }), false, raw);
+  }
+});
+
+async function withRedditFlag(value, fn) {
+  const prev = process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+  if (value == null) delete process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+  else process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = value;
+  try {
+    return await fn();
+  } finally {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+    else process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = prev;
+  }
+}
 
 test("buildRedditListingUrl only emits the allowlisted template", () => {
   assert.equal(
@@ -232,51 +256,72 @@ async function withApp(router, fn) {
   }
 }
 
+test("GET /api/community/reddit-listing does not call load while the flag is off", async () => {
+  await withRedditFlag(undefined, async () => {
+    let called = false;
+    const router = createRedditListingRouter({
+      load: async () => { called = true; return { ok: true, posts: [], cached: false, stale: false, fetchedAt: 1 }; },
+    });
+    await withApp(router, async (base) => {
+      const evil = encodeURIComponent("http://169.254.169.254/latest/meta-data");
+      const res = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week&url=${evil}`);
+      const body = await res.json();
+      assert.equal(res.status, 503);
+      assert.deepEqual(body, { ok: false, reason: "community_feed_disabled" });
+    });
+    assert.equal(called, false);
+  });
+});
+
 test("GET /api/community/reddit-listing rejects a caller-supplied URL and does not call load", async () => {
-  let called = false;
-  const router = createRedditListingRouter({
-    load: async () => { called = true; return { ok: true, posts: [], cached: false, stale: false, fetchedAt: 1 }; },
+  await withRedditFlag("1", async () => {
+    let called = false;
+    const router = createRedditListingRouter({
+      load: async () => { called = true; return { ok: true, posts: [], cached: false, stale: false, fetchedAt: 1 }; },
+    });
+    await withApp(router, async (base) => {
+      const res = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week&url=${encodeURIComponent("http://169.254.169.254/latest/meta-data")}`);
+      const body = await res.json();
+      assert.equal(res.status, 400);
+      assert.equal(body.ok, false);
+      assert.equal(body.reason, "url_not_accepted");
+      assert.equal(body.posts, undefined);
+    });
+    assert.equal(called, false);
   });
-  await withApp(router, async (base) => {
-    const res = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week&url=${encodeURIComponent("http://169.254.169.254/latest/meta-data")}`);
-    const body = await res.json();
-    assert.equal(res.status, 400);
-    assert.equal(body.ok, false);
-    assert.equal(body.reason, "url_not_accepted");
-    assert.equal(body.posts, undefined);
-  });
-  assert.equal(called, false);
 });
 
 test("GET /api/community/reddit-listing returns real posts and an honest failure", async () => {
-  const router = createRedditListingRouter({
-    load: async (input) => {
-      assert.equal(input.sub, "Journaling");
-      assert.equal(input.window, "week");
-      assert.equal(input.url, undefined);
-      if (input.sort === "new") return { ok: false, reason: "community_feed_unavailable" };
-      return {
-        ok: true,
-        posts: [{ id: "abc123", title: "Morning pages that stuck", permalink: "/r/Journaling/comments/abc123/morning_pages/", author: "ada", score: 42, num_comments: 7 }],
-        cached: true,
-        stale: false,
-        fetchedAt: 123,
-      };
-    },
-  });
-  await withApp(router, async (base) => {
-    const okRes = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week`);
-    const okBody = await okRes.json();
-    assert.equal(okRes.status, 200);
-    assert.equal(okBody.ok, true);
-    assert.equal(okBody.cached, true);
-    assert.equal(okBody.stale, false);
-    assert.equal(okBody.posts.length, 1);
-    assert.equal(okBody.posts[0].title, "Morning pages that stuck");
+  await withRedditFlag("true", async () => {
+    const router = createRedditListingRouter({
+      load: async (input) => {
+        assert.equal(input.sub, "Journaling");
+        assert.equal(input.window, "week");
+        assert.equal(input.url, undefined);
+        if (input.sort === "new") return { ok: false, reason: "community_feed_unavailable" };
+        return {
+          ok: true,
+          posts: [{ id: "abc123", title: "Morning pages that stuck", permalink: "/r/Journaling/comments/abc123/morning_pages/", author: "ada", score: 42, num_comments: 7 }],
+          cached: true,
+          stale: false,
+          fetchedAt: 123,
+        };
+      },
+    });
+    await withApp(router, async (base) => {
+      const okRes = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week`);
+      const okBody = await okRes.json();
+      assert.equal(okRes.status, 200);
+      assert.equal(okBody.ok, true);
+      assert.equal(okBody.cached, true);
+      assert.equal(okBody.stale, false);
+      assert.equal(okBody.posts.length, 1);
+      assert.equal(okBody.posts[0].title, "Morning pages that stuck");
 
-    const bad = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week&sort=new`);
-    const badBody = await bad.json();
-    assert.equal(bad.status, 503);
-    assert.deepEqual(badBody, { ok: false, reason: "community_feed_unavailable" });
+      const bad = await fetch(`${base}/api/community/reddit-listing?sub=Journaling&t=week&sort=new`);
+      const badBody = await bad.json();
+      assert.equal(bad.status, 503);
+      assert.deepEqual(badBody, { ok: false, reason: "community_feed_unavailable" });
+    });
   });
 });
