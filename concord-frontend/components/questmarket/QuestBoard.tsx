@@ -17,7 +17,9 @@ interface Quest {
   difficulty: string;
   tags: string[];
   maxClaimants: number;
-  poster: string;
+  poster?: string;
+  posterName?: string;
+  isMine?: boolean;
   status: string;
   claimCount: number;
   myClaimStatus: string | null;
@@ -238,6 +240,8 @@ export function QuestBoard({
                       <span className="flex items-center gap-1 rounded bg-sky-500/15 px-2 py-1 text-[10px] text-sky-300">
                         <CheckCircle2 className="h-3 w-3" /> claim {q.myClaimStatus}
                       </span>
+                    ) : q.isMine ? (
+                      <span className="text-[10px] text-zinc-500">your posting</span>
                     ) : (q.status === 'open' || q.status === 'in_progress') ? (
                       <button onClick={() => accept(q)} disabled={busy === q.id}
                         className="rounded bg-amber-500/20 px-3 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50">
@@ -251,7 +255,7 @@ export function QuestBoard({
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between border-t border-zinc-800/60 pt-2 text-[10px] text-zinc-400">
-                  <span>by {q.poster}</span>
+                  <span>by {q.posterName || (q.isMine ? 'You' : 'Adventurer')}</span>
                   <span className="flex items-center gap-2">
                     <span>{new Date(q.createdAt).toLocaleDateString()}</span>
                   </span>

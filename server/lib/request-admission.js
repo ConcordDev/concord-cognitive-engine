@@ -54,6 +54,10 @@ const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token
 // Reserved lane, not an exemption: it still sheds at the PROTECTED bar.
 const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep|designs)(\?|$|\/)/;
 
+// Public receipt keys + the unauthenticated verify POST. Same reserved lane
+// as the demo: anonymous, but not the first traffic to shed.
+const _RECEIPT_PATH_RE = /^\/(?:\.well-known\/concord-receipt-keys\.json|api\/receipts\/verify)(?:\?|$)/;
+
 // Authenticated interactive work: chat and lens run. Never an instant 503.
 const _INTERACTIVE_PATH_RE = /^\/api\/(?:lens\/run|chat-agent(?:\/|$|\?)|chat(?:\/|$|\?))/;
 
@@ -259,6 +263,7 @@ export function classifyRequest(req) {
   if (_CRITICAL_PATH_RE.test(path)) return PRIORITY.CRITICAL;
   if (_AUTH_CRITICAL_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   if (_PUBLIC_DEMO_PATH_RE.test(path)) return PRIORITY.PROTECTED;
+  if (_RECEIPT_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   const authed = !!(req?.user?.id);
   if (authed && !_BULK_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   return PRIORITY.SHEDDABLE;

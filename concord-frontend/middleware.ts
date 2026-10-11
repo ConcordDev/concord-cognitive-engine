@@ -152,6 +152,10 @@ const PUBLIC_PATHS = new Set([
   // the same GET-only /api/conkay/demo/designs* routes. /conkay/designs/<id>
   // is covered by PUBLIC_PREFIXES below.
   '/conkay/designs',
+  // Paste a ConKay receipt and check its Ed25519 signature. The page calls
+  // POST /api/receipts/verify, which is public on the API.
+  '/verify',
+  '/.well-known/concord-receipt-keys.json',
   '/login',
   '/register',
   '/signup',         // alias → /register

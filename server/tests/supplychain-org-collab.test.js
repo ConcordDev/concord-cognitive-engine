@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import registerSupplychainActions from "../domains/supplychain.js";
 import { peelRedundantArtifactWrapper } from "../lib/lens-input-normalize.js";
+import { joinOrganization } from "../lib/world-organizations.js";
 import { up as upWorldOrgs } from "../migrations/383_world_organizations.js";
 
 const ACTIONS = new Map();
@@ -60,6 +61,23 @@ function makeOrg() {
   return created.organization.id;
 }
 
+function approveAsAnalyst(orgId, userCtx) {
+  const joined = dispatch("orgJoin", userCtx, { orgId });
+  assert.equal(joined.status, "pending", "self-join must stay pending");
+  const approved = dispatch("orgApprove", leader, { orgId, targetUserId: userCtx.userId });
+  assert.equal(approved.role, "apprentice");
+  assert.equal(approved.scRole, "analyst");
+  return approved;
+}
+
+function admitBuyer(orgId, userCtx) {
+  approveAsAnalyst(orgId, userCtx);
+  const promoted = dispatch("orgSetRole", leader, { orgId, targetUserId: userCtx.userId, role: "buyer" });
+  assert.equal(promoted.role, "member");
+  assert.equal(promoted.scRole, "buyer");
+  return promoted;
+}
+
 describe("supplychain org lifecycle wrappers (thin over world-organizations.js)", () => {
   it("orgCreate: leader gets planner SC role on their own firm", () => {
     const r = dispatch("orgCreate", leader, { name: "Test Firm", type: "firm" });
@@ -80,26 +98,32 @@ describe("supplychain org lifecycle wrappers (thin over world-organizations.js)"
     assert.equal(r.error, "name_required");
   });
 
-  it("orgJoin: a joiner can only self-select member or apprentice, never a privileged role", () => {
+  it("orgJoin: a self-join stays pending and cannot grant a privileged role", () => {
     const orgId = makeOrg();
     const asOfficer = dispatch("orgJoin", memberUser, { orgId, role: "officer" });
-    // "officer" is not in the allow-list (member|apprentice) so it silently
-    // downgrades to member rather than granting a privileged role.
-    assert.equal(asOfficer.role, "member");
-    assert.equal(asOfficer.scRole, "buyer");
+    assert.equal(asOfficer.status, "pending");
+    assert.equal(asOfficer.pending, true);
+    assert.equal(dispatch("shipmentList", memberUser, { orgId }).error, "not_a_member");
+    const approved = dispatch("orgApprove", leader, { orgId, targetUserId: "sc_member" });
+    assert.equal(approved.role, "apprentice");
+    assert.equal(approved.scRole, "analyst");
+    assert.equal(dispatch("shipmentCreate", memberUser, { orgId, reference: "NO" }).error, "insufficient_role");
   });
 
-  it("orgJoin: apprentice role is honored (self-selectable, lowest privilege)", () => {
+  it("orgJoin: requesting apprentice is still pending until a planner approves", () => {
     const orgId = makeOrg();
     const r = dispatch("orgJoin", apprenticeUser, { orgId, role: "apprentice" });
-    assert.equal(r.role, "apprentice");
-    assert.equal(r.scRole, "analyst");
+    assert.equal(r.status, "pending");
+    assert.equal(dispatch("orgMembers", leader, { orgId }).members.some((m) => m.userId === "sc_apprentice"), false);
+    const approved = dispatch("orgApprove", leader, { orgId, targetUserId: "sc_apprentice" });
+    assert.equal(approved.role, "apprentice");
+    assert.equal(approved.scRole, "analyst");
   });
 
-  it("orgMembers: roster shows every member with their derived scRole", () => {
+  it("orgMembers: roster shows every granted member with their derived scRole", () => {
     const orgId = makeOrg();
-    dispatch("orgJoin", memberUser, { orgId });
-    dispatch("orgJoin", apprenticeUser, { orgId, role: "apprentice" });
+    admitBuyer(orgId, memberUser);
+    approveAsAnalyst(orgId, apprenticeUser);
     const r = dispatch("orgMembers", leader, { orgId });
     assert.equal(r.organization.id, orgId);
     const byUser = Object.fromEntries(r.members.map(m => [m.userId, m]));
@@ -127,8 +151,8 @@ describe("supplychain org lifecycle wrappers (thin over world-organizations.js)"
 
   it("orgSetRole: only the planner class (leader/officer) may promote a member", () => {
     const orgId = makeOrg();
-    dispatch("orgJoin", memberUser, { orgId });
-    // Leader promotes member -> planner (translated to "officer").
+    approveAsAnalyst(orgId, memberUser);
+    // Leader promotes analyst -> planner (translated to "officer").
     const r = dispatch("orgSetRole", leader, { orgId, targetUserId: "sc_member", role: "planner" });
     assert.equal(r.role, "officer");
     assert.equal(r.scRole, "planner");
@@ -136,21 +160,27 @@ describe("supplychain org lifecycle wrappers (thin over world-organizations.js)"
 
   it("orgSetRole: a buyer (member) cannot change anyone's role", () => {
     const orgId = makeOrg();
-    dispatch("orgJoin", memberUser, { orgId });
-    dispatch("orgJoin", apprenticeUser, { orgId, role: "apprentice" });
+    admitBuyer(orgId, memberUser);
+    approveAsAnalyst(orgId, apprenticeUser);
     const r = dispatch("orgSetRole", memberUser, { orgId, targetUserId: "sc_apprentice", role: "buyer" });
     assert.equal(r.ok, false);
-    assert.equal(r.error, "insufficient_rank");
+    assert.equal(r.error, "insufficient_role");
   });
 
-  it("orgMine: lists the orgs a user actually belongs to, with role + scRole", () => {
+  it("orgMine: lists only orgs the user has been granted, with role + scRole", () => {
     const orgId = makeOrg();
-    dispatch("orgJoin", memberUser, { orgId });
+    const pending = dispatch("orgJoin", memberUser, { orgId });
+    assert.equal(pending.status, "pending");
+    const before = dispatch("orgMine", memberUser, {});
+    assert.equal(before.organizations.find(o => o.id === orgId), undefined);
+    dispatch("orgApprove", leader, { orgId, targetUserId: "sc_member" });
     const r = dispatch("orgMine", memberUser, {});
     const found = r.organizations.find(o => o.id === orgId);
-    assert.ok(found, "orgMine must include the joined org");
-    assert.equal(found.myRole, "member");
-    assert.equal(found.myScRole, "buyer");
+    assert.ok(found, "orgMine must include the approved org");
+    assert.equal(found.myRole, "apprentice");
+    assert.equal(found.myScRole, "analyst");
+    assert.equal(found.leaderId, undefined);
+    assert.equal(found.treasury, undefined);
   });
 
   it("orgLeave: leader cannot leave their own org (delegates to world-organizations.js's rule)", () => {
@@ -164,8 +194,8 @@ describe("supplychain org lifecycle wrappers (thin over world-organizations.js)"
 describe("supplychain role-gated writes on org-shared state", () => {
   function setupOrg() {
     const orgId = makeOrg();
-    dispatch("orgJoin", memberUser, { orgId }); // buyer
-    dispatch("orgJoin", apprenticeUser, { orgId, role: "apprentice" }); // analyst
+    admitBuyer(orgId, memberUser);
+    approveAsAnalyst(orgId, apprenticeUser);
     return orgId;
   }
 
@@ -282,5 +312,98 @@ describe("supplychain role-gated writes on org-shared state", () => {
     const r = dispatch("workOrderCreate", apprenticeUser, { item: "No org, no gate" });
     assert.equal(r.ok !== false, true);
     assert.ok(r.workOrder.id);
+  });
+});
+
+const PUBLIC_ORG_KEYS = ["createdAt", "description", "id", "memberCount", "name", "type"];
+
+function assertPublicOrgList(listed, forbiddenIds) {
+  assert.ok(Array.isArray(listed.organizations));
+  for (const org of listed.organizations) {
+    assert.deepEqual(Object.keys(org).sort(), PUBLIC_ORG_KEYS);
+    const blob = JSON.stringify(org);
+    assert.equal(blob.includes("leaderId"), false);
+    assert.equal(blob.includes("treasury"), false);
+    assert.equal(blob.includes("revenueSplit"), false);
+    for (const id of forbiddenIds) assert.equal(Object.values(org).includes(id), false);
+  }
+}
+
+describe("INC-56 supply-chain org approval and orgList privacy", () => {
+  const acct1 = ctx("acct1");
+  const acct2 = ctx("acct2");
+
+  it("self-join stays pending, reads and writes stay closed until approval, then read-only until buyer promotion, and orgList has no user ids", () => {
+    const created = dispatch("orgCreate", acct1, { name: "Private Freight", type: "firm" });
+    const orgId = created.organization.id;
+    const ship = dispatch("shipmentCreate", acct1, { orgId, reference: "SEC-1", value: 99999, carrier: "secret" });
+    assert.equal(ship.shipment.reference, "SEC-1");
+
+    const listed = dispatch("orgList", acct2, {});
+    const row = listed.organizations.find((o) => o.id === orgId);
+    assert.ok(row, "orgList still shows the firm name so a joiner can request it");
+    assert.equal(row.name, "Private Freight");
+    assertPublicOrgList(listed, ["acct1", "acct2"]);
+
+    assert.equal(dispatch("shipmentList", acct2, { orgId }).error, "not_a_member");
+    assert.equal(dispatch("workOrderList", acct2, { orgId }).error, "not_a_member");
+
+    const join = dispatch("orgJoin", acct2, { orgId });
+    assert.equal(join.status, "pending");
+    assert.equal(join.pending, true);
+    assert.equal(dispatch("shipmentList", acct2, { orgId }).error, "not_a_member");
+    assert.equal(dispatch("workOrderList", acct2, { orgId }).error, "not_a_member");
+    const deniedWrite = dispatch("shipmentCreate", acct2, { orgId, reference: "LEAK", value: 1, carrier: "nope" });
+    assert.equal(deniedWrite.ok, false);
+    assert.equal(deniedWrite.error, "not_a_member");
+    assert.equal(dispatch("orgMembers", acct2, { orgId }).error, "not_a_member");
+
+    const approved = dispatch("orgApprove", acct1, { orgId, targetUserId: "acct2" });
+    assert.equal(approved.status, "approved");
+    assert.equal(approved.role, "apprentice");
+    assert.equal(approved.scRole, "analyst");
+    const readable = dispatch("shipmentList", acct2, { orgId });
+    assert.equal(readable.shipments.length, 1);
+    assert.equal(readable.shipments[0].carrier, "secret");
+    assert.equal(readable.shipments[0].value, 99999);
+    assert.equal(dispatch("workOrderList", acct2, { orgId }).workOrders.length, 0);
+    assert.equal(dispatch("shipmentCreate", acct2, { orgId, reference: "NO" }).error, "insufficient_role");
+    assert.equal(dispatch("workOrderCreate", acct2, { orgId, item: "Coil" }).error, "insufficient_role");
+    assertPublicOrgList(dispatch("orgList", acct2, {}), ["acct1", "acct2"]);
+
+    const promoted = dispatch("orgSetRole", acct1, { orgId, targetUserId: "acct2", role: "buyer" });
+    assert.equal(promoted.role, "member");
+    assert.equal(promoted.scRole, "buyer");
+    const wrote = dispatch("shipmentCreate", acct2, { orgId, reference: "OK" });
+    assert.equal(wrote.shipment.reference, "OK");
+  });
+
+  it("an open joinOrganization membership does not satisfy scScope", () => {
+    const orgId = makeOrg();
+    dispatch("shipmentCreate", leader, { orgId, reference: "PRIVATE", value: 99999, carrier: "secret" });
+    const joined = joinOrganization(_orgDb, orgId, "sc_outsider", "member");
+    assert.equal(joined.ok, true);
+    assert.equal(joined.role, "member");
+    assert.equal(dispatch("shipmentList", outsider, { orgId }).error, "not_a_member");
+    assert.equal(dispatch("shipmentCreate", outsider, { orgId, reference: "X" }).error, "not_a_member");
+    assert.equal(dispatch("workOrderList", outsider, { orgId }).error, "not_a_member");
+  });
+
+  it("a planner invite admits the redeemer as a read-only analyst, once", () => {
+    const orgId = makeOrg();
+    dispatch("shipmentCreate", leader, { orgId, reference: "INV" });
+    assert.equal(dispatch("orgInvite", outsider, { orgId }).error, "not_a_member");
+    const inv = dispatch("orgInvite", leader, { orgId });
+    assert.equal(typeof inv.token, "string");
+    assert.ok(inv.token.length >= 32);
+    const joined = dispatch("orgJoin", memberUser, { orgId, inviteToken: inv.token });
+    assert.equal(joined.status, "approved");
+    assert.equal(joined.scRole, "analyst");
+    assert.equal(dispatch("shipmentList", memberUser, { orgId }).shipments.length, 1);
+    assert.equal(dispatch("shipmentCreate", memberUser, { orgId, reference: "NO" }).error, "insufficient_role");
+    const again = dispatch("orgJoin", apprenticeUser, { orgId, inviteToken: inv.token });
+    assert.equal(again.ok, false);
+    assert.equal(again.error, "invalid_invite");
+    assert.equal(dispatch("shipmentList", apprenticeUser, { orgId }).error, "not_a_member");
   });
 });

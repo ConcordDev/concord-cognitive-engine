@@ -38,8 +38,9 @@ describe("government.representatives-find (api.congress.gov live)", () => {
   it("parses Congress.gov response shape", async () => {
     process.env.CONGRESS_GOV_API_KEY = "test-key";
     globalThis.fetch = async (url) => {
-      assert.match(url, /api\.congress\.gov/);
-      assert.match(url, /stateCode=CA/);
+      assert.match(url, /api\.congress\.gov\/v3\/member\/CA\?/);
+      assert.doesNotMatch(url, /[?&]stateCode=/);
+      assert.match(url, /currentMember=true/);
       assert.match(url, /api_key=test-key/);
       return {
         ok: true,
@@ -61,9 +62,105 @@ describe("government.representatives-find (api.congress.gov live)", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.source, "api.congress.gov (current Congress)");
     assert.equal(r.result.representatives.length, 1);
+    assert.equal(r.result.total, 1);
+    assert.equal(r.result.partial, false);
     assert.equal(r.result.representatives[0].party, "D");
     assert.equal(r.result.representatives[0].office, "U.S. House");
     assert.equal(r.result.representatives[0].district, "11");
+  });
+
+  it("requests /v3/member/{state} and drops members from other states", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({
+          members: [
+            { bioguideId: "S000148", name: "Schumer, Charles E.", partyName: "Democratic", state: "New York", district: null, terms: { item: [{ chamber: "Senate", startYear: 2023 }] } },
+            { bioguideId: "O000172", name: "Ocasio-Cortez, Alexandria", partyName: "Democratic", state: "New York", district: 14, terms: { item: [{ chamber: "House of Representatives", startYear: 2025 }] } },
+            { bioguideId: "P000197", name: "Pelosi, Nancy", partyName: "Democratic", state: "California", district: 11, terms: { item: [{ chamber: "House of Representatives", startYear: 2025 }] } },
+          ],
+          pagination: { count: 3 },
+        }),
+      };
+    };
+    const r = await call("representatives-find", ctxA, { state: "ny" });
+    assert.equal(r.ok, true);
+    assert.equal(urls.length, 1);
+    assert.match(urls[0], /\/v3\/member\/NY\?/);
+    assert.match(urls[0], /currentMember=true/);
+    assert.match(urls[0], /limit=250/);
+    assert.doesNotMatch(urls[0], /[?&]stateCode=/);
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.partial, false);
+    assert.deepEqual(r.result.representatives.map((m) => m.bioguideId), ["S000148", "O000172"]);
+    assert.ok(r.result.representatives.every((m) => m.state === "New York"));
+  });
+
+  it("pages past a 50-member cap so a large state is not truncated", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const urls = [];
+    const ca = (id, district) => ({
+      bioguideId: id, name: `Member, ${id}`, partyName: "Democratic", state: "California", district,
+      terms: { item: [{ chamber: district == null ? "Senate" : "House of Representatives", startYear: 2025 }] },
+    });
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      const offset = Number(new URL(url).searchParams.get("offset") || "0");
+      if (offset === 0) {
+        const members = [ca("TXLEAK", 1)];
+        members[0] = { ...members[0], bioguideId: "T000001", state: "Texas", name: "Texan, One" };
+        for (let i = 1; i < 50; i++) members.push(ca(`C${String(i).padStart(6, "0")}`, i));
+        return {
+          ok: true,
+          json: async () => ({
+            members,
+            pagination: { count: 54, next: "https://api.congress.gov/v3/member/CA?offset=50&limit=250&currentMember=true" },
+          }),
+        };
+      }
+      assert.equal(offset, 50);
+      const members = [];
+      for (let i = 0; i < 4; i++) members.push(ca(`D${String(i).padStart(6, "0")}`, 50 + i));
+      return { ok: true, json: async () => ({ members, pagination: { count: 54 } }) };
+    };
+    const r = await call("representatives-find", ctxA, { state: "CA" });
+    assert.equal(r.ok, true);
+    assert.equal(urls.length, 2);
+    assert.match(urls[0], /\/v3\/member\/CA\?/);
+    assert.match(urls[1], /offset=50/);
+    assert.equal(r.result.partial, false);
+    assert.equal(r.result.total, 53);
+    assert.equal(r.result.representatives.length, 53);
+    assert.ok(r.result.representatives.every((m) => m.state === "California"));
+    assert.equal(r.result.representatives.some((m) => m.state === "Texas"), false);
+  });
+
+  it("says the list is partial when later pages repeat and the reported count is not met", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          members: [
+            { bioguideId: "A000001", name: "A", partyName: "Democratic", state: "California", district: 1, terms: { item: [{ chamber: "House of Representatives" }] } },
+            { bioguideId: "A000002", name: "B", partyName: "Republican", state: "California", district: 2, terms: { item: [{ chamber: "House of Representatives" }] } },
+          ],
+          pagination: { count: 54, next: "https://api.congress.gov/v3/member/CA?offset=2&currentMember=true" },
+        }),
+      };
+    };
+    const r = await call("representatives-find", ctxA, { state: "CA" });
+    assert.equal(r.ok, true);
+    assert.equal(calls, 2);
+    assert.equal(r.result.partial, true);
+    assert.equal(r.result.total, 2);
+    assert.match(r.result.notes, /Partial/);
+    assert.doesNotMatch(r.result.notes, /Returns all current/);
   });
 });
 

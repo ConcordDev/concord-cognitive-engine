@@ -1,8 +1,9 @@
 // server/domains/conkay-northstar.js
 //
 // Lens actions for the ConKay north star: iterate a spec toward something
-// physically buildable. Pure and deterministic: no database, no network, no
-// model; nothing is stored.
+// physically buildable. The loop is deterministic: no database, no network,
+// no model; nothing is stored. sentinel-m1's report also carries an Ed25519
+// attestation, new on each issuance.
 //
 //   conkay_northstar.ingest-spec { fixture } | { text }  → claim records with
 //                                       provenance + stated status + bin
@@ -24,6 +25,7 @@ import { runNorthStar, renderNorthStarMarkdown } from "../lib/conkay/northstar/i
 import { buildSentinelM1IR, runSentinelM1 } from "../lib/conkay/demos/sentinel-m1.js";
 import { drawingContent } from "../lib/conkay/physics/solvers/ga-drawing.js";
 import { verifyReceipt } from "../lib/conkay/iterate/receipt.js";
+import { attestReport } from "../lib/receipts/attest.js";
 
 const MAX_TEXT = 200000;
 
@@ -57,7 +59,7 @@ export default function registerConkayNorthstarActions(registerLensAction) {
   registerLensAction("conkay_northstar", "sentinel-m1", () => {
     const ns = runNorthStar();
     const r = ns.sentinel;
-    return { ok: true, result: { report: { ...r.report, finalDesign: undefined }, gate: r.gate, catalog: r.catalog, markdown: renderNorthStarMarkdown(ns) } };
+    return { ok: true, result: { report: attestReport({ ...r.report, finalDesign: undefined }), gate: r.gate, catalog: r.catalog, markdown: renderNorthStarMarkdown(ns) } };
   });
 
   registerLensAction("conkay_northstar", "sentinel-drawing", () => {

@@ -134,16 +134,16 @@ token for job A can never resolve job B) was already correctly implemented
 in the macros themselves; only the missing public entry point and the weak
 token were the real gaps. Covered end-to-end (real HTTP, real auth-mode
 server, two distinct welder accounts, no auth headers) by
-`server/tests/e2e/welding-portal-routes.test.js` (13/13 passing).
-**`portal-pay` is deliberately NOT wired to a real charge** — the macro
-only ever recorded a self-reported `{amount, method, reference}` with no
-Stripe/gateway call behind it, so exposing it publicly as-is would have let
-any token-holder mark their own invoice "paid" with zero money moving. The
-public `/pay` route instead validates the token and returns an honest
-`{ok:false, reason:"payment_capture_not_wired"}` — never a fabricated
-success — while `portal-pay` remains reachable through the authenticated
-`/api/lens/run` path for a logged-in welder logging an out-of-band payment
-(cash/check/in-person reader). Real online payment capture (Stripe
+`server/tests/e2e/welding-portal-routes.test.js`.
+**`portal-pay` is deliberately NOT wired to a real charge.** It used to
+append a self-reported `{amount, method:"card"|"ach", reference}` and mark
+the invoice partial/paid. The public `/pay` route never called it and
+returns `{ok:false, reason:"payment_capture_not_wired"}` (HTTP 501). That
+left `/api/lens/run` as a back door: any logged-in user who knew the token
+could record a card payment on the owner's invoice (INC-55, 2026-10-11).
+The handler now returns the same refusal and writes nothing. Owner
+bookkeeping of money already received stays on `invoice-payment`, which is
+scoped to the invoice owner. Real online payment capture (Stripe
 PaymentIntent or similar) is still a genuinely open, separate build.
 
 **`welding.portal-view` / `portal-approve` / `portal-pay` — unsurfaced.**

@@ -136,6 +136,28 @@ describe('AllianceWorkspace — channel search', () => {
     await waitFor(() => expect(screen.getByText(/No matches/)).toBeInTheDocument(), { timeout: 2000 });
   });
 
+  it('invites by handle and confirms alliance delete without showing a raw user id', async () => {
+    installLensRunMock();
+    render(<AllianceWorkspace />);
+    fireEvent.click(await screen.findByText('Concord Pact'));
+    const del = await screen.findByRole('button', { name: 'Delete alliance' });
+    fireEvent.click(del);
+    const confirm = await screen.findByRole('button', { name: 'Delete alliance confirm' });
+    await waitFor(() => expect(confirm).toHaveFocus());
+    fireEvent.click(confirm);
+    await waitFor(() => {
+      expect(lensRunMock.mock.calls.some((c) => c[1] === 'alliance-delete' && c[2]?.allianceId === 'alc_1')).toBe(true);
+    });
+
+    fireEvent.click(await screen.findByText('Concord Pact'));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    const handle = screen.getByLabelText('Handle to invite');
+    expect(handle).toHaveAttribute('placeholder', '@handle');
+    expect(screen.queryByPlaceholderText(/user id/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Ada (you)')).toBeInTheDocument();
+    expect(screen.queryByText('u1')).not.toBeInTheDocument();
+  });
+
   it('clearing the query reverts to the normal (unfiltered) message list', async () => {
     installLensRunMock();
     const input = await openWorkspace();

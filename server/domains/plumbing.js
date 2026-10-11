@@ -61,7 +61,9 @@ export default function registerPlumbingActions(registerLensAction) {
     if (!(s.plans instanceof Map)) s.plans = new Map();         // userId -> Array<servicePlan>
     if (!(s.parts instanceof Map)) s.parts = new Map();         // userId -> Array<partStock>
     if (!(s.notices instanceof Map)) s.notices = new Map();     // userId -> Array<notification>
-    if (!(s.workflows instanceof Map)) s.workflows = new Map(); // assignmentId -> workflow
+    // Keyed by assignmentId, not userId. workflowGet/workflowUpdate must
+    // still prove the caller owns that dispatch row (see workflowForOwner).
+    if (!(s.workflows instanceof Map)) s.workflows = new Map();
     if (!(s.clients instanceof Map)) s.clients = new Map();     // userId -> Array<client>
     if (!(s.inspections instanceof Map)) s.inspections = new Map(); // userId -> Array<inspection>
     return s;
@@ -494,6 +496,21 @@ export default function registerPlumbingActions(registerLensAction) {
   });
 
   // ── Technician mobile workflow ───────────────────────────────────
+  // workflows is the only field-service map not partitioned by userId.
+  // workflowStart already refuses a dispatch row the caller does not own.
+  // Get and update must do the same and answer workflow_not_found, so a
+  // guessed assignmentId neither reveals nor mutates another shop's job.
+  // ownerId is stamped on new workflows and checked when present. Rows
+  // written before that field existed stay readable by the assignment
+  // owner (no migration) and stay invisible to everyone else.
+  function workflowForOwner(g, userId, assignmentIdRaw) {
+    const assignmentId = clean(assignmentIdRaw, 64);
+    if (!assignmentId) return null;
+    if (!list(g.s.dispatch, userId).find(d => d.id === assignmentId)) return null;
+    const wf = g.s.workflows.get(assignmentId);
+    if (!wf || (wf.ownerId && wf.ownerId !== userId)) return null;
+    return wf;
+  }
   registerLensAction("plumbing", "workflowStart", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
@@ -505,7 +522,7 @@ export default function registerPlumbingActions(registerLensAction) {
         ? params.checklist.map(c => clean(c, 120))
         : ["Shut off water supply", "Inspect work area", "Complete repair", "Test for leaks", "Clean up site"];
       const wf = {
-        id: pid("wf"), assignmentId,
+        id: pid("wf"), assignmentId, ownerId: userId,
         checklist: checklist.map(label => ({ label, done: false })),
         photos: [], signature: null, signedBy: null,
         startedAt: new Date().toISOString(), completedAt: null,
@@ -517,7 +534,7 @@ export default function registerPlumbingActions(registerLensAction) {
   registerLensAction("plumbing", "workflowGet", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
-      const wf = g.s.workflows.get(clean(params.assignmentId, 64));
+      const wf = workflowForOwner(g, actor(ctx), params.assignmentId);
       if (!wf) return { ok: false, error: "workflow_not_found" };
       const done = wf.checklist.filter(c => c.done).length;
       return { ok: true, result: { workflow: wf, progress: wf.checklist.length ? Math.round(done / wf.checklist.length * 100) : 0 } };
@@ -526,7 +543,7 @@ export default function registerPlumbingActions(registerLensAction) {
   registerLensAction("plumbing", "workflowUpdate", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
-      const wf = g.s.workflows.get(clean(params.assignmentId, 64));
+      const wf = workflowForOwner(g, actor(ctx), params.assignmentId);
       if (!wf) return { ok: false, error: "workflow_not_found" };
       if (typeof params.checkIndex === "number" && wf.checklist[params.checkIndex]) {
         wf.checklist[params.checkIndex].done = params.done !== false;

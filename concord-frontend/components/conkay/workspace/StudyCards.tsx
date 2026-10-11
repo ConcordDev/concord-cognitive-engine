@@ -46,7 +46,7 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
           type="button"
           onClick={onRun}
           disabled={solving}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-500/90 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-60"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60"
         >
           {solving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />} Run FEA
         </button>

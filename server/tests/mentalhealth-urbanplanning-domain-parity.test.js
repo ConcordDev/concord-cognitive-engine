@@ -174,10 +174,160 @@ describe("urban-planning.hud-income-limits", () => {
 
   it("surfaces 401 invalid-key clearly", async () => {
     process.env.HUD_API_TOKEN = "bad";
-    globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return { ok: false, status: 401, json: async () => ({}) };
+    };
     const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "CA" });
     assert.equal(r.ok, false);
     assert.match(r.error, /invalid/);
+    assert.doesNotMatch(r.error, /unreachable/);
+    assert.equal(calls, 1);
+  });
+
+  it("statewide uses /il/statedata and keeps household-size limit objects", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    const urls = [];
+    const veryLow = { il50_p1: 39800, il50_p4: 56850 };
+    const extremelyLow = { il30_p1: 23900, il30_p4: 34100 };
+    const low = { il80_p1: 63700, il80_p4: 90950 };
+    globalThis.fetch = async (url, opts) => {
+      urls.push(String(url));
+      assert.equal(opts?.headers?.Authorization, "Bearer real-token");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            area_name: "New York",
+            median_income: 113700,
+            very_low: veryLow,
+            extremely_low: extremelyLow,
+            low,
+          },
+        }),
+      };
+    };
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "ny" });
+    assert.equal(r.ok, true);
+    assert.equal(urls.length, 1);
+    const defaultYear = new Date().getFullYear() - 1;
+    assert.match(urls[0], new RegExp(`/il/statedata/NY\\?year=${defaultYear}$`));
+    assert.doesNotMatch(urls[0], /\/il\/data\//);
+    assert.equal(r.result.medianIncome, 113700);
+    assert.deepEqual(r.result.veryLowIncome50Pct, veryLow);
+    assert.deepEqual(r.result.extremelyLowIncome30Pct, extremelyLow);
+    assert.deepEqual(r.result.lowIncome80Pct, low);
+    assert.equal(r.result.year, defaultYear);
+    assert.equal(r.result.countyFips, null);
+    assert.equal(r.result.entityId, null);
+    assert.equal(r.result.source, "hud-income-limits");
+  });
+
+  it("county uses the 10-digit HUD entity id from state FIPS + county FIPS + 99999", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            county_name: "New York County, NY",
+            area_name: "New York, NY HUD Metro FMR Area",
+            median_income: 113700,
+            very_low: { il50_p1: 45000 },
+            extremely_low: { il30_p1: 27000 },
+            low: { il80_p1: 72000 },
+          },
+        }),
+      };
+    };
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "NY", countyFips: "061", year: 2025 });
+    assert.equal(r.ok, true);
+    assert.equal(urls.length, 1);
+    assert.match(urls[0], /\/il\/data\/3606199999\?year=2025$/);
+    assert.doesNotMatch(urls[0], /NY99999/);
+    assert.equal(r.result.entityId, "3606199999");
+    assert.equal(r.result.countyFips, "061");
+    assert.equal(r.result.medianIncome, 113700);
+    assert.deepEqual(r.result.veryLowIncome50Pct, { il50_p1: 45000 });
+    assert.equal(r.result.year, 2025);
+  });
+
+  it("rejects a non-numeric countyFips before fetch", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    let calls = 0;
+    globalThis.fetch = async () => { calls += 1; throw new Error("should not fetch"); };
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "NY", countyFips: "NY99999" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /countyFips/);
+    assert.equal(calls, 0);
+  });
+
+  it("names a HUD 400 instead of calling the API unreachable", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    let calls = 0;
+    globalThis.fetch = async (url) => {
+      calls += 1;
+      assert.match(String(url), /\/il\/statedata\/NY\?year=2024$/);
+      return { ok: false, status: 400, json: async () => ({}) };
+    };
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "NY", year: 2024 });
+    assert.equal(r.ok, false);
+    assert.equal(calls, 1);
+    assert.match(r.error, /HUD 400/);
+    assert.doesNotMatch(r.error, /unreachable/);
+  });
+
+  it("falls back one year when the default year has no data", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    const defaultYear = new Date().getFullYear() - 1;
+    const prior = defaultYear - 1;
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      if (String(url).includes(`year=${defaultYear}`)) {
+        return { ok: false, status: 404, json: async () => ({}) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            area_name: "New York",
+            median_income: 104000,
+            very_low: { il50_p1: 36000 },
+            extremely_low: { il30_p1: 22000 },
+            low: { il80_p1: 58000 },
+          },
+        }),
+      };
+    };
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "NY" });
+    assert.equal(r.ok, true);
+    assert.equal(urls.length, 2);
+    assert.match(urls[0], new RegExp(`/il/statedata/NY\\?year=${defaultYear}$`));
+    assert.match(urls[1], new RegExp(`/il/statedata/NY\\?year=${prior}$`));
+    assert.equal(r.result.year, prior);
+    assert.equal(r.result.medianIncome, 104000);
+    assert.match(r.result.yearNote, new RegExp(`${defaultYear}`));
+    assert.match(r.result.yearNote, new RegExp(`${prior}`));
+  });
+
+  it("says so when the default year and the prior year both have no data", async () => {
+    process.env.HUD_API_TOKEN = "real-token";
+    const defaultYear = new Date().getFullYear() - 1;
+    globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "NY" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, new RegExp(String(defaultYear)));
+    assert.match(r.error, new RegExp(String(defaultYear - 1)));
+    assert.match(r.error, /HUD 404/);
+    assert.doesNotMatch(r.error, /unreachable/);
+    assert.equal(r.result, undefined);
   });
 });
 

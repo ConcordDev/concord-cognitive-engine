@@ -65,6 +65,7 @@ describe('assembly view math', () => {
 describe('AssemblyViewer', () => {
   it('selects a part, explodes, and opens a section plane', () => {
     render(<AssemblyViewer assembly={assembly} />);
+    expect(screen.getByTestId('studio-preview-badge').textContent).toMatch(/styling preview/);
     fireEvent.click(screen.getByTestId('part-BODY_SHELL'));
     expect(screen.getByTestId('inspector').textContent).toMatch(/Body loft/);
     expect(screen.getByTestId('inspector').textContent).toMatch(/calculated/);
@@ -75,6 +76,7 @@ describe('AssemblyViewer', () => {
     expect(screen.getByTestId('section-pos')).toBeTruthy();
     fireEvent.click(screen.getByText('Engineering'));
     expect(screen.getByText('Engineering').className).toMatch(/bg-white/);
+    expect(screen.queryByTestId('studio-preview-badge')).toBeNull();
   });
 
   it('stays view-only when asked, and still mounts the canvas', () => {
@@ -82,5 +84,6 @@ describe('AssemblyViewer', () => {
     expect(screen.queryByTestId('explode')).toBeNull();
     expect(screen.getByText(/View only/)).toBeTruthy();
     expect(screen.getByTestId('webgl')).toBeTruthy();
+    expect(screen.getByTestId('studio-preview-badge').textContent).toMatch(/engineering geometry is authoritative/);
   });
 });

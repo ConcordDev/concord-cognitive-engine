@@ -5,6 +5,23 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerPhilosophyActions from "../domains/philosophy.js";
 
+// Stands in for the users table lookupUserIdentity queries (PRAGMA + SELECT).
+// user_a / user_b are real rows; any other id is a miss.
+function usersDb() {
+  const rows = new Map([
+    ["user_a", { username: "ada", displayName: "Ada" }],
+    ["user_b", { username: "bea", displayName: "Bea" }],
+  ]);
+  return {
+    prepare(sql) {
+      if (String(sql).includes("PRAGMA")) {
+        return { all() { return [{ name: "id" }, { name: "username" }, { name: "display_name" }]; } };
+      }
+      return { get(id) { return rows.get(id); } };
+    },
+  };
+}
+
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
 function call(name, ctx, params = {}) {
@@ -15,7 +32,7 @@ function call(name, ctx, params = {}) {
 
 before(() => { registerPhilosophyActions(register); });
 beforeEach(() => {
-  globalThis._concordSTATE = { dtus: new Map() };
+  globalThis._concordSTATE = { dtus: new Map(), db: usersDb() };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
@@ -236,9 +253,10 @@ describe("philosophy.connections-graph", () => {
 });
 
 describe("philosophy.debate threads", () => {
-  it("creates a debate, posts a critique, tallies stances", () => {
-    const t = call("debate-create", ctxA, { title: "Is free will real?", claim: "Free will exists.", branch: "metaphysics" }).result.thread;
+  it("creates a public debate, posts a critique, tallies stances", () => {
+    const t = call("debate-create", ctxA, { title: "Is free will real?", claim: "Free will exists.", branch: "metaphysics", public: true }).result.thread;
     assert.ok(t.id);
+    assert.equal(t.public, true);
     call("debate-post", ctxB, { threadId: t.id, stance: "object", body: "Determinism rules it out." });
     call("debate-post", ctxA, { threadId: t.id, stance: "support", body: "Agency is observable." });
     const d = call("debate-detail", ctxA, { id: t.id });
@@ -250,10 +268,11 @@ describe("philosophy.debate threads", () => {
   it("rejects a debate without a claim", () => {
     assert.equal(call("debate-create", ctxA, { title: "x" }).ok, false);
   });
-  it("debate-list surfaces threads across users", () => {
+  it("debate-list returns the caller's threads plus public ones only", () => {
     call("debate-create", ctxA, { title: "T1", claim: "C1" });
-    call("debate-create", ctxB, { title: "T2", claim: "C2" });
+    call("debate-create", ctxB, { title: "T2", claim: "C2", public: true });
     assert.equal(call("debate-list", ctxA, {}).result.count, 2);
+    assert.equal(call("debate-list", ctxB, {}).result.count, 1);
   });
   it("debate-resolve closes a thread for its author", () => {
     const t = call("debate-create", ctxA, { title: "T", claim: "C" }).result.thread;

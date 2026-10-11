@@ -71,7 +71,7 @@ describe('OrgCollabPanel — no-org honest empty state', () => {
     await waitFor(() => screen.getByPlaceholderText(/Meridian Logistics/i));
     fireEvent.click(screen.getByText(/Join by ID/i));
     fireEvent.change(screen.getByPlaceholderText(/ask your planner/i), { target: { value: 'org_9' } });
-    fireEvent.click(screen.getByText(/Join as buyer/i));
+    fireEvent.click(screen.getByText(/Request access/i));
     await waitFor(() => {
       const call = lensRunMock.mock.calls.find((c) => c[1] === 'orgJoin');
       expect(call).toBeTruthy();

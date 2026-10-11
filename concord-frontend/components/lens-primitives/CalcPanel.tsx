@@ -63,8 +63,12 @@ export interface CalcPanelProps<LR, RR> {
   /** Right input region: render + macro configuration */
   right: MacroSlot & { render: ReactNode };
 
-  /** Render the two result cards (called after each successful Analyze). */
-  renderResults: (left: LR | null, right: RR | null) => ReactNode;
+  /**
+   * Render the two result cards. `errors` is set when that side's macro
+   * returned `{ ok: false }` (or the request failed). A null result with
+   * an error is a refusal, not "not yet analyzed".
+   */
+  renderResults: (left: LR | null, right: RR | null, errors?: { left: string | null; right: string | null }) => ReactNode;
 
   /** Save-as-DTU composition. Only invoked when both results are non-null. */
   dtu: CalcPanelDtu<LR, RR>;
@@ -79,22 +83,49 @@ export interface CalcPanelProps<LR, RR> {
   disabledHint?: string;
 }
 
+interface MacroSide<T> {
+  result: T | null;
+  error: string | null;
+}
+
+/** Human text from an `{ ok: false }` envelope. Prefer `message` (the
+ *  sentence) over `error` (often a short code) when both are present. */
+function macroFailureText(node: unknown): string | null {
+  if (!node || typeof node !== 'object') return null;
+  const o = node as { ok?: unknown; error?: unknown; message?: unknown; reason?: unknown };
+  if (o.ok !== false) return null;
+  for (const v of [o.message, o.error, o.reason]) {
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  return 'Analysis failed.';
+}
+
 async function callMacro<T>(
   domain: string,
   action: string,
   artifact: Record<string, unknown>,
-): Promise<T | null> {
+): Promise<MacroSide<T>> {
   try {
     const r = await apiHelpers.lens.runDomain(domain, action, { input: { artifact } });
-    const env = (r as { data?: { ok: boolean; result?: T } }).data;
-    if (!env?.ok) return null;
-    const result = env.result as unknown as { ok?: boolean; result?: T } | T;
+    const env = (r as { data?: unknown }).data;
+    const topFail = macroFailureText(env);
+    if (topFail) return { result: null, error: topFail };
+    if (!env || typeof env !== 'object') return { result: null, error: 'Analysis failed.' };
+    const body = env as { ok?: boolean; result?: unknown };
+    if (body.ok === false) return { result: null, error: 'Analysis failed.' };
+    const nestedFail = macroFailureText(body.result);
+    if (nestedFail) return { result: null, error: nestedFail };
+    const result = body.result;
     if (result && typeof result === 'object' && 'ok' in result && 'result' in result) {
-      return (result as { result: T }).result;
+      return { result: (result as { result: T }).result, error: null };
     }
-    return env.result as T;
-  } catch {
-    return null;
+    return { result: (result ?? null) as T | null, error: null };
+  } catch (e) {
+    const data = (e as { response?: { data?: unknown } })?.response?.data;
+    const fromBody = macroFailureText(data);
+    if (fromBody) return { result: null, error: fromBody };
+    const msg = e instanceof Error && e.message ? e.message : 'Analysis failed.';
+    return { result: null, error: msg };
   }
 }
 
@@ -129,6 +160,8 @@ export function CalcPanel<LR, RR>({
 }: CalcPanelProps<LR, RR>) {
   const [leftResult, setLeftResult] = useState<LR | null>(null);
   const [rightResult, setRightResult] = useState<RR | null>(null);
+  const [leftError, setLeftError] = useState<string | null>(null);
+  const [rightError, setRightError] = useState<string | null>(null);
 
   const analyze = useMutation({
     mutationFn: async () => {
@@ -136,8 +169,10 @@ export function CalcPanel<LR, RR>({
         callMacro<LR>(domain, left.macro, left.buildArtifact()),
         callMacro<RR>(domain, right.macro, right.buildArtifact()),
       ]);
-      setLeftResult(l);
-      setRightResult(r);
+      setLeftResult(l.result);
+      setRightResult(r.result);
+      setLeftError(l.error);
+      setRightError(r.error);
       return { l, r };
     },
   });
@@ -180,7 +215,22 @@ export function CalcPanel<LR, RR>({
 
       {analyze.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{errorLabel}</div>}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{renderResults(leftResult, rightResult)}</div>
+      {(leftError || rightError) && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div>
+            {leftError && (
+              <div role="alert" className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{leftError}</div>
+            )}
+          </div>
+          <div>
+            {rightError && (
+              <div role="alert" className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{rightError}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">{renderResults(leftResult, rightResult, { left: leftError, right: rightError })}</div>
     </div>
   );
 }

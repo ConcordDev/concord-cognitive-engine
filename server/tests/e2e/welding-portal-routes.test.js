@@ -36,9 +36,13 @@
  *       not a symptom of auth being globally off
  * Plus: portal-pay is proven to be an HONEST, non-mutating "not yet wired"
  * response (the invoice's balance/status are byte-identical before and
- * after a pay attempt — no fabricated payment is ever recorded), and the
- * minted token is proven to use the new crypto-secure format rather than
- * the old guessable `wId()` shape.
+ * after a pay attempt — no fabricated payment is ever recorded), on BOTH
+ * the public route (HTTP 501) and the authenticated `/api/lens/run`
+ * `welding.portal-pay` action (INC-55: a second logged-in account, and
+ * the invoice owner, must both get ok:false and leave the invoice
+ * unchanged). Owner bookkeeping via `invoice-payment` method "check"
+ * still records. The minted token is proven to use the crypto-secure
+ * format rather than the old guessable `wId()` shape.
  */
 
 import { describe, it, before, after } from 'node:test';
@@ -432,9 +436,9 @@ describe('E2E — welding client portal (/api/welding/portal/*)', { timeout: 120
     const { status, body } = await postJSON(base, '/api/welding/portal/' + encodeURIComponent(invoiceAToken) + '/pay', {
       amount: invoiceAAmount, method: 'card',
     });
-    // Never a fabricated 200 success — the underlying macro has no real
-    // payment gateway behind it.
-    assert.notEqual(status, 200);
+    // Never a fabricated 200 success — there is no payment gateway behind
+    // this route. 501 is the honest "not implemented" status.
+    assert.equal(status, 501);
     assert.equal(body?.ok, false);
     assert.equal(body?.reason, 'payment_capture_not_wired');
     assert.equal(typeof body?.message, 'string');
@@ -470,6 +474,95 @@ describe('E2E — welding client portal (/api/welding/portal/*)', { timeout: 120
     // symptom of auth being globally disabled for this whole test run.
     const { status } = await postJSON(base, '/api/dtus/fake-dtu-id/vote', { direction: 'up' });
     assert.equal(status, 401, 'expected the known-protected route to 401, got ' + status);
+  });
+
+  // ── INC-55: lens portal-pay must not record a card/ACH payment ────────
+  // The public route above already returns 501. These cases are the back
+  // door: any logged-in user (including the owner) calling
+  // welding.portal-pay through /api/lens/run with the portal token.
+
+  async function invoiceRow(headers) {
+    const list = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'invoice-list', input: {},
+    }, headers);
+    assert.equal(list.status, 200, 'invoice-list failed: ' + JSON.stringify(list));
+    const row = (list.body?.result?.invoices || []).find(function (i) { return i.id === invoiceAId; });
+    assert.ok(row, 'invoice A missing from owner invoice-list: ' + JSON.stringify(list.body));
+    return row;
+  }
+
+  it('INC-55: acct2 lens portal-pay with acct1 token returns ok:false and leaves the invoice unchanged', async function () {
+    const before = await invoiceRow(welderAHeaders);
+    const pay = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'portal-pay',
+      input: { token: invoiceAToken, amount: 10, method: 'card' },
+    }, welderBHeaders);
+    assert.notEqual(pay.status, 200, 'portal-pay must not be HTTP 200: ' + JSON.stringify(pay));
+    assert.equal(pay.body?.ok, false);
+    assert.equal(pay.body?.error, 'payment_capture_not_wired');
+    assert.equal(pay.body?.reason, 'payment_capture_not_wired');
+    const after = await invoiceRow(welderAHeaders);
+    assert.equal(after.balance, before.balance);
+    assert.equal(after.amountPaid, before.amountPaid);
+    assert.equal(after.status, before.status);
+    assert.deepEqual(after.payments, before.payments);
+  });
+
+  it('INC-55: acct1 lens portal-pay on their own invoice returns ok:false and leaves the invoice unchanged', async function () {
+    const before = await invoiceRow(welderAHeaders);
+    const pay = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'portal-pay',
+      input: { token: invoiceAToken, amount: 10, method: 'card' },
+    }, welderAHeaders);
+    assert.notEqual(pay.status, 200, 'owner portal-pay must not be HTTP 200: ' + JSON.stringify(pay));
+    assert.equal(pay.body?.ok, false);
+    assert.equal(pay.body?.error, 'payment_capture_not_wired');
+    assert.equal(pay.body?.reason, 'payment_capture_not_wired');
+    const after = await invoiceRow(welderAHeaders);
+    assert.equal(after.balance, before.balance);
+    assert.equal(after.amountPaid, before.amountPaid);
+    assert.equal(after.status, before.status);
+    assert.deepEqual(after.payments, before.payments);
+  });
+
+  it('INC-55: owner invoice-payment method check still records', async function () {
+    const job = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'job-schedule',
+      input: { title: 'Check payment job', client: 'Acme Yard Co', scheduledDate: '2026-08-02' },
+    }, welderAHeaders);
+    assert.equal(job.status, 200, JSON.stringify(job));
+    const jobId = job.body?.result?.job?.id;
+    assert.ok(jobId, JSON.stringify(job.body));
+    const created = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'invoice-from-job',
+      input: { jobId: jobId, amount: 200 },
+    }, welderAHeaders);
+    assert.equal(created.status, 200, JSON.stringify(created));
+    const invoiceId = created.body?.result?.invoice?.id;
+    assert.ok(invoiceId, JSON.stringify(created.body));
+    const pay = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'invoice-payment',
+      input: { invoiceId: invoiceId, amount: 50, method: 'check', reference: 'chk-1001' },
+    }, welderAHeaders);
+    assert.equal(pay.status, 200, 'invoice-payment check failed: ' + JSON.stringify(pay));
+    assert.equal(pay.body?.ok, true);
+    assert.equal(pay.body?.result?.payment?.method, 'check');
+    assert.equal(pay.body?.result?.payment?.amount, 50);
+    assert.equal(pay.body?.result?.invoice?.status, 'partial');
+    assert.equal(pay.body?.result?.invoice?.balance, 150);
+    assert.equal(pay.body?.result?.invoice?.amountPaid, 50);
+    const list = await postJSON(base, '/api/lens/run', {
+      domain: 'welding', action: 'invoice-list', input: {},
+    }, welderAHeaders);
+    const row = (list.body?.result?.invoices || []).find(function (i) { return i.id === invoiceId; });
+    assert.ok(row, 'check-paid invoice missing from invoice-list');
+    assert.equal(row.balance, 150);
+    assert.equal(row.payments.length, 1);
+    assert.equal(row.payments[0].method, 'check');
+    // The refused portal-pay cases must not have touched invoice A.
+    const untouched = (list.body?.result?.invoices || []).find(function (i) { return i.id === invoiceAId; });
+    assert.equal(untouched.balance, invoiceAAmount);
+    assert.deepEqual(untouched.payments, []);
   });
 
   it('POST /api/welding/portal/:token/approve — reject decision works end-to-end, no auth', async function () {

@@ -6,6 +6,8 @@
 // quest accept → submit → verify, bounty escrow + payout, guild membership +
 // shared quests, reputation/rank progression, achievement showcase.
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 export default function registerQuestmarketActions(registerLensAction) {
   // ── persistent state ──
   function qmState() {
@@ -32,6 +34,43 @@ export default function registerQuestmarketActions(registerLensAction) {
   }
   function qmActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function qmId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+
+  // Public label for a user id. lookupUserIdentity prefers display_name, then
+  // the @handle, and never invents a name from the raw id (same rule as
+  // crisis.js). A stored name that IS the id is not a public label.
+  const QM_NEUTRAL_NAME = "Adventurer";
+  function qmLabels(ctx, viewerId) {
+    const cache = new Map();
+    return function label(subjectId) {
+      if (!subjectId) return QM_NEUTRAL_NAME;
+      if (cache.has(subjectId)) return cache.get(subjectId);
+      const ident = lookupUserIdentity(ctx?.db, subjectId);
+      const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+      const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+      let name = null;
+      if (display && display !== subjectId) name = display;
+      else if (handle && handle !== subjectId) name = handle;
+      const out = name || (subjectId === viewerId ? "You" : QM_NEUTRAL_NAME);
+      cache.set(subjectId, out);
+      return out;
+    };
+  }
+  function redactLedgerEntry(entry, viewerId) {
+    const out = { ...entry };
+    for (const key of ["userId", "from", "to"]) {
+      if (out[key] != null && out[key] !== viewerId) delete out[key];
+    }
+    return out;
+  }
+  // Reject and abandon share this: a quest with no accepted/submitted claim
+  // is claimable again.
+  function reopenIfIdle(s, quest) {
+    if (!quest || quest.status !== "in_progress") return;
+    const stillActive = quest.claims
+      .map((cid) => s.claims.get(cid))
+      .some((c) => c && (c.status === "accepted" || c.status === "submitted"));
+    if (!stillActive) quest.status = "open";
+  }
   function qmNow() { return new Date().toISOString(); }
   function qmDay() { return new Date().toISOString().slice(0, 10); }
 
@@ -517,15 +556,22 @@ export default function registerQuestmarketActions(registerLensAction) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     // Annotate with the caller's claim state for each quest.
+    // poster is the raw user id — other viewers get posterName + isMine only.
+    const label = qmLabels(ctx, userId);
     const annotated = quests.map((q) => {
+      const { poster, ...rest } = q;
       const myClaim = q.claims
         .map((cid) => s.claims.get(cid))
         .find((c) => c && c.claimant === userId);
+      const isMine = poster === userId;
       return {
-        ...q,
+        ...rest,
         claimCount: q.claims.length,
         myClaimStatus: myClaim ? myClaim.status : null,
         myClaimId: myClaim ? myClaim.id : null,
+        isMine,
+        posterName: label(poster),
+        ...(isMine ? { poster } : {}),
       };
     });
     return {
@@ -623,8 +669,11 @@ export default function registerQuestmarketActions(registerLensAction) {
 
     if (!approve) {
       claim.status = "rejected";
+      // Same as abandonClaim: the last live claim going away reopens the quest
+      // so it is claimable again and shows up in status=open filters.
+      reopenIfIdle(s, quest);
       qmSave();
-      return { ok: true, result: { claim, outcome: "rejected" } };
+      return { ok: true, result: { claim, quest, outcome: "rejected" } };
     }
 
     claim.status = "verified";
@@ -701,13 +750,7 @@ export default function registerQuestmarketActions(registerLensAction) {
       return { ok: false, error: `claim already ${claim.status}` };
     }
     claim.status = "abandoned";
-    const quest = s.quests.get(claim.questId);
-    if (quest && quest.status === "in_progress") {
-      const stillActive = quest.claims
-        .map((cid) => s.claims.get(cid))
-        .some((c) => c && (c.status === "accepted" || c.status === "submitted"));
-      if (!stillActive) quest.status = "open";
-    }
+    reopenIfIdle(s, s.quests.get(claim.questId));
     qmSave();
     return { ok: true, result: { claim } };
   });
@@ -923,8 +966,21 @@ export default function registerQuestmarketActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const guild = s.guilds.get(String(params.guildId || ""));
     if (!guild) return { ok: false, error: "guild not found" };
+    const viewerId = qmActor(ctx);
+    const label = qmLabels(ctx, viewerId);
+    const { founder, ...guildRest } = guild;
     const members = Array.from((s.guildMembers.get(guild.id) || new Map()).values())
-      .sort((a, b) => b.contributedXp - a.contributedXp);
+      .sort((a, b) => b.contributedXp - a.contributedXp)
+      .map((m) => {
+        const { userId, ...rest } = m;
+        const isMe = userId === viewerId;
+        return {
+          ...rest,
+          displayName: label(userId),
+          isMe,
+          ...(isMe ? { userId } : {}),
+        };
+      });
     const sharedQuests = Array.from(s.quests.values())
       .filter((q) => q.guildId === guild.id)
       .map((q) => ({
@@ -935,7 +991,12 @@ export default function registerQuestmarketActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        guild,
+        guild: {
+          ...guildRest,
+          founderName: label(founder),
+          isFounder: founder === viewerId,
+          ...(founder === viewerId ? { founder } : {}),
+        },
         members,
         memberCount: members.length,
         sharedQuests,
@@ -962,19 +1023,27 @@ export default function registerQuestmarketActions(registerLensAction) {
     const totalPaidOut = s.ledger
       .filter((e) => e.type === "payout")
       .reduce((sum, e) => sum + e.amount, 0);
+    const userId = qmActor(ctx);
     const verifiedClaims = claims.filter((c) => c.status === "verified").length;
+    // Market-wide aggregate (MarketHeader). The Verify tab badge uses
+    // myPendingVerification — submitted claims on quests this caller posted.
     const pendingVerification = claims.filter((c) => c.status === "submitted").length;
+    const myPendingVerification = claims.filter((c) => {
+      if (c.status !== "submitted") return false;
+      const q = s.quests.get(c.questId);
+      return Boolean(q && q.poster === userId);
+    }).length;
     return {
       ok: true,
       result: {
         totalQuests: quests.length,
         openCount, inProgress, resolved,
         totalClaims: claims.length,
-        verifiedClaims, pendingVerification,
+        verifiedClaims, pendingVerification, myPendingVerification,
         totalEscrowed, totalPaidOut,
         guildCount: s.guilds.size,
         adventurerCount: s.reputation.size,
-        recentLedger: s.ledger.slice(-15).reverse(),
+        recentLedger: s.ledger.slice(-15).reverse().map((e) => redactLedgerEntry(e, userId)),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

@@ -2,13 +2,13 @@
 
 /**
  * DecisionToolkit — the actionable ethics-decision surface for the
- * ethics lens. Wires all 19 `ethics` domain macros end-to-end, split
+ * ethics lens. Wires the `ethics` domain macros end-to-end, split
  * across nine tools:
- *   - multiFrameworkDilemma / listMultiFramework
- *   - stakeholderMap / listStakeholderMaps
- *   - decisionMatrix / listDecisionMatrices
- *   - biasChecklistTemplate / biasChecklist / listBiasChecklists
- *   - submitReview / addReviewOpinion / recordVerdict / listReviews
+ *   - multiFrameworkDilemma / listMultiFramework / deleteAnalysis
+ *   - stakeholderMap / listStakeholderMaps / deleteStakeholderMap
+ *   - decisionMatrix / listDecisionMatrices / deleteDecisionMatrix
+ *   - biasChecklistTemplate / biasChecklist / listBiasChecklists / deleteBiasChecklist
+ *   - submitReview / addReviewOpinion / recordVerdict / listReviews / deleteReview
  *   - archiveCase / searchCases / deleteCase
  *   - frameworkAnalysis (deep 4-framework synthesis of a single action)
  *   - stakeholderImpact (Mitchell-Agle-Wood salience/equity analysis)
@@ -124,6 +124,8 @@ interface BiasRecord {
 interface ReviewOpinion {
   id: string;
   by: string;
+  /** Free-text label such as "devil's advocate". Never another account. */
+  perspective?: string;
   stance: string;
   rationale: string;
   createdAt: string;
@@ -161,6 +163,30 @@ interface CaseRecord {
 
 const SECTION = 'rounded-xl border border-lattice-border bg-lattice-surface p-4 space-y-3';
 const errBox = 'text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2';
+
+/**
+ * Delete for a saved record. Hidden until the row is hovered or the control
+ * itself takes keyboard focus — hover-only would drop it out of the tab order's
+ * visible affordance.
+ */
+function SavedRecordDelete({ label, onDelete }: { label: string; onDelete: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onDelete}
+      aria-label={label}
+      title={label}
+      className={cn(
+        ds.btnGhost,
+        'shrink-0 opacity-0 transition-opacity',
+        'group-hover:opacity-100 group-focus-within:opacity-100',
+        'focus:opacity-100 focus-visible:opacity-100',
+      )}
+    >
+      <Trash2 className="w-4 h-4 text-red-400" />
+    </button>
+  );
+}
 
 /**
  * LoadGate — the single load-state authority for every ethics list panel.
@@ -296,6 +322,13 @@ function MultiFrameworkPanel() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const remove = async (id: string) => {
+    setErr('');
+    const r = await lensRun('ethics', 'deleteAnalysis', { analysisId: id });
+    if (!r.data.ok) { setErr(r.data.error || 'Delete failed.'); return; }
+    load();
+  };
+
   const setOpt = (i: number, field: string, val: string) => {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? { ...o, [field]: val } : o)));
   };
@@ -385,12 +418,15 @@ function MultiFrameworkPanel() {
         isEmpty={records.length === 0} emptyLabel="multi-framework analyses"
       >
       {records.map((rec) => (
-        <div key={rec.id} className={SECTION}>
+        <div key={rec.id} className={cn(SECTION, 'group')}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-white font-medium">{rec.dilemma}</p>
-            <span className="text-xs text-gray-400 whitespace-nowrap">
-              {new Date(rec.createdAt).toLocaleDateString()}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {new Date(rec.createdAt).toLocaleDateString()}
+              </span>
+              <SavedRecordDelete label="Delete analysis" onDelete={() => remove(rec.id)} />
+            </div>
           </div>
           <p className={ds.textMuted}>
             Recommended: <span className="text-neon-cyan">{rec.recommended}</span>
@@ -463,6 +499,13 @@ function StakeholderMapPanel() {
     setRecords(r.data.result?.maps || []);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const remove = async (id: string) => {
+    setErr('');
+    const r = await lensRun('ethics', 'deleteStakeholderMap', { mapId: id });
+    if (!r.data.ok) { setErr(r.data.error || 'Delete failed.'); return; }
+    load();
+  };
 
   const setSh = (i: number, field: string, val: string) => {
     setStakeholders((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: val } : s)));
@@ -564,10 +607,13 @@ function StakeholderMapPanel() {
         isEmpty={records.length === 0} emptyLabel="stakeholder maps"
       >
       {records.map((rec) => (
-        <div key={rec.id} className={SECTION}>
+        <div key={rec.id} className={cn(SECTION, 'group')}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-white font-medium">{rec.title}</p>
-            <span className="text-xs text-neon-cyan">Best: {rec.bestOption}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-neon-cyan">Best: {rec.bestOption}</span>
+              <SavedRecordDelete label="Delete stakeholder map" onDelete={() => remove(rec.id)} />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -645,6 +691,13 @@ function DecisionMatrixPanel() {
     setRecords(r.data.result?.matrices || []);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const remove = async (id: string) => {
+    setErr('');
+    const r = await lensRun('ethics', 'deleteDecisionMatrix', { matrixId: id });
+    if (!r.data.ok) { setErr(r.data.error || 'Delete failed.'); return; }
+    load();
+  };
 
   const setCrit = (i: number, field: string, val: string) => {
     setCriteria((prev) => prev.map((c, idx) => (idx === i ? { ...c, [field]: val } : c)));
@@ -741,10 +794,13 @@ function DecisionMatrixPanel() {
         isEmpty={records.length === 0} emptyLabel="decision matrices"
       >
       {records.map((rec) => (
-        <div key={rec.id} className={SECTION}>
+        <div key={rec.id} className={cn(SECTION, 'group')}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-white font-medium">{rec.title}</p>
-            <span className="text-xs text-neon-cyan">Winner: {rec.winner}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-neon-cyan">Winner: {rec.winner}</span>
+              <SavedRecordDelete label="Delete decision matrix" onDelete={() => remove(rec.id)} />
+            </div>
           </div>
           <ChartKit
             kind="bar"
@@ -802,6 +858,13 @@ function BiasChecklistPanel() {
     setRecords(list.data.result?.checklists || []);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const remove = async (id: string) => {
+    setErr('');
+    const r = await lensRun('ethics', 'deleteBiasChecklist', { checklistId: id });
+    if (!r.data.ok) { setErr(r.data.error || 'Delete failed.'); return; }
+    load();
+  };
 
   const toggleFlag = (key: string) => {
     setResponses((prev) => ({
@@ -869,12 +932,15 @@ function BiasChecklistPanel() {
         isEmpty={records.length === 0} emptyLabel="bias checklists"
       >
       {records.map((rec) => (
-        <div key={rec.id} className={SECTION}>
+        <div key={rec.id} className={cn(SECTION, 'group')}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-white font-medium">{rec.decision}</p>
-            <span className={cn('text-sm font-bold', riskColor(rec.riskLevel))}>
-              {rec.riskLevel} ({rec.riskScore}%)
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={cn('text-sm font-bold', riskColor(rec.riskLevel))}>
+                {rec.riskLevel} ({rec.riskScore}%)
+              </span>
+              <SavedRecordDelete label="Delete bias checklist" onDelete={() => remove(rec.id)} />
+            </div>
           </div>
           <p className={ds.textMuted}>
             {rec.flaggedCount} of {rec.totalCount} biases flagged
@@ -914,6 +980,13 @@ function ReviewWorkflowPanel() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const remove = async (id: string): Promise<string> => {
+    const r = await lensRun('ethics', 'deleteReview', { reviewId: id });
+    if (!r.data.ok) return r.data.error || 'Delete failed.';
+    load();
+    return '';
+  };
+
   const submit = async () => {
     setErr('');
     if (!title.trim() || !dilemma.trim()) { setErr('Title and dilemma required.'); return; }
@@ -928,13 +1001,16 @@ function ReviewWorkflowPanel() {
   return (
     <div className="space-y-4">
       <div className={SECTION}>
-        <h4 className={ds.heading3}>Submit a dilemma for peer review</h4>
-        <input className={ds.input} placeholder="Review title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <h4 className={ds.heading3}>Record a deliberation</h4>
+        <p className={ds.textMuted}>
+          This log stays on your account. A perspective is a label you write, not another person.
+        </p>
+        <input className={ds.input} placeholder="Deliberation title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea className={ds.textarea} rows={2} placeholder="The dilemma to deliberate..."
           value={dilemma} onChange={(e) => setDilemma(e.target.value)} />
         <button className={ds.btnPrimary} onClick={submit} disabled={busy}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessagesSquare className="w-4 h-4" />}
-          Submit for Review
+          Record a deliberation
         </button>
         {err && <div className={errBox}>{err}</div>}
       </div>
@@ -944,16 +1020,23 @@ function ReviewWorkflowPanel() {
         isEmpty={records.length === 0} emptyLabel="ethics reviews"
       >
       {records.map((rec) => (
-        <ReviewCard key={rec.id} review={rec} onChange={load} />
+        <ReviewCard key={rec.id} review={rec} onChange={load} onDelete={remove} />
       ))}
       </LoadGate>
     </div>
   );
 }
 
-function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () => void }) {
+function ReviewCard({
+  review, onChange, onDelete,
+}: {
+  review: ReviewRecord;
+  onChange: () => void;
+  onDelete: (id: string) => Promise<string>;
+}) {
   const [stance, setStance] = useState<'approve' | 'reject' | 'abstain' | 'amend'>('approve');
   const [rationale, setRationale] = useState('');
+  const [perspective, setPerspective] = useState('');
   const [verdictText, setVerdictText] = useState('');
   const [verdictRationale, setVerdictRationale] = useState('');
   const [err, setErr] = useState('');
@@ -966,11 +1049,25 @@ function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () =
     setErr('');
     if (!rationale.trim()) { setErr('Rationale required.'); return; }
     setBusy(true);
-    const r = await lensRun('ethics', 'addReviewOpinion', { reviewId: review.id, stance, rationale });
+    const r = await lensRun('ethics', 'addReviewOpinion', {
+      reviewId: review.id,
+      stance,
+      rationale,
+      ...(perspective.trim() ? { perspective: perspective.trim() } : {}),
+    });
     setBusy(false);
     if (!r.data.ok) { setErr(r.data.error || 'Failed.'); return; }
     setRationale('');
+    setPerspective('');
     onChange();
+  };
+
+  const remove = async () => {
+    setErr('');
+    setBusy(true);
+    const message = await onDelete(review.id);
+    setBusy(false);
+    if (message) setErr(message);
   };
 
   const finalize = async () => {
@@ -987,13 +1084,16 @@ function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () =
   };
 
   return (
-    <div className={SECTION}>
+    <div className={cn(SECTION, 'group')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-white font-medium">{review.title}</p>
           <p className={ds.textMuted}>{review.dilemma}</p>
         </div>
-        <span className={cn('text-xs font-medium', statusColor)}>{review.status}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={cn('text-xs font-medium', statusColor)}>{review.status}</span>
+          <SavedRecordDelete label="Delete deliberation" onDelete={remove} />
+        </div>
       </div>
 
       {review.opinions.length > 0 && (
@@ -1009,6 +1109,11 @@ function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () =
               )}>
                 {o.stance}
               </span>
+              {o.perspective ? (
+                <span className="text-xs text-gray-500 shrink-0">
+                  Perspective: {o.perspective}
+                </span>
+              ) : null}
               <span className="text-gray-400">{o.rationale}</span>
             </div>
           ))}
@@ -1038,11 +1143,15 @@ function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () =
               <option value="amend">Amend</option>
               <option value="abstain">Abstain</option>
             </select>
+            <input className={cn(ds.input, 'flex-1 min-w-[140px]')} placeholder="Perspective label (optional)"
+              aria-label="Perspective label"
+              maxLength={80}
+              value={perspective} onChange={(e) => setPerspective(e.target.value)} />
             <input className={cn(ds.input, 'flex-1 min-w-[160px]')} placeholder="Rationale"
               value={rationale} onChange={(e) => setRationale(e.target.value)} />
             <button className={ds.btnSecondary} onClick={addOpinion} disabled={busy}>
               {stance === 'approve' ? <ThumbsUp className="w-4 h-4" /> : <ThumbsDown className="w-4 h-4" />}
-              Add Opinion
+              Add a perspective
             </button>
           </div>
           <div className="flex flex-wrap gap-2 items-center border-t border-lattice-border pt-2">
@@ -1168,15 +1277,13 @@ function CaseLibraryPanel() {
         isEmpty={cases.length === 0} emptyLabel="archived cases"
       >
       {cases.map((c) => (
-        <div key={c.id} className={SECTION}>
+        <div key={c.id} className={cn(SECTION, 'group')}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-white font-medium">{c.title}</p>
               {c.framework && <p className="text-xs text-neon-cyan">{c.framework}</p>}
             </div>
-            <button onClick={() => del(c.id)} className={ds.btnGhost} aria-label="Delete case">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </button>
+            <SavedRecordDelete label="Delete case" onDelete={() => del(c.id)} />
           </div>
           <p className={ds.textMuted}><span className="text-gray-400">Dilemma:</span> {c.dilemma}</p>
           {c.reasoning && (

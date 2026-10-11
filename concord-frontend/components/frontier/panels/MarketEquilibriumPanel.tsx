@@ -15,17 +15,11 @@
  * actually happened, so that sub-mode's "compute" cell has tuning knobs
  * only, never a matrix editor, because a matrix input would be fake here.
  *
- * HONEST GOTCHA this file works around rather than papers over: the
- * `mixedNash` refusal shape from `server/lib/game-theory/mixed-nash.js` is
- * `{ ok:false, reason:'support_enumeration_exhausted', maxSupportSize,
- * candidateCount }` — it uses `reason`, not `error`. The shared
- * `lensRun()` client helper (lib/api/client.ts) only recovers `.error` on
- * its generic refusal fallback path, so this specific shape collapses to
- * the literal string "lens error" on the wire — a real, verified
- * limitation of the shared helper, not something this panel can fix (it's
- * used across the whole app). Rather than inventing a specific reason the
- * client genuinely can't recover, `describeRefusal()` below detects this
- * degraded case and says so plainly.
+ * `mixedNash` refuses as `{ ok:false, reason:'support_enumeration_exhausted' }`
+ * (a `reason`, not an `error`). `lensRun()` copies that `reason` onto
+ * `error` when `error` is absent, so the panel shows the recovered reason.
+ * `describeRefusal()` still explains a genuine generic "lens error" when
+ * nothing more specific came back.
  */
 
 import { useState } from 'react';
@@ -50,10 +44,8 @@ const MODE_MACRO: Record<ModeId, string> = {
   'live-market': 'equilibriumAnalysis',
 };
 
-/** A refusal whose reason collapsed to the shared client's generic
- *  fallback ("lens error") because the macro used `reason` instead of
- *  `error` on the wire — see the file header. Says so plainly rather than
- *  inventing specificity we can't actually recover. */
+/** Show a recovered refusal string. The long fallback is only for a missing
+ *  message or the client's generic "lens error". */
 function describeRefusal(rawError: string | null | undefined, hint: string): string {
   if (rawError && rawError !== 'lens error') return rawError;
   return `Refused by the server (${hint}) — the shared lens-run client only preserves a generic message for ` +

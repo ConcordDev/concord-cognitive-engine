@@ -18,6 +18,7 @@
 //   conkay_design.car-acceptance { brief }          → the brief built from the component library: mass by state, critical-placeholder gate, tyre and top-speed status (computed, not saved)
 
 import crypto from "node:crypto";
+import { attestReceipt, attestReport } from "../lib/receipts/attest.js";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
@@ -65,7 +66,7 @@ function view(id, row, session) {
     designId: id,
     name: row.name,
     summary: session.summary(),
-    results: session.results(),
+    results: session.results().map((envelope) => attestReceipt(envelope)),
     coverage: session.coverage(),
     graph: session.graph.toJSON(),
   };
@@ -136,7 +137,7 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
     if (!brief.trim()) return { ok: false, error: "send a brief" };
     const r = await carAcceptanceAsync(brief);
     if (!r.ok) return { ok: false, error: r.error, ...(r.errors ? { errors: r.errors } : {}) };
-    return { ok: true, result: r.report };
+    return { ok: true, result: attestReport(r.report) };
   });
 
   registerLensAction("conkay_design", "get", async (ctx, _artifact, params) => {

@@ -8,6 +8,89 @@
 const CENSUS_API = "https://api.census.gov/data";
 const HUD_API = "https://www.huduser.gov/hudapi/public";
 
+// Census state FIPS, zero-padded. HUD's county entity id is 10 digits:
+// 2-digit state FIPS + 3-digit county FIPS + "99999"
+// (huduser.gov listCounties example "5100199999"; il/data/0100199999).
+const HUD_STATE_FIPS = {
+  AL: "01", AK: "02", AZ: "04", AR: "05", CA: "06", CO: "08", CT: "09",
+  DE: "10", DC: "11", FL: "12", GA: "13", HI: "15", ID: "16", IL: "17",
+  IN: "18", IA: "19", KS: "20", KY: "21", LA: "22", ME: "23", MD: "24",
+  MA: "25", MI: "26", MN: "27", MS: "28", MO: "29", MT: "30", NE: "31",
+  NV: "32", NH: "33", NJ: "34", NM: "35", NY: "36", NC: "37", ND: "38",
+  OH: "39", OK: "40", OR: "41", PA: "42", RI: "44", SC: "45", SD: "46",
+  TN: "47", TX: "48", UT: "49", VT: "50", VA: "51", WA: "53", WV: "54",
+  WI: "55", WY: "56", AS: "60", GU: "66", MP: "69", PR: "72", VI: "78",
+};
+
+function hudCountyEntityId(stateAbbr, countyFips) {
+  const stateFips = HUD_STATE_FIPS[stateAbbr];
+  if (!stateFips) {
+    return { ok: false, error: `no Census state FIPS for ${stateAbbr}; cannot build a HUD county entity id` };
+  }
+  const raw = String(countyFips).trim();
+  let county3 = null;
+  if (/^\d{1,3}$/.test(raw)) county3 = raw.padStart(3, "0");
+  else if (/^\d{5}$/.test(raw) && raw.slice(0, 2) === stateFips) county3 = raw.slice(2);
+  else {
+    return { ok: false, error: "countyFips must be a 3-digit county FIPS (HUD county entity id is the 2-digit state FIPS + 3-digit county FIPS + 99999)" };
+  }
+  return { ok: true, countyFips: county3, entityId: `${stateFips}${county3}99999` };
+}
+
+function hudIncomeUrl(stateAbbr, entityId, year) {
+  if (entityId) return `${HUD_API}/il/data/${entityId}?year=${year}`;
+  return `${HUD_API}/il/statedata/${encodeURIComponent(stateAbbr)}?year=${year}`;
+}
+
+async function readHudIncome(url, token) {
+  let r;
+  try {
+    r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (e) {
+    return { kind: "network", error: e instanceof Error ? e.message : String(e) };
+  }
+  if (r.status === 401) return { kind: "auth" };
+  if (!r.ok) {
+    const empty = r.status === 400 || r.status === 404;
+    return { kind: empty ? "empty" : "status", status: r.status };
+  }
+  let body;
+  try {
+    body = await r.json();
+  } catch (e) {
+    return { kind: "network", error: e instanceof Error ? e.message : String(e) };
+  }
+  const d = body && body.data;
+  if (!d || d.median_income == null) return { kind: "empty", status: 200 };
+  return { kind: "ok", data: d };
+}
+
+function shapeHudIncome(d, fields) {
+  return {
+    ok: true,
+    result: {
+      stateAbbr: fields.stateAbbr,
+      countyFips: fields.countyFips,
+      entityId: fields.entityId,
+      year: fields.year,
+      ...(fields.yearNote ? { yearNote: fields.yearNote } : {}),
+      areaName: d.area_name || d.county_name || d.state_name || d.statename || null,
+      medianIncome: d.median_income,
+      veryLowIncome50Pct: d.very_low ?? null,
+      extremelyLowIncome30Pct: d.extremely_low ?? null,
+      lowIncome80Pct: d.low ?? null,
+      source: "hud-income-limits",
+    },
+  };
+}
+
+function hudIncomeFailure(read) {
+  if (read.kind === "auth") return { ok: false, error: "HUD_API_TOKEN invalid" };
+  if (read.kind === "network") return { ok: false, error: `hud unreachable: ${read.error}` };
+  if (read.kind === "status") return { ok: false, error: `HUD ${read.status}` };
+  return null;
+}
+
 // ─── Real solar position (NOAA algorithm) + shadow geometry ───────────────
 // Backs the shadowStudy macro (below). Module-level + named-exported so
 // they're directly unit-testable with exact expected values, independent
@@ -213,43 +296,67 @@ export default function registerUrbanplanningActions(registerLensAction) {
   });
 
   /**
-   * hud-income-limits — Real HUD Income Limits by ZIP/county/MSA.
-   * Determines affordable-housing eligibility thresholds (30/50/80/120%
-   * AMI). Requires HUD_API_TOKEN env (free at huduser.gov/hudapi).
+   * hud-income-limits — HUD Income Limits for a state or one county.
+   * Statewide uses /il/statedata/{stateAbbr}. A county uses /il/data/{entityId}
+   * with the 10-digit HUD id (state FIPS + county FIPS + 99999). very_low,
+   * extremely_low, and low are household-size objects and are passed through.
+   * Default year is the previous calendar year; if that year has no data,
+   * retry the year before once. An explicit year is not substituted.
    *
-   * params: { stateAbbr: 2-letter, countyFips?: 3-digit, year?: 2024+ }
+   * params: { stateAbbr: 2-letter, countyFips?: 3-digit, year?: number }
    */
   registerLensAction("urban-planning", "hud-income-limits", async (_ctx, _artifact, params = {}) => {
     const token = process.env.HUD_API_TOKEN;
     if (!token) return { ok: false, error: "HUD_API_TOKEN env required (free at huduser.gov/hudapi/public/register)" };
     const stateAbbr = String(params.stateAbbr || "").toUpperCase().trim();
     if (!/^[A-Z]{2}$/.test(stateAbbr)) return { ok: false, error: "stateAbbr (2-letter) required" };
-    const year = Number(params.year) || new Date().getFullYear() - 1;
-    const entityid = params.countyFips ? `${stateAbbr}99999` : stateAbbr;  // statewide if no county
-    try {
-      const r = await fetch(`${HUD_API}/il/data/${entityid}?year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (r.status === 401) return { ok: false, error: "HUD_API_TOKEN invalid" };
-      if (!r.ok) throw new Error(`hud ${r.status}`);
-      const data = await r.json();
-      const d = data.data;
-      if (!d) return { ok: false, error: "HUD returned no data for that area" };
-      return {
-        ok: true,
-        result: {
-          stateAbbr, countyFips: params.countyFips, year,
-          areaName: d.area_name,
-          medianIncome: d.median_income,
-          veryLowIncome50Pct: d.very_low,
-          extremelyLowIncome30Pct: d.extremely_low,
-          lowIncome80Pct: d.low,
-          source: "hud-income-limits",
-        },
-      };
-    } catch (e) {
-      return { ok: false, error: `hud unreachable: ${e instanceof Error ? e.message : String(e)}` };
+
+    let countyFips = null;
+    let entityId = null;
+    if (params.countyFips != null && String(params.countyFips).trim() !== "") {
+      const built = hudCountyEntityId(stateAbbr, params.countyFips);
+      if (!built.ok) return built;
+      countyFips = built.countyFips;
+      entityId = built.entityId;
     }
+
+    const yearArg = params.year;
+    const explicitYear = yearArg != null && yearArg !== "";
+    let year;
+    if (explicitYear) {
+      year = Number(yearArg);
+      if (!Number.isInteger(year) || year < 1990 || year > 2100) {
+        return { ok: false, error: "year must be a 4-digit fiscal year" };
+      }
+    } else {
+      year = new Date().getFullYear() - 1;
+    }
+
+    const primary = await readHudIncome(hudIncomeUrl(stateAbbr, entityId, year), token);
+    const primaryFail = hudIncomeFailure(primary);
+    if (primaryFail) return primaryFail;
+    if (primary.kind === "ok") {
+      return shapeHudIncome(primary.data, { stateAbbr, countyFips, entityId, year, yearNote: null });
+    }
+
+    // Default year had no data (400/404, or 200 without median_income).
+    if (!explicitYear) {
+      const prior = year - 1;
+      const second = await readHudIncome(hudIncomeUrl(stateAbbr, entityId, prior), token);
+      const secondFail = hudIncomeFailure(second);
+      if (secondFail) return secondFail;
+      if (second.kind === "ok") {
+        return shapeHudIncome(second.data, {
+          stateAbbr, countyFips, entityId, year: prior,
+          yearNote: `HUD had no income-limit data for ${year}; used ${prior}`,
+        });
+      }
+      const statusBit = second.status ? ` (HUD ${second.status})` : "";
+      return { ok: false, error: `HUD had no income-limit data for ${stateAbbr} for ${year} or ${prior}${statusBit}` };
+    }
+
+    if (primary.status && primary.status !== 200) return { ok: false, error: `HUD ${primary.status}` };
+    return { ok: false, error: "HUD returned no data for that area" };
   });
 
   // ─── Esri Urban parity — scenarios, parcels, massing, impacts ───────

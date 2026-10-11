@@ -1915,6 +1915,7 @@ import { asyncHandler } from "./lib/async-handler.js";
 import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
+import { createCsrfMiddleware, PUBLIC_PROOF_COMMENT_RE } from "./middleware/csrf.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
@@ -1963,6 +1964,7 @@ import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-route
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
 import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
+import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
@@ -3824,6 +3826,21 @@ if (!process.env.JWT_SECRET && NODE_ENV === "production" && AUTH_USES_JWT) {
   console.error("[FATAL] Add it to your .env file or environment variables.\n");
   process.exit(1);
 }
+// BYOK wrapping keys are derived from JWT_SECRET. Missing and short secrets
+// already fail validateEnvironment() above when NODE_ENV=production. This
+// gate also rejects known defaults and unedited placeholders (the preflight
+// script catches those; the process itself previously still booted). Same
+// [FATAL] + exit posture as the JWT_SECRET check. Dev/test does not exit;
+// byo-crypto.js keeps a labelled test-only fallback for that case.
+if (NODE_ENV === "production") {
+  try {
+    assertByoCryptoReady();
+  } catch (err) {
+    console.error(`\n[FATAL] ${err.message}`);
+    console.error("[FATAL] Bring-your-own-key encryption will not start until JWT_SECRET is fixed.\n");
+    process.exit(1);
+  }
+}
 // NB: a present-but-too-short JWT_SECRET/SESSION_SECRET is rejected earlier by
 // validateEnvironment() (process.exit(1) in production) — see the length checks
 // near the top of this file. No second gate needed here.
@@ -3831,6 +3848,15 @@ if (!process.env.JWT_SECRET) {
   structuredLog("warn", "auth_jwt_generated", { message: "No JWT_SECRET env var — generated random secret. Sessions will not persist across restarts." });
 }
 const EFFECTIVE_JWT_SECRET = JWT_SECRET;
+
+// CSRF lives in middleware/csrf.js. NODE_ENV and AUTH_MODE are the boot
+// constants (not a later env read), same as when the function was inline.
+const { csrfMiddleware, generateCsrfToken } = createCsrfMiddleware({
+  nodeEnv: NODE_ENV,
+  authMode: AUTH_MODE,
+  auditLog,
+  jwtSecret: EFFECTIVE_JWT_SECRET,
+});
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
@@ -7793,81 +7819,8 @@ function setRefreshCookie(res, refreshToken, req = null) {
   );
 }
 
-// ============================================================================
-// SECURITY: CSRF Protection (Double-Submit Cookie Pattern)
-// Privacy-friendly: no server-side state, token derived from session
-// ============================================================================
-function generateCsrfToken(sessionId = "") {
-  // Generate a token based on a secret + session identifier
-  const secret = EFFECTIVE_JWT_SECRET.slice(0, 32);
-  const data = `${sessionId}:${Date.now()}`;
-  return crypto.createHmac("sha256", secret).update(data).digest("hex").slice(0, 32);
-}
-
-function validateCsrfToken(token, cookieToken) {
-  if (!token || !cookieToken) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(cookieToken));
-  } catch {
-    return false;
-  }
-}
-
-// CSRF middleware - validates token on state-changing requests
-// The one anonymous write under /api/public-share/: a reviewer's comment on a
-// proof link (POST /api/public-share/proof/:token/comment). Every gate that
-// lets it through matches this exact route, never a prefix.
-const PUBLIC_PROOF_COMMENT_RE = /^\/api\/public-share\/proof\/[^/]+\/comment$/;
-
-function csrfMiddleware(req, res, next) {
-  // Skip CSRF for non-browser requests (API keys, no cookies)
-  if (req.authMethod === "apiKey") return next();
-  // Bearer JWT / Unity kitchen guest without a browser session cookie — API
-  // clients (curl harness, ConcordClient HTTP hit/quest) are not CSRF-vulnerable
-  // the way cookie-authenticated browsers are.
-  if ((req.authMethod === "jwt" || req.authMethod === "unity-local-guest")
-      && !req.cookies?.concord_auth) {
-    return next();
-  }
-
-  // Skip for safe methods
-  const safeMethods = ["GET", "HEAD", "OPTIONS"];
-  if (safeMethods.includes(req.method)) return next();
-
-  // Skip for public endpoints and core API paths (chat, lens operations)
-  // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
-  // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
-  // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry", "/api/welding/portal/", "/api/spectate/", "/api/esign/"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
-  if (csrfExempt.some(p => req.path.startsWith(p))) return next();
-  // The anonymous proof-link reviewer comment: exactly this one POST route,
-  // not the /api/public-share/ prefix. No session cookie exists to forge.
-  if (req.method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
-
-  // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
-  if (AUTH_MODE === "public") return next();
-
-  // CSRF is enforced in production by default. Dev / staging can opt
-  // out with CONCORD_DISABLE_CSRF=true when they're running local
-  // scripts that don't thread a CSRF token. This matches the original
-  // behavior (NODE_ENV !== "production" is implicit opt-out) but
-  // flips the default for non-production explicitly so that a
-  // staging instance accidentally running without NODE_ENV set still
-  // gets protection — unless the operator turns it off.
-  if (process.env.CONCORD_DISABLE_CSRF === "true") return next();
-  if (NODE_ENV !== "production" && process.env.CONCORD_ENFORCE_CSRF !== "true") return next();
-
-  // Validate CSRF token
-  const headerToken = req.headers["x-csrf-token"] || req.headers["x-xsrf-token"];
-  const cookieToken = req.cookies?.csrf_token;
-
-  if (!validateCsrfToken(headerToken, cookieToken)) {
-    auditLog("security", "csrf_failed", { path: req.path, method: req.method, ip: req.ip });
-    return res.status(403).json({ ok: false, error: "CSRF token invalid or missing", code: "CSRF_FAILED" });
-  }
-
-  return next();
-}
+// CSRF (double-submit cookie) lives in middleware/csrf.js. PUBLIC_PROOF_COMMENT_RE
+// is the same exact-route matcher the auth and write-auth gates use below.
 
 // ============================================================================
 // SECURITY: Audit Logging (uses SQLite when available)
@@ -8338,6 +8291,9 @@ function authMiddleware(req, res, next) {
     // must be publicly resolvable so federated peers (Mastodon, etc.)
     // can discover Concord actors before any authenticated handshake.
     "/.well-known/webfinger",
+    // Ed25519 public keys for ConKay receipt verification. Exact path only
+    // (not the /.well-known prefix). The document is public key material.
+    "/.well-known/concord-receipt-keys.json",
   ];
   // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
   // caller sent an Authorization header or auth cookie, run the full auth
@@ -8403,6 +8359,10 @@ function authMiddleware(req, res, next) {
   // {name, value, kind} into an anonymous in-memory rolling window, so no
   // identity-resolution discipline is needed here the way it was for /api/chat.
   if (req.method === "POST" && req.path === "/api/metrics/vitals") return next();
+  // Public receipt check. The body is a receipt the caller already has; the
+  // handler verifies a signature and writes nothing. Unconditional so a
+  // stale Authorization header cannot turn a public check into a 401.
+  if (req.method === "POST" && req.path === "/api/receipts/verify") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -8688,6 +8648,10 @@ function productionWriteAuthMiddleware(req, res, next) {
   // rate-limited (write.proof-comment). Deliberately not a prefix entry above,
   // so no other write under /api/public-share/ is ever opened by it.
   if (method === "POST" && PUBLIC_PROOF_COMMENT_RE.test(req.path)) return next();
+  // POST /api/receipts/verify checks an Ed25519 signature and writes nothing.
+  // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
+  // Rate limit: write.receipt-verify. See routes/receipts.js.
+  if (method === "POST" && req.path === "/api/receipts/verify") return next();
   // In production, require at least an API key or authenticated session for writes
   if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
@@ -15128,6 +15092,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/messaging", "/api/sandbox",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
+    // Public Ed25519 receipt keys (exact path; not an /api prefix).
+    "/.well-known/concord-receipt-keys.json",
     // Three-gate sync: paths added to Gate 1 (publicReadPaths) need to land
     // here too so unauthenticated reads don't get blocked by the Chicken2
     // safeReadBypass check. Test: tests/three-gate-consistency.test.js.
@@ -39934,6 +39900,12 @@ app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 // bypass for /api/conkay/demo/*). Mounted before the signed-in routers.
 import createConkayDemoRouter from "./routes/conkay-demo.js";
 app.use("/api/conkay/demo", createConkayDemoRouter({ rateLimit: perEndpointRateLimit("read.conkay-demo") }));
+// Public Ed25519 receipt keys + POST /api/receipts/verify (no auth, rate-limited).
+import createReceiptRouter from "./routes/receipts.js";
+app.use(createReceiptRouter({
+  readLimit: perEndpointRateLimit("read.receipt-keys"),
+  verifyLimit: perEndpointRateLimit("write.receipt-verify"),
+}));
 // ConKay free-text NLP → design intent → FEA/partMesh mesh arrays (v1 apply_mesh path)
 import createConkayDesignRouter from "./routes/conkay-design.js";
 app.use("/api/conkay", createConkayDesignRouter({ requireAuth, db }));
@@ -58439,20 +58411,16 @@ app.post("/api/welding/portal/:token/approve", async (req, res) => {
   }
 });
 
-// POST — invoice payment. Deliberately NOT wired to the `welding.portal-pay`
-// macro. That macro only RECORDS a self-reported {amount, method,
-// reference} onto the invoice — there is no real card/ACH charge behind it
-// (no Stripe PaymentIntent, no gateway call of any kind). Exposing that as
-// a public, unauthenticated action would let anyone holding a portal link
-// mark their own invoice "paid" with zero money changing hands — an
-// invoice-fraud vector, not an honest payment flow, and squarely the kind
-// of fabricated-success path CLAUDE.md's honest-by-construction + money
-// invariants rule out. This route still validates the token (so it 404s
-// instead of leaking on a bad token) and returns an explicit "not yet
-// wired" state rather than a fabricated success. `portal-pay` remains
-// reachable through the authenticated `/api/lens/run` path for a
-// logged-in welder to log a payment they received by another channel
-// (cash/check/in-person card reader) — that use is unaffected.
+// POST — invoice payment. There is no card/ACH capture (no Stripe
+// PaymentIntent, no gateway call). `welding.portal-pay` used to RECORD a
+// self-reported {amount, method, reference} and mark the invoice paid;
+// INC-55 (2026-10-11) closed that on the handler itself, because any
+// logged-in caller who knew the token could hit it through `/api/lens/run`
+// and fabricate a "card" payment. This route still does not call that
+// handler. It validates the token (404 on a bad one, 400 if the token is
+// not an invoice) and returns 501 payment_capture_not_wired. Owner
+// bookkeeping of money already received is `welding.invoice-payment`,
+// scoped to the invoice owner, not this public token.
 app.post("/api/welding/portal/:token/pay", async (req, res) => {
   try {
     const view = await _runWeldingPortalAction("portal-view", req.params.token);

@@ -18,7 +18,17 @@
 // in-memory compute/CRUD, nothing skipped.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
+
+async function seedUser(userId) {
+  const { STATE } = await load();
+  const db = STATE.db;
+  if (db.prepare("SELECT id FROM users WHERE id = ?").get(userId)) return;
+  const username = String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 24) || `u${Date.now().toString(36)}`;
+  db.prepare(
+    `INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))`
+  ).run(userId, username, `${username}@alliance.test`);
+}
 
 describe("alliance — analytics calc contracts (exact computed values)", () => {
   it("compatibilityScore: identical partners → cap/values/resources sim=100, complementarity=0, composite=80 excellent", async () => {
@@ -236,6 +246,7 @@ describe("alliance — collaboration CRUD round-trips + validation (shared ctx)"
     const allianceId = al.result.alliance.id;
     const channelId = al.result.defaultChannel.id;
     const inviteeId = "outsider-" + Math.random().toString(36).slice(2, 8);
+    await seedUser(inviteeId);
 
     const inv = await lensRun("alliance", "invite-create", { params: { allianceId, inviteeId, role: "member" } }, ctx);
     assert.equal(inv.ok, true);
@@ -265,6 +276,7 @@ describe("alliance — collaboration CRUD round-trips + validation (shared ctx)"
     const al = await lensRun("alliance", "alliance-create", { params: { name: "Vote Org" } }, ctx);
     const allianceId = al.result.alliance.id;
     const memberId = "voter-" + Math.random().toString(36).slice(2, 8);
+    await seedUser(memberId);
     const inv = await lensRun("alliance", "invite-create", { params: { allianceId, inviteeId: memberId, role: "member" } }, ctx);
     const memberCtx = await depthCtx("alliance-voter");
     memberCtx.actor.userId = memberId;
@@ -329,6 +341,7 @@ describe("alliance — collaboration CRUD round-trips + validation (shared ctx)"
     const al = await lensRun("alliance", "alliance-create", { params: { name: "Role Org" } }, ctx);
     const allianceId = al.result.alliance.id;
     const memberId = "promotee-" + Math.random().toString(36).slice(2, 8);
+    await seedUser(memberId);
     const inv = await lensRun("alliance", "invite-create", { params: { allianceId, inviteeId: memberId, role: "member" } }, ctx);
     const memberCtx = await depthCtx("alliance-promotee");
     memberCtx.actor.userId = memberId;

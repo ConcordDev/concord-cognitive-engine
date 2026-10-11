@@ -1,5 +1,6 @@
 // server/domains/philosophy.js
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerPhilosophyActions(registerLensAction) {
   registerLensAction("philosophy", "argumentMap", (ctx, artifact, _params) => { const premises = artifact.data?.premises || []; const conclusion = artifact.data?.conclusion || ""; if (premises.length === 0) return { ok: true, result: { message: "Add premises and conclusion to map argument." } }; const valid = premises.length >= 2 && conclusion; const soundness = valid ? (premises.every(p => p.supported !== false) ? "sound" : "valid-but-unsound") : "invalid"; return { ok: true, result: { premises: premises.map((p,i) => ({ number: i+1, text: typeof p === "string" ? p : p.text, supported: p.supported !== false })), conclusion, premiseCount: premises.length, validity: valid ? "valid" : "invalid", soundness, form: premises.length === 2 ? "syllogism" : "complex-argument" } }; });
@@ -37,17 +38,57 @@ export default function registerPhilosophyActions(registerLensAction) {
   const phReferences = (s, userId) => { if (!s.references.has(userId)) s.references.set(userId, []); return s.references.get(userId); };
   const BLOCK_KINDS = ["text", "link", "quote", "image", "embed"];
 
-  // Resolve a channel anywhere — owned by the actor, or one the actor
-  // collaborates on / is public. Returns { channel, ownerId } | null.
+  // Resolve a channel the actor may read on the public/collab grid
+  // (owner, public, or listed collaborator). block-grid, block-embed, and
+  // collaborator-list use this. Private detail and block writes use
+  // phResolveCurated — being public does not grant block-add, delete,
+  // publish, or collaborator management.
   function phResolveChannel(s, userId, channelId) {
     const own = phChannels(s, userId).find((c) => c.id === channelId);
-    if (own) return { channel: own, ownerId: userId };
+    if (own) return { channel: own, ownerId: userId, role: "owner" };
     for (const [ownerId, list] of s.channels.entries()) {
       const c = list.find((x) => x.id === channelId);
       if (c && (c.public === true || (Array.isArray(c.collaborators) && c.collaborators.includes(userId)))) {
-        return { channel: c, ownerId };
+        const role = Array.isArray(c.collaborators) && c.collaborators.includes(userId) ? "collaborator" : "public";
+        return { channel: c, ownerId, role };
       }
     }
+    return null;
+  }
+
+  // Owner, or a listed collaborator. Public-only viewers are not curators.
+  function phResolveCurated(s, userId, channelId) {
+    const own = phChannels(s, userId).find((c) => c.id === channelId);
+    if (own) return { channel: own, ownerId: userId, role: "owner" };
+    for (const [ownerId, list] of s.channels.entries()) {
+      if (ownerId === userId) continue;
+      const c = list.find((x) => x.id === channelId);
+      if (c && Array.isArray(c.collaborators) && c.collaborators.includes(userId)) {
+        return { channel: c, ownerId, role: "collaborator" };
+      }
+    }
+    return null;
+  }
+
+  function phDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  // lookupUserIdentity reads the users table. No username and no display
+  // name means the id is not a row (or the table cannot be read).
+  function phUserOnFile(ctx, userId) {
+    const ident = lookupUserIdentity(phDb(ctx), userId);
+    return Boolean(ident && (ident.username || ident.displayName));
+  }
+
+  // Display name or @handle. Never the raw user id — a stored name that
+  // is the id is not a public label.
+  function phPublicName(ctx, userId) {
+    const ident = lookupUserIdentity(phDb(ctx), userId);
+    const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+    const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+    if (display && display !== userId) return display;
+    if (handle && handle !== userId) return handle;
     return null;
   }
 
@@ -68,22 +109,38 @@ export default function registerPhilosophyActions(registerLensAction) {
   registerLensAction("philosophy", "channel-list", (ctx, _a, _params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
-    const blocks = phBlocks(s, userId);
-    const channels = phChannels(s, userId).map((c) => ({
-      ...c, blockCount: blocks.filter((b) => b.channelIds.includes(c.id)).length,
-    }));
+    const describe = (c, ownerId, role) => ({
+      ...c,
+      role,
+      blockCount: phBlocks(s, ownerId).filter((b) => b.channelIds.includes(c.id)).length,
+    });
+    const channels = phChannels(s, userId).map((c) => describe(c, userId, "owner"));
+    for (const [ownerId, list] of s.channels.entries()) {
+      if (ownerId === userId) continue;
+      for (const c of list) {
+        if (Array.isArray(c.collaborators) && c.collaborators.includes(userId)) {
+          channels.push(describe(c, ownerId, "collaborator"));
+        }
+      }
+    }
     return { ok: true, result: { channels, count: channels.length } };
   });
 
   registerLensAction("philosophy", "channel-detail", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
-    const channel = phChannels(s, userId).find((c) => c.id === params.id);
-    if (!channel) return { ok: false, error: "channel not found" };
-    const blocks = phBlocks(s, userId)
-      .filter((b) => b.channelIds.includes(channel.id))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return { ok: true, result: { channel, blocks } };
+    const resolved = phResolveCurated(s, userId, params.id);
+    if (!resolved) return { ok: false, error: "channel not found" };
+    const blocks = phBlocks(s, resolved.ownerId)
+      .filter((b) => b.channelIds.includes(resolved.channel.id))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((b) => {
+        // author stays on the stored block so delete can tell whose it is.
+        // The payload only carries canDelete — not another user's raw id.
+        const { author, ...rest } = b;
+        return { ...rest, canDelete: resolved.ownerId === userId || author === userId };
+      });
+    return { ok: true, result: { channel: { ...resolved.channel, role: resolved.role }, blocks } };
   });
 
   registerLensAction("philosophy", "channel-delete", (ctx, _a, params = {}) => {
@@ -103,8 +160,8 @@ export default function registerPhilosophyActions(registerLensAction) {
   registerLensAction("philosophy", "block-add", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
-    const channel = phChannels(s, userId).find((c) => c.id === params.channelId);
-    if (!channel) return { ok: false, error: "channel not found" };
+    const resolved = phResolveCurated(s, userId, params.channelId);
+    if (!resolved) return { ok: false, error: "channel not found" };
     const content = phClean(params.content, 8000);
     if (!content) return { ok: false, error: "block content required" };
     const kind = BLOCK_KINDS.includes(params.kind) ? params.kind : "text";
@@ -113,10 +170,11 @@ export default function registerPhilosophyActions(registerLensAction) {
       source: phClean(params.source, 300) || null,
       imageUrl: phClean(params.imageUrl, 1000) || null,
       embed: params.embed && typeof params.embed === "object" ? params.embed : null,
-      channelIds: [channel.id],
+      channelIds: [resolved.channel.id],
+      author: userId,
       createdAt: phNow(),
     };
-    phBlocks(s, userId).push(block);
+    phBlocks(s, resolved.ownerId).push(block);
     savePhilo();
     return { ok: true, result: { block } };
   });
@@ -143,12 +201,36 @@ export default function registerPhilosophyActions(registerLensAction) {
   registerLensAction("philosophy", "block-delete", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
-    const arr = phBlocks(s, userId);
-    const i = arr.findIndex((b) => b.id === params.id);
-    if (i < 0) return { ok: false, error: "block not found" };
-    arr.splice(i, 1);
-    savePhilo();
-    return { ok: true, result: { deleted: params.id } };
+    // Owner store: the channel owner can delete any block kept on their channels,
+    // including ones a collaborator added (those are stored under the owner).
+    const own = phBlocks(s, userId);
+    const i = own.findIndex((b) => b.id === params.id);
+    if (i >= 0) {
+      own.splice(i, 1);
+      savePhilo();
+      return { ok: true, result: { deleted: params.id } };
+    }
+    // Collaborator: may delete only a block they authored, on a channel they curate.
+    for (const [ownerId, channels] of s.channels.entries()) {
+      if (ownerId === userId) continue;
+      const curatedIds = new Set(
+        channels
+          .filter((c) => Array.isArray(c.collaborators) && c.collaborators.includes(userId))
+          .map((c) => c.id),
+      );
+      if (curatedIds.size === 0) continue;
+      const blocks = phBlocks(s, ownerId);
+      const j = blocks.findIndex((b) => b.id === params.id);
+      if (j < 0) continue;
+      const block = blocks[j];
+      const onCurated = Array.isArray(block.channelIds) && block.channelIds.some((cid) => curatedIds.has(cid));
+      if (!onCurated) continue;
+      if (block.author !== userId) return { ok: false, error: "only the author can delete this block" };
+      blocks.splice(j, 1);
+      savePhilo();
+      return { ok: true, result: { deleted: params.id } };
+    }
+    return { ok: false, error: "block not found" };
   });
 
   registerLensAction("philosophy", "philosophy-search", (ctx, _a, params = {}) => {
@@ -199,6 +281,7 @@ export default function registerPhilosophyActions(registerLensAction) {
         imageUrl: b.imageUrl || (b.embed && b.embed.thumbnail) || null,
         source: b.source, embed: b.embed || null,
         channelCount: b.channelIds.length, createdAt: b.createdAt,
+        canDelete: resolved.ownerId === userId || b.author === userId,
       }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { channelId: resolved.channel.id, blocks, count: blocks.length } };
@@ -229,6 +312,7 @@ export default function registerPhilosophyActions(registerLensAction) {
         content: embed.title,
         source: embed.url, imageUrl: embed.thumbnail, embed,
         channelIds: [resolved.channel.id],
+        author: userId,
         createdAt: phNow(),
       };
       phBlocks(s, resolved.ownerId).push(block);
@@ -295,6 +379,7 @@ export default function registerPhilosophyActions(registerLensAction) {
     const who = phClean(params.userId, 100);
     if (!who) return { ok: false, error: "collaborator userId required" };
     if (who === userId) return { ok: false, error: "owner is already a curator" };
+    if (!phUserOnFile(ctx, who)) return { ok: false, error: "user not found" };
     if (!Array.isArray(channel.collaborators)) channel.collaborators = [];
     if (!channel.collaborators.includes(who)) channel.collaborators.push(who);
     savePhilo();
@@ -437,9 +522,80 @@ export default function registerPhilosophyActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  // ─── Argument debate threads — collaborative premise critique ───────
+  // ─── Argument debate threads ────────────────────────────────────────
+  // Same visibility model as channels: private unless the owner sets
+  // public === true (at create, or later via debate-publish). A stored
+  // thread with no public flag is private. List/detail payloads never
+  // include a raw user id — authorName is a display name or null, and
+  // mine tells the caller whether the row is theirs ("you").
+
+  function phDebatePostView(post, viewerId, ctx) {
+    return {
+      id: post.id,
+      stance: post.stance,
+      body: post.body,
+      targetPremise: post.targetPremise || null,
+      replyTo: post.replyTo || null,
+      createdAt: post.createdAt,
+      authorName: phPublicName(ctx, post.author),
+      mine: post.author === viewerId,
+    };
+  }
+
+  function phDebateView(thread, viewerId, ctx) {
+    const posts = Array.isArray(thread.posts) ? thread.posts.map((p) => phDebatePostView(p, viewerId, ctx)) : [];
+    return {
+      id: thread.id,
+      title: thread.title,
+      claim: thread.claim,
+      branch: thread.branch,
+      status: thread.status,
+      resolution: thread.resolution || null,
+      public: thread.public === true,
+      createdAt: thread.createdAt,
+      postCount: posts.length,
+      posts,
+      authorName: phPublicName(ctx, thread.author),
+      mine: thread.author === viewerId,
+    };
+  }
+
+  function phDebateSummary(thread, viewerId, ctx) {
+    return {
+      id: thread.id,
+      title: thread.title,
+      claim: thread.claim,
+      branch: thread.branch,
+      status: thread.status,
+      public: thread.public === true,
+      postCount: Array.isArray(thread.posts) ? thread.posts.length : 0,
+      createdAt: thread.createdAt,
+      authorName: phPublicName(ctx, thread.author),
+      mine: thread.author === viewerId,
+    };
+  }
+
+  function phFindDebate(s, threadId) {
+    if (!threadId) return null;
+    for (const [ownerId, list] of s.debates.entries()) {
+      const thread = list.find((x) => x.id === threadId);
+      if (thread) return { thread, ownerId };
+    }
+    return null;
+  }
+
+  // Owner, or public. Missing public flag is private. Not-found (rather
+  // than forbidden) matches channel-detail so a private id is indistinguishable
+  // from an unknown one.
+  function phCanReadDebate(found, viewerId) {
+    if (!found) return false;
+    if (found.ownerId === viewerId || found.thread.author === viewerId) return true;
+    return found.thread.public === true;
+  }
+
   registerLensAction("philosophy", "debate-create", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phActor(ctx);
     const title = phClean(params.title, 200);
     if (!title) return { ok: false, error: "debate title required" };
     const claim = phClean(params.claim, 2000);
@@ -447,29 +603,23 @@ export default function registerPhilosophyActions(registerLensAction) {
     const thread = {
       id: phId("dbt"), title, claim,
       branch: phClean(params.branch, 60) || "other",
-      author: phActor(ctx),
+      author: userId,
       posts: [],
       status: "open",
+      public: params.public === true,
       createdAt: phNow(),
     };
-    phDebates(s, phActor(ctx)).unshift(thread);
+    phDebates(s, userId).unshift(thread);
     savePhilo();
-    return { ok: true, result: { thread } };
+    return { ok: true, result: { thread: phDebateView(thread, userId, ctx) } };
   });
 
   const DEBATE_STANCES = ["support", "object", "rebut", "clarify"];
   registerLensAction("philosophy", "debate-post", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
-    // Search the actor's own debates first, then any debate by id.
-    let thread = phDebates(s, userId).find((t) => t.id === params.threadId);
-    if (!thread) {
-      for (const list of s.debates.values()) {
-        const t = list.find((x) => x.id === params.threadId);
-        if (t) { thread = t; break; }
-      }
-    }
-    if (!thread) return { ok: false, error: "debate thread not found" };
+    const found = phFindDebate(s, params.threadId);
+    if (!phCanReadDebate(found, userId)) return { ok: false, error: "debate thread not found" };
     const body = phClean(params.body, 4000);
     if (!body) return { ok: false, error: "post body required" };
     const stance = DEBATE_STANCES.includes(params.stance) ? params.stance : "clarify";
@@ -480,38 +630,61 @@ export default function registerPhilosophyActions(registerLensAction) {
       replyTo: phClean(params.replyTo, 60) || null,
       createdAt: phNow(),
     };
-    thread.posts.push(post);
+    found.thread.posts.push(post);
     savePhilo();
-    return { ok: true, result: { threadId: thread.id, post, postCount: thread.posts.length } };
+    return {
+      ok: true,
+      result: {
+        threadId: found.thread.id,
+        post: phDebatePostView(post, userId, ctx),
+        postCount: found.thread.posts.length,
+      },
+    };
   });
 
   registerLensAction("philosophy", "debate-detail", (ctx, _a, params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let thread = null;
-    for (const list of s.debates.values()) {
-      const t = list.find((x) => x.id === params.id);
-      if (t) { thread = t; break; }
-    }
-    if (!thread) return { ok: false, error: "debate thread not found" };
+    const userId = phActor(ctx);
+    const found = phFindDebate(s, params.id);
+    if (!phCanReadDebate(found, userId)) return { ok: false, error: "debate thread not found" };
     const tally = { support: 0, object: 0, rebut: 0, clarify: 0 };
-    for (const p of thread.posts) { if (tally[p.stance] != null) tally[p.stance]++; }
-    return { ok: true, result: { thread, tally } };
+    for (const p of found.thread.posts) { if (tally[p.stance] != null) tally[p.stance]++; }
+    return { ok: true, result: { thread: phDebateView(found.thread, userId, ctx), tally } };
   });
 
   registerLensAction("philosophy", "debate-list", (ctx, _a, _params = {}) => {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phActor(ctx);
     const out = [];
-    for (const list of s.debates.values()) {
+    for (const [ownerId, list] of s.debates.entries()) {
       for (const t of list) {
-        out.push({
-          id: t.id, title: t.title, claim: t.claim, branch: t.branch,
-          author: t.author, status: t.status,
-          postCount: t.posts.length, createdAt: t.createdAt,
-        });
+        if (ownerId !== userId && t.author !== userId && t.public !== true) continue;
+        out.push(phDebateSummary(t, userId, ctx));
       }
     }
     out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { threads: out, count: out.length } };
+  });
+
+  registerLensAction("philosophy", "debate-publish", (ctx, _a, params = {}) => {
+    const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phActor(ctx);
+    const thread = phDebates(s, userId).find((t) => t.id === params.id);
+    if (!thread) return { ok: false, error: "debate thread not found" };
+    thread.public = params.public === true;
+    savePhilo();
+    return { ok: true, result: { id: thread.id, public: thread.public === true } };
+  });
+
+  registerLensAction("philosophy", "debate-delete", (ctx, _a, params = {}) => {
+    const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phActor(ctx);
+    const arr = phDebates(s, userId);
+    const i = arr.findIndex((t) => t.id === params.id);
+    if (i < 0) return { ok: false, error: "debate thread not found" };
+    arr.splice(i, 1);
+    savePhilo();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("philosophy", "debate-resolve", (ctx, _a, params = {}) => {

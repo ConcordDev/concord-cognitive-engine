@@ -319,7 +319,15 @@ export function AssemblyViewer({ assembly, viewOnly = false }: { assembly: Vehic
             </ul>
           </div>
         )}
-        <div className="h-[420px] overflow-hidden rounded-lg bg-[#c5c6c8] lg:h-[520px]" data-testid="assembly-canvas">
+        <div className="relative h-[420px] overflow-hidden rounded-lg bg-[#c5c6c8] lg:h-[520px]" data-testid="assembly-canvas">
+          {mode === 'studio' && (
+            <div
+              data-testid="studio-preview-badge"
+              className="pointer-events-none absolute left-2 top-2 z-10 rounded-md border border-amber-300/60 bg-slate-900/80 px-2 py-1 text-[11px] font-medium text-amber-200 shadow"
+            >
+              Studio · styling preview — engineering geometry is authoritative
+            </div>
+          )}
           <Canvas
             gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05, localClippingEnabled: true }}
             camera={{ position: [viewNose - 1.8, 0.92, 2.6], fov: 28 }}

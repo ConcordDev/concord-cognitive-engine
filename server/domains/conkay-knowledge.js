@@ -1,7 +1,9 @@
 // server/domains/conkay-knowledge.js
 //
-// Lens actions for the ConKay knowledge layer (lib/conkay/knowledge). Pure
-// and deterministic: no database, no network, no model. Nothing is stored.
+// Lens actions for the ConKay knowledge layer (lib/conkay/knowledge). The
+// report body is deterministic: no database, no network, no model, nothing
+// stored. The returned report also carries an Ed25519 attestation
+// (issuedAt + signature), which is new on each issuance.
 //
 //   conkay_knowledge.formulation-report { fixture } | { text, name? }
 //                                         → source record, proposed version,
@@ -16,6 +18,7 @@
 //                                           WebBook connectors (recorded excerpts, no network), computed
 //                                           as far as the evidence goes; unknowns, test plan, review queue
 
+import { attestReport } from "../lib/receipts/attest.js";
 import {
   buildFormulationReport, renderFormulationMarkdown, loadFixture, FIXTURES,
   ENTITY_SCHEMA, STATUS_FLAGS, SUPPORT_STATES, listExtensions, validateEntity, STANDARDS,
@@ -41,7 +44,7 @@ export default function registerConkayKnowledgeActions(registerLensAction) {
     }
     const report = buildFormulationReport(text, meta);
     if (!report.source.composition.ingredients.length) return { ok: false, error: "no ingredient lines found (expected lines like '- Name: 10-15% — note')" };
-    return { ok: true, result: { report, markdown: renderFormulationMarkdown(report) } };
+    return { ok: true, result: { report: attestReport(report), markdown: renderFormulationMarkdown(report) } };
   });
 
   registerLensAction("conkay_knowledge", "schema", () => ({
@@ -58,7 +61,7 @@ export default function registerConkayKnowledgeActions(registerLensAction) {
     const rec = await loadConnectorRecordings();
     const report = await mixtureReport(replayGetter(rec.recordings));
     if (!report.ok) return { ok: false, error: report.reason };
-    return { ok: true, result: { recordedOn: rec.captured, report, markdown: renderMixtureMarkdown(report) } };
+    return { ok: true, result: { recordedOn: rec.captured, report: attestReport(report), markdown: renderMixtureMarkdown(report) } };
   });
 
   registerLensAction("conkay_knowledge", "fixtures", () => ({ ok: true, result: { fixtures: Object.keys(FIXTURES) } }));

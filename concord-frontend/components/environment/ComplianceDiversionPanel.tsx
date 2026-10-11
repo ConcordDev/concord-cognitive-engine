@@ -76,7 +76,9 @@ export function ComplianceDiversionPanel() {
         buildArtifact: () => {
           const cleanStreams = streams.filter((s) => s.name.trim() && s.volume.trim()).map((s) => ({ name: s.name.trim(), volume: parseFloat(s.volume) || 0 }));
           const divertedVolume = cleanStreams.reduce((sum, s) => sum + s.volume, 0);
-          return { data: { totalVolume: totalWaste, divertedVolume, streams: cleanStreams }, target };
+          // target lives inside data. A sibling next to data is dropped by the
+          // lens-run peel, so diversionRate never saw params.target.
+          return { data: { totalVolume: totalWaste, divertedVolume, streams: cleanStreams, target } };
         },
         render: (
           <div className="space-y-2">

@@ -230,3 +230,111 @@ describe("questmarket — validation rejections", () => {
     assert.match(bad.result.error, /cannot accept your own quest/);
   });
 });
+
+describe("questmarket — verify badge, reject reopen, privacy (two actors)", () => {
+  function leaks(payload, foreignId) {
+    return JSON.stringify(payload).includes(foreignId);
+  }
+
+  it("myPendingVerification is per poster; the market-wide count stays separate", async () => {
+    const poster = await depthCtx("qm-badge-poster");
+    const claimant = await depthCtx("qm-badge-claimant");
+    const bystander = await depthCtx("qm-badge-bystander");
+    const post = await lensRun("questmarket", "postQuest", {
+      params: { title: "Needs a verdict", reward: 0 },
+    }, poster);
+    const acc = await lensRun("questmarket", "acceptQuest", {
+      params: { questId: post.result.quest.id },
+    }, claimant);
+    await lensRun("questmarket", "submitProof", {
+      params: { claimId: acc.result.claim.id, summary: "shipped" },
+    }, claimant);
+
+    const asPoster = await lensRun("questmarket", "marketStats", {}, poster);
+    const asClaimant = await lensRun("questmarket", "marketStats", {}, claimant);
+    const asBystander = await lensRun("questmarket", "marketStats", {}, bystander);
+    assert.equal(asPoster.result.myPendingVerification, 1);
+    assert.equal(asClaimant.result.myPendingVerification, 0);
+    assert.equal(asBystander.result.myPendingVerification, 0);
+    assert.ok(asClaimant.result.pendingVerification >= 1);
+    assert.equal(asClaimant.result.pendingVerification, asPoster.result.pendingVerification);
+  });
+
+  it("verifyClaim reject reopens a quest whose only claim was turned down", async () => {
+    const poster = await depthCtx("qm-reject-poster");
+    const claimant = await depthCtx("qm-reject-claimant");
+    const post = await lensRun("questmarket", "postQuest", {
+      params: { title: "Reject reopen", reward: 0 },
+    }, poster);
+    const qid = post.result.quest.id;
+    const acc = await lensRun("questmarket", "acceptQuest", { params: { questId: qid } }, claimant);
+    await lensRun("questmarket", "submitProof", {
+      params: { claimId: acc.result.claim.id, summary: "not enough" },
+    }, claimant);
+    const rejected = await lensRun("questmarket", "verifyClaim", {
+      params: { claimId: acc.result.claim.id, approve: false },
+    }, poster);
+    assert.equal(rejected.result.outcome, "rejected");
+    assert.equal(rejected.result.quest.status, "open");
+
+    const open = await lensRun("questmarket", "listQuests", { params: { status: "open" } }, claimant);
+    assert.ok(open.result.quests.some((q) => q.id === qid));
+    const listed = await lensRun("questmarket", "listQuests", {}, poster);
+    assert.equal(listed.result.quests.find((q) => q.id === qid).status, "open");
+  });
+
+  it("listQuests, marketStats, and guildDetail do not return another user's raw id", async () => {
+    const poster = await depthCtx("qm-inc52-poster");
+    const other = await depthCtx("qm-inc52-other");
+    const posterId = poster.actor.userId;
+    const otherId = other.actor.userId;
+
+    const post = await lensRun("questmarket", "postQuest", {
+      params: { title: "Keep the poster private", kind: "bounty", reward: 40 },
+    }, poster);
+    const qid = post.result.quest.id;
+    const acc = await lensRun("questmarket", "acceptQuest", { params: { questId: qid } }, other);
+    await lensRun("questmarket", "submitProof", {
+      params: { claimId: acc.result.claim.id, summary: "done" },
+    }, other);
+
+    const asOther = await lensRun("questmarket", "listQuests", {}, other);
+    const card = asOther.result.quests.find((q) => q.id === qid);
+    assert.equal(card.isMine, false);
+    assert.equal(card.poster, undefined);
+    assert.equal(typeof card.posterName, "string");
+    assert.ok(card.posterName.length > 0);
+    assert.notEqual(card.posterName, posterId);
+    assert.equal(leaks(asOther, posterId), false);
+
+    const asPoster = await lensRun("questmarket", "listQuests", { params: { mine: true } }, poster);
+    const own = asPoster.result.quests.find((q) => q.id === qid);
+    assert.equal(own.isMine, true);
+    assert.equal(own.poster, posterId);
+    assert.equal(leaks(asPoster, otherId), false);
+
+    const gname = `Inc52 ${Math.random().toString(36).slice(2, 8)}`;
+    const created = await lensRun("questmarket", "createGuild", { params: { name: gname } }, poster);
+    const gid = created.result.guild.id;
+    await lensRun("questmarket", "joinGuild", { params: { guildId: gid } }, other);
+
+    const detailOther = await lensRun("questmarket", "guildDetail", { params: { guildId: gid } }, other);
+    assert.equal(detailOther.result.memberCount, 2);
+    assert.ok(detailOther.result.members.every((m) => typeof m.displayName === "string" && m.displayName.length > 0));
+    assert.equal(detailOther.result.guild.founder, undefined);
+    assert.equal(leaks(detailOther, posterId), false);
+
+    const detailPoster = await lensRun("questmarket", "guildDetail", { params: { guildId: gid } }, poster);
+    assert.ok(detailPoster.result.members.some((m) => m.role === "founder"));
+    assert.equal(leaks(detailPoster, otherId), false);
+
+    await lensRun("questmarket", "verifyClaim", {
+      params: { claimId: acc.result.claim.id, approve: true },
+    }, poster);
+    const statsOther = await lensRun("questmarket", "marketStats", {}, other);
+    assert.ok(statsOther.result.recentLedger.some((e) => e.type === "payout"));
+    assert.equal(leaks(statsOther, posterId), false);
+    const statsPoster = await lensRun("questmarket", "marketStats", {}, poster);
+    assert.equal(leaks(statsPoster, otherId), false);
+  });
+});

@@ -155,3 +155,109 @@ describe('PhilosophyCuration — Search tab', () => {
     expect(screen.queryByText('Free-Will-channel block content.')).not.toBeInTheDocument();
   });
 });
+
+const OWN_DEBATE = {
+  id: 'dbt_1',
+  title: 'Private will',
+  claim: 'Only the author sees this.',
+  branch: 'ethics',
+  status: 'open',
+  public: false,
+  mine: true,
+  authorName: 'Ada',
+  postCount: 0,
+  posts: [] as { id: string; stance: string; body: string; targetPremise: string | null; mine?: boolean; authorName?: string | null; createdAt: string }[],
+  createdAt: '2026-01-01',
+};
+
+describe('PhilosophyCuration — debates and collaborators', () => {
+  beforeEach(() => {
+    lensRun.mockReset();
+    lensRun.mockImplementation(async (_domain: string, action: string, input: Record<string, unknown> = {}) => {
+      if (action === 'channel-list') {
+        return {
+          data: {
+            ok: true,
+            result: { channels: [{ id: 'ch_1', title: 'Free Will', description: '', blockCount: 0, role: 'owner' }] },
+          },
+        };
+      }
+      if (action === 'block-grid') {
+        return { data: { ok: true, result: { blocks: [], count: 0 } } };
+      }
+      if (action === 'debate-list') {
+        return { data: { ok: true, result: { threads: [OWN_DEBATE], count: 1 } } };
+      }
+      if (action === 'debate-detail') {
+        return { data: { ok: true, result: { thread: OWN_DEBATE, tally: { support: 0, object: 0, rebut: 0, clarify: 0 } } } };
+      }
+      if (action === 'debate-create') {
+        return {
+          data: {
+            ok: true,
+            result: {
+              thread: {
+                ...OWN_DEBATE,
+                id: 'dbt_new',
+                title: String(input.title || ''),
+                claim: String(input.claim || ''),
+                public: input.public === true,
+              },
+            },
+          },
+        };
+      }
+      if (action === 'debate-delete') {
+        return { data: { ok: true, result: { deleted: input.id } } };
+      }
+      if (action === 'channel-collaborator-list') {
+        return { data: { ok: true, result: { collaborators: [] } } };
+      }
+      if (action === 'channel-collaborator-add') {
+        return { data: { ok: false, result: null, error: 'user not found' } };
+      }
+      return { data: { ok: true, result: {} } };
+    });
+  });
+
+  it('labels the public option and sends it when a debate is created', async () => {
+    render(<PhilosophyCuration />);
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('philosophy', 'channel-list', {}));
+    fireEvent.click(screen.getByRole('button', { name: 'Debate Threads' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New debate' }));
+    const box = screen.getByRole('checkbox', { name: /Public: any signed-in user can read and reply/i });
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    fireEvent.change(screen.getByPlaceholderText('Debate title'), { target: { value: 'Will' } });
+    fireEvent.change(screen.getByPlaceholderText('Central claim under debate'), { target: { value: 'It is real.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith(
+      'philosophy',
+      'debate-create',
+      expect.objectContaining({ title: 'Will', claim: 'It is real.', public: true }),
+    ));
+  });
+
+  it('asks for confirmation before an owner deletes a debate', async () => {
+    render(<PhilosophyCuration />);
+    fireEvent.click(screen.getByRole('button', { name: 'Debate Threads' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Private will/ }));
+    await screen.findByText('Only the author sees this.');
+    expect(screen.queryByRole('button', { name: 'Confirm delete' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete debate' }));
+    expect(lensRun).not.toHaveBeenCalledWith('philosophy', 'debate-delete', expect.anything());
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('philosophy', 'debate-delete', { id: 'dbt_1' }));
+  });
+
+  it('shows the honest error when a collaborator id is not a user', async () => {
+    render(<PhilosophyCuration />);
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('philosophy', 'channel-list', {}));
+    fireEvent.click(screen.getByRole('button', { name: 'Collaborators' }));
+    const input = await screen.findByPlaceholderText('Collaborator user id');
+    fireEvent.change(input, { target: { value: 'no_such_user_r91' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('user not found')).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('philosophy', 'channel-collaborator-add', { id: 'ch_1', userId: 'no_such_user_r91' });
+  });
+});

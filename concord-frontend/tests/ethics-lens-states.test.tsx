@@ -163,4 +163,42 @@ describe('ethics lens (DecisionToolkit / Multi-Framework) — four UX states', (
     expect(view!.getAllByText(/Ship now/).length).toBeGreaterThanOrEqual(1);
     expect(view!.queryByText(/No multi-framework analyses yet/i)).toBeNull();
   });
+
+  it('POPULATED: delete is reachable by hover and keyboard focus, and calls deleteAnalysis', async () => {
+    wireLensRun(() => ok({ analyses: [realAnalysis] }));
+    let view: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<DecisionToolkit />);
+    });
+    await waitFor(() => {
+      expect(view!.getByText(/Should we ship the contested feature/i)).toBeInTheDocument();
+    });
+    const del = view!.getByRole('button', { name: 'Delete analysis' });
+    expect(del.tabIndex).toBe(0);
+    expect(del.getAttribute('aria-hidden')).toBeNull();
+    expect(del.className).toMatch(/group-hover:opacity-100/);
+    expect(del.className).toMatch(/focus-visible:opacity-100/);
+    expect(del.className).toMatch(/focus:opacity-100/);
+    await act(async () => {
+      fireEvent.click(del);
+    });
+    expect(lensRunMock).toHaveBeenCalledWith('ethics', 'deleteAnalysis', { analysisId: 'mfa-1' });
+  });
+
+  it('review tab records a personal deliberation and does not promise peer review', async () => {
+    wireLensRun(() => ok({ analyses: [], reviews: [] }));
+    let view: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<DecisionToolkit />);
+    });
+    await act(async () => {
+      fireEvent.click(view!.getByRole('button', { name: /Ethics Review/i }));
+    });
+    await waitFor(() => {
+      expect(view!.getByRole('heading', { name: /Record a deliberation/i })).toBeInTheDocument();
+    });
+    expect(view!.queryByText(/peer review/i)).toBeNull();
+    expect(view!.getByRole('button', { name: /Record a deliberation/i })).toBeInTheDocument();
+    expect(view!.getByText(/not another person/i)).toBeInTheDocument();
+  });
 });

@@ -187,6 +187,77 @@ describe("plumbing technician mobile workflow", () => {
     assert.equal(got.result.workflow.photos.length, 1);
     assert.ok(got.result.progress > 0);
   });
+
+  it("workflowGet and workflowUpdate require the caller to own the assignment", () => {
+    const a = call("dispatchAssign", ctxA, { jobTitle: "Private job", date: "2026-06-07" }).result.assignment;
+    const started = call("workflowStart", ctxA, { assignmentId: a.id });
+    assert.equal(started.ok, true);
+    assert.equal(started.result.workflow.ownerId, "user_a");
+    const snapshot = () => {
+      const wf = globalThis._concordSTATE.plumbingLens.workflows.get(a.id);
+      return {
+        signature: wf.signature,
+        signedBy: wf.signedBy,
+        completedAt: wf.completedAt,
+        photos: wf.photos.length,
+        checks: wf.checklist.map(c => c.done),
+      };
+    };
+    const before = snapshot();
+
+    const deniedGet = call("workflowGet", ctxB, { assignmentId: a.id });
+    assert.equal(deniedGet.ok, false);
+    assert.equal(deniedGet.error, "workflow_not_found");
+
+    const deniedCheck = call("workflowUpdate", ctxB, { assignmentId: a.id, checkIndex: 0, done: true });
+    assert.equal(deniedCheck.ok, false);
+    assert.equal(deniedCheck.error, "workflow_not_found");
+
+    const deniedPhoto = call("workflowUpdate", ctxB, { assignmentId: a.id, photoCaption: "stolen" });
+    assert.equal(deniedPhoto.ok, false);
+    assert.equal(deniedPhoto.error, "workflow_not_found");
+
+    const deniedSig = call("workflowUpdate", ctxB, { assignmentId: a.id, signature: "forged", signedBy: "acct2" });
+    assert.equal(deniedSig.ok, false);
+    assert.equal(deniedSig.error, "workflow_not_found");
+
+    assert.deepEqual(snapshot(), before);
+
+    const startOther = call("workflowStart", ctxB, { assignmentId: a.id });
+    assert.equal(startOther.ok, false);
+    assert.equal(startOther.error, "assignment_not_found");
+    assert.deepEqual(snapshot(), before);
+
+    const ownerGet = call("workflowGet", ctxA, { assignmentId: a.id });
+    assert.equal(ownerGet.ok, true);
+    assert.equal(ownerGet.result.workflow.signature, null);
+    assert.equal(ownerGet.result.workflow.photos.length, 0);
+    assert.equal(ownerGet.result.workflow.checklist[0].done, false);
+
+    const ownerUpd = call("workflowUpdate", ctxA, {
+      assignmentId: a.id, checkIndex: 0, done: true, photoCaption: "Before", signature: "data:sig", signedBy: "Client",
+    });
+    assert.equal(ownerUpd.ok, true);
+    assert.equal(ownerUpd.result.workflow.checklist[0].done, true);
+    assert.equal(ownerUpd.result.workflow.photos[0].caption, "Before");
+    assert.equal(ownerUpd.result.workflow.signedBy, "Client");
+    assert.ok(ownerUpd.result.workflow.completedAt);
+
+    // Pre-ownerId rows stay usable by the assignment owner and stay hidden
+    // from everyone else — no backfill of stored workflows.
+    const stored = globalThis._concordSTATE.plumbingLens.workflows.get(a.id);
+    delete stored.ownerId;
+    assert.equal(call("workflowGet", ctxA, { assignmentId: a.id }).ok, true);
+    assert.equal(call("workflowGet", ctxB, { assignmentId: a.id }).error, "workflow_not_found");
+    assert.equal(call("workflowUpdate", ctxB, { assignmentId: a.id, signature: "forged", signedBy: "acct2" }).error, "workflow_not_found");
+    assert.equal(stored.signedBy, "Client");
+
+    stored.ownerId = "user_other";
+    assert.equal(call("workflowGet", ctxA, { assignmentId: a.id }).error, "workflow_not_found");
+    assert.equal(call("workflowUpdate", ctxA, { assignmentId: a.id, signature: "forged", signedBy: "acct2" }).error, "workflow_not_found");
+    assert.equal(stored.signature, "data:sig");
+    assert.equal(stored.signedBy, "Client");
+  });
 });
 
 describe("plumbing maintenance plans", () => {

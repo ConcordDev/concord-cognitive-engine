@@ -150,5 +150,8 @@ describe('philosophy lens — four UX states (Overview)', () => {
     expect(getAllByText('2').length).toBeGreaterThan(0);
     // Recent debate thread renders its real title.
     expect(getByText(/Is free will real\?/i)).toBeInTheDocument();
+    // debate-list rows without a public flag render as private — the same
+    // visibility the backend applies to stored threads that predate the flag.
+    expect(getAllByText('private').length).toBe(2);
   });
 });
