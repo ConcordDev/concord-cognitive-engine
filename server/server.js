@@ -43,6 +43,7 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
@@ -47898,6 +47899,16 @@ app.post("/api/lens/run", async (req, res) => {
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
+    // Lens-action throws used to become a 500 body with nothing written to
+    // the process log, so a broken feed was invisible in backend.log / backend.err.
+    try {
+      logger.error("lens-run", "lens action failed", {
+        domain: _lifeDomain,
+        action: _lifeAction,
+        error: msg,
+        stack: e?.stack,
+      });
+    } catch { /* logging must not mask the response */ }
     // If we announced a start, always announce a terminus — never leave a HUD
     // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
     if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
@@ -65363,11 +65374,13 @@ app.get("/api/social/analytics/creator", requireAuth(), (req, res) => {
 });
 app.get("/api/social/topics/trending", (_req, res) => {
   try {
-    const tagCount = new Map();
-    for (const dtu of dtusArray().slice(-500)) { for (const t of (dtu.tags || [])) { tagCount.set(t, (tagCount.get(t) || 0) + 1); } }
-    const topics = [...tagCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([tag, count]) => ({ tag, count }));
+    const topics = aggregateTopicCounts(dtusArray().slice(-500).map((d) => d?.tags), 20);
     res.json({ ok: true, topics });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  } catch (e) {
+    try { logger.error("social", "topics/trending failed", { error: e?.message, stack: e?.stack }); }
+    catch { /* logging must not mask the response */ }
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 app.get("/api/social/trending/creators", (_req, res) => {
   try {
