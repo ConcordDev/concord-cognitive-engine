@@ -12,6 +12,36 @@
 // mechanism (server.js _serializeState/_hydrateState). No new SQLite tables
 // needed — the existing state_snapshots table already holds the JSON blob.
 
+// Owner-approved 2026-10-11: in-memory financial records that round-trip
+// through the process snapshot. They are not the CC ledger. serializeLensState
+// drops MONEY_SNAPSHOT_SECRET_FIELDS if one is ever attached to a row.
+// Signer email, policy numbers, and Sparks amounts are the records themselves.
+export const MONEY_SNAPSHOT_KEYS = Object.freeze([
+  "predictionMarkets",
+  "inheritPacts",
+  "insAms",
+  "serviceListings",
+  "serviceOrders",
+]);
+
+export const MONEY_SNAPSHOT_SECRET_FIELDS = Object.freeze([
+  "token",
+  "accessToken",
+  "refreshToken",
+  "apiKey",
+  "api_key",
+  "secret",
+  "password",
+  "privateKey",
+  "paymentRef",
+  "paymentIntentId",
+  "clientSecret",
+  "authorization",
+  "stripePaymentIntent",
+]);
+
+const MONEY_SNAPSHOT_SECRET_FIELD_SET = new Set(MONEY_SNAPSHOT_SECRET_FIELDS);
+
 // Canonical list of lens state keys. Add new entries here when a new
 // lens domain file ships its own STATE.<x>Lens store.
 export const LENS_STATE_KEYS = Object.freeze([
@@ -178,6 +208,9 @@ export const LENS_STATE_KEYS = Object.freeze([
   "chemStructures", "chemLabNotebook",
   "mathCAS", "genesisSavedSearches", "digitalTwins",
   "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
+  // Sparks prediction positions, inheritance pacts, agency AMS records,
+  // and service-market listings/orders. See MONEY_SNAPSHOT_KEYS.
+  ...MONEY_SNAPSHOT_KEYS,
 ]);
 
 // User-record STATE keys a domain assigns that this snapshot intentionally
@@ -191,11 +224,6 @@ export const SNAPSHOT_EXCLUDED_STATE_KEYS = Object.freeze({
   presenceHeartbeats: "ephemeral live presence; a heartbeat outside the online window is not a kept record",
   concordLinkFrontier: "SQLite is the restart record; the Map is a cache",
   federation: "deferred: actorKeys store registered public keys and must be omitted before the access/moderation records are snapshotted",
-  predictionMarkets: "deferred for a human decision: Sparks-denominated positions and limit orders, not CC, but they are financial positions",
-  inheritPacts: "deferred for a human decision: Sparks-denominated inheritance pacts and payout history, not CC",
-  insAms: "deferred for a human decision: carrier roster, renewal pipeline, FNOL, statements, and certificates read as agency financial records",
-  serviceListings: "deferred for a human decision: listing prices and orders are a marketplace, currency not proven to be demo credit",
-  serviceOrders: "deferred for a human decision: orders carry prices against service listings",
   affectMood: "deferred INC-32 follow-up: mood check-ins, reminders, and scales are still memory-only",
   cognitiveReplay: "deferred INC-32 follow-up: shareable timeline snapshots and moments are still memory-only",
   districtSnapshots: "deferred INC-32 follow-up: recorded district timeline snapshots are still memory-only",
@@ -310,6 +338,28 @@ function deserializeValue(v) {
   return out;
 }
 
+// Drop secret-shaped property names from an already-serialized value.
+// Map keys (user ids, record ids) are kept; only object fields are removed.
+function omitMoneySecretFields(v) {
+  if (Array.isArray(v)) return v.map((item) => omitMoneySecretFields(item));
+  if (!v || typeof v !== "object") return v;
+  if (v.__type === "Map" && Array.isArray(v.entries)) {
+    return {
+      __type: "Map",
+      entries: v.entries.map(([k, vv]) => [k, omitMoneySecretFields(vv)]),
+    };
+  }
+  if (v.__type === "Set" && Array.isArray(v.values)) {
+    return { __type: "Set", values: v.values.map((item) => omitMoneySecretFields(item)) };
+  }
+  const out = {};
+  for (const [k, vv] of Object.entries(v)) {
+    if (MONEY_SNAPSHOT_SECRET_FIELD_SET.has(k)) continue;
+    out[k] = omitMoneySecretFields(vv);
+  }
+  return out;
+}
+
 // Walk every registered lens key on STATE, serialize nested Map/Set into
 // JSON-safe envelopes. Returns a plain object suitable for JSON.stringify.
 export function serializeLensState(STATE) {
@@ -335,6 +385,9 @@ export function serializeLensState(STATE) {
       lensOut[field] = serializeValue(val);
     }
     out[key] = lensOut;
+  }
+  for (const key of MONEY_SNAPSHOT_KEYS) {
+    if (out[key] != null) out[key] = omitMoneySecretFields(out[key]);
   }
   return out;
 }

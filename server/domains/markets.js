@@ -20,6 +20,13 @@ import { mixedNashEquilibria } from "../lib/game-theory/mixed-nash.js";
 import { replicatorDynamics } from "../lib/game-theory/replicator.js";
 import { analyzeMarketEquilibrium } from "../lib/game-theory/market-equilibrium.js";
 
+// Snapshot bounds for predictionMarkets. A rejected create returns before
+// `seq` advances and before a pool changes, so accepted bets keep the
+// existing stake and odds formulas. priceHistory is already capped at 500.
+export const PM_MARKET_CAP = 200;
+export const PM_POSITION_CAP = 500;
+export const PM_ORDER_CAP = 200;
+
 // ──────────────────────────────────────────────────────────────
 // Black-Scholes pure JS (Abramowitz & Stegun rational approx).
 // ──────────────────────────────────────────────────────────────
@@ -480,6 +487,11 @@ export default function registerMarketsActions(registerLensAction) {
   function pmActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function pmNow() { return Date.now(); }
   function pmId(s, prefix) { s.seq += 1; return `${prefix}_${s.seq.toString(36)}_${Date.now().toString(36)}`; }
+  function countByUser(map, userId) {
+    let n = 0;
+    for (const row of map.values()) if (row && row.userId === userId) n += 1;
+    return n;
+  }
 
   // Implied probability from pool balance. AMM-style: YES% = noPool / total
   // is the wrong direction — in a parimutuel pool the payout odds favour the
@@ -549,6 +561,7 @@ export default function registerMarketsActions(registerLensAction) {
       if (closesAt != null && (!Number.isFinite(closesAt) || closesAt <= pmNow())) {
         return { ok: false, error: "closesAt must be a future timestamp (ms)" };
       }
+      if (s.markets.size >= PM_MARKET_CAP) return { ok: false, error: "market_cap" };
       // Seed liquidity so the first bet has a meaningful price. The creator
       // funds a tiny symmetric seed split YES/NO; this is real (creator-owned)
       // liquidity, not fabricated volume.
@@ -722,6 +735,9 @@ export default function registerMarketsActions(registerLensAction) {
       const stake = Number(params.stakeSparks);
       if (!Number.isFinite(stake) || stake < 1) return { ok: false, error: "stakeSparks must be >= 1" };
       if (stake > 100000) return { ok: false, error: "stake exceeds cap (100000)" };
+      // Snapshot cap. Before the pool moves, so a rejected bet does not
+      // change odds or anyone else's stake.
+      if (countByUser(s.positions, userId) >= PM_POSITION_CAP) return { ok: false, error: "position_cap" };
       // entry price = implied probability of the chosen side BEFORE this stake
       const probBefore = impliedProbability(m.poolYes, m.poolNo);
       const entryPrice = side === "yes" ? probBefore : 1 - probBefore;
@@ -1029,6 +1045,7 @@ export default function registerMarketsActions(registerLensAction) {
       }
       const stake = Number(params.stakeSparks);
       if (!Number.isFinite(stake) || stake < 1) return { ok: false, error: "stakeSparks must be >= 1" };
+      if (countByUser(s.orders, userId) >= PM_ORDER_CAP) return { ok: false, error: "order_cap" };
       const id = pmId(s, "ord");
       const order = {
         id,
