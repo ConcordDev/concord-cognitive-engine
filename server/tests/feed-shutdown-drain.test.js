@@ -147,6 +147,17 @@ describe("feed shutdown drain", () => {
     assert.ok(feedWriteStats().dropped >= 1);
   });
 
+  it("does not prepare on a closed handle even if the writer was not sealed", async () => {
+    const feed = openFeedDb();
+    feed.db.close();
+    emitFeedEvent({ type: "observation", emergentId: "e1", data: { observation: "nope" } }, feed.db, null);
+    await Promise.resolve();
+    assert.equal(feed.prepareWhileClosed(), 0);
+    assert.equal(errors.filter((l) => l.includes("[feed] DB write failed")).length, 0);
+    assert.equal(warns.length, 1);
+    assert.match(warns[0], /\[feed\] DB write skipped: 1 feed event\(s\) not persisted \(database connection is not open\)/);
+  });
+
   it("scheduler stop ends new ticks and the in-flight tick is drained before seal", async () => {
     const feed = openFeedDb();
     const scheduler = new MinorAgentScheduler(feed.db, null, 20);
