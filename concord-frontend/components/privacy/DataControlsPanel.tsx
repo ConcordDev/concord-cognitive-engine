@@ -8,7 +8,7 @@
  *   - DSAR handler          → dsarSubmit / dsarList / dsarAdvance
  *   - Per-lens sharing grid  → lensSharingGet / lensSharingSet
  *   - Privacy activity log   → accessLog / recordAccess
- *   - Data export bundle     → dataExport
+ *   - Download my data       → GET /api/account/export (own DTUs, chats, settings)
  *   - Cookie banner config   → cookieConfigGet / cookieConfigSet
  *   - Retention policy editor→ retentionGet / retentionSet
  *   - Data-flow map          → flowMap / flowRegister / flowToggle
@@ -86,11 +86,29 @@ interface AccessLogResult {
   byActor: Record<string, number>;
   byOperation: Record<string, number>;
 }
-interface ExportResult {
-  counts: Record<string, number>;
-  totalRecords: number;
-  estimatedBytes: number;
-  bundle: unknown;
+
+export interface CollapsedAccessEvent extends AccessEvent {
+  count: number;
+}
+
+/** Group repeated actor · operation · lens rows so a flood of "system · read" is one line. */
+export function collapseAccessEvents(events: AccessEvent[]): CollapsedAccessEvent[] {
+  const groups = new Map<string, CollapsedAccessEvent>();
+  for (const e of events) {
+    const key = `${e.actor}\0${e.operation}\0${e.lensId || ''}`;
+    const prev = groups.get(key);
+    if (!prev) {
+      groups.set(key, { ...e, count: 1 });
+    } else {
+      prev.count += 1;
+      if (e.at >= prev.at) {
+        prev.at = e.at;
+        prev.id = e.id;
+        prev.dataCategory = e.dataCategory;
+      }
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.at - a.at);
 }
 interface CookieCategory { enabled: boolean; locked: boolean }
 interface CookieConfig {
@@ -390,23 +408,25 @@ function AccessLogSection() {
 
   useEffect(() => { void reload(); }, [reload]);
 
+  const collapsed = useMemo(() => collapseAccessEvents(data?.events || []), [data]);
+
   const events: TimelineEvent[] = useMemo(
     () =>
-      (data?.events || []).map((e) => ({
+      collapsed.map((e) => ({
         id: e.id,
         time: e.at,
-        label: `${e.actor} · ${e.operation}`,
+        label: e.count > 1 ? `${e.actor} · ${e.operation} × ${e.count}` : `${e.actor} · ${e.operation}`,
         detail: `${e.dataCategory}${e.lensId ? ` (${e.lensId})` : ''}`,
         tone: OP_TONE[e.operation] || 'default',
       })),
-    [data],
+    [collapsed],
   );
 
   return (
     <SectionCard
       icon={ScrollText}
       title="Privacy Activity Log"
-      subtitle="Lens macros invoked on your behalf — recorded automatically as you use Concord. This is a lens-action log, not a complete record of every backend data touch."
+      subtitle="Repeated reads are grouped. This is a lens-action log, not every backend data touch."
       action={
         <button
           onClick={reload}
@@ -440,77 +460,64 @@ function AccessLogSection() {
 
 // ── Data export ───────────────────────────────────────────────────────────
 
+interface AccountExportFile {
+  dtus?: unknown[];
+  chats?: unknown;
+  sessions?: unknown;
+  settings?: unknown;
+  privacy?: unknown;
+  user?: { id?: string; username?: string };
+}
+
 function DataExportSection() {
-  const [result, setResult] = useState<ExportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
 
-  const generate = useCallback(async () => {
+  const download = useCallback(async () => {
     setBusy(true);
     setError(null);
-    const r = await lensRun<ExportResult>('privacy', 'dataExport', {});
-    if (r.data.ok && r.data.result) setResult(r.data.result);
-    else setError(r.data.error || 'export failed');
-    setBusy(false);
+    setSaved(null);
+    try {
+      const r = await api.get<AccountExportFile>('/api/account/export');
+      const payload = r.data;
+      if (!payload || typeof payload !== 'object' || !Array.isArray(payload.dtus)) {
+        setError('Export did not include your DTUs.');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `concord-data-export-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const n = payload.dtus.length;
+      setSaved(n === 1 ? '1 DTU' : `${n} DTUs`);
+    } catch (e) {
+      setError(pickMessage(e));
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
-  const download = useCallback(() => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result.bundle, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `concord-privacy-export-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [result]);
-
   return (
-    <SectionCard
-      icon={Download}
-      title="Download My Data"
-      subtitle="Generate a full export bundle of your personal privacy corpus."
-      action={
-        <button
-          onClick={generate}
-          disabled={busy}
-          className="px-3 py-1.5 text-xs bg-neon-green/15 border border-neon-green/30 rounded-lg hover:bg-neon-green/25 disabled:opacity-50 flex items-center gap-1.5 text-neon-green"
-        >
-          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-          Generate Bundle
-        </button>
-      }
-    >
-      {error && <p className="text-xs text-rose-400">{error}</p>}
-      {result && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(result.counts).map(([k, n]) => (
-              <span
-                key={k}
-                className="px-2 py-1 rounded-lg text-[10px] bg-black/40 border border-white/5 text-gray-300"
-              >
-                {k}: <span className="text-white font-mono">{n}</span>
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] text-gray-400">
-              {result.totalRecords} records · ~
-              {(result.estimatedBytes / 1024).toFixed(1)} KB
-            </p>
-            <button
-              onClick={download}
-              className="px-3 py-1.5 text-xs bg-neon-blue/15 border border-neon-blue/30 rounded-lg hover:bg-neon-blue/25 flex items-center gap-1.5 text-neon-blue"
-            >
-              <Download className="w-3 h-3" /> Download .json
-            </button>
-          </div>
-        </div>
-      )}
-    </SectionCard>
+    <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
+      <p className="max-w-xl text-sm text-zinc-400">
+        Your DTUs, chats, sessions, settings, and privacy choices. Nothing owned by the system or by someone else.
+      </p>
+      <button
+        type="button"
+        onClick={download}
+        disabled={busy}
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-400 px-5 py-2.5 text-sm font-medium text-black hover:bg-teal-300 disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        Download my data
+      </button>
+      {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
+      {saved && <p className="mt-3 text-xs text-zinc-400">Saved {saved}.</p>}
+    </section>
   );
 }
 
@@ -697,6 +704,7 @@ function RetentionSection() {
                 type="number"
                 min={0}
                 max={3650}
+                aria-label={`${p.category} window days`}
                 value={p.windowDays}
                 onChange={(e) =>
                   update(p.category, { windowDays: parseInt(e.target.value) || 0 })
@@ -705,6 +713,7 @@ function RetentionSection() {
               />
               <span className="text-[10px] text-gray-400">days</span>
               <select
+                aria-label={`${p.category} action`}
                 value={p.action}
                 onChange={(e) => update(p.category, { action: e.target.value })}
                 className="bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-white"
@@ -867,6 +876,7 @@ interface DeletionResult {
   deletedImmediately?: boolean;
   balance?: number;
   forfeitDate?: string;
+  graceDays?: number;
   detail?: string;
   error?: string;
 }
@@ -876,6 +886,26 @@ function AccountDeletionSection() {
   const [busy, setBusy] = useState<'delete' | 'cancel' | null>(null);
   const [result, setResult] = useState<DeletionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await api.get<{ ok?: boolean; scheduled?: boolean; balance?: number; forfeitDate?: string }>('/api/account/deletion');
+        if (cancelled || !r.data?.scheduled) return;
+        setResult({
+          ok: true,
+          scheduled: true,
+          balance: r.data.balance,
+          forfeitDate: r.data.forfeitDate,
+          detail: 'Deletion is scheduled. You can cancel until it runs.',
+        });
+      } catch {
+        /* no pending deletion, or the status route is unreachable */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const canDelete = confirmText === DELETE_CONFIRM_PHRASE;
 
@@ -921,19 +951,17 @@ function AccountDeletionSection() {
     <SectionCard
       icon={AlertTriangle}
       title="Account Deletion"
-      subtitle="The real, executable deletion pipeline — separate from the DSAR tracker above. Irreversible once it runs."
+      subtitle="Scheduled, then cancellable. Not applied the moment you confirm."
     >
       {error && <p className="text-xs text-rose-400">{error}</p>}
 
-      {!result && (
+      {!result?.scheduled && !result?.deletedImmediately && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-400">
-            This permanently deletes or anonymizes your account data per Concord&apos;s
-            deletion policy (social posts, sign-in links, connector credentials, personal
-            locker, chat history, sessions, API keys and more are hard-deleted; cited content
-            and financial records are anonymized and retained where legally required). If you
-            hold a wallet balance, deletion is scheduled 90 days out so you can withdraw first —
-            it is not applied immediately.
+            Confirming schedules deletion. You have 7 days to cancel. A wallet balance
+            extends that to 90 days so you can withdraw first. Cited content and financial
+            records are anonymized where the law requires them to be kept. Nothing is
+            removed until the window ends.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -948,20 +976,23 @@ function AccountDeletionSection() {
               className="px-3 py-1.5 text-xs bg-rose-500/15 border border-rose-500/30 rounded-lg hover:bg-rose-500/25 disabled:opacity-40 flex items-center gap-1.5 text-rose-300"
             >
               {busy === 'delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-              Start Real Account Deletion
+              Schedule account deletion
             </button>
           </div>
         </div>
       )}
 
-      {result && result.ok && (
+      {result && result.ok && result.scheduled && (
         <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
           {result.scheduled && (
             <>
               <p className="text-xs text-amber-300 font-medium">Deletion scheduled — not deleted yet.</p>
               <p className="text-[11px] text-gray-300">{result.detail}</p>
               <p className="text-[10px] text-gray-400">
-                Balance at request: {result.balance} CC · forfeit date: {fmt(result.forfeitDate ? Date.parse(result.forfeitDate) : null)}
+                {result.graceDays ? `${result.graceDays} days` : 'Grace window'}
+                {typeof result.balance === 'number' ? ` · balance ${result.balance} CC` : ''}
+                {' · runs '}
+                {fmt(result.forfeitDate ? Date.parse(result.forfeitDate.replace(' ', 'T')) : null)}
               </p>
               <button
                 onClick={cancelDeletion}
@@ -990,27 +1021,60 @@ function AccountDeletionSection() {
 
 // ── Panel ─────────────────────────────────────────────────────────────────
 
+type ControlTab = 'data' | 'requests' | 'sharing' | 'flows';
+
+const CONTROL_TABS: { id: ControlTab; label: string }[] = [
+  { id: 'data', label: 'Your data' },
+  { id: 'requests', label: 'Requests' },
+  { id: 'sharing', label: 'Sharing' },
+  { id: 'flows', label: 'Flows' },
+];
+
 export function DataControlsPanel() {
+  const [tab, setTab] = useState<ControlTab>('data');
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold text-white">Data Controls</h2>
-        <span className="text-xs text-gray-400">
-          The controls you actually exercise.
-        </span>
+    <div className="space-y-6">
+      <div role="tablist" aria-label="Data controls" className="flex gap-1 border-b border-white/10">
+        {CONTROL_TABS.map((t) => {
+          const selected = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setTab(t.id)}
+              className={`px-3 py-2 text-sm ${selected ? 'border-b-2 border-teal-400 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DsarSection />
-        <LensSharingSection />
-        <AccessLogSection />
-        <DataExportSection />
-        <CookieConfigSection />
-        <RetentionSection />
-        <AccountDeletionSection />
-        <div className="lg:col-span-2">
-          <FlowMapSection />
+
+      {tab === 'data' && (
+        <div className="space-y-6">
+          <DataExportSection />
+          <AccountDeletionSection />
+          <details className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <summary className="cursor-pointer text-sm text-zinc-300">Activity log</summary>
+            <div className="pt-3">
+              <AccessLogSection />
+            </div>
+          </details>
         </div>
-      </div>
+      )}
+
+      {tab === 'requests' && <DsarSection />}
+      {tab === 'sharing' && <LensSharingSection />}
+      {tab === 'flows' && (
+        <div className="space-y-4">
+          <FlowMapSection />
+          <CookieConfigSection />
+          <RetentionSection />
+        </div>
+      )}
     </div>
   );
 }
