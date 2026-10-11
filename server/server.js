@@ -1902,6 +1902,8 @@ import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
+import { detectContentInjection } from "./lib/dtu-content-injection.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -1912,6 +1914,18 @@ import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurren
 const _DTU_SIDECAR_LAG_BYPASS_MS = Number(process.env.CONCORD_DTU_SIDECAR_LAG_BYPASS_MS) || 250;
 function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
+}
+// Test seam: NODE_ENV=test may set globalThis.__dtuSidecarList to force the
+// sidecar branch (including a stale empty cache) without the Rust process.
+function _dtuSidecarListActive() {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") return true;
+  return dtuSidecar.ENABLED;
+}
+async function _dtuSidecarListCall(args) {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") {
+    return globalThis.__dtuSidecarList(args);
+  }
+  return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
 import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
@@ -2640,54 +2654,9 @@ const _SANITIZE_PATTERNS = {
   sqlKeywords: /\b(union|select|insert|update|delete|drop|truncate|exec|execute)\b.*\b(from|into|table|database)\b/gi,
 };
 
-// ---- DTU Content Injection Detection ----
-// Detects prompt injection / jailbreak patterns in DTU content that could manipulate LLM reasoning
-// Injection defense: consolidated patterns (authoritative source: injection-defense.js)
-// These inline patterns are the fast-path check; the full scan uses injection-defense.js
-const _INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i,
-  /you\s+are\s+now\s+(a|an|in)\s+/i,
-  /system\s*:\s*you\s+(are|must|should|will)/i,
-  /\bDAN\b.*\bjailbreak/i,
-  /forget\s+(everything|all|your)\s+(you|instructions?|rules?)/i,
-  /act\s+as\s+(if|though)\s+you\s+(have\s+no|don't\s+have)/i,
-  /override\s+(your|the|all)\s+(safety|content|system)/i,
-  /\[\s*SYSTEM\s*\]/i,
-  /<<\s*SYS\s*>>/i,
-];
-
-function detectContentInjection(text) {
-  if (typeof text !== "string" || text.length < 10) return { injected: false, patterns: [] };
-  const matched = [];
-  for (const pat of _INJECTION_PATTERNS) {
-    if (pat.test(text)) matched.push(pat.source.slice(0, 40));
-  }
-  // Also run the full injection defense module if available. NOTE: injection-defense.js
-  // returns `findings` (not `detections`) — the previous code mapped the wrong field
-  // and silently dropped the actual pattern matches, leaving the structuredLog line
-  // carrying an empty patterns array. That hid the real signal in 94+ false-positive
-  // dtu_injection_detected warnings (2026-08-12). Fixed to include the actual findings
-  // types so the operator can see what's matching.
-  try {
-    const injDef = globalThis._injectionDefenseModule;
-    if (injDef?.scanContent) {
-      const fullScan = injDef.scanContent(globalThis._concordSTATE || {}, text);
-      const findings = fullScan?.findings || [];
-      if (fullScan?.threatLevel && fullScan.threatLevel !== "NONE") {
-        return {
-          injected: true,
-          patterns: [
-            ...matched,
-            ...findings.map(f => `${f.type}:${f.severity ?? "?"}`),
-          ],
-          threatLevel: fullScan.threatLevel,
-          firstFinding: findings[0]?.message || null,
-        };
-      }
-    }
-  } catch (e) { logger.debug('server', 'silent catch', { error: e?.message }); }
-  return { injected: matched.length > 0, patterns: matched };
-}
+// DTU content injection detection lives in lib/dtu-content-injection.js.
+// Threat levels from injection-defense.js are lowercase ("none"). The gate
+// is case-insensitive and requires at least one finding.
 
 // Merge extended domain rules into main registry
 try {
@@ -17676,7 +17645,15 @@ function makeCtx(req=null) {
             const res = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: brainModel, messages: ollamaMessages, stream: false, options: { temperature, num_predict: maxTokens, num_ctx: _numCtx } }),
+              body: JSON.stringify({
+                model: brainModel,
+                messages: ollamaMessages,
+                stream: false,
+                // Not a named parameter — chat.respond passes think:false and
+                // the destructure above drops it. Read the call object here.
+                ...(typeof arguments[0]?.think === "boolean" ? { think: arguments[0].think } : {}),
+                options: { temperature, num_predict: maxTokens, num_ctx: _numCtx },
+              }),
               signal: ac.signal
             }).finally(() => clearTimeout(t));
             const json = await res.json().catch(() => ({}));
@@ -18157,6 +18134,9 @@ function dtusByIds(ids=[]) {
   return out;
 }
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
+  // Sidecar cache is refreshed from SQLite on a timer. Record the write so
+  // dtu.list can fall back while that cache is behind.
+  try { noteDtuWrite(); } catch { /* clock */ }
   // Input sanitization: prevent XSS and normalize tags
   if (typeof sanitizeDTUInput === "function") {
     try { sanitizeDTUInput(dtu); } catch (e) { structuredLog("error", "dtu_sanitization_failed", { id: dtu?.id, error: String(e) }); }
@@ -25321,8 +25301,15 @@ register("dtu", "create", async (ctx, input) => {
       const firstKey = globalThis._injDedup.keys().next().value;
       globalThis._injDedup.delete(firstKey);
     }
-    // Tag for quarantine review rather than hard-block (reduces false positives)
+    // Tag for quarantine review rather than hard-block (reduces false positives).
+    // Record the scan so the untag script can tell a real finding from the
+    // historical "none" vs "NONE" false positive (those rows have no scan).
     if (!tags.includes("quarantine:injection-review")) tags.push("quarantine:injection-review");
+    meta.injectionScan = {
+      threatLevel: injScan.threatLevel || "pattern",
+      patterns: injScan.patterns,
+      findings: injScan.patterns,
+    };
   }
 
   // ── Lens-based visibility defaults ──────────────────────────────────
@@ -25515,6 +25502,7 @@ register("dtu", "create", async (ctx, input) => {
   }
 
   if (rawText) {
+    dtu.content = rawText;
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
@@ -25775,6 +25763,11 @@ register("dtu", "update", async (ctx, input) => {
   const updated = { ...existing };
   if (input.title !== undefined) updated.title = String(input.title || existing.title);
   if (input.content !== undefined) updated.content = String(input.content);
+  if (input.summary !== undefined) {
+    const summary = String(input.summary);
+    updated.summary = summary;
+    updated.human = { ...(existing.human || {}), summary };
+  }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
   // Tier changes require admin role - prevent gaming via direct update
@@ -25826,6 +25819,7 @@ register("dtu", "delete", async (ctx, input) => {
 
   // Delete the DTU
   STATE.dtus.delete(id);
+  try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
@@ -25938,11 +25932,12 @@ register("dtu", "list", async (ctx, input) => {
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
   // the in-memory filter below. Behaviour pinned by the differential proof at
   // engines/concord-dtu-sidecar/proof/run-proof.mjs.
-  if (dtuSidecar.ENABLED && !_dtuSidecarLagBypass()) {
+  if (_dtuSidecarListActive() && !_dtuSidecarLagBypass()) {
     try {
-      if (await dtuSidecar.isAvailable()) {
+      const testHook = process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function";
+      if (testHook || await dtuSidecar.isAvailable()) {
         const loc = _resolveViewerLocation(userId);
-        const r = await dtuSidecar.list({
+        const sidecarArgs = {
           viewer: userId || "",
           scope: scopeFilter,
           tier,
@@ -25952,8 +25947,14 @@ register("dtu", "list", async (ctx, input) => {
           offset,
           viewerRegional: loc.declaredRegional || "",
           viewerNational: loc.declaredNational || "",
+        };
+        const r = await _dtuSidecarListCall(sidecarArgs);
+        const fallback = shouldFallbackFromSidecarList(r, {
+          q: input.q || "",
+          lastWriteAt: globalThis._dtuLastWriteAt || 0,
+          now: Date.now(),
         });
-        if (r && r.ok && Array.isArray(r.dtus)) {
+        if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
           const items = r.dtus;
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
@@ -25961,7 +25962,7 @@ register("dtu", "list", async (ctx, input) => {
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          return { ok: true, dtus: items, limit, offset, total: r.total ?? items.length, _source: "dtu-sidecar" };
+          return { ok: true, dtus: items, limit, offset, total: sidecarListTotal(r), _source: "dtu-sidecar" };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -26020,7 +26021,7 @@ register("dtu", "list", async (ctx, input) => {
 
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
-  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || d.creti || "")).includes(q));
+  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -26059,7 +26060,7 @@ register("dtu", "search", (ctx, input = {}) => {
       const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
       const qq = tokenish(q);
       hits = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow")
-        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || d.creti || "")).includes(qq))
+        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq))
         .slice(0, limit);
     }
     return { ok: true, query: q, dtus: hits, total: hits.length, limit };
@@ -28001,18 +28002,11 @@ ${_operatorV6Block}` : "";
     try {
       switch (call.tool) {
         case "web_search": {
-          const searchResult = await runMacro("tools", "web_search", {
-            query: String(call.params.query || ""),
-            sessionId,
-          }, ctx);
-          if (!searchResult?.ok) {
-            return { tool: call.tool, ok: false, error: searchResult?.error || "web_search failed" };
-          }
-          return {
-            tool: call.tool, ok: true,
-            result: (searchResult.summary || searchResult.text || "").slice(0, MAX_TOOL_RESULT_LEN),
-            source: searchResult.source || "unknown",
-          };
+          // expert_mode.web_search, same as the agent loop. tools.web_search
+          // goes through governedCall and is rejected overlap_below_threshold
+          // once the substrate is past ~1000 DTUs.
+          const { dispatchChatWebSearch } = await import("./lib/chat-tool-surface.js");
+          return dispatchChatWebSearch(runMacro, ctx, call.params || {});
         }
         case "create_dtu": {
           const dtuResult = await runMacro("dtu", "create", {
@@ -28751,6 +28745,7 @@ ${_operatorV6Block}` : "";
       brain: llmUsed ? "conscious" : "local",
       confidence: llmUsed ? 0.8 : 0.5,
       workingSetDtuIds: (_pipelineHarvest?.consolidatedWorkingSet || relevant).map(d => d.id).slice(0, 20),
+      userId: ctx?.actor?.userId || null,
     });
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // Consolidation check every 10 exchanges
@@ -28768,7 +28763,7 @@ ${_operatorV6Block}` : "";
   // Accelerated chat DTU promotion every 5 exchanges
   try {
     if (isAcceleratedPromotionDue(sess)) {
-      const _promoResult = acceleratedChatPromotion(STATE, sessionId);
+      const _promoResult = acceleratedChatPromotion(STATE, sessionId, ctx?.actor?.userId || null);
       if (_promoResult.promoted > 0 || _promoResult.megaCreated) {
         ctx.log("chat_enrichment", "Accelerated chat DTU promotion", {
           sessionId, promoted: _promoResult.promoted,
@@ -29035,69 +29030,15 @@ ${_operatorV6Block}` : "";
 // ===== CHAT PIPELINE MACROS =====
 // New macros for the DTU-enriched context pipeline.
 
-register("chat", "tools", (ctx, _input = {}) => {
+register("chat", "tools", async (ctx, _input = {}) => {
   try {
   const flags = _c3sessionFlags(ctx);
-  const globalEnabled = Boolean(STATE.__chicken3?.toolsEnabled);
-  const sessionOptIn = flags.toolsOptIn;
-  const available = globalEnabled && sessionOptIn;
-
-  const tools = [
-    {
-      name: "web_search",
-      description: "Search the web for current information using DuckDuckGo or SearxNG.",
-      params: { query: { type: "string", required: true, description: "Search query" } },
-      requiresOptIn: true,
-    },
-    {
-      name: "create_dtu",
-      description: "Create a new DTU (Decision/Thought Unit) from the conversation.",
-      params: {
-        title: { type: "string", required: true, description: "DTU title" },
-        summary: { type: "string", required: false, description: "Brief summary" },
-        tags: { type: "array", required: false, description: "Tags for categorization" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_compute",
-      description: "Run a physics, chemistry, math, quantum, or engineering calculation. Keys: chemistry.molecularAnalysis, chemistry.balanceReaction, physics.beamDeflection, quantum.simulateCircuit, engineering.columnBuckling, statistics.linearRegression, etc.",
-      params: {
-        key: { type: "string", required: true, description: "module.function e.g. chemistry.balanceReaction" },
-        input: { type: "object", required: false, description: "Function-specific arguments" },
-      },
-      requiresOptIn: false,
-    },
-    {
-      name: "browse_url",
-      description: "Fetch and read the text content of any public web page.",
-      params: {
-        url: { type: "string", required: true, description: "Full https:// URL" },
-        selector: { type: "string", required: false, description: "Optional CSS selector to narrow content" },
-      },
-      requiresOptIn: true,
-    },
-    {
-      name: "run_lens_action",
-      description: "Invoke a lens domain action (e.g., legal.draft, finance.analyze).",
-      params: {
-        domain: { type: "string", required: true, description: "Lens domain" },
-        action: { type: "string", required: true, description: "Action name" },
-        params: { type: "object", required: false, description: "Action-specific parameters" },
-      },
-      requiresOptIn: true,
-    },
-  ];
-
-  // Compute module keys for discovery
-  const computeKeys = [
-    "chemistry.molecularAnalysis","chemistry.balanceReaction","chemistry.solutionChemistry","chemistry.enthalpyOfReaction","chemistry.gibbsFreeEnergy",
-    "physics.beamDeflection","physics.windLoad","physics.momentOfInertia","physics.heatTransfer","physics.carnotEfficiency","physics.idealGasLaw",
-    "quantum.simulateCircuit","quantum.analyzeCircuit","quantum.measureCircuit","quantum.circuitDepth",
-    "engineering.columnBuckling","engineering.weldStrength","engineering.reinforcedConcreteWall","engineering.voltageDrop","engineering.heatLoadCalc",
-    "statistics.linearRegression","statistics.polynomialRegression","statistics.pearsonCorrelation","statistics.fitNormal","statistics.hypothesisTest",
-    "math.differentiate","math.integrate","math.solve","math.simplify",
-  ];
+  const { buildChatToolsReport } = await import("./lib/chat-tool-surface.js");
+  const report = buildChatToolsReport({
+    toolsEnabled: STATE.__chicken3?.toolsEnabled,
+    sessionOptIn: flags.toolsOptIn,
+    operator: _isOperatorActor(ctx),
+  });
 
   // List registered lens actions
   const lensActions = [];
@@ -29106,18 +29047,9 @@ register("chat", "tools", (ctx, _input = {}) => {
     lensActions.push({ domain, action, key });
   }
 
-  return {
-    ok: true,
-    available,
-    globalEnabled,
-    sessionOptIn,
-    tools,
-    lensActions,
-    computeKeys,
-    usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
-  };
+  return { ok: true, ...report, lensActions };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "List all tools available to the chat system and their opt-in status." });
+}, { description: "List the tools chat.respond and the agent loop actually inject, and whether each path will dispatch them." });
 
 // Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
 // a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The

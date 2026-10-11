@@ -151,6 +151,8 @@ export interface DTU {
   content: string;
   summary: string;
   timestamp: string;
+  /** Persisted creation time. Relative clocks must read this, not updatedAt. */
+  createdAt?: string;
   updatedAt?: string;
   tier: DTUTier;
   tags: string[];
@@ -216,6 +218,7 @@ export interface CreateDTURequest {
 export interface UpdateDTURequest {
   title?: string;
   content?: string;
+  summary?: string;
   tags?: string[];
   meta?: Record<string, unknown>;
   vote?: number;

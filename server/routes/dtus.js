@@ -22,7 +22,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     if (out && out.ok === false) {
       const status = Number.isInteger(out.status)
         ? out.status
-        : (typeof out.error === "string" && out.error.startsWith("unauthorized") ? 403 : null);
+        : (typeof out.error === "string" && /^unauthorized\b/i.test(out.error) ? 403 : null);
       if (status && status >= 400 && status < 600) return res.status(status).json(out);
     }
     return res.json(out);
@@ -148,6 +148,37 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
+  }));
+
+  // Literal one-segment GETs must be registered before /api/dtus/:id.
+  // Express matches in registration order. These three used to sit after
+  // that param route (shadow later in this function; recent and search in
+  // helpers-extended.js, which server.js mounts afterward), so live
+  // requests for them hit dtu.get and returned 404 "DTU not found".
+  app.get("/api/dtus/shadow", asyncHandler(async (req, res) => {
+    const out = await runMacro("dtu", "listShadow", { limit: req.query.limit, q: req.query.q }, makeCtx(req));
+    return res.json(out);
+  }));
+
+  app.get("/api/dtus/recent", asyncHandler(async (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const all = dtusArray()
+      .filter(d => ctxMayReadDtu(req, d))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    res.json({ ok: true, dtus: all.slice(0, limit).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain, createdAt: d.createdAt })) });
+  }));
+
+  app.get("/api/dtus/search", asyncHandler(async (req, res) => {
+    const q = (req.query.q || "").toLowerCase();
+    if (!q) return res.json({ ok: true, results: [], total: 0 });
+    const results = dtusArray().filter(d =>
+      ctxMayReadDtu(req, d) && (
+        (d.title || "").toLowerCase().includes(q) ||
+        (d.human?.summary || "").toLowerCase().includes(q) ||
+        (d.tags || []).some(t => t.toLowerCase().includes(q))
+      )
+    ).slice(0, 50).map(d => ({ id: d.id, title: d.title, tier: d.tier, domain: d.domain }));
+    res.json({ ok: true, results, total: results.length });
   }));
 
   app.get("/api/dtus/:id", asyncHandler(async (req, res) => {
@@ -304,11 +335,6 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.post("/api/dtus/define", asyncHandler(async (req, res) => {
     const out = await runMacro("dtu", "define", req.body, makeCtx(req));
     return res.json(_withAck(out, req, ["dtus"], ["/api/dtus"], null, { panel: "define" }));
-  }));
-
-  app.get("/api/dtus/shadow", asyncHandler(async (req, res) => {
-    const out = await runMacro("dtu", "listShadow", { limit: req.query.limit, q: req.query.q }, makeCtx(req));
-    return res.json(out);
   }));
 
   app.post("/api/dtus/gap-promote", asyncHandler(async (req, res) => {
