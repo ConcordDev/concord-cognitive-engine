@@ -133,7 +133,7 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis = "ladder", tub = {} } = {}) {
+export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis: chassisOpt, tub = {} } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -312,8 +312,11 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     if (!d.error) veh.props.vehicle.speedLimiter = d;
   }
   sources.speedLimiter = !limiter ? "none (no speed limiter in this design)" : limiter.error ? `not applied: ${limiter.error}` : limiter.basis;
-  // Chassis structure: the ladder-frame screen parts (default) or the structural tub (a design change,
-  // structural/car-tub.js: closed boxes, shear sheets and a pillar ring laid out in the package and the body).
+  // Chassis structure: the structural tub (default since brief 4; a design change,
+  // structural/car-tub.js: closed boxes, shear sheets, a pillar ring and its openings laid out in the package
+  // and the body) or the ladder-frame screen parts it replaced (chassis: "ladder", kept for comparison).
+  // (with packaging off there is nothing to lay a tub out in, so the default falls back to the ladder screen)
+  const chassis = chassisOpt ?? (packaging ? "tub" : "ladder");
   let out = ir, tubChange = null;
   if (chassis === "tub") {
     if (!packaging) return { error: "the structural tub is laid out in the package: it needs packaging" };

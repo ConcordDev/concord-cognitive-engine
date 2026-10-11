@@ -5,6 +5,7 @@
 // crystalline materials. Free with API key from materialsproject.org
 // (set MATERIALS_PROJECT_API_KEY env).
 
+import { nullDict, ownArray, ownValue } from "../lib/own-lookup.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { ELEMENTS, getElement, categoryGroup } from "../lib/periodic-table-data.js";
 import {
@@ -365,27 +366,27 @@ export default function registerMaterialsActions(registerLensAction) {
     return null;
   }
 
-  const FRACTOGRAPHY_GUIDANCE = {
+  const FRACTOGRAPHY_GUIDANCE = nullDict({
     ductile: "Overload past the material's yield strength. Check whether the applied/service load exceeded the design allowable, look for an undersized cross-section, or an unanticipated load case.",
     brittle: "Overload below yield in a low-toughness state (brittle material, low temperature, and/or high strain rate). Check material toughness at the actual service temperature, inspect for a pre-existing flaw/notch at the chevron origin, and consider a tougher alloy or preheat.",
     fatigue: "Cyclic loading well below static strength nucleated a crack that grew stably until final fracture. Trace the beach marks back to the initiation site and check for a stress concentrator there (notch, weld toe, machining mark, corrosion pit), review surface finish, and re-examine the inspection interval against the fatigue crack growth rate.",
     scc: "Environmentally-assisted cracking requires a susceptible material, a corrosive/embrittling agent, and sustained tensile stress together — remove any one and it stops. Reduce residual/applied tensile stress, change to a resistant alloy grade, or eliminate the environmental agent.",
     creep: "Sustained stress at elevated temperature (above roughly 0.4 of the absolute melting point) let grain-boundary damage accumulate over time. Reduce operating temperature or stress, or move to a creep-resistant alloy.",
-  };
-  const FRACTOGRAPHY_CORRECTIVE_ACTIONS = {
+  });
+  const FRACTOGRAPHY_CORRECTIVE_ACTIONS = nullDict({
     ductile: ["Verify the applied load did not exceed the design allowable", "Increase cross-section or select a higher-strength material if the load was within spec", "Review for an unanticipated load case (overload, impact, misuse)"],
     brittle: ["Verify material toughness (Charpy V-notch) at the actual minimum service temperature", "Inspect the origin for a pre-existing flaw, notch, or weld defect", "Consider a tougher alloy or grain-refined heat treatment", "Preheat or reformulate the alloy if service temperature is near the ductile-to-brittle transition"],
     fatigue: ["Trace beach marks back to the initiation site and inspect for a stress concentrator (notch, weld toe, machining mark, corrosion pit)", "Improve surface finish or apply shot peening at the initiation region", "Reduce cyclic stress amplitude or add a fillet/radius to lower local stress concentration", "Re-evaluate the inspection interval against the observed crack growth rate"],
     scc: ["Reduce residual/applied tensile stress (stress-relief anneal, shot peening)", "Eliminate or reduce exposure to the corrosive/embrittling agent", "Change to an SCC-resistant alloy grade for this environment", "Apply a protective coating or cathodic protection where the agent can't be removed"],
     creep: ["Reduce operating temperature or sustained stress toward the design allowable", "Move to a creep-resistant alloy for this temperature/stress combination", "Shorten inspection intervals as remaining creep life is consumed"],
-  };
-  const FRACTOGRAPHY_FURTHER_TESTING = {
+  });
+  const FRACTOGRAPHY_FURTHER_TESTING = nullDict({
     ductile: ["Tensile test to confirm yield/ultimate strength matches spec", "Hardness survey to rule out under-strength material", "Dimensional check for an undersized section"],
     brittle: ["Charpy/Izod impact testing at service temperature", "SEM fractography at the origin to confirm cleavage facets", "Chemical/metallurgical analysis for embrittling phases (e.g. temper embrittlement)"],
     fatigue: ["SEM examination of striation spacing to back-calculate crack growth rate", "S-N fatigue testing of the actual material/geometry", "Finite-element stress analysis at the initiation site"],
     scc: ["SEM to confirm intergranular vs. transgranular crack path", "Environmental/chemical analysis to identify the specific corrosive species", "Slow strain rate testing (SSRT) to confirm SCC susceptibility"],
     creep: ["Metallographic examination of grain-boundary cavitation density (creep damage staging)", "Creep-rupture testing at service temperature/stress", "Remaining-life assessment via replication or sister-component sampling"],
-  };
+  });
 
   // Shared classifier used by both macros below — keeps the evidence
   // rules in exactly one place. Returns either { rejection: {message} }
@@ -558,8 +559,8 @@ export default function registerMaterialsActions(registerLensAction) {
       const furtherTesting = Array.from(new Set([
         "SEM fractography to distinguish striations (fatigue) from dimples (ductile), cleavage facets (brittle), or intergranular voids (creep/SCC)",
         "Confirm environmental exposure and load history from service/maintenance records",
-        ...(FRACTOGRAPHY_FURTHER_TESTING[c.top.mode] || []),
-        ...(FRACTOGRAPHY_FURTHER_TESTING[c.second.mode] || []),
+        ...(ownArray(FRACTOGRAPHY_FURTHER_TESTING, c.top.mode) || []),
+        ...(ownArray(FRACTOGRAPHY_FURTHER_TESTING, c.second.mode) || []),
       ]));
       return {
         ok: true,
@@ -580,9 +581,9 @@ export default function registerMaterialsActions(registerLensAction) {
       result: {
         material: c.material,
         classification: mode,
-        rootCauseGuidance: FRACTOGRAPHY_GUIDANCE[mode],
-        recommendedCorrectiveActions: FRACTOGRAPHY_CORRECTIVE_ACTIONS[mode],
-        recommendedFurtherTesting: FRACTOGRAPHY_FURTHER_TESTING[mode],
+        rootCauseGuidance: typeof ownValue(FRACTOGRAPHY_GUIDANCE, mode) === "string" ? ownValue(FRACTOGRAPHY_GUIDANCE, mode) : "",
+        recommendedCorrectiveActions: ownArray(FRACTOGRAPHY_CORRECTIVE_ACTIONS, mode) || [],
+        recommendedFurtherTesting: ownArray(FRACTOGRAPHY_FURTHER_TESTING, mode) || [],
         reference: "ASM Handbook Volume 11: Failure Analysis and Prevention",
       },
     };

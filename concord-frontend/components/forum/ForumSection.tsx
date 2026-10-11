@@ -6,13 +6,15 @@
  * moderation, profile) all hydrate via the `forum` domain macros.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MessagesSquare, MessageCircle, FolderTree, ShieldAlert, Award, Loader2,
   Flame, Bell, Users,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { isForumModerator } from './forumRoles';
 import { FmTopicsPanel, FORUM_COMPOSE_EVENT } from './FmTopicsPanel';
 import { FmCategoriesPanel } from './FmCategoriesPanel';
 import { FmModerationPanel } from './FmModerationPanel';
@@ -39,6 +41,13 @@ const TABS: { id: TabId; label: string; icon: typeof MessageCircle }[] = [
 ];
 
 export function ForumSection() {
+  const { user } = useAuth();
+  const canModerate = isForumModerator(user?.role);
+  const viewerId = user?.id ?? null;
+  const tabs = useMemo(
+    () => TABS.filter((t) => t.id !== 'moderation' || canModerate),
+    [canModerate],
+  );
   const [tab, setTab] = useState<TabId>('topics');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +61,8 @@ export function ForumSection() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const activeTab: TabId = tab === 'moderation' && !canModerate ? 'topics' : tab;
 
   useEffect(() => {
     const onCompose = () => setTab('topics');
@@ -77,21 +88,21 @@ export function ForumSection() {
       {loading ? (
         <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 px-4 py-3 border-b border-zinc-800">
+        <div className={cn('grid grid-cols-3 gap-2 px-4 py-3 border-b border-zinc-800', canModerate ? 'sm:grid-cols-7' : 'sm:grid-cols-6')}>
           <Stat label="Topics" value={dash.topics} />
           <Stat label="Replies" value={dash.replies} />
           <Stat label="Communities" value={dash.subforums} />
           <Stat label="Categories" value={dash.categories} />
           <Stat label="Watching" value={dash.subscriptions} />
           <Stat label="Saved" value={dash.savedPosts} />
-          <Stat label="Flags" value={dash.pendingFlags} />
+          {canModerate && <Stat label="Flags" value={dash.pendingFlags} />}
         </div>
       )}
 
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const Icon = t.icon;
-          const active = tab === t.id;
+          const active = activeTab === t.id;
           const badge = t.id === 'inbox' && dash && dash.unreadNotifications > 0 ? dash.unreadNotifications : 0;
           return (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
@@ -107,16 +118,17 @@ export function ForumSection() {
       </nav>
 
       <div className="p-4">
-        {tab === 'topics' && (
+        {activeTab === 'topics' && (
           <FmTopicsPanel key={topicsKey.current} onChange={refresh}
-            initialTopicId={pendingTopic} onTopicConsumed={() => setPendingTopic(null)} />
+            initialTopicId={pendingTopic} onTopicConsumed={() => setPendingTopic(null)}
+            canModerate={canModerate} viewerId={viewerId} />
         )}
-        {tab === 'communities' && <FmCommunitiesPanel onChange={refresh} />}
-        {tab === 'trending' && <FmTrendingPanel onOpenTopic={openTopic} />}
-        {tab === 'inbox' && <FmInboxPanel onChange={refresh} onOpenTopic={openTopic} />}
-        {tab === 'categories' && <FmCategoriesPanel onChange={refresh} />}
-        {tab === 'moderation' && <FmModerationPanel onChange={refresh} />}
-        {tab === 'profile' && <FmProfilePanel onOpenTopic={openTopic} />}
+        {activeTab === 'communities' && <FmCommunitiesPanel onChange={refresh} canModerate={canModerate} viewerId={viewerId} />}
+        {activeTab === 'trending' && <FmTrendingPanel onOpenTopic={openTopic} />}
+        {activeTab === 'inbox' && <FmInboxPanel onChange={refresh} onOpenTopic={openTopic} />}
+        {activeTab === 'categories' && <FmCategoriesPanel onChange={refresh} canModerate={canModerate} viewerId={viewerId} />}
+        {activeTab === 'moderation' && <FmModerationPanel onChange={refresh} />}
+        {activeTab === 'profile' && <FmProfilePanel onOpenTopic={openTopic} />}
       </div>
     </div>
   );

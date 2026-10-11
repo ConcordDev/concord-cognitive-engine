@@ -194,7 +194,7 @@ describe("validity range: results outside it are flagged, not passed", () => {
 
 describe("structure.frame applications", () => {
   it("car: ladder-frame chassis screen from the car's rails (bending + torsional stiffness)", () => {
-    const b = buildCarFromLibrary("Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.", { cadBody: false });
+    const b = buildCarFromLibrary("Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people, and has a futuristic aerodynamic look.", { cadBody: false, chassis: "ladder" });
     const s = openDesign(withChassisFrame(b.ir)).session;
     const env = s.result("structure.frame@CHASSIS");
     assert.ok(["PASS", "WARN"].includes(env.status), env.reason);

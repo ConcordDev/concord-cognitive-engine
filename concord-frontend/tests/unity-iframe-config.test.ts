@@ -3,6 +3,7 @@ import {
   isLoopbackHttpOrigin,
   unityKernelGatewayUrl,
   buildUnityIframeSearch,
+  showUnityGatewayDevBadge,
 } from '@/lib/unity-iframe-config';
 
 describe('unityKernelGatewayUrl', () => {
@@ -14,6 +15,19 @@ describe('unityKernelGatewayUrl', () => {
   it('pins loopback next to the kitchen kernel on :5050', () => {
     expect(unityKernelGatewayUrl('http://127.0.0.1:3000')).toBe('ws://127.0.0.1:5050/unity-ws');
     expect(unityKernelGatewayUrl('http://localhost:3010')).toBe('ws://127.0.0.1:5050/unity-ws');
+  });
+});
+
+describe('showUnityGatewayDevBadge', () => {
+  it('is on only for the development server', () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    expect(showUnityGatewayDevBadge()).toBe(false);
+    process.env.NODE_ENV = 'test';
+    expect(showUnityGatewayDevBadge()).toBe(false);
+    process.env.NODE_ENV = 'development';
+    expect(showUnityGatewayDevBadge()).toBe(true);
+    process.env.NODE_ENV = prev;
   });
 });
 

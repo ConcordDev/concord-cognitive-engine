@@ -49,6 +49,8 @@ import { ClaimVerificationPanel } from '@/components/grounding/ClaimVerification
 import { FactGroundingWorkbench } from '@/components/grounding/FactGroundingWorkbench';
 import { SensorGroundingPanel } from '@/components/grounding/SensorGroundingPanel';
 import { MindfulnessFeed } from '@/components/grounding/MindfulnessFeed';
+import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 
 type Destination = 'factcheck' | 'sensors' | 'pulse';
 
@@ -63,12 +65,15 @@ export default function GroundingLensPage() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('factcheck');
+  const destinations = omitCommunityRedditViews(DESTINATIONS, ['pulse']);
 
   useLensCommand(
     [
       { id: 'goto-factcheck', keys: 'g f', description: 'Go to Fact-Check Workbench', category: 'navigation', action: () => setDest('factcheck') },
       { id: 'goto-sensors', keys: 'g s', description: 'Go to Reality Anchor', category: 'navigation', action: () => setDest('sensors') },
-      { id: 'goto-pulse', keys: 'g p', description: 'Go to Real-World Pulse', category: 'navigation', action: () => setDest('pulse') },
+      ...(isCommunityRedditEnabled()
+        ? [{ id: 'goto-pulse', keys: 'g p', description: 'Go to Real-World Pulse', category: 'navigation' as const, action: () => setDest('pulse') }]
+        : []),
     ],
     { lensId: 'grounding' }
   );
@@ -82,7 +87,7 @@ export default function GroundingLensPage() {
         title={`Check it against reality${who ? `, ${who}` : ''}`}
         subtitle="Two real substrates: claim and fact verification, and embodied real-world sensor anchoring."
         actions={<DepthBadge lensId="grounding" size="sm" />}
-        tabs={DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, hint: d.desc }))}
+        tabs={destinations.map((d) => ({ id: d.id, label: d.label, icon: d.icon, hint: d.desc }))}
         activeTab={dest}
         onTab={(id) => setDest(id as Destination)}
         tabsLabel="Grounding destinations"
@@ -98,9 +103,11 @@ export default function GroundingLensPage() {
         {dest === 'sensors' && <SensorGroundingPanel />}
 
         {dest === 'pulse' && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <MindfulnessFeed />
-          </div>
+          <CommunityRedditSlot>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <MindfulnessFeed />
+            </div>
+          </CommunityRedditSlot>
         )}
 
         <ConnectiveTissueBar lensId="grounding" />

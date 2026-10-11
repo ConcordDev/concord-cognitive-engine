@@ -1,4 +1,5 @@
 // Test-only preload (wired via `node --test --import`).
+import { networkInterfaces } from "node:os";
 //
 // ── Per-process DB_PATH + STATE_PATH isolation ────────────────────────────────
 // `node --test` with a glob (tests/**/*.test.js) runs each test FILE in its own
@@ -152,6 +153,20 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
     const isLoopback = (u) =>
       /^https?:\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)([:/?]|$)/i.test(u) ||
       /^https?:\/\/[^/]*\.local([:/?]|$)/i.test(u);
+    // This machine's own interface addresses. A test that dials its LAN IP
+    // (auth-login-client-ip proves a non-loopback peer) is still local.
+    // Any other host stays blocked.
+    const ownHosts = new Set(["127.0.0.1", "localhost", "0.0.0.0", "::1"]);
+    for (const entries of Object.values(networkInterfaces())) {
+      for (const info of entries || []) {
+        if (info && info.address) ownHosts.add(info.address);
+      }
+    }
+    const isOwnHost = (u) => {
+      if (isLoopback(u)) return true;
+      try { return ownHosts.has(new URL(u).hostname); }
+      catch { return false; }
+    };
     globalThis.fetch = function patchedFetch(input, init) {
       // A call carrying `init.dispatcher` has already gone through
       // lib/ssrf-guard.js#fetchWithPinnedIp: the URL was validated and the
@@ -174,7 +189,7 @@ if (String(process.env.NODE_ENV).toLowerCase() === "test"
             : (input && typeof input.url === "string") ? input.url
             : String(input || "");
       } catch { url = ""; }
-      if (/^https?:\/\//i.test(url) && !isLoopback(url)) {
+      if (/^https?:\/\//i.test(url) && !isOwnHost(url)) {
         return Promise.reject(new Error(`external fetch blocked under test (no-egress): ${url.slice(0, 120)}`));
       }
       return realFetch.call(this, input, init);

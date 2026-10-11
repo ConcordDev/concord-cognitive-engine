@@ -12,7 +12,7 @@ interface BrainData {
     requests?: number;
     errors?: number;
     dtusGenerated?: number;
-    lastCallAt?: string;
+    lastCallAt?: string | null;
   };
 }
 
@@ -50,21 +50,49 @@ function BrainCard({ name, brain }: { name: string; brain: BrainData }) {
   );
 }
 
+const BRAIN_ORDER = ['conscious', 'subconscious', 'utility', 'repair', 'multimodal'];
+
+function brainLabel(name: string): string {
+  if (!name) return 'Brain';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function fleetNames(names: string[]): string[] {
+  const rank = (name: string) => {
+    const i = BRAIN_ORDER.indexOf(name);
+    return i === -1 ? BRAIN_ORDER.length : i;
+  };
+  return [...names].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
 export default function BrainHealthPanel() {
   const { brainStatus, isLoading, refresh } = useBrainHealth();
 
-  if (isLoading) {
+  if (!brainStatus.hasSnapshot) {
     return (
-      <div className="animate-pulse space-y-2 p-4">
-        <div className="h-4 bg-neutral-800 rounded w-1/3" />
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-32 bg-neutral-800 rounded" />
-          ))}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Brain Health</h2>
+          {!isLoading && (
+            <button
+              type="button"
+              onClick={refresh}
+              className="text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition-colors"
+            >
+              Refresh
+            </button>
+          )}
         </div>
+        <p role="status" className="text-xs text-neutral-400">
+          {isLoading ? 'Loading brain health…' : 'Brain health unavailable'}
+        </p>
       </div>
     );
   }
+
+  const total = brainStatus.totalCount ?? 0;
+  const onlineText = total > 0 ? `${brainStatus.onlineCount}/${total}` : 'no data yet';
+  const names = fleetNames(Object.keys(brainStatus.fleet));
 
   return (
     <div className="space-y-3">
@@ -73,22 +101,24 @@ export default function BrainHealthPanel() {
           <h2 className="text-lg font-semibold">Brain Health</h2>
           <p className="text-xs text-neutral-400">
             Mode: <span className="text-neutral-200">{brainStatus.mode}</span>
-            {' | '}Online: <span className="text-neutral-200">{brainStatus.onlineCount}/4</span>
+            {' | '}Online: <span className="text-neutral-200">{onlineText}</span>
           </p>
         </div>
         <button
+          type="button"
           onClick={refresh}
           className="text-xs px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition-colors"
         >
           Refresh
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <BrainCard name="Conscious (7B)" brain={brainStatus.conscious as BrainData} />
-        <BrainCard name="Subconscious (1.5B)" brain={brainStatus.subconscious as BrainData} />
-        <BrainCard name="Utility (3B)" brain={brainStatus.utility as BrainData} />
-        <BrainCard name="Repair (0.5B)" brain={brainStatus.repair as BrainData} />
-      </div>
+      {names.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {names.map((name) => (
+            <BrainCard key={name} name={brainLabel(name)} brain={brainStatus.fleet[name]} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

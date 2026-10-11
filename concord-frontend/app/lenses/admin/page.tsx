@@ -32,6 +32,7 @@ import { PlatformPanel } from '@/components/admin/PlatformPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { OpsConsole } from '@/components/admin/OpsConsole';
 import { useAuth } from '@/hooks/useAuth';
+import { canViewAdminLens } from '@/components/admin/admin-access';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type AdminView = 'overview' | 'ops' | 'infra' | 'access' | 'treasury' | 'platform' | 'audit';
@@ -59,7 +60,12 @@ const PANELS: Record<AdminView, ComponentType> = {
 export default function AdminLensPage() {
   useLensNav('admin');
   useLensIdentity('admin');
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  // Wait for /api/auth/me. A session that is still resolving is not an
+  // admin, so the dashboard/metrics/logs reads stay off until the role
+  // matches requireAdminRole. Overview and audit stay unmounted until
+  // then — they issue the same reads as soon as they render.
+  const canView = !authLoading && canViewAdminLens(user);
   const who = titleCaseDisplayName(user?.username);
   const {
     latestData: realtimeData,
@@ -120,22 +126,44 @@ export default function AdminLensPage() {
   );
   useLensCommand(commands, { lensId: 'admin' });
 
-  // Gate queries — must hit admin-role-gated endpoints so AdminRequiredState fires on 403.
+  // Probe the same three routes the overview used to fire on every load.
+  // Enabled only after the viewer matches the server role gate. A later
+  // 403 (server disagrees) still opens AdminRequiredState; any other
+  // failure stays an honest error instead of an empty console.
   const dash = useQuery({
     queryKey: ['admin-dashboard'],
     queryFn: () => apiHelpers.admin.dashboard().then((r) => r.data),
-    refetchInterval: 5000,
+    enabled: canView,
+    refetchInterval: canView ? 5000 : false,
   });
   const metricsQ = useQuery({
     queryKey: ['admin-metrics'],
     queryFn: () => apiHelpers.admin.metrics().then((r) => r.data),
-    refetchInterval: 5000,
+    enabled: canView,
+    refetchInterval: canView ? 5000 : false,
   });
   const logsQ = useQuery({
     queryKey: ['admin-logs'],
     queryFn: () => apiHelpers.admin.logs({ limit: 20 }).then((r) => r.data),
-    refetchInterval: 10000,
+    enabled: canView,
+    refetchInterval: canView ? 10000 : false,
   });
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <p role="status" className="text-sm text-zinc-400">Checking access…</p>
+      </div>
+    );
+  }
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <AdminRequiredState roles={['admin']} />
+      </div>
+    );
+  }
 
   if ([dash.error, metricsQ.error, logsQ.error].some(isForbidden)) {
     return (

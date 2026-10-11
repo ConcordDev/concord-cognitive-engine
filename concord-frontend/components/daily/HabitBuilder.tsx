@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Repeat, Plus, Check, Trash2, Bell, Loader2, Archive } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Habit {
@@ -43,7 +44,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
   const [form, setForm] = useState({ name: '', cue: '', frequency: 'daily', reminderTime: '', targetPerWeek: 7 });
 
   const load = useCallback(async () => {
-    const r = await lensRun<HabitListResult>('daily', 'habit-list', {});
+    const r = await lensRun<HabitListResult>('daily', 'habit-list', { today: calendarDateKey() });
     if (r.data?.ok && r.data.result) setData(r.data.result);
     setLoading(false);
   }, []);
@@ -70,7 +71,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
 
   const checkin = useCallback(async (habitId: string) => {
     setBusy(habitId);
-    await lensRun('daily', 'habit-checkin', { habitId });
+    await lensRun('daily', 'habit-checkin', { habitId, date: calendarDateKey() });
     setBusy(null);
     await load();
     onChange?.();

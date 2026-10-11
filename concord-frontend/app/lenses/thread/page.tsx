@@ -132,7 +132,11 @@ export default function ThreadLensPage() {
 
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
-            <Panel />
+            {active === 'map' ? (
+              <ThreadMapPanel onOpenComposer={() => setActive('composer')} />
+            ) : (
+              <Panel />
+            )}
           </motion.div>
         </AnimatePresence>
 

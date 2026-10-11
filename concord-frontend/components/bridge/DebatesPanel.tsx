@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
-import type { Debate } from './types';
-import { EmptyCard, VerdictBadge } from './bridge-helpers';
+import type { CatalogStatus, Debate } from './types';
+import { EmptyCard, UnavailableCard, VerdictBadge } from './bridge-helpers';
 
-export function DebatesPanel({ debates, onDtuClick }: { debates: Debate[]; onDtuClick?: (id: string) => void }) {
+export function DebatesPanel({ debates, status, onDtuClick }: { debates: Debate[]; status: CatalogStatus; onDtuClick?: (id: string) => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  if (status === 'unavailable') {
+    return <UnavailableCard icon={<MessageSquare />} message="Debates unavailable" hint="The debate catalog could not be loaded. This is not a count of zero debates." />;
+  }
+  if (status !== 'ready') return null;
   if (debates.length === 0) return <EmptyCard icon={<MessageSquare />} message="No debates yet" hint="Debates occur when emergent agents challenge organism DTU outputs." />;
 
   return (

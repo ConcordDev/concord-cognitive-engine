@@ -20,30 +20,43 @@ export function ArtifactUploader({ lens, onUploadComplete, acceptTypes, multi = 
     setUploading(true);
     setError(null);
 
+    const readFailure = async (res: Response): Promise<string> => {
+      try {
+        const data = await res.json();
+        if (typeof data?.error === "string" && data.error) return data.error;
+        if (typeof data?.message === "string" && data.message) return data.message;
+      } catch { /* body was not JSON */ }
+      return `Upload failed (${res.status})`;
+    };
+
+    // Raw file bytes. The server treats Content-Type as the file MIME and
+    // reads x-filename / x-title / x-domain. Multipart FormData was rejected
+    // as an unknown type.
+    const postFile = async (file: File) => {
+      const res = await fetch("/api/artifact/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-Filename": encodeURIComponent(file.name),
+          "X-Title": encodeURIComponent(file.name),
+          "X-Domain": lens,
+        },
+        body: file,
+      });
+      if (!res.ok) throw new Error(await readFailure(res));
+      const data = await res.json();
+      if (!data?.ok || !data.dtuId) throw new Error(data?.error || "Upload failed");
+      return String(data.dtuId);
+    };
+
     try {
-      const formData = new FormData();
-      const fileArray = Array.from(files);
-
-      if (multi && fileArray.length > 1) {
-        for (const file of fileArray) formData.append("files", file);
-        formData.append("domain", lens);
-        formData.append("title", fileArray[0].name);
-
-        const res = await fetch("/api/artifact/upload-multi", { method: "POST", body: formData });
-        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-        const data = await res.json();
-        if (data.ok) onUploadComplete(data.dtuId);
-        else setError(data.error || "Upload failed");
-      } else {
-        formData.append("file", fileArray[0]);
-        formData.append("domain", lens);
-        formData.append("title", fileArray[0].name);
-
-        const res = await fetch("/api/artifact/upload", { method: "POST", body: formData });
-        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-        const data = await res.json();
-        if (data.ok) onUploadComplete(data.dtuId);
-        else setError(data.error || "Upload failed");
+      const fileArray = Array.from(files).filter(Boolean);
+      if (!fileArray.length) throw new Error("Choose a file to upload.");
+      const batch = multi ? fileArray : fileArray.slice(0, 1);
+      for (const file of batch) {
+        const dtuId = await postFile(file);
+        onUploadComplete(dtuId);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed");

@@ -30,6 +30,7 @@ import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
 import { GoalsAnalyticsTools } from '@/components/goals/GoalsAnalyticsTools';
 import { AgentAutonomyPanel } from '@/components/goals/AgentAutonomyPanel';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import type { GoalTab } from '@/components/goals/goals-model';
 
 const VIEWS: { id: GoalTab; label: string; keys: string; hint: string; icon: typeof Target }[] = [
@@ -58,9 +59,10 @@ export default function GoalsLensPage() {
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('goals');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<GoalTab>('goals');
+  const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
   useLensCommand(
-    VIEWS.map((v) => ({
+    navViews.map((v) => ({
       id: `view-${v.id}`,
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
@@ -108,7 +110,7 @@ export default function GoalsLensPage() {
           </button>
         </div>
         <nav className="mt-6 mb-2 flex flex-wrap gap-4 text-[13px]" aria-label="Goals views">
-          {VIEWS.map((v) => {
+          {navViews.map((v) => {
             const on = active === v.id;
             return (
               <button

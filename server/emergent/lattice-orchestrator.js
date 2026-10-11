@@ -32,6 +32,7 @@
 // exceptions reach the heartbeat-registry.
 
 import logger from "../logger.js";
+import { shouldPauseHeavyBackground } from "../lib/host-profile.js";
 
 let _STATE_REF = null;
 
@@ -47,6 +48,7 @@ export function initLatticeOrchestrator(STATE) {
 // ── Periodic drift scan ────────────────────────────────────────────────────
 
 export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: _t } = {}) {
+  if (shouldPauseHeavyBackground()) return { ok: true, skipped: "low_memory_host" };
   if (!_STATE_REF) return { ok: false, reason: "state_not_initialised" };
   let mod;
   try { mod = await import("./drift-monitor.js"); }
@@ -165,6 +167,7 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
 // ── Breakthrough cluster research pass ─────────────────────────────────────
 
 export async function runBreakthroughResearchPass({ db: _db, state: _state, tickCount: _t } = {}) {
+  if (shouldPauseHeavyBackground()) return { ok: true, skipped: "low_memory_host" };
   let mod;
   try { mod = await import("./breakthrough-clusters.js"); }
   catch (err) { return { ok: false, reason: "breakthrough_unavailable", error: err?.message }; }
@@ -256,6 +259,7 @@ export async function runForgettingHealthCheck({ db: _db, state: _state, tickCou
 // ── Federation poll ────────────────────────────────────────────────────────
 
 export async function runFederationPoll({ db: _db, state: _state, tickCount: _t } = {}) {
+  if (shouldPauseHeavyBackground()) return { ok: true, skipped: "low_memory_host" };
   let mod;
   try { mod = await import("./cnet-federation.js"); }
   catch (err) { return { ok: false, reason: "federation_unavailable", error: err?.message }; }

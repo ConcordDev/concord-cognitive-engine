@@ -56,7 +56,7 @@ export function SovereigntyPanel({
     isLive,
     lastUpdated,
   } = useRealtimeLens('lock');
-  const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats } = use70Lock();
+  const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats, isLoading: statusLoading, error: statusError, refetchStatus } = use70Lock();
   const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
     const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
     message: string;
@@ -164,6 +164,31 @@ export function SovereigntyPanel({
       </div>
     );
   }
+
+  if (statusLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-8" role="status">
+        <p className="text-sm text-gray-400">Reading sovereignty status…</p>
+      </div>
+    );
+  }
+
+  if (statusError) {
+    const detail = statusError instanceof Error ? statusError.message : 'The status read failed.';
+    return (
+      <div className="flex items-center justify-center h-full p-8" data-testid="sovereignty-status-unavailable">
+        <ErrorState
+          error={`Sovereignty status is unavailable. Lock percentage, invariants, and enforcement rate are not shown because the read failed. ${detail}`}
+          onRetry={() => { void refetchStatus(); }}
+        />
+      </div>
+    );
+  }
+
+  const enforcementRate = invariants.length > 0
+    ? Math.round((invariantSummary.enforced / invariants.length) * 100)
+    : null;
+
   return (
     <div data-lens-theme="lock" className="space-y-6">
       <div className="flex items-center justify-end">
@@ -205,7 +230,7 @@ export function SovereigntyPanel({
           className="lens-card text-center"
         >
           <Shield className="w-5 h-5 text-neon-green mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-green">100%</p>
+          <p className="text-2xl font-bold text-neon-green">{enforcementRate === null ? '—' : `${enforcementRate}%`}</p>
           <p className="text-sm text-gray-400">Enforcement Rate</p>
         </motion.div>
         <motion.div
@@ -520,19 +545,12 @@ export function SovereigntyPanel({
                 <div
                   className="h-full bg-neon-green rounded-full"
                   style={{
-                    width: `${
-                      invariants.length > 0
-                        ? Math.round((invariantSummary.enforced / invariants.length) * 100)
-                        : 0
-                    }%`,
+                    width: `${enforcementRate ?? 0}%`,
                   }}
                 />
               </div>
               <span className="text-xs font-mono text-neon-green">
-                {invariants.length > 0
-                  ? Math.round((invariantSummary.enforced / invariants.length) * 100)
-                  : 0}
-                %
+                {enforcementRate === null ? '—' : `${enforcementRate}%`}
               </span>
             </div>
           </div>

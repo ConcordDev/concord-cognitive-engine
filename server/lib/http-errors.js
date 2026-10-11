@@ -23,6 +23,9 @@
  * client input and benefit the caller — keep their messages plain.
  */
 
+import { isShutdownDbError, sendShuttingDown } from "./shutdown-http.js";
+import { reportHttpFailure } from "./cortex-failure-signals.js";
+
 let _structuredLog = null;
 
 /**
@@ -49,12 +52,28 @@ function safeLog(level, event, payload) {
  * @returns {import("express").Response}
  */
 export function serverError(res, err, statusCode = 500, hint = "") {
+  // A catch block that funnels every throw through serverError() must not
+  // turn "database connection is not open" into a 500 mid-restart.
+  if (isShutdownDbError(err)) {
+    safeLog("warn", "shutdown_request_after_close", {
+      message: err?.message ? String(err.message) : String(err),
+      path: res.req?.originalUrl || res.req?.url || null,
+      method: res.req?.method || null,
+    });
+    return sendShuttingDown(res);
+  }
+
   const isProd = process.env.NODE_ENV === "production";
   const message = err?.message ? String(err.message) : String(err);
   const stack = err?.stack ? String(err.stack) : undefined;
 
   // Always log the real error server-side. The redaction is purely on
   // the wire response — operators reading logs see everything.
+  // Report before the log and the json() so the access-log path cannot
+  // observe the same response a second time.
+  if (statusCode >= 500 || statusCode === 403 || statusCode === 422 || statusCode === 429) {
+    try { reportHttpFailure(res?.req, err, statusCode); } catch { /* cortex must never change the response */ }
+  }
   safeLog("error", "http_500_response", {
     statusCode,
     message,
