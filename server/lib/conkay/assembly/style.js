@@ -337,7 +337,7 @@ export function styleControls(spec, pins = {}) {
   const headerZ = Math.min(spec.headerZ, cap - 0.01);
   const kammX = spec.kammX ?? (tail - Math.min(0.16, (tail - rx) * 0.25));
   const kammZ = Math.min(spec.kammZ, cap - 0.08);
-  const noseZ = Math.min(spec.noseTipZ ?? 0.32, cowlZ - 0.15, cap);
+  const noseZ = Math.min(spec.noseTipZ ?? 0.5, cowlZ - 0.12, cap);
   const hood = Math.min(cap - 0.04, archTop + 0.012);
   const frontHeadX = pins.frontHeadX ?? lerp(headerX, spec.bPillarX || headerX + 0.4, 0.7);
   const rearHeadX = pins.rearHeadX ?? lerp(frontHeadX, rx, 0.85);
@@ -348,35 +348,38 @@ export function styleControls(spec, pins = {}) {
   const peakX = clamp(Math.min(headerX + 0.16, frontHeadX - 0.06), headerX + 0.04, frontHeadX - 0.02);
   const headRoof = Math.min(cap, Math.max(frontNeed, peakZ - 0.055));
   const rearRoof = Math.min(cap, Math.max(rearNeed, Math.min(headRoof - 0.03, peakZ - 0.09)));
-  const midX = lerp(frontHeadX, rearHeadX, 0.48);
-  const midRoof = Math.min(cap, lerp(headRoof, rearRoof, 0.48));
-  const deckX = lerp(rearHeadX, kammX, 0.42);
-  const deckZ = Math.min(cap, lerp(rearRoof, kammZ, 0.42));
   const under = (v) => Math.min(v, cap);
+  // Most of the hood rise happens in the first 0.42 m, then the plane
+  // flattens. Spread so the tangent change over 80 mm stays under 25°.
+  const riseX = nose + 0.2;
+  const riseZ = noseZ + (hood - noseZ) * 0.42;
+  const leadX = nose + Math.min(0.48, (ax - nose) * 0.55);
+  const leadZ = noseZ + (hood - noseZ) * 0.82;
+  const fastX = lerp(rearHeadX, kammX, 0.55);
+  const fastZ = lerp(rearRoof, kammZ, 0.62);
 
   const crown = [
     ctrl("nose-tip", nose, under(noseZ), true),
-    ctrl("nose-upper", lerp(nose, ax, 0.34), under(lerp(noseZ, hood, 0.45))),
-    ctrl("hood-lead", lerp(nose, ax, 0.68), under(lerp(noseZ, hood, 0.82))),
+    ctrl("nose-rise", riseX, under(riseZ)),
+    ctrl("hood-lead", leadX, under(leadZ)),
     ctrl("hood-axle", ax, under(hood)),
     ctrl("cowl", cowlX, under(cowlZ)),
     ctrl("ws-mid", lerp(cowlX, headerX, 0.5), under(lerp(cowlZ, headerZ, 0.5))),
     ctrl("header", headerX, under(headerZ)),
     ctrl("roof-peak", peakX, under(peakZ)),
     ctrl("roof-front-head", frontHeadX, under(headRoof)),
-    ctrl("roof-mid", midX, under(midRoof)),
     ctrl("roof-rear-head", rearHeadX, under(rearRoof)),
-    ctrl("deck", deckX, under(deckZ)),
+    ctrl("fastback", fastX, under(fastZ)),
     ctrl("kamm", kammX, under(kammZ)),
-    ctrl("tail", tail, under(kammZ - 0.018), true),
+    ctrl("tail", tail, under(kammZ), true),
   ];
 
   const archFront = ax - R;
   const kY = hw * Math.sqrt(clamp(spec.kammRatio ?? 0.45, 0.25, 0.75));
   const plan = [
-    ctrl("plan-nose", nose, hw * 0.20, true),
-    ctrl("plan-overhang", lerp(nose, archFront, 0.42), hw * 0.46),
-    ctrl("plan-arch", archFront - 0.015, hw * 0.985),
+    ctrl("plan-nose", nose, hw * 0.9, true),
+    ctrl("plan-corner", nose + 0.14, hw * 0.985),
+    ctrl("plan-arch", archFront - 0.015, hw * 0.995),
     ctrl("plan-axle", ax, hw),
     ctrl("plan-b", spec.bPillarX || lerp(cowlX, rx, 0.45), hw * 0.975),
     ctrl("plan-rear", rx, hw * 0.96),
@@ -386,7 +389,7 @@ export function styleControls(spec, pins = {}) {
 
   const beltRear = Math.min(cap - 0.05, belt + 0.032);
   const shoulder = [
-    ctrl("sh-nose", nose, Math.min(noseZ - 0.02, hood)),
+    ctrl("sh-nose", nose, Math.min(noseZ - 0.015, hood)),
     ctrl("sh-arch-f", archFront, archTop + 0.008),
     ctrl("sh-axle", ax, archTop + 0.014),
     ctrl("sh-arch-b", ax + R * 0.85, archTop + 0.008),

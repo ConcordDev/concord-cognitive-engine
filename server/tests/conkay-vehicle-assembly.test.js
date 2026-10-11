@@ -57,6 +57,9 @@ describe("assembly of the library car", () => {
     assert.ok(rl.placement.x > fl.placement.x);
     assert.equal(fl.instanceOf, "WHEEL");
     assert.equal(doc.wheel.spec.rimDiameterM, Math.round(18 * 0.0254 * 1e6) / 1e6);
+    const rimNote = fl.parameters.find((p) => p.id === "rim").provenance.note;
+    assert.match(rimNote, /245\/40ZR18/);
+    assert.match(rimNote, /18 in/);
     assert.equal(doc.wheel.spec.spokes, 10);
     for (const part of [doc.wheel.tire, doc.wheel.rim, doc.wheel.disc, doc.wheel.caliper]) {
       const n = part.positions.length / 3;
@@ -89,7 +92,13 @@ describe("assembly of the library car", () => {
     assert.ok(Math.abs(mesh.windshield.rakeFromVerticalDeg - 60) < 1, mesh.windshield);
     const nose = mesh.stations.find((s) => s.role === "nose");
     const mid = mesh.stations.find((s) => s.role === "b-pillar");
-    assert.ok(nose.halfWidth < mid.halfWidth * 0.55, `nose ${nose.halfWidth} vs cabin ${mid.halfWidth}`);
+    const plan = doc.surface.spec.planKeys;
+    const nosePlan = plan.find((c) => c.id === "plan-nose");
+    const cabin = Math.max(...plan.map((c) => c.v));
+    const corner = plan.filter((c) => c.x > nosePlan.x && c.x <= nosePlan.x + 0.22).sort((a, b) => a.x - b.x)[0];
+    assert.ok(nose.halfWidth > mid.halfWidth * 0.7, `bumper ${nose.halfWidth} vs cabin ${mid.halfWidth}`);
+    assert.ok(nosePlan.v > cabin * 0.75, `plan nose ${nosePlan.v} vs ${cabin}`);
+    assert.ok(corner && corner.v > cabin * 0.9, `plan corner ${corner && corner.v} within 0.22 m`);
     for (const arch of mesh.arches) {
       assert.ok(arch.gap >= 0.025 && arch.gap <= 0.04, arch.gap);
       let covered = 0;
@@ -145,7 +154,7 @@ describe("assembly of the library car", () => {
     const containment = doc.checks.find((c) => c.id === "containment");
     assert.ok(containment);
     const outside = new Set(containment.outside || []);
-    const exterior = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle", "spare"]);
+    const exterior = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle", "spare", "trim"]);
     for (const c of doc.components) {
       if (exterior.has(c.role) || c.id === "SPARE") continue;
       if (!c.half || c.half.every((h) => h === 0)) continue;
