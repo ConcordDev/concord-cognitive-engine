@@ -292,7 +292,7 @@ export function designSurface(spec) {
       package: [
         roofRailZM != null ? `The tub's highest roof-rail node is at z ${roofRailZM} m (structure, not the skin).` : "No roof-rail node was found.",
         Number.isFinite(body?.beltMaxM)
-          ? `The CAD parameters were not edited: beltMax ${body.beltMaxM} m, fastback ${body.fastbackDeg} deg, nose extension ${body.noseExtensionM} m (each a design choice in cad/body-params.js).`
+          ? `Not edited to match the image: beltMax ${body.beltMaxM} m, fastback ${body.fastbackDeg} deg, nose extension ${body.noseExtensionM} m (design choices in cad/body-params.js). The Kamm face ratio is a separate base-drag choice in that file.`
           : "This shell is not the CAD body, so the belt, the fastback and the nose extension are not on it.",
         Number.isFinite(spec.recheck?.roofHeightM) ? `The CAD solid's height is ${spec.recheck.roofHeightM} m (cad.body).` : "The CAD solid's height is not computed on this run.",
       ].join(" "),
