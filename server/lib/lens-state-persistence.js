@@ -13,9 +13,12 @@
 // needed — the existing state_snapshots table already holds the JSON blob.
 
 // Owner-approved 2026-10-11: in-memory financial records that round-trip
-// through the process snapshot. They are not the CC ledger. serializeLensState
-// drops MONEY_SNAPSHOT_SECRET_FIELDS if one is ever attached to a row.
-// Signer email, policy numbers, and Sparks amounts are the records themselves.
+// through the process snapshot. They are not the CC ledger. Money keys take
+// both denylists: SNAPSHOT_SECRET_FIELDS (the INC-32 scrub, on serialize and
+// hydrate) and MONEY_SNAPSHOT_SECRET_FIELDS (this list, also both directions).
+// The two lists are a union of names to drop. Signer email, policy numbers,
+// and Sparks amounts are the records themselves. Size bounds are the
+// reject-before-write caps in the domain modules, not SNAPSHOT_STORE_CAPS.
 export const MONEY_SNAPSHOT_KEYS = Object.freeze([
   "predictionMarkets",
   "inheritPacts",
@@ -208,6 +211,25 @@ export const LENS_STATE_KEYS = Object.freeze([
   "chemStructures", "chemLabNotebook",
   "mathCAS", "genesisSavedSearches", "digitalTwins",
   "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
+  // INC-32 follow-up: the remaining user-authored stores. Caps and the
+  // federation actorKeys omission live in preparePersistedState below.
+  // meshChannels stays excluded (channel PSKs). meshConsensusDags stays
+  // excluded (Ed25519 keypairs). The five money-adjacent stores are
+  // included; see MONEY_SNAPSHOT_KEYS.
+  "affectMood", "cognitiveReplay", "districtSnapshots", "filmLensX", "newsParity",
+  "notaryRecords", "seasonalChallenges", "seasonalCompetitions",
+  "sentinelCases", "sentinelMonitors", "sentinelTimeline", "sentinelScanConfig",
+  "sentinelQueries", "sentinelAlerts",
+  "societyCharts", "standardsSaved", "telecom", "uxSuite", "wellnessTherapy",
+  "meshNodes", "meshMessages", "meshQueue", "meshSeq",
+  "cobuildSessions", "cobuildTasks", "cobuildAnnotations",
+  "codeQuality",
+  "crisisPlaybookProgress", "crisisTeams", "crisisTimelines", "crisisAlertAcks", "crisisResources",
+  "dreamTags", "dreamInterpretations",
+  "ghostHunts", "ghostHistory", "ghostRank",
+  "globalSavedViews",
+  "inheritanceEstates", "inheritanceNotices",
+  "federation",
   // Sparks prediction positions, inheritance pacts, agency AMS records,
   // and service-market listings/orders. See MONEY_SNAPSHOT_KEYS.
   ...MONEY_SNAPSHOT_KEYS,
@@ -223,52 +245,427 @@ export const SNAPSHOT_EXCLUDED_STATE_KEYS = Object.freeze({
   settings: "process settings bag already written by _serializeState (disabledHeartbeats), not a per-user record store",
   presenceHeartbeats: "ephemeral live presence; a heartbeat outside the online window is not a kept record",
   concordLinkFrontier: "SQLite is the restart record; the Map is a cache",
-  federation: "deferred: actorKeys store registered public keys and must be omitted before the access/moderation records are snapshotted",
-  affectMood: "deferred INC-32 follow-up: mood check-ins, reminders, and scales are still memory-only",
-  cognitiveReplay: "deferred INC-32 follow-up: shareable timeline snapshots and moments are still memory-only",
-  districtSnapshots: "deferred INC-32 follow-up: recorded district timeline snapshots are still memory-only",
-  filmLensX: "deferred INC-32 follow-up: revisions, proxy media, multicam, watch parties, and festival submissions are still memory-only (filmLens itself is snapshotted)",
-  newsParity: "deferred INC-32 follow-up: alert subscriptions, alert feed, offline items, and digest schedule are still memory-only (newsLens itself is snapshotted)",
-  notaryRecords: "deferred INC-32 follow-up: local hash-chain notarization records are still memory-only",
-  seasonalChallenges: "deferred INC-32 follow-up: seasonal challenges are still memory-only",
-  seasonalCompetitions: "deferred INC-32 follow-up: seasonal competitions are still memory-only",
-  sentinelCases: "deferred INC-32 follow-up: triage cases are still memory-only",
-  sentinelMonitors: "deferred INC-32 follow-up: monitors are still memory-only",
-  sentinelTimeline: "deferred INC-32 follow-up: threat timeline is still memory-only",
-  sentinelScanConfig: "deferred INC-32 follow-up: scan config is still memory-only",
-  sentinelQueries: "deferred INC-32 follow-up: saved queries are still memory-only",
-  sentinelAlerts: "deferred INC-32 follow-up: alerts are still memory-only",
-  societyCharts: "deferred INC-32 follow-up: saved chart specs are still memory-only",
-  standardsSaved: "deferred INC-32 follow-up: saved standards are still memory-only",
-  telecom: "deferred INC-32 follow-up: towers, spectrum, outages, and drive tests are still memory-only",
-  uxSuite: "deferred INC-32 follow-up: prop overrides and favourites are still memory-only",
-  wellnessTherapy: "deferred INC-32 follow-up: CBT records, meditation sessions, and wearable summaries are still memory-only (wellnessLens itself is snapshotted)",
   stakingAprHistory: "intentionally memory-only: cosmetic APR chart samples, not positions; stake positions are ledger rows",
   lensArtifacts: "SQLite write-through store; _serializeState omits it on purpose so hydration does not replace the live store with a plain Map",
   meshConsensusDags: "excluded: each entry holds an Ed25519 keypair generated on first use; private keys must not enter the snapshot",
-  meshNodes: "deferred INC-32 follow-up: mesh nodes are still memory-only",
-  meshMessages: "deferred INC-32 follow-up: mesh messages are still memory-only",
-  meshChannels: "deferred INC-32 follow-up: mesh channels are still memory-only",
-  meshQueue: "deferred INC-32 follow-up: mesh outbound frames are still memory-only",
-  meshSeq: "deferred INC-32 follow-up: mesh id counter is still memory-only (kept with the mesh records)",
-  cobuildSessions: "deferred INC-32 follow-up: co-build sessions are still memory-only",
-  cobuildTasks: "deferred INC-32 follow-up: co-build tasks are still memory-only",
-  cobuildAnnotations: "deferred INC-32 follow-up: co-build annotations are still memory-only",
-  codeQuality: "deferred INC-32 follow-up: scan history, issues, and gate config are still memory-only",
-  crisisPlaybookProgress: "deferred INC-32 follow-up: playbook progress is still memory-only",
-  crisisTeams: "deferred INC-32 follow-up: crisis team assignments are still memory-only",
-  crisisTimelines: "deferred INC-32 follow-up: crisis timelines are still memory-only",
-  crisisAlertAcks: "deferred INC-32 follow-up: alert acknowledgements are still memory-only",
-  crisisResources: "deferred INC-32 follow-up: crisis resources are still memory-only",
-  dreamTags: "deferred INC-32 follow-up: dream tags are still memory-only",
-  dreamInterpretations: "deferred INC-32 follow-up: dream interpretations are still memory-only",
-  ghostHunts: "deferred INC-32 follow-up: ghost-hunt records are still memory-only",
-  ghostHistory: "deferred INC-32 follow-up: ghost-hunt history is still memory-only",
-  ghostRank: "deferred INC-32 follow-up: ghost-hunt rank is still memory-only",
-  globalSavedViews: "deferred INC-32 follow-up: saved chart views are still memory-only",
-  inheritanceEstates: "deferred INC-32 follow-up: estate records are still memory-only",
-  inheritanceNotices: "deferred INC-32 follow-up: heir notices are still memory-only",
+  meshChannels: "excluded: a channel record stores the pre-shared key in psk; credentials must not enter the snapshot. Nodes, messages, the outbound queue, and the id counter are snapshotted without it",
 });
+
+// Property names that are key material. Stripped on the way into the
+// snapshot and again on hydrate for the INC-32 follow-up stores, so a
+// crafted blob cannot put a private key back into STATE. User prose is
+// not scanned; only these field names are dropped.
+export const SNAPSHOT_SECRET_FIELDS = new Set([
+  "actorKeys",
+  "privateKey",
+  "privateKeyPem",
+  "publicKey",
+  "publicKeyPem",
+  "psk",
+  "password",
+  "passphrase",
+  "apiKey",
+  "accessToken",
+  "refreshToken",
+  "keypair",
+]);
+
+// Serialize-time caps. Outer user-id keys are never dropped. `keep: "head"`
+// retains the front of a newest-first list (unshift). `keep: "tail"` retains
+// the end of an append list. Map caps keep the most recently inserted
+// entries. Caps copy; they do not splice the live store.
+export const SNAPSHOT_STORE_CAPS = Object.freeze({
+  affectMood: {
+    checkins: { shape: "userArray", max: 400, keep: "tail" },
+    reminders: { shape: "userArray", max: 100, keep: "tail" },
+  },
+  cognitiveReplay: {
+    snapshots: { shape: "userArray", max: 50, keep: "head" },
+    moments: { shape: "userArray", max: 200, keep: "head" },
+  },
+  // Per district. The district id map itself is capped so one caller
+  // cannot fill the snapshot with empty district keys.
+  districtSnapshots: { shape: "idArray", max: 500, keep: "tail", mapMax: 1000 },
+  filmLensX: {
+    revisions: { shape: "userArray", max: 200, keep: "tail" },
+    media: { shape: "userArray", max: 400, keep: "tail" },
+    mcamGroups: { shape: "userArray", max: 100, keep: "tail" },
+    parties: { shape: "userArray", max: 100, keep: "tail" },
+    partyChat: { shape: "idArray", max: 200, keep: "tail", mapMax: 500 },
+    festivals: { shape: "userArray", max: 200, keep: "tail" },
+  },
+  newsParity: {
+    alertSubs: { shape: "userArray", max: 100, keep: "tail" },
+    alertFeed: { shape: "userArray", max: 400, keep: "tail" },
+    offline: { shape: "userArray", max: 200, keep: "tail" },
+  },
+  notaryRecords: { shape: "userArray", max: 400, keep: "tail" },
+  seasonalChallenges: { shape: "userMap", max: 200 },
+  seasonalCompetitions: { shape: "userMap", max: 200 },
+  sentinelCases: { shape: "userMap", max: 400 },
+  sentinelMonitors: { shape: "userMap", max: 200 },
+  sentinelTimeline: { shape: "userArray", max: 500, keep: "head" },
+  sentinelScanConfig: { shape: "rules", max: 100, keep: "head" },
+  sentinelQueries: { shape: "userMap", max: 200 },
+  sentinelAlerts: { shape: "userArray", max: 300, keep: "head" },
+  societyCharts: { shape: "perOwner", max: 100, ownerField: "owner" },
+  standardsSaved: { shape: "userMap", max: 200 },
+  telecom: {
+    towers: { shape: "userArray", max: 400, keep: "tail" },
+    spectrum: { shape: "userArray", max: 200, keep: "tail" },
+    outages: { shape: "userArray", max: 400, keep: "tail" },
+    driveTests: { shape: "userArray", max: 2000, keep: "tail" },
+  },
+  uxSuite: {
+    propOverrides: { shape: "userMap", max: 200 },
+    favourites: { shape: "userSet", max: 200 },
+  },
+  wellnessTherapy: {
+    fields: { shape: "userArray", max: 200, keep: "tail" },
+    thoughtRecords: { shape: "userArray", max: 400, keep: "tail" },
+    sessions: { shape: "userArray", max: 400, keep: "tail" },
+    wearableSyncs: { shape: "userArray", max: 200, keep: "tail" },
+  },
+  meshNodes: { shape: "userMap", max: 400 },
+  meshMessages: { shape: "userArray", max: 500, keep: "tail" },
+  meshQueue: { shape: "userArray", max: 200, keep: "tail" },
+  cobuildSessions: { shape: "perOwner", max: 200, ownerField: "ownerId" },
+  cobuildTasks: { shape: "userMap", max: 400 },
+  cobuildAnnotations: { shape: "userMap", max: 400 },
+  codeQuality: {
+    scans: { shape: "userArray", max: 100, keep: "tail" },
+    issues: { shape: "userMap", max: 1000 },
+  },
+  crisisPlaybookProgress: { shape: "playbook", maxCrises: 200, maxSteps: 64 },
+  crisisTeams: { shape: "idArray", max: 100, keep: "tail", mapMax: 2000 },
+  crisisTimelines: { shape: "idArray", max: 400, keep: "tail", mapMax: 2000 },
+  crisisAlertAcks: { shape: "userSet", max: 500 },
+  crisisResources: { shape: "userMap", max: 400 },
+  dreamTags: { shape: "userMap", max: 400 },
+  dreamInterpretations: { shape: "userMap", max: 200 },
+  ghostHunts: { shape: "userMap", max: 400 },
+  ghostHistory: { shape: "userArray", max: 200, keep: "head" },
+  globalSavedViews: { shape: "userArray", max: 100, keep: "head" },
+  inheritanceEstates: {
+    beneficiaries: { max: 100, keep: "tail" },
+    assets: { max: 400, keep: "tail" },
+    wills: { max: 50, keep: "tail" },
+    executors: { max: 20, keep: "tail" },
+    locks: { max: 100, keep: "tail" },
+  },
+  inheritanceNotices: { shape: "userArray", max: 100, keep: "head" },
+  federation: {
+    access: { shape: "userMap", max: 500 },
+    moderation: { shape: "userArray", max: 500, keep: "head" },
+    syncPolicy: { shape: "userMap", max: 500 },
+    relays: { shape: "userArray", max: 100, keep: "tail" },
+    trustHistory: { shape: "trust", maxDomains: 500, maxPoints: 200 },
+    metrics: { shape: "userArray", max: 500, keep: "tail" },
+  },
+});
+
+const MONEY_SNAPSHOT_KEY_SET = new Set(MONEY_SNAPSHOT_KEYS);
+
+// INC-32 cap stores, plus the five money stores. Money keys are not in
+// SNAPSHOT_STORE_CAPS — their bounds are reject-before-write in the domain
+// modules — but they still take the SNAPSHOT_SECRET_FIELDS scrub. The money
+// denylist is applied on top (omitMoneySecretFields / stripMoneySecretFields),
+// so a money row loses the union of the two lists.
+const SECRET_SCRUB_KEYS = new Set([
+  ...Object.keys(SNAPSHOT_STORE_CAPS),
+  ...MONEY_SNAPSHOT_KEYS,
+]);
+
+function takeArray(arr, max, keep) {
+  if (!Array.isArray(arr) || arr.length <= max) return arr;
+  return keep === "head" ? arr.slice(0, max) : arr.slice(-max);
+}
+
+function takeMapEntries(map, max) {
+  if (!(map instanceof Map) || map.size <= max) return map;
+  return new Map([...map.entries()].slice(-max));
+}
+
+function takeSet(set, max) {
+  if (!(set instanceof Set) || set.size <= max) return set;
+  return new Set([...set].slice(-max));
+}
+
+function capUserArrays(map, max, keep) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [k, v] of map) {
+    const next = takeArray(v, max, keep);
+    if (next !== v) changed = true;
+    out.set(k, next);
+  }
+  return changed ? out : map;
+}
+
+function capUserMaps(map, max) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [k, v] of map) {
+    const next = takeMapEntries(v, max);
+    if (next !== v) changed = true;
+    out.set(k, next);
+  }
+  return changed ? out : map;
+}
+
+function capUserSets(map, max) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [k, v] of map) {
+    const next = takeSet(v, max);
+    if (next !== v) changed = true;
+    out.set(k, next);
+  }
+  return changed ? out : map;
+}
+
+function capIdArrays(map, max, keep, mapMax) {
+  if (!(map instanceof Map)) return map;
+  let base = map;
+  let changed = false;
+  if (mapMax && map.size > mapMax) {
+    base = new Map([...map.entries()].slice(-mapMax));
+    changed = true;
+  }
+  const arrays = capUserArrays(base, max, keep);
+  if (arrays !== base) return arrays;
+  return changed ? base : map;
+}
+
+function capPerOwner(map, max, ownerField) {
+  if (!(map instanceof Map)) return map;
+  const groups = new Map();
+  for (const entry of map) {
+    const rec = entry[1];
+    const owner = rec && typeof rec === "object" ? String(rec[ownerField] ?? "") : "";
+    if (!groups.has(owner)) groups.set(owner, []);
+    groups.get(owner).push(entry);
+  }
+  let changed = false;
+  for (const entries of groups.values()) {
+    if (entries.length > max) changed = true;
+  }
+  if (!changed) return map;
+  const out = new Map();
+  for (const entries of groups.values()) {
+    const kept = entries.length > max ? entries.slice(-max) : entries;
+    for (const [k, v] of kept) out.set(k, v);
+  }
+  return out;
+}
+
+function capScanRules(map, max) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [uid, cfg] of map) {
+    if (cfg && Array.isArray(cfg.rules) && cfg.rules.length > max) {
+      out.set(uid, { ...cfg, rules: cfg.rules.slice(0, max) });
+      changed = true;
+    } else {
+      out.set(uid, cfg);
+    }
+  }
+  return changed ? out : map;
+}
+
+function capPlaybook(map, maxCrises, maxSteps) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [uid, crises] of map) {
+    if (!(crises instanceof Map)) {
+      out.set(uid, crises);
+      continue;
+    }
+    let c = crises;
+    if (crises.size > maxCrises) {
+      c = takeMapEntries(crises, maxCrises);
+      changed = true;
+    }
+    const inner = new Map();
+    let innerChanged = false;
+    for (const [cid, steps] of c) {
+      const next = takeSet(steps, maxSteps);
+      if (next !== steps) innerChanged = true;
+      inner.set(cid, next);
+    }
+    if (innerChanged) {
+      changed = true;
+      out.set(uid, inner);
+    } else {
+      out.set(uid, c);
+    }
+  }
+  return changed ? out : map;
+}
+
+function capTrust(map, maxDomains, maxPoints) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [uid, domains] of map) {
+    if (!(domains instanceof Map)) {
+      out.set(uid, domains);
+      continue;
+    }
+    let d = domains;
+    if (domains.size > maxDomains) {
+      d = takeMapEntries(domains, maxDomains);
+      changed = true;
+    }
+    const inner = new Map();
+    let innerChanged = false;
+    for (const [dom, series] of d) {
+      const next = takeArray(series, maxPoints, "tail");
+      if (next !== series) innerChanged = true;
+      inner.set(dom, next);
+    }
+    if (innerChanged) {
+      changed = true;
+      out.set(uid, inner);
+    } else {
+      out.set(uid, d);
+    }
+  }
+  return changed ? out : map;
+}
+
+function capEstateMap(map, fields) {
+  if (!(map instanceof Map)) return map;
+  let changed = false;
+  const out = new Map();
+  for (const [uid, estate] of map) {
+    if (!estate || typeof estate !== "object" || Array.isArray(estate)) {
+      out.set(uid, estate);
+      continue;
+    }
+    let next = estate;
+    for (const [field, spec] of Object.entries(fields)) {
+      const capped = takeArray(estate[field], spec.max, spec.keep || "tail");
+      if (capped !== estate[field]) {
+        if (next === estate) next = { ...estate };
+        next[field] = capped;
+        changed = true;
+      }
+    }
+    out.set(uid, next);
+  }
+  return changed ? out : map;
+}
+
+function applyFieldCap(value, spec) {
+  if (!spec || spec.max == null && spec.shape == null && spec.beneficiaries == null) return value;
+  if (spec.beneficiaries) return capEstateMap(value, spec);
+  switch (spec.shape) {
+    case "userArray": return capUserArrays(value, spec.max, spec.keep || "tail");
+    case "userMap": return capUserMaps(value, spec.max);
+    case "userSet": return capUserSets(value, spec.max);
+    case "idArray": return capIdArrays(value, spec.max, spec.keep || "tail", spec.mapMax);
+    case "perOwner": return capPerOwner(value, spec.max, spec.ownerField);
+    case "rules": return capScanRules(value, spec.max);
+    case "playbook": return capPlaybook(value, spec.maxCrises, spec.maxSteps);
+    case "trust": return capTrust(value, spec.maxDomains, spec.maxPoints);
+    default: return value;
+  }
+}
+
+function capBag(value, spec) {
+  if (!spec) return value;
+  // A root Map/Set, or an estate map whose cap spec lists the inner arrays.
+  if (spec.shape || spec.beneficiaries) return applyFieldCap(value, spec);
+  if (!value || typeof value !== "object" || value instanceof Map || value instanceof Set || Array.isArray(value)) {
+    return value;
+  }
+  let changed = false;
+  const out = { ...value };
+  for (const [field, fieldSpec] of Object.entries(spec)) {
+    if (!fieldSpec || typeof fieldSpec !== "object") continue;
+    if (fieldSpec.max == null && !fieldSpec.shape && !fieldSpec.beneficiaries && fieldSpec.maxCrises == null && fieldSpec.maxDomains == null) {
+      continue;
+    }
+    const next = applyFieldCap(value[field], fieldSpec);
+    if (next !== value[field]) {
+      out[field] = next;
+      changed = true;
+    }
+  }
+  return changed ? out : value;
+}
+
+// Copy-on-cap. Federation always drops actorKeys from the copy the
+// serializer walks; the live bag is left alone so in-process verification
+// still works until the next boot.
+function preparePersistedState(key, value) {
+  if (key === "federation" && value && typeof value === "object" && !(value instanceof Map) && !Array.isArray(value)) {
+    const copy = { ...value };
+    delete copy.actorKeys;
+    return capBag(copy, SNAPSHOT_STORE_CAPS.federation);
+  }
+  const spec = SNAPSHOT_STORE_CAPS[key];
+  if (!spec) return value;
+  return capBag(value, spec);
+}
+
+function stripSecretFields(v, seen = new WeakSet()) {
+  if (!v || typeof v !== "object") return;
+  if (seen.has(v)) return;
+  seen.add(v);
+  if (v instanceof Map) {
+    for (const key of [...v.keys()]) {
+      if (typeof key === "string" && SNAPSHOT_SECRET_FIELDS.has(key)) v.delete(key);
+    }
+    for (const child of v.values()) stripSecretFields(child, seen);
+    return;
+  }
+  if (v instanceof Set) {
+    for (const child of v) stripSecretFields(child, seen);
+    return;
+  }
+  if (Array.isArray(v)) {
+    for (const child of v) stripSecretFields(child, seen);
+    return;
+  }
+  if (!isPlainObject(v)) return;
+  for (const key of Object.keys(v)) {
+    if (SNAPSHOT_SECRET_FIELDS.has(key)) delete v[key];
+    else stripSecretFields(v[key], seen);
+  }
+}
+
+// Money denylist on a hydrated value. Map keys (user ids, record ids) stay;
+// only object fields are removed. SNAPSHOT_SECRET_FIELDS are already gone
+// via stripSecretFields when the key is in SECRET_SCRUB_KEYS.
+function stripMoneySecretFields(v, seen = new WeakSet()) {
+  if (!v || typeof v !== "object") return;
+  if (seen.has(v)) return;
+  seen.add(v);
+  if (v instanceof Map) {
+    for (const child of v.values()) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (v instanceof Set) {
+    for (const child of v) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (Array.isArray(v)) {
+    for (const child of v) stripMoneySecretFields(child, seen);
+    return;
+  }
+  if (!isPlainObject(v)) return;
+  for (const key of Object.keys(v)) {
+    if (MONEY_SNAPSHOT_SECRET_FIELD_SET.has(key)) delete v[key];
+    else stripMoneySecretFields(v[key], seen);
+  }
+}
 
 function isPlainObject(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
@@ -284,25 +681,25 @@ function isPlainObject(v) {
 // "object is not iterable". Recurse through plain objects and arrays so a
 // nested Set/Map is an envelope before stringify. Cycles collapse to an
 // empty collection rather than overflowing the save.
-function serializeValue(v, seen = new WeakSet()) {
+function serializeValue(v, seen = new WeakSet(), scrub = false) {
   if (v instanceof Map) {
     if (seen.has(v)) return { __type: "Map", entries: [] };
     seen.add(v);
-    const entries = Array.from(v.entries()).map(([k, vv]) => [k, serializeValue(vv, seen)]);
+    const entries = Array.from(v.entries()).map(([k, vv]) => [k, serializeValue(vv, seen, scrub)]);
     seen.delete(v);
     return { __type: "Map", entries };
   }
   if (v instanceof Set) {
     if (seen.has(v)) return { __type: "Set", values: [] };
     seen.add(v);
-    const values = Array.from(v).map((item) => serializeValue(item, seen));
+    const values = Array.from(v).map((item) => serializeValue(item, seen, scrub));
     seen.delete(v);
     return { __type: "Set", values };
   }
   if (Array.isArray(v)) {
     if (seen.has(v)) return [];
     seen.add(v);
-    const out = v.map((item) => serializeValue(item, seen));
+    const out = v.map((item) => serializeValue(item, seen, scrub));
     seen.delete(v);
     return out;
   }
@@ -312,7 +709,8 @@ function serializeValue(v, seen = new WeakSet()) {
     const out = {};
     for (const [k, vv] of Object.entries(v)) {
       if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
-      out[k] = serializeValue(vv, seen);
+      if (scrub && SNAPSHOT_SECRET_FIELDS.has(k)) continue;
+      out[k] = serializeValue(vv, seen, scrub);
     }
     seen.delete(v);
     return out;
@@ -368,21 +766,24 @@ export function serializeLensState(STATE) {
   for (const key of LENS_STATE_KEYS) {
     const lens = STATE[key];
     if (lens == null) continue;
+    const prepared = preparePersistedState(key, lens);
+    const scrub = SECRET_SCRUB_KEYS.has(key);
     // A top-level Map/Set has no enumerable fields. Object.entries(map)
     // is [] and JSON.stringify(map) is "{}", which is how these stores
     // used to vanish. Persist the collection itself.
-    if (lens instanceof Map || lens instanceof Set) {
-      out[key] = serializeValue(lens);
+    if (prepared instanceof Map || prepared instanceof Set) {
+      out[key] = serializeValue(prepared, new WeakSet(), scrub);
       continue;
     }
     // Sequence counters (_profileVisitorSeq, _companionNotifSeq) are numbers.
-    if (typeof lens !== "object") {
-      out[key] = lens;
+    if (typeof prepared !== "object") {
+      out[key] = prepared;
       continue;
     }
     const lensOut = {};
-    for (const [field, val] of Object.entries(lens)) {
-      lensOut[field] = serializeValue(val);
+    for (const [field, val] of Object.entries(prepared)) {
+      if (scrub && SNAPSHOT_SECRET_FIELDS.has(field)) continue;
+      lensOut[field] = serializeValue(val, new WeakSet(), scrub);
     }
     out[key] = lensOut;
   }
@@ -412,12 +813,16 @@ export function hydrateLensState(STATE, persisted) {
       || (lensPersisted.__type === "Set" && Array.isArray(lensPersisted.values))
     ) {
       STATE[key] = deserializeValue(lensPersisted);
-      continue;
+    } else {
+      const lensOut = {};
+      for (const [field, val] of Object.entries(lensPersisted)) {
+        if (SECRET_SCRUB_KEYS.has(key) && SNAPSHOT_SECRET_FIELDS.has(field)) continue;
+        if (MONEY_SNAPSHOT_KEY_SET.has(key) && MONEY_SNAPSHOT_SECRET_FIELD_SET.has(field)) continue;
+        lensOut[field] = deserializeValue(val);
+      }
+      STATE[key] = lensOut;
     }
-    const lensOut = {};
-    for (const [field, val] of Object.entries(lensPersisted)) {
-      lensOut[field] = deserializeValue(val);
-    }
-    STATE[key] = lensOut;
+    if (SECRET_SCRUB_KEYS.has(key)) stripSecretFields(STATE[key]);
+    if (MONEY_SNAPSHOT_KEY_SET.has(key)) stripMoneySecretFields(STATE[key]);
   }
 }

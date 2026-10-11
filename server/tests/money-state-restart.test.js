@@ -13,7 +13,7 @@ import registerInsurance, {
 import registerServiceMarket, { SERVICE_LISTING_CAP, SERVICE_ORDER_CAP } from "../domains/service-market.js";
 import {
   serializeLensState, hydrateLensState, LENS_STATE_KEYS, SNAPSHOT_EXCLUDED_STATE_KEYS,
-  MONEY_SNAPSHOT_KEYS, MONEY_SNAPSHOT_SECRET_FIELDS,
+  MONEY_SNAPSHOT_KEYS, MONEY_SNAPSHOT_SECRET_FIELDS, SNAPSHOT_SECRET_FIELDS,
 } from "../lib/lens-state-persistence.js";
 
 const ACTIONS = new Map();
@@ -622,18 +622,19 @@ describe("secret fields stay out of the money snapshot", () => {
       state.serviceListings.get(listing.result.listing.id),
       state.serviceOrders.get(order.result.order.id),
     ];
+    const secretNames = [...new Set([...MONEY_SNAPSHOT_SECRET_FIELDS, ...SNAPSHOT_SECRET_FIELDS])];
     for (const row of planted) {
-      for (const name of MONEY_SNAPSHOT_SECRET_FIELDS) row[name] = `SECRET_${name}_VALUE`;
+      for (const name of secretNames) row[name] = `SECRET_${name}_VALUE`;
     }
 
     const persisted = restartFromSnapshot();
     const json = JSON.stringify(persisted);
-    for (const name of MONEY_SNAPSHOT_SECRET_FIELDS) {
+    for (const name of secretNames) {
       assert.equal(json.includes(`SECRET_${name}_VALUE`), false, name);
     }
     const seen = [];
     for (const key of MONEY_SNAPSHOT_KEYS) walkKeys(persisted[key], (k) => seen.push(k));
-    for (const name of MONEY_SNAPSHOT_SECRET_FIELDS) {
+    for (const name of secretNames) {
       assert.equal(seen.includes(name), false, name);
     }
 
@@ -641,6 +642,9 @@ describe("secret fields stay out of the money snapshot", () => {
     assert.equal(mine.result.positions[0].id, pos.result.position.id);
     assert.equal(mine.result.positions[0].stakeSparks, 12);
     assert.equal(mine.result.positions[0].token, undefined);
+    assert.equal(mine.result.positions[0].publicKey, undefined);
+    assert.equal(mine.result.positions[0].psk, undefined);
+    assert.equal(mine.result.positions[0].keypair, undefined);
     const pacts = must(call("insurance", "pact-list", ctxA, {}));
     assert.equal(pacts.result.written[0].id, pact.result.pact.id);
     assert.equal(pacts.result.written[0].payoutSparks, 80);
@@ -660,6 +664,52 @@ describe("secret fields stay out of the money snapshot", () => {
     assert.equal(orders.result.orders[0].id, order.result.order.id);
     assert.equal(orders.result.orders[0].total, 20);
     assert.equal(orders.result.orders[0].apiKey, undefined);
+  });
+
+  it("strips both secret denylists from a crafted money snapshot on hydrate", () => {
+    const created = must(call("markets", "market-create", ctxA, {
+      question: "Will the crafted probe resolve yes",
+      resolutionCriteria: "Published official result",
+    }));
+    const pos = must(call("markets", "position-open", ctxA, {
+      marketId: created.result.market.id, side: "yes", stakeSparks: 12,
+    }));
+    const listing = must(call("service-market", "listing-create", ctxA, {
+      title: "Crafted listing", price: 9, category: "design",
+    }));
+    const blob = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    const secretNames = [...new Set([...MONEY_SNAPSHOT_SECRET_FIELDS, ...SNAPSHOT_SECRET_FIELDS])];
+    const plant = (row) => {
+      for (const name of secretNames) row[name] = `CRAFTED_${name}_VALUE`;
+    };
+    const posEntry = blob.predictionMarkets.positions.entries.find(([id]) => id === pos.result.position.id);
+    const listingEntry = blob.serviceListings.entries.find(([id]) => id === listing.result.listing.id);
+    assert.ok(posEntry);
+    assert.ok(listingEntry);
+    plant(posEntry[1]);
+    plant(listingEntry[1]);
+    blob.predictionMarkets.clientSecret = "CRAFTED_clientSecret_VALUE";
+    blob.predictionMarkets.publicKey = "CRAFTED_publicKey_VALUE";
+    const next = {};
+    hydrateLensState(next, blob);
+    const restoredPos = next.predictionMarkets.positions.get(pos.result.position.id);
+    const restoredListing = next.serviceListings.get(listing.result.listing.id);
+    assert.equal(restoredPos.stakeSparks, 12);
+    assert.equal(restoredPos.id, pos.result.position.id);
+    assert.equal(restoredListing.price, 9);
+    assert.equal(restoredListing.id, listing.result.listing.id);
+    assert.equal(next.predictionMarkets.clientSecret, undefined);
+    assert.equal(next.predictionMarkets.publicKey, undefined);
+    const json = JSON.stringify({
+      pos: restoredPos,
+      listing: restoredListing,
+      bag: next.predictionMarkets,
+    });
+    for (const name of secretNames) {
+      assert.equal(restoredPos[name], undefined, name);
+      assert.equal(restoredListing[name], undefined, name);
+      assert.equal(json.includes(`CRAFTED_${name}_VALUE`), false, name);
+    }
   });
 
   it("logs a one-account sample of the five keys", () => {
