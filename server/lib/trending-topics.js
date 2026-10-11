@@ -1,29 +1,22 @@
 // Topic labels for the social trending list.
 //
 // A DTU tag is sometimes a non-string (an object, or the coercion artifact
-// "[object Object]"). Counting that value and sending it to the client
-// renders as the text "[object Object]". Only a real string label is a topic.
+// "[object Object]" / "[object object]"). Counting that value and sending it
+// to the client renders as that text. Only a real string label is a topic.
 // An object contributes its own string name when it has one; otherwise it is
-// omitted. Nothing here invents a label via String(object).
+// omitted. Nothing here invents a label via String(object). The artifact is
+// matched case-insensitively because writers store both casings.
 
-const OBJECT_TAG = "[object Object]";
-const LABEL_KEYS = ["tag", "topic", "name", "label", "text", "value"];
+import { isObjectCoercionTag, objectTagName } from "./dtu-tags.js";
 
 export function topicLabel(tag) {
   if (typeof tag === "string") {
     const s = tag.trim();
-    if (!s || s === OBJECT_TAG) return null;
+    if (!s || isObjectCoercionTag(s)) return null;
     return s;
   }
   if (typeof tag === "number" && Number.isFinite(tag)) return String(tag);
-  if (tag && typeof tag === "object") {
-    for (const key of LABEL_KEYS) {
-      const v = tag[key];
-      if (typeof v !== "string") continue;
-      const s = v.trim();
-      if (s && s !== OBJECT_TAG) return s;
-    }
-  }
+  if (tag && typeof tag === "object") return objectTagName(tag);
   return null;
 }
 

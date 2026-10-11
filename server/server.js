@@ -44,6 +44,7 @@ import {
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
+import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
@@ -13532,7 +13533,7 @@ function councilGate(dtu, opts={}) {
 
 function toOptionADTU(seedLike) {
   const title = normalizeText(seedLike.title || seedLike.name || "Untitled DTU");
-  const tags = Array.isArray(seedLike.tags) ? seedLike.tags.map(t=>normalizeText(t)).filter(Boolean) : [];
+  const tags = normalizeTagList(seedLike.tags, (t) => normalizeText(t));
   const tier = seedLike.tier && ["regular","mega","hyper"].includes(seedLike.tier) ? seedLike.tier : "regular";
   const core = seedLike.core && typeof seedLike.core === "object" ? seedLike.core : {};
   const human = seedLike.human && typeof seedLike.human === "object" ? seedLike.human : {};
@@ -24896,6 +24897,7 @@ async function maybeRunLocalUpgrade() {
 // ================= END ABSTRACTION GOVERNOR =================
 
 async function pipelineCommitDTU(ctx, dtu, opts={}) {
+  if (dtu && Array.isArray(dtu.tags)) dtu.tags = scrubStoredTags(dtu.tags);
   // DEDUP GATE: block templates and exact title dupes (system-generated only)
   if (dtu.source !== "user" && dtu.source !== "import") {
     // Real bug found by the Game Design Lens D20 unit's own test: this used
@@ -25216,7 +25218,7 @@ register("dtu", "create", async (ctx, input) => {
   // `R&D`, quotes, apostrophes survive verbatim. Body content is left
   // alone: it flows through the markdown renderer's own output-encoding.
   const title = stripTags(normalizeText(input.title || "Untitled DTU"));
-  const tags = Array.isArray(input.tags) ? input.tags.map(t=>stripTags(normalizeText(t))).filter(Boolean) : [];
+  const tags = normalizeTagList(input.tags, (t) => stripTags(normalizeText(t)));
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
@@ -73745,11 +73747,7 @@ function sanitizeDTUInput(body) {
   if (body.title) body.title = sanitizeString(body.title);
   if (body.content) body.content = sanitizeString(body.content);
   if (body.tags && Array.isArray(body.tags)) {
-    body.tags = body.tags
-      .filter(t => typeof t === "string")
-      .map(t => t.toLowerCase().trim().replace(/[<>"'`]/g, ""))
-      .filter(t => t.length > 0 && t.length <= 100);
-    body.tags = [...new Set(body.tags)];
+    body.tags = sanitizeDtuTags(body.tags);
   }
   return body;
 }

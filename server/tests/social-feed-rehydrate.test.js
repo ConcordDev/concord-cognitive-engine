@@ -213,4 +213,19 @@ describe("trending topic labels", () => {
     );
     assert.deepEqual(real, [{ tag: "real-topic", count: 90 }]);
   });
+
+  it("drops the lowercase [object object] coercion string as well as the original casing", () => {
+    const lower = aggregateTopicCounts(
+      Array.from({ length: 84 }, () => ["[object object]", "concord"]),
+      20,
+    );
+    assert.deepEqual(lower, [{ tag: "concord", count: 84 }]);
+
+    const mixed = aggregateTopicCounts(
+      [["[object Object]"], ["[OBJECT OBJECT]"], ["  [object object]  "], ["kept"]],
+      20,
+    );
+    assert.deepEqual(mixed, [{ tag: "kept", count: 1 }]);
+    assert.equal(mixed.some((t) => /object object/i.test(t.tag)), false);
+  });
 });

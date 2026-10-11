@@ -16,14 +16,17 @@ interface TrendingTopic {
   category?: string;
 }
 
-const OBJECT_TAG = '[object Object]';
 const LABEL_KEYS = ['tag', 'topic', 'name', 'label', 'text', 'value'] as const;
+
+function isObjectCoercionTag(value: string): boolean {
+  return value.trim().toLowerCase() === '[object object]';
+}
 
 /** A topic row is a string label. Objects are not stringified into "[object Object]". */
 function readableTag(tag: unknown): string | null {
   if (typeof tag === 'string') {
     const s = tag.trim();
-    if (!s || s === OBJECT_TAG) return null;
+    if (!s || isObjectCoercionTag(s)) return null;
     return s;
   }
   if (typeof tag === 'number' && Number.isFinite(tag)) return String(tag);
@@ -33,7 +36,7 @@ function readableTag(tag: unknown): string | null {
       const v = rec[key];
       if (typeof v !== 'string') continue;
       const s = v.trim();
-      if (s && s !== OBJECT_TAG) return s;
+      if (s && !isObjectCoercionTag(s)) return s;
     }
   }
   return null;
