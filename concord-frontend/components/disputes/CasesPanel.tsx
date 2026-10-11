@@ -7,6 +7,7 @@
  */
 
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth, type AuthUser } from '@/hooks/useAuth';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -122,11 +123,28 @@ function useMyDisputes() {
   });
 }
 
-function useDisputeQueue() {
+// GET /api/disputes/queue is gated by economy/guards.js#requireAdmin, wired
+// in as adminOnly on createDisputeRouter (server.js economyAdminOnly).
+// Allow exactly that rule: role admin / owner / founder, or scopes "*" /
+// "economy:admin". AUTH_MODE=public and the founder-secret header are
+// server-only and are not a viewer role, so they are not mirrored here.
+// A normal member used to probe the route on every load; the browser logged
+// "Failed to load resource: the server responded with a status of 403".
+const DISPUTE_QUEUE_ROLES = new Set(['admin', 'owner', 'founder']);
+const DISPUTE_QUEUE_SCOPES = new Set(['*', 'economy:admin']);
+
+export function canViewDisputeQueue(user: Pick<AuthUser, 'role' | 'scopes'> | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role && DISPUTE_QUEUE_ROLES.has(user.role)) return true;
+  return Array.isArray(user.scopes) && user.scopes.some((scope) => DISPUTE_QUEUE_SCOPES.has(scope));
+}
+
+function useDisputeQueue(enabled: boolean) {
   return useQuery({
     queryKey: ['disputes', 'queue'],
     queryFn: () => api.get('/api/disputes/queue').then(r => r.data),
-    refetchInterval: 30000,
+    enabled,
+    refetchInterval: enabled ? 30000 : false,
     retry: false,
   });
 }
@@ -642,12 +660,16 @@ export function CasesPanel() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('my');
+  const { user, isLoading: authLoading } = useAuth();
+  // Wait for /api/auth/me. A still-loading session is not an admin, so the
+  // queue read stays off until the role (or economy-admin scope) is known.
+  const canViewQueue = !authLoading && canViewDisputeQueue(user);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
       { id: 'tab-my', keys: 'm', description: 'My', category: 'navigation', action: () => setActiveTab('my') },
-      { id: 'tab-queue', keys: 'q', description: 'Queue', category: 'navigation', action: () => setActiveTab('queue') },
+      { id: 'tab-queue', keys: 'q', description: 'Queue', category: 'navigation', enabled: canViewQueue, action: () => { if (canViewQueue) setActiveTab('queue'); } },
     ],
     { lensId: 'disputes' }
   );
@@ -673,20 +695,18 @@ export function CasesPanel() {
   }, [disputeItems, runAction]);
 
   const myDisputes = useMyDisputes();
-  const adminQueue = useDisputeQueue();
+  const adminQueue = useDisputeQueue(canViewQueue);
+  const showQueue = canViewQueue && activeTab === 'queue';
 
-  // Admin access determined by whether queue endpoint succeeds
-  const isAdmin = adminQueue.isSuccess && !adminQueue.isError;
-
-  const disputes: Dispute[] = activeTab === 'my'
-    ? (myDisputes.data?.disputes || [])
-    : (adminQueue.data?.queue || []);
+  const disputes: Dispute[] = showQueue
+    ? (adminQueue.data?.queue || [])
+    : (myDisputes.data?.disputes || []);
 
   const filtered = statusFilter === 'all'
     ? disputes
     : disputes.filter(d => d.status === statusFilter);
 
-  const isLoading = activeTab === 'my' ? myDisputes.isLoading : adminQueue.isLoading;
+  const isLoading = showQueue ? adminQueue.isLoading : myDisputes.isLoading;
 
   const stats = {
     total: disputes.length,
@@ -700,9 +720,9 @@ export function CasesPanel() {
   }, [queryClient]);
 
   const handleRefresh = useCallback(() => {
-    if (activeTab === 'my') myDisputes.refetch();
-    else adminQueue.refetch();
-  }, [activeTab, myDisputes, adminQueue]);
+    if (showQueue) adminQueue.refetch();
+    else myDisputes.refetch();
+  }, [showQueue, myDisputes, adminQueue]);
 
   return (
     <>
@@ -913,15 +933,15 @@ export function CasesPanel() {
       {/* Tabs */}
       <div className={ds.tabBar}>
         <button
-          className={activeTab === 'my' ? ds.tabActive('neon-blue') : ds.tabInactive}
+          className={!showQueue ? ds.tabActive('neon-blue') : ds.tabInactive}
           onClick={() => { setActiveTab('my'); setStatusFilter('all'); }}
         >
           <MessageSquare size={14} />
           My Disputes
         </button>
-        {isAdmin && (
+        {canViewQueue && (
           <button
-            className={activeTab === 'queue' ? ds.tabActive('neon-purple') : ds.tabInactive}
+            className={showQueue ? ds.tabActive('neon-purple') : ds.tabInactive}
             onClick={() => { setActiveTab('queue'); setStatusFilter('all'); }}
           >
             <SvgIcon name="gavel" size={14} />
@@ -964,15 +984,20 @@ export function CasesPanel() {
             <Loader2 size={20} className="animate-spin text-gray-400" />
             <span className="ml-2 text-gray-400">Loading disputes...</span>
           </div>
+        ) : showQueue && adminQueue.isError ? (
+          <div className={cn(ds.panel, 'flex flex-col items-center justify-center py-16')} role="alert">
+            <AlertCircle size={32} className="text-gray-600 mb-3" />
+            <p className="text-gray-400">The moderation queue could not be loaded.</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className={cn(ds.panel, 'flex flex-col items-center justify-center py-16')}>
             <Shield size={32} className="text-gray-600 mb-3" />
             <p className="text-gray-400">
               {statusFilter !== 'all'
                 ? `No ${STATUS_CONFIG[statusFilter as DisputeStatus]?.label?.toLowerCase()} disputes`
-                : activeTab === 'my'
-                  ? 'No disputes found. If you have a problem with a purchase, click "Report Problem" above.'
-                  : 'No disputes in the admin queue.'}
+                : showQueue
+                  ? 'No disputes in the admin queue.'
+                  : 'No disputes found. If you have a problem with a purchase, click "Report Problem" above.'}
             </p>
           </div>
         ) : (
@@ -983,7 +1008,7 @@ export function CasesPanel() {
               expanded={expandedId === dispute.id}
               onToggle={() => setExpandedId(expandedId === dispute.id ? null : dispute.id)}
               onUpdate={invalidateAll}
-              isAdmin={isAdmin}
+              isAdmin={canViewQueue}
             />
           ))
         )}
