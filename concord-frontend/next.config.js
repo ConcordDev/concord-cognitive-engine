@@ -243,6 +243,16 @@ const nextConfig = {
       { source: '/hermes', destination: '/agents', permanent: false },
       { source: '/dila', destination: '/agents', permanent: false },
       { source: '/lenses', destination: '/hub', permanent: false },
+      // tabLabel slugs from lib/lens-registry.ts (redirectsForTabLabels).
+      // permanent → 308. Kept in lockstep by tests/lib/lens-tab-redirects.test.ts.
+      { source: '/lenses/anonymous', destination: '/lenses/anon', permanent: true },
+      { source: '/lenses/ecosystem', destination: '/lenses/eco', permanent: true },
+      { source: '/lenses/entities', destination: '/lenses/entity', permanent: true },
+      { source: '/lenses/governance', destination: '/lenses/council', permanent: true },
+      { source: '/lenses/simulation', destination: '/lenses/sim', permanent: true },
+      { source: '/lenses/study', destination: '/lenses/srs', permanent: true },
+      { source: '/lenses/threads', destination: '/lenses/thread', permanent: true },
+      { source: '/lenses/visuals', destination: '/lenses/fractal', permanent: true },
     ];
   },
   async rewrites() {

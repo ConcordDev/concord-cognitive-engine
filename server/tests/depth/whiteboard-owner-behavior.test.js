@@ -45,6 +45,37 @@ describe("whiteboard ownership", () => {
     STATE.dtus.delete(id);
   });
 
+  it("the owner can rename and delete; a stranger gets 403 and the board stays", async () => {
+    const c = await runMacro("whiteboard", "create", { title: "Plan" }, alice);
+    assert.equal(c.ok, true);
+    const renamed = await runMacro("whiteboard", "rename", { whiteboardId: c.dtuId, title: "Plan v2" }, alice);
+    assert.equal(renamed.ok, true);
+    assert.equal(renamed.whiteboard.title, "Plan v2");
+    const again = await runMacro("whiteboard", "get", { whiteboardId: c.dtuId }, alice);
+    assert.equal(again.whiteboard.title, "Plan v2");
+
+    const stranger = await runMacro("whiteboard", "delete", { whiteboardId: c.dtuId }, bob);
+    assert.equal(stranger.ok, false);
+    assert.equal(stranger.status, 403);
+    assert.equal(stranger.error, "owner_required");
+    assert.equal((await runMacro("whiteboard", "get", { whiteboardId: c.dtuId }, alice)).ok, true);
+
+    const gone = await runMacro("whiteboard", "delete", { whiteboardId: c.dtuId }, alice);
+    assert.equal(gone.ok, true);
+    assert.equal((await runMacro("whiteboard", "get", { whiteboardId: c.dtuId }, alice)).ok, false);
+    const missing = await runMacro("whiteboard", "delete", { whiteboardId: c.dtuId }, alice);
+    assert.equal(missing.status, 404);
+  });
+
+  it("a board with no owner cannot be deleted by a caller", async () => {
+    const id = "wb_legacy_delete";
+    STATE.dtus.set(id, { id, title: "Whiteboard: Old", machine: { kind: "whiteboard", data: { id, title: "Old", elements: [] } }, lineage: { parents: [] }, createdAt: new Date().toISOString() });
+    const r = await runMacro("whiteboard", "delete", { whiteboardId: id }, bob);
+    assert.equal(r.status, 403);
+    assert.equal(STATE.dtus.has(id), true);
+    STATE.dtus.delete(id);
+  });
+
   it("lists most recently updated first", async () => {
     const a = await runMacro("whiteboard", "create", { title: "Older" }, alice);
     await new Promise((r) => setTimeout(r, 5));

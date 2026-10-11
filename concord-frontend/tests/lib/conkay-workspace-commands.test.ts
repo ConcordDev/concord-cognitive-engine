@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   applyWorkspaceCommand,
   describeStudy,
+  formatWorkspaceLead,
   parseWorkspaceCommand,
   studyFromSaved,
   type BeamDims,
@@ -85,6 +86,26 @@ describe('parseWorkspaceCommand', () => {
     expect(parseWorkspaceCommand('why does the web carry the shear?', DIMS, MATERIALS)).toBeNull();
     expect(parseWorkspaceCommand('what about lateral torsional buckling', DIMS, MATERIALS)).toBeNull();
     expect(parseWorkspaceCommand('   ', DIMS)).toBeNull();
+  });
+
+  it('reads a span that follows the number, plus feet and kilogram loads', () => {
+    const c = parseWorkspaceCommand('steel i-beam 4 m span carrying 10 kN', DIMS, MATERIALS)!;
+    expect(c.dims.length).toBe(4000);
+    expect(c.loadN).toBe(10000);
+    expect(c.unapplied).toBeUndefined();
+    expect(parseWorkspaceCommand('4 m long', DIMS)!.dims.length).toBe(4000);
+    expect(parseWorkspaceCommand('12 ft span', DIMS)!.dims.length).toBeCloseTo(3657.6, 3);
+    expect(parseWorkspaceCommand('carrying 200 kg', DIMS)!.loadN).toBeCloseTo(200 * 9.80665, 3);
+  });
+
+  it('says when a number in the prompt was not applied', () => {
+    const c = parseWorkspaceCommand('4 m span carrying 10 kN and a 3 mm radius', DIMS)!;
+    expect(c.dims.length).toBe(4000);
+    expect(c.loadN).toBe(10000);
+    expect(c.unapplied).toEqual(['3 mm']);
+    expect(c.unappliedNote).toMatch(/Not applied: 3 mm/);
+    expect(formatWorkspaceLead(c)).toMatch(/^Update applied: L = 4000 mm, load = 10 kN\. Not applied: 3 mm/);
+    expect(parseWorkspaceCommand('why is it 8 mm', DIMS)).toBeNull();
   });
 
   it('applyWorkspaceCommand merges onto the current inputs', () => {

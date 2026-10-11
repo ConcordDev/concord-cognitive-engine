@@ -38,6 +38,8 @@ import { AnalysisPanel } from '@/components/docs/AnalysisPanel';
 import { ApiHubPanel } from '@/components/docs/ApiHubPanel';
 import { DocsToolingGallery } from '@/components/docs/DocsToolingGallery';
 import { requestNewDoc } from '@/components/docs/DocsWorkspace';
+import { getDocsPublishable } from '@/components/docs/docsSession';
+import { loadDocsExportPayload } from '@/components/docs/exportPages';
 
 const TITLES: Record<string, string> = {
   workspace: 'The document',
@@ -136,7 +138,12 @@ export default function DocsLensPage() {
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="docs" data={realtimeData || {}} compact />
+            <DTUExportButton
+              domain="docs"
+              data={realtimeData || {}}
+              prepare={() => loadDocsExportPayload(realtimeData)}
+              compact
+            />
             {realtimeAlerts.length > 0 && (
               <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
@@ -188,7 +195,7 @@ export default function DocsLensPage() {
           />
         )}
 
-        <ConnectiveTissueBar lensId="docs" />
+        <ConnectiveTissueBar lensId="docs" getPublishable={getDocsPublishable} />
         <CrossLensRecentsPanel lensId="docs" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
 
         <button

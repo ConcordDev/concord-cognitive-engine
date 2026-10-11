@@ -57,7 +57,10 @@ const CHECKS = [
   {
     name: "brain-status",
     url: `${BASE_URL}/api/brain/status`,
-    expectedStatus: 200,
+    // Anonymous probe. The payload carries internal brain URLs and model
+    // names, so an unauthenticated GET is 401. A signed-in member gets a
+    // reduced body; an admin gets the raw object.
+    expectedStatus: 401,
   },
   {
     name: "metrics-endpoint",

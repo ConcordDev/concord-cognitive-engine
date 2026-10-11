@@ -18,11 +18,21 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { vaultSubmissionKeepRecord } from '@/components/lens/recordKeep';
 
 interface Work {
   id: string;
   title: string;
   status: string;
+  /** True when the row came from the signed-in user's own submissions. */
+  own?: boolean;
+  workKind?: string;
+  description?: string;
+  body?: string;
+  submittedAt?: number;
+  declineReason?: string;
+  curatorStatement?: string;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
@@ -31,6 +41,12 @@ interface WorkRow {
   id?: string;
   title?: string;
   status?: string;
+  workKind?: string;
+  description?: string;
+  body?: string;
+  submittedAt?: number;
+  declineReason?: string;
+  curatorStatement?: string;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,18 +61,36 @@ function statusLabel(status: string): string {
   return STATUS_LABEL[status] || status;
 }
 
-function worksFrom(rows: unknown): Work[] {
+function optString(row: WorkRow, key: keyof WorkRow): string | undefined {
+  const value = row[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+function worksFrom(rows: unknown, own = false): Work[] {
   if (!Array.isArray(rows)) return [];
   const out: Work[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
-    const id = (row as WorkRow).id;
-    const title = (row as WorkRow).title;
-    const status = (row as WorkRow).status;
+    const rec = row as WorkRow;
+    const id = rec.id;
+    const title = rec.title;
+    const status = rec.status;
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
     if (typeof status !== 'string' || !status) continue;
-    out.push({ id, title: title.trim(), status });
+    const submittedAt = typeof rec.submittedAt === 'number' ? rec.submittedAt : undefined;
+    out.push({
+      id,
+      title: title.trim(),
+      status,
+      ...(own ? { own: true } : {}),
+      workKind: optString(rec, 'workKind'),
+      description: optString(rec, 'description'),
+      body: optString(rec, 'body'),
+      ...(submittedAt != null ? { submittedAt } : {}),
+      declineReason: optString(rec, 'declineReason'),
+      curatorStatement: optString(rec, 'curatorStatement'),
+    });
   }
   return out;
 }
@@ -75,7 +109,7 @@ async function readCabinet(): Promise<Work[]> {
   if (!mine.data?.ok) throw new Error(mine.data?.error || 'Could not read the vault.');
   return mergeWorks(
     worksFrom(browse.data.result?.records),
-    worksFrom(mine.data.result?.submissions),
+    worksFrom(mine.data.result?.submissions, true),
   );
 }
 
@@ -164,6 +198,7 @@ export default function VaultPage() {
   );
 
   const selected = works.find((row) => row.id === selectedId) || null;
+  const kept = selected?.own ? vaultSubmissionKeepRecord(selected) : null;
 
   return (
     <LensShell lensId="vault" asMain={false}>
@@ -219,6 +254,11 @@ export default function VaultPage() {
               <div data-testid="vault-selected">
                 <h2 className="font-vault text-[1.75rem] text-zinc-100">{selected.title}</h2>
                 <p className="mt-3 text-[14px] text-zinc-400">{statusLabel(selected.status)}</p>
+                {selected.own ? (
+                  <div className="mt-5">
+                    <KeepRecordActions key={kept?.body} record={kept} />
+                  </div>
+                ) : null}
               </div>
             )}
             {phase === 'ready' && !selected && !composing && (

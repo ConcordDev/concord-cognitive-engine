@@ -13,6 +13,7 @@ import { getCurrentLagMs } from "../lib/event-loop-pressure.js";
 import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
+import { dtuMatchesQuery, shapePaginatedBody } from "../lib/dtu-list-source.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -753,17 +754,9 @@ export default function registerSystemRoutes(app, {
 
     if (tier) dtus = dtus.filter(d => d.tier === tier);
     if (tag) dtus = dtus.filter(d => (d.tags || []).includes(tag));
-    if (query) {
-      dtus = dtus.filter(d => {
-        const hay = [
-          d.title, d.human?.summary, d.cretiHuman,
-          ...(d.tags || []),
-        ].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(query);
-      });
-    }
+    if (query) dtus = dtus.filter(d => dtuMatchesQuery(d, query));
     const result = paginateResults(dtus, { page, pageSize });
-    return res.json({ ok: true, ...result });
+    return res.json(shapePaginatedBody(result));
   });
 
   // ---- Search (indexed, DSL, reindex, global) ----

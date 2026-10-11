@@ -1344,17 +1344,17 @@ export function ConKayOverlay() {
           (typeof r.url === 'string' && String(r.url).startsWith('data:image/')
             ? String(r.url).replace(/^data:image\/[^;]+;base64,/, '')
             : null);
-        const httpUrl =
-          typeof r.url === 'string' && /^https?:\/\//.test(r.url)
+        const shortUrl =
+          typeof r.url === 'string' && (r.url.startsWith('/api/') || /^https?:\/\//.test(r.url))
             ? r.url
-            : typeof r.image?.url === 'string' && /^https?:\/\//.test(r.image.url)
+            : typeof r.image?.url === 'string' && (r.image.url.startsWith('/api/') || /^https?:\/\//.test(r.image.url))
               ? r.image.url
               : null;
         const promptLabel = String(r.prompt || inputObj.prompt || macro || 'generated image');
-        if (img) {
+        if (shortUrl) {
+          artMarkdown = `\n\n![${promptLabel}](${shortUrl})`;
+        } else if (img) {
           artMarkdown = `\n\n![${promptLabel}](data:image/png;base64,${img})`;
-        } else if (httpUrl) {
-          artMarkdown = `\n\n![${promptLabel}](${httpUrl})`;
         }
       }
       if (ok) {
@@ -1567,7 +1567,7 @@ export function ConKayOverlay() {
               // create_dtu tool now echoes the summary it just minted the DTU
               // with, so a freshly agent-created DTU carries real grounding
               // text into liveDtuRefs, not just id/title.
-              artifact?: { kind?: string; id?: string; title?: string; content?: string; image_b64?: string; prompt?: string };
+              artifact?: { kind?: string; id?: string; title?: string; content?: string; image_b64?: string; url?: string; prompt?: string };
             };
             const toolName = String(tc.tool || 'tool');
             setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: tc.ok === false ? 'error' : 'done' }]);
@@ -1585,8 +1585,10 @@ export function ConKayOverlay() {
                 tier: null,
                 content: tc.artifact.content ?? null,
               });
-            } else if (tc.artifact?.kind === 'image' && tc.artifact.image_b64) {
-              liveText += `\n\n![${tc.artifact.prompt || 'generated image'}](data:image/png;base64,${tc.artifact.image_b64})`;
+            } else if (tc.artifact?.kind === 'image' && (tc.artifact.url || tc.artifact.image_b64)) {
+              const src = tc.artifact.url
+                || `data:image/png;base64,${tc.artifact.image_b64}`;
+              liveText += `\n\n![${tc.artifact.prompt || 'generated image'}](${src})`;
             } else if (toolName === 'run_lens_action' && tc.ok !== false && tc.domain && tc.action) {
               const artifact = detectArtifact(tc.domain, tc.action, tc.input ?? {}, tc.result);
               if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);

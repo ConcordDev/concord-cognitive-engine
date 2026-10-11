@@ -36,6 +36,9 @@ describe('CalendarKeepMenu', () => {
       if (spec.domain === 'timeline') {
         return { data: { ok: true, result: { post: { id: 'pst_9', privacy: 'private', citedDtuId: 'dtu_9' } } } };
       }
+      if (spec.domain === 'thread') {
+        return { data: { ok: true, result: { draft: { id: 'th_1', status: 'draft', citedDtuId: 'dtu_9' } } } };
+      }
       return { data: { ok: false, result: null, error: 'unexpected' } };
     });
     render(<CalendarKeepMenu event={event} />);
@@ -47,6 +50,12 @@ describe('CalendarKeepMenu', () => {
     const sendCall = lensRunMock.mock.calls.map((c) => c[0]).find((spec) => spec.domain === 'timeline');
     expect(sendCall.input.citedDtuId).toBe('dtu_9');
     expect(sendCall.input.privacy).toBe('private');
+    fireEvent.click(screen.getByRole('button', { name: 'Draft in Thread' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Drafted in Thread as th_1, citing dtu_9. Not posted.'));
+    const draftCall = lensRunMock.mock.calls.map((c) => c[0]).find((spec) => spec.domain === 'thread');
+    expect(draftCall.input.citedDtuId).toBe('dtu_9');
+    expect(draftCall.action || draftCall.name).toBe('thread-draft');
+    expect(screen.getByRole('link', { name: 'Open Thread draft th_1' })).toHaveAttribute('href', '/lenses/thread');
   });
 
   it('does not say saved when the DTU cannot be read back', async () => {

@@ -105,7 +105,11 @@ describe("attention Pomodoro timer", () => {
     const stats = call("pomodoroStats", ctxA, {});
     assert.equal(stats.ok, true);
     assert.equal(stats.result.totalSessions, 1);
-    assert.ok(stats.result.today.sessions >= 1);
+    // today is the UTC day of startedAt. A 25-minute backdate crosses midnight
+    // in a run that starts just after 00:00 UTC, so the session is yesterday.
+    const startDay = new Date(stats.result.recentSessions[0].startedAt).toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    assert.equal(stats.result.today.sessions, startDay === today ? 1 : 0);
   });
 });
 

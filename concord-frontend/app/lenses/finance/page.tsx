@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ComponentType } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RefreshCw,
@@ -27,11 +28,9 @@ import { LensShell } from '@/components/lens/LensShell';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import {
   StatTile,
-  StatTileGrid,
   ErrorState,
   Skeleton,
   StatusDot,
-  DensityToggle,
 } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -41,8 +40,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import TickerTape from '@/components/finance/TickerTape';
 import { SnapshotModal } from '@/components/finance/SnapshotModal';
+import { SnapshotHistory } from '@/components/finance/SnapshotHistory';
 import {
   OverviewPanel,
   type IndexQuote,
@@ -117,6 +116,7 @@ export default function FinanceTerminalPage() {
   const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('overview');
   const [showSnapshot, setShowSnapshot] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const { latestData, isLive, lastUpdated } = useRealtimeLens('finance');
   const indices: IndexQuote[] = useMemo(() => {
@@ -198,7 +198,7 @@ export default function FinanceTerminalPage() {
     switch (group) {
       case 'overview':
         return function OverviewBody() {
-          return <OverviewPanel indices={indices} isLive={isLive} history={history} trend={trend} />;
+          return <OverviewPanel indices={indices} isLive={isLive} history={history} trend={trend} hideMarketMonitor />;
         };
       case 'positions':
         return PositionsGroupPanel;
@@ -235,7 +235,6 @@ export default function FinanceTerminalPage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 pt-2">
-            <DensityToggle variant="dropdown" />
             <button
               type="button"
               onClick={() => setShowSnapshot(true)}
@@ -244,67 +243,65 @@ export default function FinanceTerminalPage() {
             >
               <Plus className="h-4 w-4" /> Snapshot
             </button>
-            <DTUExportButton domain="finance" data={{ summary, history, trend }} compact />
           </div>
         </div>
 
-        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Finance views">
-          {GROUPS.map((g) => {
-            const active = group === g.id;
-            return (
+        <nav className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1 text-[13px]" aria-label="Books">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-zinc-50" aria-current="page">Finance</span>
+          <Link href="/lenses/markets" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Markets</Link>
+          <Link href="/lenses/wallet" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Wallet</Link>
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200"
+          >
+            More
+          </button>
+        </nav>
+        {moreOpen && (
+          <div className="flex flex-wrap items-center gap-2">
+            {GROUPS.filter((g) => g.id !== 'overview').map((g) => (
               <button
                 key={g.id}
                 type="button"
-                onClick={() => setGroup(g.id)}
-                aria-current={active ? 'page' : undefined}
-                title={`${g.label} (${g.hotkey})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
+                onClick={() => { setGroup(g.id); setMoreOpen(false); }}
+                className="rounded-full border border-white/10 px-3 py-1 text-[13px] text-zinc-400 hover:text-zinc-100"
               >
-                <g.icon className="h-3.5 w-3.5" />
                 {g.label}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{g.hotkey}</kbd>
               </button>
-            );
-          })}
-        </nav>
-
-        <TickerTape className="-mx-4" />
+            ))}
+            <DTUExportButton domain="finance" data={{ summary, history, trend }} compact />
+          </div>
+        )}
 
         {loading ? (
-          <StatTileGrid columns={6}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-md border border-white/10 bg-black/40 p-3">
-                <Skeleton variant="line" lines={2} />
-              </div>
-            ))}
-          </StatTileGrid>
+          <div className="max-w-xs rounded-md border border-white/10 bg-black/40 p-3">
+            <Skeleton variant="line" lines={2} />
+          </div>
         ) : loadError ? (
           <ErrorState message={loadError} onRetry={() => loadDashboard(false)} retrying={refreshing} />
         ) : summary ? (
-          <StatTileGrid columns={6}>
+          <div className="max-w-xs">
             <StatTile
               label="Net worth"
               value={fmtUsd(summary.netWorth)}
               deltaPct={summary.deltaPct || undefined}
               deltaLabel={summary.delta ? `${summary.delta >= 0 ? '+' : ''}${fmtUsd(summary.delta)}` : 'no prior snapshot'}
             />
-            <StatTile label="Cash" value={fmtUsd(summary.breakdown.cash)} caption="checking + savings" />
-            <StatTile label="Investments" value={fmtUsd(summary.breakdown.investments)} caption={`${summary.positionCount} positions`} />
-            <StatTile label="Buying power" value={fmtUsd(summary.buyingPower)} caption="available cash" />
-            <StatTile
-              label="Budget used"
-              value={summary.budgetUsedPct}
-              unit="%"
-              tone={summary.budgetUsedPct > 90 ? 'negative' : summary.budgetUsedPct > 70 ? 'neutral' : 'positive'}
-              caption="of monthly income"
-            />
-            <StatTile label="Accounts" value={summary.accountCount} caption={`${summary.activeGoalCount} goals`} />
-          </StatTileGrid>
-        ) : null}
+          </div>
+        ) : (
+          <p className="font-vault text-2xl text-zinc-500">—</p>
+        )}
 
+        {!loading && !loadError && <SnapshotHistory snapshots={history} onDeleted={() => loadDashboard(true)} />}
+
+
+        {group !== 'overview' && (
+          <button type="button" onClick={() => setGroup('overview')} className="text-[13px] text-zinc-400 hover:text-zinc-100">
+            Back to what you hold
+          </button>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div
