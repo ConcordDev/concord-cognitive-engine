@@ -2,6 +2,7 @@
 
 import { WalletParityHub } from '@/components/wallet/WalletParityHub';
 import { TransferFlow } from '@/components/wallet/TransferFlow';
+import { TestCreditGrant } from '@/components/wallet/TestCreditGrant';
 import { ds } from '@/lib/design-system';
 import { useWalletBalance, useWalletInvalidate } from './useWalletQueries';
 import type { WalletPanelProps } from './wallet-model';
@@ -13,6 +14,7 @@ export function WalletPayPanel(_props: WalletPanelProps) {
 
   return (
     <div className="space-y-6">
+      <TestCreditGrant onGranted={invalidate} />
       <TransferFlow balance={balance} mode="inline" onSuccess={invalidate} />
       <div className="space-y-2">
         <h2 className={ds.heading2}>Requests &amp; splits</h2>
