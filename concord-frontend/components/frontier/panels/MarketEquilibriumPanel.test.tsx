@@ -16,13 +16,10 @@
 //      forever) is a REAL, COMPLETE outcome, not a failure — it must
 //      render in the 'ok' Verify state with the honest non-convergence
 //      copy, never as 'refused'/'error'.
-//   2. `mixedNash`'s refusal shape uses `reason`, not `error` — the
-//      shared `lensRun()` client's generic `ok:false` recovery only reads
-//      `.error`, so this specific shape genuinely degrades to the literal
-//      string "lens error" on the wire. `describeRefusal()` detects that
-//      exact degraded case and says so plainly rather than inventing a
-//      specific reason the client can't actually recover — this test pins
-//      that this is real, verified client behavior, not a made-up string.
+//   2. `mixedNash`'s refusal shape uses `reason`, not `error`. `lensRun()`
+//      copies that `reason` onto `error`, and the panel shows it. The
+//      generic "lens error" paragraph is only for a message that did not
+//      survive the client.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -108,11 +105,10 @@ describe('MarketEquilibriumPanel', () => {
     });
   });
 
-  it('renders the real mixedNash support_enumeration_exhausted refusal — the client can only recover the generic "lens error" for this shape, and says so honestly', async () => {
+  it('renders the real mixedNash support_enumeration_exhausted refusal recovered from reason', async () => {
     routeByAction({
-      // Real refusal shape from mixed-nash.js#mixedNashEquilibria: `reason`,
-      // never `error`. lensRun()'s generic ok:false recovery only reads
-      // `.error`, so this genuinely collapses to 'lens error' on the wire.
+      // Real refusal shape from mixed-nash.js: `reason`, never `error`.
+      // lensRun() copies reason onto error, so the panel shows that string.
       mixedNash: () => ({ ok: false, reason: 'support_enumeration_exhausted', maxSupportSize: 2, candidateCount: 36 }),
     });
     render(<MarketEquilibriumPanel engine={engine} />);
@@ -120,8 +116,8 @@ describe('MarketEquilibriumPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run' }));
 
     await waitFor(() => expect(screen.getByText(/Honest refusal — not a fabricated pass\./)).toBeInTheDocument());
-    expect(screen.getByText(/Refused by the server \(invalid matrix shape, or the support-enumeration cap was hit\)/)).toBeInTheDocument();
-    expect(screen.getByText(/reads a `reason` field the client only handles as `error`/)).toBeInTheDocument();
+    expect(screen.getByText('support_enumeration_exhausted')).toBeInTheDocument();
+    expect(screen.queryByText(/reads a `reason` field the client only handles as `error`/)).not.toBeInTheDocument();
 
     const [, body] = post.mock.calls.at(-1)!;
     expect(body).toMatchObject({ domain: 'markets', action: 'mixedNash', input: { maxCandidates: 10 } });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   mode: 'ready' as 'ready' | 'loading' | 'error',
@@ -76,10 +76,18 @@ vi.mock('framer-motion', async () => {
 
 import GameApp from '@/components/game/GameApp';
 
+const priorRedditFlag = process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+
 describe('GameApp', () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = '1';
     mocks.mode = 'ready';
     mocks.commands = [];
+  });
+
+  afterEach(() => {
+    if (priorRedditFlag === undefined) delete process.env.NEXT_PUBLIC_COMMUNITY_REDDIT;
+    else process.env.NEXT_PUBLIC_COMMUNITY_REDDIT = priorRedditFlag;
   });
 
   it('renders loading and error states', () => {

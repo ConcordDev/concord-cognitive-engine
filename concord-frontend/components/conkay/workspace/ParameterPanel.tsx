@@ -42,7 +42,7 @@ function NumberField({
   return (
     <label htmlFor={id} className="flex items-center justify-between gap-2 py-0.5">
       <span className="min-w-0 truncate text-xs text-slate-300" title={title}>
-        <span className="font-mono text-sky-200">{label}</span> <span className="text-[10px] text-slate-500">{title}</span>
+        <span className="font-mono text-sky-200">{label}</span> <span className="text-[10px] text-slate-400">{title}</span>
       </span>
       <span className="flex items-center gap-1">
         <input
@@ -56,7 +56,7 @@ function NumberField({
           onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
           className="w-16 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-xs text-slate-100 focus:border-sky-400/60 focus:outline-none"
         />
-        <span className="w-6 text-[10px] text-slate-500">{unit}</span>
+        <span className="w-6 text-[10px] text-slate-400">{unit}</span>
       </span>
     </label>
   );

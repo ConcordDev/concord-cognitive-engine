@@ -18,6 +18,7 @@ vi.mock('recharts', () => ({
 }));
 
 import { RfInsightsPanel } from '@/components/reflection/RfInsightsPanel';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 const RESULTS: Record<string, unknown> = {
   'journal-streak': { currentStreak: 3, longestStreak: 9, daysJournaled: 20 },
@@ -42,9 +43,14 @@ describe('RfInsightsPanel', () => {
   it('loads all six macros on mount, including the two new ones', async () => {
     stub();
     render(<RfInsightsPanel />);
+    const today = calendarDateKey();
+    const [year, month] = today.split('-').map(Number);
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('reflection', 'journal-stats', {}));
-    expect(lensRun).toHaveBeenCalledWith('reflection', 'reflection-goal-status', {});
-    expect(lensRun).toHaveBeenCalledWith('reflection', 'journal-streak', {});
+    expect(lensRun).toHaveBeenCalledWith('reflection', 'reflection-goal-status', { today });
+    expect(lensRun).toHaveBeenCalledWith('reflection', 'journal-streak', { today });
+    expect(lensRun).toHaveBeenCalledWith('reflection', 'mood-trend', { days: 30 });
+    expect(lensRun).toHaveBeenCalledWith('reflection', 'tags-list', {});
+    expect(lensRun).toHaveBeenCalledWith('reflection', 'calendar-month', { year, month });
   });
 
   it('renders all-time stats from journal-stats real response shape', async () => {
