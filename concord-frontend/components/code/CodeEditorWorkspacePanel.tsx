@@ -52,7 +52,8 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
-import { readExecStatus, subscribeExecStatus } from '@/components/code/codeExecGate';
+import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
+import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
 interface FileNode {
@@ -266,12 +267,11 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
     }, 350);
     return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
   }, [activeTab.name, activeTab.content, runCodeMacro, liveReady]);
-  const [execOff, setExecOff] = useState(() => readExecStatus()?.enabled === false);
-  const [execReason, setExecReason] = useState(() => (readExecStatus()?.enabled === false ? readExecStatus()?.reason || '' : ''));
-  useEffect(() => subscribeExecStatus((status) => {
-    setExecOff(status?.enabled === false);
-    setExecReason(status?.enabled === false ? status.reason : '');
-  }), []);
+  const [exec, setExec] = useState<CodeExecStatus | null>(() => readExecStatus());
+  useEffect(() => subscribeExecStatus(setExec), []);
+  const execOff = exec?.enabled === false;
+  const execUnknown = exec == null;
+  const execReason = execOff ? (exec?.reason || 'Live code execution is disabled in this environment.') : '';
   const semanticCtx = useMemo(
     () => ({ projectId: LIVE_PROJECT_ID, path: activeTab.name, run: runCodeMacro }),
     [activeTab.name, runCodeMacro],
@@ -442,36 +442,22 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
   const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Derive the per-user sessionId once auth resolves. Hydrate prior
-  // history from /api/chat/messages so AI Chat survives tab close +
-  // device switch. Anon users keep component-state-only history.
+  // history only when `code-ai-<userId>` is already a session — a missing
+  // id is not probed with GET /api/chat/messages (that 404s on every load).
+  // Anon users keep component-state-only history.
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
     if (aiChatHistoryHydratedRef.current) return;
-    const sid = `code-ai-${user.id}`;
+    const sid = codeAiSessionId(user.id);
     codeAiSessionIdRef.current = sid;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sid)}&limit=200`, {
-          credentials: 'include',
-        });
-        if (!res.ok || cancelled) return;
-        const json = (await res.json()) as { ok: boolean; messages?: Array<{ role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
-        if (cancelled || !json.ok || !Array.isArray(json.messages)) return;
-        const hydrated: ChatMsg[] = json.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => {
-            const meta = (m.meta || {}) as Record<string, unknown>;
-            return {
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-              ts: new Date(m.ts).getTime() || Date.now(),
-              dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as ChatMsg['dtuRefs']) : undefined,
-            };
-          });
-        if (hydrated.length > 0) setAiChatHistory(hydrated);
+        const loaded = await fetchCodeAiHistory(sid, (url, init) => fetch(url, init));
+        if (cancelled) return;
         aiChatHistoryHydratedRef.current = true;
-      } catch { /* anon, offline, or 403 — leave empty */ }
+        if (loaded.messages.length > 0) setAiChatHistory(loaded.messages);
+      } catch { /* offline — leave empty, and do not probe a missing session */ }
     })();
     return () => { cancelled = true; };
   }, [isAuthenticated, user?.id]);
@@ -1221,17 +1207,18 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: { onOpenExtras?: () =
           </div>
 
           <button
-            onClick={() => { if (!execOff) runScriptMutation.mutate(); }}
-            disabled={runScriptMutation.isPending || execOff}
+            type="button"
+            onClick={() => { if (!execOff && !execUnknown) runScriptMutation.mutate(); }}
+            disabled={runScriptMutation.isPending || execOff || execUnknown}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
-            title={execOff ? execReason || 'Live code execution is disabled in this environment.' : 'Run (⌘↵)'}
+            title={execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
           >
             {runScriptMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Play className="w-4 h-4 fill-current" />
             )}
-            Run
+            {runScriptMutation.isPending ? 'Running…' : execOff ? 'Execution disabled' : 'Run'}
           </button>
 
           <button

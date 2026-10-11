@@ -7,8 +7,8 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { parseExecStatus, publishExecStatus, readExecStatus } from '@/components/code/codeExecGate';
-import { Blocks, Flame, Loader2, Play, Sparkles } from 'lucide-react';
+import { parseExecStatus, publishExecStatus } from '@/components/code/codeExecGate';
+import { Blocks, Flame, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -40,30 +40,17 @@ export default function CodeApp() {
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [extras, setExtras] = useState<CodeExtras>('none');
-  const [running, setRunning] = useState(false);
-  const [exec, setExec] = useState(() => readExecStatus());
 
-  useEffect(() => {
-    const onState = (e: Event) => setRunning(Boolean((e as CustomEvent<{ running?: boolean }>).detail?.running));
-    window.addEventListener('concord:code-run-state', onState);
-    return () => window.removeEventListener('concord:code-run-state', onState);
-  }, []);
-
+  // The editor's Run button is the only one. This publishes the server
+  // gate (code.exec-status) so that button can say execution is disabled.
   useEffect(() => {
     let live = true;
     void lensRun('code', 'exec-status', {}).then((r) => {
       if (!live) return;
-      const status = parseExecStatus(r.data);
-      publishExecStatus(status);
-      setExec(status);
+      publishExecStatus(parseExecStatus(r.data));
     });
     return () => { live = false; };
   }, []);
-
-  const execOff = exec?.enabled === false;
-  const runTitle = execOff
-    ? exec?.reason || 'Live code execution is disabled in this environment.'
-    : 'Run the active file (⌘ Enter)';
 
   useLensCommand(
     [
@@ -146,17 +133,6 @@ export default function CodeApp() {
           <div className="min-h-[70vh] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
             <CodeEditorWorkspacePanel onOpenExtras={() => setExtras('advanced')} />
           </div>
-
-          <button
-            type="button"
-            onClick={() => { if (!execOff) window.dispatchEvent(new CustomEvent('concord:code-run')); }}
-            disabled={running || execOff || exec === null}
-            title={runTitle}
-            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
-          >
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {running ? 'Running…' : execOff ? 'Run off' : 'Run'}
-          </button>
 
           <div className="mt-5">
             {extras === 'advanced' && <CodeAdvancedPanel />}

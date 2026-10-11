@@ -157,19 +157,35 @@ export function ProjectsSection() {
               ))}
             </div>
             {composerOpen && (
-              <form
-                className="flex items-center gap-2"
-                onSubmit={(e) => { e.preventDefault(); void addProject(); }}
+              <div
+                className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+                onClick={() => setComposerOpen(false)}
               >
-                <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
-                <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
-                  className="w-20 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
-                <button type="submit"
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-400 text-black rounded-lg">
-                  <Plus className="w-3.5 h-3.5" /> Create
-                </button>
-              </form>
+                <form
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="New project"
+                  className="w-full max-w-md space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4"
+                  onClick={(e) => e.stopPropagation()}
+                  onSubmit={(e) => { e.preventDefault(); void addProject(); }}
+                >
+                  <h2 className="text-sm font-semibold text-zinc-100">New project</h2>
+                  <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
+                  <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })}
+                    className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white uppercase" />
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setComposerOpen(false)}
+                      className="px-3 py-1.5 text-xs text-zinc-300">
+                      Cancel
+                    </button>
+                    <button type="submit"
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal-400 text-black rounded-lg">
+                      <Plus className="w-3.5 h-3.5" /> Create
+                    </button>
+                  </div>
+                </form>
+              </div>
             )}
           </div>
 

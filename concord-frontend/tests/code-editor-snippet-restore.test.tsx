@@ -274,7 +274,11 @@ beforeEach(() => {
   dyn.editor = null;
   resetExecStatusForTests();
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    if (String(url).includes('/api/chat/messages')) {
+    const u = String(url);
+    if (u.includes('/api/chat/sessions')) {
+      return { ok: true, json: async () => ({ ok: true, sessions: [{ id: 'code-ai-ada' }] }) };
+    }
+    if (u.includes('/api/chat/messages')) {
       return {
         ok: true,
         json: async () => ({
@@ -400,6 +404,7 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     expect(dtus.publish).toHaveBeenCalled();
 
     execPlan.push('ok', 'unsupported', 'throw');
+    expect(screen.getAllByRole('button', { name: /^Run$/ })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(screen.getByText(/ran-ok/)).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Console' }));
@@ -413,9 +418,12 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close output panel' }));
 
     publishExecStatus({ enabled: false, reason: 'Live code execution is disabled in this environment.' });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toHaveProperty('disabled', true));
+    const disabledRun = await screen.findByRole('button', { name: 'Execution disabled' });
+    expect(disabledRun).toHaveProperty('disabled', true);
+    expect(disabledRun).toHaveAttribute('title', expect.stringMatching(/disabled/i));
+    expect(screen.queryByRole('button', { name: /^Run$/ })).toBeNull();
     const execs = calls.filter((c) => c.action === 'exec').length;
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    fireEvent.click(disabledRun);
     act(() => { window.dispatchEvent(new Event('concord:code-run')); });
     cmd('run');
     expect(calls.filter((c) => c.action === 'exec').length).toBe(execs);

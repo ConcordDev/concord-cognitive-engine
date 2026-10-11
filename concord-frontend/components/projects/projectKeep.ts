@@ -60,6 +60,7 @@ export function projectDtuCall(project: KeptProject | null | undefined): Receipt
       title: sentence.slice(0, 80),
       tags: ['projects', 'project'],
       source: 'projects-lens:project',
+      visibility: 'private',
       skipAutoTag: true,
       human: { summary: body },
       core: { definitions: [sentence], claims: [body.slice(0, 240)] },

@@ -12,6 +12,7 @@ describe('project keep', () => {
   it('builds a private DTU and a Thread draft that cites it', () => {
     expect(projectSentence(project)).toBe('BR Bridge');
     const dtu = projectDtuCall(project);
+    expect(dtu?.input.visibility).toBe('private');
     expect(dtu?.input.skipAutoTag).toBe(true);
     expect((dtu?.input.meta as { skipAutoTag?: boolean }).skipAutoTag).toBe(true);
     const draft = projectThreadDraftCall(project, 'dtu_9');

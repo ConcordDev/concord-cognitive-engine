@@ -28,32 +28,25 @@ import { resetExecStatusForTests } from '@/components/code/codeExecGate';
 beforeEach(() => {
   resetExecStatusForTests();
   lensRunMock.mockReset();
+  lensRunMock.mockResolvedValue({
+    data: { ok: true, result: { enabled: false, reason: 'Live code execution is disabled in this environment.' } },
+  });
 });
 
 describe('CodeApp', () => {
-  it('switches every workspace and runs only after execution is confirmed on', async () => {
-    lensRunMock.mockResolvedValue({ data: { ok: true, result: { enabled: true, reason: '' } } });
-    const dispatched = vi.spyOn(window, 'dispatchEvent');
+  it('loads without console errors and does not render a second Run button', async () => {
+    const errors: unknown[][] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      errors.push(args);
+    });
     render(<CodeApp />);
     fireEvent.click(screen.getByRole('button', { name: /open advanced/i }));
     fireEvent.click(screen.getByRole('tab', { name: /GitHub trending/i }));
     fireEvent.click(screen.getByRole('tab', { name: /Review workbench/i }));
     fireEvent.click(screen.getByRole('tab', { name: /Editor/i }));
-    const run = await screen.findByRole('button', { name: /^Run$/ });
-    await waitFor(() => expect(run).not.toBeDisabled());
-    fireEvent.click(run);
-    window.dispatchEvent(new CustomEvent('concord:code-run-state', { detail: { running: true } }));
-    expect(dispatched).toHaveBeenCalled();
-    expect(lensRunMock).toHaveBeenCalledWith('code', 'exec-status', {});
-  });
-
-  it('disables Run and names the reason when execution is off', async () => {
-    lensRunMock.mockResolvedValue({
-      data: { ok: true, result: { enabled: false, reason: 'Live code execution is disabled in this environment.' } },
-    });
-    render(<CodeApp />);
-    const run = await screen.findByRole('button', { name: /Run off/ });
-    await waitFor(() => expect(run).toBeDisabled());
-    expect(run).toHaveAttribute('title', expect.stringMatching(/disabled/i));
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('code', 'exec-status', {}));
+    expect(screen.queryByRole('button', { name: /run/i })).toBeNull();
+    expect(errors).toEqual([]);
+    spy.mockRestore();
   });
 });
