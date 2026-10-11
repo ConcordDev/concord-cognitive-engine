@@ -122,6 +122,15 @@ vi.mock('@/lib/api/client', () => ({
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useRunArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(() => Promise.resolve({ ok: true })), isPending: false }),
 }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    logout: async () => {},
+    refresh: async () => {},
+  }),
+}));
 vi.mock('@/hooks/useLensDTUs', () => ({
   useLensDTUs: () => ({
     hyperDTUs: [],
