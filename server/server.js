@@ -8012,7 +8012,21 @@ function authMiddleware(req, res, next) {
 
   // If this is a sovereign route, do NOT allow the publicReadPaths bypass below.
   // Force authentication first, then check role after auth resolves.
-  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => req.path.startsWith(route));
+  //
+  // Prefix boundary: "/api/sovereign".startsWith matches the user-own lock
+  // namespace "/api/sovereignty" and "/api/sovereignty/...". Those handlers
+  // are caller-scoped (requireAuth + own rows) and must not inherit the
+  // sovereign role gate. Every other extension of the prefix stays gated,
+  // including "/api/sovereign", "/api/sovereign/...", "/api/sovereign-emergent",
+  // and lookalikes such as "/api/sovereignX". The other listed prefixes
+  // keep bare startsWith, so "/api/admin/sovereign..." is unchanged.
+  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => {
+    if (!req.path.startsWith(route)) return false;
+    if (route === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) {
+      return false;
+    }
+    return true;
+  });
 
   // Skip auth for public-read endpoints (GET only)
   // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
@@ -8264,7 +8278,14 @@ function authMiddleware(req, res, next) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty is intentionally absent. status/setup/unsync/
+    // preferences/audit are caller-scoped and requireAuth. Listing the
+    // prefix would let an anonymous GET skip this middleware once the
+    // path is no longer caught by the /api/sovereign prefix gate.
+    // The "/api/sovereign" entry above still startsWith-matches
+    // /api/sovereignty; the bypass below excludes that namespace so
+    // anonymous curl stays 401 instead of falling through to the bot guard.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -8289,7 +8310,15 @@ function authMiddleware(req, res, next) {
   // user-scoped behavior (search history, saved searches) see the JWT.
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
-  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => {
+    if (!req.path.startsWith(p)) return false;
+    // "/api/sovereign" is a public-read prefix for the sovereign console,
+    // but it also prefix-matches the caller-scoped lock namespace. Those
+    // routes are no longer sovereign-gated, so without this exclusion an
+    // anonymous GET would skip auth here.
+    if (p === "/api/sovereign" && (req.path === "/api/sovereignty" || req.path.startsWith("/api/sovereignty/"))) return false;
+    return true;
+  })) return next();
   // MCP bypass (Sprint 54, 2026-08-13): local-first MCP server for cloud workers.
   // When CONCORD_MCP_PUBLIC=1, both GET /mcp/tools and POST /mcp/call bypass auth.
   // When AUTH_MODE=public (local-first dev), the public mode already handles this.
@@ -14894,7 +14923,10 @@ async function runMacro(domain, name, input, ctx) {
     "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
     "/api/flywheel", "/api/freshness", "/api/global",
     "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
+    "/api/quality", "/api/shared-session",
+    // /api/sovereignty omitted — mirror of Gate 1. Caller-scoped lock
+    // routes are not anonymous reads. The "/api/sovereign" entry above
+    // still startsWith-matches that namespace; the bypass below excludes it.
     "/api/substrate", "/api/transfer", "/api/v1",
     "/api/economics", "/api/agent",
     // Real-time data feeds + universal export
@@ -14938,7 +14970,11 @@ async function runMacro(domain, name, input, ctx) {
   ];
   const safeReadBypass =
     _domainNameAllowed ||
-    (_method === "GET" && _safeReadPaths.some(p => _path.startsWith(p))) ||
+    (_method === "GET" && _safeReadPaths.some(p => {
+      if (!_path.startsWith(p)) return false;
+      if (p === "/api/sovereign" && (_path === "/api/sovereignty" || _path.startsWith("/api/sovereignty/"))) return false;
+      return true;
+    })) ||
     (_method === "POST" && _safePostPaths.some(p => _path.startsWith(p))) ||
     (domain === "chat" && (name === "respond" || name === "feedback"));
 
@@ -64304,10 +64340,22 @@ app.post("/api/sovereign/repair/acknowledge", async (req, res) => {
 });
 
 // Sovereignty/audit
+// Caller-scoped. requireAuth is load-bearing: this registration used to
+// have none, and the "/api/sovereign" prefix gate was the only thing
+// standing in front of it. That prefix no longer matches
+// /api/sovereignty/*. Anonymous callers stay 401. The body cannot name
+// another user — audit.run is not a registered macro (the catch is the
+// live path) and reports system posture, not another account's rows.
 
-app.post("/api/sovereignty/audit", asyncHandler(async (req, res) => {
+app.post("/api/sovereignty/audit", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "Auth required" });
+  const raw = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  const input = { ...raw, userId };
+  delete input.user_id;
+  delete input.ownerId;
   try {
-    const out = await runMacro("audit", "run", req.body || {}, makeCtx(req));
+    const out = await runMacro("audit", "run", input, makeCtx(req));
     res.json(out);
   } catch (e) {
     // Run basic checks even if macro fails
