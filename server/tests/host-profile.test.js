@@ -156,13 +156,16 @@ describe("governorTick — low memory does not freeze the liveness counter", () 
     assert.match(body, /presenceIdle\.isIdle\(\)/);
     assert.doesNotMatch(body, /shouldRunHeavyMaintenance\(\)/);
     const inc = body.indexOf("heartbeatTicks?.inc()");
-    const jobs = body.indexOf('runMacro("jobs","tick"');
-    const queue = body.indexOf('runMacro("queue","tick"');
+    // Jobs/queue run through the optional-macro tick (#1171); the first call
+    // carries jobs+queue and sits before the low-memory return, the second
+    // (ingest+crawl) after it.
+    const queue = body.indexOf('include: ["jobs", "queue", "system"]');
     const pause = body.indexOf('skipped: "low_memory_host"');
+    const ingest = body.indexOf('include: ["ingest", "crawl"]');
     assert.ok(inc > 0, "liveness counter increment present");
-    assert.ok(jobs > inc, "jobs tick is exempt from the low-memory return");
-    assert.ok(queue > jobs, "queue tick is exempt from the low-memory return");
+    assert.ok(queue > inc, "jobs/queue tick is exempt from the low-memory return");
     assert.ok(pause > queue, "low-memory pause must come after the tick is counted and after jobs/queue");
+    assert.ok(ingest > pause, "ingest/crawl stay behind the low-memory return");
     const between = body.slice(queue, pause);
     assert.match(between, /shouldRunConsolidation\(\)/);
     assert.match(between, /_runDtuConsolidationCycle/);

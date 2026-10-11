@@ -70,18 +70,10 @@ function assertClose(actual, expected, msg, eps = 1e-6) {
 }
 
 /**
- * Run one goal heartbeat tick. Defensively guarantees
- * `STATE.queues.goalProposals` is a real array right before every call:
- * `ensureQueues()` only backfills the defaults when `STATE.queues` is
- * entirely absent, and only re-normalizes ALREADY-PRESENT keys to arrays
- * — it never adds a missing key to an existing `STATE.queues` object. In
- * this direct-unit-test setup (driving processGoalHeartbeat() outside any
- * HTTP-route/macro entry point that would otherwise have called
- * ensureQueues() first against a fully-defaulted object) `STATE.queues`
- * can already exist without `goalProposals` on it. This is a pre-existing
- * quirk of `ensureQueues()` unrelated to the progress-delta logic under
- * test here — worked around at the call site rather than touched, since
- * `ensureQueues` is out of scope for this change.
+ * Run one goal heartbeat tick. Normalizes goalProposals first so the
+ * progress assertions below don't depend on queue shape. processGoalHeartbeat
+ * also does this itself (a missing or non-array goalProposals used to throw
+ * on `.slice` every governor tick).
  */
 function tick() {
   if (!T.STATE.queues || typeof T.STATE.queues !== "object") T.STATE.queues = {};
@@ -200,5 +192,17 @@ describe("processGoalHeartbeat — real-signal progress (not Math.random())", ()
 
     // Hand-verified: 2 new consolidated-tier DTUs * 0.15 * target(100) = 30.
     assertClose(goal.progress.current, 30, "CONSOLIDATION delta must equal 2*0.15*100=30");
+  });
+
+  it("does not throw when goalProposals is missing or a non-string", () => {
+    const bad = [undefined, null, 0, false, { not: "a list" }];
+    for (const value of bad) {
+      T.STATE.queues.goalProposals = value;
+      assert.doesNotThrow(() => T.processGoalHeartbeat({}), `threw for ${JSON.stringify(value)}`);
+      assert.ok(Array.isArray(T.STATE.queues.goalProposals), `expected an array after ${JSON.stringify(value)}`);
+    }
+    delete T.STATE.queues.goalProposals;
+    assert.doesNotThrow(() => T.processGoalHeartbeat({}));
+    assert.ok(Array.isArray(T.STATE.queues.goalProposals));
   });
 });

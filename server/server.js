@@ -2215,7 +2215,6 @@ import {
   getAllRepairPatterns,
   getRecentRepairDTUs,
   configureRepairPersistence,
-  startGuardian,
   stopGuardian,
   getGuardianStatus,
   runGuardianCheck,
@@ -2238,6 +2237,7 @@ import {
   shouldSkipExecution,
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
+import { logAbsentGovernorMacrosOnce, tickGovernorOptionalMacros } from "./lib/governor-optional-macros.js";
 
 // ---- "Everything Real" imports: migration runner + durable endpoints ----
 import { runMigrations as runSchemaMigrations } from "./migrate.js";
@@ -6158,7 +6158,8 @@ const STATE = {
     hypotheses: [],
     philosophy: [],
     wrapperJobs: [],
-    notifications: []
+    notifications: [],
+    goalProposals: []
   },
 
   // ---- Abstraction Governor (v3 upgrades) ----
@@ -42131,12 +42132,21 @@ async function governorTick(reason="heartbeat") {
     if (!lowMemoryPause && s.autogenEnabled)  { try { await runMacro("system","autogen",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_autogen_heartbeat"); } }
     if (!lowMemoryPause && s.dreamEnabled)    { try { await runMacro("system","dream",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_dream_heartbeat"); } }
     if (!lowMemoryPause && s.evolutionEnabled){ try { await runMacro("system","evolution",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_evolution_heartbeat"); } }
-    if (!lowMemoryPause && s.synthEnabled)    { try { await runMacro("system","synth",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_synth_heartbeat"); } }
 
-    // 2) Queue processing. Jobs and the queue are user-awaited — they run
-    // even when the low-memory profile is on. Ingest/crawl stay paused.
-    try { await runMacro("jobs","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_jobs_tick"); }
-    try { await runMacro("queue","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_queue_tick"); }
+    // 2) Optional queue/synth macros. Absence is logged once when the governor
+    // starts; a tick skips anything still unregistered and does not observe
+    // that miss. A throw from a macro that IS registered is still observed.
+    // Jobs and the queue are user-awaited — they run even when the low-memory
+    // profile is on. Synth pauses with autogen/dream; ingest/crawl stay paused.
+    await tickGovernorOptionalMacros({
+      macros: MACROS,
+      runMacro,
+      observe,
+      input: { override: true, reason },
+      ctx,
+      synthEnabled: !lowMemoryPause && !!s.synthEnabled,
+      include: ["jobs", "queue", "system"],
+    });
     if (lowMemoryPause) {
       // Users are present (the idle return already left). Compression follows
       // isIdle(), so this host still consolidates unless
@@ -42146,8 +42156,14 @@ async function governorTick(reason="heartbeat") {
       }
       return { ok: true, skipped: "low_memory_host" };
     }
-    try { await runMacro("ingest","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_ingest_tick"); }
-    try { await runMacro("crawl","tick",{ override:true, reason }, ctx); } catch (e) { observe(e, "governor_crawl_tick"); }
+    await tickGovernorOptionalMacros({
+      macros: MACROS,
+      runMacro,
+      observe,
+      input: { override: true, reason },
+      ctx,
+      include: ["ingest", "crawl"],
+    });
 
     // 2.5) Goal System: process goal proposals and track active goals
     try { await processGoalHeartbeat(ctx); } catch (e) { observe(e, "governor_goal_heartbeat"); }
@@ -43359,6 +43375,7 @@ function _startGovernorHeartbeat() {
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
+    logAbsentGovernorMacrosOnce(MACROS, structuredLog);
     __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
@@ -65742,7 +65759,8 @@ try {
   // Maintenance A — make Repair Memory durable: learned fixes mirror to
   // repair_knowledge so they survive a restart (guarded; no-op if the table is absent).
   try { configureRepairPersistence(db); } catch { /* persistence optional */ }
-  startGuardian();
+  // Guardian monitors are started from startRepairLoop() only. A second start
+  // is a no-op, so a later restart or full deploy does not arm a second set.
   // Phase 5 fix (Sprint 60): wire detector-bridge.js's configureBridge() so
   // the detector-sweep hook (~line 880, "feed delta into repair-cortex
   // bridge") actually reaches pain/avoidance learning + the DTU audit
@@ -65762,7 +65780,7 @@ try {
     const { configureBridge } = await import("./emergent/repair-cortex/detector-bridge.js");
     configureBridge({ observe, logDtu: logRepairDTU });
   } catch (_e) { /* bridge wiring optional — detector-bridge falls back to enqueue-only */ }
-  structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon + Guardian initialized" });
+  structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon initialized" });
 } catch (e) {
   console.warn("[Concord] Repair Cortex failed to initialize:", e.message);
 }
@@ -76243,6 +76261,13 @@ function ensureQueues() {
   for (const k of Object.keys(STATE.queues)) {
     if (!Array.isArray(STATE.queues[k])) STATE.queues[k] = [];
   }
+  // Seed keys the initial object and older snapshots omit. A missing
+  // goalProposals made processGoalHeartbeat throw `.slice` of undefined
+  // on every governor tick (the key loop above only rewrites keys that
+  // are already present).
+  for (const k of ["maintenance", "macroProposals", "panelProposals", "terminalRequests", "synthesis", "hypotheses", "philosophy", "wrapperJobs", "notifications", "metaProposals", "goalProposals", "activeGoals"]) {
+    if (!Array.isArray(STATE.queues[k])) STATE.queues[k] = [];
+  }
 }
 function ensureOrganRegistry() {
   if (!(STATE.organs instanceof Map)) STATE.organs = new Map();
@@ -76637,6 +76662,7 @@ function abandonGoal(goalId, reason = "user_requested") {
 
 function generateAutoGoalProposals(_ctx = {}) {
   ensureGoalSystem();
+  ensureQueues();
   if (!STATE.goals.config.autoProposalEnabled) {
     return { ok: false, error: "Auto-proposal disabled" };
   }
@@ -76710,6 +76736,10 @@ function generateAutoGoalProposals(_ctx = {}) {
 // Goal Heartbeat: called by Governor to process goals autonomously
 function processGoalHeartbeat(ctx = {}) {
   ensureGoalSystem();
+  // goalProposals is absent on the initial queues object and on snapshots
+  // saved before the key existed. .slice on that undefined threw every tick.
+  // A non-array (number, object, string) is not a proposal list either.
+  ensureQueues();
 
   const results = { evaluated: 0, activated: 0, progressed: 0, autoProposed: 0 };
 

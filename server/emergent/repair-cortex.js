@@ -2695,7 +2695,12 @@ async function _tryHLRDiagnosis(errorMessage) {
 // Runs continuously while the system is live. Runtime self-repair.
 
 const _guardianTimers = new Map();
+const _guardianStartTimers = new Set();
 const _guardianStatuses = new LruMap();
+let _guardianDelayTimer = null;
+// Set synchronously on the first startGuardian() so a second call — including
+// one that arrives while the startup delay is still pending — is a no-op.
+let _guardianStarted = false;
 
 const GUARDIAN_MONITORS = {
   process_health: {
@@ -3480,11 +3485,19 @@ const GUARDIAN_MONITORS = {
 
 /**
  * Start all guardian monitors.
+ * Idempotent: a second call while a start is pending or monitors are running
+ * is a no-op (no second delay, no second interval set, no second audit row).
  */
 export function startGuardian() {
+  if (_guardianStarted) {
+    return { ok: true, status: "already_running", monitors: Object.keys(GUARDIAN_MONITORS) };
+  }
+  _guardianStarted = true;
   try {
     // Delay guardian activation to match repair loop startup delay
-    const delayTimer = setTimeout(() => {
+    _guardianDelayTimer = setTimeout(() => {
+      _guardianDelayTimer = null;
+      if (!_guardianStarted) return;
       let stagger = 0;
       const STAGGER_GAP = 5000; // 5 seconds between each monitor start
 
@@ -3495,6 +3508,9 @@ export function startGuardian() {
         const monitorDelay = stagger;
 
         const startTimer = setTimeout(() => {
+          _guardianStartTimers.delete(startTimer);
+          if (!_guardianStarted) return;
+          if (_guardianTimers.has(name)) return;
           const timer = setInterval(async () => {
             // Skip if memory ceiling monitor has paused background tasks
             if (globalThis.__memoryPaused?.()) return;
@@ -3516,11 +3532,12 @@ export function startGuardian() {
           _guardianTimers.set(name, timer);
         }, monitorDelay);
         if (startTimer.unref) startTimer.unref();
+        _guardianStartTimers.add(startTimer);
       }
 
       logger.info('emergent:repair-cortex', 'Guardian monitors activating with staggered delays', { monitors: Object.keys(GUARDIAN_MONITORS).length, totalStaggerMs: stagger });
     }, REPAIR_STARTUP_DELAY);
-    if (delayTimer.unref) delayTimer.unref();
+    if (_guardianDelayTimer.unref) _guardianDelayTimer.unref();
 
     logRepairDTU(REPAIR_PHASES.POST_BUILD, "guardian_started", {
       monitors: Object.keys(GUARDIAN_MONITORS),
@@ -3528,6 +3545,11 @@ export function startGuardian() {
 
     return { ok: true, monitors: Object.keys(GUARDIAN_MONITORS) };
   } catch (e) {
+    _guardianStarted = false;
+    if (_guardianDelayTimer) {
+      clearTimeout(_guardianDelayTimer);
+      _guardianDelayTimer = null;
+    }
     return { ok: false, error: String(e?.message || e) };
   }
 }
@@ -3537,6 +3559,13 @@ export function startGuardian() {
  */
 export function stopGuardian() {
   try {
+    _guardianStarted = false;
+    if (_guardianDelayTimer) {
+      clearTimeout(_guardianDelayTimer);
+      _guardianDelayTimer = null;
+    }
+    for (const timer of _guardianStartTimers) clearTimeout(timer);
+    _guardianStartTimers.clear();
     for (const [name, timer] of _guardianTimers) {
       clearInterval(timer);
     }
