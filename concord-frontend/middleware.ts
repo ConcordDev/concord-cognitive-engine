@@ -49,6 +49,16 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
     // 'wasm-unsafe-eval' is required for @dimforge/rapier3d-compat's
     // client-side WASM physics (world-lens) — narrower than 'unsafe-eval',
     // it permits WASM instantiation only, not arbitrary string-to-JS eval.
+    // Do NOT allowlist https://static.cloudflareinsights.com (or
+    // cloudflareinsights.com). Cloudflare Web Analytics auto-injects
+    // beacon.min.js at the edge; this CSP correctly refuses it. Allowing
+    // the host would contradict docs/PRIVACY_POLICY.md (no analytics, no
+    // web beacons, no third-party scripts, no analytics providers) and
+    // would not even authorize the tag: 'strict-dynamic' makes CSP3
+    // browsers ignore script-src host allowlists for a parser-inserted
+    // script that does not carry this response's nonce. Turn the snippet
+    // off in the Cloudflare dashboard (Web Analytics → disable JS
+    // injection). The app does not embed the beacon.
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
     // See header comment: nonces cannot cover the `style` HTML attribute,
     // and this app's React components use it pervasively. cdn.jsdelivr.net:
