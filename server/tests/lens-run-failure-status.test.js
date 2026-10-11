@@ -44,6 +44,26 @@ describe("shapeLensRunHttp", () => {
     assert.equal(shapeLensRunHttp({ ok: false, error: "validation_failed", errors: ["bad"] }).status, 422);
   });
 
+  it("returns missing_api_key as HTTP 200 and leaves other missing_* reasons on 422", () => {
+    const shaped = shapeLensRunHttp({
+      ok: false,
+      reason: "missing_api_key",
+      envVar: "EPA_AIRNOW_API_KEY",
+      signupUrl: "https://docs.airnowapi.org/account/request/",
+      message: "Set EPA_AIRNOW_API_KEY in .env to enable this panel.",
+    });
+    assert.equal(shaped.status, 200);
+    assert.equal(shaped.body.ok, false);
+    assert.equal(shaped.body.reason, "missing_api_key");
+    assert.equal(shaped.body.error, "missing_api_key");
+    assert.equal(shaped.body.envVar, "EPA_AIRNOW_API_KEY");
+    assert.match(shaped.body.signupUrl, /airnow/);
+    assert.equal(shaped.body.observations, undefined);
+    assert.equal(httpStatusForLensFailure("missing_inputs"), 422);
+    assert.equal(httpStatusForLensFailure("missing_world_id"), 422);
+    assert.equal(httpStatusForLensFailure("missing_required_fields"), 422);
+  });
+
   it("peels one success envelope and lifts a failure nested under one", () => {
     const ok = shapeLensRunHttp({ ok: true, result: { position: { id: "stk_1" } } });
     assert.equal(ok.status, 200);

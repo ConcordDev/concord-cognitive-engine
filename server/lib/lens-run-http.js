@@ -9,7 +9,12 @@
  * a lock, a created project, a deleted media row that never happened.
  *
  * `shapeLensRunHttp` lifts that failure to the top of the body and picks a
- * 4xx status. `unknown_macro` and the brain catch-all stay on their existing
+ * 4xx status, except the exact reason `missing_api_key`, which stays HTTP 200.
+ * That reason is an operator config gap (AirNow, FRED, NPS, OpenWeatherMap),
+ * and the panels render `{ ok:false, reason:'missing_api_key', envVar, signupUrl }`
+ * as the honest "needs a key" state. HTTP 422 makes the browser log
+ * "Failed to load resource" for that answer. Other `missing_*` reasons stay
+ * 422. `unknown_macro` and the brain catch-all stay on their existing
  * explicit HTTP 200 path in server.js — those are non-retryable "not a macro"
  * answers, not a handler refusing the action. 502/503/504 are the axios retry
  * set; nothing this module returns is in that set.
@@ -55,6 +60,10 @@ export function httpStatusForLensFailure(error, raw = {}) {
   ) {
     return 403;
   }
+
+  // Exact match only. `missing_inputs` / `missing_world_id` and the rest of
+  // the missing_* validation family stay 422 below.
+  if (e === "missing_api_key") return 200;
 
   if (
     e === "validation_failed" ||

@@ -663,6 +663,25 @@ interface LensRunSpec {
 }
 
 /**
+ * Passthrough for the exact `missing_api_key` refusal. Other `{ ok:false }`
+ * bodies stay `{ ok, result, error }` so a validation `reason` does not
+ * start appearing on callers that never read one.
+ */
+function honestKeyFields(node: unknown): { reason?: string; envVar?: string; signupUrl?: string } {
+  if (!node || typeof node !== 'object') return {};
+  const n = node as Record<string, unknown>;
+  const reason = typeof n.reason === 'string' ? n.reason : undefined;
+  const error = typeof n.error === 'string' ? n.error : undefined;
+  if (reason !== 'missing_api_key' && error !== 'missing_api_key') return {};
+  const out: { reason?: string; envVar?: string; signupUrl?: string } = {
+    reason: 'missing_api_key',
+  };
+  if (typeof n.envVar === 'string') out.envVar = n.envVar;
+  if (typeof n.signupUrl === 'string') out.signupUrl = n.signupUrl;
+  return out;
+}
+
+/**
  * lensRun — calls POST /api/lens/run and unwraps the response envelope.
  *
  * The route (server.js) wraps once: { ok, result }. registerLensAction
@@ -687,7 +706,7 @@ export async function lensRun<T = any>(
   action?: string,
   input: Record<string, unknown> = {},
   runId?: string,
-): Promise<{ data: { ok: boolean; result: T | null; error: string | null } }> {
+): Promise<{ data: { ok: boolean; result: T | null; error: string | null; reason?: string; envVar?: string; signupUrl?: string } }> {
   try {
     let domain: string;
     let act: string;
@@ -734,22 +753,27 @@ export async function lensRun<T = any>(
       node = n.result;
     }
     // Terminal { ok:false, error } (handler error path — no result key).
+    // missing_api_key also keeps envVar/signupUrl so the panel can render
+    // the honest "needs a key" state instead of a stripped error string.
     if (node && typeof node === 'object' && (node as { ok?: boolean }).ok === false) {
+      const n = node as { error?: string; reason?: string };
       return {
         data: {
           ok: false,
           result: null,
-          error: String((node as { error?: string }).error || err || 'lens error'),
+          error: String(n.error || n.reason || err || 'lens error'),
+          ...honestKeyFields(node),
         },
       };
     }
     return { data: { ok: !err, result: node as T, error: err } };
   } catch (e) {
-    const bodyErr = (e as { response?: { data?: { error?: unknown } } })?.response?.data?.error;
+    const body = (e as { response?: { data?: unknown } })?.response?.data;
+    const bodyErr = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined;
     const message = typeof bodyErr === 'string' && bodyErr
       ? bodyErr
       : e instanceof Error ? e.message : String(e);
-    return { data: { ok: false, result: null, error: message } };
+    return { data: { ok: false, result: null, error: message, ...honestKeyFields(body) } };
   }
 }
 
