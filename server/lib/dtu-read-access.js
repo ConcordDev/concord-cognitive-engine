@@ -50,6 +50,13 @@ export function viewerIdFromCtx(ctx) {
 /** True when this caller may receive the DTU's content. */
 export function ctxMayReadDtu(ctx, dtu) {
   if (ctx?.internal === true || ctx?.actor?.internal === true) return true;
+  // Boot normalization stamps ownerless oracle answers (and other
+  // non-public system rows) visibility "internal". Lists already drop
+  // those. By-id reads must too, or the id is still a public oracle.
+  // A server-internal caller above is exempt; an HTTP request is not.
+  // Public system content (news, genesis, summaries) stays visibility
+  // "public" and is unaffected.
+  if (dtu?.visibility === "internal") return false;
   return !privateDtuHiddenFrom(dtu, viewerIdFromCtx(ctx));
 }
 
