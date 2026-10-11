@@ -9,7 +9,7 @@ import { getComponent } from "../components/index.js";
 import { packageScene } from "../packaging/checks.js";
 import { obb, aabb, separation } from "../packaging/geometry.js";
 import { j941Envelope, J941_SOURCE } from "./j941.js";
-import { loftBody, wheelMesh, sectionPoint, lampMesh, grilleMesh } from "./surface.js";
+import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, resolveSpec } from "./surface.js";
 import { ASSEMBLY_SCHEMA, COORDINATE_SYSTEM, validateAssembly } from "./schema.js";
 
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -92,22 +92,33 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   const beltZ = shoulderZ(driver) != null ? shoulderZ(driver) : dc.floorZ + dc.h30 + 0.45;
   const frontDoor = openings?.doors?.find((d) => d.id === "door-front-L");
   const rearDoor = openings?.doors?.find((d) => d.id === "door-rear-L");
-  const headerX = frontDoor ? frontDoor.outline[frontDoor.outline.length - 1][0] : scene.sgRPFront.x + 0.05;
-  const cowlX = Math.min(scene.ahp.x, headerX - 0.25);
+  const aPillarBaseX = frontDoor ? frontDoor.outline[frontDoor.outline.length - 1][0] : scene.sgRPFront.x;
   const bPillarX = frontDoor ? Math.max(...frontDoor.outline.map((p) => p[0])) : (scene.sgRPFront.x + scene.sgRPRear.x) / 2;
   const cPillarX = rearDoor ? Math.max(...rearDoor.outline.map((p) => p[0])) : scene.sgRPRear.x + 0.35;
+  const rad = pkg.components?.find((c) => c.node === "RADIATOR");
+  const radP = rad && centers[rad.node];
+  const driverHead = driver?.landmarks?.headTop;
+  const rearHead = rearM?.landmarks?.headTop;
 
-  const spec = {
+  const spec = resolveSpec({
     noseX, tailX, frontAxleX, rearAxleX, halfWidth, roofZ,
-    floorZ: floorClear, beltZ, cowlX, headerX, bPillarX, cPillarX,
+    floorZ: floorClear, beltZ, bPillarX, cPillarX, aPillarBaseX,
     track, tyreRadius: tyreR, tyreHalfWidth: tyreW / 2,
     tyreCenterZ: centers.TIRE_FL?.z ?? tyreR,
-    noseTipZ: Math.max(0.22, floorClear + 0.12),
-    kammRatio: 0.45, noseExponent: 1.6, upperExponent: 2.8, lowerExponent: 6.5,
-    noseRoundExponent: 2.8, fastbackDeg: 18, fenderCover: 0.02,
-    openings: (openings?.doors || []).map((d) => ({ outline: d.outline, side: d.side })),
-  };
-  const loft = loftBody(spec, { stations: 36, section: 40 });
+    noseTipZ: Math.max(0.22, floorClear + 0.1),
+    kammRatio: 0.45,
+    ahpX: scene.ahp.x,
+    headX: driverHead?.[0],
+    rearHeadX: rearHead?.[0],
+    roofHoldX: rearAxleX,
+    archGap: 0.032,
+    grilleHalfY: rad ? Math.min(rad.half[1], halfWidth * 0.62) : halfWidth * 0.32,
+    grilleHalfZ: 0.055,
+    grilleZ: Math.max(floorClear + 0.12, (radP?.z ?? 0.32) - (rad?.half?.[2] || 0.2) * 0.45),
+  });
+  const loft = loftBody(spec);
+  const cowlX = spec.cowlX;
+  const headerX = spec.headerX;
 
   const components = [];
   const heightProvenance = measuredRoof != null
@@ -123,7 +134,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       param("wheelbase", "Wheelbase", rearAxleX - frontAxleX, "m", prov("calculated", "rearAxleX − frontAxleX")),
       param("overallLength", "Overall length", tailX - noseX, "m", heightProvenance.state === "calculated" && measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "nose and tail stations")),
       param("overallWidth", "Overall width", halfWidth * 2, "m", measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "track + tyre + fender, capped at the body maxWidth design choice 1.95 m")),
-      param("overallHeight", "Overall height", roofZ, "m", heightProvenance),
+      param("overallHeight", "Overall height", roofZ, "m", { ...heightProvenance, note: `${heightProvenance.note || ""} The 95th-percentile male head sets this roof (about ${(roofZ).toFixed(2)} m). It stays at that height through the rear head, so the fastback is only the rear overhang.`.trim() }),
+      param("windshieldRake", "Windshield rake from vertical", spec.rakeDeg, "deg", prov("calculated", "rise from the low cowl to the header over tan(60°); pulled forward only if the header would pass the driver head")),
       param("groundClearance", "Ground clearance", spec.floorZ, "m", measuredRoof ? prov("calculated", "cad.body min z") : prov("calculated", "floorZ minus the skin offset, floored at 80 mm")),
       param("beltZ", "Beltline", beltZ, "m", prov("calculated", "M95 acromion height (ANSUR II sitting)", "greenhouse base")),
       param("kammRatio", "Kamm area ratio", 0.45, "1", prov("assumed", "CAD_BODY_DEFAULTS kammAreaRatio", "design choice, not Kamm's 50 percent figure")),
@@ -140,10 +152,12 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     id: "GLAZING", name: "Greenhouse glass", group: "exterior", role: "glass",
     placement: { x: (cowlX + cPillarX) / 2, y: 0, z: (beltZ + roofZ) / 2 },
     half: [(cPillarX - cowlX) / 2, halfWidth * 0.85, (roofZ - beltZ) / 2],
-    geometry: { ...envelope("the loft faces above the beltline between the cowl and the backlight. Not an optical solid; transmission in the viewer is a material."), representation: "body-faces" },
+    geometry: { ...envelope("glass patches bounded by the cowl, header, belt and roof-rail splines, offset 4 mm outboard of the skin. Not an optical solid."), representation: "dlo-patch" },
     parameters: [
       param("beltZ", "Beltline", beltZ, "m", prov("calculated", "M95 shoulder height")),
-      param("cowlX", "Cowl", cowlX, "m", prov("calculated", "ahead of the A-pillar header, at or forward of the accelerator heel point")),
+      param("cowlX", "Cowl", cowlX, "m", prov("calculated", "behind the front arch, near the accelerator heel")),
+      param("headerX", "Header", headerX, "m", prov("calculated", "cowl plus the run of a 60° windshield, kept ahead of the driver head")),
+      param("rake", "Rake from vertical", spec.rakeDeg, "deg", prov("calculated", "atan(run / rise)")),
     ],
     relationships: [
       { kind: "mounted-to", target: "BODY_SHELL", note: "same loft; glass is the greenhouse region" },
@@ -387,7 +401,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
   }));
   components.push(part({
     id: "SPARE", name: "Spare tire", group: "storage", role: "spare",
-    placement: { x: tailX, y: 0, z: dc.floorZ },
+    placement: { x: rearBack + trunkLen / 2, y: 0, z: dc.floorZ + 0.05 },
     half: [0, 0, 0],
     geometry: envelope("not specified by the design, so not placed"),
     parameters: [param("specified", "Specified", 0, "1", prov("assumed", "the brief does not ask for a spare"))],
@@ -395,36 +409,26 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
     explode: { axis: "z", sign: 1, rank: 0 },
   }));
 
-  // Lamps and grille sit on the nose section. Lenses are not engineered optics.
-  const lampX = noseX + (frontAxleX - noseX) * 0.36;
-  const lampHalf = [0.03, 0.11, 0.028];
-  for (const side of [-1, 1]) {
-    const ang = side < 0 ? Math.PI * 2 - 0.72 : 0.72;
-    const onSkin = sectionPoint(spec, lampX, ang);
-    const placement = { x: onSkin[0] - 0.012, y: onSkin[1], z: onSkin[2] };
+  for (const d of loft.details) {
+    const explode = d.role === "mirror" || d.role === "handle"
+      ? { axis: "y", sign: d.placement.y < 0 ? -1 : 1, rank: 4 }
+      : { axis: "x", sign: d.id.startsWith("TAIL") ? 1 : -1, rank: 4 };
     components.push(part({
-      id: side < 0 ? "LAMP_L" : "LAMP_R", name: side < 0 ? "Headlamp left" : "Headlamp right", group: "exterior", role: "lamp",
-      placement,
-      half: lampHalf,
-      geometry: envelope("lens on the nose section, 60 mm deep by 220 mm wide by 56 mm tall. Aim, photometry and the lamp unit are not engineered."),
-      parameters: [param("z", "Lens height", placement.z, "m", prov("calculated", "section point on the nose, 0.72 rad down from the crown"))],
-      relationships: [{ kind: "mounted-to", target: "BODY_SHELL", note: "on the loft, just ahead of the nose station" }],
-      explode: { axis: "x", sign: -1, rank: 4 },
+      id: d.id, name: d.name, group: "exterior", role: d.role,
+      placement: d.placement, half: d.half,
+      geometry: envelope(d.note),
+      parameters: [
+        param("x", "Station", d.placement.x, "m", prov("calculated", "on the skin spline")),
+        param("z", "Height", d.placement.z, "m", prov("calculated", "on the skin spline")),
+        ...(d.id === "GRILLE" ? [param("width", "Opening width", d.half[1] * 2, "m", rad ? prov("calculated", "radiator face width, clipped to the bumper") : prov("estimated", "no radiator in the layout"))] : []),
+      ],
+      relationships: d.id === "GRILLE" && rad
+        ? [{ kind: "aligned-to", target: "RADIATOR", note: "width follows the radiator face; the slot is recessed in the bumper" }]
+        : [{ kind: "mounted-to", target: "BODY_SHELL", note: "on the skin, offset a few millimetres outboard" }],
+      explode,
+      mesh: d.mesh,
     }));
   }
-  const rad = pkg.components?.find((c) => c.node === "RADIATOR");
-  const grilleHalf = [0.015, Math.min(rad?.half?.[1] || 0.22, halfWidth * 0.42), Math.min(rad?.half?.[2] || 0.08, 0.07)];
-  const grilleX = noseX + (frontAxleX - noseX) * 0.18;
-  const grilleOnSkin = sectionPoint(spec, grilleX, Math.PI);
-  components.push(part({
-    id: "GRILLE", name: "Cooling intake", group: "exterior", role: "intake",
-    placement: { x: grilleOnSkin[0] - 0.01, y: 0, z: Math.max(grilleOnSkin[2], floorClear + grilleHalf[2] + 0.02) },
-    half: grilleHalf,
-    geometry: envelope("slatted opening sized from the radiator face and clipped to the nose section. Not a styled grille, and not a badge."),
-    parameters: [param("width", "Opening width", grilleHalf[1] * 2, "m", rad ? prov("sourced", "radiator library width, clipped to the nose") : prov("assumed", "no radiator dimensions"))],
-    relationships: rad ? [{ kind: "aligned-to", target: "RADIATOR", note: "width follows the radiator face" }] : [],
-    explode: { axis: "x", sign: -1, rank: 4 },
-  }));
 
   // Tub members that carry a box, capped so the document stays usable.
   let tubCount = 0;
@@ -456,12 +460,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null } = {}) {
       verified: ["library component boxes", "J1100 dimensions from the H-points", "J941 eyellipse centroid", "fit checks listed here"],
       geometricOnly: ["viewer body loft", "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
     },
-    surface: { spec: { ...spec, roofZ: r4(roofZ), noseX: r4(noseX), tailX: r4(tailX), halfWidth: r4(halfWidth), beltZ: r4(beltZ), openings: undefined }, mesh: loft },
+    surface: { spec: loft.spec, mesh: (({ details: _d, spec: _s, ...mesh }) => mesh)(loft) },
     wheel,
-    detail: {
-      lamp: lampMesh(lampHalf),
-      grille: grilleMesh(grilleHalf),
-    },
     components,
     checks,
     standards,
@@ -497,11 +497,22 @@ function fitChecks(ctx) {
   for (const [label, occ] of [["M95", ctx.driver], ["F5", ctx.driverF5]]) {
     if (!occ) { add(`head-${label}`, "warn", `${label} was not seated, so head clearance is not checked`); continue; }
     const top = occ.landmarks.headTop[1];
-    const gap = ctx.roofZ - 0.004 - top; // 4 mm inner skin, approximate
+    const hx = occ.landmarks.headTop[0];
+    const local = ctx.spec ? crownAt(ctx.spec, hx) : ctx.roofZ;
+    const gap = local - 0.004 - top;
     const minRoof = r4(top + 0.004);
     add(`head-${label}`, gap >= 0 ? "pass" : "fail",
-      `${label} head top at ${mm(top)} mm, roof inner at ${mm(ctx.roofZ - 0.004)} mm, gap ${mm(gap)} mm`,
+      `${label} head top at ${mm(top)} mm (x ${mm(hx)} mm), roof at that station ${mm(local)} mm, inner gap ${mm(gap)} mm`,
       { valueM: r4(gap), minimumOverallHeightM: minRoof, occupant: label });
+  }
+  if (ctx.rearM?.landmarks?.headTop) {
+    const top = ctx.rearM.landmarks.headTop[1];
+    const hx = ctx.rearM.landmarks.headTop[0];
+    const local = ctx.spec ? crownAt(ctx.spec, hx) : ctx.roofZ;
+    const gap = local - 0.004 - top;
+    add("head-M95-rear", gap >= 0 ? "pass" : "fail",
+      `rear M95 head top at ${mm(top)} mm (x ${mm(hx)} mm), roof at that station ${mm(local)} mm, inner gap ${mm(gap)} mm`,
+      { valueM: r4(gap), minimumOverallHeightM: r4(top + 0.004) });
   }
   if (ctx.measuredRoof != null && ctx.minInnerRoof != null && ctx.measuredRoof < ctx.minInnerRoof) {
     add("roof-vs-solved-height", "fail",
@@ -562,20 +573,36 @@ function fitChecks(ctx) {
     } else add("wheel-footwell", "warn", "foot or front tyre missing, steer sweep not checked");
   } else add("wheel-footwell", "warn", "no steering lock, steer sweep not checked");
 
-  // Door ingress: aperture top vs seated head, when openings exist.
-  if (!ctx.openings?.doors) add("ingress", "warn", "no door apertures in this design, J1100 entrance height not checked");
+  // Door ingress uses the skin cut, which is the roof rail solved with the roof.
+  if (!ctx.spec) add("ingress", "warn", "no body spec, door aperture not checked");
+  else if (!ctx.driver) add("ingress", "warn", "driver head missing");
   else {
-    const front = ctx.openings.doors.find((d) => d.id === "door-front-L");
-    const top = front ? Math.max(...front.outline.map((q) => q[1])) : null;
-    const need = ctx.driver ? ctx.driver.landmarks.headTop[1] : null;
-    if (top == null || need == null) add("ingress", "warn", "front door or driver head missing");
-    else {
-      const gap = top - need;
-      add("ingress", gap >= 0 ? "pass" : "fail",
-        `front door aperture top ${mm(top)} mm, M95 head top ${mm(need)} mm, gap ${mm(gap)} mm. J1100 H11 is this class of dimension; no minimum entrance height is published, so the threshold is the head itself.`,
-        { valueM: r4(gap), minimumApertureTopM: r4(need) });
-    }
+    const front = ctx.openings?.doors?.find((d) => d.id === "door-front-L");
+    const x0 = front ? Math.min(...front.outline.map((q) => q[0])) : ctx.spec.cowlX;
+    const x1 = front ? Math.max(...front.outline.map((q) => q[0])) : ctx.spec.bPillarX;
+    const top = skinApertureTop(ctx.spec, x0, x1);
+    const need = ctx.driver.landmarks.headTop[1];
+    const gap = top - need;
+    const tub = front ? Math.max(...front.outline.map((q) => q[1])) : null;
+    const tubNote = tub == null ? "" : ` Tub outline top is ${mm(tub)} mm; the skin cut is the roof rail, not that outline.`;
+    const conflict = gap < 0 ? " The roof rail is below the head, so this is a packaging conflict at this height." : "";
+    add("ingress", gap >= 0 ? "pass" : "fail",
+      `skin door aperture (roof rail) ${mm(top)} mm, M95 head top ${mm(need)} mm, gap ${mm(gap)} mm.${tubNote}${conflict} J1100 H11 is this class of dimension; no minimum entrance height is published, so the threshold is the head itself.`,
+      { valueM: r4(gap), minimumApertureTopM: r4(need) });
   }
+
+  const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle"]);
+  const outside = [];
+  for (const c of ctx.components) {
+    if (EXTERIOR.has(c.role) || c.id === "SPARE") continue;
+    if (!c.half || c.half.every((h) => h === 0)) continue;
+    if (!boxInsideEnvelope(ctx.spec, c.placement, c.half, 0.05)) outside.push(c.id);
+  }
+  if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
+  else if (outside.length) add("containment", "fail",
+    `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.`,
+    { outside });
+  else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
 
   // Pillar vs occupant: B-pillar x should sit between the rows.
   if (ctx.spec) {
@@ -603,6 +630,55 @@ export function fitText(checks) {
   const status = fitStatus(checks);
   const bits = (checks || []).map((c) => `${c.id} ${c.status}`);
   return `Packaging fit: ${status}. ${bits.join("; ")}.`;
+}
+
+/** Drop generated triangles. The spec is enough to rebuild the meshes. */
+export function compactAssembly(doc) {
+  if (!doc?.surface?.spec) return doc;
+  const mesh = doc.surface.mesh || {};
+  const components = (doc.components || []).map((c) => {
+    if (!c.mesh) return c;
+    if (c.mesh.outline) return { ...c, mesh: { outline: c.mesh.outline, side: c.mesh.side } };
+    const { mesh, ...rest } = c;
+    void mesh;
+    return rest;
+  });
+  return {
+    ...doc,
+    surface: {
+      spec: doc.surface.spec,
+      mesh: {
+        bounds: mesh.bounds, stations: mesh.stations, capped: mesh.capped,
+        arches: mesh.arches, windshield: mesh.windshield, generated: "runtime",
+      },
+    },
+    wheel: doc.wheel?.spec ? { spec: doc.wheel.spec } : doc.wheel,
+    components,
+  };
+}
+
+/** Rebuild meshes from surface.spec. Does not mutate the snapshot object. */
+export function hydrateAssembly(doc) {
+  if (!doc?.surface?.spec || doc.surface.mesh?.positions?.length) return doc;
+  const built = loftBody(doc.surface.spec);
+  const { details, spec, ...mesh } = built;
+  const byId = new Map((details || []).map((d) => [d.id, d]));
+  const wheel = doc.wheel?.spec ? wheelMesh({
+    overallDiameterM: doc.wheel.spec.overallDiameterM,
+    sectionWidthM: doc.wheel.spec.sectionWidthM,
+    rimDiameterM: doc.wheel.spec.rimDiameterM,
+    rimWidthM: doc.wheel.spec.rimWidthM,
+    spokes: doc.wheel.spec.spokes,
+  }) : doc.wheel;
+  return {
+    ...doc,
+    surface: { spec, mesh },
+    wheel,
+    components: (doc.components || []).map((c) => {
+      const d = byId.get(c.id);
+      return d ? { ...c, mesh: d.mesh } : c;
+    }),
+  };
 }
 
 /** Side-view projection of a component's placement box. Metres, [x, z]. */

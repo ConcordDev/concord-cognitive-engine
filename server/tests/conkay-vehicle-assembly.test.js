@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { assemblyFromIr, fitStatus } from "../lib/conkay/assembly/build.js";
+import { boxInsideEnvelope } from "../lib/conkay/assembly/surface.js";
 import { validateAssembly } from "../lib/conkay/assembly/schema.js";
 import { j941Centroid } from "../lib/conkay/assembly/j941.js";
 import { buildPackagingSheet } from "../lib/conkay/drawings/ga-drawing.js";
@@ -63,17 +64,99 @@ describe("assembly of the library car", () => {
     }
   });
 
-  it("caps the body tessellation and clears the driver head on the derived roof", () => {
-    assert.ok(doc.surface.mesh.capped.stations <= 40);
-    assert.ok(doc.surface.mesh.capped.section <= 48);
+  it("lofts a capped spline skin, its own glass, and arches the wheels sit in", () => {
+    const mesh = doc.surface.mesh;
+    assert.ok(mesh.capped.stations >= 16, `stations ${mesh.capped.stations}`);
+    assert.ok(mesh.capped.triangles <= 200000);
+    assert.ok(mesh.stations.length >= 16);
     const head = doc.checks.find((c) => c.id === "head-M95");
     assert.equal(head.status, "pass");
-    const paintN = doc.surface.mesh.positions.length / 3;
-    for (const i of doc.surface.mesh.paint.concat(doc.surface.mesh.glass)) assert.ok(i >= 0 && i < paintN);
-    assert.ok(doc.surface.mesh.glass.length > 100, "greenhouse faces");
-    const nose = doc.surface.mesh.stations.find((s) => s.role === "nose");
-    const mid = doc.surface.mesh.stations.find((s) => s.role === "b-pillar");
+    const paintN = mesh.positions.length / 3;
+    for (const i of mesh.paint) assert.ok(i >= 0 && i < paintN);
+    const glass = mesh.glass;
+    assert.ok(glass && !Array.isArray(glass) && glass.positions.length > 100, "glass is its own patch");
+    const glassN = glass.positions.length / 3;
+    for (const i of glass.indices) assert.ok(i >= 0 && i < glassN);
+    // Offset is a few millimetres off the skin, not a coincident triangle.
+    let nearest = Infinity;
+    const gp = glass.positions;
+    const sample = [gp[0], gp[1], gp[2]];
+    for (let i = 0; i < mesh.positions.length; i += 3) {
+      const d = Math.hypot(mesh.positions[i] - sample[0], mesh.positions[i + 1] - sample[1], mesh.positions[i + 2] - sample[2]);
+      if (d < nearest) nearest = d;
+    }
+    assert.ok(nearest > 0.001 && nearest < 0.02, `glass offset ${nearest}`);
+    assert.ok(Math.abs(mesh.windshield.rakeFromVerticalDeg - 60) < 1, mesh.windshield);
+    const nose = mesh.stations.find((s) => s.role === "nose");
+    const mid = mesh.stations.find((s) => s.role === "b-pillar");
     assert.ok(nose.halfWidth < mid.halfWidth * 0.55, `nose ${nose.halfWidth} vs cabin ${mid.halfWidth}`);
+    for (const arch of mesh.arches) {
+      assert.ok(arch.gap >= 0.025 && arch.gap <= 0.04, arch.gap);
+      let covered = 0;
+      const used = new Set(mesh.paint);
+      for (let i = 0; i < mesh.positions.length; i += 3) {
+        if (!used.has(i / 3)) continue;
+        const y = Math.abs(mesh.positions[i + 1]);
+        const d = Math.hypot(mesh.positions[i] - arch.x, mesh.positions[i + 2] - arch.z);
+        if (y > 0.9 && d < arch.radius - 0.02) covered++;
+      }
+      assert.equal(covered, 0, `arch at ${arch.x} still has outer skin inside the opening`);
+    }
+    // Left and right skins match.
+    const pos = mesh.positions;
+    const key = (x, z) => `${x.toFixed(3)},${z.toFixed(3)}`;
+    const ys = new Map();
+    for (let i = 0; i < pos.length; i += 3) {
+      const k = key(pos[i], pos[i + 2]);
+      if (!ys.has(k)) ys.set(k, []);
+      ys.get(k).push(pos[i + 1]);
+    }
+    let bad = 0;
+    for (const row of ys.values()) {
+      const hi = Math.max(...row.map(Math.abs));
+      const hasPos = row.some((y) => y > hi - 0.008);
+      const hasNeg = row.some((y) => y < -hi + 0.008);
+      if (hi > 0.2 && (!hasPos || !hasNeg)) bad++;
+    }
+    assert.ok(bad < 30, `asymmetric stations ${bad}`);
+  });
+
+  it("keeps every non-exterior box inside the body or names it as a packaging failure", () => {
+    const mesh = doc.surface.mesh;
+    const containment = doc.checks.find((c) => c.id === "containment");
+    assert.ok(containment);
+    const outside = new Set(containment.outside || []);
+    const exterior = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle", "spare"]);
+    for (const c of doc.components) {
+      if (exterior.has(c.role) || c.id === "SPARE") continue;
+      if (!c.half || c.half.every((h) => h === 0)) continue;
+      const inside = boxInsideEnvelope(doc.surface.spec, c.placement, c.half, 0.05);
+      if (inside) assert.equal(outside.has(c.id), false, `${c.id} is inside but listed`);
+      else assert.ok(outside.has(c.id), `${c.id} is outside the envelope and was not flagged`);
+    }
+    if (containment.status === "fail") {
+      for (const id of outside) assert.ok(doc.components.some((c) => c.id === id), id);
+      assert.ok(outside.has("ENGINE") || outside.has("RADIATOR"), "the low hood does not silently swallow the powertrain");
+    }
+    const grille = doc.components.find((c) => c.id === "GRILLE");
+    assert.ok(grille.placement.x > mesh.bounds.min[0], "grille is aft of the nose");
+    assert.ok(grille.placement.x < mesh.bounds.min[0] + 0.4);
+    const spare = doc.components.find((c) => c.id === "SPARE");
+    assert.ok(spare.placement.x > mesh.bounds.min[0] && spare.placement.x < mesh.bounds.max[0]);
+    assert.ok(spare.half.every((h) => h === 0), "an unspecified spare is not given a body");
+    const ingress = doc.checks.find((c) => c.id === "ingress");
+    assert.equal(ingress.status, "pass");
+    assert.match(ingress.detail, /Tub outline/);
+    const fl = doc.components.find((c) => c.id === "TIRE_FL");
+    const rl = doc.components.find((c) => c.id === "TIRE_RL");
+    assert.equal(fl.placement.z, doc.wheel.spec.overallDiameterM / 2);
+    assert.equal(fl.placement.x, doc.components.find((c) => c.id === "AXLE_FRONT").placement.x);
+    assert.equal(rl.placement.x, doc.components.find((c) => c.id === "AXLE_REAR").placement.x);
+    assert.ok(doc.wheel.caliper.positions.length / 3 > 8, "caliper is not a single box");
+    assert.ok(doc.components.some((c) => c.id === "MIRROR_L" && c.mesh?.positions?.length));
+    assert.ok(doc.components.some((c) => c.id === "HANDLE_FL" && c.mesh?.positions?.length));
+    assert.ok(doc.components.some((c) => c.id === "LAMP_L" && c.mesh?.positions?.length));
+    assert.ok(doc.components.some((c) => c.id === "TAIL_L" && c.mesh?.positions?.length));
   });
 
   it("fails a roof that is below the 95th male head and names the minimum height", () => {

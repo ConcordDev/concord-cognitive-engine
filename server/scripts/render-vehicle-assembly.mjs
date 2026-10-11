@@ -64,12 +64,23 @@ const group = new THREE.Group();
 group.position.x = -cx;
 scene.add(group);
 
+function vehiclePositions(src, normals) {
+  const positions = [];
+  const outN = [];
+  const hasN = normals && normals.length === src.length;
+  for (let i = 0; i < src.length; i += 3) {
+    positions.push(src[i], src[i + 2], -src[i + 1]);
+    if (hasN) outN.push(normals[i], normals[i + 2], -normals[i + 1]);
+  }
+  return { positions, normals: hasN ? outN : null };
+}
 function geo(mesh, index) {
+  const v = vehiclePositions(mesh.positions, mesh.normals);
   const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(mesh.positions, 3));
-  if (mesh.normals && mesh.normals.length === mesh.positions.length) g.setAttribute("normal", new THREE.Float32BufferAttribute(mesh.normals, 3));
+  g.setAttribute("position", new THREE.Float32BufferAttribute(v.positions, 3));
+  if (v.normals) g.setAttribute("normal", new THREE.Float32BufferAttribute(v.normals, 3));
   g.setIndex(index || mesh.indices);
-  if (!mesh.normals) g.computeVertexNormals();
+  if (!v.normals) g.computeVertexNormals();
   return g;
 }
 
@@ -86,13 +97,20 @@ const paintMat = engineering
   ? new THREE.MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true, transparent: true, opacity: 0.45, clippingPlanes: clip })
   : new THREE.MeshPhysicalMaterial({ color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip });
 const glassMat = new THREE.MeshPhysicalMaterial({
-  color: 0x9ec4d4, metalness: 0, roughness: 0.05, transmission: engineering ? 0.2 : 0.86,
-  thickness: 0.4, transparent: true, opacity: engineering ? 0.35 : 1, clippingPlanes: clip,
+  color: 0x102028, metalness: 0, roughness: 0.04, transmission: engineering ? 0.15 : 0.48,
+  thickness: 0.8, transparent: true, opacity: engineering ? 0.4 : 1, clippingPlanes: clip,
 });
 const body = new THREE.Mesh(geo(assembly.surface.mesh, assembly.surface.mesh.paint), paintMat);
 body.castShadow = body.receiveShadow = true;
 group.add(body);
-group.add(new THREE.Mesh(geo(assembly.surface.mesh, assembly.surface.mesh.glass), glassMat));
+const glassSrc = assembly.surface.mesh.glass;
+const glassMesh = glassSrc && glassSrc.positions
+  ? geo(glassSrc)
+  : geo(assembly.surface.mesh, glassSrc);
+group.add(new THREE.Mesh(glassMesh, glassMat));
+if (assembly.surface.mesh.arch && assembly.surface.mesh.arch.positions) {
+  group.add(new THREE.Mesh(geo(assembly.surface.mesh.arch), new THREE.MeshStandardMaterial({ color: 0x141618, roughness: 0.92, metalness: 0.05, side: THREE.DoubleSide, clippingPlanes: clip })));
+}
 
 const wheels = assembly.components.filter((c) => c.role === "wheel");
 const parts = [
@@ -117,25 +135,33 @@ for (const [name, mat] of parts) {
 }
 
 const groupColor = { exterior: 0x9aa3ad, wheels: 0x2a2a2a, chassis: 0x8d6a45, powertrain: 0xc45c26, interior: 0x4c6b8a, storage: 0x6b7c5a };
+const outside = new Set((assembly.checks.find((c) => c.id === "containment" && c.status === "fail") || {}).outside || []);
 for (const c of assembly.components) {
-  if (!c.half || c.role === "wheel" || c.role === "body" || c.role === "glass" || c.role === "opening" || c.id === "SPARE") continue;
-  const studioDetail = c.role === "lamp" || c.role === "intake";
+  if (c.role === "wheel" || c.role === "body" || c.role === "glass" || c.role === "opening" || c.role === "axle" || c.id === "SPARE") continue;
+  if (!engineering && outside.has(c.id)) continue;
+  const studioDetail = c.role === "lamp" || c.role === "intake" || c.role === "mirror" || c.role === "handle";
   if (!showInterior && !studioDetail) continue;
+  if (!c.half && !(c.mesh && c.mesh.positions)) continue;
   const [x, y, z] = shift(c, explode);
   const [tx, ty, tz] = toThree(x, y, z);
   let g;
-  if (c.role === "lamp" && assembly.detail?.lamp) g = geo(assembly.detail.lamp);
+  if (c.mesh && c.mesh.positions && c.mesh.indices) g = geo(c.mesh);
+  else if (c.role === "lamp" && assembly.detail?.lamp) g = geo(assembly.detail.lamp);
   else if (c.role === "intake" && assembly.detail?.grille) g = geo(assembly.detail.grille);
+  else if (!c.half) continue;
   else g = new THREE.BoxGeometry(c.half[0] * 2, c.half[2] * 2, c.half[1] * 2);
   let mat;
-  if (c.role === "lamp") mat = new THREE.MeshPhysicalMaterial({ color: 0xe7eef8, emissive: 0xf7fbff, emissiveIntensity: engineering ? 0.4 : 1.6, roughness: 0.08, clearcoat: 1, clippingPlanes: clip });
+  const tail = String(c.id).startsWith("TAIL");
+  if (c.role === "lamp") mat = new THREE.MeshPhysicalMaterial({ color: tail ? 0xffd0d4 : 0xe7eef8, emissive: tail ? 0xff2a3a : 0xf7fbff, emissiveIntensity: engineering ? 0.4 : 1.6, roughness: 0.08, clearcoat: 1, clippingPlanes: clip });
   else if (c.role === "intake") mat = new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.72, metalness: 0.4, clippingPlanes: clip });
+  else if (c.role === "mirror") mat = new THREE.MeshPhysicalMaterial({ color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip });
+  else if (c.role === "handle") mat = new THREE.MeshStandardMaterial({ color: 0x2a2e33, metalness: 0.85, roughness: 0.28, clippingPlanes: clip });
   else mat = new THREE.MeshLambertMaterial({ color: groupColor[c.group] || 0x888888, flatShading: engineering, transparent: true, opacity: engineering ? 0.85 : 0.55, clippingPlanes: clip });
   const m = new THREE.Mesh(g, mat);
   m.position.set(tx, ty, tz);
   group.add(m);
 }
-for (const c of assembly.components.filter((d) => d.role === "opening" && d.mesh?.outline)) {
+if (engineering) for (const c of assembly.components.filter((d) => d.role === "opening" && d.mesh?.outline)) {
   const [x, y, z] = shift(c, explode);
   const side = c.mesh.side === "L" ? -0.004 : 0.004;
   const pts = c.mesh.outline.map(([ox, oz]) => new THREE.Vector3(...toThree(ox, y + side, oz)));
@@ -169,8 +195,9 @@ scene.add(ground);
 const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.05, 80);
 if (view === "section") camera.position.set(nose + 1.2, 1.15, 3.3);
 else if (view === "exploded") camera.position.set(nose - 0.4, 1.7, 4.2);
+else if (view === "side") camera.position.set(0.2, 0.72, 7.2);
 else camera.position.set(nose - 1.8, 0.92, 2.6);
-camera.lookAt(nose * 0.2, 0.5, 0);
+camera.lookAt(view === "side" ? 0 : nose * 0.2, view === "side" ? 0.58 : 0.5, 0);
 renderer.render(scene, camera);
 requestAnimationFrame(() => { renderer.render(scene, camera); window.__ready = true; });
 </script></body></html>`;
@@ -204,7 +231,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const shots = {};
-for (const view of ["studio", "exploded", "section", "engineering"]) {
+for (const view of ["studio", "exploded", "section", "engineering", "side"]) {
   await page.goto(`http://127.0.0.1:${port}/studio.html?view=${view}`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
   await page.waitForTimeout(250);
