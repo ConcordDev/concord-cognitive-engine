@@ -24,6 +24,17 @@ interface MarketListingItem {
   type?: string;
   rating?: number;
   purchases?: number;
+  userId?: string;
+  owner_user_id?: string;
+  sellerId?: string;
+  seller_id?: string;
+}
+
+function isSystemListing(listing: MarketListingItem) {
+  const owner = listing.userId || listing.owner_user_id || '';
+  if (owner === 'system') return true;
+  const seller = listing.sellerId || listing.seller_id || '';
+  return owner === '' && seller === 'system';
 }
 
 type SortField = 'newest' | 'price-asc' | 'price-desc' | 'popular';
@@ -105,9 +116,13 @@ export function MarketListingsPanel() {
     },
   });
 
-  const filteredListings = useMemo(() => {
+  const catalog = useMemo(() => {
     const raw: MarketListingItem[] = listings?.listings || [];
-    let result = raw;
+    return raw.filter((l) => !isSystemListing(l));
+  }, [listings]);
+
+  const filteredListings = useMemo(() => {
+    let result = catalog;
     if (filterType !== 'all') result = result.filter((l) => l.type === filterType);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -123,11 +138,11 @@ export function MarketListingsPanel() {
         result = [...result].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }
     return result;
-  }, [listings, filterType, searchQuery, sortBy]);
+  }, [catalog, filterType, searchQuery, sortBy]);
 
   const totalVolume = listings?.volume ?? 0;
   const totalTransactions = listings?.transactions ?? 0;
-  const totalListings = listings?.listings?.length || 0;
+  const totalListings = catalog.length;
   const libraryCount = listings?.library?.length ?? 0;
 
   if (isLoading) {
@@ -154,10 +169,12 @@ export function MarketListingsPanel() {
         <button className="px-3 py-2 text-sm bg-lattice-surface rounded-lg text-gray-400 hover:text-white transition-colors" onClick={() => refetch()} aria-label="Refresh">
           <RefreshCw className="w-4 h-4" />
         </button>
-        <button className="btn-neon purple" onClick={() => setShowCreate(!showCreate)}>
-          <Store className="w-4 h-4 mr-2 inline" />
-          Create Listing
-        </button>
+        {totalListings > 0 && (
+          <button className="btn-neon purple" onClick={() => setShowCreate(!showCreate)}>
+            <Store className="w-4 h-4 mr-2 inline" />
+            Create Listing
+          </button>
+        )}
       </div>
 
       {wallet && (
@@ -290,11 +307,18 @@ export function MarketListingsPanel() {
           {filteredListings.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-              <p className="text-gray-400 mb-2">
-                {searchQuery || filterType !== 'all' ? 'No listings match your filters' : 'No listings yet. Create the first marketplace listing!'}
-              </p>
-              {(searchQuery || filterType !== 'all') && (
-                <button onClick={() => { setSearchQuery(''); setFilterType('all'); }} className="text-sm text-neon-purple hover:underline">Clear filters</button>
+              {searchQuery || filterType !== 'all' ? (
+                <>
+                  <p className="text-gray-400 mb-2">No listings match your filters</p>
+                  <button onClick={() => { setSearchQuery(''); setFilterType('all'); }} className="text-sm text-neon-purple hover:underline">Clear filters</button>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-400 mb-3">No listings yet. List a DTU</p>
+                  <button type="button" className="btn-neon purple text-sm" onClick={() => setShowCreate(true)}>
+                    List a DTU
+                  </button>
+                </>
               )}
             </div>
           ) : (

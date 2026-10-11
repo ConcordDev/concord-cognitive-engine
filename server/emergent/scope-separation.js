@@ -675,7 +675,8 @@ export function listDtusByScope(STATE, scope, opts = {}) {
   if (!isValidScope(scope)) {
     return { ok: false, error: `invalid_scope: ${scope}` };
   }
-  const limit = Math.min(Math.max(opts.limit || 50, 1), 500);
+  const limit = Math.min(Math.max(Number(opts.limit) || 50, 1), 500);
+  const offset = Math.max(0, Math.trunc(Number(opts.offset) || 0));
   const userId = opts.userId || opts.actorId || null;
   const dtus = [];
   for (const dtu of STATE.dtus.values()) {
@@ -685,7 +686,7 @@ export function listDtusByScope(STATE, scope, opts = {}) {
     dtus.push(dtu);
   }
   const sorted = dtus.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-  return { ok: true, scope, dtus: sorted.slice(0, limit), total: dtus.length };
+  return { ok: true, scope, dtus: sorted.slice(offset, offset + limit), total: sorted.length, limit, offset };
 }
 
 /**

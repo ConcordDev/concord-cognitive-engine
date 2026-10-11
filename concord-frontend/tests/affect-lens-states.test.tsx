@@ -45,14 +45,11 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
-// ── lens hooks + bridge ──────────────────────────────────────────────────────
+// ── lens artifact hooks ──────────────────────────────────────────────────────
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useArtifacts: () => ({ data: [], isLoading: false }),
   useCreateArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn() }),
   useRunArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(() => Promise.resolve({ ok: true, result: {} })), isPending: false }),
-}));
-vi.mock('@/lib/hooks/use-lens-bridge', () => ({
-  useLensBridge: () => ({ selectedId: null, sync: vi.fn() }),
 }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));

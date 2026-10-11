@@ -5,10 +5,7 @@
 
 import { Router } from 'express';
 import {
-  parseDesignIntent,
-  intentToPartMeshParams,
-  intentToFeaModel,
-  buildPartMesh,
+  solveDesignText,
   feaUtilToColor,
 } from '../lib/conkay/nlp-design-intent.js';
 import {
@@ -84,44 +81,37 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
   router.post('/design', auth, async (req, res) => {
     try {
       const text = req.body?.text ?? req.body?.prompt ?? '';
-      const parsed = parseDesignIntent(String(text));
-      if (!parsed.ok) {
-        return res.status(400).json({ ok: false, error: parsed.error, code: parsed.code });
+      const solved = solveDesignText(String(text));
+      if (!solved.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: solved.error,
+          code: solved.code,
+          ...(solved.supportedParts ? { supportedParts: solved.supportedParts } : {}),
+        });
       }
-      const intent = parsed.intent;
-      const { kind, params } = intentToPartMeshParams(intent);
-      const mesh = buildPartMesh(kind, params);
-
-      let fea = null;
-      let utilColor = feaUtilToColor(0.125);
-      try {
-        const { runFEA } = await import('../lib/simulation/fea-solver.js');
-        const model = intentToFeaModel(intent);
-        const result = runFEA(model);
-        if (result && result.ok !== false) {
-          const maxUtilization = Number(result.summary?.maxUtilization);
-          if (Number.isFinite(maxUtilization)) {
-            utilColor = feaUtilToColor(maxUtilization);
-            fea = {
-              ok: true,
-              maxUtilization,
-              jobId: result.jobId ?? null,
-              band: utilColor.band,
-              summary: result.summary ?? null,
-            };
-          } else {
-            fea = { ok: true, maxUtilization: null, note: 'runFEA ok but maxUtilization missing' };
-          }
-        } else {
-          fea = { ok: false, error: result?.error || 'runFEA failed' };
+      const { intent, mesh, hand, fea: feaReport } = solved;
+      const maxUtilization = Number(feaReport?.maxUtilization);
+      const utilColor = feaUtilToColor(Number.isFinite(maxUtilization) ? maxUtilization : 0);
+      const fea = feaReport?.ok
+        ? {
+          ok: true,
+          maxUtilization: Number.isFinite(maxUtilization) ? maxUtilization : null,
+          maxStressPa: feaReport.maxStressPa,
+          maxDeflectionM: feaReport.maxDeflectionM,
+          jobId: feaReport.jobId ?? null,
+          band: utilColor.band,
+          summary: feaReport.summary ?? null,
+          hand,
         }
-      } catch (e) {
-        fea = { ok: false, error: e instanceof Error ? e.message : String(e) };
-      }
+        : { ok: false, error: feaReport?.error || 'runFEA failed', hand };
 
       return res.json({
         ok: true,
         intent,
+        assumed: intent.assumed,
+        assumptions: intent.assumptions,
+        hand,
         fea,
         mesh: {
           positions: mesh.positions,
@@ -133,7 +123,7 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
         utilColor,
         honesty: {
           path: 'nlp-intent→deterministic-FEA/partMesh→mesh-arrays',
-          note: 'Not industrial CAD suite / GLB. apply_mesh expected client-side.',
+          note: 'Not industrial CAD suite / GLB. apply_mesh expected client-side. Defaults are listed on assumed.',
           glb: false,
         },
       });

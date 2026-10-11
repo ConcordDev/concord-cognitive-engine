@@ -28,6 +28,15 @@ export function wsOriginFromHttp(origin: string): string {
   return origin;
 }
 
+/**
+ * `/unity-ws` is an operator gateway path, not player chrome. Show it only
+ * when the dev server is running (`next dev` sets NODE_ENV=development).
+ * Production builds inline this to false, so the badge is absent for users.
+ */
+export function showUnityGatewayDevBadge(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
+
 /** Kernel gateway the Unity player should open. Query param wins at the HTML route. */
 export function unityKernelGatewayUrl(pageOrigin: string): string {
   if (isLoopbackHttpOrigin(pageOrigin)) return 'ws://127.0.0.1:5050/unity-ws';

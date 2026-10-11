@@ -86,6 +86,11 @@ class MusicPlayerEngine {
   private waveformData: Uint8Array | null = null;
   private _volume: number = 1;
   private _muted: boolean = false;
+  /** Duration from the track record until the element reports a real one. */
+  private hintedDuration = 0;
+  /** Track id already primed by a click, so a later effect must not reload it. */
+  private primedId: string | null = null;
+  private assignedSrc: string | null = null;
 
   // Singleton
   private static instance: MusicPlayerEngine | null = null;
@@ -105,8 +110,35 @@ class MusicPlayerEngine {
       this.audio = a;
       this.setupDeckEvents(a);
       this.setupDeckEvents(b);
+      this.ensureDecksInDom();
       this.setupMediaSession();
     }
+  }
+
+  /**
+   * HTMLAudioElement created with `new Audio()` is not in the document, so
+   * nothing in the DOM can play and a suspended MediaElementSource never
+   * advances currentTime. Mount both decks in a 1px host (not display:none,
+   * which some browsers refuse to decode).
+   */
+  private ensureDecksInDom() {
+    if (typeof document === 'undefined') return;
+    let host = document.getElementById('concord-music-player');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'concord-music-player';
+      host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;';
+      (document.body || document.documentElement).appendChild(host);
+    }
+    for (const deck of [this.deckA, this.deckB]) {
+      if (deck && deck.audio.parentElement !== host) host.appendChild(deck.audio);
+    }
+  }
+
+  /** True when this track was already started from a user gesture. */
+  isPrimed(id: string | undefined | null): boolean {
+    return !!id && this.primedId === id;
   }
 
   // ---- Event System ----
@@ -139,7 +171,10 @@ class MusicPlayerEngine {
       if (active()) this.emit('error', { message: el.error?.message || 'Playback error' });
     });
     el.addEventListener('timeupdate', () => {
-      if (active()) this.emit('timeupdate', { currentTime: el.currentTime, duration: el.duration || 0 });
+      if (!active()) return;
+      const raw = el.duration;
+      const duration = typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : (this.hintedDuration || 0);
+      this.emit('timeupdate', { currentTime: el.currentTime || 0, duration });
     });
     el.addEventListener('volumechange', () => {
       if (active()) this.emit('volumechange', { volume: el.volume, muted: el.muted });
@@ -149,7 +184,7 @@ class MusicPlayerEngine {
   private setupMediaSession() {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
 
-    navigator.mediaSession.setActionHandler('play', () => this.play());
+    navigator.mediaSession.setActionHandler('play', () => { void this.play().catch(() => {}); });
     navigator.mediaSession.setActionHandler('pause', () => this.pause());
     navigator.mediaSession.setActionHandler('previoustrack', () => this.emit('ended', { reason: 'previous' }));
     navigator.mediaSession.setActionHandler('nexttrack', () => this.emit('ended', { reason: 'next' }));
@@ -377,12 +412,23 @@ class MusicPlayerEngine {
 
   // ---- Playback Controls (operate on the active deck via `this.audio`) ----
 
+  private rememberTrack(track: MusicTrack) {
+    this.currentTrack = track;
+    if (Number(track.duration) > 0) this.hintedDuration = Number(track.duration);
+    this.primedId = track.id || null;
+    if (this.audio && this.assignedSrc !== track.audioUrl) {
+      this.audio.src = track.audioUrl;
+      this.assignedSrc = track.audioUrl;
+    }
+  }
+
   async loadTrack(track: MusicTrack): Promise<void> {
     if (!this.audio) return;
+    this.ensureDecksInDom();
 
-    this.currentTrack = track;
-    this.audio.src = track.audioUrl;
-    this.audio.load();
+    this.rememberTrack(track);
+    // Do not call audio.load() here — it aborts an in-flight play() from the
+    // same click and leaves the element paused at 0:00 after a 206 fetch.
     // Ensure the active deck is audible (a prior crossfade may have left a gain low).
     const ag = this.activeDeck()?.gain;
     if (ag) ag.gain.value = 1;
@@ -392,15 +438,59 @@ class MusicPlayerEngine {
     this.initAudioContext();
   }
 
-  async play(): Promise<void> {
+  /**
+   * Start playback inside the click turn. audio.play() runs before any
+   * await (AudioContext.resume() used to consume the user gesture) and
+   * before MediaElementSource is attached to a suspended context.
+   */
+  async primeAndPlay(track: MusicTrack): Promise<void> {
     if (!this.audio) return;
-    if (this.audioContext?.state === 'suspended') {
-      await this.audioContext.resume();
-    }
+    this.ensureDecksInDom();
+    this.rememberTrack(track);
+    const ag = this.activeDeck()?.gain;
+    if (ag) ag.gain.value = 1;
+    this.updateMediaSession(track);
+    this.emit('trackchange', { track });
+    this.emit('timeupdate', { currentTime: this.getCurrentTime(), duration: this.getDuration() });
+
+    let playPromise: Promise<void>;
     try {
-      await this.audio.play();
+      playPromise = this.audio.play();
     } catch (err) {
       this.emit('error', { message: (err as Error).message });
+      throw err;
+    }
+    this.initAudioContext();
+    if (this.audioContext?.state === 'suspended') {
+      void this.audioContext.resume().catch(() => {});
+    }
+    try {
+      await playPromise;
+    } catch (err) {
+      this.emit('error', { message: (err as Error).message });
+      throw err;
+    }
+  }
+
+  async play(): Promise<void> {
+    if (!this.audio) return;
+    this.ensureDecksInDom();
+    // Call play() before any await so the user-gesture token is still valid.
+    let playPromise: Promise<void>;
+    try {
+      playPromise = this.audio.play();
+    } catch (err) {
+      this.emit('error', { message: (err as Error).message });
+      throw err;
+    }
+    if (this.audioContext?.state === 'suspended') {
+      void this.audioContext.resume().catch(() => {});
+    }
+    try {
+      await playPromise;
+    } catch (err) {
+      this.emit('error', { message: (err as Error).message });
+      throw err;
     }
   }
 
@@ -440,7 +530,9 @@ class MusicPlayerEngine {
   }
 
   getDuration(): number {
-    return this.audio?.duration || 0;
+    const d = this.audio?.duration;
+    if (typeof d === 'number' && Number.isFinite(d) && d > 0) return d;
+    return this.hintedDuration || 0;
   }
 
   getVolume(): number {
@@ -468,9 +560,12 @@ class MusicPlayerEngine {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     this.deckA?.audio.pause();
     this.deckB?.audio.pause();
+    this.deckA?.audio.remove();
+    this.deckB?.audio.remove();
     this.deckA = null;
     this.deckB = null;
     this.audio = null;
+    if (typeof document !== 'undefined') document.getElementById('concord-music-player')?.remove();
     this.audioContext?.close();
     this.audioContext = null;
     this.listeners.clear();

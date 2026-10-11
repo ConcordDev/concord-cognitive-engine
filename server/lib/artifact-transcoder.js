@@ -52,6 +52,110 @@ async function probeMedia(filePath) {
   }
 }
 
+const MPEG1_L3_BITRATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+const MPEG2_L3_BITRATES = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
+
+/**
+ * Duration in seconds from an audio container header.
+ * WAV is exact (fmt + data chunk). MP3 is a constant-bitrate estimate
+ * from the first frame header. Returns null when the bytes aren't a
+ * format we can read — never a size-based guess.
+ * @param {Buffer} buffer
+ * @param {string} [mimeType]
+ * @returns {number|null}
+ */
+export function durationFromAudioBuffer(buffer, mimeType) {
+  if (!buffer || !Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+  const mime = String(mimeType || '').toLowerCase();
+  const isWav = mime.includes('wav')
+    || (buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WAVE');
+  if (isWav) return wavDurationSec(buffer);
+  if (mime.includes('mpeg') || mime.includes('mp3') || looksLikeMp3(buffer)) return mp3DurationSec(buffer);
+  return null;
+}
+
+function wavDurationSec(buf) {
+  if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') return null;
+  let offset = 12;
+  let sampleRate = 0;
+  let channels = 0;
+  let bits = 0;
+  let dataSize = 0;
+  while (offset + 8 <= buf.length) {
+    const id = buf.toString('ascii', offset, offset + 4);
+    const size = buf.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    if (id === 'fmt ' && start + 16 <= buf.length) {
+      channels = buf.readUInt16LE(start + 2);
+      sampleRate = buf.readUInt32LE(start + 4);
+      bits = buf.readUInt16LE(start + 14);
+    } else if (id === 'data') {
+      dataSize = size;
+      break;
+    }
+    const next = start + size + (size % 2);
+    if (next <= offset) break;
+    offset = next;
+  }
+  if (!sampleRate || !channels || !bits || !dataSize) return null;
+  const bytesPerSec = sampleRate * channels * (bits / 8);
+  if (!bytesPerSec) return null;
+  const sec = dataSize / bytesPerSec;
+  return Number.isFinite(sec) && sec > 0 ? sec : null;
+}
+
+function looksLikeMp3(buf) {
+  if (buf.toString('ascii', 0, 3) === 'ID3') return true;
+  return buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+}
+
+function mp3DurationSec(buf) {
+  let i = 0;
+  if (buf.toString('ascii', 0, 3) === 'ID3' && buf.length > 10) {
+    const size = ((buf[6] & 0x7f) << 21) | ((buf[7] & 0x7f) << 14) | ((buf[8] & 0x7f) << 7) | (buf[9] & 0x7f);
+    i = 10 + size;
+  }
+  const limit = Math.min(buf.length - 4, i + 8192);
+  for (; i < limit; i++) {
+    if (buf[i] !== 0xff || (buf[i + 1] & 0xe0) !== 0xe0) continue;
+    const version = (buf[i + 1] >> 3) & 0x3;
+    const layer = (buf[i + 1] >> 1) & 0x3;
+    const brIndex = (buf[i + 2] >> 4) & 0xf;
+    if (version === 1 || layer === 0 || brIndex === 0 || brIndex === 15) continue;
+    let bitrateKbps = 0;
+    if (version === 3 && layer === 1) bitrateKbps = MPEG1_L3_BITRATES[brIndex];
+    else if (layer === 1) bitrateKbps = MPEG2_L3_BITRATES[brIndex];
+    if (!bitrateKbps) continue;
+    const audioBytes = Math.max(0, buf.length - i);
+    const sec = (audioBytes * 8) / (bitrateKbps * 1000);
+    return Number.isFinite(sec) && sec > 0 ? sec : null;
+  }
+  return null;
+}
+
+/**
+ * Seconds for an uploaded audio/video file.
+ * Prefers an explicit positive duration, then a header parse, then ffprobe.
+ * Returns 0 when nothing readable is available.
+ * @param {{ buffer?: Buffer, mimeType?: string, filePath?: string|null, declared?: number }} [opts]
+ * @returns {Promise<number>}
+ */
+export async function resolveAudioDurationSec(opts = {}) {
+  const declaredN = Number(opts.declared);
+  if (Number.isFinite(declaredN) && declaredN > 0) return Math.round(declaredN);
+  try {
+    const fromBuf = opts.buffer ? durationFromAudioBuffer(opts.buffer, opts.mimeType) : null;
+    if (fromBuf > 0) return Math.max(1, Math.round(fromBuf));
+  } catch (err) {
+    logger.error('durationFromAudioBuffer failed', { error: err?.message || String(err) });
+  }
+  if (opts.filePath) {
+    const probed = await probeMedia(opts.filePath);
+    if (probed?.duration > 0) return Math.max(1, Math.round(probed.duration));
+  }
+  return 0;
+}
+
 /**
  * Transcode a JPEG/PNG image to WebP at quality 80.
  * @param {string} inputPath

@@ -43,6 +43,8 @@ interface UploadFile {
 
 interface MediaUploadProps {
   onUploadComplete?: (mediaDTU: Record<string, unknown>) => void;
+  /** Fires when a file is chosen and again with null when it is cleared or uploaded. */
+  onPendingFileChange?: (file: File | null) => void;
   onCancel?: () => void;
   defaultMediaType?: MediaType;
   className?: string;
@@ -119,6 +121,7 @@ function validateFile(file: File, mediaType: MediaType): string | null {
 
 export function MediaUpload({
   onUploadComplete,
+  onPendingFileChange,
   onCancel,
   defaultMediaType,
   className,
@@ -175,6 +178,7 @@ export function MediaUpload({
       mediaType,
       previewUrl,
     });
+    onPendingFileChange?.(file);
 
     // Auto-populate title from filename
     if (!title) {
@@ -184,7 +188,7 @@ export function MediaUpload({
 
     setUploadStatus('idle');
     setErrorMessage('');
-  }, [defaultMediaType, title]);
+  }, [defaultMediaType, title, onPendingFileChange]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -215,8 +219,9 @@ export function MediaUpload({
     setUploadFile(null);
     setUploadStatus('idle');
     setErrorMessage('');
+    onPendingFileChange?.(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [uploadFile]);
+  }, [uploadFile, onPendingFileChange]);
 
   // ── Tag handling ─────────────────────────────────────────────────────
 
@@ -296,6 +301,7 @@ export function MediaUpload({
     },
     onSuccess: (data) => {
       onUploadComplete?.(data.mediaDTU || data);
+      onPendingFileChange?.(null);
     },
     onError: (error: Error) => {
       setUploadStatus('error');

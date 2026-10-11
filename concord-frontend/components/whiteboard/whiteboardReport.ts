@@ -129,6 +129,7 @@ export function whiteboardDtuCall(facts: WhiteboardReportFacts): ReceiptCall | n
       title: sentence.slice(0, 80),
       tags,
       source: 'whiteboard-lens:board-report',
+      skipAutoTag: true,
       human: { summary: body },
       core: { definitions: [sentence], claims: [body.slice(0, 240)] },
       machine,
@@ -136,6 +137,7 @@ export function whiteboardDtuCall(facts: WhiteboardReportFacts): ReceiptCall | n
         visibility: 'private',
         consent: { allowCitations: false },
         createdFrom: 'whiteboard',
+        skipAutoTag: true,
       },
     },
   };

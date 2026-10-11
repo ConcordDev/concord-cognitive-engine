@@ -38,8 +38,8 @@ interface BrainStats {
 
 interface BrainInfo {
   enabled: boolean;
-  url: string;
-  model: string;
+  url?: string;
+  model?: string;
   role: string;
   stats: BrainStats;
   avgResponseMs: number;
@@ -144,7 +144,9 @@ function BrainCard({ name, brain }: { name: keyof typeof BRAIN_CONFIG; brain: Br
         </div>
       </div>
 
-      <div className="text-xs text-lattice-text-secondary mb-1">{brain.model}</div>
+      {brain.model ? (
+        <div className="text-xs text-lattice-text-secondary mb-1">{brain.model}</div>
+      ) : null}
 
       {brain.enabled && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">

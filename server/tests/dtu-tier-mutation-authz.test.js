@@ -23,10 +23,9 @@
  * requireRole(...) used for the SEC-3 RBAC fix, and no longer accept a
  * body-supplied tier override (the endpoint name already declares the
  * direction). /api/dtus/bulk gained a per-item ownership check reusing the
- * exact field convention dtu.delete (server.js) already established
- * (ownerId/createdBy/createdByUser/authorId/source/author, admin-role
- * bypass, permissive only for genuinely unowned legacy DTUs) — plus an
- * admin-only gate specifically on the "promote" action.
+ * same ownerless/system gate as dtu.update / dtu.delete (a member cannot
+ * rewrite a DTU with no real user owner; admin can) — plus an admin-only
+ * gate specifically on the "promote" action.
  *
  * This test hermetically mounts the real registerHelpersExtendedRoutes with
  * a stub dependency graph (no full server.js boot) and pins the
@@ -35,7 +34,7 @@
  * Run: node --test server/tests/dtu-tier-mutation-authz.test.js
  */
 
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import registerHelpersExtendedRoutes from "../routes/helpers-extended.js";
@@ -146,6 +145,15 @@ describe("POST /api/atlas/tiers/promote|demote/:dtuId — admin-gated, no body o
 
 describe("POST /api/dtus/bulk — per-item ownership + admin-only promote", () => {
   let STATE;
+  let prevAuth;
+  before(() => {
+    prevAuth = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "hybrid";
+  });
+  after(() => {
+    if (prevAuth === undefined) delete process.env.AUTH_MODE;
+    else process.env.AUTH_MODE = prevAuth;
+  });
   beforeEach(() => {
     STATE = {
       dtus: new Map([
@@ -182,16 +190,52 @@ describe("POST /api/dtus/bulk — per-item ownership + admin-only promote", () =
     assert.equal(STATE.dtus.has("theirs"), true, "must survive — never deleted");
   });
 
-  it("a user CAN act on a genuinely unowned (legacy/system) DTU", async () => {
-    const app = makeApp(STATE);
-    const { body } = await post(
-      app,
-      "/api/dtus/bulk",
-      { action: "tag", ids: ["unowned"], data: { tags: ["x"] } },
-      { userId: "u1", role: "member" }
-    );
-    assert.equal(body.results[0].ok, true);
-    assert.deepEqual(STATE.dtus.get("unowned").tags, ["x"]);
+  it("a member cannot tag or delete a genuinely unowned (legacy/system) DTU", async () => {
+    const prev = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "hybrid";
+    try {
+      const app = makeApp(STATE);
+      const tagged = await post(
+        app,
+        "/api/dtus/bulk",
+        { action: "tag", ids: ["unowned"], data: { tags: ["x"] } },
+        { userId: "u1", role: "member" }
+      );
+      assert.equal(tagged.body.results[0].ok, false);
+      assert.match(tagged.body.results[0].error, /unauthorized/);
+      assert.deepEqual(STATE.dtus.get("unowned").tags || [], [], "tags must be untouched");
+
+      const deleted = await post(
+        app,
+        "/api/dtus/bulk",
+        { action: "delete", ids: ["unowned"] },
+        { userId: "u1", role: "member" }
+      );
+      assert.equal(deleted.body.results[0].ok, false);
+      assert.equal(STATE.dtus.has("unowned"), true, "unowned DTU must survive a member delete");
+    } finally {
+      if (prev === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = prev;
+    }
+  });
+
+  it("an admin can tag an unowned DTU", async () => {
+    const prev = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "hybrid";
+    try {
+      const app = makeApp(STATE);
+      const { body } = await post(
+        app,
+        "/api/dtus/bulk",
+        { action: "tag", ids: ["unowned"], data: { tags: ["x"] } },
+        { userId: "admin1", role: "admin" }
+      );
+      assert.equal(body.results[0].ok, true);
+      assert.deepEqual(STATE.dtus.get("unowned").tags, ["x"]);
+    } finally {
+      if (prev === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = prev;
+    }
   });
 
   it("promote is admin-only even on the caller's OWN DTU", async () => {

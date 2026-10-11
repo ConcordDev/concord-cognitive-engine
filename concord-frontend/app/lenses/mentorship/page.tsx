@@ -38,6 +38,8 @@ import { MentorshipMessagesPanel } from '@/components/mentorship/MentorshipMessa
 import { MentorshipProgramPanel } from '@/components/mentorship/MentorshipProgramPanel';
 import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
 import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
+import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
+import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { PipingProvider } from '@/components/panel-polish';
 import { StatTile, StatTileGrid, Skeleton, ErrorState, DensityToggle } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -85,9 +87,10 @@ export default function MentorshipLensPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadStats(); }, []);
 
+  const navTabs = omitCommunityRedditViews(TABS, ['community']);
   useLensCommand(
     [
-      ...TABS.map((t) => ({
+      ...navTabs.map((t) => ({
         id: `tab-${t.id}`, keys: t.hotkey, description: t.label, category: 'navigation' as const,
         action: () => setTab(t.id),
       })),
@@ -127,7 +130,7 @@ export default function MentorshipLensPage() {
             <DTUExportButton domain="mentorship" data={report || {}} compact />
           </div>
         }
-        tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hotkey, hint: t.hint }))}
+        tabs={navTabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hotkey, hint: t.hint }))}
         activeTab={tab}
         onTab={(id) => setTab(id as TabId)}
         tabsLabel="Mentorship views"
@@ -184,9 +187,11 @@ export default function MentorshipLensPage() {
             )}
             {tab === 'program' && <MentorshipProgramPanel />}
             {tab === 'community' && (
-              <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-                <MentorshipFeed />
-              </div>
+              <CommunityRedditSlot>
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                  <MentorshipFeed />
+                </div>
+              </CommunityRedditSlot>
             )}
         </div>
 

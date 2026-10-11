@@ -17,25 +17,28 @@ import { listPeers } from "../lib/federation.js";
 
 function fedState() {
   const STATE = (globalThis._concordSTATE ||= {});
-  if (!STATE.federation) {
-    STATE.federation = {
-      // userId -> { domain -> { policy: 'allow'|'block'|'pending', reason, addedAt, updatedAt } }
-      access: new Map(),
-      // userId -> [ moderationItem ]
-      moderation: new Map(),
-      // userId -> { domain -> { inbound, outbound, classes:[], updatedAt } }
-      syncPolicy: new Map(),
-      // userId -> [ relaySubscription ]
-      relays: new Map(),
-      // userId -> { domain -> [ { at, score, delta, reason } ] }
-      trustHistory: new Map(),
-      // userId -> [ metricSample ]
-      metrics: new Map(),
-      // userId -> { domain -> { keyId, publicKey, algo, verified, rotatedAt, fingerprint } }
-      actorKeys: new Map(),
-    };
+  // actorKeys is intentionally absent from the restart snapshot (registered
+  // public keys must not be written to disk). Re-create an empty map on
+  // boot so verification still works in-process; the next snapshot omits it.
+  if (!STATE.federation || typeof STATE.federation !== "object" || STATE.federation instanceof Map) {
+    STATE.federation = {};
   }
-  return STATE.federation;
+  const fs = STATE.federation;
+  // userId -> { domain -> { policy: 'allow'|'block'|'pending', reason, addedAt, updatedAt } }
+  if (!(fs.access instanceof Map)) fs.access = new Map();
+  // userId -> [ moderationItem ]
+  if (!(fs.moderation instanceof Map)) fs.moderation = new Map();
+  // userId -> { domain -> { inbound, outbound, classes:[], updatedAt } }
+  if (!(fs.syncPolicy instanceof Map)) fs.syncPolicy = new Map();
+  // userId -> [ relaySubscription ]
+  if (!(fs.relays instanceof Map)) fs.relays = new Map();
+  // userId -> { domain -> [ { at, score, delta, reason } ] }
+  if (!(fs.trustHistory instanceof Map)) fs.trustHistory = new Map();
+  // userId -> [ metricSample ]
+  if (!(fs.metrics instanceof Map)) fs.metrics = new Map();
+  // userId -> { domain -> { keyId, publicKey, algo, verified, rotatedAt, fingerprint } }
+  if (!(fs.actorKeys instanceof Map)) fs.actorKeys = new Map();
+  return fs;
 }
 
 function userId(ctx) {

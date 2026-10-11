@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { dtuReadBackCall, dtuReadBackMatches, dtuRecordId } from '@/components/wallet/walletReceipt';
 import { beamReportDtuCall } from '@/lib/conkay/beam-report';
+import { currentModelFromStudy, nextModelName, preferredModelName, setConkayCurrentModel } from '@/lib/conkay/model-export';
 import {
   studyFromSaved,
   type BeamDims,
@@ -39,7 +40,7 @@ export interface Material extends MaterialOption {
 // rolled section on a 1.2 m span), not a result. Nothing is shown as solved
 // until engineering.beamStudy returns.
 export const NEW_STUDY: StudyInputs = {
-  name: 'I-beam study',
+  name: 'I-beam',
   dims: { length: 1200, height: 300, flangeWidth: 150, flangeThickness: 15, webThickness: 9 },
   loadN: 200000,
   support: 'simply-supported',
@@ -87,6 +88,14 @@ export function useConKayWorkspace(workspaceId: string | null) {
   const [error, setError] = useState('');
   const resultRef = useRef<BeamStudyResult | null>(null);
   useEffect(() => { resultRef.current = result; }, [result]);
+
+  // The lens-header Export menu reads this. It is the study on screen, with
+  // solver numbers only when they still match these inputs.
+  useEffect(() => {
+    const fresh = inputsMatchResult(inputs, result) ? result : null;
+    setConkayCurrentModel(currentModelFromStudy(inputs, fresh));
+    return () => setConkayCurrentModel(null);
+  }, [inputs, result]);
 
   useEffect(() => {
     let live = true;
@@ -162,19 +171,33 @@ export function useConKayWorkspace(workspaceId: string | null) {
     return r.data.result;
   }, [inputs]);
 
-  const saveModel = useCallback(async (): Promise<{ id: string; name: string } | { error: string }> => {
-    const m = (mm: number) => mm / 1000;
+  const suggestName = useCallback(async (current?: string): Promise<string> => {
+    const listed = await lensRun<{ parts: Array<{ name?: string }> }>('engineering', 'listParts', {});
+    const existing = listed.data?.ok === false
+      ? []
+      : (listed.data?.result?.parts ?? []).map((p) => String(p?.name || ''));
+    return nextModelName(preferredModelName(current ?? inputs.name, 'i-beam'), existing);
+  }, [inputs.name]);
+
+  const saveModel = useCallback(async (nameOverride?: string): Promise<{ id: string; name: string } | { error: string }> => {
+    const listed = await lensRun<{ parts: Array<{ name?: string }> }>('engineering', 'listParts', {});
+    const existing = listed.data?.ok === false
+      ? []
+      : (listed.data?.result?.parts ?? []).map((p) => String(p?.name || ''));
+    const requested = nameOverride !== undefined ? nameOverride.trim() : preferredModelName(inputs.name, 'i-beam');
+    if (!requested) return { error: 'A model name is required.' };
+    const name = nextModelName(requested, existing);
+    const fresh = inputsMatchResult(inputs, resultRef.current) ? resultRef.current : null;
+    const snapshot = currentModelFromStudy(inputs, fresh);
     const r = await lensRun<{ part: { id: string; name: string } }>('engineering', 'savePart', {
       kind: 'i-beam',
-      name: inputs.name,
+      designType: 'i-beam',
+      name,
       material: inputs.materialId,
-      params: {
-        length: m(inputs.dims.length),
-        height: m(inputs.dims.height),
-        flangeWidth: m(inputs.dims.flangeWidth),
-        flangeThickness: m(inputs.dims.flangeThickness),
-        webThickness: m(inputs.dims.webThickness),
-      },
+      params: snapshot.params,
+      study: snapshot.study,
+      results: snapshot.results,
+      solverVersion: snapshot.solverVersion,
     });
     const part = r.data?.result?.part;
     if (r.data?.ok === false || !part?.id) return { error: r.data?.error || 'The part store refused this model.' };
@@ -203,7 +226,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
 
   return {
     inputs, setInputs, result, previous, materials, status, error,
-    solve, sweep, saveModel, keepAsDtu, reload,
+    solve, sweep, saveModel, suggestName, keepAsDtu, reload,
     stale: Boolean(result) && !inputsMatchResult(inputs, result),
   };
 }

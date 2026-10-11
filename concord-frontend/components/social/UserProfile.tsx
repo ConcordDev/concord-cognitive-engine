@@ -44,6 +44,7 @@ interface ProfileStats {
 interface UserProfileData {
   userId: string;
   displayName: string;
+  username?: string | null;
   bio: string;
   avatar: string;
   isPublic: boolean;
@@ -203,7 +204,7 @@ function FollowList({
   onNavigate,
 }: {
   title: string;
-  users: Array<{ userId: string; displayName: string }>;
+  users: Array<{ userId: string; displayName: string; username?: string | null }>;
   onClose: () => void;
   onNavigate?: (userId: string) => void;
 }) {
@@ -247,8 +248,10 @@ function FollowList({
                   {user.displayName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-white text-sm font-medium">{user.displayName}</div>
-                  <div className="text-xs text-gray-400">@{user.userId}</div>
+                  <div className="text-white text-sm font-medium">{user.displayName && user.displayName !== user.userId ? user.displayName : 'Member'}</div>
+                  {user.username && user.username !== user.userId && (
+                    <div className="text-xs text-gray-400">@{user.username}</div>
+                  )}
                 </div>
               </button>
             ))
@@ -520,8 +523,10 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
 
         {/* Name & handle */}
         <div className="mb-3">
-          <h1 className="text-xl font-bold text-white">{profile.displayName}</h1>
-          <p className="text-sm text-gray-400">@{profile.userId}</p>
+          <h1 className="text-xl font-bold text-white">{profile.displayName && profile.displayName !== profile.userId ? profile.displayName : 'Member'}</h1>
+          {profile.username && profile.username !== profile.userId && (
+            <p className="text-sm text-gray-400">@{profile.username}</p>
+          )}
         </div>
 
         {/* Bio */}

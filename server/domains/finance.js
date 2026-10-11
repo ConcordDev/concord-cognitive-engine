@@ -154,8 +154,17 @@ export default function registerFinanceActions(registerLensAction) {
     const liabilities = Math.max(0, Number(params.liabilities) || 0);
     const total = cash + investments + realEstate + crypto - liabilities;
     if (!state.snapshots.has(userId)) state.snapshots.set(userId, []);
+    // A bare YYYY-MM-DD is the client's local calendar day. Do not run it
+    // through Date (UTC midnight shifts the day). PR #1123's shared
+    // local-day helper is the client source once that PR merges; until
+    // then the finance client sends localCalendarDay(). Omitted date
+    // stays the UTC day, matching the previous server fallback.
+    const rawDay = params.date ?? params.today;
+    const date = (typeof rawDay === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDay.trim()))
+      ? rawDay.trim()
+      : new Date().toISOString().slice(0, 10);
     const snap = {
-      date: (params.date ? new Date(params.date) : new Date()).toISOString().slice(0, 10),
+      date,
       cash, investments, realEstate, crypto, liabilities, total,
     };
     state.snapshots.get(userId).push(snap);
@@ -182,9 +191,26 @@ export default function registerFinanceActions(registerLensAction) {
       ok: true,
       result: {
         snapshots: filtered, range, total: all.length,
-        notes: all.length === 0 ? "No snapshots logged yet. Add a snapshot via finance.snapshot-record to start tracking net worth over time." : undefined,
+        notes: all.length === 0 ? "No snapshots yet. Record one to start tracking net worth." : undefined,
       },
     };
+  });
+
+  /**
+   * net-worth-snapshot-delete — drop the caller's snapshot for one date.
+   * One row per date. Unknown date is an error, not a silent success.
+   */
+  registerLensAction("finance", "net-worth-snapshot-delete", (ctx, _artifact, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = String(params.date || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "date required" };
+    const list = state.snapshots.get(userId) || [];
+    const next = list.filter((s) => s.date !== date);
+    if (next.length === list.length) return { ok: false, error: "snapshot not found" };
+    state.snapshots.set(userId, next);
+    saveStateIfAvailable();
+    return { ok: true, result: { date, deleted: true, remaining: next.length } };
   });
 
   /**
@@ -200,7 +226,7 @@ export default function registerFinanceActions(registerLensAction) {
     if (!holdings || holdings.length === 0) {
       return {
         ok: false,
-        error: "no holdings — add positions via finance.holdings-add first (real portfolio data only, no sample)",
+        error: "No holdings yet. Add positions first.",
       };
     }
     const totalValue = holdings.reduce((s, h) => s + h.value, 0);

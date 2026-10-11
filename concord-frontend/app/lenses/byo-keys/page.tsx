@@ -27,7 +27,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { KeyRound, Gauge, ShieldCheck, Users, Boxes, Plus } from 'lucide-react';
+import { KeyRound, Gauge, ShieldCheck, Users, Boxes } from 'lucide-react';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
@@ -40,6 +40,7 @@ import { FallbackChainPanel } from '@/components/byo-keys/FallbackChainPanel';
 import { KeyHealthPanel } from '@/components/byo-keys/KeyHealthPanel';
 import { OrgKeysPanel } from '@/components/byo-keys/OrgKeysPanel';
 import { ModelPickerModal } from '@/components/byo-keys/ModelPickerModal';
+import { brainRecordForSlot, slotRouteCopy, type PodBrain } from '@/components/byo-keys/slotRouteCopy';
 
 interface OverrideRow {
   slot: string;
@@ -88,7 +89,7 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 type ByoView = 'keys' | 'usage' | 'reliability' | 'org' | 'catalog';
 
 const VIEWS: { id: ByoView; label: string; keys: string; title: string; hint: string; icon: typeof KeyRound }[] = [
-  { id: 'keys', label: 'Keys', keys: '1', title: 'Bring your own brains', hint: 'Brain mode and per-slot provider keys', icon: KeyRound },
+  { id: 'keys', label: 'Keys', keys: '1', title: 'Your keys', hint: 'Brain mode and per-slot provider keys', icon: KeyRound },
   { id: 'usage', label: 'Usage', keys: '2', title: 'What your keys are costing', hint: 'Spend, budgets and rate limits', icon: Gauge },
   { id: 'reliability', label: 'Reliability', keys: '3', title: 'Keep the brains answering', hint: 'Key health checks and fallback chain', icon: ShieldCheck },
   { id: 'org', label: 'Org & MCP', keys: '4', title: 'Share keys and tools with a team', hint: 'Organisation keys and MCP servers', icon: Users },
@@ -115,6 +116,9 @@ export default function ByoKeysLens() {
   const [busy, setBusy] = useState(false);
   const [modelPicker, setModelPicker] = useState<{ slot: string; provider: string; modelId: string | null } | null>(null);
   const [brainMode, setBrainMode] = useState<'private' | 'high_power'>('private');
+  const [podBrains, setPodBrains] = useState<Record<string, PodBrain> | null>(null);
+  const [podStatusLoaded, setPodStatusLoaded] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const [list, prov] = await Promise.all([
@@ -126,6 +130,23 @@ export default function ByoKeysLens() {
   }, []);
 
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/brain/status', { credentials: 'include' });
+        const j = await r.json().catch(() => null);
+        const brains = j?.brains && typeof j.brains === 'object' ? j.brains as Record<string, PodBrain> : {};
+        if (!cancelled) setPodBrains(brains);
+      } catch {
+        if (!cancelled) setPodBrains({});
+      } finally {
+        if (!cancelled) setPodStatusLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const overridesBySlot = new Map(overrides.map(o => [o.slot, o]));
 
@@ -196,14 +217,13 @@ export default function ByoKeysLens() {
         lensId="byo-keys"
         crumb="BYO keys"
         title={`${current.title}${view === 'keys' && who ? `, ${who}` : ''}`}
-        subtitle="Route each of Concord's five brains through your own OpenAI, Anthropic, xAI or Google key."
+        subtitle="Five Concord brains on the GPU pod. A key you add routes that slot to your provider."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as ByoView)}
         tabsLabel="BYO keys views"
         cta={{
-          label: 'Add a key',
-          icon: Plus,
+          label: '+ Add a key',
           onClick: () => { setView('keys'); startEdit('conscious'); },
           title: 'Add a key to the conscious brain slot',
         }}
@@ -213,18 +233,27 @@ export default function ByoKeysLens() {
         <div className="max-w-4xl">
           <header className="mb-6">
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Plug your own OpenAI / Anthropic / xAI / Google API key into each of Concord&apos;s 5
-              brain slots. The default is the free Ollama instance hosted by concord-os.org — but
-              if you already pay for ChatGPT Plus, Claude Pro, or a Grok subscription, you can route
-              your inference through those providers instead and get frontier-tier intelligence
-              inside Concord, free.
+              Each slot runs on Concord&apos;s GPU pod and falls back to the Mac when the pod is offline.
+              Add a key only if you want that slot to leave Concord.
             </p>
-            <p className="mt-3 text-xs text-zinc-400 leading-relaxed">
-              <strong className="text-zinc-300">Privacy:</strong> keys are encrypted AES-GCM with a
-              per-user wrapping key derived from JWT_SECRET. They are never returned to your browser
-              after save (only the masked preview is shown). Prompts go directly to your provider
-              with your key — concord-os.org is not in the data path.
+            <p className="mt-2 text-xs text-zinc-400">
+              Keys stay encrypted on Concord.{' '}
+              <button
+                type="button"
+                className="text-teal-300 underline-offset-2 hover:underline"
+                aria-expanded={privacyOpen}
+                onClick={() => setPrivacyOpen((v) => !v)}
+              >
+                details
+              </button>
             </p>
+            {privacyOpen && (
+              <p className="mt-2 text-xs text-zinc-400 leading-relaxed">
+                Keys are encrypted AES-GCM with a per-user wrapping key. They are never returned to
+                your browser after save (only the masked preview is shown). Prompts you route through
+                your own key go to that provider. Concord&apos;s pod is not in that data path.
+              </p>
+            )}
           </header>
 
           <BrainModePanel onModeChange={setBrainMode} />
@@ -264,7 +293,7 @@ export default function ByoKeysLens() {
                             <span className="ml-3 text-zinc-600">last used {fmtRelative(existing.last_used_at)}</span>
                           </>
                         ) : (
-                          <span className="text-zinc-400">default — uses concord-os.org Ollama (free)</span>
+                          <span className="text-zinc-400">{slotRouteCopy(slot, brainRecordForSlot(podBrains, slot), podStatusLoaded)}</span>
                         )}
                       </div>
                     </div>
@@ -329,7 +358,7 @@ export default function ByoKeysLens() {
                           onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                           className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none"
                         >
-                          <option value="concord_default">Concord default (free Ollama)</option>
+                          <option value="concord_default">Concord GPU pod (falls back to the Mac)</option>
                           {providers.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}

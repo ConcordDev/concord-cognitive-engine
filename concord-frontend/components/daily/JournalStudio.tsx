@@ -17,6 +17,7 @@ import {
   ImagePlus, X, FileText, Pencil, Tag as TagIcon, Download, LayoutTemplate,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { EntryHeatmap } from './EntryHeatmap';
 import { HabitBuilder } from './HabitBuilder';
@@ -67,8 +68,8 @@ export function JournalStudio() {
   const refresh = useCallback(async () => {
     const [el, otd, d, p, mt, tpl, tags] = await Promise.all([
       lensRun<{ entries: Entry[] }>('daily', 'entry-list', tagFilter ? { tag: tagFilter } : {}),
-      lensRun<{ entries: Entry[] }>('daily', 'on-this-day', {}),
-      lensRun<Dash>('daily', 'daily-dashboard', {}),
+      lensRun<{ entries: Entry[] }>('daily', 'on-this-day', { date: calendarDateKey() }),
+      lensRun<Dash>('daily', 'daily-dashboard', { today: calendarDateKey() }),
       lensRun<{ prompt: string }>('daily', 'prompt-today', {}),
       lensRun<{ averageMood: number | null }>('daily', 'mood-trend', {}),
       lensRun<{ templates: Template[] }>('daily', 'templates-list', {}),
@@ -125,6 +126,7 @@ export function JournalStudio() {
     if (!draft.body.trim()) return;
     setSaving(true);
     const r = await lensRun('daily', 'entry-create', {
+      date: calendarDateKey(),
       title: draft.title.trim() || undefined,
       body: draft.body.trim(),
       mood: draft.mood,

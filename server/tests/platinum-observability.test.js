@@ -46,7 +46,7 @@ test("request-id middleware threads correlation IDs", () => {
 
 test("error handler middleware exists (Express tail handler)", () => {
   // Express requires a 4-arg middleware for error handling.
-  const hasErrorMiddleware = /app\.use\(\s*\(err\s*,\s*req|errorHandler|errorMiddleware/.test(SERVER_JS);
+  const hasErrorMiddleware = /app\.use\(\s*\(err\s*,\s*req|errorHandler|errorMiddleware|create(?:Early|Late)RouteErrorHandler/.test(SERVER_JS);
   assert.ok(hasErrorMiddleware, "no error-handler middleware — uncaught exceptions reach the client");
 });
 

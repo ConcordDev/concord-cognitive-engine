@@ -16,6 +16,7 @@ import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, Chef
 import { cn } from '@/lib/utils';
 import { phaseVoiceLine, ARRIVAL_LINE } from '@/lib/concordia/onboarding-voice';
 import { Z_INDEX } from '@/lib/ui/z-index';
+import { useUIStore } from '@/store/ui';
 
 // Onboarding ceremony — speak a Concordia line in-world (the goddess turns to
 // the player + a fading toast carries the words) and fire a small juice beat.
@@ -108,6 +109,10 @@ const ARRIVAL_KEY = 'concord_arrival_seen';
 function FirstWinWizard() {
   const router = useRouter();
   const inWorld = (usePathname() ?? '').startsWith('/lenses/world');
+  // The app sidebar is `fixed` and paints above this pill (z-50 vs STATUS).
+  // A viewport-left anchor sits under that rail: 4rem when collapsed, 16rem
+  // when expanded. Below `lg` the rail is off-canvas, so `left-6` is correct.
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   // Onboarding ceremony — dismissal now COLLAPSES (re-openable via a Resume
   // pill) instead of hiding the wizard forever, so a player who closed it early
   // can pick the First Cycle back up.
@@ -168,14 +173,17 @@ function FirstWinWizard() {
     allDone: false,
     completedCount: 0,
   };
-  const baseResolved = data || (isError ? FALLBACK_DATA : null);
+  const baseResolved = (data && Array.isArray(data.steps)) ? data : (isError ? FALLBACK_DATA : null);
 
   // Merge First Cycle phases as additional steps when the tutorial is
   // incomplete. Phases come first so the wizard reads top-to-bottom in
   // the order Concordia walks the player through the world.
+  // A payload with no phases array (guidance route down, or a shape that
+  // is not the tutorial) is not a cycle — skip the merge. Mapping a
+  // missing phases list throws and the app error boundary covers the lens.
   const resolved: FirstWinData | null = (() => {
     if (!baseResolved) return null;
-    if (!tutorial || tutorial.complete) return baseResolved;
+    if (!tutorial || tutorial.complete || !Array.isArray(tutorial.phases)) return baseResolved;
     const cyclePhases: FirstWinStep[] = tutorial.phases.map((p) => ({
       id: p.questId,
       label: FIRST_CYCLE_LABELS[p.questId] ?? p.questId,
@@ -234,7 +242,12 @@ function FirstWinWizard() {
       <button
         onClick={handleResume}
         style={{ zIndex: Z_INDEX.STATUS }}
-        className="fixed bottom-6 left-6 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
+        className={cn(
+          'fixed bottom-6 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10',
+          sidebarCollapsed
+            ? 'left-6 lg:left-[calc(4rem+1.5rem)]'
+            : 'left-6 lg:left-[calc(16rem+1.5rem)]',
+        )}
         aria-label="Resume First Cycle"
       >
         <Rocket className="w-3.5 h-3.5" />

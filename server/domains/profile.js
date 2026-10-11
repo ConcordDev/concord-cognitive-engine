@@ -15,18 +15,23 @@
 // (zeros / []) where not. A user sees nothing until they edit their profile,
 // earn an achievement, author a DTU, or receive a visit.
 //
-// Per-user scope via ctx.actor.userId. In-memory STATE for the editable
-// profile + visitor log (no schema), real DB reads for badges / portfolio /
-// reputation.
+// Per-user scope via ctx.actor.userId. The editable profile and visitor log
+// live on STATE.playerProfiles / STATE.profileVisitors / STATE._profileVisitorSeq,
+// all in LENS_STATE_KEYS, so they survive a restart. Visitor log is capped
+// at 200. Badges, portfolio, and reputation stay DB reads.
 
 export default function registerProfileActions(registerLensAction) {
   // ── STATE plumbing ───────────────────────────────────────────────
   function store() {
     if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
     const STATE = globalThis._concordSTATE;
-    STATE.playerProfiles ??= new Map();  // userId -> editable profile
-    STATE.profileVisitors ??= new Map(); // userId -> Array<VisitorEntry>
-    if (typeof STATE._profileVisitorSeq !== "number") STATE._profileVisitorSeq = 0;
+    STATE.playerProfiles ??= new Map();
+    if (!(STATE.playerProfiles instanceof Map)) STATE.playerProfiles = new Map();
+    STATE.profileVisitors ??= new Map();
+    if (!(STATE.profileVisitors instanceof Map)) STATE.profileVisitors = new Map();
+    if (typeof STATE._profileVisitorSeq !== "number" || !Number.isFinite(STATE._profileVisitorSeq)) {
+      STATE._profileVisitorSeq = 0;
+    }
     return STATE;
   }
   function save() {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarDays, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface CalJob {
@@ -32,7 +33,7 @@ function mondayOf(d: Date): string {
   const dow = c.getDay();
   const diff = dow === 0 ? -6 : 1 - dow;
   c.setDate(c.getDate() + diff);
-  return c.toISOString().slice(0, 10);
+  return calendarDateKey(c);
 }
 
 export function SchedulingCalendarPanel() {

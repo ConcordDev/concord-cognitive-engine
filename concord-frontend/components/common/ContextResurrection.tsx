@@ -16,6 +16,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import Link from 'next/link';
@@ -40,7 +41,7 @@ function ContextResurrection() {
 
   // Check if already dismissed this session
   useEffect(() => {
-    const sessionKey = `concord_resurrection_${new Date().toISOString().slice(0, 10)}`;
+    const sessionKey = `concord_resurrection_${calendarDateKey()}`;
     if (sessionStorage.getItem(sessionKey)) {
       setDismissed(true);
     }
@@ -60,7 +61,7 @@ function ContextResurrection() {
 
   const handleDismiss = () => {
     setDismissed(true);
-    const sessionKey = `concord_resurrection_${new Date().toISOString().slice(0, 10)}`;
+    const sessionKey = `concord_resurrection_${calendarDateKey()}`;
     try {
       sessionStorage.setItem(sessionKey, 'true');
     } catch {}

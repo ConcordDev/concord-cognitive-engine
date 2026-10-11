@@ -25,9 +25,11 @@
 // Material: bonded aluminium extrusions and sheet (aluminum-6061-t6 from the
 // library), the construction of the Lotus Elise tub (Lotus 2011 Elise press
 // pack: "World's first bonded and extruded Aluminium chassis ... Lightweight
-// (68 kg) ... Stiff (10,800 Nm / degree)"). Bond-line and joint compliance
-// are not modelled (joints rigid): the computed stiffness is an upper bound
-// on the as-built value in that respect.
+// (68 kg) ... Stiff (10,800 Nm / degree)"). The main solve keeps rigid joints
+// (an upper bound). Bond-line springs are computed from sourced adhesive
+// moduli; joint-wall distortion is only bounded (EN 1993-1-8, an estimate).
+// The stiffness is reported as that range. The hard margin uses the lowest
+// computed bond-line value, not the estimate.
 //
 // Every position and section here is a design choice; the clearance to the
 // packaging envelopes (occupants of every checked percentile, seats, engine,
@@ -39,6 +41,8 @@
 // the joint offsets between members of different heights (stated).
 
 import { obb, separation } from "../packaging/geometry.js";
+import { openingsLayout, applyServiceCutouts } from "./car-openings.js";
+import { tubJointScenarios, ADHESIVES, EN1993_CLASSIFICATION, RIVET_NOTE, JOINT_CHOICES, JOINT_MODEL_VERSION } from "./joint-stiffness.js";
 
 const MATERIAL = "aluminum-6061-t6";
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -76,8 +80,9 @@ export const TUB_DESIGN_CHOICES = Object.freeze({
   rearCrossX: { value: 4.20, basis: "design choice: rear end cross behind the differential (x ≤ 4.131), below the fuel cell (z ≥ 0.612)" },
   sheet: { value: 0.002, basis: "design choice: 2 mm floor and firewall sheet" },
   roofRing: { value: true, basis: "design choice: a pillar ring closes the cabin's section (A-pillars from the scuttle, roof rails outboard of the heads (|y| ≤ 0.452) and inboard of the egress line (|y| ≥ 0.573), a B-hoop at x 3.30 between the front heads (x ≤ 3.088) and the rear heads (x ≥ 3.585), a windscreen header); measured on the body interior: roof 1.17-1.23 m inside the skin at |y| 0.5-0.55" },
-  roofSection: { value: { width: 0.07, height: 0.07, wall: 0.0045 }, basis: "design choice: 70 × 70 mm, 4.5 mm wall A-pillar, roof rail, header and bow boxes (the ring's members bend as portal frames around the door apertures: their section sets the ring's stiffness)" },
-  postSection: { value: { width: 0.10, height: 0.05, wall: 0.0045 }, basis: "design choice: B- and C-posts 100 mm fore-aft × 50 mm across, 4.5 mm wall (fore-aft room between the front seat backs and the rear occupants; little lateral room beside the rear thighs and heads)" },
+  roofSection: { value: { width: 0.08, height: 0.07, wall: 0.0045 }, basis: "design choice: 80 (across) × 70 mm, 4.5 mm wall A-pillar, roof rail, header and bow boxes (the ring's members bend as portal frames around the door apertures: their section sets the ring's stiffness). Brief 4 item 2 repair, from 70 × 70: the service cut-outs left the tub 0.2 % over the target; the opening-ring study ranked this +560 N·m/deg for +1.75 kg (tests/conkay-tub-openings.test.js)" },
+  postSection: { value: { width: 0.10, height: 0.06, wall: 0.0045 }, basis: "design choice: B- and C-posts 100 mm fore-aft × 60 mm across, 4.5 mm wall (fore-aft room between the front seat backs and the rear occupants; little lateral room beside the rear thighs and heads). Brief 4 item 2 repair, from 50 mm across: the door apertures' rear legs; ranked +393 N·m/deg for +0.71 kg" },
+  firewallPostWall: { value: 0.005, basis: "design choice: 5 mm wall on the 80 × 80 firewall posts, the front door aperture's hinge pillar (the ring's front leg from the sill to the scuttle). Brief 4 item 2 repair, from 3 mm: ranked +301 N·m/deg for +0.56 kg" },
   roofRailY: { value: 0.52, basis: "design choice: roof rails between the front heads (|y| ≤ 0.452) and the front egress line (|y| ≥ 0.573)" },
   roofRailRear: { value: [0.45, 1.06], basis: "design choice: the rail's rear end (|y|, z) at the C-post, outboard of the rear heads (|y| ≤ 0.394) and inside the fastback" },
   roofLiner: { value: 0.0015, basis: "design choice: a 1.5 mm 6061-T6 roof liner bonded to the skin's inner face between the windscreen header, the roof rails and the B-bow, working in shear (the CFRP skin is not credited: the HexPly 8552 / AS4 plain-weave data sheet publishes no in-plane shear modulus); the roof is skin, not glazing" },
@@ -142,7 +147,7 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     N(`QB.${s}`, c.rearBulkheadX, sg * YQ, ZN); N(`QA.${s}`, rearAxleX, sg * YQ, ZN); N(`QE.${s}`, c.rearCrossX, sg * YQ, ZN);
     mem(`qtr-${s}1`, `Q0.${s}`, `QB.${s}`, q); mem(`qtr-${s}2`, `QB.${s}`, `QA.${s}`, q); mem(`qtr-${s}3`, `QA.${s}`, `QE.${s}`, q);
     // firewall posts (sill top to scuttle), 80 (x) × 80 (y)
-    const post = tube(`TUB_FW_POST_${s}`, `Firewall post ${s}`, { width: 0.08, height: 0.08, wall: w("post", 0.003) }, along("z", [XF - 0.04, sg * YS - 0.04, sillTop], [XF + 0.04, sg * YS + 0.04, ZU0]), ZU0 - sillTop);
+    const post = tube(`TUB_FW_POST_${s}`, `Firewall post ${s}`, { width: 0.08, height: 0.08, wall: w("post", c.firewallPostWall) }, along("z", [XF - 0.04, sg * YS - 0.04, sillTop], [XF + 0.04, sg * YS + 0.04, ZU0]), ZU0 - sillTop);
     N(`FWU.${s}`, XF, sg * YS, ZU);
     mem(`fw-post-${s}`, `S${XF}.${s}`, `FWU.${s}`, post);
   }
@@ -338,13 +343,23 @@ export const TUB_REPLACES = Object.freeze(["RAIL_L", "RAIL_R", "TUB"]);
  * { ir, layout, change }. The IR keeps every other node; the tub's parts go in CHASSIS with
  * positions (so mass.cg places them) and CHASSIS carries the frame model (structure.frame).
  */
-export function withStructuralTub(ir, { choices, walls } = {}) {
+export function withStructuralTub(ir, { choices, walls, openings: withOpenings = true, openingChoices } = {}) {
   const out = JSON.parse(JSON.stringify(ir));
   const veh = out.nodes.find((n) => n.id === "VEH");
   const chassis = out.nodes.find((n) => n.id === "CHASSIS");
   if (!veh || !chassis) throw new Error("car IR needs VEH and CHASSIS");
   const fx = num(veh.props.vehicle.frontAxleX), rx = num(veh.props.vehicle.rearAxleX);
   const layout = tubLayout({ frontAxleX: fx, rearAxleX: rx, choices, walls });
+  // the openings (car-openings.js): door / glazing apertures laid out from the tub, service cut-outs cut into it
+  let openings = null, cutoutNotes = [];
+  if (withOpenings) {
+    const rt = veh.props.vehicle.packaging?.tyres?.find((t) => t.id === "TIRE_RL");
+    const rtNode = out.nodes.find((n) => n.id === "TIRE_RL");
+    const D = rt?.diameterM, rtx = num(rtNode?.position?.x), rtz = num(rtNode?.position?.z);
+    if (!(D > 0 && Number.isFinite(rtx) && Number.isFinite(rtz))) throw new Error("openings need the rear tyre's diameter and position (TIRE_RL)");
+    openings = openingsLayout(layout, { rearTyreMinX: rtx - D / 2, rearTyreTopZ: rtz + D / 2, choices: openingChoices });
+    cutoutNotes = applyServiceCutouts(layout, openings);
+  }
   const removed = out.nodes.filter((n) => TUB_REPLACES.includes(n.id)).map((n) => ({ id: n.id, material: n.material, geometry: n.geometry }));
   out.nodes = out.nodes.filter((n) => !TUB_REPLACES.includes(n.id));
   out.edges = out.edges.filter((e) => !TUB_REPLACES.includes(e.to) && !TUB_REPLACES.includes(e.from));
@@ -363,6 +378,7 @@ export function withStructuralTub(ir, { choices, walls } = {}) {
   const lc = TUB_LOAD_CHOICES;
   chassis.props = {
     ...(chassis.props || {}),
+    ...(openings ? { tubOpenings: { ...openings, cutouts: cutoutNotes } } : {}),
     frameModel: {
       shearDeformation: true,
       segments: 4,
@@ -372,8 +388,12 @@ export function withStructuralTub(ir, { choices, walls } = {}) {
         { id: "twist", stiffnessOnly: true, nodal: [{ node: FR, F: [0, 0, lc.twistForceN.value] }], supports: twistSupports },
         ...(Number.isFinite(track) ? [{ id: "kerb-twist", forces: [{ from: { solver: "vehicle.axle-loads", target: "VEH", output: "frontAxleLoad" }, factor: { value: track / (2 * frontArm), state: lc.kerbTwist.state, basis: `${lc.kerbTwist.basis}; track ${r4(track)} m, front pickup spacing ${r4(frontArm)} m` }, node: FR, dir: [0, 0, 1] }], supports: twistSupports }] : []),
       ],
+      // joint and bond-line stiffness (structural/joint-stiffness.js): the twist re-solved with joint springs
+      jointScenarios: tubJointScenarios(),
+      jointModel: { version: JOINT_MODEL_VERSION, choices: JOINT_CHOICES, adhesives: ADHESIVES, classification: EN1993_CLASSIFICATION, rivets: RIVET_NOTE },
+      torsionCrossCheck: { x0: fx, x1: rx, axis: { y: 0, z: layout.choices.nodeZ } },
       stiffness: [{
-        id: "torsional", case: "twist", node: FR, dof: "z", force: lc.twistForceN.value, arm: frontArm, kind: "torsional",
+        id: "torsional", case: "twist", node: FR, dof: "z", force: lc.twistForceN.value, arm: frontArm, kind: "torsional", jointRange: true,
         target: { value: TORSION_TARGET.value, label: TORSION_TARGET.label, basis: TORSION_TARGET.basis, sources: TORSION_TARGET.sources },
         profile: [["front-axle", "FA"], ["firewall-rails", "FWR"], ["firewall-sills", `S${layout.choices.firewallX}`], ["sill-2.24", "S2.24"], ["kick-start", `S${layout.choices.kickStartX}`], ["heel", "K"], ["quarter-start", "Q0"], ["rear-bulkhead", "QB"], ["rear-axle", "QA"]]
           .map(([sid, n]) => ({ id: sid, nodes: [`${n}.L`, `${n}.R`] })),
@@ -381,17 +401,17 @@ export function withStructuralTub(ir, { choices, walls } = {}) {
       assumptions: [
         "Structural tub (design change, structural/car-tub.js): every position and section is a design choice; packaging clearances are computed separately (tubPackagingFit, OCC body check).",
         "Suspension pickups are rigid supports on the front rails (axle line) and the rear quarter boxes (axle line); springs, bushings and the S550 subframes are not modelled or credited.",
-        "Joints and bond lines are rigid; member centrelines meet at nodes (joint offsets between members of different heights idealised).",
-        "The CFRP body skin and the glazing are not structural here: not credited.",
+        "Joints are rigid in the main solve (the stiffness's upper bound). The torsional stiffness is also a range (structural/joint-stiffness.js): bond-line springs from the sourced adhesive moduli are computed; joint-wall distortion is bounded by placing every joint at the EN 1993-1-8 rigid boundary (k_b 25, then 8), an estimate because that rule classifies steel building frames. The stiffness margin uses the lowest computed bond-line value. An estimated bound below the target is a warning, not a failed capacity. Self-piercing rivets are not credited with stiffness. Member centrelines meet at nodes (joint offsets idealised).",
+        "The CFRP body skin and the glazing are not structural here: not credited (a bonded windscreen would add stiffness that is not counted).",
+        ...(openings ? [`Openings (structural/car-openings.js): door apertures, windscreen, backlight and side glass are open (no sheet credited in them); service cut-outs are cut in: ${cutoutNotes.map((n) => (n.panel ? `${n.panel} × ${n.factor.toFixed(4)} (${n.holes.join(", ")})` : `${n.member} → ${n.to}`)).join("; ")}.`] : ["Openings not designed (openings: false): the firewall sheets and the tunnel cell are uncut."]),
         "Gross mass spread uniformly along the rails, sills, kicks and quarter boxes (bending case), times the stated load factor.",
-        "No roof structure is credited: the tub is open above the sills (the greenhouse is the CAD body skin).",
       ],
     },
   };
   const pk = veh.props.vehicle.packaging;
   if (Array.isArray(pk?.notChecked)) {
     pk.notChecked = pk.notChecked.map((r) => r.item === "RAIL_L, RAIL_R, TUB"
-      ? { item: "structural tub", reason: "checked by package.tub-fit (envelopes, egress lines and the CAD body skin); door apertures, glazing openings and service access are not designed, so not checked" }
+      ? { item: "structural tub", reason: openings ? "checked by package.tub-fit (envelopes, egress lines, the CAD body skin, and the door / glazing / service openings); the skin is not trimmed at the openings (not structural)" : "checked by package.tub-fit (envelopes, egress lines and the CAD body skin); door apertures, glazing openings and service access are not designed, so not checked" }
       : r.item === "pedal box, dash, steering column, driveshaft, door and sill" ? { item: "pedal box, dash, steering column, driveshaft, doors", reason: "not in the design (the sills are tub parts)" } : r);
   }
   const change = {
@@ -402,5 +422,5 @@ export function withStructuralTub(ir, { choices, walls } = {}) {
     basis: "design",
     removed,
   };
-  return { ir: out, layout, change };
+  return { ir: out, layout, change, openings };
 }

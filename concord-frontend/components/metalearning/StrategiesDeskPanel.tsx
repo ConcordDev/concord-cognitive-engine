@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { apiHelpers } from '@/lib/api/client';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ErrorState } from '@/components/common/EmptyState';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -44,8 +43,6 @@ export function StrategiesDeskPanel() {
   const newNameInputRef = useRef<HTMLInputElement>(null);
   const curriculumInputRef = useRef<HTMLInputElement>(null);
   const strategySearchInputRef = useRef<HTMLInputElement>(null);
-
-  const bridge = useLensBridge('metalearning', 'strategy');
 
   const { data: status, isLoading, isError: isError, error: error, refetch: refetch } = useQuery({
     queryKey: ['metalearning-status'],
@@ -125,13 +122,6 @@ export function StrategiesDeskPanel() {
     strategyList.forEach((s) => set.add(s.domain));
     return Array.from(set);
   }, [strategyList]);
-
-  useEffect(() => {
-    bridge.syncList(strategyList, (s) => {
-      const strat = s as Strategy;
-      return { title: strat.name, data: s as Record<string, unknown>, meta: { type: strat.domain } };
-    });
-  }, [strategyList, bridge]);
 
   useLensCommand(
     [

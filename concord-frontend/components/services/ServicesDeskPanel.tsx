@@ -13,6 +13,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
@@ -189,7 +190,7 @@ export function ServicesDeskPanel() {
             return { date: d.date, completedAt: d.date, status: a.meta.status, price: d.price ?? 0, provider: d.provider || 'Unknown' };
           }),
           productsSold: [],
-          date: new Date().toISOString().slice(0, 10),
+          date: calendarDateKey(),
         };
       } else if (action === 'commissionCalc') {
         payload = {
@@ -1126,7 +1127,7 @@ export function ServicesDeskPanel() {
       {/* End-of-day close modal (Square-style) */}
       <AnimatePresence>
         {showCloseDayModal && (() => {
-          const tomorrowDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+          const tomorrowDate = shiftDateKey(calendarDateKey(), 1);
           const allAppts = appointments.map(a => ({
             id: a.id,
             title: a.title,
