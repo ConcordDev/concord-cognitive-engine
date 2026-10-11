@@ -11,6 +11,7 @@
 
 import logger from '../logger.js';
 import { PROOF_OBLIGATIONS } from './csl-proof-obligations.js';
+import { isExplicitDtuSaveIntent } from './chat/dtu-save-intent.js';
 
 export class ConcordSoSRuntime {
   #inFlight = new Map(); // key: 'domain.macro' -> { turnId, promise, expiresAt, stack }
@@ -122,21 +123,39 @@ export class ConcordSoSRuntime {
       // depends on this gate actually working.)
       let intent = 'language';
       let turnText = typeof input?.turnText === 'string' ? input.turnText : '';
+      const userPrompt = typeof input?.userPrompt === 'string' ? input.userPrompt : '';
+      // An explicit "save/create a DTU …" is formal intent even when the
+      // gate's turnText is the tool-params JSON (which classifies as language).
+      const formalDtuSave = isExplicitDtuSaveIntent(turnText) || isExplicitDtuSaveIntent(userPrompt);
+      const intentSource = formalDtuSave && isExplicitDtuSaveIntent(userPrompt) ? userPrompt : turnText;
       try {
         const { classifyIntent } = await import('./chat/intent-router.js').catch(() => ({}));
         if (classifyIntent) {
-          const classification = classifyIntent(turnText);
-          intent = classification?.intent ?? 'language';
+          const classification = classifyIntent(formalDtuSave ? intentSource : turnText);
+          intent = formalDtuSave ? 'tool-action' : (classification?.intent ?? 'language');
+        } else if (formalDtuSave) {
+          intent = 'tool-action';
         }
       } catch (e) {
         logger.debug?.('[csl-core] intent classification error: %s', e.message);
+        if (formalDtuSave) intent = 'tool-action';
       }
 
       // Obligation 6: intent routing correctness. Evaluated for every turn
       // that gets this far (reachedCsl:true) regardless of whether the gate
       // below is about to reject it — the obligation is precisely "did the
       // gate do its job", so it must observe the pre-gate classification.
-      await runObligation('intentRoutingCorrectness', { turnText, reachedCsl: true });
+      // For an explicit DTU save, the user's sentence is the classified text,
+      // not the tool-params JSON the gate forwards as turnText.
+      await runObligation('intentRoutingCorrectness', { turnText: formalDtuSave ? intentSource : turnText, reachedCsl: true });
+
+      // Explicit DTU save is formal, but the mint belongs to the chat tool
+      // (title / summary params), not to CSL's generic macro invoke — that
+      // path has no domain/action hints for create_dtu and would reject the
+      // turn as no_macro_hint after this gate passed.
+      if (formalDtuSave) {
+        return { ok: true, reason: 'formal_dtu_save', proofArtifact: { turnId, obligations: proofObligations } };
+      }
 
       // Gate: reject non-formal intents (keep chat conversational)
       if (intent === 'language') {

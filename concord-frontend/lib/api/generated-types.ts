@@ -244,6 +244,8 @@ export interface ForgeManualRequest {
 
 export interface ForgeHybridRequest {
   title?: string;
+  /** forge.hybrid reads prompt, not content, when it builds the DTU body. */
+  prompt?: string;
   content: string;
   tags?: string[];
   source?: string;
