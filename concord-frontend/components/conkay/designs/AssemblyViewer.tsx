@@ -222,7 +222,7 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
           const dy = part ? explodedShift(part, explode)[1] - d.placementY : 0;
           return (
             <lineLoop key={d.id} geometry={d.geometry} position={[0, 0, -dy]}>
-              <lineBasicMaterial color={mode === 'studio' ? '#1c1c1c' : '#333'} clippingPlanes={clip} />
+              <lineBasicMaterial color="#333" clippingPlanes={clip} />
             </lineLoop>
           );
         })}
