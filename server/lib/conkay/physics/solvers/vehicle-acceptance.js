@@ -316,6 +316,9 @@ export const vehicleAcceptance = registerSolver({
     }
     if (!packaging) caveats.push("Occupant fit and packaging are not checked: the design has no package layout.");
     else if (packaging.notChecked.length) caveats.push(`Packaging is screening level: not checked for want of dimensions or design: ${packaging.notChecked.map((n) => n.item).join(", ")}.`);
+    const asm = ctx.get(id, "props.vehicle.packaging") ? ctx.result("assembly.vehicle", id) : null;
+    if (asm?.outputs?.fit?.value?.text) caveats.push(asm.outputs.fit.value.text);
+    else if (asm?.status === "ERROR") caveats.push(`Assembly packaging errored: ${asm.error}`);
     const breakdown = bd?.status === "NOT_COMPUTED" || !bd ? null : {
       totalMassKg: bd.outputs.totalMass.value,
       pct: { sourced: bd.outputs.sourcedPct.value, estimated: bd.outputs.estimatedPct.value, computed: bd.outputs.computedPct.value, placeholder: bd.outputs.placeholderPct.value },

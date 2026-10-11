@@ -114,6 +114,15 @@ export interface DesignSnapshot {
   mass: DesignMass | null;
   drawings: DesignDrawing[];
   model3d: DesignModel3d | null;
+  /** Parametric assembly. Absent on snapshots built before the assembly solver. */
+  assembly?: {
+    verification?: { statement: string; geometricOnly?: string[] };
+    checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; minimumOverallHeightM?: number }[];
+    components: { id: string; name: string; group: string; role: string; placement: { x: number; y: number; z: number }; half: number[] | null; geometry: { kind: string; label?: string }; parameters?: { id: string; name: string; value: number | string; unit: string; provenance: { state: string; source?: string; note?: string } }[]; relationships?: { kind: string; target: string; note?: string }[]; explode?: { axis: 'x' | 'y' | 'z'; sign: number; rank: number } }[];
+    surface: { mesh: { positions: number[]; normals: number[]; paint: number[]; glass: number[]; bounds: { min: number[]; max: number[] } } };
+    wheel: { tire: { positions: number[]; normals?: number[]; indices: number[] }; rim: { positions: number[]; indices: number[] }; disc: { positions: number[]; indices: number[] }; caliper: { positions: number[]; indices: number[] } };
+    coordinateSystem?: { axes?: Record<string, string>; origin?: string };
+  } | null;
   physicalTests: string[];
   reviewQueue?: { id: string; kind: string; subject: string | null; decision: string; reason: string | null }[];
   statuses: ValueStatus[];

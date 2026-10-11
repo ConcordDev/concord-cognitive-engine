@@ -26,6 +26,7 @@ import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
 import { withStructuralTub } from "../structural/car-tub.js";
+import { carChatSummary } from "../assembly/summary.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
 
@@ -584,6 +585,7 @@ function acceptanceReport(brief, b, s) {
     ok: true,
     session: s,
     report: {
+      chatSummary: carChatSummary(s),
       brief,
       configuration: b.configuration,
       selection: b.selection,

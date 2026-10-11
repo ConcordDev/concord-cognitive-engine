@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 import { registerSolver } from "../registry.js";
 import { getComponent } from "../../components/index.js";
 import { runDrawingKernel } from "../../cad/drawing-kernel.js";
-import { buildGaSheets } from "../../drawings/ga-drawing.js";
+import { buildGaSheets, buildPackagingSheet } from "../../drawings/ga-drawing.js";
 import { toSvg, toPdf } from "../../drawings/sheet.js";
 
 export const GA_SOLVER_VERSION = "1.0.0";
@@ -133,11 +133,14 @@ export const gaDrawing = registerSolver({
     ];
     const bom = bomRows(ctx);
     const views = Object.fromEntries(GA_VIEWS.map((v) => [v.id, proj.views[v.id]]));
+    const asm = ctx.result("assembly.vehicle", veh);
+    const assembly = asm?.outputs?.assembly?.value || null;
     const model = {
       solver: `drawing.ga@${GA_SOLVER_VERSION}`, scale: GA_SCALE,
       body: { requestHash: body.outputs.kernel.value.requestHash, stl: files.stl?.sha256 || null, glb: files.glb?.sha256 || null },
       projection: proj.requestHash, viewsHash: sha(JSON.stringify(views)), extents: bb,
       axles: { fx, rx }, tyres, dims, bom: bom.map(({ sourceUrl, ...r }) => ({ ...r, sourceUrl })), layoutRevision: rev?.version || null,
+      assembly: assembly ? { wheelbaseMm: asm.outputs.wheelbaseMm.value, fit: assembly.checks.map((c) => [c.id, c.status]) } : null,
     };
     const modelHash = sha(JSON.stringify(canonical(model)));
     const revision = `R-${modelHash.slice(0, 8).toUpperCase()}`;
@@ -150,6 +153,15 @@ export const gaDrawing = registerSolver({
       ...(rev?.groundClearance ? [`Layout revision ${rev.version}: ground clearance target ${Math.round(rev.groundClearance.targetM * 1000)} mm (${rev.groundClearance.hold}); ${rev.groundClearance.tradeoffs.map((t) => `${t.item}${t.value != null ? ` ${t.value} ${t.unit}` : ""}`).join("; ")}.`] : []),
     ];
     const occt = body.outputs.kernel.value.occt || "?";
+    const cutaway = assembly ? packagingCutaway(assembly) : [];
+    const sheet3 = assembly ? buildPackagingSheet(assembly, {
+      scale: GA_SCALE, number: `CK-GA-${veh}`, revision, modelHash,
+      projection: "First-angle projection",
+      status: "SCREENING - NOT FOR MANUFACTURE",
+      generated: `Projected from assembly.vehicle; revision = model hash`,
+      model: `${veh} assembly`,
+      title: "Packaging and occupant layout",
+    }) : null;
     const sheets = buildGaSheets({
       title: `GENERAL ARRANGEMENT - ${veh} (ConKay library car)`,
       number: `CK-GA-${veh}`,
@@ -163,6 +175,8 @@ export const gaDrawing = registerSolver({
       toleranceText: `${proj.method.linearDeflectionM * 1000} mm`,
       bomNote: "Quantities by node; unit mass from mass.part (not computed where the solver did not compute it). Payload (occupants) excluded. Full source URLs: drawing.json.",
       notes,
+      cutaway,
+      sheet3,
     });
     const meta = { drawing: `CK-GA-${veh}`, revision, modelHash, solver: `drawing.ga@${GA_SOLVER_VERSION}`, body: model.body };
     // the sheets are kept in memory by content hash; writeDrawingFiles() writes them (async) when asked
@@ -172,6 +186,7 @@ export const gaDrawing = registerSolver({
     const out = {
       sheet1Svg: write(`CK-GA-${veh}-${revision}-sheet1.svg`, toSvg(sheets[0], { ...meta, sheet: 1 })),
       sheet2Svg: write(`CK-GA-${veh}-${revision}-sheet2.svg`, toSvg(sheets[1], { ...meta, sheet: 2 })),
+      ...(sheets[2] ? { sheet3Svg: write(`CK-GA-${veh}-${revision}-sheet3.svg`, toSvg(sheets[2], { ...meta, sheet: 3 })) } : {}),
       pdf: write(`CK-GA-${veh}-${revision}.pdf`, toPdf(sheets, { ...meta, title: `CK-GA-${veh} ${revision}`, producer: `ConKay drawing.ga ${GA_SOLVER_VERSION}` })),
     };
     out.json = write(`CK-GA-${veh}-${revision}.json`, JSON.stringify({ ...meta, dims, dimRows, bom, notes, views: Object.fromEntries(Object.entries(proj.views).map(([k, v]) => [k, { bbox: v.bbox, visibleLengthM: v.visibleLengthM, hiddenLengthM: v.hiddenLengthM }])), projection: proj.method }, null, 2));
@@ -196,7 +211,9 @@ export const gaDrawing = registerSolver({
       covers: [veh, bodyId],
       assumptions: [
         "A screening drawing of a software model: not checked, approved or released; not for manufacture.",
-        "Outer skin, tyres and axle lines only: no structure, closures, glazing openings or interior are drawn.",
+        sheets[2]
+          ? "Sheet 3 and the thin cutaway on sheet 1 are projected from assembly.vehicle. The kernel views remain the outer skin."
+          : "Outer skin, tyres and axle lines only: no structure, closures, glazing openings or interior are drawn.",
         "Static geometry: no suspension travel, steering lock or tyre deflection.",
       ],
     };
@@ -236,6 +253,25 @@ export async function writeDrawingFiles(envelope, dir) {
 }
 
 /** Is a drawing in hand (its embedded meta, or the SVG / JSON text) the current revision of the session's model? */
+function packagingCutaway(assembly) {
+  const lines = [];
+  const stations = assembly.surface?.mesh?.stations || [];
+  if (stations.length > 1) {
+    const roof = stations.map((st) => [st.x, st.roofZ]);
+    const floor = [...stations].reverse().map((st) => [st.x, st.floorZ]);
+    lines.push({ pts: [...roof, ...floor, roof[0]], style: "thin" });
+    lines.push({ pts: stations.map((st) => [st.x, st.beltZ]), style: "thin" });
+  }
+  for (const c of assembly.components || []) {
+    if (c.mesh?.outline) lines.push({ pts: c.mesh.outline, style: "thin" });
+    if (!c.half || !["occupant", "seat", "control", "powertrain", "cooling"].includes(c.role)) continue;
+    const x0 = c.placement.x - c.half[0], x1 = c.placement.x + c.half[0];
+    const z0 = c.placement.z - c.half[2], z1 = c.placement.z + c.half[2];
+    lines.push({ pts: [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]], style: "thin" });
+  }
+  return lines;
+}
+
 export function drawingStatus(drawing, session, veh = "VEH", solverId = "drawing.ga") {
   let meta = drawing;
   if (typeof drawing === "string") {

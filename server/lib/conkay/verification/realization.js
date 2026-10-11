@@ -113,7 +113,8 @@ export function buildRealizationPackage(session) {
   for (const e of drawings) {
     const f = e.outputs.files.value;
     const rev = e.outputs.revision.value;
-    for (const k of ["sheet1Svg", "sheet2Svg"]) {
+    for (const k of ["sheet1Svg", "sheet2Svg", "sheet3Svg"]) {
+      if (!f[k]) continue;
       const data = drawingContent(f[k].sha256);
       if (data != null) drawingFiles[`manufacturing/drawings/${f[k].name}`] = data;
     }
@@ -158,6 +159,7 @@ export function buildRealizationPackage(session) {
       ...(massBreakdowns.length ? { "engineering/mass-breakdown.json": JSON.stringify(massBreakdowns, null, 2) } : {}),
       ...(acceptances.length ? { "engineering/acceptance.json": JSON.stringify(acceptances, null, 2) } : {}),
       ...(fits.length || itfs.length ? { "engineering/packaging.json": JSON.stringify([...fits, ...itfs], null, 2) } : {}),
+      ...(results.some((e) => e?.solver?.id === "assembly.vehicle" && e.outputs?.assembly) ? { "engineering/assembly.json": JSON.stringify(results.filter((e) => e?.solver?.id === "assembly.vehicle" && e.outputs?.assembly).map((e) => e.outputs.assembly.value), null, 2) } : {}),
       ...(bodies.length ? { "engineering/cad-body.json": JSON.stringify(bodies, null, 2) } : {}),
       ...drawingFiles,
       ...(drawings.length ? { "manufacturing/drawings/drawings.json": JSON.stringify(drawings.map((e) => ({ target: e.target, revision: e.outputs.revision.value, modelHash: e.outputs.modelHash.value, files: e.outputs.files.value, dimensions: e.outputs.dimensions.value, bom: e.outputs.bom.value })), null, 2) } : {}),
