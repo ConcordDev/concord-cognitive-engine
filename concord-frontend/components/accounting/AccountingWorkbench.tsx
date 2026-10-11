@@ -5,6 +5,7 @@ import {
   X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText, Link as LinkIcon, Sparkles, Tag, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { AdvancedAccountingPanel } from './AdvancedAccountingPanel';
@@ -338,7 +339,7 @@ function ChartOfAccountsTab() {
 
 function JournalEntryTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => calendarDateKey());
   const [memo, setMemo] = useState('');
   const [lines, setLines] = useState<JournalLine[]>([
     { accountId: '', debit: 0, credit: 0, memo: '' },
@@ -728,7 +729,7 @@ interface BalanceSheet {
 function BalanceSheetTab() {
   const [bs, setBs] = useState<BalanceSheet | null>(null);
   const [loading, setLoading] = useState(true);
-  const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
+  const [asOf, setAsOf] = useState(() => calendarDateKey());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -828,8 +829,8 @@ function AgingTab() {
   const [draft, setDraft] = useState({
     customerName: '',
     total: 0,
-    issuedAt: new Date().toISOString().slice(0, 10),
-    dueAt: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+    issuedAt: calendarDateKey(),
+    dueAt: shiftDateKey(calendarDateKey(), 30),
   });
 
   const refresh = useCallback(async () => {
@@ -857,8 +858,8 @@ function AgingTab() {
       setDraft({
         customerName: '',
         total: 0,
-        issuedAt: new Date().toISOString().slice(0, 10),
-        dueAt: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+        issuedAt: calendarDateKey(),
+        dueAt: shiftDateKey(calendarDateKey(), 30),
       });
       await refresh();
     } catch (e) { console.error(e); }

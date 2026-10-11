@@ -578,6 +578,16 @@ export default function registerReflectionActions(registerLensAction) {
   const rfNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const rfClean = (v, max = 500) => String(v == null ? "" : v).trim().slice(0, max);
   const rfDay = (v) => rfClean(v, 10).slice(0, 10);
+  // A client-supplied calendar day (profile zone or browser local). UTC
+  // `rfDay(rfNow())` is only the fallback when the caller did not say which
+  // day "today" is — otherwise an evening west of UTC files and reads tomorrow.
+  const rfExplicitDay = (value) => (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+  const rfClientToday = (params) => rfExplicitDay(params?.today) || rfExplicitDay(params?.date) || rfDay(rfNow());
+  const rfShiftDay = (iso, delta) => {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    const dt = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + delta));
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+  };
   const RF_DAY = 86400000;
   const RF_MOODS = ["great", "good", "okay", "low", "rough"];
   const RF_WEATHER = ["sunny", "cloudy", "rainy", "snowy", "stormy", "clear", "windy", "foggy"];
@@ -623,12 +633,12 @@ export default function registerReflectionActions(registerLensAction) {
       body: "Wins this week:\n\nWhat I learned:\n\nWhat I'm carrying into next week:\n\nOne thing to change:" },
   ];
 
-  function rfStreak(dateset) {
+  function rfStreak(dateset, today) {
     if (!dateset.size) return 0;
+    const anchor = rfExplicitDay(today) || rfDay(rfNow());
     let streak = 0;
-    const d = new Date();
-    if (!dateset.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1);
-    while (dateset.has(d.toISOString().slice(0, 10))) { streak += 1; d.setUTCDate(d.getUTCDate() - 1); }
+    let cursor = dateset.has(anchor) ? anchor : rfShiftDay(anchor, -1);
+    while (dateset.has(cursor)) { streak += 1; cursor = rfShiftDay(cursor, -1); }
     return streak;
   }
   function rfLongestStreak(dates) {
@@ -710,7 +720,7 @@ export default function registerReflectionActions(registerLensAction) {
       weather: RF_WEATHER.includes(String(params.weather).toLowerCase()) ? String(params.weather).toLowerCase() : null,
       photoCount: Math.max(0, Math.round(rfNum(params.photoCount))),
       promptText: rfClean(params.promptText, 300) || null,
-      date: rfDay(params.date) || rfDay(rfNow()),
+      date: rfExplicitDay(params.date) || rfExplicitDay(params.today) || rfDay(rfNow()),
       at: rfNow(), updatedAt: rfNow(),
     };
     rfListB(s.entries, userId).push(entry);
@@ -791,7 +801,7 @@ export default function registerReflectionActions(registerLensAction) {
   // ── On This Day ─────────────────────────────────────────────────────
   registerLensAction("reflection", "on-this-day", (ctx, _a, params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const ref = rfDay(params.date) || rfDay(rfNow());
+    const ref = rfClientToday(params);
     const md = ref.slice(5);             // MM-DD
     const year = ref.slice(0, 4);
     const matches = (s.entries.get(rfAid(ctx)) || [])
@@ -802,14 +812,14 @@ export default function registerReflectionActions(registerLensAction) {
   });
 
   // ── Streaks & stats ─────────────────────────────────────────────────
-  registerLensAction("reflection", "journal-streak", (ctx, _a, _params = {}) => {
+  registerLensAction("reflection", "journal-streak", (ctx, _a, params = {}) => {
   try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const dates = (s.entries.get(rfAid(ctx)) || []).map((e) => e.date);
     return {
       ok: true,
       result: {
-        currentStreak: rfStreak(new Set(dates)),
+        currentStreak: rfStreak(new Set(dates), rfClientToday(params)),
         longestStreak: rfLongestStreak(dates),
         daysJournaled: new Set(dates).size,
       },
@@ -841,7 +851,7 @@ export default function registerReflectionActions(registerLensAction) {
 
   // ── Prompts ─────────────────────────────────────────────────────────
   registerLensAction("reflection", "prompt-today", (_ctx, _a, params = {}) => {
-    const ref = rfDay(params.date) || rfDay(rfNow());
+    const ref = rfClientToday(params);
     // Deterministic rotation: day-of-epoch indexes the prompt library.
     const idx = Math.floor(Date.parse(`${ref}T00:00:00Z`) / RF_DAY) % RF_PROMPTS.length;
     return { ok: true, result: { date: ref, prompt: RF_PROMPTS[(idx + RF_PROMPTS.length) % RF_PROMPTS.length] } };
@@ -886,7 +896,7 @@ export default function registerReflectionActions(registerLensAction) {
       id: rfId("ent"), journalId, text: tpl.body, title: tpl.name,
       mood: null, tags: [tpl.category], location: null, weather: null,
       photoCount: 0, promptText: null,
-      date: rfDay(rfNow()), at: rfNow(), updatedAt: rfNow(),
+      date: rfExplicitDay(params.date) || rfExplicitDay(params.today) || rfDay(rfNow()), at: rfNow(), updatedAt: rfNow(),
     };
     rfListB(s.entries, userId).push(entry);
     saveRfState();
@@ -1008,11 +1018,11 @@ export default function registerReflectionActions(registerLensAction) {
     return { ok: true, result: { weeklyEntries } };
   });
 
-  registerLensAction("reflection", "reflection-goal-status", (ctx, _a, _params = {}) => {
+  registerLensAction("reflection", "reflection-goal-status", (ctx, _a, params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const goal = s.goal.get(userId) || { weeklyEntries: 5 };
-    const weekAgo = new Date(Date.now() - 7 * RF_DAY).toISOString().slice(0, 10);
+    const weekAgo = rfShiftDay(rfClientToday(params), -7);
     const thisWeek = (s.entries.get(userId) || []).filter((e) => e.date >= weekAgo).length;
     return {
       ok: true,
@@ -1027,19 +1037,19 @@ export default function registerReflectionActions(registerLensAction) {
   });
 
   // ── Dashboard ───────────────────────────────────────────────────────
-  registerLensAction("reflection", "reflection-dashboard", (ctx, _a, _params = {}) => {
+  registerLensAction("reflection", "reflection-dashboard", (ctx, _a, params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const entries = s.entries.get(userId) || [];
     const dates = entries.map((e) => e.date);
-    const weekAgo = new Date(Date.now() - 7 * RF_DAY).toISOString().slice(0, 10);
-    const today = rfDay(rfNow());
+    const today = rfClientToday(params);
+    const weekAgo = rfShiftDay(today, -7);
     const idx = Math.floor(Date.parse(`${today}T00:00:00Z`) / RF_DAY) % RF_PROMPTS.length;
     const sorted = [...entries].sort((a, b) => b.at.localeCompare(a.at));
     return {
       ok: true,
       result: {
-        currentStreak: rfStreak(new Set(dates)),
+        currentStreak: rfStreak(new Set(dates), today),
         longestStreak: rfLongestStreak(dates),
         totalEntries: entries.length,
         entriesThisWeek: entries.filter((e) => e.date >= weekAgo).length,
@@ -1192,14 +1202,14 @@ export default function registerReflectionActions(registerLensAction) {
     return { ok: true, result: { reminder } };
   });
 
-  registerLensAction("reflection", "reminder-status", (ctx, _a, _params = {}) => {
+  registerLensAction("reflection", "reminder-status", (ctx, _a, params = {}) => {
   try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rfExtraState(s);
     const userId = rfAid(ctx);
     const reminder = s.reminders.get(userId) || null;
     const dates = new Set((s.entries.get(userId) || []).map((e) => e.date));
-    const wroteToday = dates.has(rfDay(rfNow()));
+    const wroteToday = dates.has(rfClientToday(params));
     let nextDue = null;
     if (reminder && reminder.enabled) {
       const now = new Date();
@@ -1388,7 +1398,7 @@ export default function registerReflectionActions(registerLensAction) {
         mime: rfClean(params.mime, 80) || "audio/webm",
         bytes: Math.max(0, Math.round(rfNum(params.bytes))),
         caption: "Voice recording", addedAt: rfNow() }],
-      date: rfDay(params.date) || rfDay(rfNow()),
+      date: rfExplicitDay(params.date) || rfExplicitDay(params.today) || rfDay(rfNow()),
       at: rfNow(), updatedAt: rfNow(),
     };
     rfListB(s.entries, userId).push(entry);

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
@@ -189,11 +190,11 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = calendarDateKey(d);
       const label = d.toLocaleDateString(undefined, { weekday: 'short' });
       const spent = transactions
         .filter((t) => {
-          const tDate = t.created_at ? t.created_at.slice(0, 10) : '';
+          const tDate = t.created_at ? calendarDateKey(new Date(t.created_at)) : '';
           return tDate === key && (t.type === 'usage' || t.type === 'spend' || t.type === 'debit');
         })
         .reduce((s, t) => s + Math.abs(t.amount || 0), 0);
@@ -315,9 +316,9 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
         <div className="flex items-end justify-between gap-1 h-24">
           {usageByDay.map((day, i) => {
             const income = transactions.filter(t => {
-              const tDate = t.created_at ? t.created_at.slice(0, 10) : '';
-              const d = new Date(); d.setDate(d.getDate() - (6 - i));
-              return tDate === d.toISOString().slice(0, 10) && (t.type === 'purchase' || t.type === 'credit');
+              const bucket = new Date(); bucket.setDate(bucket.getDate() - (6 - i));
+              const tDate = t.created_at ? calendarDateKey(new Date(t.created_at)) : '';
+              return tDate === calendarDateKey(bucket) && (t.type === 'purchase' || t.type === 'credit');
             }).reduce((s, t) => s + Math.abs(t.amount || 0), 0);
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-0.5">

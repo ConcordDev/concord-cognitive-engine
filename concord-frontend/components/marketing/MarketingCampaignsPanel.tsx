@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Target, ChevronLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { MarketingGmailSendPanel } from './MarketingGmailSendPanel';
@@ -31,12 +32,12 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', channel: 'search', budget: '', startDate: new Date().toISOString().slice(0, 10), endDate: '' });
+  const [form, setForm] = useState({ name: '', channel: 'search', budget: '', startDate: calendarDateKey(), endDate: '' });
   const [selected, setSelected] = useState<Campaign | null>(null);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [verdict, setVerdict] = useState('no_data');
   const [pacing, setPacing] = useState<Pacing | null>(null);
-  const [metricForm, setMetricForm] = useState({ date: new Date().toISOString().slice(0, 10), impressions: '', clicks: '', conversions: '', spend: '', revenue: '' });
+  const [metricForm, setMetricForm] = useState({ date: calendarDateKey(), impressions: '', clicks: '', conversions: '', spend: '', revenue: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -71,7 +72,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
       startDate: form.startDate, endDate: form.endDate,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ name: '', channel: 'search', budget: '', startDate: new Date().toISOString().slice(0, 10), endDate: '' });
+    setForm({ name: '', channel: 'search', budget: '', startDate: calendarDateKey(), endDate: '' });
     setShowAdd(false); setError(null);
     await refresh(); onChange();
   };
@@ -88,7 +89,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
       conversions: Number(metricForm.conversions) || 0, spend: Number(metricForm.spend) || 0,
       revenue: Number(metricForm.revenue) || 0,
     });
-    setMetricForm({ date: new Date().toISOString().slice(0, 10), impressions: '', clicks: '', conversions: '', spend: '', revenue: '' });
+    setMetricForm({ date: calendarDateKey(), impressions: '', clicks: '', conversions: '', spend: '', revenue: '' });
     await openCampaign(selected);
     await refresh(); onChange();
   };

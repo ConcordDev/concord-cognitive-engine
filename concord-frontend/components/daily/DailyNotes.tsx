@@ -14,6 +14,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calendarDateKey } from '@/lib/calendar-date';
 
 interface DailyNote {
   date: string;
@@ -39,12 +40,10 @@ export function DailyNotes({
   onEditNote,
   className
 }: DailyNotesProps) {
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(() => calendarDateKey());
   const [viewMonth, setViewMonth] = useState(new Date());
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = calendarDateKey();
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);

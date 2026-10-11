@@ -19,6 +19,7 @@ import {
   Paperclip, ClipboardList, ArrowRightCircle, Loader2, MapPin,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -619,10 +620,10 @@ export function MeetingsWorkspace() {
             <strong className="text-white">{openActions.length}</strong> open action item
             {openActions.length !== 1 ? 's' : ''} across all meetings
           </span>
-          {openActions.some((a) => a.dueDate && a.dueDate < new Date().toISOString().slice(0, 10)) && (
+          {openActions.some((a) => a.dueDate && a.dueDate < calendarDateKey()) && (
             <span className="ml-auto flex items-center gap-1 text-xs text-red-400">
               <AlertTriangle className="w-3.5 h-3.5" />
-              {openActions.filter((a) => a.dueDate && a.dueDate < new Date().toISOString().slice(0, 10)).length} overdue
+              {openActions.filter((a) => a.dueDate && a.dueDate < calendarDateKey()).length} overdue
             </span>
           )}
         </div>
@@ -772,7 +773,7 @@ interface MeetingActionsProps {
 }
 
 function MeetingActions({ meeting, actions, meetings, busy, draft, setDraft, run, reload }: MeetingActionsProps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
   const otherMeetings = meetings.filter((m) => m.id !== meeting.id);
 
   return (

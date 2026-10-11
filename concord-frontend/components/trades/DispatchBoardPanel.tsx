@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface Tech { id: string; name: string; status: string }
@@ -22,7 +23,7 @@ export function DispatchBoardPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [unassigned, setUnassigned] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => calendarDateKey());
 
   const refresh = useCallback(async () => {
     setLoading(true);

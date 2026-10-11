@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import {
   Clapperboard, MessageSquare, ClipboardList, Layers, CalendarDays, Link2,
@@ -1011,7 +1012,7 @@ function CalendarTab() {
     [events],
   );
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = calendarDateKey();
 
   return (
     <div className="space-y-4">

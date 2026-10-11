@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Download, Upload, CalendarDays } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
 interface DayCell {
@@ -126,7 +127,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
         {cells.map((c, i) => {
           if (!c) return <div key={`pad-${i}`} />;
           const day = Number(c.date.slice(-2));
-          const isToday = c.date === new Date().toISOString().slice(0, 10);
+          const isToday = c.date === calendarDateKey();
           const items = c.tasks.length + c.reminders.length;
           return (
             <button key={c.date} type="button" onClick={() => setSelected(c.date)}

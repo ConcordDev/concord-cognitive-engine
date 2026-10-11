@@ -34,6 +34,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { useCreateArtifact, useUpdateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
+import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface AppointmentDataLite {
@@ -208,7 +209,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
         {
           invoice: {
             amountUsd: d.price ?? 0,
-            dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+            dueDate: shiftDateKey(calendarDateKey(), 14),
             terms: 'net-14',
             issuedAt: new Date().toISOString(),
           },
@@ -230,9 +231,8 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
       const days =
         d.recurringFrequency === 'monthly' ? 30 :
         d.recurringFrequency === 'biweekly' ? 14 : 7;
-      const baseDate = d.date ? new Date(d.date) : new Date();
-      baseDate.setDate(baseDate.getDate() + days);
-      const nextDate = baseDate.toISOString().slice(0, 10);
+      const anchor = typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : calendarDateKey();
+      const nextDate = shiftDateKey(anchor, days);
       await createAppt.mutateAsync({
         type: 'Appointment',
         title: `${d.serviceType ?? 'Appointment'} — ${d.clientName ?? 'client'} (rebook)`,
@@ -409,7 +409,7 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
         price: a.data.price ?? 0,
         provider: a.data.provider || 'Unknown',
       }));
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const dateStr = calendarDateKey();
       const r = await lensRun<Partial<CloseReport>>('services', 'dailyCloseReport', {
         artifact: { data: { appointments: apptPayload, productsSold: [], date: dateStr } },
       });
