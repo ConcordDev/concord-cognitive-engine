@@ -277,6 +277,10 @@ const nextConfig = {
         destination: `${backendUrl}/socket.io/:path*`,
       },
       {
+        source: '/.well-known/concord-receipt-keys.json',
+        destination: `${backendUrl}/.well-known/concord-receipt-keys.json`,
+      },
+      {
         source: '/health',
         destination: `${backendUrl}/health`,
       },

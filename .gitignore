@@ -1,4 +1,9 @@
 
+# Ed25519 receipt signing keys (scripts/generate-receipt-signing-key.mjs).
+# The file holds the private key. Publish only the public key.
+receipt-signing-key.pem
+*.receipt-key.pem
+
 # Environment / secrets — never commit. .env.runpod and .env.example
 # stay tracked as templates; .env (the active local-config file) and
 # any deployment-specific overrides do not.

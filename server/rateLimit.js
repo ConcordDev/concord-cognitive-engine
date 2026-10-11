@@ -42,6 +42,8 @@ const LIMITS = {
   'write.client-error': { max: 200, windowMs: 60000 },   // anon telemetry; an error storm must not self-DoS
   'write.frontend-error': { max: 60, windowMs: 60000 }, // route-boundary crashes; a render loop must not flood observe()
   'read.conkay-demo':   { max: 120, windowMs: 60000 },   // no-login ConKay demo — anonymous FEA solves, compute only
+  'read.receipt-keys':  { max: 120, windowMs: 60000 },   // public Ed25519 receipt public keys
+  'write.receipt-verify': { max: 60, windowMs: 60000 },  // anonymous POST /api/receipts/verify — no write, abuse backstop
 };
 
 /**

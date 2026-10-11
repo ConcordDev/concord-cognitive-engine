@@ -70,6 +70,12 @@ describe("request-admission — classifyRequest", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/designs/car/files/CK-GA-VEH.pdf" })), PRIORITY.PROTECTED);
   });
 
+  it("public receipt keys and verify stay PROTECTED with no session", () => {
+    assert.equal(classifyRequest(makeReq({ path: "/.well-known/concord-receipt-keys.json" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/receipts/verify" })), PRIORITY.PROTECTED);
+    assert.equal(classifyRequest(makeReq({ path: "/api/receipts/verify/extra" })), PRIORITY.SHEDDABLE);
+  });
+
   it("the demo lane is narrow: other /api/conkay paths and look-alikes stay SHEDDABLE", () => {
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/design" })), PRIORITY.SHEDDABLE);
     assert.equal(classifyRequest(makeReq({ path: "/api/conkay/demo/export" })), PRIORITY.SHEDDABLE);

@@ -7,6 +7,7 @@
 
 import crypto from "node:crypto";
 import { listSolvers } from "../physics/registry.js";
+import { attestReceipt } from "../../receipts/attest.js";
 
 export function canonical(v) {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
@@ -28,7 +29,9 @@ export function makeReceipt({ ir, solverIds, envelopes, finalDesign, loopVersion
     finalDesignSha256: sha256(finalDesign),
     runs: envelopes.filter(Boolean).map((e) => ({ runId: e.runId, status: e.status, inputHash: e.provenance?.inputHash ?? null })).sort((a, b) => a.runId.localeCompare(b.runId)),
   };
-  return { ...body, sha256: sha256(body) };
+  // Content hash stays over the solver body only. issuedAt and the signature
+  // block are attached afterwards and are ignored by verifyReceipt.
+  return attestReceipt({ ...body, sha256: sha256(body) });
 }
 
 /** Does a receipt still describe this IR under the current solver registry? */
@@ -39,7 +42,12 @@ export function verifyReceipt(receipt, ir) {
   for (const [id, v] of Object.entries(receipt.solvers)) {
     if (now[id] !== v) reasons.push(`solver ${id} is now ${now[id] ?? "missing"} (receipt used ${v})`);
   }
-  const { sha256: s, ...body } = receipt;
-  if (sha256(body) !== s) reasons.push("receipt body does not match its hash");
+  // issuedAt and the signature block are attestation, not part of the content hash.
+  const body = {};
+  for (const [k, v] of Object.entries(receipt)) {
+    if (k === "sha256" || k === "issuedAt" || k === "signature") continue;
+    body[k] = v;
+  }
+  if (sha256(body) !== receipt.sha256) reasons.push("receipt body does not match its hash");
   return { valid: reasons.length === 0, reasons };
 }
