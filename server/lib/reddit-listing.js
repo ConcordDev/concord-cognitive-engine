@@ -316,7 +316,7 @@ export async function loadRedditListing(input = {}, deps = {}) {
   const now = typeof deps.now === "function" ? deps.now : () => Date.now();
   const sleep = typeof deps.sleep === "function"
     ? deps.sleep
-    : (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    : (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
   const ttlMs = deps.ttlMs ?? DEFAULT_TTL_MS;
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
   const t = now();
