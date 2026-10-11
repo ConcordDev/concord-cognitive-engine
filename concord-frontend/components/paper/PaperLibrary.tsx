@@ -26,6 +26,14 @@ const STATUS = [
   { id: 'read', label: 'Read', cls: 'bg-emerald-700 text-emerald-100' },
 ];
 
+function readPapers(payload: { data?: { result?: unknown } }): Paper[] {
+  const result = payload.data?.result as { papers?: Paper[]; result?: { papers?: Paper[] } } | Paper[] | null | undefined;
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.papers)) return result.papers;
+  if (result?.result && Array.isArray(result.result.papers)) return result.result.papers;
+  return [];
+}
+
 export const PAPER_ADD_EVENT = 'paper:add';
 let paperAddPending = false;
 export function requestAddPaper() {
@@ -41,6 +49,8 @@ export function PaperLibrary() {
   const [active, setActive] = useState<Paper | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ title: '', authors: '', year: '', venue: '' });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [newCollection, setNewCollection] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -62,7 +72,7 @@ export function PaperLibrary() {
       lensRun('paper', 'collection-list', {}),
       lensRun('paper', 'library-dashboard', {}),
     ]);
-    setPapers((pl.data?.result?.papers as Paper[]) || []);
+    setPapers(readPapers(pl));
     setCollections((cl.data?.result?.collections as CollectionMeta[]) || []);
     setDash((d.data?.result as Dash) || null);
     setLoading(false);
@@ -70,15 +80,24 @@ export function PaperLibrary() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function save() {
-    if (!form.title.trim()) return;
-    await lensRun('paper', 'paper-save', {
+    if (!form.title.trim() || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    const res = await lensRun<{ paper?: Paper }>('paper', 'paper-add', {
       title: form.title.trim(),
       authors: form.authors.split(',').map(a => a.trim()).filter(Boolean),
       year: form.year ? Number(form.year) : undefined,
-      venue: form.venue.trim(),
+      venue: form.venue.trim() || undefined,
     });
+    const paper = res.data?.result?.paper;
+    if (!res.data?.ok || !paper) {
+      setSaveError(res.data?.error || 'Could not save this paper');
+      setSaving(false);
+      return;
+    }
     setForm({ title: '', authors: '', year: '', venue: '' });
     await refresh();
+    setSaving(false);
   }
   async function update(id: string, patch: Record<string, unknown>) {
     const r = await lensRun('paper', 'paper-update', { id, ...patch });
@@ -115,7 +134,7 @@ export function PaperLibrary() {
 
       {dash && (
         <div className="grid grid-cols-4 gap-2 mb-3">
-          {([['Papers', dash.totalPapers], ['To read', dash.toRead], ['Reading', dash.reading], ['Read', dash.read]] as const).map(([l, v]) => (
+          {([['Papers', filter ? dash.totalPapers : papers.length], ['To read', dash.toRead], ['Reading', dash.reading], ['Read', dash.read]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
@@ -132,10 +151,11 @@ export function PaperLibrary() {
           className="w-36 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={save} disabled={!form.title.trim()}
+        <button type="button" onClick={save} disabled={!form.title.trim() || saving}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
-          <Plus className="w-3 h-3" />Save
+          <Plus className="w-3 h-3" />{saving ? 'Saving…' : 'Save'}
         </button>
+        {saveError && <p className="w-full text-[11px] text-rose-300">{saveError}</p>}
       </div>
 
       {/* Status filter */}
@@ -158,7 +178,7 @@ export function PaperLibrary() {
             <div className="flex items-center gap-2">
               <button onClick={() => setActive(active?.id === p.id ? null : p)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[10px] text-zinc-400 truncate">{p.authors.join(', ') || 'Unknown'}{p.year ? ` · ${p.year}` : ''}{p.venue ? ` · ${p.venue}` : ''}</p>
+                <p className="text-[10px] text-zinc-400 truncate">{(p.authors || []).join(', ') || 'Unknown'}{p.year ? ` · ${p.year}` : ''}{p.venue ? ` · ${p.venue}` : ''}</p>
               </button>
               <select value={p.status} onChange={e => update(p.id, { status: e.target.value })}
                 className={cn('text-[10px] rounded px-1.5 py-0.5 border-0', STATUS.find(s => s.id === p.status)?.cls)}>
