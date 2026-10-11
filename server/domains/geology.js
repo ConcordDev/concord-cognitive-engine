@@ -6,10 +6,84 @@
 //
 // Free, no API key:
 //   • USGS Earthquake Catalog: earthquake.usgs.gov/fdsnws/event/1/
-//   • USGS DESIGNMAPS (ASCE 7 / IBC seismic): earthquake.usgs.gov/ws/designmaps/asce7-22
+//   • USGS ASCE 7-22 design maps: earthquake.usgs.gov/ws/building-codes/asce7-22/calculate
+//     (the old /ws/designmaps/asce7-22.json URL 308-redirects here)
 
 const USGS_EQ_API = "https://earthquake.usgs.gov/fdsnws/event/1/query";
-const USGS_DESIGNMAPS = "https://earthquake.usgs.gov/ws/designmaps/asce7-22.json";
+const USGS_ASCE722 = "https://earthquake.usgs.gov/ws/building-codes/asce7-22/calculate";
+// Object keys are strings, so numeric 1 and "1" share a key. The calculate
+// service rejects the old numeric riskCategory ("Input should be 'I'..'N'").
+const ASCE_RISK_CATEGORY = {
+  1: "I", 2: "II", 3: "III", 4: "IV",
+  I: "I", II: "II", III: "III", IV: "IV", N: "N",
+};
+
+function asceRiskCategory(v) {
+  if (v == null || v === "") return "II";
+  const key = String(v).trim().toUpperCase();
+  return Object.prototype.hasOwnProperty.call(ASCE_RISK_CATEGORY, key) ? ASCE_RISK_CATEGORY[key] : "II";
+}
+
+function finiteOrNull(v) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// CalcPanel posts `{ input: { artifact } }`. Dispatch peels that only when
+// the artifact is `{ data: {...} }`. usgs-seismic-hazard is also called with
+// top-level params (tests, direct input) and with artifact.data the way
+// seismicRisk reads a site. Accept every one of those shapes.
+function hazardInputSources(artifact, params) {
+  const sources = [];
+  const push = (o) => {
+    if (o && typeof o === "object" && !Array.isArray(o)) sources.push(o);
+  };
+  const p = params && typeof params === "object" && !Array.isArray(params) ? params : null;
+  const a = artifact && typeof artifact === "object" && !Array.isArray(artifact) ? artifact : null;
+  if (p) {
+    push(p);
+    push(p.data);
+    if (p.artifact && typeof p.artifact === "object" && !Array.isArray(p.artifact)) {
+      push(p.artifact.data);
+      push(p.artifact);
+    }
+  }
+  if (a) {
+    push(a.data);
+    if (a.data && typeof a.data === "object" && !Array.isArray(a.data) && a.data.artifact && typeof a.data.artifact === "object") {
+      push(a.data.artifact.data);
+      push(a.data.artifact);
+    }
+    push(a);
+  }
+  return sources;
+}
+
+function firstPresent(sources, keys) {
+  for (const src of sources) {
+    for (const k of keys) {
+      const v = src[k];
+      if (v != null && v !== "") return v;
+    }
+  }
+  return undefined;
+}
+
+async function usgsFailureDetail(r) {
+  if (typeof r?.json !== "function") return "";
+  try {
+    const body = await r.json();
+    const detail = body?.detail;
+    if (Array.isArray(detail)) {
+      const msg = detail.map((d) => (d && d.msg ? String(d.msg) : "")).filter(Boolean).join("; ");
+      if (msg) return msg;
+    }
+    if (typeof body?.error === "string" && body.error.trim()) return body.error.trim();
+    if (typeof body?.message === "string" && body.message.trim()) return body.message.trim();
+  } catch { /* non-JSON error body */ }
+  return "";
+}
+
 // Macrostrat — free, keyless geologic-map + rock-unit API (the data
 // source behind Rockd's bedrock overlay and "rocks near me" lookup).
 const MACROSTRAT_API = "https://macrostrat.org/api/v2";
@@ -147,48 +221,78 @@ export default function registerGeologyActions(registerLensAction) {
 
   /**
    * usgs-seismic-hazard — Real ASCE 7-22 / IBC seismic design
-   * parameters for a US location via USGS DESIGNMAPS web service.
-   * Returns Ss, S1, MCEr ground motion + site-modified Sds, Sd1
+   * parameters for a US location via the USGS building-codes calculate
+   * service. Returns Ss, S1, MCEr ground motion + site-modified Sds, Sd1
    * for the requested site class. Free, no API key.
    *
-   * params: { latitude, longitude, riskCategory?: 1|2|3|4, siteClass?: "A"|"B"|"BC"|"C"|"CD"|"D"|"DE"|"E"|"F" }
+   * Coordinates are read from params, from params.artifact (CalcPanel sends
+   * `{ artifact: { latitude, longitude, riskCategory, siteClass } }` and
+   * dispatch does not peel that shape), or from artifact / artifact.data
+   * (the same place seismicRisk reads a site).
+   *
+   * riskCategory may be 1–4 or the roman numeral the service requires
+   * (I, II, III, IV, or N). The calculate response still nests scalars at
+   * response.data; Fa/Fv and top-level PGA are no longer returned — PGA
+   * falls back to underlyingData.pgauh.
    */
-  registerLensAction("geology", "usgs-seismic-hazard", async (_ctx, _artifact, params = {}) => {
-    const lat = Number(params.latitude);
-    const lng = Number(params.longitude);
+  registerLensAction("geology", "usgs-seismic-hazard", async (_ctx, artifact, params = {}) => {
+    const sources = hazardInputSources(artifact, params);
+    const lat = Number(firstPresent(sources, ["latitude", "lat"]));
+    const lng = Number(firstPresent(sources, ["longitude", "lng", "lon"]));
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return { ok: false, error: "latitude + longitude required" };
     }
     if (lat < 18 || lat > 72 || lng < -180 || lng > -65) {
       return { ok: false, error: "USGS DESIGNMAPS only covers US territory (lat 18-72, lng -180 to -65)" };
     }
-    const riskCategory = [1, 2, 3, 4].includes(Number(params.riskCategory)) ? Number(params.riskCategory) : 2;
-    const siteClass = ["A", "B", "BC", "C", "CD", "D", "DE", "E", "F"].includes(params.siteClass) ? params.siteClass : "D";
-    const url = `${USGS_DESIGNMAPS}?latitude=${lat}&longitude=${lng}&riskCategory=${riskCategory}&siteClass=${siteClass}&title=Concord+OS+Lookup`;
+    const riskCategory = asceRiskCategory(firstPresent(sources, ["riskCategory"]));
+    const siteRaw = firstPresent(sources, ["siteClass"]);
+    const siteClass = ["A", "B", "BC", "C", "CD", "D", "DE", "E", "F"].includes(siteRaw) ? siteRaw : "D";
+    const qs = new URLSearchParams({
+      latitude: String(lat),
+      longitude: String(lng),
+      riskCategory,
+      siteClass,
+      title: "Concord OS Lookup",
+    });
+    const url = `${USGS_ASCE722}?${qs.toString()}`;
     try {
       const r = await fetch(url);
       if (!r.ok) {
-        if (r.status === 400) return { ok: false, error: "USGS rejected the lookup (location may be outside ASCE 7 coverage)" };
+        const detail = await usgsFailureDetail(r);
+        if (r.status === 400) {
+          return {
+            ok: false,
+            error: detail
+              ? `USGS rejected the lookup (location may be outside ASCE 7 coverage): ${detail}`
+              : "USGS rejected the lookup (location may be outside ASCE 7 coverage)",
+          };
+        }
+        if (r.status === 422) {
+          return { ok: false, error: detail ? `USGS rejected the lookup: ${detail}` : "USGS rejected the lookup" };
+        }
         throw new Error(`usgs designmaps ${r.status}`);
       }
       const data = await r.json();
       const resp = data?.response?.data;
-      if (!resp) return { ok: false, error: "USGS returned no design parameters" };
+      if (!resp || typeof resp !== "object") return { ok: false, error: "USGS returned no design parameters" };
+      const underlying = resp.underlyingData && typeof resp.underlyingData === "object" ? resp.underlyingData : {};
       return {
         ok: true,
         result: {
           location: { lat, lng },
           riskCategory, siteClass,
-          ss: resp.ss,                    // 0.2s spectral acceleration (g)
-          s1: resp.s1,                    // 1.0s spectral acceleration (g)
-          fa: resp.fa,                    // short-period site coefficient
-          fv: resp.fv,                    // long-period site coefficient
-          sms: resp.sms, sm1: resp.sm1,   // MCE site-modified
-          sds: resp.sds, sd1: resp.sd1,   // ASCE 7 design spectrum
-          sdc: resp.sdc,                  // seismic design category
-          pga: resp.pga,                  // peak ground acceleration
-          pgam: resp.pgam,                // site-modified PGA
-          tl: resp.tl,                    // long-period transition (s)
+          ss: finiteOrNull(resp.ss),       // 0.2s spectral acceleration (g)
+          s1: finiteOrNull(resp.s1),       // 1.0s spectral acceleration (g)
+          fa: finiteOrNull(resp.fa),       // absent on the calculate service
+          fv: finiteOrNull(resp.fv),
+          sms: finiteOrNull(resp.sms), sm1: finiteOrNull(resp.sm1),
+          sds: finiteOrNull(resp.sds), sd1: finiteOrNull(resp.sd1),
+          sdc: resp.sdc ?? null,
+          // calculate no longer returns top-level pga; pgauh is the mapped PGA.
+          pga: finiteOrNull(resp.pga) ?? finiteOrNull(underlying.pgauh) ?? finiteOrNull(underlying.pga84th),
+          pgam: finiteOrNull(resp.pgam),
+          tl: finiteOrNull(resp.tl),
           source: "usgs-designmaps-asce7-22",
         },
       };

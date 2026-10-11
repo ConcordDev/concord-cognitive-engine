@@ -84,11 +84,11 @@ export function SeismicHazardPanel() {
           </div>
         ),
       }}
-      renderResults={(riskResult, designResult) => (
+      renderResults={(riskResult, designResult, errors) => (
         <>
           <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><ShieldAlert className="h-3 w-3" />Site risk</div>
-            {!riskResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
+            {!riskResult && !errors?.left && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
             {riskResult && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-baseline gap-2">
@@ -109,7 +109,7 @@ export function SeismicHazardPanel() {
           </div>
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Building2 className="h-3 w-3" />ASCE 7-22 design spectrum</div>
-            {!designResult && <div className="text-[11px] text-zinc-400">Analyze to look up (US locations only).</div>}
+            {!designResult && !errors?.right && <div className="text-[11px] text-zinc-400">Analyze to look up (US locations only).</div>}
             {designResult?.error && <div className="text-[11px] text-amber-300">{designResult.error}</div>}
             {designResult && !designResult.error && (
               <div className="space-y-2 text-[11px]">
