@@ -163,6 +163,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   "tournamentsLens", "transferLens", "understandingLens", "urbanPlanningLens", "veterinaryLens", "voiceLens",
   "voteLens", "walletLens", "weldingLens", "wellnessLens", "worldCreatorLens", "worldmodelLens",
   "writingLens",
+  // Expert Mode research threads, Spaces (saved answers + share tokens),
+  // and uploaded document text. The domain used to hang these Maps off
+  // STATE._expertMode, which _serializeState never walked, and a Map
+  // stringifies to "{}". A clean shutdown then saved an empty store.
+  "expertModeLens",
 ]);
 
 function isPlainObject(v) {

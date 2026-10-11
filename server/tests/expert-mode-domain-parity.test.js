@@ -91,7 +91,7 @@ beforeEach(() => {
     throw new Error("network disabled in tests");
   };
   // Fresh per-user store each test.
-  if (globalThis._concordSTATE) delete globalThis._concordSTATE._expertMode;
+  if (globalThis._concordSTATE) delete globalThis._concordSTATE.expertModeLens;
 });
 
 afterEach(() => {
