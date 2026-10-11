@@ -22,7 +22,7 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     if (out && out.ok === false) {
       const status = Number.isInteger(out.status)
         ? out.status
-        : (typeof out.error === "string" && out.error.startsWith("unauthorized") ? 403 : null);
+        : (typeof out.error === "string" && /^unauthorized\b/i.test(out.error) ? 403 : null);
       if (status && status >= 400 && status < 600) return res.status(status).json(out);
     }
     return res.json(out);

@@ -1902,6 +1902,8 @@ import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import { shouldPauseHeavyBackground } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
+import { detectContentInjection } from "./lib/dtu-content-injection.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -1912,6 +1914,18 @@ import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurren
 const _DTU_SIDECAR_LAG_BYPASS_MS = Number(process.env.CONCORD_DTU_SIDECAR_LAG_BYPASS_MS) || 250;
 function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
+}
+// Test seam: NODE_ENV=test may set globalThis.__dtuSidecarList to force the
+// sidecar branch (including a stale empty cache) without the Rust process.
+function _dtuSidecarListActive() {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") return true;
+  return dtuSidecar.ENABLED;
+}
+async function _dtuSidecarListCall(args) {
+  if (process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function") {
+    return globalThis.__dtuSidecarList(args);
+  }
+  return dtuSidecar.list(args);
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
 import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
@@ -2640,54 +2654,9 @@ const _SANITIZE_PATTERNS = {
   sqlKeywords: /\b(union|select|insert|update|delete|drop|truncate|exec|execute)\b.*\b(from|into|table|database)\b/gi,
 };
 
-// ---- DTU Content Injection Detection ----
-// Detects prompt injection / jailbreak patterns in DTU content that could manipulate LLM reasoning
-// Injection defense: consolidated patterns (authoritative source: injection-defense.js)
-// These inline patterns are the fast-path check; the full scan uses injection-defense.js
-const _INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|rules?)/i,
-  /you\s+are\s+now\s+(a|an|in)\s+/i,
-  /system\s*:\s*you\s+(are|must|should|will)/i,
-  /\bDAN\b.*\bjailbreak/i,
-  /forget\s+(everything|all|your)\s+(you|instructions?|rules?)/i,
-  /act\s+as\s+(if|though)\s+you\s+(have\s+no|don't\s+have)/i,
-  /override\s+(your|the|all)\s+(safety|content|system)/i,
-  /\[\s*SYSTEM\s*\]/i,
-  /<<\s*SYS\s*>>/i,
-];
-
-function detectContentInjection(text) {
-  if (typeof text !== "string" || text.length < 10) return { injected: false, patterns: [] };
-  const matched = [];
-  for (const pat of _INJECTION_PATTERNS) {
-    if (pat.test(text)) matched.push(pat.source.slice(0, 40));
-  }
-  // Also run the full injection defense module if available. NOTE: injection-defense.js
-  // returns `findings` (not `detections`) — the previous code mapped the wrong field
-  // and silently dropped the actual pattern matches, leaving the structuredLog line
-  // carrying an empty patterns array. That hid the real signal in 94+ false-positive
-  // dtu_injection_detected warnings (2026-08-12). Fixed to include the actual findings
-  // types so the operator can see what's matching.
-  try {
-    const injDef = globalThis._injectionDefenseModule;
-    if (injDef?.scanContent) {
-      const fullScan = injDef.scanContent(globalThis._concordSTATE || {}, text);
-      const findings = fullScan?.findings || [];
-      if (fullScan?.threatLevel && fullScan.threatLevel !== "NONE") {
-        return {
-          injected: true,
-          patterns: [
-            ...matched,
-            ...findings.map(f => `${f.type}:${f.severity ?? "?"}`),
-          ],
-          threatLevel: fullScan.threatLevel,
-          firstFinding: findings[0]?.message || null,
-        };
-      }
-    }
-  } catch (e) { logger.debug('server', 'silent catch', { error: e?.message }); }
-  return { injected: matched.length > 0, patterns: matched };
-}
+// DTU content injection detection lives in lib/dtu-content-injection.js.
+// Threat levels from injection-defense.js are lowercase ("none"). The gate
+// is case-insensitive and requires at least one finding.
 
 // Merge extended domain rules into main registry
 try {
@@ -18151,6 +18120,9 @@ function dtusByIds(ids=[]) {
   return out;
 }
 function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
+  // Sidecar cache is refreshed from SQLite on a timer. Record the write so
+  // dtu.list can fall back while that cache is behind.
+  try { noteDtuWrite(); } catch { /* clock */ }
   // Input sanitization: prevent XSS and normalize tags
   if (typeof sanitizeDTUInput === "function") {
     try { sanitizeDTUInput(dtu); } catch (e) { structuredLog("error", "dtu_sanitization_failed", { id: dtu?.id, error: String(e) }); }
@@ -25315,8 +25287,15 @@ register("dtu", "create", async (ctx, input) => {
       const firstKey = globalThis._injDedup.keys().next().value;
       globalThis._injDedup.delete(firstKey);
     }
-    // Tag for quarantine review rather than hard-block (reduces false positives)
+    // Tag for quarantine review rather than hard-block (reduces false positives).
+    // Record the scan so the untag script can tell a real finding from the
+    // historical "none" vs "NONE" false positive (those rows have no scan).
     if (!tags.includes("quarantine:injection-review")) tags.push("quarantine:injection-review");
+    meta.injectionScan = {
+      threatLevel: injScan.threatLevel || "pattern",
+      patterns: injScan.patterns,
+      findings: injScan.patterns,
+    };
   }
 
   // ── Lens-based visibility defaults ──────────────────────────────────
@@ -25509,6 +25488,7 @@ register("dtu", "create", async (ctx, input) => {
   }
 
   if (rawText) {
+    dtu.content = rawText;
     dtu.machine = dtu.machine || {};
     dtu.machine.notes = dtu.machine.notes ? (dtu.machine.notes + "\n\n" + rawText) : rawText;
     if (!dtu.human.summary) dtu.human.summary = normalizeText(rawText).slice(0, 320);
@@ -25769,6 +25749,11 @@ register("dtu", "update", async (ctx, input) => {
   const updated = { ...existing };
   if (input.title !== undefined) updated.title = String(input.title || existing.title);
   if (input.content !== undefined) updated.content = String(input.content);
+  if (input.summary !== undefined) {
+    const summary = String(input.summary);
+    updated.summary = summary;
+    updated.human = { ...(existing.human || {}), summary };
+  }
   if (input.creti !== undefined) updated.creti = String(input.creti);
   if (input.tags !== undefined) updated.tags = Array.isArray(input.tags) ? input.tags.slice(0, 40) : existing.tags;
   // Tier changes require admin role - prevent gaming via direct update
@@ -25820,6 +25805,7 @@ register("dtu", "delete", async (ctx, input) => {
 
   // Delete the DTU
   STATE.dtus.delete(id);
+  try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
   saveStateDebounced();
@@ -25932,11 +25918,12 @@ register("dtu", "list", async (ctx, input) => {
   // (off the event loop) when CONCORD_DTU_SIDECAR=1 and it's up. Fail soft to
   // the in-memory filter below. Behaviour pinned by the differential proof at
   // engines/concord-dtu-sidecar/proof/run-proof.mjs.
-  if (dtuSidecar.ENABLED && !_dtuSidecarLagBypass()) {
+  if (_dtuSidecarListActive() && !_dtuSidecarLagBypass()) {
     try {
-      if (await dtuSidecar.isAvailable()) {
+      const testHook = process.env.NODE_ENV === "test" && typeof globalThis.__dtuSidecarList === "function";
+      if (testHook || await dtuSidecar.isAvailable()) {
         const loc = _resolveViewerLocation(userId);
-        const r = await dtuSidecar.list({
+        const sidecarArgs = {
           viewer: userId || "",
           scope: scopeFilter,
           tier,
@@ -25946,8 +25933,14 @@ register("dtu", "list", async (ctx, input) => {
           offset,
           viewerRegional: loc.declaredRegional || "",
           viewerNational: loc.declaredNational || "",
+        };
+        const r = await _dtuSidecarListCall(sidecarArgs);
+        const fallback = shouldFallbackFromSidecarList(r, {
+          q: input.q || "",
+          lastWriteAt: globalThis._dtuLastWriteAt || 0,
+          now: Date.now(),
         });
-        if (r && r.ok && Array.isArray(r.dtus)) {
+        if (!fallback && r && r.ok && Array.isArray(r.dtus)) {
           const items = r.dtus;
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
@@ -25955,7 +25948,7 @@ register("dtu", "list", async (ctx, input) => {
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          return { ok: true, dtus: items, limit, offset, total: r.total ?? items.length, _source: "dtu-sidecar" };
+          return { ok: true, dtus: items, limit, offset, total: sidecarListTotal(r), _source: "dtu-sidecar" };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -26014,7 +26007,7 @@ register("dtu", "list", async (ctx, input) => {
 
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
   if (tier !== "any") items = items.filter(d => d.tier === tier);
-  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || d.creti || "")).includes(q));
+  if (q) items = items.filter(d => tokenish(d.title).includes(q) || tokenish((d.tags||[]).join(" ")).includes(q) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(q) || tokenish(d.content || "").includes(q) || tokenish(d.human?.summary || "").includes(q));
   const total = items.length;
   items = items.slice(offset, offset + limit);
 
@@ -26053,7 +26046,7 @@ register("dtu", "search", (ctx, input = {}) => {
       const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
       const qq = tokenish(q);
       hits = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow")
-        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || d.creti || "")).includes(qq))
+        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq))
         .slice(0, limit);
     }
     return { ok: true, query: q, dtus: hits, total: hits.length, limit };
