@@ -17,7 +17,7 @@ import express from "express";
 import Database from "better-sqlite3";
 import { createRoleGate } from "../lib/role-gate.js";
 import { registerRepairCortexStatusRoutes } from "../lib/repair-cortex-status-routes.js";
-import { up as migrateSignatures } from "../migrations/473_repair_observation_signatures.js";
+import { up as migrateSignatures } from "../migrations/474_repair_observation_signatures.js";
 import {
   observe,
   configureRepairPersistence,

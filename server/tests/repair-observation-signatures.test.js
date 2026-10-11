@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { query } from "../logger.js";
-import { up as migrateSignatures } from "../migrations/473_repair_observation_signatures.js";
+import { up as migrateSignatures } from "../migrations/474_repair_observation_signatures.js";
 import { getObservationFlushStats } from "../lib/repair-observation-store.js";
 import {
   observe,
