@@ -12,6 +12,7 @@
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import Database from "better-sqlite3";
 
 import {
@@ -202,5 +203,76 @@ describe("feed shutdown drain", () => {
     await Promise.resolve();
     assert.equal(feed.prepareWhileClosed(), 0);
     scheduler.stop();
+  });
+
+  it("closes the database inside the budget while the event loop is stalled and a feed job is still in flight", async () => {
+    const feed = openFeedDb();
+    // Longer than the close budget. Queued before shutdown, so any
+    // setTimeout/import yield runs this busy-loop before db.close.
+    const STALL_MS = 300;
+    const BUDGET_MS = 150;
+    let stallRan = false;
+    let releaseStall;
+    const stallDone = new Promise((resolve) => { releaseStall = resolve; });
+    setTimeout(() => {
+      stallRan = true;
+      const end = Date.now() + STALL_MS;
+      while (Date.now() < end) {}
+      releaseStall();
+    }, 0);
+
+    // Stop itself must not wait on a macrotask either.
+    let releaseStop;
+    const stopGate = new Promise((resolve) => { releaseStop = resolve; });
+
+    const job = trackFeedJob((async () => {
+      await new Promise((resolve) => { setTimeout(resolve, 80); });
+      emitFeedEvent(
+        { type: "observation", emergentId: "e-busy", data: { observation: "after-close" } },
+        feed.db,
+        null,
+      );
+    })());
+
+    const t0 = Date.now();
+    const drain = await shutdownFeedPersistence({
+      stopNewWork: () => stopGate,
+      timeoutMs: 2000,
+    });
+    feed.db.close();
+    const elapsed = Date.now() - t0;
+
+    assert.equal(stallRan, false, "a queued stall must not run before db.close");
+    assert.ok(elapsed < BUDGET_MS, `db.close ran in ${elapsed}ms; budget is ${BUDGET_MS}ms`);
+    assert.equal(drain.sealed, true);
+    assert.equal(drain.drained, false, "a timer-blocked feed job is not flushed");
+    assert.equal(feed.prepareWhileClosed(), 0);
+
+    releaseStop();
+    await stallDone;
+    await job;
+
+    assert.equal(stallRan, true);
+    assert.equal(feed.prepareWhileClosed(), 0, "the late write must not prepare on the closed handle");
+    assert.equal(errors.filter((line) => line.includes("[feed] DB write failed")).length, 0);
+    assert.equal(warns.length, 1, "dropped in-flight writes are one warning");
+    assert.match(warns[0], /\[feed\] DB write skipped: 1 feed event\(s\) not persisted \(shutdown timeout 2000ms\)/);
+  });
+
+  it("gracefulShutdown does not dynamic-import on the way to db.close", () => {
+    const src = fs.readFileSync(new URL("../server.js", import.meta.url), "utf8");
+    const start = src.indexOf("async function gracefulShutdown");
+    const end = src.indexOf("function _crashMemorySnapshot");
+    assert.ok(start > 0 && end > start);
+    const body = src.slice(start, end);
+    assert.equal(/await\s+import\s*\(/.test(body), false);
+    assert.match(body, /shutdown_feed_stopping/);
+    assert.match(body, /shutdown_feed_stopped/);
+    assert.match(body, /shutdown_feed_flushing/);
+    assert.match(body, /shutdown_feed_flushed/);
+    assert.match(body, /shutdownFeedPersistence\(/);
+    assert.match(body, /stopFeedManager\(/);
+    assert.match(src, /shutdown_closing_database/);
+    assert.match(src, /db\.close\(\)/);
   });
 });

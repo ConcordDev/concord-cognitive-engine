@@ -3227,6 +3227,9 @@ function throttledInterval(fn, ms, name) {
   return timerId;
 }
 
+import { stopFeedManager } from "./lib/feed-manager.js";
+import { feedWriteStats, shutdownFeedPersistence } from "./emergent/feed.js";
+
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
@@ -3335,20 +3338,29 @@ async function gracefulShutdown(signal) {
   // db.close() — registered at DB init, before the later timer-cleanup
   // callback — so those writes hit a closed handle and log
   // "[feed] DB write failed: The database connection is not open".
-  // Stop new ticks now, let anything already running finish across the
-  // HTTP drain below, then flush+seal immediately before that close.
-  const stopFeedIngress = async () => {
+  //
+  // Stop and flush without yielding to the macrotask queue. A dynamic
+  // import() of feed-manager, and the old setTimeout drain, both let an
+  // already-queued synchronous stall run first (measured: 250ms stall
+  // inside the import; a 50ms flush budget took 700ms). The process was
+  // gone ~5s after SIGTERM — launchd bootout's user-agent kill, which an
+  // ExitTimeOut can raise — with the log stuck at shutdown_timers_cleared,
+  // so db.close() and the timer-cleanup callback never ran. Static
+  // bindings plus shutdownFeedPersistence's microtask window keep this
+  // stretch inside a few milliseconds even when that stall is queued.
+  const _feedClock = () => process.hrtime.bigint();
+  const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
+  const _feedT0 = _feedClock();
+  structuredLog("info", "shutdown_feed_stopping", { pendingJobs: feedWriteStats().pendingJobs });
+  const stopFeedIngress = () => {
     try { minorAgentScheduler.stop(); }
     catch (e) { structuredLog("warn", "shutdown_minor_agent_stop_failed", { error: e?.message }); }
-    try {
-      const { stopFeedManager } = await import("./lib/feed-manager.js");
-      stopFeedManager();
-    } catch (e) {
-      structuredLog("warn", "shutdown_feed_manager_stop_failed", { error: e?.message });
-    }
+    try { stopFeedManager(); }
+    catch (e) { structuredLog("warn", "shutdown_feed_manager_stop_failed", { error: e?.message }); }
   };
-  try { await stopFeedIngress(); }
+  try { stopFeedIngress(); }
   catch (e) { structuredLog("warn", "shutdown_feed_ingress_stop_failed", { error: e?.message }); }
+  structuredLog("info", "shutdown_feed_stopped", { ms: _feedMs(_feedT0) });
 
   // Stop repair cortex loop
   try { stopRepairLoop(); } catch (_e) { logger.debug('server', 'best-effort', { error: _e?.message }); }
@@ -3371,22 +3383,26 @@ async function gracefulShutdown(signal) {
   }
 
   // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
-  // is the first callback. Time spent here is subtracted from
-  // SHUTDOWN_TIMEOUT_MS below so this does not extend the kill_timeout budget.
+  // is the first callback. The flush does not wait on timers (see
+  // shutdownFeedPersistence); ms here is subtracted from SHUTDOWN_TIMEOUT_MS
+  // below so a real wait would not extend the kill_timeout budget.
   let feedFlushMs = 0;
   try {
     const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
     const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
-    const flushStart = Date.now();
-    const { shutdownFeedPersistence } = await import("./emergent/feed.js");
+    const flushStart = _feedClock();
+    structuredLog("info", "shutdown_feed_flushing", {
+      timeoutMs,
+      pendingJobs: feedWriteStats().pendingJobs,
+    });
     const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
-    feedFlushMs = Date.now() - flushStart;
+    feedFlushMs = Number(process.hrtime.bigint() - flushStart) / 1e6;
     structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
       drained: feedDrain.drained,
       pending: feedDrain.pending,
       dropped: feedDrain.dropped,
       timeoutMs,
-      ms: feedFlushMs,
+      ms: _feedMs(flushStart),
     });
   } catch (e) {
     structuredLog("warn", "shutdown_feed_flush_failed", { error: e?.message });
