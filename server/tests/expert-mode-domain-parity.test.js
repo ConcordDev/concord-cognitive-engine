@@ -142,6 +142,53 @@ describe("expert_mode focus + utility macros", () => {
     assert.equal(r.ok, true);
     assert.ok(Array.isArray(r.results));
   });
+
+  it("web_search does not cite Capital punishment for a capital-city question", async () => {
+    const seen = [];
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      seen.push(u);
+      if (u.includes("api.duckduckgo.com")) {
+        return { ok: true, status: 200, json: async () => ({ AbstractText: "", Answer: "", Heading: "" }) };
+      }
+      if (u.includes("/robots.txt")) {
+        return { ok: true, status: 200, text: async () => "User-agent: *\nAllow: /\n", json: async () => ({}) };
+      }
+      if (u.includes("list=search")) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            query: {
+              search: [
+                { title: "Capital punishment", snippet: "Capital punishment, also known as the death penalty, is the state-sanctioned killing of a person as punishment for a crime." },
+                { title: "Capital punishment in France", snippet: "Capital punishment in France is banned by Article 66-1 of the Constitution of the French Republic." },
+                { title: "List of capitals of France", snippet: "The capital of France has been Paris since its liberation in 1944." },
+              ],
+            },
+          }),
+        };
+      }
+      if (u.includes("prop=extracts")) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            query: { pages: { 1: { extract: "The capital of France has been Paris since its liberation in 1944." } } },
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch ${u}`);
+    };
+
+    const r = await call("web_search", ctxA(setupDb()), {
+      query: "EM18610 What is the capital of France? Answer in one sentence.",
+    });
+    assert.equal(r.ok, true);
+    const titles = r.results.map((row) => row.title);
+    assert.deepEqual(titles, ["List of capitals of France"]);
+    assert.ok(titles.every((t) => !/capital punishment/i.test(t)));
+    const wiki = seen.find((u) => u.includes("list=search"));
+    assert.equal(new URL(wiki).searchParams.get("srsearch"), "capital of France");
+  });
 });
 
 // ---- threaded conversation ----------------------------------------------
