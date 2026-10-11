@@ -8,6 +8,7 @@ import Database from "better-sqlite3";
 import registerFashionActions from "../domains/fashion.js";
 import { up as upFriendships } from "../migrations/214_friendships.js";
 import { sendFriendRequest, acceptFriendRequest } from "../lib/friendships.js";
+import { shapeLensRunHttp } from "../lib/lens-run-http.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -487,6 +488,99 @@ describe("fashion.social-clone-item", () => {
 
     const r = call("social-clone-item", cloner, { postId: post.id, itemId: shirt.id });
     assert.equal(r.ok, false);
+  });
+});
+
+// INC-60 — communityPostView used to return ownerId, and social-clone-item
+// copied it onto clonedFrom. Both are readable by any logged-in account.
+describe("fashion social privacy (INC-60)", () => {
+  const ID_A = "a1a1a1a1-1111-4111-8111-aaaaaaaaaaaa";
+  const ID_B = "b2b2b2b2-2222-4222-8222-bbbbbbbbbbbb";
+  const acct1 = { actor: { userId: ID_A }, userId: ID_A, db: friendshipsDb };
+  const acct2 = { actor: { userId: ID_B }, userId: ID_B, db: friendshipsDb };
+
+  function assertNoRawId(payload, foreignId) {
+    const blob = JSON.stringify(payload);
+    assert.equal(blob.includes(foreignId), false, `response leaked ${foreignId}`);
+  }
+
+  it("keeps another account's user id out of the feed, likes, and cloned items", () => {
+    const shirt = call("item-add", acct1, { name: "Linen shirt", category: "top" }).result.item;
+    const trousers = call("item-add", acct1, { name: "Wool trousers", category: "bottom" }).result.item;
+    const outfit = call("outfit-create", acct1, {
+      name: "City linen", itemIds: [shirt.id, trousers.id],
+    }).result.outfit;
+    const shared = call("social-share-outfit", acct1, { outfitId: outfit.id, caption: "Friday fit" });
+    assert.equal(shared.ok, true);
+    const postId = shared.result.post.id;
+    assert.ok(postId);
+    assert.equal(shared.result.post.mine, true);
+    assert.equal(shared.result.post.ownerLabel, "You");
+    assert.equal(shared.result.post.ownerId, undefined);
+
+    const feed = call("social-feed", acct2, {});
+    assert.equal(feed.ok, true);
+    assert.equal(JSON.stringify(feed).includes(postId), true);
+    const card = feed.result.posts.find((p) => p.id === postId);
+    assert.ok(card);
+    assert.equal(card.mine, false);
+    assert.ok(card.ownerLabel);
+    assert.equal(card.ownerId, undefined);
+    assertNoRawId(feed, ID_A);
+
+    const liked = call("social-like", acct2, { id: postId });
+    assert.equal(liked.ok, true);
+    assert.equal(liked.result.post.likes, 1);
+    assertNoRawId(liked, ID_A);
+
+    const saved = call("social-save", acct2, { id: postId });
+    assert.equal(saved.ok, true);
+    assertNoRawId(saved, ID_A);
+
+    const mine = call("social-feed", acct1, { mine: true });
+    assert.ok(mine.result.posts.some((p) => p.id === postId));
+    assert.equal(mine.result.posts.find((p) => p.id === postId).mine, true);
+    assert.equal(mine.result.posts.find((p) => p.id === postId).ownerLabel, "You");
+    assertNoRawId(mine, ID_B);
+
+    const cloned = call("social-clone-item", acct2, { postId, itemId: shirt.id });
+    assert.equal(cloned.ok, true);
+    assert.equal(cloned.result.item.clonedFrom.postId, postId);
+    assert.equal(cloned.result.item.clonedFrom.itemId, shirt.id);
+    assert.equal(cloned.result.item.clonedFrom.viaFriend, false);
+    assert.equal(cloned.result.item.clonedFrom.ownerId, undefined);
+    assertNoRawId(cloned, ID_A);
+
+    const listed = call("item-list", acct2, {});
+    assert.ok(listed.result.items.some((i) => i.id === cloned.result.item.id));
+    assertNoRawId(listed, ID_A);
+
+    // A closet row saved before ownerId was dropped from the stamp still
+    // has it in memory. item-list must not echo it.
+    const stored = globalThis._concordSTATE.fashionLens.items.get(ID_B)
+      .find((i) => i.id === cloned.result.item.id);
+    stored.clonedFrom.ownerId = ID_A;
+    const listedAgain = call("item-list", acct2, {});
+    const again = listedAgain.result.items.find((i) => i.id === cloned.result.item.id);
+    assert.equal(again.clonedFrom.postId, postId);
+    assert.equal(again.clonedFrom.itemId, shirt.id);
+    assert.equal(again.clonedFrom.viaFriend, false);
+    assert.equal(again.clonedFrom.ownerId, undefined);
+    assertNoRawId(listedAgain, ID_A);
+
+    const denied = call("social-delete", acct2, { id: postId });
+    assert.equal(denied.ok, false);
+    assert.equal(denied.error, "post not found or not yours");
+    // This error does not end with "not found", so /api/lens/run maps it
+    // to 400. Owner delete still succeeds; the post is gone afterwards.
+    assert.equal(shapeLensRunHttp(denied).status, 400);
+    assert.equal(JSON.stringify(shapeLensRunHttp(denied).body).includes(ID_A), false);
+
+    const removed = call("social-delete", acct1, { id: postId });
+    assert.equal(removed.ok, true);
+    assert.equal(removed.result.deleted, postId);
+    const after = call("social-feed", acct2, {});
+    assert.equal(after.result.posts.some((p) => p.id === postId), false);
   });
 });
 

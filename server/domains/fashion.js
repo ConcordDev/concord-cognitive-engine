@@ -86,15 +86,31 @@ export default function registerFashionActions(registerLensAction) {
   // reads of items persisted before this field existed.
   const LAUNDRY_STATUSES = ["clean", "dirty", "at_cleaner", "lent_out"];
 
+  // Public clone provenance. The stored stamp may still carry an older
+  // ownerId from before that field was dropped; item-list and the clone
+  // response only emit postId, itemId, and viaFriend.
+  function publicClonedFrom(stamp) {
+    if (!stamp || typeof stamp !== "object") return stamp;
+    return {
+      postId: stamp.postId,
+      itemId: stamp.itemId,
+      viaFriend: stamp.viaFriend,
+    };
+  }
+
   function itemView(item) {
     const cpw = item.timesWorn > 0 ? Math.round((item.cost / item.timesWorn) * 100) / 100 : null;
-    return {
+    const view = {
       ...item,
       laundryStatus: LAUNDRY_STATUSES.includes(item.laundryStatus) ? item.laundryStatus : "clean",
       costPerWear: cpw,
       valueRating: cpw == null ? "unworn"
         : cpw < 5 ? "excellent" : cpw < 15 ? "good" : cpw < 30 ? "moderate" : "poor",
     };
+    if (view.clonedFrom && typeof view.clonedFrom === "object") {
+      view.clonedFrom = publicClonedFrom(view.clonedFrom);
+    }
+    return view;
   }
 
   // Shared wardrobe-item constructor — used by item-add AND by
@@ -928,8 +944,11 @@ export default function registerFashionActions(registerLensAction) {
 
   // ── [M] Outfit social feed — likes / saves / community lookbooks ─────
   function communityPostView(p, userId) {
+    // ownerId stays on the stored post for mine / friends / delete filters.
+    // It is not a response field: social-feed, like, save, and share are
+    // readable by every logged-in user.
     return {
-      id: p.id, ownerId: p.ownerId,
+      id: p.id,
       ownerLabel: p.ownerId === userId ? "You" : `Stylist ${String(p.ownerId).slice(-4)}`,
       caption: p.caption, occasion: p.occasion, season: p.season,
       // itemIds is a same-index companion to itemNames (added alongside
@@ -1052,7 +1071,8 @@ export default function registerFashionActions(registerLensAction) {
   // fresh createdAt, timesWorn reset to 0, laundryStatus reset to
   // "clean". Nothing here mutates the friend's original item, and
   // nothing on the clone references it except the informational
-  // `clonedFrom` provenance stamp.
+  // `clonedFrom` provenance stamp (postId, itemId, and viaFriend, never
+  // the source account's user id).
   registerLensAction("fashion", "social-clone-item", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
@@ -1074,12 +1094,11 @@ export default function registerFashionActions(registerLensAction) {
       photo: sourceItem.photo,
     });
     if (!clone) return { ok: false, error: "clone failed" };
-    clone.clonedFrom = {
+    clone.clonedFrom = publicClonedFrom({
       postId: post.id,
-      ownerId: post.ownerId,
       itemId: sourceItem.id,
       viaFriend: ctx?.db ? areFriends(ctx.db, post.ownerId, userId) : false,
-    };
+    });
     fsListB(s.items, userId).push(clone);
     saveFashionState();
     return { ok: true, result: { item: itemView(clone) } };
