@@ -103,6 +103,7 @@ describe('UserProfile', () => {
 
   const mockProfile = {
     userId: 'user-123',
+    username: 'jane',
     displayName: 'Jane Doe',
     bio: 'Explorer of knowledge',
     avatar: '',
@@ -164,8 +165,7 @@ describe('UserProfile', () => {
     renderUserProfile();
 
     await waitFor(() => {
-      // Component renders @{profile.userId}
-      expect(screen.getByText('@user-123')).toBeDefined();
+      expect(screen.getByText('@jane')).toBeDefined();
     });
   });
 
