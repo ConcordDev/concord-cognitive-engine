@@ -273,6 +273,24 @@ describe("runBeaconCheck", () => {
     const hyp = r.checks.find(c => c.name === "hypothesis_throughput");
     assert.ok(hyp);
     assert.equal(hyp.pass, true);
+    assert.equal(hyp.noData, undefined);
+    assert.equal(hyp.detail, "6/10 decided (60%)");
+  });
+
+  it("does not report 100% hypothesis throughput when nothing was proposed", () => {
+    const STATE = makeState();
+    STATE.dtus.set("d1", makeDtu("d1", "Test"));
+    STATE.hypothesisEngine = {
+      hypotheses: new Map(),
+      stats: { proposed: 0, supported: 0, refuted: 0, inconclusive: 0 },
+    };
+    const r = runBeaconCheck(STATE);
+    const hyp = r.checks.find(c => c.name === "hypothesis_throughput");
+    assert.ok(hyp);
+    assert.equal(hyp.noData, true);
+    assert.equal(hyp.detail, "no data yet");
+    assert.equal(hyp.detail.includes("%"), false);
+    assert.equal(r.healthy, true);
   });
 
   it("checks meta-learning status", () => {

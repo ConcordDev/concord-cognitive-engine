@@ -24,7 +24,7 @@ import {
   type BudgetSimulation,
 } from '@/lib/council/council-audit';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
-import { loadCouncilDtus, type DtuRow } from '@/lib/dtu/list-pages';
+import { loadCouncilDtus, type CouncilDtu } from '@/lib/dtu/list-pages';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -537,7 +537,7 @@ export default function CouncilLensPage() {
   const runArtifact = useRunArtifact('council');
 
   const personas: Persona[] = personasData?.personas || [];
-  const dtus: DtuRow[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
+  const dtus: CouncilDtu[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
 
   // ----- Computed -----
   const selectedProposal = selectedProposalId
@@ -940,10 +940,8 @@ export default function CouncilLensPage() {
       category: 'debate',
     });
     // Trigger AI council review for the debate
-    const dtuA = dtus[0]?.id;
-    const dtuB = dtus[1]?.id;
-    if (dtuA && dtuB) {
-      debateMutation.mutate({ dtuA, dtuB, topic: d.topic });
+    if (dtus.length >= 2) {
+      debateMutation.mutate({ dtuA: dtus[0].id, dtuB: dtus[1].id, topic: d.topic });
     }
     setShowCreateDebate(false);
     setNewDebate({ topic: '', timePerSpeaker: 300 });

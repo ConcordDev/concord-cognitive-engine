@@ -83,7 +83,7 @@ export async function listAllDtuPages(
   };
 }
 
-export function sortDtusNewest<T extends { createdAt?: string }>(rows: T[]): T[] {
+export function sortDtusNewest<T extends { createdAt?: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 }
 
@@ -94,12 +94,25 @@ export function loadExportDtus(
   return listAllDtuPages(fetchPage, { pageSize: LIST_PAGE_SIZE });
 }
 
+/** Council's debate pair only reads the row id. */
+export type CouncilDtu = {
+  id: string;
+};
+
+export function councilDtusFromRows(rows: readonly DtuRow[]): CouncilDtu[] {
+  const out: CouncilDtu[] = [];
+  for (const row of sortDtusNewest(rows)) {
+    if (typeof row.id === 'string' && row.id.length > 0) out.push({ id: row.id });
+  }
+  return out;
+}
+
 /** Council debate pool. Newest first, including rows past the first page. */
 export async function loadCouncilDtus(
   fetchPage: (query: DtuPageQuery) => Promise<DtuListBody | null | undefined>,
-) {
+): Promise<{ dtus: CouncilDtu[]; total: number }> {
   const page = await listAllDtuPages(fetchPage, { pageSize: LIST_PAGE_SIZE });
-  return { ...page, dtus: sortDtusNewest(page.dtus) };
+  return { total: page.total, dtus: councilDtusFromRows(page.dtus) };
 }
 
 export function tagsFromDtuRows(rows: Array<{ tags?: string[] }>): string[] {

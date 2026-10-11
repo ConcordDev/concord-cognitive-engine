@@ -13,6 +13,7 @@ import path from "path";
 import { asyncHandler } from "../lib/async-handler.js";
 import { assertSessionAccessible } from "../lib/session-access.js";
 import { gateLogRead, gateLogAdmin, sendGate, httpStatusForLogMacro } from "../lib/log-access.js";
+import { readHypothesisStatus, callHypothesisEngine } from "../lib/hypothesis-rest.js";
 export default function registerDomainRoutes(app, {
   STATE,
   makeCtx,
@@ -878,26 +879,17 @@ export default function registerDomainRoutes(app, {
   // reported 0 hypotheses, and `experiment`/`evidence`/`evaluate` always
   // failed `not_found` for every real hypothesis id, because the ids the
   // frontend has are keyed into the real engine's store, not the dead one.
-  // Repointed to the real engine's macros below (same fix class as the
-  // frontend field-shape fix in HypothesisLab.tsx).
-  app.get("/api/hypothesis/status", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "metrics", {}, makeCtx(req));
-    if (out?.ok) {
-      return res.json({
-        ...out,
-        // Back-compat shim: NerveCenter.tsx still reads the legacy
-        // `.stats.{proposed,supported,refuted,inconclusive}` shape from
-        // the retired stub engine. Derive it from the real byStatus
-        // counts instead of a permanently-zero dead store.
-        stats: {
-          proposed: out.byStatus?.proposed || 0,
-          supported: out.byStatus?.confirmed || 0,
-          refuted: out.byStatus?.rejected || 0,
-          inconclusive: out.byStatus?.testing || 0,
-        },
-      });
-    }
-    return res.json(out);
+  //
+  // The Wave 3 repoint called runMacro("hypothesis", "metrics" | "add_test"
+  // | "add_evidence"). Those three names are registered only inside
+  // initGhostFleet, which is delayed and is skipped when the fleet is
+  // disabled. The boot-time stub set does not include them, so runMacro
+  // threw "macro not found" and this route's error handler answered HTTP
+  // 500. Read the lifecycle engine module directly (same store the fleet
+  // macros close over). A missing engine is 503, never a zero stats shim.
+  app.get("/api/hypothesis/status", asyncHandler(async (_req, res) => {
+    const http = await readHypothesisStatus();
+    return res.status(http.status).json(http.body);
   }));
   app.post("/api/hypothesis", asyncHandler(async (req, res) => {
     const out = await runMacro("hypothesis", "propose", req.body, makeCtx(req));
@@ -913,22 +905,24 @@ export default function registerDomainRoutes(app, {
   }));
   app.post("/api/hypothesis/:hypothesisId/experiment", asyncHandler(async (req, res) => {
     // "Experiment" in the real engine is a named test on the hypothesis
-    // (add_test), not the retired stub's design_experiment.
-    const out = await runMacro("hypothesis", "add_test", {
-      hypothesisId: req.params.hypothesisId,
-      description: req.body?.design || req.body?.description || "Experiment",
-    }, makeCtx(req));
-    return res.json(out);
+    // (addTest), not the retired stub's design_experiment. Same missing-macro
+    // class as GET /status: add_test is fleet-only, so runMacro 500s until
+    // (and unless) the fleet registers it.
+    const http = await callHypothesisEngine("addTest", [
+      req.params.hypothesisId,
+      req.body?.design || req.body?.description || "Experiment",
+    ]);
+    return res.status(http.status).json(http.body);
   }));
   app.post("/api/hypothesis/:hypothesisId/evidence", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "add_evidence", {
-      hypothesisId: req.params.hypothesisId,
-      side: req.body?.supports === false ? "against" : "for",
-      dtuId: req.body?.dtuId,
-      weight: req.body?.weight,
-      summary: req.body?.evidence || req.body?.summary,
-    }, makeCtx(req));
-    return res.json(out);
+    const http = await callHypothesisEngine("addEvidence", [
+      req.params.hypothesisId,
+      req.body?.supports === false ? "against" : "for",
+      req.body?.dtuId,
+      req.body?.weight,
+      req.body?.evidence || req.body?.summary,
+    ]);
+    return res.status(http.status).json(http.body);
   }));
   app.post("/api/hypothesis/:hypothesisId/evaluate", asyncHandler(async (req, res) => {
     // The real engine recalculates confidence automatically on every

@@ -102,6 +102,7 @@ describe("lens state persistence — Bucket 2 Gap A", () => {
     assert.ok(LENS_STATE_KEYS.includes("debugLens"));
     assert.ok(LENS_STATE_KEYS.includes("consultingLens"));
     assert.ok(LENS_STATE_KEYS.includes("conLens"));
+    assert.ok(LENS_STATE_KEYS.includes("expertModeLens"));
   });
 
   it("roundtrips STATE.threadLens.drafts (an unpublished draft citing a DTU)", () => {

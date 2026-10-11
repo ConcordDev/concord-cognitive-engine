@@ -43,6 +43,8 @@ import {
   actorFromReq,
 } from "./lib/log-access.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
+import { aggregateTopicCounts } from "./lib/trending-topics.js";
+import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 
 // === DATA DIRECTORY (canonical) ===
@@ -2135,6 +2137,7 @@ import { initializeManifests, getManifestStats, registerUserLens, registerEmerge
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
+import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
@@ -3225,6 +3228,9 @@ function throttledInterval(fn, ms, name) {
   return timerId;
 }
 
+import { stopFeedManager } from "./lib/feed-manager.js";
+import { feedWriteStats, shutdownFeedPersistence } from "./emergent/feed.js";
+
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
@@ -3325,6 +3331,38 @@ async function gracefulShutdown(signal) {
   _activeTimers.clear();
   structuredLog("info", "shutdown_timers_cleared", { count: _activeTimers.size });
 
+  // Emergent activity-feed writes and feed-manager ingest do not live on
+  // _activeTimers. minorAgentScheduler's interval (and feed-manager's
+  // per-source timers, including the previously untracked initial-fetch
+  // timeout) keep scheduling work, and an in-flight tick only calls
+  // emitFeedEvent after an await. The first shutdown callback below is
+  // db.close() — registered at DB init, before the later timer-cleanup
+  // callback — so those writes hit a closed handle and log
+  // "[feed] DB write failed: The database connection is not open".
+  //
+  // Stop and flush without yielding to the macrotask queue. A dynamic
+  // import() of feed-manager, and the old setTimeout drain, both let an
+  // already-queued synchronous stall run first (measured: 250ms stall
+  // inside the import; a 50ms flush budget took 700ms). The process was
+  // gone ~5s after SIGTERM — launchd bootout's user-agent kill, which an
+  // ExitTimeOut can raise — with the log stuck at shutdown_timers_cleared,
+  // so db.close() and the timer-cleanup callback never ran. Static
+  // bindings plus shutdownFeedPersistence's microtask window keep this
+  // stretch inside a few milliseconds even when that stall is queued.
+  const _feedClock = () => process.hrtime.bigint();
+  const _feedMs = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e3) / 1e3;
+  const _feedT0 = _feedClock();
+  structuredLog("info", "shutdown_feed_stopping", { pendingJobs: feedWriteStats().pendingJobs });
+  const stopFeedIngress = () => {
+    try { minorAgentScheduler.stop(); }
+    catch (e) { structuredLog("warn", "shutdown_minor_agent_stop_failed", { error: e?.message }); }
+    try { stopFeedManager(); }
+    catch (e) { structuredLog("warn", "shutdown_feed_manager_stop_failed", { error: e?.message }); }
+  };
+  try { stopFeedIngress(); }
+  catch (e) { structuredLog("warn", "shutdown_feed_ingress_stop_failed", { error: e?.message }); }
+  structuredLog("info", "shutdown_feed_stopped", { ms: _feedMs(_feedT0) });
+
   // Stop repair cortex loop
   try { stopRepairLoop(); } catch (_e) { logger.debug('server', 'best-effort', { error: _e?.message }); }
 
@@ -3345,6 +3383,32 @@ async function gracefulShutdown(signal) {
     structuredLog("warn", "shutdown_drain_timeout", { activeRequests: getActiveRequests() });
   }
 
+  // Flush in-flight feed writes BEFORE the shutdown callbacks. db.close()
+  // is the first callback. The flush does not wait on timers (see
+  // shutdownFeedPersistence); ms here is subtracted from SHUTDOWN_TIMEOUT_MS
+  // below so a real wait would not extend the kill_timeout budget.
+  let feedFlushMs = 0;
+  try {
+    const flushBudget = Number(process.env.FEED_SHUTDOWN_FLUSH_MS ?? 2000);
+    const timeoutMs = Number.isFinite(flushBudget) ? Math.max(0, flushBudget) : 2000;
+    const flushStart = _feedClock();
+    structuredLog("info", "shutdown_feed_flushing", {
+      timeoutMs,
+      pendingJobs: feedWriteStats().pendingJobs,
+    });
+    const feedDrain = await shutdownFeedPersistence({ stopNewWork: stopFeedIngress, timeoutMs });
+    feedFlushMs = Number(process.hrtime.bigint() - flushStart) / 1e6;
+    structuredLog(feedDrain.drained ? "info" : "warn", "shutdown_feed_flushed", {
+      drained: feedDrain.drained,
+      pending: feedDrain.pending,
+      dropped: feedDrain.dropped,
+      timeoutMs,
+      ms: _feedMs(flushStart),
+    });
+  } catch (e) {
+    structuredLog("warn", "shutdown_feed_flush_failed", { error: e?.message });
+  }
+
   // Run registered callbacks
   for (const callback of shutdownCallbacks) {
     try {
@@ -3354,9 +3418,11 @@ async function gracefulShutdown(signal) {
     }
   }
 
-  // Give pending requests time to complete
+  // Give pending requests time to complete. Subtract feed-flush time so
+  // the drain + flush + this wait still fit inside the kill_timeout budget.
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
-  await new Promise(resolve => { setTimeout(resolve, timeout); });
+  const postWait = Math.max(0, timeout - feedFlushMs);
+  await new Promise(resolve => { setTimeout(resolve, postWait); });
 
   // The backup fired earlier (non-blocking) has now had the full drain +
   // timeout window above to finish concurrently. Log its outcome if known;
@@ -13531,7 +13597,7 @@ function councilGate(dtu, opts={}) {
 
 function toOptionADTU(seedLike) {
   const title = normalizeText(seedLike.title || seedLike.name || "Untitled DTU");
-  const tags = Array.isArray(seedLike.tags) ? seedLike.tags.map(t=>normalizeText(t)).filter(Boolean) : [];
+  const tags = normalizeTagList(seedLike.tags, (t) => normalizeText(t));
   const tier = seedLike.tier && ["regular","mega","hyper"].includes(seedLike.tier) ? seedLike.tier : "regular";
   const core = seedLike.core && typeof seedLike.core === "object" ? seedLike.core : {};
   const human = seedLike.human && typeof seedLike.human === "object" ? seedLike.human : {};
@@ -16993,6 +17059,32 @@ register("hypothesis", "list", (ctx, input = {}) => {
   return { ok: true, hypotheses };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
+
+// Lifecycle-engine names the REST routes and HypothesisLab call. Ghost
+// Fleet registers the same names later (last-write-wins, note
+// intentional_shadow_ok) once it has imported the module. Until that
+// lands — and if the fleet is disabled — these handlers still call the
+// engine directly instead of leaving the names unregistered. An
+// unregistered name makes runMacro throw "macro not found", which the
+// route error handler turns into HTTP 500.
+async function _hypothesisEngineCall(method, args) {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  const fn = hypo?.[method];
+  if (typeof fn !== "function") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  try {
+    const out = await fn(...args);
+    if (out == null || typeof out !== "object") return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+    return out;
+  } catch {
+    return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  }
+}
+register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
+register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
+  input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
+]), { public: false });
 
 // ===== END HYPOTHESIS ENGINE MACROS =====
 
@@ -20605,8 +20697,8 @@ async function initGhostFleet() {
       return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
     }, { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "list", (_ctx, input = {}) => ghostFleetOk(hypo.listHypotheses(input.status)), { note: "ghost_fleet_shadow_ok" });
-    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary));
-    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description));
+    register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary), { note: "intentional_shadow_ok" });
+    register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description), { note: "intentional_shadow_ok" });
     register("hypothesis", "update_test", (_ctx, input = {}) => hypo.updateTestResult(input.hypothesisId, input.testId, input.result));
     register("hypothesis", "add_prediction", (_ctx, input = {}) => hypo.addPrediction(input.hypothesisId, input.statement));
     register("hypothesis", "verify_prediction", (_ctx, input = {}) => hypo.verifyPrediction(input.hypothesisId, input.predIndex, input.verified));
@@ -20614,7 +20706,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
-    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics());
+    register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
   } catch (err) {
@@ -24895,6 +24987,7 @@ async function maybeRunLocalUpgrade() {
 // ================= END ABSTRACTION GOVERNOR =================
 
 async function pipelineCommitDTU(ctx, dtu, opts={}) {
+  if (dtu && Array.isArray(dtu.tags)) dtu.tags = scrubStoredTags(dtu.tags);
   // DEDUP GATE: block templates and exact title dupes (system-generated only)
   if (dtu.source !== "user" && dtu.source !== "import") {
     // Real bug found by the Game Design Lens D20 unit's own test: this used
@@ -25215,7 +25308,7 @@ register("dtu", "create", async (ctx, input) => {
   // `R&D`, quotes, apostrophes survive verbatim. Body content is left
   // alone: it flows through the markdown renderer's own output-encoding.
   const title = stripTags(normalizeText(input.title || "Untitled DTU"));
-  const tags = Array.isArray(input.tags) ? input.tags.map(t=>stripTags(normalizeText(t))).filter(Boolean) : [];
+  const tags = normalizeTagList(input.tags, (t) => stripTags(normalizeText(t)));
   const tier = input.tier && ["regular","mega","hyper"].includes(input.tier) ? input.tier : "regular";
   const lineage = Array.isArray(input.lineage) ? input.lineage : [];
   const source = input.source || "local";
@@ -41046,6 +41139,12 @@ try { app.use("/api/studio", createStudioRouter({ db, requireAuth })); } catch (
 import createFeedRoutes from "./routes/feeds.js";
 try { app.use("/api/feeds", createFeedRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "feed_routes_skip", { error: e.message }); }
 
+// Lens community panels (reflection and the same Reddit listing pattern).
+// Allowlisted subreddit JSON only — see routes/reddit-listing.js. Not a
+// public-read path; the global auth middleware still applies.
+import { createRedditListingRouter } from "./routes/reddit-listing.js";
+try { app.use("/api/community", createRedditListingRouter()); } catch (e) { structuredLog("warn", "reddit_listing_routes_skip", { error: e.message }); }
+
 import createBrowserRoutes from "./routes/browser.js";
 try { app.use("/api/browser", createBrowserRoutes({ requireAuth })); } catch (e) { structuredLog("warn", "browser_routes_skip", { error: e.message }); }
 
@@ -47898,6 +47997,16 @@ app.post("/api/lens/run", async (req, res) => {
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
+    // Lens-action throws used to become a 500 body with nothing written to
+    // the process log, so a broken feed was invisible in backend.log / backend.err.
+    try {
+      logger.error("lens-run", "lens action failed", {
+        domain: _lifeDomain,
+        action: _lifeAction,
+        error: msg,
+        stack: e?.stack,
+      });
+    } catch { /* logging must not mask the response */ }
     // If we announced a start, always announce a terminus — never leave a HUD
     // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
     if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
@@ -55102,10 +55211,104 @@ register("collab", "unlock", (ctx, input) => {
 // Whiteboards are owner-scoped: list/get/update only see the caller's boards.
 // Boards created before ownerId was recorded have none and stay reachable.
 const _wbVisible = (dtu, ctx) => !dtu.ownerId || dtu.ownerId === ctx?.actor?.userId;
+const _wbMissing = () => ({ ok: false, error: "Whiteboard not found", status: 404 });
+
+// The canvas is the whiteboard DTU. A lens artifact (type board) is only a
+// catalog shadow so GET /api/lens/whiteboard?type=board stays in step with
+// rename and delete. The shadow stores whiteboardId; it does not copy elements.
+function _wbAttachMirror(ctx, whiteboard) {
+  const ownerId = ctx?.actor?.userId || "anon";
+  const now = whiteboard.createdAt || nowISO();
+  const id = uid("lart");
+  const artifact = {
+    id,
+    domain: "whiteboard",
+    type: "board",
+    ownerId,
+    title: whiteboard.title,
+    data: {
+      whiteboardId: whiteboard.id,
+      linkedDtus: Array.isArray(whiteboard.linkedDtus) ? whiteboard.linkedDtus : [],
+      createdAt: now,
+      elementCount: 0,
+    },
+    meta: {
+      tags: [],
+      status: "draft",
+      visibility: "private",
+      scope: "local",
+      consent: { publishToMarketplace: false, shareToFeed: false, allowCitations: false, allowAiTraining: false },
+    },
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  };
+  STATE.lensArtifacts.set(id, artifact);
+  _lensDomainIndexAdd("whiteboard", id);
+  whiteboard.artifactId = id;
+  return artifact;
+}
+
+function _wbPushShadow(shadows, seen, artifact, ownerId) {
+  if (!artifact || !artifact.id || seen.has(artifact.id)) return;
+  if (artifact.domain !== "whiteboard" || artifact.type !== "board") return;
+  if (ownerId && artifact.ownerId && artifact.ownerId !== ownerId) return;
+  seen.add(artifact.id);
+  shadows.push(artifact);
+}
+
+// Linked shadows (data.whiteboardId or the id stored on the board) plus, when
+// the title still matches, the single unlinked shadow the old studio wrote.
+function _wbCollectShadows(dtu, legacyTitle) {
+  const ownerId = dtu?.ownerId || null;
+  const whiteboardId = dtu?.machine?.data?.id || dtu?.id;
+  const shadows = [];
+  const seen = new Set();
+  const hinted = dtu?.machine?.data?.artifactId;
+  if (hinted) _wbPushShadow(shadows, seen, STATE.lensArtifacts.get(hinted), ownerId);
+  for (const artifact of _lensDomainArtifacts("whiteboard")) {
+    if (artifact?.data?.whiteboardId === whiteboardId) _wbPushShadow(shadows, seen, artifact, ownerId);
+  }
+  const legacy = pickLegacyShadow(_lensDomainArtifacts("whiteboard"), { ownerId, title: legacyTitle });
+  _wbPushShadow(shadows, seen, legacy, ownerId);
+  return shadows;
+}
+
+function _wbWriteShadow(artifact, title, whiteboardId, linkedDtus, when) {
+  const prev = artifact.data && typeof artifact.data === "object" ? artifact.data : {};
+  const nextLinked = Array.isArray(linkedDtus) ? linkedDtus : (Array.isArray(prev.linkedDtus) ? prev.linkedDtus : []);
+  const sameLinks = JSON.stringify(prev.linkedDtus || []) === JSON.stringify(nextLinked);
+  if (artifact.title === title && prev.whiteboardId === whiteboardId && sameLinks) return;
+  artifact.title = title;
+  artifact.data = {
+    ...prev,
+    whiteboardId,
+    linkedDtus: nextLinked,
+    elementCount: Array.isArray(prev.elements) ? prev.elements.length : (prev.elementCount || 0),
+  };
+  artifact.updatedAt = when;
+  artifact.version = (artifact.version || 1) + 1;
+  STATE.lensArtifacts.set(artifact.id, artifact);
+}
+
+function _wbDropShadow(artifact) {
+  STATE.lensArtifacts.delete(artifact.id);
+  _lensDomainIndexRemove(artifact.domain || "whiteboard", artifact.id);
+}
+
+function _wbSyncShadows(dtu, legacyTitle) {
+  const wb = dtu?.machine?.data || {};
+  const when = wb.updatedAt || nowISO();
+  for (const artifact of _wbCollectShadows(dtu, legacyTitle)) {
+    _wbWriteShadow(artifact, wb.title || artifact.title, wb.id || dtu.id, wb.linkedDtus, when);
+  }
+}
 
 register("whiteboard", "create", (ctx, input) => {
   const { title, linkedDtus } = input;
   const whiteboard = { id: uid("wb"), title: title || "Untitled Whiteboard", elements: [], linkedDtus: linkedDtus || [], collaborators: [], createdAt: nowISO(), updatedAt: nowISO() };
+  try { _wbAttachMirror(ctx, whiteboard); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_mirror_failed", { id: whiteboard.id, error: String(e?.message || e) }); }
   const wbDtu = {
     id: whiteboard.id,
     title: `Whiteboard: ${whiteboard.title}`,
@@ -55127,13 +55330,15 @@ register("whiteboard", "create", (ctx, input) => {
 register("whiteboard", "update", (ctx, input) => {
   const { whiteboardId, elements, linkedDtus } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   const wb = dtu.machine.data;
   if (elements) wb.elements = elements;
   if (linkedDtus) { wb.linkedDtus = linkedDtus; dtu.lineage.parents = linkedDtus; }
   wb.updatedAt = nowISO();
   dtu.updatedAt = nowISO();
   STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, wb.title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
   realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
   return { ok: true, whiteboard: wb };
@@ -55142,11 +55347,14 @@ register("whiteboard", "update", (ctx, input) => {
 register("whiteboard", "get", (ctx, input) => {
   const { whiteboardId } = input;
   const dtu = STATE.dtus.get(whiteboardId);
-  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return { ok: false, error: "Whiteboard not found" };
+  if (!dtu || dtu.machine?.kind !== "whiteboard" || !_wbVisible(dtu, ctx)) return _wbMissing();
   return { ok: true, whiteboard: dtu.machine.data, linkedDtus: dtu.lineage?.parents || [] };
 });
 
 register("whiteboard", "list", (ctx, _input) => {
+  // `title` is the DTU title ("Whiteboard: <name>") so the knowledge object
+  // stays labeled. GET /api/whiteboard/:id returns machine.data.title, the
+  // raw name. The studio strips the prefix when it renders the list.
   const whiteboards = dtusArray()
     .filter(d => d.machine?.kind === "whiteboard" && _wbVisible(d, ctx))
     .map(d => ({ id: d.id, title: d.title, elementCount: d.machine.data?.elements?.length || 0, linkedDtuCount: d.lineage?.parents?.length || 0, createdAt: d.createdAt, updatedAt: d.updatedAt || d.createdAt }))
@@ -55175,12 +55383,15 @@ register("whiteboard", "rename", (ctx, input) => {
   const next = String(input?.title || "").trim();
   if (!next) return { ok: false, error: "title required", status: 400 };
   const wb = dtu.machine.data || {};
+  const previous = wb.title;
   wb.title = next;
   wb.updatedAt = nowISO();
   dtu.machine.data = wb;
   dtu.title = `Whiteboard: ${next}`;
   dtu.updatedAt = wb.updatedAt;
   STATE.dtus.set(whiteboardId, dtu);
+  try { _wbSyncShadows(dtu, previous); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_rename_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
   return { ok: true, whiteboard: wb };
 });
@@ -55190,7 +55401,15 @@ register("whiteboard", "delete", (ctx, input) => {
   const dtu = STATE.dtus.get(whiteboardId);
   const denied = _wbMutateGate(dtu, ctx);
   if (denied) return denied;
+  const title = dtu.machine?.data?.title;
+  let shadows = [];
+  try { shadows = _wbCollectShadows(dtu, title); }
+  catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   STATE.dtus.delete(whiteboardId);
+  for (const artifact of shadows) {
+    try { _wbDropShadow(artifact); }
+    catch (e) { structuredLog("error", "whiteboard_artifact_delete_failed", { id: artifact?.id, error: String(e?.message || e) }); }
+  }
   saveStateDebounced();
   return { ok: true, deleted: true, id: whiteboardId };
 });
@@ -55208,8 +55427,8 @@ app.get("/api/collab/sessions", asyncHandler(async (req, res) => res.json(await 
 app.post("/api/collab/lock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "lock", req.body, makeCtx(req)))));
 app.post("/api/collab/unlock", asyncHandler(async (req, res) => res.json(await runMacro("collab", "unlock", req.body, makeCtx(req)))));
 app.post("/api/whiteboard", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "create", req.body, makeCtx(req)))));
-app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
-app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
+app.put("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "update", { whiteboardId: req.params.id, ...req.body }, makeCtx(req)))));
+app.get("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "get", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.patch("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "rename", { whiteboardId: req.params.id, title: req.body?.title }, makeCtx(req)))));
 app.delete("/api/whiteboard/:id", asyncHandler(async (req, res) => _wbHttp(res, await runMacro("whiteboard", "delete", { whiteboardId: req.params.id }, makeCtx(req)))));
 app.get("/api/whiteboards", asyncHandler(async (req, res) => res.json(await runMacro("whiteboard", "list", {}, makeCtx(req)))));
@@ -65253,11 +65472,13 @@ app.get("/api/social/analytics/creator", requireAuth(), (req, res) => {
 });
 app.get("/api/social/topics/trending", (_req, res) => {
   try {
-    const tagCount = new Map();
-    for (const dtu of dtusArray().slice(-500)) { for (const t of (dtu.tags || [])) { tagCount.set(t, (tagCount.get(t) || 0) + 1); } }
-    const topics = [...tagCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([tag, count]) => ({ tag, count }));
+    const topics = aggregateTopicCounts(dtusArray().slice(-500).map((d) => d?.tags), 20);
     res.json({ ok: true, topics });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  } catch (e) {
+    try { logger.error("social", "topics/trending failed", { error: e?.message, stack: e?.stack }); }
+    catch { /* logging must not mask the response */ }
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 app.get("/api/social/trending/creators", (_req, res) => {
   try {
@@ -73622,11 +73843,7 @@ function sanitizeDTUInput(body) {
   if (body.title) body.title = sanitizeString(body.title);
   if (body.content) body.content = sanitizeString(body.content);
   if (body.tags && Array.isArray(body.tags)) {
-    body.tags = body.tags
-      .filter(t => typeof t === "string")
-      .map(t => t.toLowerCase().trim().replace(/[<>"'`]/g, ""))
-      .filter(t => t.length > 0 && t.length <= 100);
-    body.tags = [...new Set(body.tags)];
+    body.tags = sanitizeDtuTags(body.tags);
   }
   return body;
 }
