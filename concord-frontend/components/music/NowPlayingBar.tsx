@@ -84,13 +84,19 @@ export function NowPlayingBar() {
     const player = getPlayer();
     const cf = player.getCrossfadeSeconds();
     if (cf > 0 && player.hasActiveTrack()) void player.crossfadeTo(next, cf);
-    else player.loadTrack(next).then(() => player.play());
+    else void player.loadTrack(next).then(() => player.play().catch(() => {}));
   }, []);
 
   // ---- Player Event Sync ----
 
   useEffect(() => {
     const player = getPlayer();
+    const seededTime = player.getCurrentTime();
+    const seededDuration = player.getDuration();
+    const seededState = player.getPlaybackState();
+    if (seededDuration > 0) setDuration(seededDuration);
+    if (seededTime > 0) setCurrentTime(seededTime);
+    if (seededState === 'playing' || seededState === 'paused') setPlaybackState(seededState);
 
     const unsubs = [
       player.on('play', () => setPlaybackState('playing')),
@@ -138,7 +144,11 @@ export function NowPlayingBar() {
     // and kill the fade-in). The crossfade path drives playback itself.
     if (track && playbackState === 'loading' && !getPlayer().isCrossfading()) {
       const player = getPlayer();
-      player.loadTrack(track).then(() => player.play());
+      // The click already called primeAndPlay. Reloading here aborts that
+      // play() and leaves the bar at 0:00.
+      if (!player.isPrimed(track.id)) {
+        void player.loadTrack(track).then(() => player.play().catch(() => {}));
+      }
     }
   }, [track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -207,7 +217,7 @@ export function NowPlayingBar() {
     if (playbackState === 'playing') {
       player.pause();
     } else if (track) {
-      player.play();
+      void player.play().catch(() => {});
     }
   }, [playbackState, track]);
 
