@@ -9,7 +9,7 @@ import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
-interface Category { id: string; name: string; description: string | null; topicCount: number }
+interface Category { id: string; name: string; description: string | null; topicCount: number; authorId?: string }
 
 // Category names are free-form and user-created (not a fixed enum), so a
 // per-name icon set isn't feasible or honest — every category previously
@@ -27,7 +27,13 @@ function categoryInitials(name: string): string {
   return (words.slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
 }
 
-export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
+export function FmCategoriesPanel({
+  onChange, canModerate = false, viewerId = null,
+}: {
+  onChange: () => void;
+  canModerate?: boolean;
+  viewerId?: string | null;
+}) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -105,9 +111,11 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
                 {c.description && <p className="text-[10px] text-zinc-400">{c.description}</p>}
               </div>
               <span className="text-[11px] text-zinc-400">{c.topicCount} topics</span>
-              <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {(canModerate || (viewerId && c.authorId === viewerId)) && (
+                <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </li>
           ))}
         </ul>
