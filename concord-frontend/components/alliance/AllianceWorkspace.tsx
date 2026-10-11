@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Hash, Plus, Send, MessageSquare, Users, Mail, FileText, CheckCircle2,
@@ -13,7 +13,7 @@ import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 
 // ── Shared shapes ─────────────────────────────────────────────────
-interface Member { userId: string; displayName: string; role: 'owner' | 'admin' | 'member' | 'guest'; joinedAt: string }
+interface Member { userId: string; displayName: string | null; handle?: string | null; role: 'owner' | 'admin' | 'member' | 'guest'; joinedAt: string; isMe?: boolean }
 interface Alliance {
   id: string; name: string; description: string; type: string; status: string;
   members: Member[]; myRole: string | null; channelCount: number; activeProposals: number; createdAt: string;
@@ -21,31 +21,38 @@ interface Alliance {
 interface Channel { id: string; name: string; topic: string; messageCount: number; unread: number; lastMessageAt: string | null }
 interface Attachment { name: string; url: string; mime: string; sizeBytes: number }
 interface Message {
-  id: string; channelId: string; userId: string; displayName: string; content: string;
+  id: string; channelId: string; userId: string; displayName: string | null; content: string;
   parentId: string | null; attachments: Attachment[]; reactions: Record<string, string[]>;
-  createdAt: string; replies?: Message[];
+  createdAt: string; replies?: Message[]; isMine?: boolean;
 }
-interface Invite { id: string; allianceId: string; allianceName: string; inviteeId: string; role: string; status: string; createdAt: string }
+interface Invite { id: string; allianceId: string; allianceName: string; inviteeId: string; inviteeName?: string | null; role: string; status: string; createdAt: string }
 interface Tally { yes: number; no: number; abstain: number; cast: number; eligible: number; participation: number; quorumMet: boolean; passed: boolean }
 interface Proposal {
   id: string; allianceId: string; title: string; body: string; createdBy: string; createdAt: string;
   status: string; quorum: number; eligibleVoters: number; decision: string | null; tally: Tally; myVote: string | null;
+  isMine?: boolean;
 }
 interface NotifAlliance { allianceId: string; name: string; unread: number; pendingVotes: number }
 interface Notifications { totalUnread: number; pendingInvites: number; perAlliance: NotifAlliance[]; invites: Invite[] }
 
 // ── Cross-org direct messages ────────────────────────────────────
 interface DmMessage {
-  id: string; threadKey: string; fromId: string; toId: string; fromName: string; content: string;
+  id: string; threadKey: string; fromId: string; toId: string; fromName: string | null; content: string;
   parentId: string | null; attachments: Attachment[]; reactions: Record<string, string[]>; createdAt: string;
+  isMine?: boolean;
 }
 interface DmThread {
-  partnerId: string; partnerName: string; threadKey: string;
+  partnerId: string; partnerName: string | null; threadKey: string;
   lastMessage: string; lastFrom: string; lastAt: string; messageCount: number;
 }
 // A candidate DM recipient, sourced from the members of alliances this lens
 // already knows about (never a free-text "type any user id" box).
-interface DmCandidate { userId: string; displayName: string; allianceName: string }
+interface DmCandidate { userId: string; displayName: string | null; allianceName: string }
+
+function personLabel(name: string | null | undefined, isMe?: boolean): string {
+  if (isMe) return name ? `${name} (you)` : 'You';
+  return name || 'Member';
+}
 
 const REACTION_PALETTE = ['👍', '🎉', '🔥', '👀', '✅', '❤️'];
 const TYPE_TINT: Record<string, string> = {
@@ -68,6 +75,7 @@ export function AllianceWorkspace() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [outgoingInvites, setOutgoingInvites] = useState<Invite[]>([]);
 
   // ── Channel search ──
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,7 +144,7 @@ export function AllianceWorkspace() {
         out.push({ userId: m.userId, displayName: m.displayName, allianceName: a.name });
       }
     }
-    return out.sort((x, y) => x.displayName.localeCompare(y.displayName));
+    return out.sort((x, y) => (x.displayName || '').localeCompare(y.displayName || ''));
   }, [alliances, user?.id]);
 
   // ── Loaders ──
@@ -186,6 +194,11 @@ export function AllianceWorkspace() {
   const loadDmThread = useCallback(async (partnerId: string) => {
     const r = await run<{ messages: DmMessage[] }>('dm-list', { partnerId });
     if (r.ok && r.result) setDmMessages(r.result.messages || []);
+  }, []);
+
+  const loadOutgoingInvites = useCallback(async (allianceId: string) => {
+    const r = await run<{ invites: Invite[] }>('invite-list', { allianceId });
+    if (r.ok && r.result) setOutgoingInvites((r.result.invites || []).filter((i) => i.status === 'pending'));
   }, []);
 
   // ── Initial load ──
@@ -298,9 +311,11 @@ export function AllianceWorkspace() {
 
   const sendInvite = () => guard('invite', async () => {
     if (!selAlliance || !inviteUser.trim()) return;
-    const r = await run('invite-create', { allianceId: selAlliance, inviteeId: inviteUser.trim(), role: inviteRole });
+    const handle = inviteUser.trim().replace(/^@+/, '');
+    const r = await run('invite-create', { allianceId: selAlliance, handle, role: inviteRole });
     if (!r.ok) { setErr(r.error); return; }
     setInviteUser('');
+    await loadOutgoingInvites(selAlliance);
   });
 
   const respondInvite = (inviteId: string, accept: boolean) => guard(`inv-${inviteId}`, async () => {
@@ -344,6 +359,70 @@ export function AllianceWorkspace() {
     if (!r.ok) { setErr(r.error); return; }
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
   });
+
+  const deleteAlliance = () => guard('delete-alliance', async () => {
+    if (!selAlliance) return;
+    const r = await run('alliance-delete', { allianceId: selAlliance });
+    if (!r.ok) { setErr(r.error); return; }
+    setSelAlliance(null);
+    setOutgoingInvites([]);
+    await loadAlliances();
+  });
+
+  const leaveAlliance = () => guard('leave-alliance', async () => {
+    if (!selAlliance) return;
+    const r = await run('alliance-leave', { allianceId: selAlliance });
+    if (!r.ok) { setErr(r.error); return; }
+    setSelAlliance(null);
+    setOutgoingInvites([]);
+    await loadAlliances();
+  });
+
+  const transferAlliance = (memberId: string) => guard(`xfer-${memberId}`, async () => {
+    if (!selAlliance) return;
+    const r = await run('alliance-transfer', { allianceId: selAlliance, memberId });
+    if (!r.ok) { setErr(r.error); return; }
+    await loadAlliances();
+  });
+
+  const deleteChannel = (channelId: string) => guard(`del-ch-${channelId}`, async () => {
+    if (!selAlliance) return;
+    const r = await run('channel-delete', { channelId });
+    if (!r.ok) { setErr(r.error); return; }
+    await loadChannels(selAlliance);
+  });
+
+  const deleteMessage = (messageId: string) => guard(`del-msg-${messageId}`, async () => {
+    if (!selChannel) return;
+    const r = await run('message-delete', { channelId: selChannel, messageId });
+    if (!r.ok) { setErr(r.error); return; }
+    await loadMessages(selChannel);
+  });
+
+  const deleteProposal = (proposalId: string) => guard(`del-prop-${proposalId}`, async () => {
+    if (!selAlliance) return;
+    const r = await run('proposal-delete', { allianceId: selAlliance, proposalId });
+    if (!r.ok) { setErr(r.error); return; }
+    await Promise.all([loadProposals(selAlliance), loadAlliances()]);
+  });
+
+  const revokeInvite = (inviteId: string) => guard(`revoke-${inviteId}`, async () => {
+    const r = await run('invite-revoke', { inviteId });
+    if (!r.ok) { setErr(r.error); return; }
+    if (selAlliance) await loadOutgoingInvites(selAlliance);
+  });
+
+  useEffect(() => {
+    if (tab !== 'members' || !selAlliance || !isAdmin) return;
+    const allianceId = selAlliance;
+    let cancelled = false;
+    (async () => {
+      const r = await run<{ invites: Invite[] }>('invite-list', { allianceId });
+      if (cancelled || !r.ok || !r.result) return;
+      setOutgoingInvites((r.result.invites || []).filter((i) => i.status === 'pending' && i.allianceId === allianceId));
+    })();
+    return () => { cancelled = true; };
+  }, [tab, selAlliance, isAdmin]);
 
   const sendDm = () => guard('dm-send', async () => {
     if (!selDmPartner || !dmDraft.trim()) return;
@@ -497,7 +576,7 @@ export function AllianceWorkspace() {
                   >
                     <option value="">Select a member…</option>
                     {dmCandidates.map((c) => (
-                      <option key={c.userId} value={c.userId}>{c.displayName} · {c.allianceName}</option>
+                      <option key={c.userId} value={c.userId}>{personLabel(c.displayName)} · {c.allianceName}</option>
                     ))}
                   </select>
                   <button
@@ -520,7 +599,7 @@ export function AllianceWorkspace() {
                   className={`w-full text-left p-2 rounded transition-colors ${selDmPartner === t.partnerId ? 'bg-neon-cyan/10 border border-neon-cyan/40' : 'bg-lattice-deep hover:bg-lattice-surface border border-transparent'}`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white truncate">{t.partnerName}</span>
+                    <span className="text-sm font-medium text-white truncate">{personLabel(t.partnerName)}</span>
                   </div>
                   <p className="text-[11px] text-gray-400 truncate mt-0.5">
                     {t.lastFrom === user?.id ? 'You: ' : ''}{t.lastMessage}
@@ -566,11 +645,33 @@ export function AllianceWorkspace() {
                   <span className={`text-xs px-1.5 py-0.5 rounded ${selAllianceData.status === 'active' ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'}`}>
                     {selAllianceData.status}
                   </span>
-                  {myRole && (
-                    <span className="ml-auto text-xs flex items-center gap-1 text-amber-400">
-                      {myRole === 'owner' ? <Crown className="w-3 h-3" /> : <Shield className="w-3 h-3" />}{myRole}
-                    </span>
-                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    {myRole && (
+                      <span className="text-xs flex items-center gap-1 text-amber-400">
+                        {myRole === 'owner' ? <Crown className="w-3 h-3" /> : <Shield className="w-3 h-3" />}{myRole}
+                      </span>
+                    )}
+                    {myRole === 'owner' && (
+                      <ConfirmButton
+                        label="Delete alliance"
+                        confirmLabel="Confirm delete"
+                        ariaLabel="Delete alliance"
+                        disabled={busy === 'delete-alliance'}
+                        onConfirm={deleteAlliance}
+                        className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
+                      />
+                    )}
+                    {myRole && myRole !== 'owner' && (
+                      <ConfirmButton
+                        label="Leave"
+                        confirmLabel="Confirm leave"
+                        ariaLabel="Leave alliance"
+                        disabled={busy === 'leave-alliance'}
+                        onConfirm={leaveAlliance}
+                        className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
+                      />
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   {([['chat', MessageSquare, 'Channels'], ['proposals', Vote, 'Proposals'], ['members', Users, 'Members']] as const).map(([key, Icon, label]) => (
@@ -608,15 +709,27 @@ export function AllianceWorkspace() {
                       </div>
                     )}
                     {channels.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelChannel(c.id)}
-                        className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-1.5 text-sm transition-colors ${selChannel === c.id ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-300 hover:bg-lattice-deep'}`}
-                      >
-                        <Hash className="w-3.5 h-3.5 opacity-60" />
-                        <span className="truncate">{c.name}</span>
-                        {c.unread > 0 && <span className="ml-auto text-[10px] px-1.5 rounded-full bg-amber-500 text-black font-bold">{c.unread}</span>}
-                      </button>
+                      <div key={c.id} className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelChannel(c.id)}
+                          className={`flex-1 text-left px-2 py-1.5 rounded flex items-center gap-1.5 text-sm transition-colors ${selChannel === c.id ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-300 hover:bg-lattice-deep'}`}
+                        >
+                          <Hash className="w-3.5 h-3.5 opacity-60" />
+                          <span className="truncate">{c.name}</span>
+                          {c.unread > 0 && <span className="ml-auto text-[10px] px-1.5 rounded-full bg-amber-500 text-black font-bold">{c.unread}</span>}
+                        </button>
+                        {isAdmin && c.name !== 'general' && (
+                          <ConfirmButton
+                            label="Delete"
+                            confirmLabel="Confirm"
+                            ariaLabel={`Delete #${c.name}`}
+                            disabled={busy === `del-ch-${c.id}`}
+                            onConfirm={() => deleteChannel(c.id)}
+                            className="px-1.5 py-1 rounded text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                          />
+                        )}
+                      </div>
                     ))}
                   </div>
 
@@ -667,8 +780,18 @@ export function AllianceWorkspace() {
                               {searchResults?.map((m) => (
                                 <div key={m.id} className="bg-lattice-deep p-2 rounded">
                                   <div className="flex items-center gap-2 mb-0.5">
-                                    <span className="text-sm font-medium text-neon-cyan">{m.displayName}</span>
+                                    <span className="text-sm font-medium text-neon-cyan">{personLabel(m.displayName, m.isMine)}</span>
                                     <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
+                                    {(m.isMine || isAdmin) && (
+                                      <ConfirmButton
+                                        label="Delete"
+                                        confirmLabel="Confirm"
+                                        ariaLabel="Delete message"
+                                        disabled={busy === `del-msg-${m.id}`}
+                                        onConfirm={() => deleteMessage(m.id)}
+                                        className="ml-auto px-1.5 py-0.5 rounded text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                                      />
+                                    )}
                                     {m.parentId && (
                                       <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
                                         <CornerDownRight className="w-2.5 h-2.5" /> reply
@@ -685,7 +808,7 @@ export function AllianceWorkspace() {
                             <>
                               {messages.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No messages yet</p>}
                               {messages.map((m) => (
-                                <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} busy={busy} />
+                                <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} onDelete={deleteMessage} canModerate={isAdmin} busy={busy} />
                               ))}
                             </>
                           )}
@@ -755,7 +878,7 @@ export function AllianceWorkspace() {
                   {proposals.map((p) => (
                     <ProposalCard
                       key={p.id} p={p} busy={busy} isAdmin={isAdmin}
-                      onVote={voteProposal} onClose={closeProposal}
+                      onVote={voteProposal} onClose={closeProposal} onDelete={deleteProposal}
                     />
                   ))}
                 </div>
@@ -767,29 +890,52 @@ export function AllianceWorkspace() {
                   <h4 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Members & Roles</h4>
                   {isAdmin && (
                     <div className="flex gap-2 p-2 bg-lattice-deep rounded">
-                      <input value={inviteUser} onChange={(e) => setInviteUser(e.target.value)} placeholder="user id to invite" className="input-lattice flex-1 text-sm" />
-                      <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="input-lattice text-sm">
+                      <label htmlFor="alliance-invite-handle" className="sr-only">Handle to invite</label>
+                      <input id="alliance-invite-handle" value={inviteUser} onChange={(e) => setInviteUser(e.target.value)} placeholder="@handle" aria-label="Handle to invite" className="input-lattice flex-1 text-sm" />
+                      <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="input-lattice text-sm" aria-label="Invite role">
                         <option value="admin">admin</option>
                         <option value="member">member</option>
                         <option value="guest">guest</option>
                       </select>
-                      <button onClick={sendInvite} disabled={busy === 'invite' || !inviteUser.trim()} className="btn-neon text-sm disabled:opacity-50 flex items-center gap-1">
+                      <button type="button" onClick={sendInvite} disabled={busy === 'invite' || !inviteUser.trim()} className="btn-neon text-sm disabled:opacity-50 flex items-center gap-1">
                         <UserPlus className="w-3.5 h-3.5" /> Invite
                       </button>
                     </div>
                   )}
+                  {isAdmin && outgoingInvites.some((i) => i.allianceId === selAlliance) && (
+                    <div className="space-y-1.5">
+                      <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Pending invites</h5>
+                      {outgoingInvites.filter((i) => i.allianceId === selAlliance).map((inv) => (
+                        <div key={inv.id} className="flex items-center gap-2 text-sm bg-lattice-deep p-2 rounded">
+                          <span className="text-white">{inv.inviteeName || 'Member'}</span>
+                          <span className="text-xs text-gray-400">{inv.role}</span>
+                          <ConfirmButton
+                            label="Revoke"
+                            confirmLabel="Confirm revoke"
+                            ariaLabel={`Revoke invite for ${inv.inviteeName || 'member'}`}
+                            disabled={busy === `revoke-${inv.id}`}
+                            onConfirm={() => revokeInvite(inv.id)}
+                            className="ml-auto px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
-                    {selAllianceData.members.map((m) => (
+                    {selAllianceData.members.map((m) => {
+                      const mine = m.isMe || m.userId === user?.id;
+                      return (
                       <div key={m.userId} className="flex items-center gap-2 text-sm bg-lattice-deep p-2 rounded">
                         {m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Shield className="w-4 h-4 text-gray-400" />}
-                        <span className="text-white">{m.displayName}</span>
-                        <span className="text-xs text-gray-400">{m.userId}</span>
+                        <span className="text-white">{personLabel(m.displayName, mine)}</span>
+                        {m.handle && m.handle !== m.displayName && <span className="text-xs text-gray-400">@{m.handle}</span>}
                         {myRole === 'owner' && m.role !== 'owner' ? (
                           <select
                             value={m.role}
                             onChange={(e) => setMemberRole(m.userId, e.target.value)}
                             disabled={busy === `role-${m.userId}`}
                             className="ml-auto input-lattice text-xs"
+                            aria-label={`Role for ${personLabel(m.displayName)}`}
                           >
                             <option value="admin">admin</option>
                             <option value="member">member</option>
@@ -798,16 +944,29 @@ export function AllianceWorkspace() {
                         ) : (
                           <span className="ml-auto text-xs text-neon-purple">{m.role}</span>
                         )}
+                        {myRole === 'owner' && !mine && (
+                          <ConfirmButton
+                            label="Transfer"
+                            confirmLabel="Confirm transfer"
+                            ariaLabel={`Transfer ownership to ${personLabel(m.displayName)}`}
+                            disabled={busy === `xfer-${m.userId}`}
+                            onConfirm={() => transferAlliance(m.userId)}
+                            className="px-2 py-1 rounded text-xs bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
+                          />
+                        )}
                         {isAdmin && m.role !== 'owner' && (
-                          <button
-                            onClick={() => removeMember(m.userId)}
+                          <ConfirmButton
+                            label="Remove"
+                            confirmLabel="Confirm remove"
+                            ariaLabel={`Remove ${personLabel(m.displayName)}`}
                             disabled={busy === `rm-${m.userId}`}
-                            className="text-red-400 hover:text-red-300 disabled:opacity-50"
-                            aria-label="remove member"
-                          ><XCircle className="w-4 h-4" /></button>
+                            onConfirm={() => removeMember(m.userId)}
+                            className="px-2 py-1 rounded text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                          />
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -846,16 +1005,64 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function ConfirmButton({
+  label, confirmLabel, onConfirm, disabled, className, ariaLabel,
+}: {
+  label: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const [armed, setArmed] = useState(false);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (armed) confirmRef.current?.focus(); }, [armed]);
+  if (!armed) {
+    return (
+      <button type="button" onClick={() => setArmed(true)} disabled={disabled} className={className} aria-label={ariaLabel || label}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        ref={confirmRef}
+        type="button"
+        onClick={() => { setArmed(false); onConfirm(); }}
+        disabled={disabled}
+        className={className}
+        aria-label={ariaLabel ? `${ariaLabel} confirm` : confirmLabel}
+      >{confirmLabel}</button>
+      <button type="button" onClick={() => setArmed(false)} className="px-2 py-1 rounded text-xs text-gray-300 hover:text-white" aria-label="Cancel">
+        Cancel
+      </button>
+    </span>
+  );
+}
+
 // ── Message bubble with threads, reactions, attachments ──
-function MessageBubble({ m, onReact, onReply, busy }: {
-  m: Message; onReact: (id: string, e: string) => void; onReply: (id: string) => void; busy: string | null;
+function MessageBubble({ m, onReact, onReply, onDelete, canModerate, busy }: {
+  m: Message; onReact: (id: string, e: string) => void; onReply: (id: string) => void;
+  onDelete: (id: string) => void; canModerate: boolean; busy: string | null;
 }) {
   const [showReactions, setShowReactions] = useState(false);
   return (
     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="bg-lattice-deep p-2 rounded">
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-sm font-medium text-neon-cyan">{m.displayName}</span>
+        <span className="text-sm font-medium text-neon-cyan">{personLabel(m.displayName, m.isMine)}</span>
         <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
+        {(m.isMine || canModerate) && (
+          <ConfirmButton
+            label="Delete"
+            confirmLabel="Confirm"
+            ariaLabel="Delete message"
+            disabled={busy === `del-msg-${m.id}`}
+            onConfirm={() => onDelete(m.id)}
+            className="ml-auto px-1.5 py-0.5 rounded text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+          />
+        )}
       </div>
       <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
       {m.attachments?.length > 0 && (
@@ -896,8 +1103,18 @@ function MessageBubble({ m, onReact, onReply, busy }: {
             <div key={r.id} className="text-sm">
               <div className="flex items-center gap-1.5">
                 <ChevronRight className="w-3 h-3 text-gray-600" />
-                <span className="text-xs font-medium text-neon-cyan">{r.displayName}</span>
+                <span className="text-xs font-medium text-neon-cyan">{personLabel(r.displayName, r.isMine)}</span>
                 <span className="text-[10px] text-gray-400">{new Date(r.createdAt).toLocaleTimeString()}</span>
+                {(r.isMine || canModerate) && (
+                  <ConfirmButton
+                    label="Delete"
+                    confirmLabel="Confirm"
+                    ariaLabel="Delete reply"
+                    disabled={busy === `del-msg-${r.id}`}
+                    onConfirm={() => onDelete(r.id)}
+                    className="px-1.5 py-0.5 rounded text-[10px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                  />
+                )}
               </div>
               <p className="text-sm text-gray-300 pl-4">{r.content}</p>
               <div className="flex items-center gap-1.5 pl-4 mt-0.5">
@@ -916,9 +1133,9 @@ function MessageBubble({ m, onReact, onReply, busy }: {
 }
 
 // ── Proposal card with quorum voting ──
-function ProposalCard({ p, busy, isAdmin, onVote, onClose }: {
+function ProposalCard({ p, busy, isAdmin, onVote, onClose, onDelete }: {
   p: Proposal; busy: string | null; isAdmin: boolean;
-  onVote: (id: string, c: string) => void; onClose: (id: string) => void;
+  onVote: (id: string, c: string) => void; onClose: (id: string) => void; onDelete: (id: string) => void;
 }) {
   const t = p.tally;
   const pct = (n: number) => (t.cast > 0 ? Math.round((n / t.cast) * 100) : 0);
@@ -966,12 +1183,23 @@ function ProposalCard({ p, busy, isAdmin, onVote, onClose }: {
           ))}
           {isAdmin && (
             <button
+              type="button"
               onClick={() => onClose(p.id)}
               disabled={busy === `close-${p.id}`}
               className="ml-auto px-2.5 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
             >Close vote</button>
           )}
         </div>
+      )}
+      {(isAdmin || p.isMine) && (
+        <ConfirmButton
+          label={p.status === 'open' && p.isMine ? 'Withdraw' : 'Delete'}
+          confirmLabel="Confirm delete"
+          ariaLabel={p.isMine ? 'Withdraw proposal' : 'Delete proposal'}
+          disabled={busy === `del-prop-${p.id}`}
+          onConfirm={() => onDelete(p.id)}
+          className="px-2.5 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
+        />
       )}
     </div>
   );
@@ -1014,7 +1242,7 @@ function DmPanel({
           <ArrowLeft className="w-4 h-4" />
         </button>
         <Globe2 className="w-4 h-4 text-neon-cyan" />
-        <span className="font-medium text-white">{activeThread?.partnerName || selPartner}</span>
+        <span className="font-medium text-white">{activeThread?.partnerName || 'Member'}</span>
         <span className="ml-auto text-[11px] text-gray-500">cross-org direct message</span>
       </div>
 
@@ -1023,7 +1251,7 @@ function DmPanel({
         {roots.map((m) => (
           <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="bg-lattice-deep p-2 rounded">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-sm font-medium text-neon-cyan">{m.fromId === currentUserId ? 'You' : m.fromName}</span>
+              <span className="text-sm font-medium text-neon-cyan">{m.isMine || m.fromId === currentUserId ? 'You' : personLabel(m.fromName)}</span>
               <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
             </div>
             <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
@@ -1045,7 +1273,7 @@ function DmPanel({
                   <div key={r.id} className="text-sm">
                     <div className="flex items-center gap-1.5">
                       <ChevronRight className="w-3 h-3 text-gray-600" />
-                      <span className="text-xs font-medium text-neon-cyan">{r.fromId === currentUserId ? 'You' : r.fromName}</span>
+                      <span className="text-xs font-medium text-neon-cyan">{r.isMine || r.fromId === currentUserId ? 'You' : personLabel(r.fromName)}</span>
                       <span className="text-[10px] text-gray-400">{new Date(r.createdAt).toLocaleTimeString()}</span>
                     </div>
                     <p className="text-sm text-gray-300 pl-4">{r.content}</p>

@@ -29,9 +29,28 @@
 // r.result.ok===false. (Same convention as tests/depth/alliance-behavior.test.js.)
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
 
 function rnd() { return Math.random().toString(36).slice(2, 8); }
+
+async function seedUser(userId, username, displayName) {
+  const { STATE } = await load();
+  const db = STATE.db;
+  let cols = new Set(db.prepare("PRAGMA table_info(users)").all().map((c) => c.name));
+  if (displayName && !cols.has("display_name")) {
+    db.exec("ALTER TABLE users ADD COLUMN display_name TEXT");
+    cols = new Set(db.prepare("PRAGMA table_info(users)").all().map((c) => c.name));
+  }
+  if (!db.prepare("SELECT id FROM users WHERE id = ?").get(userId)) {
+    const handle = username || String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 24);
+    db.prepare(
+      `INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))`
+    ).run(userId, handle, `${handle}@alliance.test`);
+  }
+  if (displayName && cols.has("display_name")) {
+    db.prepare("UPDATE users SET display_name = ? WHERE id = ?").run(displayName, userId);
+  }
+}
 
 describe("alliance — direct messages between external members (cross-org DM)", () => {
   let ctxA, ctxB, ctxC;
@@ -50,6 +69,7 @@ describe("alliance — direct messages between external members (cross-org DM)",
     // COMPLETELY DIFFERENT alliance than A — A and B share no alliance.
     const a2 = await lensRun("alliance", "alliance-create", { params: { name: `DM Org Two ${rnd()}` } }, ctxC);
     const allianceTwoId = a2.result.alliance.id;
+    await seedUser(ctxB.actor.userId);
     const inv = await lensRun("alliance", "invite-create", { params: { allianceId: allianceTwoId, inviteeId: ctxB.actor.userId, role: "member" } }, ctxC);
     await lensRun("alliance", "invite-respond", { params: { inviteId: inv.result.invite.id, accept: true } }, ctxB);
   });
@@ -253,31 +273,35 @@ describe("alliance — direct messages between external members (cross-org DM)",
     assert.equal(thread.lastFrom, ctxA.actor.userId);
   });
 
-  it("dm-inbox: resolves the partner's real alliance-membership displayName, not a fabricated one", async () => {
+  it("dm-inbox: resolves the partner's server identity, ignoring a client-supplied displayName", async () => {
     const ctxD = await depthCtx(`dm-user-d-${rnd()}`);
-    await lensRun("alliance", "alliance-create", { params: { name: `DM Org Three ${rnd()}`, displayName: "Dana the Diplomat" } }, ctxD);
+    await seedUser(ctxD.actor.userId, `dana${rnd()}`, "Dana the Diplomat");
+    await lensRun("alliance", "alliance-create", { params: { name: `DM Org Three ${rnd()}`, displayName: "Totally The Owner" } }, ctxD);
     await lensRun("alliance", "dm-send", { params: { toId: ctxD.actor.userId, content: "hi Dana" } }, ctxA);
 
     const inbox = await lensRun("alliance", "dm-inbox", {}, ctxA);
     const thread = inbox.result.threads.find((t) => t.partnerId === ctxD.actor.userId);
     assert.ok(thread);
     assert.equal(thread.partnerName, "Dana the Diplomat");
+    assert.equal(JSON.stringify(inbox.result).includes("Totally The Owner"), false);
+    assert.notEqual(thread.partnerName, ctxD.actor.userId);
   });
 
-  it("dm-inbox: falls back honestly to the raw userId once a partner is no longer resolvable to any alliance membership", async () => {
+  it("dm-inbox: keeps the server name after the partner leaves every alliance, never the raw id", async () => {
     const ctxE = await depthCtx(`dm-user-e-${rnd()}`);
+    await seedUser(ctxE.actor.userId, `eve${rnd()}`, "Eve the Envoy");
     const allianceForE = await lensRun("alliance", "alliance-create", { params: { name: `DM Org Four ${rnd()}` } }, ctxA);
     const invE = await lensRun("alliance", "invite-create", { params: { allianceId: allianceForE.result.alliance.id, inviteeId: ctxE.actor.userId, role: "member" } }, ctxA);
-    await lensRun("alliance", "invite-respond", { params: { inviteId: invE.result.invite.id, accept: true } }, ctxE);
+    await lensRun("alliance", "invite-respond", { params: { inviteId: invE.result.invite.id, accept: true, displayName: "Totally The Owner" } }, ctxE);
 
     await lensRun("alliance", "dm-send", { params: { toId: ctxE.actor.userId, content: "hi E" } }, ctxA);
-    // E's only alliance membership is now revoked — E no longer resolves to
-    // any known alliance member anywhere.
     await lensRun("alliance", "member-remove", { params: { allianceId: allianceForE.result.alliance.id, memberId: ctxE.actor.userId } }, ctxA);
 
     const inbox = await lensRun("alliance", "dm-inbox", {}, ctxA);
     const thread = inbox.result.threads.find((t) => t.partnerId === ctxE.actor.userId);
-    assert.ok(thread, "thread still exists even though the partner is no longer resolvable");
-    assert.equal(thread.partnerName, ctxE.actor.userId, "falls back to the raw id, never a fabricated name");
+    assert.ok(thread, "thread still exists after the partner leaves");
+    assert.equal(thread.partnerName, "Eve the Envoy");
+    assert.notEqual(thread.partnerName, ctxE.actor.userId);
+    assert.equal(JSON.stringify(inbox.result).includes("Totally The Owner"), false);
   });
 });

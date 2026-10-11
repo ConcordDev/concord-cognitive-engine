@@ -1,6 +1,8 @@
 // server/domains/alliance.js
 // Domain actions for partnership/alliance management: compatibility scoring, network analysis, risk assessment.
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 export default function registerAllianceActions(registerLensAction) {
   /**
    * compatibilityScore
@@ -501,6 +503,165 @@ export default function registerAllianceActions(registerLensAction) {
     if (!role) return false;
     return !!(ROLE_PERMS[role] && ROLE_PERMS[role][perm]);
   }
+  function isAdminRole(alliance, userId) {
+    const role = roleOf(alliance, userId);
+    return role === "owner" || role === "admin";
+  }
+
+  function allianceDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  // Display name, then @handle. Never the raw id and never a client-supplied
+  // label. Stored displayName values (including ones that equal the user id,
+  // or that an invitee typed in) are ignored — names resolve at read time.
+  function publicName(ctx, userId) {
+    if (!userId) return null;
+    const ident = lookupUserIdentity(allianceDb(ctx), userId);
+    const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+    const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+    if (display && display !== userId) return display;
+    if (handle && handle !== userId) return handle;
+    return null;
+  }
+
+  function publicHandle(ctx, userId) {
+    if (!userId) return null;
+    const ident = lookupUserIdentity(allianceDb(ctx), userId);
+    const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+    if (handle && handle !== userId) return handle;
+    return null;
+  }
+
+  function presentMember(ctx, member, viewerId) {
+    return {
+      userId: member.userId,
+      displayName: publicName(ctx, member.userId),
+      handle: publicHandle(ctx, member.userId),
+      role: member.role,
+      joinedAt: member.joinedAt,
+      isMe: member.userId === viewerId,
+    };
+  }
+
+  function presentMessage(ctx, msg, viewerId) {
+    return {
+      id: msg.id,
+      channelId: msg.channelId,
+      allianceId: msg.allianceId,
+      userId: msg.userId,
+      displayName: publicName(ctx, msg.userId),
+      isMine: msg.userId === viewerId,
+      content: msg.content,
+      parentId: msg.parentId ?? null,
+      attachments: msg.attachments || [],
+      reactions: msg.reactions || {},
+      createdAt: msg.createdAt,
+    };
+  }
+
+  function presentDm(ctx, msg, viewerId) {
+    return {
+      id: msg.id,
+      threadKey: msg.threadKey,
+      fromId: msg.fromId,
+      toId: msg.toId,
+      fromName: publicName(ctx, msg.fromId),
+      isMine: msg.fromId === viewerId,
+      content: msg.content,
+      parentId: msg.parentId ?? null,
+      attachments: msg.attachments || [],
+      reactions: msg.reactions || {},
+      createdAt: msg.createdAt,
+    };
+  }
+
+  function presentInvite(ctx, invite, viewerId) {
+    return {
+      id: invite.id,
+      allianceId: invite.allianceId,
+      allianceName: invite.allianceName,
+      inviteeId: invite.inviteeId,
+      inviteeName: publicName(ctx, invite.inviteeId),
+      role: invite.role,
+      invitedBy: invite.invitedBy,
+      invitedByName: publicName(ctx, invite.invitedBy),
+      status: invite.status,
+      createdAt: invite.createdAt,
+      respondedAt: invite.respondedAt || null,
+      isMine: invite.inviteeId === viewerId,
+    };
+  }
+
+  function userColumns(db) {
+    try {
+      const info = db.prepare("PRAGMA table_info(users)");
+      if (!info || typeof info.all !== "function") return null;
+      return new Set((info.all() || []).map((c) => c && c.name).filter(Boolean));
+    } catch {
+      return null;
+    }
+  }
+
+  // @handle, bare username, or an id that is a real users row.
+  // An arbitrary string that is not a user is rejected.
+  function resolveInvitee(ctx, raw) {
+    const token = String(raw || "").trim().replace(/^@+/, "");
+    if (!token) return { ok: false, error: "handle required" };
+    const db = allianceDb(ctx);
+    if (!db || typeof db.prepare !== "function") return { ok: false, error: "unknown user" };
+    try {
+      const cols = userColumns(db);
+      if (cols && !cols.has("username")) return { ok: false, error: "unknown user" };
+      const active = !!(cols && cols.has("is_active"));
+      let row = null;
+      if (active) {
+        row = db.prepare("SELECT id, username FROM users WHERE username = ? AND is_active = 1").get(token)
+          || db.prepare("SELECT id, username FROM users WHERE lower(username) = lower(?) AND is_active = 1").get(token)
+          || db.prepare("SELECT id, username FROM users WHERE id = ? AND is_active = 1").get(token);
+      } else {
+        row = db.prepare("SELECT id, username FROM users WHERE username = ?").get(token)
+          || db.prepare("SELECT id, username FROM users WHERE lower(username) = lower(?)").get(token)
+          || db.prepare("SELECT id, username FROM users WHERE id = ?").get(token);
+      }
+      if (!row || !row.id) return { ok: false, error: "unknown user" };
+      return { ok: true, userId: String(row.id) };
+    } catch {
+      return { ok: false, error: "unknown user" };
+    }
+  }
+
+  function findChannel(s, channelId) {
+    for (const [allianceId, list] of s.channels.entries()) {
+      const found = (list || []).find((c) => c.id === channelId);
+      if (found) return { channel: found, alliance: s.alliances.get(allianceId) || null };
+    }
+    return null;
+  }
+
+  function purgeChannel(s, allianceId, channel) {
+    const list = s.channels.get(allianceId) || [];
+    const next = list.filter((c) => c.id !== channel.id);
+    if (next.length) s.channels.set(allianceId, next);
+    else s.channels.delete(allianceId);
+    s.messages.delete(channel.id);
+    for (const key of [...s.reads.keys()]) {
+      if (key.endsWith(`:${channel.id}`)) s.reads.delete(key);
+    }
+  }
+
+  function purgeAlliance(s, allianceId) {
+    for (const channel of [...(s.channels.get(allianceId) || [])]) {
+      s.messages.delete(channel.id);
+      for (const key of [...s.reads.keys()]) {
+        if (key.endsWith(`:${channel.id}`)) s.reads.delete(key);
+      }
+    }
+    s.channels.delete(allianceId);
+    s.invites.delete(allianceId);
+    s.proposals.delete(allianceId);
+    s.alliances.delete(allianceId);
+  }
 
   // ── Alliances (collaboration objects, distinct from analytics artifacts) ──
 
@@ -522,7 +683,7 @@ export default function registerAllianceActions(registerLensAction) {
         status: "forming",
         createdBy: userId,
         createdAt: nowIso(),
-        members: [{ userId, displayName: params.displayName || userId, role: "owner", joinedAt: nowIso() }],
+        members: [{ userId, role: "owner", joinedAt: nowIso() }],
       };
       s.alliances.set(allianceId, alliance);
       // Every alliance is born with a #general channel.
@@ -537,7 +698,21 @@ export default function registerAllianceActions(registerLensAction) {
       listFor(s.channels, allianceId).push(general);
       saveAlliance();
       emitRealtime("alliance:created", { allianceId, name });
-      return { ok: true, result: { alliance, defaultChannel: general } };
+      return {
+        ok: true,
+        result: {
+          alliance: {
+            id: alliance.id,
+            name: alliance.name,
+            description: alliance.description,
+            type: alliance.type,
+            status: alliance.status,
+            createdAt: alliance.createdAt,
+            members: alliance.members.map((m) => presentMember(ctx, m, userId)),
+          },
+          defaultChannel: general,
+        },
+      };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -554,7 +729,13 @@ export default function registerAllianceActions(registerLensAction) {
           const channels = listFor(s.channels, alliance.id);
           const proposals = listFor(s.proposals, alliance.id);
           mine.push({
-            ...alliance,
+            id: alliance.id,
+            name: alliance.name,
+            description: alliance.description,
+            type: alliance.type,
+            status: alliance.status,
+            createdAt: alliance.createdAt,
+            members: (alliance.members || []).map((m) => presentMember(ctx, m, userId)),
             myRole: roleOf(alliance, userId),
             channelCount: channels.length,
             activeProposals: proposals.filter((p) => p.status === "open").length,
@@ -624,6 +805,27 @@ export default function registerAllianceActions(registerLensAction) {
     }
   });
 
+  registerLensAction("alliance", "channel-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const hit = findChannel(s, String(params.channelId || ""));
+      if (!hit || !hit.alliance) return { ok: false, error: "channel not found" };
+      if (!roleOf(hit.alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      if (!can(hit.alliance, userId, "manageChannels")) return { ok: false, error: "forbidden: requires admin role" };
+      if (hit.channel.name === "general") return { ok: false, error: "cannot delete #general" };
+      const channelId = hit.channel.id;
+      const allianceId = hit.alliance.id;
+      purgeChannel(s, allianceId, hit.channel);
+      saveAlliance();
+      emitRealtime("alliance:channel-deleted", { allianceId, channelId });
+      return { ok: true, result: { deleted: channelId, allianceId } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   // ── Messages — threaded, with attachments + reactions ──────────
 
   registerLensAction("alliance", "message-send", (ctx, _a, params = {}) => {
@@ -657,7 +859,6 @@ export default function registerAllianceActions(registerLensAction) {
         channelId,
         allianceId: parentAlliance.id,
         userId,
-        displayName: roleOf(parentAlliance, userId) ? ((parentAlliance.members.find((m) => m.userId === userId) || {}).displayName || userId) : userId,
         content,
         parentId,
         attachments,
@@ -667,8 +868,9 @@ export default function registerAllianceActions(registerLensAction) {
       msgs.push(message);
       s.reads.set(`${userId}:${channelId}`, message.createdAt);
       saveAlliance();
-      emitRealtime("alliance:message", { allianceId: parentAlliance.id, channelId, message });
-      return { ok: true, result: { message } };
+      const shown = presentMessage(ctx, message, userId);
+      emitRealtime("alliance:message", { allianceId: parentAlliance.id, channelId, message: shown });
+      return { ok: true, result: { message: shown } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -689,8 +891,10 @@ export default function registerAllianceActions(registerLensAction) {
       const all = listFor(s.messages, channelId);
       const roots = all.filter((m) => !m.parentId);
       const threaded = roots.map((root) => ({
-        ...root,
-        replies: all.filter((m) => m.parentId === root.id).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1)),
+        ...presentMessage(ctx, root, userId),
+        replies: all.filter((m) => m.parentId === root.id)
+          .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1))
+          .map((m) => presentMessage(ctx, m, userId)),
       })).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
       // Mark this channel read for the caller.
       s.reads.set(`${userId}:${channelId}`, nowIso());
@@ -767,8 +971,40 @@ export default function registerAllianceActions(registerLensAction) {
         .filter((m) => (m.content || "").toLowerCase().includes(needle))
         .slice()
         .reverse()
-        .slice(0, limit);
+        .slice(0, limit)
+        .map((m) => presentMessage(ctx, m, userId));
       return { ok: true, result: { messages: matches, query: q, count: matches.length, totalInChannel: all.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "message-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      const messageId = String(params.messageId || "");
+      const hit = findChannel(s, channelId);
+      if (!hit || !hit.alliance) return { ok: false, error: "channel not found" };
+      if (!roleOf(hit.alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const msgs = listFor(s.messages, channelId);
+      const msg = msgs.find((m) => m.id === messageId);
+      if (!msg) return { ok: false, error: "message not found" };
+      if (msg.userId !== userId && !isAdminRole(hit.alliance, userId)) {
+        return { ok: false, error: "forbidden: requires author or admin" };
+      }
+      const removeIds = new Set([msg.id]);
+      for (const m of msgs) {
+        if (m.parentId === msg.id) removeIds.add(m.id);
+      }
+      const kept = msgs.filter((m) => !removeIds.has(m.id));
+      if (kept.length) s.messages.set(channelId, kept);
+      else s.messages.delete(channelId);
+      saveAlliance();
+      emitRealtime("alliance:message-deleted", { allianceId: hit.alliance.id, channelId, messageId });
+      return { ok: true, result: { deleted: messageId, removed: removeIds.size } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -784,8 +1020,9 @@ export default function registerAllianceActions(registerLensAction) {
       const alliance = s.alliances.get(String(params.allianceId || ""));
       if (!alliance) return { ok: false, error: "alliance not found" };
       if (!can(alliance, userId, "invite")) return { ok: false, error: "forbidden: requires admin role" };
-      const inviteeId = String(params.inviteeId || "").trim();
-      if (!inviteeId) return { ok: false, error: "inviteeId required" };
+      const resolved = resolveInvitee(ctx, params.handle || params.username || params.inviteeId);
+      if (!resolved.ok) return resolved;
+      const inviteeId = resolved.userId;
       if ((alliance.members || []).some((m) => m.userId === inviteeId)) {
         return { ok: false, error: "already a member" };
       }
@@ -806,8 +1043,9 @@ export default function registerAllianceActions(registerLensAction) {
       };
       list.push(invite);
       saveAlliance();
-      emitRealtime("alliance:invite", { allianceId: alliance.id, inviteeId, invite });
-      return { ok: true, result: { invite } };
+      const shown = presentInvite(ctx, invite, userId);
+      emitRealtime("alliance:invite", { allianceId: alliance.id, inviteeId, invite: shown });
+      return { ok: true, result: { invite: shown } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -822,13 +1060,13 @@ export default function registerAllianceActions(registerLensAction) {
         const alliance = s.alliances.get(String(params.allianceId));
         if (!alliance) return { ok: false, error: "alliance not found" };
         if (!roleOf(alliance, userId)) return { ok: false, error: "forbidden: not a member" };
-        return { ok: true, result: { invites: listFor(s.invites, alliance.id), scope: "alliance" } };
+        return { ok: true, result: { invites: listFor(s.invites, alliance.id).map((i) => presentInvite(ctx, i, userId)), scope: "alliance" } };
       }
       // Default: invites addressed TO the caller (join-request inbox).
       const inbox = [];
       for (const list of s.invites.values()) {
         for (const inv of list) {
-          if (inv.inviteeId === userId && inv.status === "pending") inbox.push(inv);
+          if (inv.inviteeId === userId && inv.status === "pending") inbox.push(presentInvite(ctx, inv, userId));
         }
       }
       return { ok: true, result: { invites: inbox, scope: "inbox" } };
@@ -856,12 +1094,12 @@ export default function registerAllianceActions(registerLensAction) {
       invite.respondedAt = nowIso();
       const alliance = s.alliances.get(invite.allianceId);
       if (accept && alliance && !(alliance.members || []).some((m) => m.userId === userId)) {
-        alliance.members.push({ userId, displayName: params.displayName || userId, role: invite.role, joinedAt: nowIso() });
+        alliance.members.push({ userId, role: invite.role, joinedAt: nowIso() });
         if (alliance.status === "forming" && alliance.members.length >= 2) alliance.status = "active";
       }
       saveAlliance();
       emitRealtime("alliance:invite-resolved", { allianceId: invite.allianceId, inviteId, status: invite.status });
-      return { ok: true, result: { invite, joined: accept } };
+      return { ok: true, result: { invite: presentInvite(ctx, invite, userId), joined: accept } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -884,7 +1122,7 @@ export default function registerAllianceActions(registerLensAction) {
       if (member.role === "owner") return { ok: false, error: "cannot change owner role" };
       member.role = role;
       saveAlliance();
-      return { ok: true, result: { member } };
+      return { ok: true, result: { member: presentMember(ctx, member, userId) } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -906,6 +1144,105 @@ export default function registerAllianceActions(registerLensAction) {
       saveAlliance();
       emitRealtime("alliance:member-removed", { allianceId: alliance.id, memberId: targetId });
       return { ok: true, result: { removed: targetId, memberCount: alliance.members.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "invite-revoke", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const inviteId = String(params.inviteId || "");
+      let invite = null;
+      let list = null;
+      for (const bucket of s.invites.values()) {
+        const found = bucket.find((i) => i.id === inviteId);
+        if (found) { invite = found; list = bucket; break; }
+      }
+      if (!invite || !list) return { ok: false, error: "invite not found" };
+      const alliance = s.alliances.get(invite.allianceId);
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (invite.invitedBy !== userId && !can(alliance, userId, "invite")) {
+        return { ok: false, error: "forbidden: requires inviter or admin" };
+      }
+      if (invite.status !== "pending") return { ok: false, error: "invite is not pending" };
+      const next = list.filter((i) => i.id !== invite.id);
+      if (next.length) s.invites.set(alliance.id, next);
+      else s.invites.delete(alliance.id);
+      saveAlliance();
+      emitRealtime("alliance:invite-revoked", { allianceId: alliance.id, inviteId });
+      return { ok: true, result: { revoked: inviteId, allianceId: alliance.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "alliance-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (roleOf(alliance, userId) !== "owner") return { ok: false, error: "forbidden: requires owner role" };
+      const allianceId = alliance.id;
+      purgeAlliance(s, allianceId);
+      saveAlliance();
+      emitRealtime("alliance:deleted", { allianceId });
+      return { ok: true, result: { deleted: allianceId } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "alliance-leave", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      const role = roleOf(alliance, userId);
+      if (!role) return { ok: false, error: "forbidden: not a member" };
+      if (role === "owner") {
+        return { ok: false, error: "owner cannot leave; transfer ownership or delete the alliance" };
+      }
+      alliance.members = alliance.members.filter((m) => m.userId !== userId);
+      saveAlliance();
+      emitRealtime("alliance:member-left", { allianceId: alliance.id, memberId: userId });
+      return { ok: true, result: { left: true, allianceId: alliance.id, memberCount: alliance.members.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "alliance-transfer", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (roleOf(alliance, userId) !== "owner") return { ok: false, error: "forbidden: requires owner role" };
+      const targetId = String(params.memberId || "");
+      const target = (alliance.members || []).find((m) => m.userId === targetId);
+      if (!target) return { ok: false, error: "member not found" };
+      if (target.userId === userId) return { ok: false, error: "already owner" };
+      const me = alliance.members.find((m) => m.userId === userId);
+      target.role = "owner";
+      if (me) me.role = "admin";
+      saveAlliance();
+      emitRealtime("alliance:transferred", { allianceId: alliance.id, ownerId: target.userId });
+      return {
+        ok: true,
+        result: {
+          allianceId: alliance.id,
+          ownerId: target.userId,
+          members: alliance.members.map((m) => presentMember(ctx, m, userId)),
+        },
+      };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -998,6 +1335,7 @@ export default function registerAllianceActions(registerLensAction) {
         ...p,
         tally: tallyProposal(p),
         myVote: p.votes[userId] || null,
+        isMine: p.createdBy === userId,
       })).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
       return { ok: true, result: { proposals, count: proposals.length } };
     } catch (e) {
@@ -1026,6 +1364,31 @@ export default function registerAllianceActions(registerLensAction) {
       saveAlliance();
       emitRealtime("alliance:proposal-closed", { allianceId: alliance.id, proposalId: proposal.id, decision: proposal.decision });
       return { ok: true, result: { proposal } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "proposal-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!roleOf(alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const list = listFor(s.proposals, alliance.id);
+      const proposal = list.find((p) => p.id === String(params.proposalId || ""));
+      if (!proposal) return { ok: false, error: "proposal not found" };
+      if (proposal.createdBy !== userId && !isAdminRole(alliance, userId)) {
+        return { ok: false, error: "forbidden: requires author or admin" };
+      }
+      const kept = list.filter((p) => p.id !== proposal.id);
+      if (kept.length) s.proposals.set(alliance.id, kept);
+      else s.proposals.delete(alliance.id);
+      saveAlliance();
+      emitRealtime("alliance:proposal-deleted", { allianceId: alliance.id, proposalId: proposal.id });
+      return { ok: true, result: { deleted: proposal.id, allianceId: alliance.id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -1061,7 +1424,7 @@ export default function registerAllianceActions(registerLensAction) {
       const pendingInvites = [];
       for (const list of s.invites.values()) {
         for (const inv of list) {
-          if (inv.inviteeId === userId && inv.status === "pending") pendingInvites.push(inv);
+          if (inv.inviteeId === userId && inv.status === "pending") pendingInvites.push(presentInvite(ctx, inv, userId));
         }
       }
       return {
@@ -1130,10 +1493,8 @@ export default function registerAllianceActions(registerLensAction) {
   function dmThreadKey(a, b) { return [a, b].sort().join("::"); }
 
   // Scans every known alliance's membership list for a matching userId.
-  // Reused for both recipient validation (dm-send) and honest displayName
-  // resolution (dm-inbox) — same "is this a real, known person" discipline
-  // invite-respond/member-set-role already apply within a single alliance,
-  // just widened from "this alliance" to "any alliance the system knows."
+  // dm-send uses this to reject a fabricated recipient. Display names are
+  // a separate lookup (publicName) against the users table.
   function findAllianceMember(s, userId) {
     for (const alliance of s.alliances.values()) {
       const m = (alliance.members || []).find((x) => x.userId === userId);
@@ -1142,13 +1503,9 @@ export default function registerAllianceActions(registerLensAction) {
     return null;
   }
 
-  // Real display name if resolvable; otherwise the raw userId — never a
-  // fabricated name (honest-by-construction: a partner who left every
-  // alliance they were in still shows up in the inbox by their real id).
-  function dmDisplayName(s, userId) {
-    const hit = findAllianceMember(s, userId);
-    return (hit && hit.member.displayName) || userId;
-  }
+  // Names come from the users table (display name, then handle). A partner
+  // who has left every alliance still resolves if their account exists.
+  // Never the raw id, and never a name the client stored on the member row.
 
   registerLensAction("alliance", "dm-send", (ctx, _a, params = {}) => {
     try {
@@ -1176,7 +1533,6 @@ export default function registerAllianceActions(registerLensAction) {
         threadKey: key,
         fromId,
         toId,
-        fromName: dmDisplayName(s, fromId),
         content,
         parentId,
         attachments,
@@ -1185,8 +1541,9 @@ export default function registerAllianceActions(registerLensAction) {
       };
       thread.push(message);
       saveAlliance();
-      emitRealtime("alliance:dm", { threadKey: key, fromId, toId, message });
-      return { ok: true, result: { message, threadKey: key } };
+      const shown = presentDm(ctx, message, fromId);
+      emitRealtime("alliance:dm", { threadKey: key, fromId, toId, message: shown });
+      return { ok: true, result: { message: shown, threadKey: key } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -1202,7 +1559,7 @@ export default function registerAllianceActions(registerLensAction) {
       if (!partnerId) return { ok: false, error: "partnerId required" };
       const key = dmThreadKey(userId, partnerId);
       // Push order is already chronological ascending (mirrors message-list).
-      const messages = listFor(s.directMessages, key).slice();
+      const messages = listFor(s.directMessages, key).slice().map((m) => presentDm(ctx, m, userId));
       return { ok: true, result: { messages, count: messages.length, threadKey: key } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -1223,7 +1580,7 @@ export default function registerAllianceActions(registerLensAction) {
         const last = msgs[msgs.length - 1];
         threads.push({
           partnerId,
-          partnerName: dmDisplayName(s, partnerId),
+          partnerName: publicName(ctx, partnerId),
           threadKey: key,
           lastMessage: last.content,
           lastFrom: last.fromId,

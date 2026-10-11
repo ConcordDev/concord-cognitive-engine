@@ -16,11 +16,35 @@ function call(name, ctx, artifactOrParams = {}, maybeParams) {
   return fn(ctx, artifact, params);
 }
 
+// Stands in for the users table lookupUserIdentity / invite resolution
+// queries (PRAGMA + SELECT). owner_1 / member_1 / outsider_1 are real rows.
+function usersDb() {
+  const people = [
+    { id: "owner_1", username: "owner", displayName: "Owner" },
+    { id: "member_1", username: "member", displayName: "Member" },
+    { id: "outsider_1", username: "outsider", displayName: "Outsider" },
+  ];
+  return {
+    prepare(sql) {
+      const s = String(sql);
+      if (s.includes("PRAGMA")) {
+        return { all() { return [{ name: "id" }, { name: "username" }, { name: "display_name" }, { name: "is_active" }]; } };
+      }
+      return {
+        get(param) {
+          const p = String(param || "");
+          return people.find((r) => r.id === p || r.username.toLowerCase() === p.toLowerCase()) || null;
+        },
+      };
+    },
+  };
+}
+
 before(() => { registerAllianceActions(register); });
 
 beforeEach(() => {
   // Fresh in-memory STATE per test so per-user Maps don't leak across cases.
-  globalThis._concordSTATE = {};
+  globalThis._concordSTATE = { db: usersDb() };
 });
 
 const ctxOwner = { actor: { userId: "owner_1" }, userId: "owner_1" };
@@ -245,6 +269,21 @@ describe("alliance invites + roles", () => {
     assert.equal(resp.result.joined, true);
     const list = call("alliance-list", ctxMember, {}, {});
     assert.equal(list.result.count, 1);
+  });
+
+  it("invite-create rejects an unknown user and a spoofed displayName never becomes the member label", () => {
+    const created = call("alliance-create", ctxOwner, {}, { name: "Named", displayName: "Totally The Owner" });
+    assert.equal(created.ok, true);
+    assert.equal(created.result.alliance.members[0].displayName, "Owner");
+    assert.equal(created.result.alliance.members[0].isMe, true);
+    assert.notEqual(created.result.alliance.members[0].displayName, "owner_1");
+    const bad = call("invite-create", ctxOwner, {}, { allianceId: created.result.alliance.id, inviteeId: "no_such_user_r95" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "unknown user");
+    const byHandle = call("invite-create", ctxOwner, {}, { allianceId: created.result.alliance.id, handle: "@Member" });
+    assert.equal(byHandle.ok, true);
+    assert.equal(byHandle.result.invite.inviteeId, "member_1");
+    assert.equal(byHandle.result.invite.inviteeName, "Member");
   });
 
   it("invite-list inbox surfaces pending invites for the invitee", () => {
