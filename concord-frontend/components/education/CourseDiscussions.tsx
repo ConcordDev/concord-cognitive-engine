@@ -5,7 +5,16 @@ import { MessagesSquare, Send, ThumbsUp, Loader2, Reply } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Post { id: string; courseId: string; text: string; author: string; replyTo: string | null; upvotes: number; createdAt: string }
+interface PosterView { isMine?: boolean; displayName?: string; label?: string }
+interface Post { id: string; courseId: string; text: string; author: string | PosterView; replyTo: string | null; upvotes: number; createdAt: string }
+
+function posterLabel(author: Post['author']): string {
+  if (author && typeof author === 'object') {
+    if (author.isMine) return 'You';
+    return author.displayName || author.label || 'Learner';
+  }
+  return 'Learner';
+}
 
 export function CourseDiscussions({ courseId }: { courseId?: string }) {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -72,11 +81,11 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
             {topLevel.map(p => (
               <li key={p.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="flex items-start gap-2">
-                  <div className="w-7 h-7 rounded-full bg-violet-500/20 text-violet-300 flex items-center justify-center text-xs font-bold flex-shrink-0">{p.author.slice(0, 1).toUpperCase()}</div>
+                  <div className="w-7 h-7 rounded-full bg-violet-500/20 text-violet-300 flex items-center justify-center text-xs font-bold flex-shrink-0">{posterLabel(p.author).slice(0, 1).toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-100 whitespace-pre-wrap break-words">{p.text}</div>
                     <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
-                      <span>{p.author}</span>
+                      <span>{posterLabel(p.author)}</span>
                       <span>· {new Date(p.createdAt).toLocaleString()}</span>
                       <button onClick={() => upvote(p.id)} className="inline-flex items-center gap-0.5 text-cyan-300 hover:text-cyan-200"><ThumbsUp className="w-2.5 h-2.5" />{p.upvotes}</button>
                       {courseId && <button onClick={() => setReplyTo(p.id)} className="text-violet-300 hover:text-violet-200">Reply</button>}
@@ -87,7 +96,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
                   <div key={r.id} className="ml-9 mt-1.5 pl-3 border-l border-violet-500/20">
                     <div className="text-xs text-gray-200 whitespace-pre-wrap break-words">{r.text}</div>
                     <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
-                      <span>{r.author}</span>
+                      <span>{posterLabel(r.author)}</span>
                       <button onClick={() => upvote(r.id)} className={cn('inline-flex items-center gap-0.5 text-cyan-300 hover:text-cyan-200')}><ThumbsUp className="w-2.5 h-2.5" />{r.upvotes}</button>
                     </div>
                   </div>

@@ -31,13 +31,13 @@ function routeCourses(handlers: Record<string, unknown | ((input: Record<string,
 }
 
 const otherAuthorCourse = {
-  id: 'course_other', authorId: 'someone-else', title: 'Someone Else\'s Course',
+  id: 'course_other', author: { isMine: false, label: 'Instructor' }, title: 'Someone Else\'s Course',
   description: 'Not mine', category: 'general', level: 'beginner', durationHours: 3,
   instructor: 'Dr. Other', institution: '', kind: 'course', status: 'published',
   lessons: [], enrollmentCount: 5, rating: 0,
 };
 const myCourse = {
-  id: 'course_mine', authorId: 'me', title: 'My Own Course',
+  id: 'course_mine', author: { isMine: true, label: 'Instructor' }, title: 'My Own Course',
   description: 'Mine', category: 'general', level: 'beginner', durationHours: 2,
   instructor: 'Me', institution: '', kind: 'course', status: 'published',
   lessons: [], enrollmentCount: 0, rating: 0,
