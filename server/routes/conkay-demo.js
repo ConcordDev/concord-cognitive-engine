@@ -11,7 +11,7 @@
 import express from "express";
 import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/engineering.js";
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
-import { attestReceipt } from "../lib/receipts/attest.js";
+import { attestReceipt, ensureSigningKey } from "../lib/receipts/attest.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
 
 /** Hydrated showcase designs, keyed by the cached snapshot object. */
@@ -68,43 +68,58 @@ export default function createConkayDemoRouter({ rateLimit }) {
   // ConKay results page (lib/conkay/showcase): precomputed snapshots of the
   // showcase designs, read from disk. Nothing is solved here; a file is served
   // only if the snapshot lists it and its hash still matches.
-  router.get("/designs", limit, (_req, res) => {
-    res.json({ ok: true, designs: listSnapshots() });
+  router.get("/designs", limit, async (_req, res) => {
+    try {
+      res.json({ ok: true, designs: await listSnapshots() });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
   });
 
-  router.get("/designs/:id", limit, (req, res) => {
-    const snap = loadSnapshot(String(req.params.id));
-    if (!snap) return res.status(404).json({ ok: false, error: "no such showcase design" });
-    // The car snapshot stores the loft spec, not the mesh; build the mesh
-    // once per cached snapshot rather than on every request.
-    let design = hydratedDesigns.get(snap);
-    if (!design) {
-      design = snap.assembly?.surface?.spec && !snap.assembly.surface.mesh?.positions
-        ? { ...snap, assembly: hydrateAssembly(snap.assembly) }
-        : snap;
-      hydratedDesigns.set(snap, design);
+  router.get("/designs/:id", limit, async (req, res) => {
+    try {
+      const snap = await loadSnapshot(String(req.params.id));
+      if (!snap) return res.status(404).json({ ok: false, error: "no such showcase design" });
+      // The car snapshot stores the loft spec, not the mesh; build the mesh
+      // once per cached snapshot rather than on every request.
+      let design = hydratedDesigns.get(snap);
+      if (!design) {
+        design = snap.assembly?.surface?.spec && !snap.assembly.surface.mesh?.positions
+          ? { ...snap, assembly: hydrateAssembly(snap.assembly) }
+          : snap;
+        hydratedDesigns.set(snap, design);
+      }
+      // A file-backed signing key is read off the request path. Inline keys
+      // resolve inside this await with no disk access.
+      await ensureSigningKey();
+      // Sign once per design revision. issuedAt belongs to that attestation,
+      // not to the clock of each HTTP request. The on-disk snapshot is unchanged.
+      const rev = typeof design.snapshotSha256 === "string" ? design.snapshotSha256 : null;
+      let signed = rev ? signedByRevision.get(rev) : null;
+      if (!signed) {
+        signed = attestReceipt(design);
+        if (rev) signedByRevision.set(rev, signed);
+      }
+      res.json({ ok: true, design: signed });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
-    // Sign once per design revision. issuedAt belongs to that attestation,
-    // not to the clock of each HTTP request. The on-disk snapshot is unchanged.
-    const rev = typeof design.snapshotSha256 === "string" ? design.snapshotSha256 : null;
-    let signed = rev ? signedByRevision.get(rev) : null;
-    if (!signed) {
-      signed = attestReceipt(design);
-      if (rev) signedByRevision.set(rev, signed);
-    }
-    res.json({ ok: true, design: signed });
   });
 
-  router.get("/designs/:id/files/:name", limit, (req, res) => {
-    const f = loadSnapshotFile(String(req.params.id), String(req.params.name));
-    if (!f) return res.status(404).json({ ok: false, error: "no such file" });
-    res.setHeader("Content-Type", f.contentType);
-    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
-    res.setHeader("ETag", `"${f.sha256}"`);
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    // SVGs are drawn by ConKay, but never let one run script in this origin.
-    if (f.contentType === "image/svg+xml") res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
-    res.send(f.data);
+  router.get("/designs/:id/files/:name", limit, async (req, res) => {
+    try {
+      const f = await loadSnapshotFile(String(req.params.id), String(req.params.name));
+      if (!f) return res.status(404).json({ ok: false, error: "no such file" });
+      res.setHeader("Content-Type", f.contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      res.setHeader("ETag", `"${f.sha256}"`);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      // SVGs are drawn by ConKay, but never let one run script in this origin.
+      if (f.contentType === "image/svg+xml") res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+      res.send(f.data);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
   });
 
   return router;

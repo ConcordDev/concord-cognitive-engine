@@ -27,9 +27,11 @@ describe("USB Blend D laboratory plan", () => {
   it("covers every planned property and only cites verified standards", () => {
     for (const item of report.testPlan.items) {
       assert.match(md, new RegExp(`### ${item.property}`));
-      for (const t of item.tests) for (const s of t.standards) {
-        assert.ok(STANDARDS[s.designation], s.designation);
-        assert.match(md, new RegExp(s.designation.replace(/[/.]/g, "\\$&")));
+      for (const t of item.tests) {
+        for (const s of t.standards) {
+          assert.ok(STANDARDS[s.designation], s.designation);
+          assert.match(md, new RegExp(s.designation.replace(/[/.]/g, "\\$&")));
+        }
       }
     }
     for (const property of ["impact_resistance", "viscoelastic_recovery", "hydrogen_permeability", "hydrogen_compatibility", "vessel_containment", "composition_verification", "processing_temperature"]) {

@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import {
   attestReceipt,
   canonicalJson,
+  ensureSigningKey,
   publicKeyDocument,
   resetSigningKeyCache,
   verifyAttestation,
@@ -140,7 +141,7 @@ describe("attest and verify", () => {
     assert.deepEqual(verifyAttestation(signed), { valid: false, reason: "no_signing_key" });
   });
 
-  it("loads the key from a file path and does not sign with a broken key", () => {
+  it("loads the key from a file path and does not sign with a broken key", async () => {
     const { pem } = freshKey();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "receipt-key-"));
     const file = path.join(dir, "key.pem");
@@ -148,6 +149,7 @@ describe("attest and verify", () => {
     delete process.env.CONCORD_RECEIPT_SIGNING_KEY;
     process.env.CONCORD_RECEIPT_SIGNING_KEY_PATH = file;
     resetSigningKeyCache();
+    await ensureSigningKey();
     const signed = attestReceipt({ ok: true });
     assert.equal(verifyAttestation(JSON.parse(JSON.stringify(signed))).valid, true);
 
@@ -281,7 +283,7 @@ describe("conkay demo design responses", () => {
 });
 
 describe("keygen script", () => {
-  it("writes a private key and prints only the public key", () => {
+  it("writes a private key and prints only the public key", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "receipt-gen-"));
     const file = path.join(dir, "receipt-signing-key.pem");
     const script = path.join(__dirname, "../../scripts/generate-receipt-signing-key.mjs");
@@ -300,6 +302,7 @@ describe("keygen script", () => {
     delete process.env.CONCORD_RECEIPT_SIGNING_KEY;
     process.env.CONCORD_RECEIPT_SIGNING_KEY_PATH = file;
     resetSigningKeyCache();
+    await ensureSigningKey();
     const signed = attestReceipt({ from: "script" });
     assert.equal(verifyAttestation(signed).valid, true);
     fs.rmSync(dir, { recursive: true, force: true });
