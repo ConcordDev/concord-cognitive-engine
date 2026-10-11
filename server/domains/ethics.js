@@ -377,6 +377,13 @@ export default function registerEthicsActions(registerLensAction) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
   function enow() { return new Date().toISOString(); }
+  // Free-text deliberation label ("devil's advocate"). Never an identity:
+  // non-strings are dropped, control chars stripped, length capped. Empty
+  // means "omit the field" so older opinion records stay loadable as-is.
+  function perspectiveLabel(raw) {
+    if (typeof raw !== "string") return "";
+    return raw.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 80);
+  }
   function elist(map, key) {
     if (!map.has(key)) map.set(key, []);
     return map.get(key);
@@ -647,7 +654,9 @@ export default function registerEthicsActions(registerLensAction) {
   }));
 
   /**
-   * submitReview — submit a dilemma into the peer-input review workflow.
+   * submitReview — record a dilemma in the caller's personal deliberation log.
+   * Reviews live on the caller's own list. There is no cross-account share,
+   * so a second user cannot list, opine on, or verdict someone else's review.
    * params: { title, dilemma, options?: [string] }
    */
   registerLensAction("ethics", "submitReview", ewrap((ctx, artifact, params) => {
@@ -664,7 +673,7 @@ export default function registerEthicsActions(registerLensAction) {
       options: Array.isArray(p.options) ? p.options.map(String) : [],
       status: "open", // open -> deliberating -> decided
       submittedBy: eid(ctx),
-      opinions: [], // { id, by, stance, rationale, createdAt }
+      opinions: [], // { id, by, perspective?, stance, rationale, createdAt }
       verdict: null,
       createdAt: enow(), updatedAt: enow(),
     };
@@ -674,8 +683,11 @@ export default function registerEthicsActions(registerLensAction) {
   }));
 
   /**
-   * addReviewOpinion — record peer input on a review.
-   * params: { reviewId, stance(approve|reject|abstain|amend), rationale, by? }
+   * addReviewOpinion — record one perspective on the caller's own review.
+   * `by` is always the authenticated caller. A client-supplied `by` is
+   * ignored, so an opinion cannot be attributed to someone else. Optional
+   * `perspective` is a free-text label stored separately from `by`.
+   * params: { reviewId, stance(approve|reject|abstain|amend), rationale, perspective? }
    */
   registerLensAction("ethics", "addReviewOpinion", ewrap((ctx, artifact, params) => {
     const p = params || {};
@@ -689,15 +701,18 @@ export default function registerEthicsActions(registerLensAction) {
     const reviews = elist(st.reviews, eid(ctx));
     const rev = reviews.find((r) => r.id === reviewId);
     if (!rev) return { ok: false, error: "review not found" };
-    if (rev.status === "decided") return { ok: false, error: "review already decided" };
+    if (rev.status === "decided" || rev.verdict) return { ok: false, error: "review already decided" };
 
-    rev.opinions.push({
+    const opinion = {
       id: euid("op"),
-      by: String(p.by || eid(ctx)),
+      by: eid(ctx),
       stance,
       rationale: String(p.rationale || ""),
       createdAt: enow(),
-    });
+    };
+    const perspective = perspectiveLabel(p.perspective);
+    if (perspective) opinion.perspective = perspective;
+    rev.opinions.push(opinion);
     rev.status = "deliberating";
     rev.updatedAt = enow();
     saveEthics();
@@ -718,6 +733,7 @@ export default function registerEthicsActions(registerLensAction) {
     const reviews = elist(st.reviews, eid(ctx));
     const rev = reviews.find((r) => r.id === reviewId);
     if (!rev) return { ok: false, error: "review not found" };
+    if (rev.status === "decided" || rev.verdict) return { ok: false, error: "review already decided" };
 
     const tally = { approve: 0, reject: 0, abstain: 0, amend: 0 };
     for (const o of rev.opinions) tally[o.stance] = (tally[o.stance] || 0) + 1;
@@ -793,15 +809,27 @@ export default function registerEthicsActions(registerLensAction) {
     return { ok: true, result: { cases, total: cases.length, allTags } };
   }));
 
-  registerLensAction("ethics", "deleteCase", ewrap((ctx, artifact, params) => {
-    const id = String(params?.caseId || "");
-    if (!id) return { ok: false, error: "caseId required" };
-    const st = getEthicsState();
-    const cases = elist(st.cases, eid(ctx));
-    const idx = cases.findIndex((c) => c.id === id);
-    if (idx === -1) return { ok: false, error: "case not found" };
-    cases.splice(idx, 1);
-    saveEthics();
-    return { ok: true, result: { deleted: id } };
-  }));
+  // Owner-only delete. The id is resolved inside the caller's own list, so a
+  // missing id and another user's id both return the same honest not-found
+  // (no existence leak). deleteCase keeps its original param and error text.
+  function registerOwnerDelete(action, bucket, idParam, missingError) {
+    registerLensAction("ethics", action, ewrap((ctx, _artifact, params) => {
+      const id = String(params?.[idParam] || "");
+      if (!id) return { ok: false, error: `${idParam} required` };
+      const st = getEthicsState();
+      const rows = elist(st[bucket], eid(ctx));
+      const idx = rows.findIndex((row) => row && row.id === id);
+      if (idx === -1) return { ok: false, error: missingError };
+      rows.splice(idx, 1);
+      saveEthics();
+      return { ok: true, result: { deleted: id } };
+    }));
+  }
+
+  registerOwnerDelete("deleteAnalysis", "analyses", "analysisId", "analysis not found");
+  registerOwnerDelete("deleteStakeholderMap", "maps", "mapId", "map not found");
+  registerOwnerDelete("deleteDecisionMatrix", "matrices", "matrixId", "matrix not found");
+  registerOwnerDelete("deleteBiasChecklist", "checklists", "checklistId", "checklist not found");
+  registerOwnerDelete("deleteReview", "reviews", "reviewId", "review not found");
+  registerOwnerDelete("deleteCase", "cases", "caseId", "case not found");
 }

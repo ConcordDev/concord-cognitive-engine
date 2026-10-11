@@ -73,8 +73,9 @@ describe("ethics — registration (every macro the six DecisionToolkit panels ca
       "stakeholderMap", "listStakeholderMaps",
       "decisionMatrix", "listDecisionMatrices",
       "biasChecklistTemplate", "biasChecklist", "listBiasChecklists",
-      "submitReview", "addReviewOpinion", "recordVerdict", "listReviews",
+      "submitReview", "addReviewOpinion", "recordVerdict", "listReviews", "deleteReview",
       "archiveCase", "searchCases", "deleteCase",
+      "deleteAnalysis", "deleteStakeholderMap", "deleteDecisionMatrix", "deleteBiasChecklist",
     ]) {
       assert.equal(typeof ACTIONS.get(m), "function", `missing ethics.${m}`);
     }
@@ -381,4 +382,214 @@ describe("ethics — { artifact:{ data } } double-wrap is peeled like production
     assert.equal(wrapped.ok, true);
     assert.equal(wrapped.result.dilemma, "wrapped dilemma");
   });
+});
+
+// ── INC-53: personal deliberation log, no spoofed authors, owner deletes ──
+describe("ethics INC-53 — opinion author, verdict lock, owner-only deletes", () => {
+  it("ignores a client-supplied by and stores perspective as a separate label", () => {
+    const rev = call("submitReview", ctxA, { title: "T", dilemma: "d" }).result;
+    const op = call("addReviewOpinion", ctxA, {
+      reviewId: rev.id,
+      stance: "approve",
+      rationale: "necessary",
+      by: "Someone Else",
+      perspective: "  devil's advocate  ",
+    });
+    assert.equal(op.ok, true);
+    const opinion = op.result.opinions[0];
+    assert.equal(opinion.by, "eth_user_a");
+    assert.equal(opinion.perspective, "devil's advocate");
+    assert.equal(JSON.stringify(opinion).includes("Someone Else"), false);
+
+    const unlabeled = call("addReviewOpinion", ctxA, {
+      reviewId: rev.id,
+      stance: "abstain",
+      rationale: "unsure",
+      by: "Not Me",
+      perspective: "   ",
+    });
+    const second = unlabeled.result.opinions[1];
+    assert.equal(second.by, "eth_user_a");
+    assert.equal(Object.hasOwn(second, "perspective"), false);
+    assert.equal(JSON.stringify(second).includes("Not Me"), false);
+
+    // A non-string perspective is not coerced into an identity-shaped label.
+    const objectLabel = call("addReviewOpinion", ctxA, {
+      reviewId: rev.id,
+      stance: "amend",
+      rationale: "x",
+      by: "Someone Else",
+      perspective: { name: "Someone Else" },
+    });
+    assert.equal(objectLabel.result.opinions[2].by, "eth_user_a");
+    assert.equal(Object.hasOwn(objectLabel.result.opinions[2], "perspective"), false);
+    assert.equal(JSON.stringify(objectLabel.result.opinions[2]).includes("Someone Else"), false);
+  });
+
+  it("refuses a second verdict and leaves the first one in place", () => {
+    const rev = call("submitReview", ctxA, { title: "T", dilemma: "d" }).result;
+    call("addReviewOpinion", ctxA, { reviewId: rev.id, stance: "approve", rationale: "yes" });
+    const first = call("recordVerdict", ctxA, {
+      reviewId: rev.id, decision: "proceed", rationale: "first",
+    });
+    assert.equal(first.ok, true);
+    assert.equal(first.result.verdict.decision, "proceed");
+    assert.equal(first.result.verdict.tally.approve, 1);
+
+    const second = call("recordVerdict", ctxA, {
+      reviewId: rev.id, decision: "halt", rationale: "overwrite",
+    });
+    assert.equal(second.ok, false);
+    assert.match(second.error, /already decided/i);
+
+    const listed = call("listReviews", ctxA, {}).result.reviews[0];
+    assert.equal(listed.status, "decided");
+    assert.equal(listed.verdict.decision, "proceed");
+    assert.equal(listed.verdict.rationale, "first");
+    assert.equal(listed.verdict.tally.approve, 1);
+  });
+
+  it("a second user cannot list, opine on, or verdict another user's review", () => {
+    const rev = call("submitReview", ctxA, { title: "Private", dilemma: "mine" });
+    const id = rev.result.id;
+    assert.equal(call("listReviews", ctxB, {}).result.reviews.length, 0);
+    const op = call("addReviewOpinion", ctxB, {
+      reviewId: id, stance: "reject", rationale: "no", by: "eth_user_a",
+    });
+    assert.equal(op.ok, false);
+    assert.match(op.error, /review not found/i);
+    const verdict = call("recordVerdict", ctxB, { reviewId: id, decision: "stolen" });
+    assert.equal(verdict.ok, false);
+    assert.match(verdict.error, /review not found/i);
+
+    const mine = call("listReviews", ctxA, {}).result.reviews[0];
+    assert.equal(mine.status, "open");
+    assert.equal(mine.opinions.length, 0);
+    assert.equal(mine.verdict, null);
+  });
+
+  it("still loads a legacy review whose opinions have no perspective field", () => {
+    const prior = {
+      id: "rev_legacy",
+      title: "Legacy",
+      dilemma: "kept",
+      options: [],
+      status: "open",
+      submittedBy: "eth_user_a",
+      opinions: [{
+        id: "op_legacy",
+        by: "eth_user_a",
+        stance: "approve",
+        rationale: "original",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      }],
+      verdict: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    globalThis._concordSTATE = {
+      ethicsLens: {
+        analyses: new Map(),
+        maps: new Map(),
+        matrices: new Map(),
+        checklists: new Map(),
+        reviews: new Map([["eth_user_a", [prior]]]),
+        cases: new Map(),
+        seq: 1,
+      },
+    };
+    const listed = call("listReviews", ctxA, {});
+    assert.equal(listed.ok, true);
+    assert.equal(listed.result.reviews[0].dilemma, "kept");
+    assert.equal(listed.result.reviews[0].opinions[0].rationale, "original");
+    assert.equal(Object.hasOwn(listed.result.reviews[0].opinions[0], "perspective"), false);
+
+    const op = call("addReviewOpinion", ctxA, {
+      reviewId: "rev_legacy",
+      stance: "amend",
+      rationale: "later",
+      perspective: "devil's advocate",
+      by: "Someone Else",
+    });
+    assert.equal(op.ok, true);
+    assert.equal(op.result.opinions[0].rationale, "original");
+    assert.equal(op.result.opinions[1].by, "eth_user_a");
+    assert.equal(op.result.opinions[1].perspective, "devil's advocate");
+  });
+
+  const owned = [
+    {
+      create: "multiFrameworkDilemma",
+      input: { dilemma: "d", options: [{ name: "O" }] },
+      list: "listMultiFramework",
+      key: "analyses",
+      del: "deleteAnalysis",
+      idParam: "analysisId",
+      missing: /analysis not found/i,
+    },
+    {
+      create: "stakeholderMap",
+      input: { title: "M", options: ["a"], stakeholders: [{ name: "s", impacts: { a: 1 } }] },
+      list: "listStakeholderMaps",
+      key: "maps",
+      del: "deleteStakeholderMap",
+      idParam: "mapId",
+      missing: /map not found/i,
+    },
+    {
+      create: "decisionMatrix",
+      input: { title: "X", criteria: [{ name: "c", weight: 1 }], options: [{ name: "o", scores: { c: 5 } }] },
+      list: "listDecisionMatrices",
+      key: "matrices",
+      del: "deleteDecisionMatrix",
+      idParam: "matrixId",
+      missing: /matrix not found/i,
+    },
+    {
+      create: "biasChecklist",
+      input: { decision: "dec", responses: {} },
+      list: "listBiasChecklists",
+      key: "checklists",
+      del: "deleteBiasChecklist",
+      idParam: "checklistId",
+      missing: /checklist not found/i,
+    },
+    {
+      create: "submitReview",
+      input: { title: "T", dilemma: "d" },
+      list: "listReviews",
+      key: "reviews",
+      del: "deleteReview",
+      idParam: "reviewId",
+      missing: /review not found/i,
+    },
+  ];
+
+  for (const spec of owned) {
+    it(`${spec.del} removes the owner's record and returns not-found for a second user and a repeat`, () => {
+      const created = call(spec.create, ctxA, spec.input);
+      assert.equal(created.ok, true, created.error);
+      const id = created.result.id;
+
+      assert.equal(call(spec.list, ctxB, {}).result[spec.key].length, 0);
+      const foreign = call(spec.del, ctxB, { [spec.idParam]: id });
+      assert.equal(foreign.ok, false);
+      assert.match(foreign.error, spec.missing);
+      // The owner's row is still there after the foreign delete.
+      assert.equal(call(spec.list, ctxA, {}).result[spec.key].some((row) => row.id === id), true);
+
+      const del = call(spec.del, ctxA, { [spec.idParam]: id });
+      assert.equal(del.ok, true);
+      assert.equal(del.result.deleted, id);
+      assert.equal(call(spec.list, ctxA, {}).result[spec.key].some((row) => row.id === id), false);
+
+      const again = call(spec.del, ctxA, { [spec.idParam]: id });
+      assert.equal(again.ok, false);
+      assert.match(again.error, spec.missing);
+
+      const never = call(spec.del, ctxA, { [spec.idParam]: "no-such-id" });
+      assert.equal(never.ok, false);
+      assert.match(never.error, spec.missing);
+    });
+  }
 });
