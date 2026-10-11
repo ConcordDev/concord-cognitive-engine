@@ -68,6 +68,16 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "generate_image",
+    description: "Generate an image on Concord's GPU.",
+    params: {
+      prompt: { type: "string", required: true, description: "Describe the image" },
+      size: { type: "string", required: false, description: "e.g. 1024x1024" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
     name: "list_capabilities",
     description: "List Concord Runtime capabilities. Injected only for an operator.",
     params: { owner: { type: "string", required: false, description: "Optional owner filter" } },

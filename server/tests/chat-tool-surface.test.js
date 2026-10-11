@@ -75,7 +75,7 @@ describe("chat tool catalog matches both live paths", () => {
     assert.equal(on.paths.chat.available, true);
     assert.equal(on.paths.chat.gatedBySessionOptIn, false);
     assert.deepEqual(on.tools.map((t) => t.name), [
-      "web_search", "run_compute", "browse_url", "create_dtu", "run_lens_action",
+      "web_search", "run_compute", "browse_url", "create_dtu", "run_lens_action", "generate_image",
     ]);
     assert.equal(on.tools.every((t) => t.available === true && t.path === "chat"), true);
     assert.equal(on.tools.find((t) => t.name === "run_compute").requiresOptIn, false);
