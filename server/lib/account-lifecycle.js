@@ -443,6 +443,113 @@ export function processScheduledDeletions(db) {
 // Export includes DTUs, transactions, messages, profile, consent, activity.
 
 /**
+ * DTUs that belong to this user and nobody else.
+ *
+ * Two stores hold them. `dtus.owner_user_id` is what deletion uses, but a
+ * lot of writers only set `creator_id` (migration 087 added that column as
+ * an alias and never backfilled the other direction), and the knowledge
+ * DTUs created through `dtu.create` are persisted to `dtu_store` with
+ * `owner_user_id` copied from the in-memory `ownerId`. Querying only
+ * `dtus.owner_user_id` therefore returned an empty list for a real account.
+ *
+ * A row is included only when it is this user's: `owner_user_id` matches,
+ * or the owner column is empty and `creator_id` matches. Ownerless rows,
+ * system-actor rows, and any row owned by someone else are left out.
+ * Same id in both tables is emitted once.
+ */
+function collectOwnedDtus(db, userId) {
+  const byId = new Map();
+
+  const owned = (row) => {
+    const owner = row?.owner_user_id || null;
+    const creator = row?.creator_id || null;
+    if (owner) return owner === userId;
+    return creator === userId;
+  };
+
+  const put = (row) => {
+    if (!row?.id || !owned(row) || byId.has(row.id)) return;
+    byId.set(row.id, {
+      id: row.id,
+      title: row.title ?? null,
+      body_json: row.body_json ?? null,
+      tags_json: row.tags_json ?? "[]",
+      visibility: row.visibility ?? null,
+      tier: row.tier ?? null,
+      created_at: row.created_at ?? null,
+      updated_at: row.updated_at ?? null,
+    });
+  };
+
+  try {
+    const cols = new Set(db.prepare("PRAGMA table_info(dtus)").all().map((c) => c.name));
+    if (cols.has("owner_user_id")) {
+      if (cols.has("creator_id")) {
+        const rows = db.prepare(
+          "SELECT id, title, body_json, tags_json, visibility, tier, created_at, updated_at, owner_user_id, creator_id FROM dtus WHERE owner_user_id = ? OR ((owner_user_id IS NULL OR owner_user_id = '') AND creator_id = ?)"
+        ).all(userId, userId);
+        for (const row of rows) put(row);
+      } else {
+        const rows = db.prepare(
+          "SELECT id, title, body_json, tags_json, visibility, tier, created_at, updated_at, owner_user_id FROM dtus WHERE owner_user_id = ?"
+        ).all(userId);
+        for (const row of rows) put(row);
+      }
+    }
+  } catch (err) {
+    console.warn("[account-lifecycle] data export: failed to export dtus rows", { userId, err: err.message });
+  }
+
+  try {
+    const table = db.prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'dtu_store'").get();
+    if (table) {
+      const rows = db.prepare(
+        "SELECT id, title, tier, tags, source, created_at, updated_at, data, owner_user_id, visibility FROM dtu_store WHERE owner_user_id = ?"
+      ).all(userId);
+      for (const row of rows) put(projectStoredDtu(row));
+    }
+  } catch (err) {
+    console.warn("[account-lifecycle] data export: failed to export dtu_store rows", { userId, err: err.message });
+  }
+
+  return [...byId.values()].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+}
+
+function projectStoredDtu(row) {
+  let parsed = null;
+  if (typeof row.data === "string" && row.data) {
+    try { parsed = JSON.parse(row.data); } catch { parsed = null; }
+  }
+  const body = storeBody(parsed);
+  const tags = row.tags || (Array.isArray(parsed?.tags) ? JSON.stringify(parsed.tags) : null);
+  return {
+    id: row.id,
+    title: row.title || parsed?.title || null,
+    body_json: body,
+    tags_json: tags || "[]",
+    visibility: row.visibility || parsed?.visibility || null,
+    tier: row.tier || parsed?.tier || null,
+    created_at: row.created_at || parsed?.createdAt || null,
+    updated_at: row.updated_at || parsed?.updatedAt || null,
+    owner_user_id: row.owner_user_id || null,
+    creator_id: null,
+  };
+}
+
+function storeBody(parsed) {
+  if (!parsed || typeof parsed !== "object") return null;
+  if (typeof parsed.body_json === "string") return parsed.body_json;
+  if (parsed.body_json != null) return JSON.stringify(parsed.body_json);
+  if (typeof parsed.body === "string") return parsed.body;
+  if (parsed.body != null) return JSON.stringify(parsed.body);
+  if (typeof parsed.content === "string") return parsed.content;
+  if (parsed.content != null) return JSON.stringify(parsed.content);
+  if (parsed.human) return JSON.stringify(parsed.human);
+  if (parsed.core) return JSON.stringify(parsed.core);
+  return null;
+}
+
+/**
  * Export all user data as a structured JSON object.
  */
 export function exportUserData(db, userId) {
@@ -472,11 +579,9 @@ export function exportUserData(db, userId) {
     socialPosts: [],
   };
 
-  // DTUs
+  // DTUs — this user's rows from `dtus` and `dtu_store` only.
   try {
-    data.dtus = db.prepare(
-      "SELECT id, title, body_json, tags_json, visibility, tier, created_at, updated_at FROM dtus WHERE owner_user_id = ? ORDER BY created_at DESC"
-    ).all(userId);
+    data.dtus = collectOwnedDtus(db, userId);
   } catch (err) { console.warn('[account-lifecycle] data export: failed to export DTUs', { userId, err: err.message }); }
 
   // Transactions

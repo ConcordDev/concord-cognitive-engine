@@ -8,7 +8,8 @@
  *   - DSAR handler          → dsarSubmit / dsarList / dsarAdvance
  *   - Per-lens sharing grid  → lensSharingGet / lensSharingSet
  *   - Privacy activity log   → accessLog / recordAccess
- *   - Data export bundle     → dataExport
+ *   - Data export bundle     → GET /api/account/export (the user's own records)
+ *                              plus privacy.dataExport for the privacy corpus
  *   - Cookie banner config   → cookieConfigGet / cookieConfigSet
  *   - Retention policy editor→ retentionGet / retentionSet
  *   - Data-flow map          → flowMap / flowRegister / flowToggle
@@ -91,6 +92,20 @@ interface ExportResult {
   totalRecords: number;
   estimatedBytes: number;
   bundle: unknown;
+}
+interface AccountExportBundle {
+  exportedAt?: string;
+  exportVersion?: string;
+  user?: { id?: string; username?: string; email?: string };
+  dtus?: unknown[];
+  transactions?: unknown[];
+  marketplaceListings?: unknown[];
+  licenses?: unknown[];
+  consents?: unknown[];
+  consentAuditLog?: unknown[];
+  messages?: unknown[];
+  socialPosts?: unknown[];
+  privacyCorpus?: unknown;
 }
 interface CookieCategory { enabled: boolean; locked: boolean }
 interface CookieConfig {
@@ -448,10 +463,42 @@ function DataExportSection() {
   const generate = useCallback(async () => {
     setBusy(true);
     setError(null);
-    const r = await lensRun<ExportResult>('privacy', 'dataExport', {});
-    if (r.data.ok && r.data.result) setResult(r.data.result);
-    else setError(r.data.error || 'export failed');
-    setBusy(false);
+    try {
+      // The account export is the portability file: this user's profile,
+      // DTUs, ledger, messages. The privacy macro only knows the in-memory
+      // consent corpus, so it is attached as a section rather than used as
+      // the whole download.
+      const account = await api.get<AccountExportBundle>('/api/account/export');
+      const privacy = await lensRun<ExportResult>('privacy', 'dataExport', {});
+      const bundle: AccountExportBundle = {
+        ...(account.data && typeof account.data === 'object' ? account.data : {}),
+        privacyCorpus: privacy.data.ok ? privacy.data.result?.bundle ?? null : null,
+      };
+      const counts: Record<string, number> = {
+        dtus: bundle.dtus?.length ?? 0,
+        transactions: bundle.transactions?.length ?? 0,
+        marketplaceListings: bundle.marketplaceListings?.length ?? 0,
+        licenses: bundle.licenses?.length ?? 0,
+        consents: bundle.consents?.length ?? 0,
+        messages: bundle.messages?.length ?? 0,
+        socialPosts: bundle.socialPosts?.length ?? 0,
+      };
+      const privacyCounts = privacy.data.ok ? privacy.data.result?.counts : null;
+      if (privacyCounts) {
+        for (const [k, n] of Object.entries(privacyCounts)) counts[`privacy.${k}`] = n;
+      }
+      const totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
+      setResult({
+        bundle,
+        counts,
+        totalRecords,
+        estimatedBytes: JSON.stringify(bundle).length,
+      });
+    } catch (e) {
+      setError(pickMessage(e));
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
   const download = useCallback(() => {
@@ -471,7 +518,7 @@ function DataExportSection() {
     <SectionCard
       icon={Download}
       title="Download My Data"
-      subtitle="Generate a full export bundle of your personal privacy corpus."
+      subtitle="Download your account export: your DTUs, transactions, messages, and privacy records."
       action={
         <button
           onClick={generate}

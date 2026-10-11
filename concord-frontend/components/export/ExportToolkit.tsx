@@ -48,8 +48,8 @@ function b64ToArrayBuffer(b64: string): ArrayBuffer {
 
 export function ExportToolkit() {
   const { data: dtusData } = useQuery({
-    queryKey: ['dtus'],
-    queryFn: () => api.get('/api/dtus').then((r) => r.data),
+    queryKey: ['dtus', 'mine'],
+    queryFn: () => api.get('/api/dtus', { params: { mine: 'true', limit: 5000 } }).then((r) => r.data),
   });
   const dtus = useMemo<Dtu[]>(() => (dtusData?.dtus || []) as Dtu[], [dtusData]);
 

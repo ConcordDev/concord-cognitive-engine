@@ -17282,6 +17282,14 @@ function makeCtx(req=null) {
   let resolvedActor;
   if (req && req.actor) {
     resolvedActor = req.actor;
+    // JWT/cookie auth stamps req.actor.userId and not req.actor.id
+    // (see the actor middleware below). dtu.list and the mine filter key
+    // the viewer off actor.id, so a signed-in request was listed as
+    // anonymous: private DTUs vanished and the unscoped corpus (system +
+    // ownerless) came back instead. Copy the real user id across.
+    if (!resolvedActor.id && resolvedActor.userId && resolvedActor.userId !== "anon") {
+      resolvedActor.id = resolvedActor.userId;
+    }
   } else if (req && req.user && req.user.id) {
     resolvedActor = {
       userId: req.user.id,
@@ -37271,7 +37279,7 @@ function getActorFromReq(req) {
   if (!key) return { ok: false, error: "Invalid API key" };
   const role = (STATE.users.get(key.userId)?.roleByOrg || {})[key.orgId] || "member";
   const scopes = Array.isArray(key.scopes) && key.scopes.length ? key.scopes : ["read"];
-  return { ok: true, actor: { userId: key.userId, orgId: key.orgId, role, scopes, keyId: key.id } };
+  return { ok: true, actor: { userId: key.userId, id: key.userId, orgId: key.orgId, role, scopes, keyId: key.id } };
 }
 
 // ---- Macro ACL v2: Domain defaults + per-macro overrides + production default-deny ----
@@ -37454,6 +37462,7 @@ app.use((req, res, next) => {
     if (req.user) {
       req.actor = {
         userId: req.user.id,
+        id: req.user.id,
         orgId: "default",
         role: req.user.role || "member",
         scopes: Array.isArray(req.user.scopes) && req.user.scopes.length ? req.user.scopes : ["read", "write"]

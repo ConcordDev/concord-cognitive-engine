@@ -128,8 +128,8 @@ export function ExportDeskPanel() {
   );
 
   const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dtus'],
-    queryFn: () => api.get('/api/dtus').then((r) => r.data),
+    queryKey: ['dtus', 'mine'],
+    queryFn: () => api.get('/api/dtus', { params: { mine: 'true', limit: 5000 } }).then((r) => r.data),
   });
   const liveDtus = (dtusData?.dtus || []) as Record<string, unknown>[];
 
