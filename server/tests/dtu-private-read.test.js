@@ -69,6 +69,20 @@ describe("dtu-read-access predicate", () => {
     assert.equal(privateDtuHiddenFrom({ visibility: "public", scope: "personal", ownerId: OWNER }, null), false);
   });
 
+  it("in public mode the anon owner can read the private DTU they just created", () => {
+    const prev = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "public";
+    try {
+      const notebook = { visibility: "private", ownerId: "anon", content: SECRET };
+      assert.equal(ctxMayReadDtu({ actor: { userId: "anon", role: "member" } }, notebook), true);
+      assert.equal(ctxMayReadDtu({ actor: { userId: "anon", role: "member" } }, owned), false);
+      assert.equal(ctxMayReadDtu({ actor: { userId: "anon" } }, { visibility: "internal", ownerId: "anon" }), false);
+    } finally {
+      if (prev === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = prev;
+    }
+  });
+
   it("ignores the anonymous placeholder and honors req.user.id", () => {
     assert.equal(viewerIdFromCtx(null), null);
     assert.equal(viewerIdFromCtx({ actor: { userId: "anon" } }), null);

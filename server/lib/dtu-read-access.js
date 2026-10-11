@@ -47,6 +47,14 @@ export function viewerIdFromCtx(ctx) {
   return null;
 }
 
+function authMode() {
+  const raw = String(process.env.AUTH_MODE || "").toLowerCase().trim();
+  if (raw === "public" || raw === "apikey" || raw === "jwt" || raw === "hybrid") return raw;
+  if (raw) return "hybrid";
+  const legacy = String(process.env.AUTH_ENABLED || "true").toLowerCase() === "true";
+  return legacy ? "hybrid" : "public";
+}
+
 /** True when this caller may receive the DTU's content. */
 export function ctxMayReadDtu(ctx, dtu) {
   if (ctx?.internal === true || ctx?.actor?.internal === true) return true;
@@ -57,6 +65,16 @@ export function ctxMayReadDtu(ctx, dtu) {
   // Public system content (news, genesis, summaries) stays visibility
   // "public" and is unaffected.
   if (dtu?.visibility === "internal") return false;
+  // AUTH_MODE=public is the solo notebook. dtu.create stamps those rows
+  // ownerId "anon" and visibility private, and viewerIdFromCtx refuses to
+  // treat "anon" as a viewer so hybrid anonymous reads stay closed. In
+  // public mode that same anon is the owner, and a create that get cannot
+  // read back is a phantom success. A row owned by a real user id stays
+  // owner-only even in public mode.
+  if (authMode() === "public") {
+    const owner = dtu?.author || dtu?.ownerId || dtu?.userId || dtu?.createdBy || null;
+    if (!owner || owner === "anon" || owner === "anonymous") return true;
+  }
   return !privateDtuHiddenFrom(dtu, viewerIdFromCtx(ctx));
 }
 

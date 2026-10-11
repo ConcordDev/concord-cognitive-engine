@@ -65,7 +65,12 @@ export function viewerMayStreamFull(STATE, mediaDTU, viewerId) {
       const row = db.prepare(
         "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ? AND status = 'active'"
       ).get(mediaDTU.id, viewerId);
-      if (row) return true;
+      if (row) {
+        // Warm the process-local set so the next check does not re-query.
+        // The table row is the entitlement; this is the same grant.
+        grantMediaLicense(STATE, mediaDTU.id, viewerId);
+        return true;
+      }
     }
   } catch {
     // Table is optional on minimal builds — absence is "no license", not a leak.
