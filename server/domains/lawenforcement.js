@@ -13,38 +13,50 @@
 //   - Report writing with statute auto-population + supervisor approval
 //   - Field interview / arrest booking forms
 //
-// Persistence: per-process Maps hung off globalThis._concordSTATE, keyed
-// by userId, so a user's CAD calls / evidence / officers / warrants
-// survive across requests within the process. No DB schema, no
-// migrations. Every value returned is real (user input or deterministic
-// computation) — no seed/mock/demo data.
+// Persistence: per-user Maps on globalThis._concordSTATE._lawEnforcement,
+// which is in LENS_STATE_KEYS. CAD calls, the unit board, evidence and
+// chain of custody, the officer roster, map incidents, warrants, narrative
+// reports, and bookings survive a restart. Case rows go to SQLite
+// (migration 362, le_cases) when ctx.db has that table; the in-memory
+// `cases` Map is only the no-db fallback and is snapshotted with the
+// rest of the bag so that fallback survives too. Each per-user bucket
+// rejects a new record at 2000. No new table and no migration. Every
+// value returned is real (user input or deterministic computation) — no
+// seed/mock/demo data.
 
 import crypto from "node:crypto";
 
 // ---- store ---------------------------------------------------------------
 
+const LE_BUCKETS = ["calls", "units", "evidence", "officers", "mapIncidents", "warrants", "reports", "bookings", "cases"];
+const LE_BUCKET_CAP = 2000;
+
 function store() {
   const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
-  if (!STATE._lawEnforcement) {
-    STATE._lawEnforcement = {
-      calls: new Map(),     // userId -> Map(callId    -> CAD call)
-      units: new Map(),     // userId -> Map(unitId    -> unit record)
-      evidence: new Map(),  // userId -> Map(evidenceId-> evidence + custody[])
-      officers: new Map(),  // userId -> Map(officerId -> officer + shifts[])
-      mapIncidents: new Map(), // userId -> Map(incidentId -> geo incident)
-      warrants: new Map(),  // userId -> Map(warrantId  -> warrant + attempts[])
-      reports: new Map(),   // userId -> Map(reportId   -> narrative report)
-      bookings: new Map(),  // userId -> Map(bookingId  -> field-interview/arrest)
-      cases: new Map(),     // userId -> Map(caseId     -> case record) — in-memory fallback only (migration 362)
-    };
+  if (!STATE._lawEnforcement || typeof STATE._lawEnforcement !== "object" || Array.isArray(STATE._lawEnforcement) || STATE._lawEnforcement instanceof Map) {
+    STATE._lawEnforcement = {};
   }
-  return STATE._lawEnforcement;
+  const s = STATE._lawEnforcement;
+  for (const k of LE_BUCKETS) {
+    if (!(s[k] instanceof Map)) s[k] = new Map();
+  }
+  return s;
 }
 
 function userMap(bucket, userId) {
   const s = store();
-  if (!s[bucket].has(userId)) s[bucket].set(userId, new Map());
-  return s[bucket].get(userId);
+  let inner = s[bucket].get(userId);
+  if (!(inner instanceof Map)) {
+    inner = new Map();
+    s[bucket].set(userId, inner);
+  }
+  return inner;
+}
+
+function putRecord(map, id, value) {
+  if (!map.has(id) && map.size >= LE_BUCKET_CAP) return false;
+  map.set(id, value);
+  return true;
 }
 
 function uid(prefix) {
@@ -184,7 +196,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         dispatchedAt: null,
         clearedAt: null,
       };
-      calls.set(id, call);
+      if (!putRecord(calls, id, call)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { call } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -237,7 +249,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         currentCallId: null,
         registeredAt: nowISO(),
       };
-      units.set(id, unit);
+      if (!putRecord(units, id, unit)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { unit } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -378,7 +390,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
           },
         ],
       };
-      evidence.set(id, rec);
+      if (!putRecord(evidence, id, rec)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { evidence: rec } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -485,7 +497,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         shifts: [],
         createdAt: nowISO(),
       };
-      officers.set(id, rec);
+      if (!putRecord(officers, id, rec)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { officer: rec } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -599,7 +611,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         occurredAt: str(p.occurredAt) || nowISO(),
         recordedAt: nowISO(),
       };
-      map.set(id, rec);
+      if (!putRecord(map, id, rec)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { incident: rec } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -684,7 +696,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         attempts: [],
         returnedAt: null,
       };
-      warrants.set(id, rec);
+      if (!putRecord(warrants, id, rec)) return { ok: false, error: "record_cap" };
       return { ok: true, result: { warrant: rec } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
@@ -809,7 +821,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         createdAt: nowISO(),
         updatedAt: nowISO(),
       };
-      reports.set(id, rec);
+      if (!putRecord(reports, id, rec)) return { ok: false, error: "record_cap" };
       return {
         ok: true,
         result: { report: rec, statuteFound: !!statute },
@@ -915,7 +927,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         status: kind === "arrest" ? "booked" : "logged",
         createdAt: nowISO(),
       };
-      bookings.set(id, rec);
+      if (!putRecord(bookings, id, rec)) return { ok: false, error: "record_cap" };
       // Completeness check for arrest bookings (mugshot + prints + charges).
       const missing = [];
       if (kind === "arrest") {
@@ -1078,7 +1090,10 @@ export default function registerLawEnforcementActions(registerLensAction) {
         return null;
       },
       put(_userId, c) {
-        cases.set(c.id, c);
+        if (!putRecord(cases, c.id, c)) {
+          const err = new Error("record_cap");
+          throw err;
+        }
       },
     };
   }

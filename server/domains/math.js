@@ -413,7 +413,8 @@ const casRound = (v) => Math.round(v * 1e9) / 1e9;
 function getMathState() {
   const STATE = globalThis._concordSTATE;
   if (!STATE) return null;
-  if (!STATE.mathCAS) STATE.mathCAS = new Map(); // userId → { history:[] }
+  // mathCAS is in LENS_STATE_KEYS. History is already capped at 200 per user.
+  if (!(STATE.mathCAS instanceof Map)) STATE.mathCAS = new Map(); // userId → { history:[] }
   return STATE.mathCAS;
 }
 function mathUserId(ctx) {

@@ -168,7 +168,79 @@ export const LENS_STATE_KEYS = Object.freeze([
   // STATE._expertMode, which _serializeState never walked, and a Map
   // stringifies to "{}". A clean shutdown then saved an empty store.
   "expertModeLens",
+  // INC-32: user-authored records that were not named *Lens. The snapshot
+  // walker only reads this list, so a key left off it is wiped on every
+  // deploy restart. Root values may be a Map (playerProfiles) or a bag of
+  // Maps (_settings). Sequence counters are numbers next to those Maps.
+  "_settings", "_personas", "_lawEnforcement",
+  "playerProfiles", "profileVisitors", "_profileVisitorSeq",
+  "game", "entityGraph",
+  "chemStructures", "chemLabNotebook",
+  "mathCAS", "genesisSavedSearches", "digitalTwins",
+  "companionNotifications", "companionPushPrefs", "_companionNotifSeq",
 ]);
+
+// User-record STATE keys a domain assigns that this snapshot intentionally
+// does not walk. The guard in tests/lens-state-persistence.test.js fails
+// when a domain hangs a Map off STATE under a key that is in neither
+// LENS_STATE_KEYS nor this map. Reasons are the contract: ephemeral,
+// secret, real-money (human decision), a cache whose durable copy is
+// SQLite, or a follow-up that is still wiped on restart.
+export const SNAPSHOT_EXCLUDED_STATE_KEYS = Object.freeze({
+  settings: "process settings bag already written by _serializeState (disabledHeartbeats), not a per-user record store",
+  presenceHeartbeats: "ephemeral live presence; a heartbeat outside the online window is not a kept record",
+  concordLinkFrontier: "SQLite is the restart record; the Map is a cache",
+  federation: "deferred: actorKeys store registered public keys and must be omitted before the access/moderation records are snapshotted",
+  predictionMarkets: "deferred for a human decision: Sparks-denominated positions and limit orders, not CC, but they are financial positions",
+  inheritPacts: "deferred for a human decision: Sparks-denominated inheritance pacts and payout history, not CC",
+  insAms: "deferred for a human decision: carrier roster, renewal pipeline, FNOL, statements, and certificates read as agency financial records",
+  serviceListings: "deferred for a human decision: listing prices and orders are a marketplace, currency not proven to be demo credit",
+  serviceOrders: "deferred for a human decision: orders carry prices against service listings",
+  affectMood: "deferred INC-32 follow-up: mood check-ins, reminders, and scales are still memory-only",
+  cognitiveReplay: "deferred INC-32 follow-up: shareable timeline snapshots and moments are still memory-only",
+  districtSnapshots: "deferred INC-32 follow-up: recorded district timeline snapshots are still memory-only",
+  filmLensX: "deferred INC-32 follow-up: revisions, proxy media, multicam, watch parties, and festival submissions are still memory-only (filmLens itself is snapshotted)",
+  newsParity: "deferred INC-32 follow-up: alert subscriptions, alert feed, offline items, and digest schedule are still memory-only (newsLens itself is snapshotted)",
+  notaryRecords: "deferred INC-32 follow-up: local hash-chain notarization records are still memory-only",
+  seasonalChallenges: "deferred INC-32 follow-up: seasonal challenges are still memory-only",
+  seasonalCompetitions: "deferred INC-32 follow-up: seasonal competitions are still memory-only",
+  sentinelCases: "deferred INC-32 follow-up: triage cases are still memory-only",
+  sentinelMonitors: "deferred INC-32 follow-up: monitors are still memory-only",
+  sentinelTimeline: "deferred INC-32 follow-up: threat timeline is still memory-only",
+  sentinelScanConfig: "deferred INC-32 follow-up: scan config is still memory-only",
+  sentinelQueries: "deferred INC-32 follow-up: saved queries are still memory-only",
+  sentinelAlerts: "deferred INC-32 follow-up: alerts are still memory-only",
+  societyCharts: "deferred INC-32 follow-up: saved chart specs are still memory-only",
+  standardsSaved: "deferred INC-32 follow-up: saved standards are still memory-only",
+  telecom: "deferred INC-32 follow-up: towers, spectrum, outages, and drive tests are still memory-only",
+  uxSuite: "deferred INC-32 follow-up: prop overrides and favourites are still memory-only",
+  wellnessTherapy: "deferred INC-32 follow-up: CBT records, meditation sessions, and wearable summaries are still memory-only (wellnessLens itself is snapshotted)",
+  stakingAprHistory: "intentionally memory-only: cosmetic APR chart samples, not positions; stake positions are ledger rows",
+  lensArtifacts: "SQLite write-through store; _serializeState omits it on purpose so hydration does not replace the live store with a plain Map",
+  meshConsensusDags: "excluded: each entry holds an Ed25519 keypair generated on first use; private keys must not enter the snapshot",
+  meshNodes: "deferred INC-32 follow-up: mesh nodes are still memory-only",
+  meshMessages: "deferred INC-32 follow-up: mesh messages are still memory-only",
+  meshChannels: "deferred INC-32 follow-up: mesh channels are still memory-only",
+  meshQueue: "deferred INC-32 follow-up: mesh outbound frames are still memory-only",
+  meshSeq: "deferred INC-32 follow-up: mesh id counter is still memory-only (kept with the mesh records)",
+  cobuildSessions: "deferred INC-32 follow-up: co-build sessions are still memory-only",
+  cobuildTasks: "deferred INC-32 follow-up: co-build tasks are still memory-only",
+  cobuildAnnotations: "deferred INC-32 follow-up: co-build annotations are still memory-only",
+  codeQuality: "deferred INC-32 follow-up: scan history, issues, and gate config are still memory-only",
+  crisisPlaybookProgress: "deferred INC-32 follow-up: playbook progress is still memory-only",
+  crisisTeams: "deferred INC-32 follow-up: crisis team assignments are still memory-only",
+  crisisTimelines: "deferred INC-32 follow-up: crisis timelines are still memory-only",
+  crisisAlertAcks: "deferred INC-32 follow-up: alert acknowledgements are still memory-only",
+  crisisResources: "deferred INC-32 follow-up: crisis resources are still memory-only",
+  dreamTags: "deferred INC-32 follow-up: dream tags are still memory-only",
+  dreamInterpretations: "deferred INC-32 follow-up: dream interpretations are still memory-only",
+  ghostHunts: "deferred INC-32 follow-up: ghost-hunt records are still memory-only",
+  ghostHistory: "deferred INC-32 follow-up: ghost-hunt history is still memory-only",
+  ghostRank: "deferred INC-32 follow-up: ghost-hunt rank is still memory-only",
+  globalSavedViews: "deferred INC-32 follow-up: saved chart views are still memory-only",
+  inheritanceEstates: "deferred INC-32 follow-up: estate records are still memory-only",
+  inheritanceNotices: "deferred INC-32 follow-up: heir notices are still memory-only",
+});
 
 function isPlainObject(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
@@ -245,7 +317,19 @@ export function serializeLensState(STATE) {
   const out = {};
   for (const key of LENS_STATE_KEYS) {
     const lens = STATE[key];
-    if (!lens || typeof lens !== "object") continue;
+    if (lens == null) continue;
+    // A top-level Map/Set has no enumerable fields. Object.entries(map)
+    // is [] and JSON.stringify(map) is "{}", which is how these stores
+    // used to vanish. Persist the collection itself.
+    if (lens instanceof Map || lens instanceof Set) {
+      out[key] = serializeValue(lens);
+      continue;
+    }
+    // Sequence counters (_profileVisitorSeq, _companionNotifSeq) are numbers.
+    if (typeof lens !== "object") {
+      out[key] = lens;
+      continue;
+    }
     const lensOut = {};
     for (const [field, val] of Object.entries(lens)) {
       lensOut[field] = serializeValue(val);
@@ -264,7 +348,19 @@ export function hydrateLensState(STATE, persisted) {
   if (!persisted || typeof persisted !== "object") return;
   for (const key of LENS_STATE_KEYS) {
     const lensPersisted = persisted[key];
-    if (!lensPersisted || typeof lensPersisted !== "object") continue;
+    if (lensPersisted == null) continue;
+    if (typeof lensPersisted !== "object") {
+      STATE[key] = lensPersisted;
+      continue;
+    }
+    // Root Map/Set envelope (playerProfiles, mathCAS, …).
+    if (
+      (lensPersisted.__type === "Map" && Array.isArray(lensPersisted.entries))
+      || (lensPersisted.__type === "Set" && Array.isArray(lensPersisted.values))
+    ) {
+      STATE[key] = deserializeValue(lensPersisted);
+      continue;
+    }
     const lensOut = {};
     for (const [field, val] of Object.entries(lensPersisted)) {
       lensOut[field] = deserializeValue(val);
