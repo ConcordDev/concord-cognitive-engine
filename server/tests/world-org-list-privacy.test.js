@@ -107,6 +107,73 @@ describe("world org list projects safe fields", () => {
     assertNoPrivateFields(seen, ["session-leader", "spoofed-leader"]);
   });
 
+  it("ignores body.userId when naming the guild leader (two-account isolation)", async () => {
+    const create = await fetch(`${url}/api/world/orgs`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-user-id": "acct-two" },
+      body: JSON.stringify({
+        name: "UserId Spoof Guild",
+        type: "guild",
+        description: "must not belong to the other account",
+        userId: "acct-one",
+        leaderId: "acct-one",
+      }),
+    });
+    assert.equal(create.status, 201);
+    const body = await create.json();
+    assert.equal(body.ok, true);
+    // Nested createOrganization payload still carries leaderId for the founder;
+    // the public list must not.
+    assert.equal(body.organization.organization.leaderId, "acct-two");
+
+    const founder = await getJson("/api/world/orgs", "acct-two");
+    const guild = founder.body.organizations.find((o) => o.name === "UserId Spoof Guild");
+    assert.ok(guild);
+    assert.equal(guild.viewerIsLeader, true);
+    assert.equal(guild.myRole, "leader");
+    assertNoPrivateFields(guild, ["acct-one", "acct-two"]);
+
+    const victim = await getJson("/api/world/orgs", "acct-one");
+    const seen = victim.body.organizations.find((o) => o.id === guild.id);
+    assert.ok(seen);
+    assert.equal(seen.viewerIsLeader, undefined);
+    assert.equal(seen.myRole, undefined);
+    assertNoPrivateFields(seen, ["acct-one", "acct-two"]);
+  });
+
+  it("join uses the session user, not a spoofed body.userId", async () => {
+    const open = await fetch(`${url}/api/world/orgs`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-user-id": "acct-alpha" },
+      body: JSON.stringify({ name: "Join Isolation Guild", type: "guild" }),
+    });
+    assert.equal(open.status, 201);
+    const opened = await open.json();
+    const id = opened.organization.organization.id;
+
+    const spoofJoin = await fetch(`${url}/api/world/orgs/${id}/join`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-user-id": "acct-beta" },
+      body: JSON.stringify({ userId: "acct-alpha" }),
+    });
+    const spoofed = await spoofJoin.json();
+    assert.equal(spoofJoin.status, 200);
+    assert.equal(spoofed.ok, true);
+    assert.equal(spoofed.role, "member");
+
+    const beta = await getJson("/api/world/orgs", "acct-beta");
+    const asBeta = beta.body.organizations.find((o) => o.id === id);
+    assert.equal(asBeta.myRole, "member");
+    assert.equal(asBeta.viewerIsLeader, undefined);
+
+    const alpha = await getJson("/api/world/orgs", "acct-alpha");
+    const asAlpha = alpha.body.organizations.find((o) => o.id === id);
+    assert.equal(asAlpha.myRole, "leader");
+    assert.equal(asAlpha.viewerIsLeader, true);
+    assert.equal(asAlpha.memberCount, 2);
+    assertNoPrivateFields(asAlpha, ["acct-alpha", "acct-beta"]);
+  });
+
   it("the leader still recognizes their guild, and another player can still join it", async () => {
     const list = await getJson("/api/world/orgs", "leader-user");
     const guild = list.body.organizations.find((o) => o.id === guildId);
@@ -118,7 +185,7 @@ describe("world org list projects safe fields", () => {
     const join = await fetch(`${url}/api/world/orgs/${guildId}/join`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-user-id": "joiner-user" },
-      body: JSON.stringify({ userId: "joiner-user" }),
+      body: JSON.stringify({}),
     });
     const joined = await join.json();
     assert.equal(join.status, 200);
