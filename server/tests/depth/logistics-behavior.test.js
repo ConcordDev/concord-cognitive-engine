@@ -92,10 +92,13 @@ describe("logistics — CRUD round-trips + validation (shared ctx)", () => {
     try {
       const q = await lensRun("logistics", "rates-quote", { params: { origin: "NYC", destination: "LA", mode: "ltl", weightLbs: 500 } }, ctx);
       assertHonestRatesQuote(q.result);
+      assert.notEqual(q.result.guaranteed, true);
       const albany = await lensRun("logistics", "rates-quote", { params: { origin: "Albany NY", destination: "Albany NY", mode: "parcel", weightLbs: 5 } }, ctx);
       assertHonestRatesQuote(albany.result);
-      const dist = albany.result?.distanceMi;
-      if (dist != null) assert.ok(dist <= 50, `Albany NY → Albany NY distance was ${dist} mi`);
+      assert.notEqual(albany.result.guaranteed, true);
+      if (albany.result.distanceMi != null) {
+        assert.ok(albany.result.distanceMi <= 50, `Albany NY → Albany NY distance was ${albany.result.distanceMi} mi`);
+      }
     } finally {
       if (savedShip == null) delete process.env.SHIPENGINE_API_KEY;
       else process.env.SHIPENGINE_API_KEY = savedShip;

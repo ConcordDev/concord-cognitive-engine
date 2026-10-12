@@ -396,18 +396,25 @@ function patch(nu, nv, sample, kind) {
       ids[i][j] = mesh.add(p, n);
     }
   }
-  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
-    const a = ids[i][j];
-    const b = ids[i + 1][j];
-    const c = ids[i + 1][j + 1];
-    const d = ids[i][j + 1];
-    const pa = pts[i][j];
-    const pb = pts[i + 1][j];
-    const pc = pts[i + 1][j + 1];
-    let n = faceN(pa, pb, pc);
-    const mid = { x: (pa.x + pc.x) / 2, y: (pa.y + pc.y) / 2, z: (pa.z + pc.z) / 2 };
-    if (!outwardish(mid, n, kind)) mesh.tri(a, d, c), mesh.tri(a, c, b);
-    else mesh.tri(a, b, c), mesh.tri(a, c, d);
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nv; j++) {
+      const a = ids[i][j];
+      const b = ids[i + 1][j];
+      const c = ids[i + 1][j + 1];
+      const d = ids[i][j + 1];
+      const pa = pts[i][j];
+      const pb = pts[i + 1][j];
+      const pc = pts[i + 1][j + 1];
+      let n = faceN(pa, pb, pc);
+      const mid = { x: (pa.x + pc.x) / 2, y: (pa.y + pc.y) / 2, z: (pa.z + pc.z) / 2 };
+      if (!outwardish(mid, n, kind)) {
+        mesh.tri(a, d, c);
+        mesh.tri(a, c, b);
+      } else {
+        mesh.tri(a, b, c);
+        mesh.tri(a, c, d);
+      }
+    }
   }
   return mesh;
 }
@@ -1262,12 +1269,14 @@ export function wheelMesh(spec) {
     }
   }
   const tvid = (i, j) => (i % rings) * pj + j;
-  for (let i = 0; i < rings; i++) for (let j = 0; j < pj - 1; j++) {
-    const a = tvid(i, j);
-    const b = tvid(i + 1, j);
-    const c = tvid(i + 1, j + 1);
-    const d = tvid(i, j + 1);
-    tireIdx.push(a, b, c, a, c, d);
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < pj - 1; j++) {
+      const a = tvid(i, j);
+      const b = tvid(i + 1, j);
+      const c = tvid(i + 1, j + 1);
+      const d = tvid(i, j + 1);
+      tireIdx.push(a, b, c, a, c, d);
+    }
   }
 
   const spokes = spec.spokes || 10;
