@@ -105,7 +105,7 @@
   },
   "dependencies": {
     "socket.io-client": "^4.7.0",
-    "vscode-languageclient": "^10.1.0"
+    "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
