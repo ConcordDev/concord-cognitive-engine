@@ -385,6 +385,37 @@ describe("realestate — calculators + heuristics (wave 10 top-up)", () => {
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /from and to required/);
   });
+
+  it("school/walk/commute: two accounts get identical unavailable payloads (no user-id leak)", async () => {
+    await withProviderKeysUnset(async () => {
+      const ctxA = await depthCtx("realestate-inc63-a");
+      const ctxB = await depthCtx("realestate-inc63-b");
+      const addr = "1 Main St, Albany, NY";
+      const aSchools = await lensRun("realestate", "school-ratings", { params: { address: addr } }, ctxA);
+      const bSchools = await lensRun("realestate", "school-ratings", { params: { address: addr } }, ctxB);
+      const aWalk = await lensRun("realestate", "walk-score", { params: { address: addr } }, ctxA);
+      const bWalk = await lensRun("realestate", "walk-score", { params: { address: addr } }, ctxB);
+      const aCommute = await lensRun("realestate", "commute-estimate", {
+        params: { from: addr, to: "Times Square, New York, NY", mode: "drive" },
+      }, ctxA);
+      const bCommute = await lensRun("realestate", "commute-estimate", {
+        params: { from: addr, to: "Times Square, New York, NY", mode: "drive" },
+      }, ctxB);
+      assert.deepEqual(aSchools.result, bSchools.result);
+      assert.deepEqual(aWalk.result, bWalk.result);
+      assert.deepEqual(aCommute.result, bCommute.result);
+      assert.equal(aSchools.result.available, false);
+      assert.equal(aWalk.result.available, false);
+      assert.equal(aCommute.result.available, false);
+      for (const r of [aSchools, bSchools, aWalk, bWalk, aCommute, bCommute]) {
+        const blob = JSON.stringify(r);
+        assert.equal(blob.includes("userId"), false);
+        assert.equal(blob.includes(ctxA.userId), false);
+        assert.equal(blob.includes(ctxB.userId), false);
+        assert.doesNotMatch(blob, /St Elementary|Deterministic seeded/);
+      }
+    });
+  });
 });
 
 describe("realestate — CRUD + property tooling (wave 10 top-up, shared ctx)", () => {

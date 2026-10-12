@@ -398,6 +398,31 @@ describe("realestate.school-ratings + walk-score + commute-estimate", () => {
     const r = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square", mode: "drive" });
     assertUnavailable(r, "routing_unavailable");
   });
+
+  it("two accounts get the same honest unavailable shape with no user-id leak", async () => {
+    const aSchools = await call("school-ratings", ctxA, { address: ALBANY });
+    const bSchools = await call("school-ratings", ctxB, { address: ALBANY });
+    const aWalk = await call("walk-score", ctxA, { address: ALBANY });
+    const bWalk = await call("walk-score", ctxB, { address: ALBANY });
+    const aCommute = await call("commute-estimate", ctxA, { from: ALBANY, to: "Times Square, New York, NY" });
+    const bCommute = await call("commute-estimate", ctxB, { from: ALBANY, to: "Times Square, New York, NY" });
+    assertUnavailable(aSchools, "greatschools_not_configured");
+    assertUnavailable(bSchools, "greatschools_not_configured");
+    assertUnavailable(aWalk, "walkscore_not_configured");
+    assertUnavailable(bWalk, "walkscore_not_configured");
+    assertUnavailable(aCommute, "routing_not_configured");
+    assertUnavailable(bCommute, "routing_not_configured");
+    assert.deepEqual(aSchools.result, bSchools.result);
+    assert.deepEqual(aWalk.result, bWalk.result);
+    assert.deepEqual(aCommute.result, bCommute.result);
+    for (const r of [aSchools, bSchools, aWalk, bWalk, aCommute, bCommute]) {
+      const blob = JSON.stringify(r);
+      assert.equal(blob.includes("userId"), false);
+      assert.equal(blob.includes('"u"'), false);
+      assert.equal(blob.includes('"v"'), false);
+      assert.doesNotMatch(blob, /St Elementary|walkScore|minutes|Deterministic seeded/);
+    }
+  });
 });
 
 describe("realestate.hot-score", () => {
