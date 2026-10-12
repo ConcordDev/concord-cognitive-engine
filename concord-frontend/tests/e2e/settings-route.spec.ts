@@ -67,5 +67,5 @@ test('settings route shows the saved volumes, not zeros', async ({ page }) => {
   await expect(page.getByText('0.70').first()).toBeVisible();
   await expect(page.getByText('0.60').first()).toBeVisible();
   await expect(page.getByText('0.80').first()).toBeVisible();
-  await expect(page.getByText('0.00')).toHaveCount(0);
+  await expect(page.getByText('0.00', { exact: true })).toHaveCount(0);
 });

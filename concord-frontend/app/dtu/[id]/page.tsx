@@ -25,14 +25,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const { dtu } = await loadDtu(id);
+  const { dtu, status } = await loadDtu(id);
 
-  if (!dtu) {
-    return {
-      title: 'DTU Not Found | Concord OS',
-      description: 'This thought unit could not be found.',
-    };
-  }
+  if (!dtu || status === 404) notFound();
 
   const title = (typeof dtu.title === 'string' && dtu.title) || (typeof dtu.name === 'string' && dtu.name) || 'Untitled DTU';
   const description =

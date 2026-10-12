@@ -397,6 +397,9 @@ test.describe('Command Palette', () => {
   });
 
   test('command palette opens with Ctrl+K keyboard shortcut', async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.setItem('concord:first-run-tour:chat', '1'); } catch { /* private mode */ }
+    });
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
     await page.waitForLoadState('domcontentloaded');
@@ -404,15 +407,8 @@ test.describe('Command Palette', () => {
     // Press Ctrl+K to open command palette
     await page.keyboard.press('Control+k');
 
-    // Command palette should appear as a dialog
-    const dialog = page.locator('[role="dialog"]');
-    if (await dialog.isVisible().catch(() => false)) {
-      await expect(dialog).toBeVisible();
-      const ariaLabel = await dialog.getAttribute('aria-label').catch(() => null);
-      if (ariaLabel) {
-        expect(ariaLabel.toLowerCase()).toContain('command palette');
-      }
-    }
+    // The chat first-run coachmark is also role=dialog. Name the palette.
+    await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
   });
 
   test('command palette has search input with combobox role', async ({ page }) => {

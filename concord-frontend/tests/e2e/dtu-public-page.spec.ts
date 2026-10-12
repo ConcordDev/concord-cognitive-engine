@@ -57,6 +57,6 @@ test.describe('public DTU page', () => {
     await page.context().addCookies(cookies);
     const response = await page.goto(`/dtu/${id}`, { waitUntil: 'domcontentloaded', timeout: 5000 });
     expect(response?.status()).toBe(200);
-    await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({ timeout: 5000 });
   });
 });

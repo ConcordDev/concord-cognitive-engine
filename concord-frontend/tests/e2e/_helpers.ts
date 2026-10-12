@@ -47,13 +47,16 @@ const TEST_ORIGIN = process.env.BASE_URL || 'http://localhost:3000';
  * this bug was easy to miss: most mocked calls in this suite go through
  * axios and needed this all along.
  */
-function corsHeaders(): Record<string, string> {
+function corsHeaders(route: Route): Record<string, string> {
+  const incoming = route.request().headers();
+  const origin = incoming['origin'] || TEST_ORIGIN;
+  const requested = incoming['access-control-request-headers'];
   return {
-    'Access-Control-Allow-Origin': TEST_ORIGIN,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers':
-      'Content-Type,Authorization,X-API-Key,X-Requested-With,X-Session-ID,X-CSRF-Token,X-XSRF-Token,X-Request-ID,Idempotency-Key',
+    'Access-Control-Allow-Headers': requested
+      || 'Content-Type,Authorization,X-API-Key,X-Requested-With,X-Session-ID,X-CSRF-Token,X-XSRF-Token,X-Request-ID,Idempotency-Key',
   };
 }
 
@@ -72,9 +75,9 @@ export async function corsFulfill(
   init: { status: number; contentType?: string; body?: string },
 ) {
   if (route.request().method() === 'OPTIONS') {
-    return route.fulfill({ status: 204, headers: corsHeaders() });
+    return route.fulfill({ status: 204, headers: corsHeaders(route) });
   }
-  const headers: Record<string, string> = { ...corsHeaders() };
+  const headers: Record<string, string> = { ...corsHeaders(route) };
   if (init.contentType) headers['content-type'] = init.contentType;
   return route.fulfill({ status: init.status, headers, body: init.body });
 }

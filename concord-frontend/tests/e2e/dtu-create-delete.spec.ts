@@ -77,7 +77,7 @@ test.describe('DTU browser create and delete', () => {
     await dialog.getByRole('button', { name: 'Create DTU' }).click();
 
     await expect(page.getByText('Reload note')).toBeVisible();
-    await expect(page.getByText('Showing 1–1 of 1')).toBeVisible();
+    await expect(page.getByText('Showing 1–1 of 1').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'More options' }).click();
     const deleted = page.waitForRequest((req) => req.method() === 'DELETE' && req.url().includes('/api/dtus/dtu-e2e-1'));
@@ -133,7 +133,7 @@ test.describe('DTU browser create and delete', () => {
     await expect(page.getByText('Not mine')).toBeVisible();
     await page.getByRole('button', { name: 'More options' }).click();
     await page.getByText('Delete', { exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText(/only delete your own/i);
+    await expect(page.getByRole('alert').filter({ hasText: /only delete your own/i })).toBeVisible();
     await expect(page.getByText('Not mine')).toBeVisible();
   });
 });

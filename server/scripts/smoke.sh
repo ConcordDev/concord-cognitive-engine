@@ -125,13 +125,15 @@ check "Master job" "/api/studio/master/job" "POST" '{"project_id":"test","preset
 # ── Events ───────────────────────────────────────────────
 echo ""
 echo "--- Events ---"
-check "Events log" "/api/events/log?limit=10"
+# gateLogRead refuses a caller with no actor (401 authentication_required).
+# The anonymous probe asserts that gate, the same way balance does.
+check "Events log (auth required)" "/api/events/log?limit=10" "GET" "" "401"
 
 # ── Guidance Layer ────────────────────────────────────────
 echo ""
 echo "--- Guidance Layer ---"
 check "System health" "/api/system/health"
-check "Events paginated" "/api/events/paginated?limit=5"
+check "Events paginated (auth required)" "/api/events/paginated?limit=5" "GET" "" "401"
 check "Suggestions" "/api/guidance/suggestions"
 check "First-win status" "/api/guidance/first-win"
 
