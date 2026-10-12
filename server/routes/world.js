@@ -197,9 +197,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const router = Router();
 
   function _userId(req) {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null; // safe: target-identifier
+    // AuthDB users expose `.id` (not `.userId`). Never trust body.userId —
+    // a client could otherwise join/leave as another account.
+    return req.user?.id ?? req.user?.userId ?? req.actor?.userId ?? null;
   }
 
   // Auth middleware stores the account id on req.user.id. Some callers
@@ -330,11 +330,16 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/orgs", auth, wrap((req, res) => {
-    // Prefer the authenticated account. GuildPanel also sends leaderId in
-    // the body for the no-session path; never let that body value override
-    // a real session, and never replace a provided leader with null.
-    const leaderId = req.user?.id || req.user?.userId || req.actor?.userId || req.body?.leaderId || null;
+    // Leader is always the authenticated account. Ignore body.leaderId /
+    // body.userId — those used to let a client name someone else as founder.
+    const leaderId = req.user?.id || req.user?.userId || req.actor?.userId || null;
+    if (!leaderId) {
+      return res.status(401).json({ ok: false, error: "auth_required" });
+    }
     const org = createOrganization(db, { ...req.body, leaderId });
+    if (!org?.ok) {
+      return res.status(400).json({ ok: false, error: org?.error || "create_failed" });
+    }
     res.status(201).json({ ok: true, organization: org });
   }));
 
@@ -346,12 +351,28 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/orgs/:id/join", auth, wrap((req, res) => {
-    const result = joinOrganization(db, req.params.id, _userId(req));
+    const userId = _userId(req);
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const result = joinOrganization(db, req.params.id, userId);
+    if (!result?.ok) {
+      const status = result?.error === "org_not_found" ? 404
+        : result?.error === "already_member" ? 409
+          : 400;
+      return res.status(status).json({ ok: false, error: result?.error || "join_failed" });
+    }
     res.json({ ok: true, ...result });
   }));
 
   router.post("/orgs/:id/leave", auth, wrap((req, res) => {
-    const result = leaveOrganization(db, req.params.id, _userId(req));
+    const userId = _userId(req);
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const result = leaveOrganization(db, req.params.id, userId);
+    if (!result?.ok) {
+      const status = result?.error === "not_member" ? 404
+        : result?.error === "leader_cannot_leave" ? 403
+          : 400;
+      return res.status(status).json({ ok: false, error: result?.error || "leave_failed" });
+    }
     res.json({ ok: true, ...result });
   }));
 
