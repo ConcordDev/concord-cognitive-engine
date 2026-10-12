@@ -250,7 +250,9 @@ const server = createServer((req, res) => {
   res.writeHead(200, { "content-type": types[ext] || "application/octet-stream" });
   res.end(readFileSync(file));
 });
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+await new Promise((resolve) => {
+  server.listen(0, "127.0.0.1", resolve);
+});
 const port = server.address().port;
 
 const require = createRequire(join(root, "concord-frontend", "package.json"));
@@ -263,7 +265,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const shots = {};
 for (const view of ["studio", "exploded", "section", "engineering", "side"]) {
   await page.goto(`http://127.0.0.1:${port}/studio.html?view=${view}`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
+  await page.waitForFunction(() => globalThis.__ready === true, null, { timeout: 20000 });
   await page.waitForTimeout(250);
   const file = join(outDir, `car-${view}.png`);
   await page.screenshot({ path: file });

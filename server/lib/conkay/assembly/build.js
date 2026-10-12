@@ -685,9 +685,9 @@ function fitChecks(ctx) {
       const ahead = motors.filter((m) => m.placement.x + m.half[0] > wall - 1e-6 && m.placement.x < wall);
       const intruding = motors.find((m) => m.placement.x < wall && m.placement.x + m.half[0] > wall + 0.01);
       if (intruding) add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`);
-      else add("powertrain-cabin", "pass",
+      else {add("powertrain-cabin", "pass",
         `${motors.map((m) => m.id).join(" and ")} clear the firewall at ${mm(wall)} mm${ahead.length ? "" : ""}`,
-        { motors: motors.map((m) => m.id) });
+        { motors: motors.map((m) => m.id) });}
     }
   }
   const layoutId = ctx.layoutChoice?.id || ctx.spec?.layout || "ev_skateboard";
@@ -754,9 +754,9 @@ function fitChecks(ctx) {
     if (!partInsideEnvelope(ctx.spec, c, 0.05)) outside.push(c.id);
   }
   if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
-  else if (outside.length) add("containment", "fail",
+  else if (outside.length) {add("containment", "fail",
     `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.`,
-    { outside });
+    { outside });}
   else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
 
   // Pillar vs occupant: B-pillar x should sit between the rows.
@@ -1018,10 +1018,10 @@ export function projectSideBox(c) {
   const b = boxOf(c);
   if (!b) return null;
   const xs = [], zs = [];
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+  for (const sx of [-1, 1]) {for (const sy of [-1, 1]) {for (const sz of [-1, 1]) {
     const p = [0, 1, 2].map((i) => b.center[i] + sx * b.half[0] * b.axes[0][i] + sy * b.half[1] * b.axes[1][i] + sz * b.half[2] * b.axes[2][i]);
     xs.push(p[0]); zs.push(p[2]);
-  }
+  }}}
   return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
 }
 
