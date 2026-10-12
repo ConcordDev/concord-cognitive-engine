@@ -244,5 +244,15 @@ describe("education INC-65 — shared assignments, hidden ids, roster join", () 
     assert.equal(full.ok, false);
     assert.match(full.error, /at capacity/);
     assert.equal(stored.roster.includes(planted), false);
+
+    // Leave with a planted id removes only the caller, never the planted string.
+    const leave = call("cohorts-leave", ctx2, { id, learner: planted });
+    assert.equal(leave.ok, true, leave.error);
+    assert.deepEqual(stored.roster, [acct3]);
+    assert.equal(stored.roster.includes(planted), false);
+    assert.equal(leave.result.cohort.roster, undefined);
+    assert.equal(leave.result.cohort.rosterCount, 1);
+    assertNoRawId(leave, planted, "non-author leave response");
+    assertNoRawId(leave, acct1, "non-author leave response");
   });
 });
