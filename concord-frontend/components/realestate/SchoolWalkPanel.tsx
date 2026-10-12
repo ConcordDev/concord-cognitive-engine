@@ -99,13 +99,19 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
   const schoolsLive = schools?.available === true;
   const walkLive = walk?.available === true;
   const commuteLive = commute?.available === true;
-  const walkTiles = walkLive
-    ? [
-        isFiniteScore(walk?.walkScore) ? { icon: Footprints, label: 'Walk', score: walk.walkScore, desc: walk.walkDesc } : null,
-        isFiniteScore(walk?.transitScore) ? { icon: Bus, label: 'Transit', score: walk.transitScore, desc: walk.transitDesc } : null,
-        isFiniteScore(walk?.bikeScore) ? { icon: Bike, label: 'Bike', score: walk.bikeScore, desc: walk.bikeDesc } : null,
-      ].filter((tile): tile is { icon: typeof Footprints; label: string; score: number; desc?: string } => tile != null)
-    : [];
+  type WalkTile = { icon: typeof Footprints; label: string; score: number; desc: string };
+  const walkTiles: WalkTile[] = [];
+  if (walkLive && walk) {
+    if (isFiniteScore(walk.walkScore)) {
+      walkTiles.push({ icon: Footprints, label: 'Walk', score: walk.walkScore, desc: walk.walkDesc || '' });
+    }
+    if (isFiniteScore(walk.transitScore)) {
+      walkTiles.push({ icon: Bus, label: 'Transit', score: walk.transitScore, desc: walk.transitDesc || '' });
+    }
+    if (isFiniteScore(walk.bikeScore)) {
+      walkTiles.push({ icon: Bike, label: 'Bike', score: walk.bikeScore, desc: walk.bikeDesc || '' });
+    }
+  }
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
