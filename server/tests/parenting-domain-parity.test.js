@@ -356,6 +356,57 @@ describe("parenting.caregiver-* (multi-caregiver sync)", () => {
     assert.equal(call("feed-log", ctxHelper, { childId: id, kind: "bottle" }).ok, false);
     assert.equal(call("caregiver-list", ctxA, { childId: id }).result.count, 0);
   });
+
+  // INC-59 live repro: two accounts — redeem must grant real access (not a
+  // fake success), never leak raw user ids, and keep per-user isolation.
+  it("INC-59 two-account: shared access is real, ids stay private, delete stays owner-only", () => {
+    const id = newChild(ctxA, 5);
+    const inv = call("caregiver-invite", ctxA, { childId: id, role: "caregiver" });
+    assert.equal(inv.ok, true);
+
+    const redeem = call("caregiver-redeem", ctxHelper, { code: inv.result.code });
+    assert.equal(redeem.ok, true);
+    assert.equal(redeem.result.childId, id);
+    assert.equal(redeem.result.ownerId, undefined);
+    assertNoRawUserIds(redeem, RAW_IDS);
+
+    const helperKids = call("child-list", ctxHelper, {}).result.children;
+    assert.ok(helperKids.some((c) => c.id === id && c.shared === true));
+    assert.equal(call("child-list", ctxStranger, {}).result.children.some((c) => c.id === id), false);
+
+    assert.equal(call("diaper-log", ctxHelper, { childId: id, kind: "wet" }).ok, true);
+    assert.equal(call("diaper-history", ctxA, { childId: id }).result.count, 1);
+    assert.equal(call("medicine-log", ctxHelper, { childId: id, name: "Tylenol", dose: "2.5ml" }).ok, true);
+    assert.equal(call("medicine-history", ctxA, { childId: id }).result.count, 1);
+    assert.equal(call("diaper-log", ctxStranger, { childId: id, kind: "wet" }).ok, false);
+
+    const delHelper = call("child-delete", ctxHelper, { id });
+    assert.equal(delHelper.ok, false);
+    assert.match(delHelper.error, /only the owner can delete/);
+    assert.equal(call("child-delete", ctxStranger, { id }).ok, false);
+    assert.ok(call("child-list", ctxA, {}).result.children.some((c) => c.id === id));
+
+    // Legacy rows stored the raw user id on caregiverId — normalize in place
+    // and never project that id back out.
+    const members = globalThis._concordSTATE.parentingLens.caregivers.get("user_a");
+    members.push({
+      caregiverId: "user_c",
+      role: "grandparent",
+      childId: id,
+      joinedAt: new Date().toISOString(),
+      via: "LEGACY",
+    });
+    const list = call("caregiver-list", ctxA, { childId: id });
+    assert.ok(list.result.count >= 2);
+    assertNoRawUserIds(list, RAW_IDS);
+    for (const cg of list.result.caregivers) {
+      assert.ok(cg.id);
+      assert.notEqual(cg.id, "user_b");
+      assert.notEqual(cg.id, "user_c");
+      assert.equal(cg.caregiverId, undefined);
+      assert.equal(cg.caregiverUserId, undefined);
+    }
+  });
 });
 
 describe("parenting.timer-* (quick-entry timers)", () => {
