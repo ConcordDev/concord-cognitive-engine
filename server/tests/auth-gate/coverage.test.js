@@ -48,7 +48,14 @@ const SERVER_CWD = join(__dirname, "../..");
 
 // Tools that are intentionally protected — never callable via the
 // anonymous /mcp/call path (MCP_TOOLS_REQUIRE_REAL_AUTH in server.js).
-const PROTECTED_TOOLS = new Set(["reflect_invoke", "reflect_rescan"]);
+const PROTECTED_TOOLS = new Set([
+  "reflect_invoke",
+  "reflect_rescan",
+  "run_lens_action",
+  "list_lens_actions",
+  "conkay_solve",
+  "conkay_solver_list",
+]);
 
 // ── Boilerplate (same shape as tests/e2e/admin-liveness-role-gate.test.js) ──
 

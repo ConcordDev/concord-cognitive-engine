@@ -40038,7 +40038,16 @@ app.get("/mcp/tools", (_req, res) => {
 // reflected macro/export/route in the codebase. Require a REAL resolved
 // user (req.authMethod !== "mcp-bypass") for these two tools specifically,
 // regardless of the general MCP bypass.
-const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set(["reflect_invoke", "reflect_rescan"]);
+const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
+  "reflect_invoke",
+  "reflect_rescan",
+  // MCP Execution Bridge — never callable via the mcp-anonymous bypass.
+  // Hermes (or any caller) must present a real resolved identity.
+  "run_lens_action",
+  "list_lens_actions",
+  "conkay_solve",
+  "conkay_solver_list",
+]);
 
 app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, res) => {
     const { tool, args } = req.body || {};

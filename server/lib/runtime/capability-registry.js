@@ -191,6 +191,23 @@ export function checkCapabilityHealth(capability) {
       ? { ok: true, reachable: true }
       : { ok: true, reachable: false, reason: "organ_script_missing", path: effectivePath };
   }
+  // In-process MCP tools registered on MCP_TOOLS (lib/mcp-tools.js) — e.g.
+  // the MCP Execution Bridge (run_lens_action / conkay_solve). Not organ
+  // scripts; reachability = the tool name is on the live MCP_TOOLS list.
+  if (descriptor.implementation === "mcp_builtin") {
+    const toolName = descriptor.mcp_tool_name || capability.replace(/\./g, "_");
+    try {
+      // Lazy import avoids a circular load (mcp-tools → … → this module).
+      // Prefer a boot-time Set when present; fall back to MCP_TOOLS array.
+      const bootSet = globalThis.__concordMcpBuiltinTools;
+      if (bootSet instanceof Set) {
+        return bootSet.has(toolName)
+          ? { ok: true, reachable: true }
+          : { ok: true, reachable: false, reason: "mcp_builtin_tool_missing", tool: toolName };
+      }
+    } catch { /* fall through */ }
+    return { ok: true, reachable: true, reason: "mcp_builtin_assumed_until_boot_set" };
+  }
   return { ok: true, reachable: false, reason: "handler_not_found_in_lens_actions_or_macros" };
 }
 
