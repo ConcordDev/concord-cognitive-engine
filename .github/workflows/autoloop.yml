@@ -71,7 +71,7 @@ jobs:
 
       - name: Checkout the autoloop branch
         if: steps.branch-check.outputs.exists == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: autoloop/main
           fetch-depth: 0

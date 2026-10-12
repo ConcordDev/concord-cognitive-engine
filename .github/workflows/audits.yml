@@ -55,7 +55,7 @@ jobs:
     # over the documented worst case instead of matching the optimistic one.
     timeout-minutes: 65
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           # MUST be 22: `node --test` only expands the recursive `tests/**/*.test.js`
@@ -404,7 +404,7 @@ jobs:
     timeout-minutes: 45
     needs: structural-audits
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
