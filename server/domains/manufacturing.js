@@ -73,14 +73,20 @@ export default function registerManufacturingActions(registerLensAction) {
   function getMfgState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.manufacturingLens) {
+    if (!STATE.manufacturingLens || typeof STATE.manufacturingLens !== "object") {
       STATE.manufacturingLens = {
         machines: new Map(),    // userId -> Array<{ id, name, status, availability, performance, quality, oee, lastDowntimeReason }>
         workOrders: new Map(),  // userId -> Array<{ id, number, product, quantity, ... }>
-        spcSamples: new Map(),  // `${userId}::${product}` -> Array<{ at, value, outOfSpec, outOfControl }>
+        spcSamples: new Map(),  // `${userId}::${product}` -> Array<{ at, value, subgroup? }>
       };
     }
-    return STATE.manufacturingLens;
+    const s = STATE.manufacturingLens;
+    // A partial object (hydrate miss, or a caller that set one map) must
+    // still have the three collections the board reads. Never replace a Map.
+    if (!(s.machines instanceof Map)) s.machines = new Map();
+    if (!(s.workOrders instanceof Map)) s.workOrders = new Map();
+    if (!(s.spcSamples instanceof Map)) s.spcSamples = new Map();
+    return s;
   }
 
   registerLensAction("manufacturing", "oee-status", (ctx, _artifact, _params = {}) => {
@@ -188,6 +194,189 @@ export default function registerManufacturingActions(registerLensAction) {
   function uid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function getList(map, key) { if (!map.has(key)) map.set(key, []); return map.get(key); }
   function nid(prefix) { return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`; }
+  function saveMfg() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  // Finite number or numeric string. Reject booleans (Number(true) === 1),
+  // blanks, and non-numeric text so a poisoned sample cannot enter the chart.
+  function finiteInput(v) {
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = Number(v.trim());
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+  const WO_PRIORITIES = new Set(["low", "medium", "high", "urgent"]);
+  const WO_STATUSES = new Set(["queued", "in_progress", "on_hold", "complete"]);
+  const MACHINE_STATUSES = new Set(["running", "idle", "down", "maintenance"]);
+
+  // Availability = share of readings in machineState "running".
+  // Performance = (idealCycleTime × cycles) / run minutes — idealCycleTime
+  // is minutes, the same unit oeeCalculate uses against plannedTime.
+  // Quality is not present on an IoT reading. Leave it null and leave OEE
+  // null rather than inventing 0% or 100%.
+  function refreshRegisteredMachine(machine, readings) {
+    if (!machine || !Array.isArray(readings) || readings.length === 0) return;
+    const latest = readings[readings.length - 1];
+    const state = String(latest.machineState || "");
+    if (MACHINE_STATUSES.has(state)) machine.status = state;
+    if (latest.downtimeReason) machine.lastDowntimeReason = String(latest.downtimeReason);
+    else if (machine.status === "running") machine.lastDowntimeReason = null;
+
+    let runCount = 0;
+    for (const r of readings) if (r.machineState === "running") runCount++;
+    const availabilityRatio = runCount / readings.length;
+    machine.availability = Math.round(availabilityRatio * 100);
+
+    let performanceRatio = 0;
+    const ideal = Number(machine.idealCycleTime);
+    if (Number.isFinite(ideal) && ideal > 0 && readings.length >= 2) {
+      const t0 = Date.parse(readings[0].at);
+      const t1 = Date.parse(readings[readings.length - 1].at);
+      const cycles = Number(readings[readings.length - 1].cycleCount) - Number(readings[0].cycleCount);
+      const elapsedMin = (t1 - t0) / 60000;
+      const runTimeMin = elapsedMin * availabilityRatio;
+      if (Number.isFinite(t0) && Number.isFinite(t1) && runTimeMin > 0 && Number.isFinite(cycles) && cycles >= 0) {
+        performanceRatio = (ideal * cycles) / runTimeMin;
+      }
+    }
+    machine.performance = Math.round(performanceRatio * 100);
+    const q = machine.quality;
+    if (typeof q === "number" && Number.isFinite(q)) {
+      machine.oee = Math.round(availabilityRatio * performanceRatio * (q / 100) * 100);
+    } else {
+      machine.quality = null;
+      machine.oee = null;
+    }
+    machine.updatedAt = new Date().toISOString();
+  }
+
+  // ─── OEE machines, work orders, SPC samples (the three board writes) ──
+  // oee-status / work-orders / spc-chart only read these maps. Nothing else
+  // in the server writes them, so the boards stayed empty and their notes
+  // named actions that were not registered.
+
+  registerLensAction("manufacturing", "machine-register", (ctx, _a, params = {}) => {
+    try {
+      const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId ?? "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const name = String(params.name ?? "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      let ideal = null;
+      if (params.idealCycleTime != null && params.idealCycleTime !== "") {
+        ideal = finiteInput(params.idealCycleTime);
+        if (ideal == null || ideal <= 0) return { ok: false, error: "idealCycleTime must be a finite number > 0" };
+      }
+      const line = params.line == null ? "" : String(params.line).trim();
+      const userId = uid(ctx);
+      const machines = getList(s.machines, userId);
+      let machine = machines.find((m) => m.id === machineId);
+      const now = new Date().toISOString();
+      if (!machine) {
+        machine = {
+          id: machineId,
+          name,
+          line,
+          idealCycleTime: ideal,
+          status: "idle",
+          availability: 0,
+          performance: 0,
+          quality: null,
+          oee: null,
+          lastDowntimeReason: null,
+          registeredAt: now,
+          updatedAt: now,
+        };
+        machines.push(machine);
+      } else {
+        machine.name = name;
+        machine.line = line;
+        if (params.idealCycleTime != null && params.idealCycleTime !== "") machine.idealCycleTime = ideal;
+        machine.updatedAt = now;
+      }
+      const prior = s.iotReadings instanceof Map ? s.iotReadings.get(`${userId}::${machineId}`) : null;
+      if (Array.isArray(prior) && prior.length) refreshRegisteredMachine(machine, prior);
+      saveMfg();
+      return { ok: true, result: { machine } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-order-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const product = String(params.product ?? "").trim();
+      if (!product) return { ok: false, error: "product required" };
+      const quantity = finiteInput(params.quantity);
+      if (quantity == null || quantity <= 0) return { ok: false, error: "quantity must be a finite number > 0" };
+      let dueDate = null;
+      if (params.dueDate != null && String(params.dueDate).trim() !== "") {
+        const raw = String(params.dueDate).trim();
+        if (!Number.isFinite(Date.parse(raw))) return { ok: false, error: "dueDate must be a valid date" };
+        dueDate = raw;
+      }
+      let priority = "medium";
+      if (params.priority != null && String(params.priority).trim() !== "") {
+        priority = String(params.priority).trim().toLowerCase();
+        if (!WO_PRIORITIES.has(priority)) return { ok: false, error: "priority must be low, medium, high, or urgent" };
+      }
+      const id = nid("wo");
+      const order = {
+        id,
+        number: `WO-${id.slice(3).toUpperCase()}`,
+        product,
+        quantity,
+        quantityProduced: 0,
+        priority,
+        status: "queued",
+        dueDate,
+        assignedTo: null,
+        machine: params.machine == null || String(params.machine).trim() === "" ? null : String(params.machine).trim(),
+      };
+      getList(s.workOrders, uid(ctx)).push(order);
+      saveMfg();
+      return { ok: true, result: { order } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-order-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const id = String(params.id ?? "").trim();
+      if (!id) return { ok: false, error: "id required" };
+      const status = String(params.status ?? "").trim();
+      if (!WO_STATUSES.has(status)) return { ok: false, error: "status must be queued, in_progress, on_hold, or complete" };
+      // Caller-scoped: another user's id is not found. Do not read their list.
+      const order = getList(s.workOrders, uid(ctx)).find((o) => o.id === id);
+      if (!order) return { ok: false, error: "not found" };
+      order.status = status;
+      order.updatedAt = new Date().toISOString();
+      saveMfg();
+      return { ok: true, result: { order } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "spc-sample-log", (ctx, _a, params = {}) => {
+    try {
+      const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const product = String(params.product ?? "").trim();
+      if (!product) return { ok: false, error: "product required" };
+      const value = finiteInput(params.value);
+      if (value == null) return { ok: false, error: "value must be a finite number" };
+      const subgroup = params.subgroup == null || String(params.subgroup).trim() === ""
+        ? null
+        : String(params.subgroup).trim().slice(0, 80);
+      const sample = { at: new Date().toISOString(), value, subgroup };
+      const list = getList(s.spcSamples, `${uid(ctx)}::${product}`);
+      list.push(sample);
+      if (list.length > 500) list.splice(0, list.length - 500);
+      saveMfg();
+      return { ok: true, result: { product, sample, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
 
   // ─── Feature 1: Digital work instructions ──────────────────────────────
   registerLensAction("manufacturing", "work-instruction-create", (ctx, _a, params = {}) => {
@@ -260,6 +449,14 @@ export default function registerManufacturingActions(registerLensAction) {
       const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
       list.push(reading);
       if (list.length > 500) list.splice(0, list.length - 500);
+      // A registered machine's OEE board row tracks the readings just stored.
+      // Unregistered machines stay off the board — ingest does not invent one.
+      const machines = s.machines instanceof Map ? (s.machines.get(uid(ctx)) || []) : [];
+      const registered = machines.find((m) => m.id === machineId);
+      if (registered) {
+        refreshRegisteredMachine(registered, list);
+        saveMfg();
+      }
       return { ok: true, result: { machineId, reading, totalReadings: list.length } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });

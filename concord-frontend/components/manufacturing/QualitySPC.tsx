@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
@@ -15,7 +15,7 @@ export interface SPCResult {
   upperControl?: number;
   lowerControl?: number;
   centerLine?: number;
-  samples: Array<{ at: string; value: number; outOfSpec?: boolean; outOfControl?: boolean; upperSpec?: number; lowerSpec?: number }>;
+  samples: Array<{ at: string; value: number; subgroup?: string | null; outOfSpec?: boolean; outOfControl?: boolean; upperSpec?: number; lowerSpec?: number }>;
   cpk?: number;
   ppm?: number;
   inControl?: boolean;
@@ -23,41 +23,127 @@ export interface SPCResult {
   notes?: string;
 }
 
+function lensError(e: unknown, fallback: string): string {
+  const err = e as { response?: { data?: { error?: string } }; message?: string };
+  return err?.response?.data?.error || err?.message || fallback;
+}
+
+const fieldCls = 'mt-0.5 w-full min-w-[7rem] px-2 py-1 text-xs bg-[#0a0e17] border border-white/10 rounded text-white placeholder:text-gray-600';
+
 export function QualitySPC() {
   const [data, setData] = useState<SPCResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState('Widget-001');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [product, setProduct] = useState('');
+  const [value, setValue] = useState('');
+  const [subgroup, setSubgroup] = useState('');
+  // Bumps on each chart read and each logged sample so a slower chart
+  // response cannot overwrite a sample that was just logged.
+  const requestGen = useRef(0);
+
+  const load = useCallback(async (name: string): Promise<SPCResult | null> => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'spc-chart', input: { product: trimmed } });
+    if (res.data?.ok === false) {
+      throw new Error(res.data.error || 'Could not load the SPC chart.');
+    }
+    return (res.data?.result as SPCResult) || null;
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
-    (async () => {
-      try {
-        const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'spc-chart', input: { product } });
-        setData(res.data?.result as SPCResult || null);
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
-    })();
-  }, [product]);
+    const trimmed = product.trim();
+    if (!trimmed) return;
+    const gen = ++requestGen.current;
+    let cancelled = false;
+    load(trimmed).then((result) => {
+      if (cancelled || gen !== requestGen.current) return;
+      setData(result);
+      setLoading(false);
+    }).catch((e) => {
+      if (cancelled || gen !== requestGen.current) return;
+      setError(lensError(e, 'Could not load the SPC chart.'));
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [product, load]);
+
+  async function logSample(ev: FormEvent) {
+    ev.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const input: Record<string, unknown> = {
+        product: product.trim(),
+        value: value.trim(),
+      };
+      if (subgroup.trim() !== '') input.subgroup = subgroup.trim();
+      const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'spc-sample-log', input });
+      if (res.data?.ok === false) {
+        setError(res.data.error || 'Could not log sample.');
+        return;
+      }
+      setValue('');
+      const gen = ++requestGen.current;
+      const chart = await load(product);
+      if (gen === requestGen.current) {
+        setData(chart);
+        setLoading(false);
+      }
+    } catch (e) {
+      setError(lensError(e, 'Could not log sample.'));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <TrendingUp className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">SPC chart</span>
-        <select value={product} onChange={e => setProduct(e.target.value)} className="ml-auto px-2 py-0.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-          {['Widget-001', 'Widget-002', 'Tube-A', 'Plate-X', 'Bracket-12'].map(p => <option key={p}>{p}</option>)}
-        </select>
       </header>
-      {loading || !data ? (
+      <form onSubmit={logSample} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
+        <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          Product
+          <input
+            value={product}
+            onChange={(e) => {
+              const next = e.target.value;
+              setProduct(next);
+              setError(null);
+              if (next.trim()) setLoading(true);
+            }}
+            required
+            className={fieldCls}
+          />
+        </label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          Value
+          <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" required className={fieldCls} />
+        </label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          Subgroup
+          <input value={subgroup} onChange={(e) => setSubgroup(e.target.value)} className={fieldCls} />
+        </label>
+        <button type="submit" disabled={saving} className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
+          {saving ? 'Logging…' : 'Log sample'}
+        </button>
+      </form>
+      {error && <p role="alert" className="px-3 py-1.5 text-[11px] text-red-300">{error}</p>}
+      {!product.trim() ? (
+        <p className="px-4 py-6 text-center text-xs text-gray-400">Enter a product, then log gauge readings. The chart uses those samples.</p>
+      ) : loading || (data != null && data.product !== product.trim()) ? (
         <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
-      ) : (data.source !== 'wired-feed' || data.cpk == null || data.samples.length === 0) ? (
+      ) : !data || data.source !== 'wired-feed' || data.cpk == null || data.samples.length === 0 ? (
         <div className="px-4 py-6 text-center text-xs text-gray-400">
-          <p>No SPC samples for <span className="text-cyan-300 font-mono">{data.product}</span> yet.</p>
-          {data.notes && <p className="mt-1 text-[10px] text-gray-500">{data.notes}</p>}
+          <p>No SPC samples for <span className="text-cyan-300 font-mono">{data?.product || product.trim()}</span> yet.</p>
+          {data?.notes && <p className="mt-1 text-[10px] text-gray-500">{data.notes}</p>}
         </div>
       ) : (
         <>
-          <div className="p-4 grid grid-cols-4 gap-3 text-center">
+          <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="p-2 bg-white/[0.02] rounded">
               <div className={`text-xl font-bold tabular-nums ${data.cpk >= 1.33 ? 'text-green-300' : data.cpk >= 1.0 ? 'text-cyan-300' : data.cpk >= 0.67 ? 'text-yellow-300' : 'text-red-300'}`}>{data.cpk.toFixed(2)}</div>
               <div className="text-[9px] uppercase text-gray-400">Cpk (≥1.33 capable)</div>
