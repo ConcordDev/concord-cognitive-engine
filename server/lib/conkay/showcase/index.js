@@ -16,7 +16,7 @@
 // no-login, GET-only, rate-limited pattern as the beam demo.
 
 import { createHash } from "node:crypto";
-import fs from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -175,11 +175,14 @@ export async function buildCarSnapshot() {
   let model3d = null;
   const body = s.result("cad.body@BODY_SHELL");
   const stl = body?.outputs?.files?.value?.stl;
-  if (stl?.path && fs.existsSync(stl.path)) {
-    const data = fs.readFileSync(stl.path);
-    const name = `body-${sha256(data).slice(0, 12)}.stl`;
-    files.push({ name, data });
-    model3d = { name, format: "stl", bytes: data.length, sha256: sha256(data), triangles: stl.triangles ?? null, units: "m", upAxis: "z", source: `cad.body@BODY_SHELL (OpenCascade kernel ${body.outputs.kernel?.value?.requestHash || ""}); exterior skin only, no tyres or interior` };
+  if (stl?.path) {
+    let data = null;
+    try { data = await readFile(stl.path); } catch { data = null; }
+    if (data) {
+      const name = `body-${sha256(data).slice(0, 12)}.stl`;
+      files.push({ name, data });
+      model3d = { name, format: "stl", bytes: data.length, sha256: sha256(data), triangles: stl.triangles ?? null, units: "m", upAxis: "z", source: `cad.body@BODY_SHELL (OpenCascade kernel ${body.outputs.kernel?.value?.requestHash || ""}); exterior skin only, no tyres or interior` };
+    }
   }
   const values = [
     ...rep.components.map((c) => ({
@@ -400,33 +403,34 @@ const SAFE_FILE = /^[A-Za-z0-9._-]{1,120}$/;
 const cache = new Map();
 
 /** The snapshot for `id` from disk (cached), or null. */
-export function loadSnapshot(id, dir = SNAPSHOT_DIR) {
+export async function loadSnapshot(id, dir = SNAPSHOT_DIR) {
   if (!SAFE_ID.test(id) || !SHOWCASE.some((e) => e.id === id)) return null;
   const key = `${dir}:${id}`;
   if (cache.has(key)) return cache.get(key);
   let snap = null;
-  try { snap = JSON.parse(fs.readFileSync(path.join(dir, `${id}.json`), "utf8")); } catch { snap = null; }
+  try { snap = JSON.parse(await readFile(path.join(dir, `${id}.json`), "utf8")); } catch { snap = null; }
   cache.set(key, snap);
   return snap;
 }
 
 /** The index the list page shows: one card per design, or a "not built" entry. */
-export function listSnapshots(dir = SNAPSHOT_DIR) {
-  return SHOWCASE.map((e) => {
-    const s = loadSnapshot(e.id, dir);
+export async function listSnapshots(dir = SNAPSHOT_DIR) {
+  const snaps = await Promise.all(SHOWCASE.map((e) => loadSnapshot(e.id, dir)));
+  return SHOWCASE.map((e, i) => {
+    const s = snaps[i];
     if (!s) return { ...e, available: false };
     return { id: e.id, title: e.title, kind: e.kind, available: true, brief: s.brief, headline: s.headline, checkCounts: s.checkCounts, hasDrawings: s.drawings.length > 0, hasModel3d: !!s.model3d, snapshotSha256: s.snapshotSha256 };
   });
 }
 
 /** A file listed in the snapshot (and only those): { data, contentType } or null. */
-export function loadSnapshotFile(id, name, dir = SNAPSHOT_DIR) {
-  const s = loadSnapshot(id, dir);
+export async function loadSnapshotFile(id, name, dir = SNAPSHOT_DIR) {
+  const s = await loadSnapshot(id, dir);
   if (!s || !SAFE_FILE.test(name)) return null;
   const f = s.files.find((x) => x.name === name);
   if (!f) return null;
   let data;
-  try { data = fs.readFileSync(path.join(dir, id, name)); } catch { return null; }
+  try { data = await readFile(path.join(dir, id, name)); } catch { return null; }
   if (sha256(data) !== f.sha256) return null; // a file that drifted from its snapshot is not served
   const ext = path.extname(name).toLowerCase();
   const contentType = ext === ".svg" ? "image/svg+xml" : ext === ".pdf" ? "application/pdf" : ext === ".stl" ? "model/stl" : "application/octet-stream";

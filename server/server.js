@@ -2571,6 +2571,14 @@ async function tryLoadShellEnv() {
 }
 await tryLoadShellEnv();
 
+// Receipt signing keys may live in the env just loaded. Start the file read
+// now so it overlaps the rest of boot; the listen callback awaits the same
+// promise before the PM2 ready signal. Importing attest.js earlier would
+// run before dotenv and cache a miss.
+void import("./lib/receipts/attest.js").then((m) => m.ensureSigningKey()).catch((err) => {
+  console.warn(`[receipts] signing key warm failed (${err instanceof Error ? err.message : "invalid"}). Receipts will be unsigned.`);
+});
+
 // ============================================================================
 // PRODUCTION INFRASTRUCTURE
 // ============================================================================
@@ -74462,11 +74470,22 @@ if (READ_REPLICA && db) {
 
 const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   structuredLog("info", "server_listening", { url: `http://localhost:${PORT}`, statusUrl: `http://localhost:${PORT}/api/status` });
-  // Signal PM2 that we're ready to accept connections (ecosystem.config has wait_ready: true)
-  if (typeof process.send === "function") {
-    process.send("ready");
-    structuredLog("info", "pm2_ready_signal_sent", {});
-  }
+  const signalReady = () => {
+    // Signal PM2 that we're ready to accept connections (ecosystem.config has wait_ready: true)
+    if (typeof process.send === "function") {
+      process.send("ready");
+      structuredLog("info", "pm2_ready_signal_sent", {});
+    }
+  };
+  // File-backed receipt keys are read asynchronously. Hold the PM2 ready
+  // signal until that read settles so the first signed response sees the key.
+  // A missing key still signals ready: receipts stay unsigned, with a reason.
+  import("./lib/receipts/attest.js")
+    .then((m) => m.ensureSigningKey())
+    .then(signalReady, (err) => {
+      structuredLog("warn", "receipt_signing_key_warm_failed", { error: String(err?.message || err) });
+      signalReady();
+    });
 }) : null;
 
 // HTTP keep-alive timeouts. Node defaults (keepAliveTimeout=5s,

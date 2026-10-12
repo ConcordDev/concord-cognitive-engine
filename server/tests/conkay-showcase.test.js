@@ -19,8 +19,8 @@ const sha = (b) => createHash("sha256").update(b).digest("hex");
 
 describe("showcase snapshots", () => {
   for (const entry of SHOWCASE) {
-    it(`${entry.id}: built, hashed, every value has a status`, () => {
-      const s = loadSnapshot(entry.id);
+    it(`${entry.id}: built, hashed, every value has a status`, async () => {
+      const s = await loadSnapshot(entry.id);
       assert.ok(s, `${entry.id}.json missing: run node scripts/build-conkay-showcase.mjs`);
       const { snapshotSha256, ...body } = s;
       assert.equal(sha(JSON.stringify(body)), snapshotSha256, "snapshot hash");
@@ -37,14 +37,14 @@ describe("showcase snapshots", () => {
     });
   }
 
-  it("the nuclear snapshot is labelled screening-only", () => {
-    const s = loadSnapshot("nuscale-us600");
+  it("the nuclear snapshot is labelled screening-only", async () => {
+    const s = await loadSnapshot("nuscale-us600");
     assert.ok(s.disclaimers.some((d) => /screening-only/i.test(d)));
     assert.ok(s.values.filter((v) => v.status === "unknown").length > 0, "FSAR gaps stay unknown");
   });
 
-  it("the car carries its drawing, its kernel mesh and its mass by state", () => {
-    const s = loadSnapshot("car");
+  it("the car carries its drawing, its kernel mesh and its mass by state", async () => {
+    const s = await loadSnapshot("car");
     assert.equal(s.drawings.length, 1);
     assert.ok(s.drawings[0].files.some((f) => f.kind === "pdf"));
     assert.equal(s.model3d?.format, "stl");
@@ -58,31 +58,31 @@ describe("showcase snapshots", () => {
     it(`${id}: a rebuild equals the committed snapshot`, async () => {
       const built = await BUILDERS[id]();
       const snap = finalizeSnapshot(SHOWCASE.find((e) => e.id === id), built.snapshot, built.files);
-      assert.equal(snap.snapshotSha256, loadSnapshot(id).snapshotSha256, `${id} snapshot is stale: run node scripts/build-conkay-showcase.mjs ${id}`);
+      assert.equal(snap.snapshotSha256, (await loadSnapshot(id)).snapshotSha256, `${id} snapshot is stale: run node scripts/build-conkay-showcase.mjs ${id}`);
     });
   }
 });
 
 describe("serving", () => {
-  it("lists every design and serves only listed files whose hash matches", () => {
-    assert.deepEqual(listSnapshots().map((d) => d.id), SHOWCASE.map((e) => e.id));
-    assert.equal(loadSnapshot("../car"), null);
-    assert.equal(loadSnapshot("unknown-design"), null);
-    const s = loadSnapshot("nuscale-us600");
-    const f = loadSnapshotFile("nuscale-us600", s.files[0].name);
+  it("lists every design and serves only listed files whose hash matches", async () => {
+    assert.deepEqual((await listSnapshots()).map((d) => d.id), SHOWCASE.map((e) => e.id));
+    assert.equal(await loadSnapshot("../car"), null);
+    assert.equal(await loadSnapshot("unknown-design"), null);
+    const s = await loadSnapshot("nuscale-us600");
+    const f = await loadSnapshotFile("nuscale-us600", s.files[0].name);
     assert.equal(f.contentType, "image/svg+xml");
-    assert.equal(loadSnapshotFile("nuscale-us600", "../car.json"), null);
-    assert.equal(loadSnapshotFile("nuscale-us600", "car.json"), null);
+    assert.equal(await loadSnapshotFile("nuscale-us600", "../car.json"), null);
+    assert.equal(await loadSnapshotFile("nuscale-us600", "car.json"), null);
   });
 
-  it("refuses a file that drifted from its snapshot", () => {
+  it("refuses a file that drifted from its snapshot", async () => {
     const tmp = fs.mkdtempSync(path.join(SNAPSHOT_DIR, "..", ".tmp-"));
     try {
-      const s = loadSnapshot("nuscale-us600");
+      const s = await loadSnapshot("nuscale-us600");
       fs.writeFileSync(path.join(tmp, "nuscale-us600.json"), JSON.stringify(s));
       fs.mkdirSync(path.join(tmp, "nuscale-us600"));
       fs.writeFileSync(path.join(tmp, "nuscale-us600", s.files[0].name), "<svg>tampered</svg>");
-      assert.equal(loadSnapshotFile("nuscale-us600", s.files[0].name, tmp), null);
+      assert.equal(await loadSnapshotFile("nuscale-us600", s.files[0].name, tmp), null);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
