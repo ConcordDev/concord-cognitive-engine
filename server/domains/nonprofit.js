@@ -9,7 +9,22 @@
 // real ProPublica Nonprofit Explorer integration for org details +
 // search.
 
+import { writeGmailMessage } from "../lib/connector-client.js";
+
 const PROPUBLICA_BASE = "https://projects.propublica.org/nonprofits/api/v2";
+
+// Test-only mail transport seam (never set in production). Same shape as
+// events.js blast-send: when unset, delivery goes through writeGmailMessage.
+let testMailer = null;
+export function _setNonprofitMailerForTest(fn) { testMailer = typeof fn === "function" ? fn : null; }
+
+// Missing Gmail (no token, no connector, expired auth) is one donor-facing
+// reason. Other transport failures keep their own reason.
+const GMAIL_UNLINKED = new Set(["no_token", "connector_not_configured", "no_gmail_linked", "reauth_required", "auth_expired"]);
+function mailFailureReason(sent) {
+  const r = String(sent?.reason || "send_failed");
+  return GMAIL_UNLINKED.has(r) ? "no_gmail_linked" : r;
+}
 
 export default function registerNonprofitActions(registerLensAction) {
   registerLensAction("nonprofit", "donorRetention", (ctx, artifact, params) => {
@@ -365,7 +380,30 @@ export default function registerNonprofitActions(registerLensAction) {
 
   // ═══════════════════════════════════════════════════════════════════
   // FEATURE: Email / communications — thank-you automation, appeals, receipts
+  // Delivery is the organiser's linked Gmail (writeGmailMessage). A comm is
+  // "sent" only when that call accepts the message. Otherwise the log row
+  // is status "not_sent" with reason no_email or no_gmail_linked.
   // ═══════════════════════════════════════════════════════════════════
+  async function deliverDonorMail(ctx, donor, mail) {
+    const email = npClean(donor?.email, 160);
+    if (!email || !email.includes("@")) return { ok: false, reason: "no_email" };
+    const payload = {
+      to: donor.name ? `${donor.name} <${email}>` : email,
+      subject: mail.subject,
+      body: mail.body,
+    };
+    try {
+      const userId = npActor(ctx);
+      const sent = testMailer
+        ? await testMailer(payload)
+        : (ctx?.db ? await writeGmailMessage(ctx.db, userId, payload) : { ok: false, reason: "no_gmail_linked" });
+      if (sent?.ok) return { ok: true };
+      return { ok: false, reason: mailFailureReason(sent) };
+    } catch (e) {
+      return { ok: false, reason: mailFailureReason({ reason: e instanceof Error ? e.message : String(e) }) };
+    }
+  }
+
   function composeMessage(kind, donor, params) {
     const name = donor.name.split(" ")[0] || donor.name;
     if (kind === "thank_you") {
@@ -386,7 +424,7 @@ export default function registerNonprofitActions(registerLensAction) {
       body: npClean(params.body, 4000) || `Dear ${name},\n\n` };
   }
 
-  registerLensAction("nonprofit", "comm-send", (ctx, _a, params = {}) => {
+  registerLensAction("nonprofit", "comm-send", async (ctx, _a, params = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const donors = npList(npMap(s, "donors"), npActor(ctx));
@@ -394,11 +432,27 @@ export default function registerNonprofitActions(registerLensAction) {
       if (!d) return { ok: false, error: "donor not found" };
       const kind = ["thank_you", "appeal", "receipt", "custom"].includes(params.kind) ? params.kind : "custom";
       const msg = composeMessage(kind, d, params);
-      const comm = { id: npId("cmm"), kind, channel: npClean(params.channel, 20) || "email",
-        subject: msg.subject, body: msg.body, sentAt: npIso() };
+      const delivered = await deliverDonorMail(ctx, d, msg);
+      const comm = {
+        id: npId("cmm"), kind, channel: npClean(params.channel, 20) || "email",
+        subject: msg.subject, body: msg.body,
+        status: delivered.ok ? "sent" : "not_sent",
+        reason: delivered.ok ? null : delivered.reason,
+        sentAt: delivered.ok ? npIso() : null,
+        attemptedAt: npIso(),
+      };
       d.comms.push(comm);
       saveNonprofit();
-      return { ok: true, result: { comm, donor: d.name } };
+      return {
+        ok: true,
+        result: {
+          comm, donor: d.name,
+          status: comm.status,
+          reason: comm.reason,
+          sent: delivered.ok ? 1 : 0,
+          notSent: delivered.ok ? 0 : 1,
+        },
+      };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -423,26 +477,43 @@ export default function registerNonprofitActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
-  // Thank-you automation — finds unacknowledged gifts and queues thank-yous.
-  registerLensAction("nonprofit", "thankyou-run", (ctx, _a, _p = {}) => {
+  // Thank-you sweep — emails each donor with unacknowledged gifts from the
+  // organiser's Gmail. ackSent flips only when that message is accepted.
+  registerLensAction("nonprofit", "thankyou-run", async (ctx, _a, _p = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const donors = npList(npMap(s, "donors"), npActor(ctx));
       let sent = 0;
-      const queued = [];
+      let notSent = 0;
+      const reasons = [];
       for (const d of donors) {
         const pending = d.gifts.filter((g) => !g.ackSent);
         if (!pending.length) continue;
         const msg = composeMessage("thank_you", d, {});
-        const comm = { id: npId("cmm"), kind: "thank_you", channel: "email",
-          subject: msg.subject, body: msg.body, sentAt: npIso(), auto: true };
+        const delivered = await deliverDonorMail(ctx, d, msg);
+        const comm = {
+          id: npId("cmm"), kind: "thank_you", channel: "email",
+          subject: msg.subject, body: msg.body, auto: true,
+          status: delivered.ok ? "sent" : "not_sent",
+          reason: delivered.ok ? null : delivered.reason,
+          sentAt: delivered.ok ? npIso() : null,
+          attemptedAt: npIso(),
+          giftIds: pending.map((g) => g.id),
+        };
         d.comms.push(comm);
-        pending.forEach((g) => { g.ackSent = true; });
-        sent += 1;
-        queued.push({ donor: d.name, gifts: pending.length });
+        if (delivered.ok) {
+          pending.forEach((g) => { g.ackSent = true; });
+          sent += 1;
+        } else {
+          notSent += 1;
+          reasons.push({
+            donor: d.name, donorId: d.id, gifts: pending.length,
+            status: "not_sent", reason: delivered.reason,
+          });
+        }
       }
       saveNonprofit();
-      return { ok: true, result: { sent, queued } };
+      return { ok: true, result: { sent, notSent, reasons } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -570,7 +641,14 @@ export default function registerNonprofitActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
-  // Process a scheduled recurring payment — credits the pledge + a gift.
+  // Record a pledge installment the organisation already received.
+  // Offline methods only. A card, ACH, or processor method is refused:
+  // this action does not create or confirm a Stripe PaymentIntent.
+  const OFFLINE_PLEDGE_METHODS = ["check", "cash", "wire", "money_order", "other"];
+  const PROCESSOR_PLEDGE_METHODS = new Set([
+    "card", "credit", "credit_card", "debit", "debit_card", "stripe", "processor",
+    "recurring", "ach", "visa", "mastercard", "amex", "paypal",
+  ]);
   registerLensAction("nonprofit", "pledge-charge", (ctx, _a, params = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -580,13 +658,26 @@ export default function registerNonprofitActions(registerLensAction) {
       const p = d.pledges.find((x) => x.id === params.pledgeId);
       if (!p) return { ok: false, error: "pledge not found" };
       if (p.status !== "active") return { ok: false, error: "pledge is not active" };
+      if (params.paymentIntentId || params.stripePaymentIntentId) {
+        return { ok: false, error: "a Stripe PaymentIntent is not verified here; record the offline payment you already received" };
+      }
+      const requested = npClean(params.method, 40).toLowerCase().replace(/[\s-]+/g, "_");
+      if (PROCESSOR_PLEDGE_METHODS.has(requested)) {
+        return { ok: false, error: "card and processor charges are not taken here; record a payment you already received (check, cash, wire, money_order, or other)" };
+      }
+      if (!OFFLINE_PLEDGE_METHODS.includes(requested)) {
+        return { ok: false, error: "method must be an offline method you already received (check, cash, wire, money_order, other)" };
+      }
       p.paid += p.amount; p.payments += 1; p.nextDue = nextDue(p.frequency, null);
-      const gift = { id: npId("gft"), amount: p.amount, at: npIso(),
-        fund: p.fund, campaign: "", method: "recurring", pledgeId: p.id,
-        receiptIssued: false, ackSent: false };
+      const gift = {
+        id: npId("gft"), amount: p.amount, at: npIso(),
+        fund: p.fund, campaign: "", method: requested, pledgeId: p.id,
+        recordedManually: true, paymentLabel: "recorded manually",
+        receiptIssued: false, ackSent: false,
+      };
       d.gifts.push(gift);
       saveNonprofit();
-      return { ok: true, result: { pledge: p, gift } };
+      return { ok: true, result: { pledge: p, gift, recordedManually: true, paymentLabel: "recorded manually" } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

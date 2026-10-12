@@ -7,6 +7,25 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
+// No carrier key: either an honest not-configured error, or a geocoded
+// estimate that is explicitly not a carrier quote. Never guaranteed:true.
+function assertHonestRatesQuote(body) {
+  assert.equal(JSON.stringify(body).includes('"guaranteed":true'), false);
+  if (body?.ok === false) {
+    assert.equal(body.error, "carrier_rates_not_configured");
+    assert.ok(body.distanceMi == null);
+    return;
+  }
+  assert.equal(body.estimate, true);
+  assert.equal(body.guaranteed, false);
+  assert.equal(body.label, "not a carrier quote");
+  for (const quote of body.quotes || []) {
+    assert.notEqual(quote.guaranteed, true);
+    assert.equal(quote.estimate, true);
+    assert.ok(quote.rateUsd == null);
+  }
+}
+
 describe("logistics — calc contracts (exact computed values)", () => {
   it("maintenanceDue: a vehicle past its mileage interval is flagged overdue", async () => {
     const r = await lensRun("logistics", "maintenanceDue", {
@@ -64,12 +83,56 @@ describe("logistics — CRUD round-trips + validation (shared ctx)", () => {
     assert.equal(got.result.shipment.status, "in_transit");
   });
 
-  it("rates-quote: returns priced quotes once a carrier exists (deterministic)", async () => {
-    // the carrier added earlier in this shared-ctx block supports ltl
-    const q = await lensRun("logistics", "rates-quote", { params: { origin: "NYC", destination: "LA", mode: "ltl", weightLbs: 500 } }, ctx);
-    assert.equal(q.ok, true);
-    assert.ok(Array.isArray(q.result.quotes) && q.result.quotes.length >= 1);
-    assert.ok(q.result.quotes[0].rateUsd > 0);
+  it("rates-quote: no carrier key is not_configured or an unguaranteed estimate; Albany stays under 50 mi", async () => {
+    // the carrier added earlier in this shared-ctx block supports parcel and ltl
+    const savedShip = process.env.SHIPENGINE_API_KEY;
+    const savedEasy = process.env.EASYPOST_API_KEY;
+    delete process.env.SHIPENGINE_API_KEY;
+    delete process.env.EASYPOST_API_KEY;
+    try {
+      const q = await lensRun("logistics", "rates-quote", { params: { origin: "NYC", destination: "LA", mode: "ltl", weightLbs: 500 } }, ctx);
+      assertHonestRatesQuote(q.result);
+      const albany = await lensRun("logistics", "rates-quote", { params: { origin: "Albany NY", destination: "Albany NY", mode: "parcel", weightLbs: 5 } }, ctx);
+      assertHonestRatesQuote(albany.result);
+      const dist = albany.result?.distanceMi;
+      if (dist != null) assert.ok(dist <= 50, `Albany NY → Albany NY distance was ${dist} mi`);
+    } finally {
+      if (savedShip == null) delete process.env.SHIPENGINE_API_KEY;
+      else process.env.SHIPENGINE_API_KEY = savedShip;
+      if (savedEasy == null) delete process.env.EASYPOST_API_KEY;
+      else process.env.EASYPOST_API_KEY = savedEasy;
+    }
+  });
+
+  it("rates-quote: two-account isolation — foreign account cannot quote on owner carriers", async () => {
+    const owner = await depthCtx("logistics-rates-owner");
+    const foreign = await depthCtx("logistics-rates-foreign");
+    const savedShip = process.env.SHIPENGINE_API_KEY;
+    const savedEasy = process.env.EASYPOST_API_KEY;
+    delete process.env.SHIPENGINE_API_KEY;
+    delete process.env.EASYPOST_API_KEY;
+    try {
+      const add = await lensRun("logistics", "carriers-add", {
+        params: { name: "Owner UPS", code: "UPS", modes: ["parcel"] },
+      }, owner);
+      assert.equal(add.ok, true);
+      const carrierId = add.result.carrier.id;
+      const lonely = await lensRun("logistics", "rates-quote", {
+        params: { origin: "Albany NY", destination: "Boston MA", mode: "parcel", weightLbs: 5 },
+      }, foreign);
+      // Outer ok is dispatch; handler verdict is in result.
+      assert.equal(lonely.result.ok, false);
+      assert.match(lonely.result.error, /no carriers configured/);
+      const dump = JSON.stringify(lonely);
+      assert.equal(dump.includes(carrierId), false, "owner carrier id must not leak to foreign quote");
+      assert.equal(dump.includes(owner.actor.userId), false, "owner user id must not appear in foreign payload");
+      assert.equal(dump.includes(foreign.actor.userId), false, "actor user id must not appear in rates-quote errors");
+    } finally {
+      if (savedShip == null) delete process.env.SHIPENGINE_API_KEY;
+      else process.env.SHIPENGINE_API_KEY = savedShip;
+      if (savedEasy == null) delete process.env.EASYPOST_API_KEY;
+      else process.env.EASYPOST_API_KEY = savedEasy;
+    }
   });
 
   // NB: lens.run wraps a handler's {ok:false,error} as {ok:true, result:{ok:false,error}}

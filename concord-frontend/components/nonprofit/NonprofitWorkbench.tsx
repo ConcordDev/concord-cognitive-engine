@@ -23,19 +23,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Users, Repeat, Mail, Receipt, Globe, HeartHandshake, Trophy,
   Plus, Trash2, Loader2, X, ChevronDown, ChevronRight,
-  CheckCircle2, FileText, Send, CreditCard, PauseCircle, PlayCircle, Pencil, Target,
+  CheckCircle2, FileText, Send, PauseCircle, PlayCircle, Pencil, Target,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { commSendFeedback, commStatusLabel, thankYouSweepLines } from '@/components/nonprofit/nonprofitMail';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 type WBTab = 'crm' | 'recurring' | 'comms' | 'receipts' | 'pages' | 'volunteers' | 'events';
 
-interface Gift { id: string; amount: number; at: string; fund: string; campaign: string; method: string; receiptIssued: boolean; ackSent: boolean }
+interface Gift { id: string; amount: number; at: string; fund: string; campaign: string; method: string; receiptIssued: boolean; ackSent: boolean; recordedManually?: boolean; paymentLabel?: string }
 interface Pledge { id: string; amount: number; frequency: string; status: string; paid: number; payments: number; nextDue: string; fund: string; donorId?: string; donorName?: string }
-interface Comm { id: string; kind: string; channel: string; subject: string; body: string; sentAt: string }
+interface Comm { id: string; kind: string; channel: string; subject: string; body: string; sentAt: string | null; status?: 'sent' | 'not_sent'; reason?: string | null }
 interface Donor {
   id: string; name: string; email: string; phone: string; address: string; type: string; notes: string;
   gifts: Gift[]; comms: Comm[]; pledges: Pledge[];
@@ -293,6 +294,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                     {d.gifts.map(g => (
                       <p key={g.id} className="text-[11px] text-zinc-400">
                         <span className="text-emerald-400">{money(g.amount)}</span> · {shortDate(g.at)} · {g.fund} · {g.method}
+                        {g.recordedManually && <span> · recorded manually</span>}
                         {g.receiptIssued && <span className="text-cyan-400"> · receipted</span>}
                       </p>
                     ))}
@@ -303,7 +305,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-0.5">Communications ({d.comms.length})</p>
                     {d.comms.slice(-4).map(c => (
-                      <p key={c.id} className="text-[11px] text-zinc-400 truncate">{c.kind.replace(/_/g, ' ')} · {c.subject} · {shortDate(c.sentAt)}</p>
+                      <p key={c.id} className="text-[11px] text-zinc-400 truncate">{c.kind.replace(/_/g, ' ')} · {commStatusLabel(c)} · {c.subject}</p>
                     ))}
                   </div>
                 )}
@@ -332,6 +334,8 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
   const [pledges, setPledges] = useState<Pledge[]>([]);
   const [meta, setMeta] = useState<{ count: number; active: number; monthlyValue: number } | null>(null);
   const [form, setForm] = useState({ donorId: '', amount: '', frequency: 'monthly', fund: 'General' });
+  const [payMethod, setPayMethod] = useState('check');
+  const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -354,8 +358,13 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
     await lensRun('nonprofit', 'pledge-update', { donorId: p.donorId, pledgeId: p.id, status: p.status === 'active' ? 'paused' : 'active' });
     await refresh();
   };
-  const charge = async (p: Pledge) => {
-    await lensRun('nonprofit', 'pledge-charge', { donorId: p.donorId, pledgeId: p.id });
+  const recordPayment = async (p: Pledge) => {
+    const r = await lensRun('nonprofit', 'pledge-charge', { donorId: p.donorId, pledgeId: p.id, method: payMethod });
+    if (r.data?.ok && r.data.result?.recordedManually) {
+      setNote(`Recorded ${money(p.amount)} by ${payMethod.replace(/_/g, ' ')} from ${p.donorName}. Recorded manually.`);
+    } else {
+      setNote(r.data?.error || 'Not recorded.');
+    }
     await refresh(); await reloadDonors();
   };
   const cancel = async (p: Pledge) => {
@@ -386,19 +395,32 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
 
       {donors.length === 0 && <p className="text-[10px] text-amber-400">Add donors in the CRM tab first — recurring pledges attach to a donor.</p>}
       {pledges.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No recurring pledges yet.</p>}
+      {pledges.length > 0 && (
+        <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+          Method received
+          <select aria-label="Payment method received" value={payMethod} onChange={e => setPayMethod(e.target.value)} className={inp}>
+            <option value="check">Check</option>
+            <option value="cash">Cash</option>
+            <option value="wire">Wire</option>
+            <option value="money_order">Money order</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      )}
+      {note && <p role="status" className="text-[11px] text-zinc-300">{note}</p>}
       <ul className="space-y-1">
         {pledges.map(p => (
           <li key={p.id} className={`${card} px-3 py-2 flex items-center gap-2`}>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-100 truncate">{p.donorName} · {money(p.amount)} / {p.frequency}</p>
               <p className="text-[10px] text-zinc-400">
-                {money(p.paid)} paid over {p.payments} charge(s) · next {shortDate(p.nextDue)} · {p.fund}
+                {money(p.paid)} recorded over {p.payments} payment(s) · next {shortDate(p.nextDue)} · {p.fund}
                 <span className={p.status === 'active' ? ' text-emerald-400' : p.status === 'paused' ? ' text-amber-400' : ' text-zinc-400'}> · {p.status}</span>
               </p>
             </div>
             {p.status !== 'cancelled' && (
               <>
-                <button onClick={() => charge(p)} disabled={p.status !== 'active'} className={btnS} title="Process scheduled payment"><CreditCard className="w-3 h-3 inline" /> Charge</button>
+                <button onClick={() => recordPayment(p)} disabled={p.status !== 'active'} className={btnS} title="Record a payment you already received"><Receipt className="w-3 h-3 inline" /> Record payment</button>
                 <button onClick={() => toggle(p)} className={btnS} title={p.status === 'active' ? 'Pause' : 'Resume'}>
                   {p.status === 'active' ? <PauseCircle className="w-3 h-3 inline" /> : <PlayCircle className="w-3 h-3 inline" />}
                 </button>
@@ -423,7 +445,7 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
   const [body, setBody] = useState('');
   const [preview, setPreview] = useState<{ subject: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [autoResult, setAutoResult] = useState<{ sent: number; queued: { donor: string; gifts: number }[] } | null>(null);
+  const [autoLines, setAutoLines] = useState<string[] | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [fullLog, setFullLog] = useState<{ donor: string; comms: Comm[] } | null>(null);
   const [logBusy, setLogBusy] = useState(false);
@@ -446,14 +468,16 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
     if (!donorId) { setFeedback('Pick a donor to send to.'); return; }
     setBusy(true); setFeedback(null);
     const r = await lensRun('nonprofit', 'comm-send', { donorId, kind, cause, subject, body });
-    if (r.data?.ok) { setFeedback(`Sent ${kind.replace(/_/g, ' ')} to ${r.data.result?.donor}.`); setPreview(null); await reloadDonors(); }
-    else setFeedback(r.data?.error || 'Send failed.');
+    setFeedback(commSendFeedback(kind, r.data));
+    if (r.data?.ok && (r.data.result?.status === 'sent' || r.data.result?.comm?.status === 'sent')) setPreview(null);
+    if (r.data?.ok) await reloadDonors();
     setBusy(false);
   };
   const runThankYou = async () => {
     setBusy(true); setFeedback(null);
     const r = await lensRun('nonprofit', 'thankyou-run', {});
-    if (r.data?.ok) { setAutoResult({ sent: r.data.result?.sent ?? 0, queued: (r.data.result?.queued as { donor: string; gifts: number }[]) || [] }); await reloadDonors(); }
+    if (r.data?.ok) { setAutoLines(thankYouSweepLines(r.data.result)); await reloadDonors(); }
+    else setAutoLines([r.data?.error || 'Thank-you sweep failed.']);
     setBusy(false);
   };
 
@@ -461,12 +485,11 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
     <div className="space-y-3">
       <div className={`${card} p-2.5`}>
         <p className="text-xs font-semibold text-zinc-200 mb-1.5">Thank-you automation</p>
-        <p className="text-[10px] text-zinc-400 mb-1.5">Finds every gift not yet acknowledged and queues a thank-you to that donor.</p>
+        <p className="text-[10px] text-zinc-400 mb-1.5">Emails a thank-you from your linked Gmail for every gift that has not been acknowledged. Gifts stay unacknowledged until Gmail accepts the message.</p>
         <button onClick={runThankYou} disabled={busy} className={btnP}>{busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <><Send className="w-3 h-3 inline" /> Run thank-you sweep</>}</button>
-        {autoResult && (
-          <div className="mt-2 text-[11px] text-zinc-300">
-            {autoResult.sent === 0 ? 'All gifts already acknowledged.' : `Queued ${autoResult.sent} thank-you message(s):`}
-            {autoResult.queued.map((q, i) => <p key={i} className="text-zinc-400">· {q.donor} ({q.gifts} gift{q.gifts !== 1 ? 's' : ''})</p>)}
+        {autoLines && (
+          <div className="mt-2 text-[11px] text-zinc-300" role="status">
+            {autoLines.map((line, i) => <p key={i} className={line.startsWith('Sent ') ? 'text-emerald-400' : 'text-amber-300'}>{line}</p>)}
           </div>
         )}
       </div>
@@ -508,11 +531,11 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
             <p className="text-[11px] font-semibold text-zinc-200">{fullLog.donor} — {fullLog.comms.length} communication(s)</p>
             {fullLog.comms.length === 0 && <p className="text-[10px] text-zinc-400 italic">No communications logged yet.</p>}
             {fullLog.comms.map((c) => (
-              <p key={c.id} className="text-[10px] text-zinc-400">{c.kind.replace(/_/g, ' ')} · {c.channel} · {c.subject} · {shortDate(c.sentAt)}</p>
+              <p key={c.id} className="text-[10px] text-zinc-400">{c.kind.replace(/_/g, ' ')} · {c.channel} · {commStatusLabel(c)} · {c.subject}</p>
             ))}
           </div>
         )}
-        {feedback && <p className="text-[11px] text-emerald-400">{feedback}</p>}
+        {feedback && <p role="status" className={`text-[11px] ${feedback.startsWith('Sent ') ? 'text-emerald-400' : 'text-amber-300'}`}>{feedback}</p>}
       </div>
     </div>
   );

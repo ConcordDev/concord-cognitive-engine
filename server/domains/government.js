@@ -1,6 +1,7 @@
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
+import { createPaymentIntent, isStripeSecretConfigured, retrievePaymentIntent } from "../lib/stripe.js";
 
 // api.congress.gov member-list `state` is the full name (swagger example
 // "Vermont"), not the postal code. Used to drop members the state-scoped
@@ -740,11 +741,23 @@ export default function registerGovernmentActions(registerLensAction) {
     const permit = ensureGovBucket(s, "permits", userId).find(p => p.id === id);
     if (!permit) return { ok: false, error: "permit not found" };
     if (permit.paid) return { ok: false, error: "fee already paid" };
+    // A bare call used to set paid=true with no tender at all, which then
+    // unlocked permits-approve. This action is an explicit clerk/owner
+    // offline record (cash, check, money order). It is never a card charge.
+    const method = String(params.method || "").trim().toLowerCase();
+    if (method !== "offline") {
+      return {
+        ok: false,
+        error: "offline_method_required",
+        message: "permits-pay-fee records an offline payment by the permit owner or clerk. Pass method \"offline\". It does not charge a card.",
+      };
+    }
     permit.paid = true;
     permit.paidAt = new Date().toISOString();
+    permit.paymentMethod = "offline";
     if (permit.status === "applied") permit.status = "under_review";
     saveGovState();
-    return { ok: true, result: { permit } };
+    return { ok: true, result: { permit, method: "offline" } };
   });
 
   registerLensAction("government", "permits-approve", (ctx, _a, params = {}) => {
@@ -1008,9 +1021,11 @@ export default function registerGovernmentActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────
 
   // ── (1) Online payment processing — permit fees / fines ─────
-  // No external gateway is wired (no key shipped); this is a real
-  // in-platform payment ledger: a checkout intent is created, then
-  // confirmed with a tokenized payment method. Records every cent.
+  // A checkout row is only a pending ledger entry. payments-confirm
+  // marks it succeeded, issues a receipt, sets the target paid, and
+  // queues "payment received" only after Stripe reports the
+  // PaymentIntent status succeeded. A payment-method token is not a
+  // charge. Placeholder STRIPE_SECRET_KEY values are not configured.
 
   function findPayableAcrossBuckets(s, userId, kind, refId) {
     if (kind === "permit") {
@@ -1054,7 +1069,13 @@ export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "payments-list", (ctx, _a, _p = {}) => {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = govActor(ctx);
-    return { ok: true, result: { payments: ensureGovBucket(s, "payments", userId).slice().reverse() } };
+    return {
+      ok: true,
+      result: {
+        payments: ensureGovBucket(s, "payments", userId).slice().reverse(),
+        stripeConfigured: isStripeSecretConfigured(),
+      },
+    };
   });
 
   registerLensAction("government", "payments-checkout", (ctx, _a, params = {}) => {
@@ -1082,41 +1103,137 @@ export default function registerGovernmentActions(registerLensAction) {
     };
     ensureGovBucket(s, "payments", userId).push(intent);
     saveGovState();
-    return { ok: true, result: { payment: intent } };
+    return { ok: true, result: { payment: intent, stripeConfigured: isStripeSecretConfigured() } };
   });
 
-  registerLensAction("government", "payments-confirm", (ctx, _a, params = {}) => {
-  try {
-    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = govActor(ctx);
-    const paymentId = String(params.paymentId || "");
-    const methodToken = String(params.methodToken || "").trim();
-    const cardLast4 = String(params.cardLast4 || "").replace(/\D/g, "").slice(-4);
-    if (!methodToken) return { ok: false, error: "methodToken required (tokenized payment method)" };
-    if (cardLast4.length !== 4) return { ok: false, error: "cardLast4 must be 4 digits" };
-    const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
-    if (!payment) return { ok: false, error: "payment not found" };
-    if (payment.status === "succeeded") return { ok: false, error: "payment already confirmed" };
-    const target = findPayableAcrossBuckets(s, userId, payment.kind, payment.refId);
-    if (!target) return { ok: false, error: "payable record no longer exists" };
-    payment.status = "succeeded";
-    payment.confirmedAt = new Date().toISOString();
-    payment.cardLast4 = cardLast4;
-    payment.receiptNumber = `RCPT-${new Date().getFullYear()}-${payment.id.slice(-6).toUpperCase()}`;
-    target.paid = true;
-    target.paidAt = payment.confirmedAt;
-    target.paymentId = payment.id;
-    if (payment.kind === "permit" && target.status === "applied") target.status = "under_review";
-    // case-status notification on payment
-    queueGovNotification(s, userId, {
-      kind: "payment_received",
-      subjectKind: payment.kind, subjectId: payment.refId,
-      message: `Payment of $${payment.amountUsd.toFixed(2)} received — receipt ${payment.receiptNumber}.`,
-    });
-    saveGovState();
-    return { ok: true, result: { payment } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  registerLensAction("government", "payments-create-intent", async (ctx, _a, params = {}) => {
+    try {
+      const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = govActor(ctx);
+      // Bucket lookup first — another account must get "payment not found"
+      // (same shape as payments-confirm), not a Stripe-config signal.
+      const paymentId = String(params.paymentId || "");
+      const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
+      if (!payment) return { ok: false, error: "payment not found" };
+      if (!isStripeSecretConfigured()) {
+        return { ok: false, error: "stripe_not_configured", message: "payment capture not wired" };
+      }
+      if (payment.status !== "pending") return { ok: false, error: "payment is not pending" };
+      const amountCents = Math.round(Number(payment.amountUsd) * 100);
+      if (amountCents < 50) return { ok: false, error: "amount below Stripe minimum ($0.50 USD)" };
+
+      if (payment.stripePaymentIntentId) {
+        try {
+          const existing = await retrievePaymentIntent(payment.stripePaymentIntentId);
+          if (!existing?.client_secret) return { ok: false, error: "stripe_intent_failed", message: "Stripe did not return a client secret" };
+          return {
+            ok: true,
+            result: { clientSecret: existing.client_secret, paymentIntentId: existing.id, paymentId: payment.id, status: existing.status },
+          };
+        } catch (e) {
+          return { ok: false, error: "payment_intent_unverified", message: e instanceof Error ? e.message : "stripe payment-intent fetch failed" };
+        }
+      }
+
+      let pi;
+      try {
+        pi = await createPaymentIntent({
+          amount: String(amountCents),
+          currency: "usd",
+          "automatic_payment_methods[enabled]": "true",
+          description: String(payment.description || "Government fee"),
+          "metadata[concord_user_id]": userId,
+          "metadata[concord_purpose]": "government_fee",
+          "metadata[concord_payment_id]": payment.id,
+          "metadata[concord_kind]": String(payment.kind || ""),
+          "metadata[concord_ref_id]": String(payment.refId || ""),
+        });
+      } catch (e) {
+        return { ok: false, error: "stripe_intent_failed", message: e instanceof Error ? e.message : "stripe payment-intent creation failed" };
+      }
+      if (!pi?.id || !pi.client_secret) {
+        return { ok: false, error: "stripe_intent_failed", message: "Stripe did not return a PaymentIntent" };
+      }
+      payment.stripePaymentIntentId = pi.id;
+      saveGovState();
+      return {
+        ok: true,
+        result: { clientSecret: pi.client_secret, paymentIntentId: pi.id, paymentId: payment.id, status: pi.status },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("government", "payments-confirm", async (ctx, _a, params = {}) => {
+    try {
+      const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = govActor(ctx);
+      const paymentId = String(params.paymentId || "");
+      const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
+      if (!payment) return { ok: false, error: "payment not found" };
+      if (payment.status === "succeeded") return { ok: false, error: "payment already confirmed" };
+      if (payment.status !== "pending") return { ok: false, error: "payment is not pending" };
+      const target = findPayableAcrossBuckets(s, userId, payment.kind, payment.refId);
+      if (!target) return { ok: false, error: "payable record no longer exists" };
+
+      // No mutation past this point unless Stripe has a succeeded charge.
+      if (!isStripeSecretConfigured()) {
+        return { ok: false, error: "stripe_not_configured", message: "payment capture not wired" };
+      }
+      const explicit = String(params.paymentIntentId || "").trim();
+      const token = String(params.methodToken || "").trim();
+      const paymentIntentId = explicit || (token.startsWith("pi_") ? token : "");
+      if (!/^pi_[A-Za-z0-9_]+$/.test(paymentIntentId)) {
+        return {
+          ok: false,
+          error: "payment_intent_required",
+          message: "A Stripe PaymentIntent id is required. A payment-method token is not a charge.",
+        };
+      }
+      if (payment.stripePaymentIntentId && payment.stripePaymentIntentId !== paymentIntentId) {
+        return { ok: false, error: "payment_intent_mismatch" };
+      }
+
+      let pi;
+      try {
+        pi = await retrievePaymentIntent(paymentIntentId);
+      } catch (e) {
+        return { ok: false, error: "payment_intent_unverified", message: e instanceof Error ? e.message : "stripe payment-intent fetch failed" };
+      }
+      if (!pi || pi.status !== "succeeded") {
+        return { ok: false, error: "payment_not_succeeded", message: `payment not succeeded (status=${pi?.status || "unknown"})` };
+      }
+      const expectedCents = Math.round(Number(payment.amountUsd) * 100);
+      if (Number(pi.amount) !== expectedCents || String(pi.currency || "").toLowerCase() !== "usd") {
+        return { ok: false, error: "payment_amount_mismatch" };
+      }
+      const meta = pi.metadata || {};
+      if (meta.concord_user_id !== userId || meta.concord_payment_id !== payment.id || meta.concord_purpose !== "government_fee") {
+        return { ok: false, error: "payment_intent_metadata_mismatch" };
+      }
+
+      payment.status = "succeeded";
+      payment.confirmedAt = new Date().toISOString();
+      payment.stripePaymentIntentId = paymentIntentId;
+      payment.stripeChargeId = pi.latest_charge || null;
+      payment.receiptNumber = `RCPT-${new Date().getFullYear()}-${payment.id.slice(-6).toUpperCase()}`;
+      target.paid = true;
+      target.paidAt = payment.confirmedAt;
+      target.paymentId = payment.id;
+      target.paymentMethod = "card";
+      if (payment.kind === "permit" && target.status === "applied") target.status = "under_review";
+      queueGovNotification(s, userId, {
+        kind: "payment_received",
+        subjectKind: payment.kind, subjectId: payment.refId,
+        message: `Payment of $${payment.amountUsd.toFixed(2)} received — receipt ${payment.receiptNumber}.`,
+      });
+      saveGovState();
+      return { ok: true, result: { payment } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 
   registerLensAction("government", "payments-refund", (ctx, _a, params = {}) => {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
