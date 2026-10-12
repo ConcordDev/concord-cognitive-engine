@@ -178,11 +178,15 @@ already worked (`data.units` still works exactly as before).
 
 Grepped `Math.random|MOCK|mock|fake|Lorem|lorem|hardcoded` across
 `app/lenses/realestate/page.tsx` and all 22 `components/realestate/*.tsx` —
-no fabrication signatures. Every AVM/school-rating/walk-score/
-commute-estimate "seeded deterministic" value in `realestate.js` carries an
-explicit `notes` field disclosing it's a placeholder pending a real API key
-(Census/GreatSchools/WalkScore/Distance-Matrix) — honest-by-construction,
-not silent fabrication. The 21 other components (`AISearchBar`,
+no fabrication signatures. School ratings, walk/transit/bike scores, and
+commute times are not synthesized from the address. `school-ratings` calls
+GreatSchools only when `GREATSCHOOLS_API_KEY` is set, `walk-score` calls
+Walk Score only when `WALKSCORE_API_KEY` is set, and `commute-estimate`
+calls Google Distance Matrix only when `GOOGLE_MAPS_API_KEY` is set. With
+the key unset each returns `{ available: false, reason: '<provider>_not_configured' }`
+and no ratings, school names, scores, or minutes. `SchoolWalkPanel` renders
+that as "Not connected / unavailable" and does not draw score tiles.
+The other components (`AISearchBar`,
 `AgentMessenger`, `ContactAgentForm`, `ListingDetailDrawer`,
 `ListingPhotoGallery`, `MapAreaSearch`, `OpenHouseCalendar`,
 `PriceHistoryPanel`, `PropertyCompare`, `PropertyDetailPanel`,

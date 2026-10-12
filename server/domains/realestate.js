@@ -759,74 +759,146 @@ export default function registerRealEstateActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
-  // ── School ratings (deterministic seeded heuristic) ────────────
+  // ── School / walk / commute: real providers, or an honest miss ──
+  //
+  // Never hash an address into a rating, a school name, or a commute.
+  // A missing key returns { available:false, reason } and no numbers.
 
-  registerLensAction("realestate", "school-ratings", (_ctx, _a, params = {}) => {
+  function providerUnavailable(reason, envVar) {
+    const result = { available: false, reason };
+    if (envVar) result.envVar = envVar;
+    return { ok: true, result };
+  }
+
+  function finiteProviderNumber(v) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+
+  async function geocodeUsAddress(address) {
+    const geocodeUrl = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`;
+    const geoR = await globalThis.fetch(geocodeUrl);
+    if (!geoR.ok) return null;
+    const geoData = await geoR.json();
+    const match = (geoData?.result?.addressMatches || [])[0];
+    const lat = Number(match?.coordinates?.y);
+    const lng = Number(match?.coordinates?.x);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  registerLensAction("realestate", "school-ratings", async (_ctx, _a, params = {}) => {
     const address = String(params.address || "").trim();
     if (!address) return { ok: false, error: "address required" };
-    const seed = Math.abs(hashRE(address));
-    const seedRand = (offset) => ((seed >> offset) & 0xff) / 255;
-    const elementaryScore = Math.round(3 + seedRand(0) * 7);
-    const middleScore = Math.round(3 + seedRand(4) * 7);
-    const highScore = Math.round(3 + seedRand(8) * 7);
-    const schools = [
-      { kind: "elementary", name: `${address.split(",")[0].split(" ").pop()} Elementary`, rating: elementaryScore, distance: Math.round(seedRand(12) * 20) / 10 },
-      { kind: "middle", name: `${address.split(",")[0].split(" ").pop()} Middle School`, rating: middleScore, distance: Math.round(seedRand(16) * 30) / 10 },
-      { kind: "high", name: `${address.split(",")[0].split(" ").pop()} High School`, rating: highScore, distance: Math.round(seedRand(20) * 40) / 10 },
-    ];
-    const avgRating = (elementaryScore + middleScore + highScore) / 3;
-    return {
-      ok: true,
-      result: {
-        schools,
-        averageRating: Math.round(avgRating * 10) / 10,
-        districtName: `${address.split(",").slice(-2, -1)[0]?.trim() || "Local"} School District`,
-        notes: "Deterministic seeded ratings; wire GreatSchools API for live data.",
-      },
-    };
+    const key = String(process.env.GREATSCHOOLS_API_KEY || "").trim();
+    if (!key) return providerUnavailable("greatschools_not_configured", "GREATSCHOOLS_API_KEY");
+    try {
+      const coords = await geocodeUsAddress(address);
+      if (!coords) return providerUnavailable("address_not_geocoded");
+      const url = `https://gs-api.greatschools.org/nearby-schools?lat=${encodeURIComponent(coords.lat)}&lon=${encodeURIComponent(coords.lng)}&limit=12&distance=5`;
+      const r = await globalThis.fetch(url, { headers: { "x-api-key": key, Accept: "application/json" } });
+      if (!r.ok) return providerUnavailable("greatschools_unavailable");
+      const data = await r.json();
+      const raw = Array.isArray(data?.schools) ? data.schools
+        : Array.isArray(data?.data?.schools) ? data.data.schools
+        : null;
+      if (!raw) return providerUnavailable("greatschools_unavailable");
+      const schools = [];
+      for (const s of raw) {
+        const name = typeof s?.name === "string" ? s.name.trim() : "";
+        if (!name) continue;
+        const row = { name };
+        const kind = typeof s["level-codes"] === "string" && s["level-codes"].trim()
+          ? s["level-codes"].trim()
+          : (typeof s.level === "string" ? s.level.trim() : "");
+        if (kind) row.kind = kind;
+        const rating = finiteProviderNumber(s.rating);
+        if (rating != null) row.rating = rating;
+        const distance = finiteProviderNumber(s.distance);
+        if (distance != null) row.distance = Math.round(distance * 10) / 10;
+        schools.push(row);
+      }
+      const ratings = schools.map((s) => s.rating).filter((n) => typeof n === "number");
+      const district = raw.find((s) => typeof s?.["district-name"] === "string" && s["district-name"].trim());
+      const result = { available: true, schools, source: "greatschools" };
+      if (ratings.length) {
+        result.averageRating = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+      }
+      if (district) result.districtName = district["district-name"].trim();
+      return { ok: true, result };
+    } catch {
+      return providerUnavailable("greatschools_unavailable");
+    }
   });
 
-  // ── Walk / Transit / Bike score ────────────────────────────────
-
-  registerLensAction("realestate", "walk-score", (_ctx, _a, params = {}) => {
+  registerLensAction("realestate", "walk-score", async (_ctx, _a, params = {}) => {
     const address = String(params.address || "").trim();
     if (!address) return { ok: false, error: "address required" };
-    const seed = Math.abs(hashRE(address + "walk"));
-    const walk = Math.round((seed & 0xff) / 255 * 100);
-    const transit = Math.round(((seed >> 8) & 0xff) / 255 * 100);
-    const bike = Math.round(((seed >> 16) & 0xff) / 255 * 100);
-    const desc = (s) => s >= 90 ? "Walker's Paradise" : s >= 70 ? "Very Walkable" : s >= 50 ? "Somewhat Walkable" : s >= 25 ? "Car-Dependent" : "Car-Required";
-    return {
-      ok: true,
-      result: {
-        walkScore: walk, walkDesc: desc(walk),
-        transitScore: transit, transitDesc: desc(transit).replace("Walk", "Transit"),
-        bikeScore: bike, bikeDesc: desc(bike).replace("Walker", "Biker"),
-        notes: "Deterministic seeded scores; wire WalkScore API for live data.",
-      },
-    };
+    const key = String(process.env.WALKSCORE_API_KEY || "").trim();
+    if (!key) return providerUnavailable("walkscore_not_configured", "WALKSCORE_API_KEY");
+    try {
+      const coords = await geocodeUsAddress(address);
+      if (!coords) return providerUnavailable("address_not_geocoded");
+      const url = `https://api.walkscore.com/score?format=json&address=${encodeURIComponent(address)}&lat=${encodeURIComponent(coords.lat)}&lon=${encodeURIComponent(coords.lng)}&transit=1&bike=1&wsapikey=${encodeURIComponent(key)}`;
+      const r = await globalThis.fetch(url, { headers: { Accept: "application/json" } });
+      if (!r.ok) return providerUnavailable("walkscore_unavailable");
+      const data = await r.json();
+      if (Number(data?.status) !== 1) return providerUnavailable("walkscore_unavailable");
+      const result = { available: true, source: "walkscore" };
+      const walk = finiteProviderNumber(data.walkscore);
+      if (walk != null) result.walkScore = walk;
+      if (typeof data.description === "string" && data.description.trim()) result.walkDesc = data.description.trim();
+      const transit = finiteProviderNumber(data?.transit?.score);
+      if (transit != null) result.transitScore = transit;
+      if (typeof data?.transit?.description === "string" && data.transit.description.trim()) result.transitDesc = data.transit.description.trim();
+      const bike = finiteProviderNumber(data?.bike?.score);
+      if (bike != null) result.bikeScore = bike;
+      if (typeof data?.bike?.description === "string" && data.bike.description.trim()) result.bikeDesc = data.bike.description.trim();
+      if (result.walkScore == null && result.transitScore == null && result.bikeScore == null) {
+        return providerUnavailable("walkscore_unavailable");
+      }
+      return { ok: true, result };
+    } catch {
+      return providerUnavailable("walkscore_unavailable");
+    }
   });
 
-  // ── Commute estimate ───────────────────────────────────────────
+  const COMMUTE_MODES = { drive: "driving", transit: "transit", bike: "bicycling", walk: "walking" };
 
-  registerLensAction("realestate", "commute-estimate", (_ctx, _a, params = {}) => {
+  registerLensAction("realestate", "commute-estimate", async (_ctx, _a, params = {}) => {
     const from = String(params.from || "").trim();
     const to = String(params.to || "").trim();
-    const mode = ["drive", "transit", "bike", "walk"].includes(params.mode) ? params.mode : "drive";
+    const mode = Object.prototype.hasOwnProperty.call(COMMUTE_MODES, params.mode) ? params.mode : "drive";
     if (!from || !to) return { ok: false, error: "from and to required" };
-    const seed = Math.abs(hashRE(`${from}|${to}`));
-    const baseMinutes = 12 + (seed % 60);
-    const multiplier = mode === "drive" ? 1.0 : mode === "transit" ? 1.8 : mode === "bike" ? 2.4 : 4.0;
-    const minutes = Math.round(baseMinutes * multiplier);
-    const distanceMi = Math.round(baseMinutes * 0.6 * 10) / 10;
-    return {
-      ok: true,
-      result: {
-        minutes, distanceMi, mode,
-        rushHourMinutes: Math.round(minutes * 1.4),
-        notes: "Deterministic seeded estimate; wire Google Distance Matrix or HERE for live routing.",
-      },
-    };
+    const key = String(process.env.GOOGLE_MAPS_API_KEY || "").trim();
+    if (!key) return providerUnavailable("routing_not_configured", "GOOGLE_MAPS_API_KEY");
+    try {
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(from)}&destinations=${encodeURIComponent(to)}&mode=${COMMUTE_MODES[mode]}&key=${encodeURIComponent(key)}`;
+      const r = await globalThis.fetch(url, { headers: { Accept: "application/json" } });
+      if (!r.ok) return providerUnavailable("routing_unavailable");
+      const data = await r.json();
+      const el = data?.rows?.[0]?.elements?.[0];
+      if (data?.status !== "OK" || el?.status !== "OK") return providerUnavailable("routing_unavailable");
+      const seconds = finiteProviderNumber(el?.duration?.value);
+      const meters = finiteProviderNumber(el?.distance?.value);
+      if (seconds == null || meters == null) return providerUnavailable("routing_unavailable");
+      const result = {
+        available: true,
+        source: "google-distance-matrix",
+        mode,
+        minutes: Math.round(seconds / 60),
+        distanceMi: Math.round((meters / 1609.344) * 10) / 10,
+      };
+      const trafficSeconds = finiteProviderNumber(el?.duration_in_traffic?.value);
+      if (trafficSeconds != null) result.rushHourMinutes = Math.round(trafficSeconds / 60);
+      return { ok: true, result };
+    } catch {
+      return providerUnavailable("routing_unavailable");
+    }
   });
 
   // ── Hot-home algorithm (Redfin-shape) ──────────────────────────
