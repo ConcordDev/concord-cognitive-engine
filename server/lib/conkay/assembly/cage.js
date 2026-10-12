@@ -716,10 +716,12 @@ function highlightMetric(positions, facesOrIdx, hard) {
 function grilleFrom(verts, faces) {
   const pts = [];
   const seen = new Set();
-  for (const f of faces) for (const i of f) {
-    if (seen.has(i)) continue;
-    seen.add(i);
-    pts.push({ x: verts[i][0], y: verts[i][1], z: verts[i][2] });
+  for (const f of faces) {
+    for (const i of f) {
+      if (seen.has(i)) continue;
+      seen.add(i);
+      pts.push({ x: verts[i][0], y: verts[i][1], z: verts[i][2] });
+    }
   }
   return pts;
 }
