@@ -230,6 +230,11 @@ export const LENS_STATE_KEYS = Object.freeze([
   "globalSavedViews",
   "inheritanceEstates", "inheritanceNotices",
   "federation",
+  // INC-68: e-sign tokens. Envelopes already live on toolsLens / legalLens /
+  // lawLens. The links were a sibling Map the snapshot walker never read, so
+  // a restart 404'd every outstanding /api/esign/:token while the envelope
+  // stayed out_for_signature. Root value is Map<token, entry>.
+  "esignLinks",
   // Sparks prediction positions, inheritance pacts, agency AMS records,
   // and service-market listings/orders. See MONEY_SNAPSHOT_KEYS.
   ...MONEY_SNAPSHOT_KEYS,

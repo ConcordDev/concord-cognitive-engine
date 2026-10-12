@@ -23,6 +23,7 @@
 
 import crypto from "node:crypto";
 import { persistConnectorToken } from "../lib/connector-tokens.js";
+import { resolveFrontendUrl } from "../lib/frontend-url.js";
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_STATES = new Map();
@@ -317,10 +318,7 @@ function markIngestConnectionConfigured(userId, connectionId, tokenKey) {
  */
 export default function registerConnectorOAuthRoutes(app, { db, structuredLog, fetchImpl = fetch } = {}) {
   const log = typeof structuredLog === "function" ? structuredLog : () => {};
-  const _isProd = process.env.NODE_ENV === "production";
-  const FRONTEND_URL = process.env.FRONTEND_URL
-    || process.env.NEXT_PUBLIC_FRONTEND_URL
-    || (_isProd ? null : "http://localhost:3000");
+  const FRONTEND_URL = resolveFrontendUrl({ mode: "app", logger: log });
 
   function redirectBase(req) {
     return process.env.CONNECTOR_OAUTH_REDIRECT_BASE

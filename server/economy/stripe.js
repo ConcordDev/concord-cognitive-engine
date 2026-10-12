@@ -11,6 +11,7 @@ import { log } from "../logger.js";
 import { getBalance } from "./balances.js";
 import { mintCoins, burnCoins } from "./coin-service.js";
 import { handleChargeback } from "./chargeback-handler.js";
+import { resolveFrontendUrl } from "../lib/frontend-url.js";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,9 @@ const MAX_PURCHASE_TOKENS = 100_000;
 const MIN_WITHDRAW_TOKENS = Number(process.env.MIN_WITHDRAW_TOKENS) || 20;
 const MAX_WITHDRAW_TOKENS_PER_DAY = Number(process.env.MAX_WITHDRAW_TOKENS_PER_DAY) || 5000;
 
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_API_URL || "https://concord-os.org";
+function frontendUrl() {
+  return resolveFrontendUrl({ mode: "public", extraEnv: ["NEXT_PUBLIC_API_URL"] });
+}
 
 let _stripe = null;
 
@@ -122,8 +125,8 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
         quantity: 1,
       }],
       mode: "payment",
-      success_url: `${FRONTEND_URL}/billing?success=true&tokens=${tokens}`,
-      cancel_url: `${FRONTEND_URL}/billing?canceled=true`,
+      success_url: `${frontendUrl()}/billing?success=true&tokens=${tokens}`,
+      cancel_url: `${frontendUrl()}/billing?canceled=true`,
       metadata: {
         userId,
         tokens: String(tokens),
@@ -628,8 +631,8 @@ export async function createConnectOnboarding(db, { userId, requestId, ip }) {
   try {
     const accountLink = await stripeClient.accountLinks.create({
       account: accountId,
-      refresh_url: `${FRONTEND_URL}/billing?connect_refresh=true`,
-      return_url: `${FRONTEND_URL}/billing?connect_return=true`,
+      refresh_url: `${frontendUrl()}/billing?connect_refresh=true`,
+      return_url: `${frontendUrl()}/billing?connect_return=true`,
       type: "account_onboarding",
     });
 

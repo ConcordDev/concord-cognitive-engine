@@ -7,10 +7,13 @@
 
 import express from "express";
 import { createCheckoutSession } from "../economy/stripe.js";
+import { resolveFrontendUrl } from "../lib/frontend-url.js";
 
 const router = express.Router();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_API_URL || "https://concord-os.org";
+function frontendUrl() {
+  return resolveFrontendUrl({ mode: "public", extraEnv: ["NEXT_PUBLIC_API_URL"] });
+}
 const DEEP_LINK_SCHEME = "concordapp";
 const MIN_AMOUNT_CENTS = 100;       // $1.00
 const MAX_AMOUNT_CENTS = 1_000_000; // $10,000.00
@@ -52,8 +55,8 @@ router.get("/checkout", async (req, res) => {
       requestId: req.headers["x-request-id"] || undefined,
       ip: req.ip,
       // Override URLs for mobile flow
-      successUrl: `${FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${FRONTEND_URL}/checkout/cancel`,
+      successUrl: `${frontendUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${frontendUrl()}/checkout/cancel`,
       metadata: {
         source: source || "ios_app",
         coinAmount: String(amountFloat),

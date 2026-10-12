@@ -17,8 +17,28 @@
 
 import crypto from "node:crypto";
 import { writeGmailMessage } from "./connector-client.js";
+import { resolveFrontendUrl } from "./frontend-url.js";
 
 const providers = new Map();
+
+// Outstanding links are STATE.esignLinks (a Map). That key is on
+// LENS_STATE_KEYS, so the process snapshot keeps them across a restart.
+// 30 days is long enough for a contract sitting in someone's inbox.
+const SIGNING_LINK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function linkExpired(entry, now = Date.now()) {
+  const created = Date.parse(entry?.createdAt || "");
+  if (!Number.isFinite(created)) return false;
+  return now - created > SIGNING_LINK_TTL_MS;
+}
+
+function pruneExpired(store, now = Date.now()) {
+  let n = 0;
+  for (const [tok, e] of store) {
+    if (linkExpired(e, now)) { store.delete(tok); n++; }
+  }
+  return n;
+}
 
 /**
  * provider = {
@@ -39,13 +59,15 @@ function linkStore() {
 }
 
 function save() {
+  const store = linkStore();
+  if (store) pruneExpired(store);
   if (typeof globalThis._concordSaveStateDebounced === "function") {
     try { globalThis._concordSaveStateDebounced(); } catch { /* best effort */ }
   }
 }
 
 export function signingUrl(token) {
-  const base = (process.env.FRONTEND_URL || "https://concord-os.org").replace(/\/+$/, "");
+  const base = resolveFrontendUrl({ mode: "public" }).replace(/\/+$/, "");
   return `${base}/sign/${token}`;
 }
 
@@ -91,6 +113,11 @@ function resolve(token) {
   if (!store || t.length < 16 || t.length > 120) return null;
   const entry = store.get(t);
   if (!entry) return null;
+  if (linkExpired(entry)) {
+    store.delete(t);
+    save();
+    return null;
+  }
   const provider = providers.get(entry.kind);
   return provider ? { entry, provider } : null;
 }
@@ -104,6 +131,9 @@ export async function viewSigningLink(token) {
 export async function signViaLink(token, { typedName, consent, ip, userAgent } = {}) {
   const r = resolve(token);
   if (!r) return { ok: false, error: "link_not_found" };
+  // usedAt is on the link itself, so a replay stays rejected after the
+  // process snapshot reloads even if the envelope row were rebuilt.
+  if (r.entry.usedAt) return { ok: false, error: "party already signed" };
   const name = String(typedName || "").trim().slice(0, 120);
   if (!name) return { ok: false, error: "typed_name_required" };
   if (consent !== true) return { ok: false, error: "consent_required" };
