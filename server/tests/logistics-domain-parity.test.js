@@ -357,19 +357,28 @@ describe("logistics.rates-quote (carrier API or honest estimate)", () => {
     assert.match(lonely.error, /no carriers configured/);
     assert.equal(fetched, 0);
     assert.equal(JSON.stringify(lonely).includes(acct1.result.carrier.id), false);
+    // Two-account isolation: foreign payloads must not echo either actor id.
+    assert.equal(JSON.stringify(lonely).includes(ctxA.userId), false, "acct1 user id must not leak to acct2");
+    assert.equal(JSON.stringify(lonely).includes(ctxB.userId), false, "actor user id must not appear in rates-quote errors");
 
-    call("carriers-add", ctxB, { name: "FedEx", code: "FDX", modes: ["parcel"] });
+    const acct2Carrier = call("carriers-add", ctxB, { name: "FedEx", code: "FDX", modes: ["parcel"] });
     const rB = await call("rates-quote", ctxB, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
     assert.equal(rB.ok, true);
     assert.equal(rB.result.quotes.length, 1);
     assert.equal(rB.result.quotes[0].carrierCode, "FDX");
+    assert.equal(rB.result.quotes[0].carrierId, acct2Carrier.result.carrier.id);
     assert.equal(rB.result.quotes[0].carrierId === acct1.result.carrier.id, false);
     assert.equal(rB.result.quotes.some((q) => q.carrierCode === "UPS"), false);
+    assert.equal(JSON.stringify(rB).includes(ctxA.userId), false, "acct1 user id must not leak into acct2 quotes");
+    assert.equal(JSON.stringify(rB).includes(ctxB.userId), false, "actor user id must not appear in rates-quote results");
+    assert.equal(JSON.stringify(rB).includes(acct1.result.carrier.id), false);
 
     const rA = await call("rates-quote", ctxA, { origin: "Austin, TX", destination: "Boston, MA", mode: "parcel" });
     assert.equal(rA.result.quotes.length, 1);
     assert.equal(rA.result.quotes[0].carrierCode, "UPS");
     assert.equal(rA.result.quotes[0].carrierId, acct1.result.carrier.id);
+    assert.equal(JSON.stringify(rA).includes(ctxB.userId), false, "acct2 user id must not leak into acct1 quotes");
+    assert.equal(JSON.stringify(rA).includes(acct2Carrier.result.carrier.id), false);
   });
 
   it("rates-quote source does not hash a price", () => {

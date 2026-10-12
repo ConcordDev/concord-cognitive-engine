@@ -104,6 +104,37 @@ describe("logistics — CRUD round-trips + validation (shared ctx)", () => {
     }
   });
 
+  it("rates-quote: two-account isolation — foreign account cannot quote on owner carriers", async () => {
+    const owner = await depthCtx("logistics-rates-owner");
+    const foreign = await depthCtx("logistics-rates-foreign");
+    const savedShip = process.env.SHIPENGINE_API_KEY;
+    const savedEasy = process.env.EASYPOST_API_KEY;
+    delete process.env.SHIPENGINE_API_KEY;
+    delete process.env.EASYPOST_API_KEY;
+    try {
+      const add = await lensRun("logistics", "carriers-add", {
+        params: { name: "Owner UPS", code: "UPS", modes: ["parcel"] },
+      }, owner);
+      assert.equal(add.ok, true);
+      const carrierId = add.result.carrier.id;
+      const lonely = await lensRun("logistics", "rates-quote", {
+        params: { origin: "Albany NY", destination: "Boston MA", mode: "parcel", weightLbs: 5 },
+      }, foreign);
+      // Outer ok is dispatch; handler verdict is in result.
+      assert.equal(lonely.result.ok, false);
+      assert.match(lonely.result.error, /no carriers configured/);
+      const dump = JSON.stringify(lonely);
+      assert.equal(dump.includes(carrierId), false, "owner carrier id must not leak to foreign quote");
+      assert.equal(dump.includes(owner.actor.userId), false, "owner user id must not appear in foreign payload");
+      assert.equal(dump.includes(foreign.actor.userId), false, "actor user id must not appear in rates-quote errors");
+    } finally {
+      if (savedShip == null) delete process.env.SHIPENGINE_API_KEY;
+      else process.env.SHIPENGINE_API_KEY = savedShip;
+      if (savedEasy == null) delete process.env.EASYPOST_API_KEY;
+      else process.env.EASYPOST_API_KEY = savedEasy;
+    }
+  });
+
   // NB: lens.run wraps a handler's {ok:false,error} as {ok:true, result:{ok:false,error}}
   // — the OUTER ok is dispatch success; the handler's verdict is in result.
   it("validation: shipments-create with no origin is rejected", async () => {
