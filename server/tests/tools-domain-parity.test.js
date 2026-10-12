@@ -23,6 +23,7 @@ beforeEach(() => {
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 describe("tools.research (web research)", () => {
   it("rejects an empty query", async () => {
@@ -237,5 +238,52 @@ describe("tools e-signature workflow", () => {
     const d = call("esign-detail", ctxA, { envelopeId: env.id });
     assert.equal(d.ok, true);
     assert.equal(d.result.envelope.title, "Detail");
+  });
+
+  it("two-account isolation: acct2 cannot list/detail/send/void/sign/verify acct1 envelopes; public view hides owner id", async () => {
+    const created = call("esign-create", ctxA, {
+      title: "Private NDA",
+      document: "Acct1-only body — do not leak.",
+      parties: [{ name: "Alice", isSender: true }, { name: "Bob", email: "bob@example.com" }],
+    });
+    assert.equal(created.ok, true);
+    const env = created.result.envelope;
+    const sent = await call("esign-send", ctxA, { envelopeId: env.id });
+    assert.equal(sent.ok, true);
+    const token = sent.result.links[0].url.split("/sign/")[1];
+
+    const listB = call("esign-list", ctxB, {});
+    assert.equal(listB.ok, true);
+    assert.equal(listB.result.total, 0);
+    assert.equal(JSON.stringify(listB).includes(env.id), false);
+    assert.equal(JSON.stringify(listB).includes(ctxA.userId), false);
+
+    for (const [name, params] of [
+      ["esign-detail", { envelopeId: env.id }],
+      ["esign-verify", { envelopeId: env.id }],
+      ["esign-void", { envelopeId: env.id, reason: "nope" }],
+      ["esign-sign", { envelopeId: env.id, partyId: env.parties[0].id }],
+    ]) {
+      const r = call(name, ctxB, params);
+      assert.equal(r.ok, false, name);
+      assert.match(String(r.error || ""), /not found/);
+      const dump = JSON.stringify(r);
+      assert.equal(dump.includes(ctxA.userId), false, `${name} must not leak acct1 user id`);
+      assert.equal(dump.includes(env.documentHash), false, `${name} must not leak document hash`);
+      assert.equal(dump.includes("Acct1-only body"), false, `${name} must not leak document body`);
+    }
+
+    const sendB = await call("esign-send", ctxB, { envelopeId: env.id });
+    assert.equal(sendB.ok, false);
+    assert.match(String(sendB.error || ""), /not found/);
+    assert.equal(JSON.stringify(sendB).includes(ctxA.userId), false);
+    assert.equal(JSON.stringify(sendB).includes(token), false);
+
+    const view = await viewSigningLink(token);
+    assert.equal(view.ok, true);
+    const viewDump = JSON.stringify(view);
+    assert.equal(viewDump.includes(ctxA.userId), false, "public view must not leak owner user id");
+    assert.equal(viewDump.includes("ownerId"), false);
+    assert.equal(view.result.signer.name, "Bob");
   });
 });

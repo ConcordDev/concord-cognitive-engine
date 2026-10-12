@@ -27,6 +27,7 @@ function restartFromSnapshot() {
 }
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 before(() => { registerToolsActions(register); });
@@ -127,6 +128,36 @@ describe("e-sign links survive a snapshot restart", () => {
     restartFromSnapshot();
     assert.equal((await viewSigningLink(young.token)).ok, true);
     assert.equal((await viewSigningLink(old.token)).error, "link_not_found");
+  });
+
+  it("keeps per-user isolation after reload and never leaks owner id on the public view", async () => {
+    const { env, token } = await sendOne();
+    // Foreign account never sees the envelope, even before restart.
+    assert.equal(call("esign-list", ctxB, {}).result.total, 0);
+    const foreign = call("esign-detail", ctxB, { envelopeId: env.id });
+    assert.equal(foreign.ok, false);
+    assert.match(String(foreign.error || ""), /not found/);
+    assert.equal(JSON.stringify(foreign).includes(ctxA.userId), false);
+
+    restartFromSnapshot();
+
+    assert.equal(call("esign-list", ctxB, {}).result.total, 0);
+    const foreignAfter = call("esign-detail", ctxB, { envelopeId: env.id });
+    assert.equal(foreignAfter.ok, false);
+    assert.match(String(foreignAfter.error || ""), /not found/);
+    assert.equal(JSON.stringify(foreignAfter).includes(ctxA.userId), false);
+    assert.equal(JSON.stringify(foreignAfter).includes(token), false);
+
+    const listed = await call("esign-list", ctxA, { status: "out_for_signature" });
+    assert.equal(listed.result.envelopes.length, 1);
+    assert.equal(listed.result.envelopes[0].id, env.id);
+
+    const view = await viewSigningLink(token);
+    assert.equal(view.ok, true, JSON.stringify(view));
+    const dump = JSON.stringify(view);
+    assert.equal(dump.includes(ctxA.userId), false);
+    assert.equal(dump.includes("ownerId"), false);
+    assert.equal(view.result.signer.name, "Bob");
   });
 
   it("mints signing links on the canonical origin when FRONTEND_URL is the template placeholder", () => {
