@@ -333,7 +333,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     // Prefer the authenticated account. GuildPanel also sends leaderId in
     // the body for the no-session path; never let that body value override
     // a real session, and never replace a provided leader with null.
-    const leaderId = req.user?.id || req.user?.userId || req.actor?.userId || req.body?.leaderId || req.body?.userId || null;
+    const leaderId = req.user?.id || req.user?.userId || req.actor?.userId || req.body?.leaderId || null;
     const org = createOrganization(db, { ...req.body, leaderId });
     res.status(201).json({ ok: true, organization: org });
   }));
