@@ -817,9 +817,10 @@ export default function registerEthicsActions(registerLensAction) {
 
   // Owner-only delete. The id is resolved inside the caller's own list, so a
   // missing id and another user's id both return the same honest not-found
-  // (no existence leak). deleteCase keeps its original param and error text.
-  function registerOwnerDelete(action, bucket, idParam, missingError) {
-    registerLensAction("ethics", action, ewrap((ctx, _artifact, params) => {
+  // (no existence leak). Each registerLensAction call keeps a string literal
+  // so the static macro scanners see the pair.
+  function ownerDelete(bucket, idParam, missingError) {
+    return ewrap((ctx, _artifact, params) => {
       const id = String(params?.[idParam] || "");
       if (!id) return { ok: false, error: `${idParam} required` };
       const st = getEthicsState();
@@ -829,13 +830,13 @@ export default function registerEthicsActions(registerLensAction) {
       rows.splice(idx, 1);
       saveEthics();
       return { ok: true, result: { deleted: id } };
-    }));
+    });
   }
 
-  registerOwnerDelete("deleteAnalysis", "analyses", "analysisId", "analysis not found");
-  registerOwnerDelete("deleteStakeholderMap", "maps", "mapId", "map not found");
-  registerOwnerDelete("deleteDecisionMatrix", "matrices", "matrixId", "matrix not found");
-  registerOwnerDelete("deleteBiasChecklist", "checklists", "checklistId", "checklist not found");
-  registerOwnerDelete("deleteReview", "reviews", "reviewId", "review not found");
-  registerOwnerDelete("deleteCase", "cases", "caseId", "case not found");
+  registerLensAction("ethics", "deleteAnalysis", ownerDelete("analyses", "analysisId", "analysis not found"));
+  registerLensAction("ethics", "deleteStakeholderMap", ownerDelete("maps", "mapId", "map not found"));
+  registerLensAction("ethics", "deleteDecisionMatrix", ownerDelete("matrices", "matrixId", "matrix not found"));
+  registerLensAction("ethics", "deleteBiasChecklist", ownerDelete("checklists", "checklistId", "checklist not found"));
+  registerLensAction("ethics", "deleteReview", ownerDelete("reviews", "reviewId", "review not found"));
+  registerLensAction("ethics", "deleteCase", ownerDelete("cases", "caseId", "case not found"));
 }
