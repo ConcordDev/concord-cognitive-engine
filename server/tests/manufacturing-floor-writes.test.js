@@ -51,6 +51,17 @@ beforeEach(() => {
 const acct1 = { actor: { userId: "acct1" }, userId: "acct1" };
 const acct2 = { actor: { userId: "acct2" }, userId: "acct2" };
 
+/** Responses must not echo actor user ids (bucket keys stay server-side). */
+function assertNoUserIdLeak(payload, ...forbidden) {
+  const blob = JSON.stringify(payload);
+  for (const id of forbidden) {
+    assert.equal(blob.includes(JSON.stringify(id)) || blob.includes(`:${id}`) || blob.includes(`"${id}"`), false,
+      `payload leaked user id ${id}: ${blob.slice(0, 400)}`);
+  }
+  assert.equal(/userId|user_id|ownerId|actorId/i.test(blob), false,
+    `payload exposed an identity field: ${blob.slice(0, 400)}`);
+}
+
 describe("manufacturing floor writes (INC-62)", () => {
   it("acct1 machine-register shows on oee-status; acct2 does not see it", () => {
     const created = call("machine-register", acct1, {
@@ -63,6 +74,7 @@ describe("manufacturing floor writes (INC-62)", () => {
     assert.equal(created.result.machine.idealCycleTime, 1.5);
     assert.equal(created.result.machine.status, "idle");
     assert.equal(saves, 1);
+    assertNoUserIdLeak(created, "acct1", "acct2");
 
     const mine = call("oee-status", acct1, {});
     assert.equal(mine.ok, true);
@@ -70,10 +82,12 @@ describe("manufacturing floor writes (INC-62)", () => {
     assert.equal(mine.result.machines.length, 1);
     assert.equal(mine.result.machines[0].id, "CNC-01");
     assert.equal(mine.result.notes, null);
+    assertNoUserIdLeak(mine, "acct1", "acct2");
 
     const theirs = call("oee-status", acct2, {});
     assert.equal(theirs.result.source, "empty");
     assert.deepEqual(theirs.result.machines, []);
+    assertNoUserIdLeak(theirs, "acct1", "acct2");
 
     // Same machine id on the other account is a different row.
     call("machine-register", acct2, { machineId: "CNC-01", name: "Other mill" });
@@ -142,13 +156,17 @@ describe("manufacturing floor writes (INC-62)", () => {
     const foreign = call("work-order-update", acct2, { id, status: "complete" });
     assert.equal(foreign.ok, false);
     assert.equal(foreign.error, "not found");
+    assertNoUserIdLeak(foreign, "acct1", "acct2");
     assert.equal(call("work-orders", acct1, {}).result.orders[0].status, "queued");
     assert.deepEqual(call("work-orders", acct2, {}).result.orders, []);
+    assertNoUserIdLeak(mine, "acct1", "acct2");
+    assertNoUserIdLeak(created, "acct1", "acct2");
 
     const updated = call("work-order-update", acct1, { id, status: "in_progress" });
     assert.equal(updated.ok, true);
     assert.equal(updated.result.order.status, "in_progress");
     assert.equal(call("work-orders", acct1, {}).result.orders[0].status, "in_progress");
+    assertNoUserIdLeak(updated, "acct1", "acct2");
   });
 
   it("work-order-create rejects a missing product, a bad quantity, and a bad date without saving", () => {
@@ -199,6 +217,8 @@ describe("manufacturing floor writes (INC-62)", () => {
     assert.equal(other.ok, true);
     assert.equal(other.result.source, "empty");
     assert.deepEqual(other.result.samples, []);
+    assertNoUserIdLeak(chart, "acct1", "acct2");
+    assertNoUserIdLeak(other, "acct1", "acct2");
   });
 
   it("spc-sample-log rejects a non-numeric sample and a missing product without saving", () => {
