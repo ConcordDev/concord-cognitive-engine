@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Plus, Loader2, CreditCard, Check, X, Send } from 'lucide-react';
+import { FileText, Plus, Loader2, Check, X, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +51,11 @@ export function PermitsPanel() {
     const reason = act === 'deny' ? prompt('Denial reason?') : null;
     try {
       const input: Record<string, unknown> = { id };
+      if (act === 'pay-fee') {
+        const proceed = window.confirm('Record this fee as paid offline (cash, check, or money order the clerk already received)? This does not charge a card.');
+        if (!proceed) return;
+        input.method = 'offline';
+      }
       if (act === 'deny' && reason) input.reason = reason;
       if (act === 'issue') input.validForDays = 365;
       const res = await lensRun({ domain: 'government', action: `permits-${act}`, input });
@@ -92,7 +97,7 @@ export function PermitsPanel() {
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 mb-1">{p.description}</div>}
                 <div className="flex items-center gap-1">
-                  {p.status === 'applied' && !p.paid && <button onClick={() => action(p.id, 'pay-fee')} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50 inline-flex items-center gap-1"><CreditCard className="w-2.5 h-2.5" />Pay fee</button>}
+                  {p.status === 'applied' && !p.paid && <button onClick={() => action(p.id, 'pay-fee')} title="Records cash, check, or money order already received. Does not charge a card." className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50">Record offline payment</button>}
                   {p.status === 'under_review' && <button onClick={() => action(p.id, 'approve')} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50 inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" />Approve</button>}
                   {p.status === 'approved' && <button onClick={() => action(p.id, 'issue')} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Issue</button>}
                   {p.status !== 'issued' && p.status !== 'denied' && <button onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>}

@@ -17,6 +17,51 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx } from "./_harness.js";
 
+// Records a real succeeded PaymentIntent (fetch stubbed) so refund tests
+// still exercise a charge Stripe verified, not a typed token.
+async function confirmGovernmentCardPayment(ctx, paymentId, amountUsd) {
+  const userId = ctx.actor.userId;
+  const priorKey = process.env.STRIPE_SECRET_KEY;
+  const priorFetch = globalThis.fetch;
+  const piId = "pi_govbehaviorrefund";
+  process.env.STRIPE_SECRET_KEY = "sk_test_government_behavior";
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u === "https://api.stripe.com/v1/payment_intents" && opts?.method === "POST") {
+      return { ok: true, json: async () => ({ id: piId, client_secret: "cs_test", status: "requires_payment_method", amount: Math.round(amountUsd * 100), currency: "usd" }) };
+    }
+    if (u === `https://api.stripe.com/v1/payment_intents/${piId}`) {
+      return {
+        ok: true,
+        json: async () => ({
+          id: piId,
+          status: "succeeded",
+          amount: Math.round(amountUsd * 100),
+          currency: "usd",
+          latest_charge: "ch_gov_behavior",
+          metadata: {
+            concord_user_id: userId,
+            concord_payment_id: paymentId,
+            concord_purpose: "government_fee",
+          },
+        }),
+      };
+    }
+    return priorFetch(url, opts);
+  };
+  try {
+    const created = await lensRun("government", "payments-create-intent", { params: { paymentId } }, ctx);
+    assert.equal(created.result.paymentIntentId, piId, JSON.stringify(created.result));
+    return await lensRun("government", "payments-confirm", {
+      params: { paymentId, paymentIntentId: piId },
+    }, ctx);
+  } finally {
+    if (priorKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = priorKey;
+    globalThis.fetch = priorFetch;
+  }
+}
+
 describe("government — calc contracts (exact computed values, artifact.data)", () => {
   it("permitTimeline: processing days + benchmark + onTime are computed exactly", async () => {
     const r = await lensRun("government", "permitTimeline", {
@@ -198,8 +243,9 @@ describe("government — CRUD round-trips + validation (shared owner-scoped ctx)
     const id = applied.result.permit.id;
     assert.equal(applied.result.permit.status, "applied");
 
-    const paid = await lensRun("government", "permits-pay-fee", { params: { id } }, ctx);
+    const paid = await lensRun("government", "permits-pay-fee", { params: { id, method: "offline" } }, ctx);
     assert.equal(paid.result.permit.paid, true);
+    assert.equal(paid.result.permit.paymentMethod, "offline");
     assert.equal(paid.result.permit.status, "under_review");
 
     const approved = await lensRun("government", "permits-approve", { params: { id } }, ctx);
@@ -225,7 +271,7 @@ describe("government — CRUD round-trips + validation (shared owner-scoped ctx)
     assert.ok(signed.result.document.signatures.some((sg) => sg.id === signed.result.signature.id));
   });
 
-  it("payments-checkout → payments-confirm marks the permit fee paid + issues a receipt", async () => {
+  it("payments-confirm does not mark a permit paid from a payment-method token", async () => {
     const applied = await lensRun("government", "permits-apply", {
       params: { applicantName: "Pat Roe", applicantEmail: "pat@example.com", kind: "plumbing", feeUsd: 110 },
     }, ctx);
@@ -237,11 +283,16 @@ describe("government — CRUD round-trips + validation (shared owner-scoped ctx)
     const payId = checkout.result.payment.id;
 
     const confirmed = await lensRun("government", "payments-confirm", {
-      params: { paymentId: payId, methodToken: "tok_test_123", cardLast4: "4242" },
+      params: { paymentId: payId, methodToken: "tok_fake", cardLast4: "4242" },
     }, ctx);
-    assert.equal(confirmed.result.payment.status, "succeeded");
-    assert.equal(confirmed.result.payment.cardLast4, "4242");
-    assert.match(confirmed.result.payment.receiptNumber, /^RCPT-\d{4}-/);
+    assert.equal(confirmed.result.ok, false);
+    assert.equal(confirmed.result.payment, undefined);
+    assert.equal(confirmed.result.receiptNumber, undefined);
+    const list = await lensRun("government", "permits-list", {}, ctx);
+    assert.equal(list.result.permits.find((p) => p.id === permitId).paid, false);
+    const approved = await lensRun("government", "permits-approve", { params: { id: permitId } }, ctx);
+    assert.equal(approved.result.ok, false);
+    assert.match(approved.result.error, /fee must be paid before approval/);
   });
 
   it("notifications-subscribe → emit → list: an emitted notification reads back with chosen channel", async () => {
@@ -857,7 +908,7 @@ describe("government — list/mutate/delete round-trips (wave-N top-up)", () => 
       params: { applicantName: "List Me", applicantEmail: "l@example.com", kind: "building", feeUsd: 250 },
     }, ctx);
     const id = applied.result.permit.id;
-    await lensRun("government", "permits-pay-fee", { params: { id } }, ctx);
+    await lensRun("government", "permits-pay-fee", { params: { id, method: "offline" } }, ctx);
     await lensRun("government", "permits-approve", { params: { id } }, ctx);
 
     const approvedList = await lensRun("government", "permits-list", { params: { status: "approved" } }, ctx);
@@ -889,9 +940,9 @@ describe("government — list/mutate/delete round-trips (wave-N top-up)", () => 
     const permitId = applied.result.permit.id;
     const checkout = await lensRun("government", "payments-checkout", { params: { kind: "permit", refId: permitId } }, ctx);
     const payId = checkout.result.payment.id;
-    await lensRun("government", "payments-confirm", {
-      params: { paymentId: payId, methodToken: "tok_x", cardLast4: "1111" },
-    }, ctx);
+    const confirmed = await confirmGovernmentCardPayment(ctx, payId, 110);
+    assert.equal(confirmed.result.payment.status, "succeeded");
+    assert.match(confirmed.result.payment.receiptNumber, /^RCPT-/);
 
     const refunded = await lensRun("government", "payments-refund", {
       params: { paymentId: payId, reason: "Duplicate charge" },

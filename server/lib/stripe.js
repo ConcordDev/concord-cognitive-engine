@@ -53,3 +53,54 @@ export async function getStripe() {
 
   return _stripe;
 }
+
+/**
+ * A real Stripe secret. Placeholders (`sk_REPLACE_ME…`) and empty values are
+ * not configured — they must not be sent to Stripe and must not unlock a
+ * "paid" state. Restricted keys (`rk_…`) are not accepted here.
+ */
+const STRIPE_SECRET_RE = /^sk_(test|live)_/;
+
+export function stripeSecretKey() {
+  const key = String(process.env.STRIPE_SECRET_KEY || "").trim();
+  return STRIPE_SECRET_RE.test(key) ? key : "";
+}
+
+export function isStripeSecretConfigured() {
+  return stripeSecretKey() !== "";
+}
+
+async function stripeV1(path, { method, body } = {}) {
+  const key = stripeSecretKey();
+  if (!key) {
+    const err = new Error("stripe_not_configured");
+    err.code = "stripe_not_configured";
+    throw err;
+  }
+  const headers = { Authorization: `Bearer ${key}` };
+  const init = { method: method || "GET", headers };
+  if (body) {
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+    headers["Stripe-Version"] = "2025-09-30.acacia";
+    init.body = new URLSearchParams(body).toString();
+  }
+  const res = await fetch(`https://api.stripe.com/v1${path}`, init);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data?.error?.message || `stripe ${path} failed`);
+    err.code = "stripe_http_error";
+    throw err;
+  }
+  return data;
+}
+
+/** GET /v1/payment_intents/:id — the charge is real only when Stripe says so. */
+export function retrievePaymentIntent(paymentIntentId) {
+  const id = String(paymentIntentId || "");
+  return stripeV1(`/payment_intents/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+/** POST /v1/payment_intents. `formBody` values are Stripe form fields. */
+export function createPaymentIntent(formBody) {
+  return stripeV1("/payment_intents", { method: "POST", body: formBody });
+}

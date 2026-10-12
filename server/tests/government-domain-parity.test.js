@@ -363,7 +363,10 @@ describe("government.permits-* (Accela-shape lifecycle)", () => {
     assert.equal(p.ok, true);
     assert.match(p.result.permit.recordNumber, /^PMT-/);
     assert.equal(p.result.permit.status, "applied");
-    const paid = call("permits-pay-fee", ctxA, { id: p.result.permit.id });
+    const paid = call("permits-pay-fee", ctxA, { id: p.result.permit.id, method: "offline" });
+    assert.equal(paid.result.permit.paid, true);
+    assert.equal(paid.result.permit.paymentMethod, "offline");
+    assert.equal(paid.result.permit.receiptNumber, undefined);
     assert.equal(paid.result.permit.status, "under_review");
     const approved = call("permits-approve", ctxA, { id: p.result.permit.id });
     assert.equal(approved.result.permit.status, "approved");
@@ -459,31 +462,75 @@ describe("government.payments-* (online payment processing)", () => {
     assert.equal(call("fines-create", ctxA, { payerName: "X", reason: "y", amountUsd: 0 }).ok, false);
   });
 
-  it("permit fee: checkout -> confirm marks permit paid + emits notification", () => {
+  it("permit fee: a payment-method token does not mark the permit paid", async () => {
     const p = call("permits-apply", ctxA, { applicantName: "Bob", applicantEmail: "b@x", kind: "fence", feeUsd: 120 });
     const co = call("payments-checkout", ctxA, { kind: "permit", refId: p.result.permit.id });
     assert.equal(co.ok, true);
     assert.equal(co.result.payment.status, "pending");
     assert.equal(co.result.payment.amountUsd, 120);
-    const conf = call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok_test", cardLast4: "4242" });
-    assert.equal(conf.ok, true);
-    assert.equal(conf.result.payment.status, "succeeded");
-    assert.match(conf.result.payment.receiptNumber, /^RCPT-/);
+    const priorKey = process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_SECRET_KEY;
+    let conf;
+    try {
+      conf = await call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok_test", cardLast4: "4242" });
+    } finally {
+      if (priorKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+      else process.env.STRIPE_SECRET_KEY = priorKey;
+    }
+    assert.equal(conf.ok, false);
+    assert.equal(conf.error, "stripe_not_configured");
+    assert.equal(conf.result, undefined);
     const permits = call("permits-list", ctxA, {}).result.permits;
-    assert.equal(permits.find(x => x.id === p.result.permit.id).paid, true);
-    assert.ok(call("notifications-list", ctxA, {}).result.notifications.some(n => n.kind === "payment_received"));
+    assert.equal(permits.find(x => x.id === p.result.permit.id).paid, false);
+    assert.equal(call("notifications-list", ctxA, {}).result.notifications.some(n => n.kind === "payment_received"), false);
+    assert.equal(call("permits-approve", ctxA, { id: p.result.permit.id }).ok, false);
   });
 
-  it("fine payment: checkout requires valid card, refund reverses paid flag", () => {
+  it("fine payment: a token is not a charge; a verified Stripe payment still refunds", async () => {
     const f = call("fines-create", ctxA, { payerName: "Sam", reason: "Litter", amountUsd: 30 });
     const co = call("payments-checkout", ctxA, { kind: "fine", refId: f.result.fine.id });
-    assert.equal(call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "", cardLast4: "1111" }).ok, false);
-    assert.equal(call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "12" }).ok, false);
-    const conf = call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "9999" });
-    assert.equal(conf.ok, true);
-    const refunded = call("payments-refund", ctxA, { paymentId: co.result.payment.id, reason: "duplicate" });
-    assert.equal(refunded.result.payment.status, "refunded");
-    assert.equal(call("fines-list", ctxA, {}).result.fines.find(x => x.id === f.result.fine.id).paid, false);
+    assert.equal((await call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "", cardLast4: "1111" })).ok, false);
+    assert.equal((await call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "12" })).ok, false);
+    const fake = await call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "9999" });
+    assert.equal(fake.ok, false);
+    assert.notEqual(fake.result?.payment?.status, "succeeded");
+    assert.equal(fake.result?.payment?.receiptNumber, undefined);
+
+    const priorKey = process.env.STRIPE_SECRET_KEY;
+    const priorFetch = globalThis.fetch;
+    const piId = "pi_gov_parity_refund";
+    process.env.STRIPE_SECRET_KEY = "sk_test_government_parity";
+    globalThis.fetch = async (url, opts) => {
+      const u = String(url);
+      if (u === "https://api.stripe.com/v1/payment_intents" && opts?.method === "POST") {
+        return { ok: true, json: async () => ({ id: piId, client_secret: "cs_test", status: "requires_payment_method", amount: 3000, currency: "usd" }) };
+      }
+      if (u === `https://api.stripe.com/v1/payment_intents/${piId}`) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: piId, status: "succeeded", amount: 3000, currency: "usd", latest_charge: "ch_parity",
+            metadata: { concord_user_id: "user_a", concord_payment_id: co.result.payment.id, concord_purpose: "government_fee" },
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch ${u}`);
+    };
+    try {
+      const created = await call("payments-create-intent", ctxA, { paymentId: co.result.payment.id });
+      assert.equal(created.ok, true);
+      const conf = await call("payments-confirm", ctxA, { paymentId: co.result.payment.id, paymentIntentId: piId });
+      assert.equal(conf.ok, true);
+      assert.equal(conf.result.payment.status, "succeeded");
+      assert.match(conf.result.payment.receiptNumber, /^RCPT-/);
+      const refunded = call("payments-refund", ctxA, { paymentId: co.result.payment.id, reason: "duplicate" });
+      assert.equal(refunded.result.payment.status, "refunded");
+      assert.equal(call("fines-list", ctxA, {}).result.fines.find(x => x.id === f.result.fine.id).paid, false);
+    } finally {
+      if (priorKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+      else process.env.STRIPE_SECRET_KEY = priorKey;
+      globalThis.fetch = priorFetch;
+    }
   });
 
   it("rejects checkout on unknown / zero-amount payable and double payment", () => {
@@ -596,7 +643,7 @@ describe("government.notifications-* (case-status notifications)", () => {
     assert.equal(sub.ok, true);
     assert.equal(sub.result.subscription.channel, "sms");
     // approving a paid permit emits a notification on the subscribed channel
-    call("permits-pay-fee", ctxA, { id: p.result.permit.id });
+    call("permits-pay-fee", ctxA, { id: p.result.permit.id, method: "offline" });
     call("permits-approve", ctxA, { id: p.result.permit.id });
     const list = call("notifications-list", ctxA, {}).result;
     const approvalNotif = list.notifications.find(n => n.subjectId === p.result.permit.id && /approved/.test(n.message));
