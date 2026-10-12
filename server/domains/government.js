@@ -1110,12 +1110,14 @@ export default function registerGovernmentActions(registerLensAction) {
     try {
       const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = govActor(ctx);
-      if (!isStripeSecretConfigured()) {
-        return { ok: false, error: "stripe_not_configured", message: "payment capture not wired" };
-      }
+      // Bucket lookup first — another account must get "payment not found"
+      // (same shape as payments-confirm), not a Stripe-config signal.
       const paymentId = String(params.paymentId || "");
       const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
       if (!payment) return { ok: false, error: "payment not found" };
+      if (!isStripeSecretConfigured()) {
+        return { ok: false, error: "stripe_not_configured", message: "payment capture not wired" };
+      }
       if (payment.status !== "pending") return { ok: false, error: "payment is not pending" };
       const amountCents = Math.round(Number(payment.amountUsd) * 100);
       if (amountCents < 50) return { ok: false, error: "amount below Stripe minimum ($0.50 USD)" };

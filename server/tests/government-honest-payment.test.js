@@ -109,6 +109,27 @@ describe("INC-61 government payments — fake card charges", () => {
     assert.match(shaped.body.error, /not found/);
     assert.equal(permitOf(acct1, permitId).paid, false);
     assert.equal(paymentReceived(acct1), false);
+
+    // Two-account isolation: list / create-intent / refund / pay-fee must not
+    // see or mutate the other account's payment or permit. Errors stay generic
+    // (no acct1 user id leak).
+    const foreignList = call("payments-list", acct2, {});
+    assert.equal(foreignList.ok, true);
+    assert.equal(foreignList.result.payments.some((p) => p.id === paymentId), false);
+    const foreignIntent = await call("payments-create-intent", acct2, { paymentId });
+    assert.equal(foreignIntent.ok, false);
+    assert.equal(foreignIntent.error, "payment not found");
+    assert.equal(JSON.stringify(foreignIntent).includes("acct1"), false);
+    const foreignRefund = call("payments-refund", acct2, { paymentId, reason: "nope" });
+    assert.equal(foreignRefund.ok, false);
+    assert.match(foreignRefund.error, /not found/);
+    assert.equal(JSON.stringify(foreignRefund).includes("acct1"), false);
+    const foreignPayFee = call("permits-pay-fee", acct2, { id: permitId, method: "offline" });
+    assert.equal(foreignPayFee.ok, false);
+    assert.match(foreignPayFee.error, /not found/);
+    assert.equal(JSON.stringify(foreignPayFee).includes("acct1"), false);
+    assert.equal(permitOf(acct1, permitId).paid, false);
+    assert.equal(call("permits-list", acct2, {}).result.permits.some((p) => p.id === permitId), false);
   });
 
   it("a placeholder key and a pi_ id still do not mark paid", async () => {
