@@ -18,6 +18,14 @@ export const PUBLIC_PROOF_COMMENT_RE = /^\/api\/public-share\/proof\/[^/]+\/comm
 // /api/receipts/verify/x and /api/receipts/verify-extra.
 export const RECEIPT_VERIFY_PATH = "/api/receipts/verify";
 
+/**
+ * @param {{
+ *   nodeEnv?: string,
+ *   authMode?: string,
+ *   auditLog?: (category: string, action: string, details?: Record<string, unknown>) => void,
+ *   jwtSecret?: string,
+ * }} [opts]
+ */
 export function createCsrfMiddleware({ nodeEnv, authMode, auditLog, jwtSecret } = {}) {
   function generateCsrfToken(sessionId = "") {
     // Generate a token based on a secret + session identifier

@@ -46,6 +46,10 @@ const SKIP = [
   // rationale). Its colour ramp and view options live in lib/conkay/beam-view.ts
   // and are unit tested there.
   /(^|\/)conkay\/workspace\/BeamViewport\.tsx$/,
+  // ConKay showcase vehicle studio — another @react-three/fiber <Canvas>. The
+  // hero-camera / explode / section math lives in lib/conkay/{assembly-view,hero-camera}
+  // and is unit tested from AssemblyViewer.test.tsx; the WebGL mesh path is not.
+  /(^|\/)conkay\/designs\/AssemblyViewer\.tsx$/,
   // The world lens's top-level surface (owner-approved 2026-09-30): it hosts
   // the three.js DistrictViewport and composes the world-lens/ components
   // excluded above, plus the live world socket loop. Its render path is that

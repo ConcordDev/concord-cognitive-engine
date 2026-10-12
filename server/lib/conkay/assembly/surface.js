@@ -396,18 +396,25 @@ function patch(nu, nv, sample, kind) {
       ids[i][j] = mesh.add(p, n);
     }
   }
-  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
-    const a = ids[i][j];
-    const b = ids[i + 1][j];
-    const c = ids[i + 1][j + 1];
-    const d = ids[i][j + 1];
-    const pa = pts[i][j];
-    const pb = pts[i + 1][j];
-    const pc = pts[i + 1][j + 1];
-    let n = faceN(pa, pb, pc);
-    const mid = { x: (pa.x + pc.x) / 2, y: (pa.y + pc.y) / 2, z: (pa.z + pc.z) / 2 };
-    if (!outwardish(mid, n, kind)) mesh.tri(a, d, c), mesh.tri(a, c, b);
-    else mesh.tri(a, b, c), mesh.tri(a, c, d);
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nv; j++) {
+      const a = ids[i][j];
+      const b = ids[i + 1][j];
+      const c = ids[i + 1][j + 1];
+      const d = ids[i][j + 1];
+      const pa = pts[i][j];
+      const pb = pts[i + 1][j];
+      const pc = pts[i + 1][j + 1];
+      let n = faceN(pa, pb, pc);
+      const mid = { x: (pa.x + pc.x) / 2, y: (pa.y + pc.y) / 2, z: (pa.z + pc.z) / 2 };
+      if (!outwardish(mid, n, kind)) {
+        mesh.tri(a, d, c);
+        mesh.tri(a, c, b);
+      } else {
+        mesh.tri(a, b, c);
+        mesh.tri(a, c, d);
+      }
+    }
   }
   return mesh;
 }
@@ -1009,21 +1016,51 @@ function grilleMeshWorld(spec) {
 }
 
 function lampStrip(spec, side, rear) {
+  const hw = spec.halfWidth || 0.95;
   const sample = (u, v) => {
     if (!rear) {
-      const x = lerp(spec.noseX + (spec.frontAxleX - spec.noseX) * 0.28, spec.noseX + (spec.frontAxleX - spec.noseX) * 0.7, u);
-      const p = prof(spec, x);
-      const z = lerp(p.shoulderZ * 0.62, p.shoulderZ * 0.78, v);
-      const y = side * lerp(p.shoulderY * 0.32, p.shoulderY * 0.78, u);
-      return { x, y: y + side * 0.004, z };
+      // Thin slit at the top corner of the nose, just aft of the leading edge.
+      const z = (spec.noseTipZ || 0.5) - 0.012 + (v - 0.5) * 0.014;
+      const y = side * lerp(hw * 0.58, hw * 0.9, u);
+      return { x: spec.noseX + 0.01 + (1 - u) * 0.012, y: y + side * 0.004, z };
     }
     const k = keysOf(spec);
-    const p = prof(spec, k.kammX);
-    const z = lerp(spec.kammZ * 0.58, spec.kammZ * 0.8, v);
-    const y = side * lerp(p.shoulderY * 0.22, p.shoulderY * 0.72, u);
-    return { x: k.kammX + 0.006, y, z };
+    const zMid = (spec.kammZ || 0.62) * 0.7;
+    const y = side * lerp(0.015, hw * 0.9, u);
+    return { x: (k.kammX || spec.tailX - 0.12) + 0.01, y, z: zMid + (v - 0.5) * 0.014 };
   };
-  return patch(18, 4, sample, rear ? "rear" : "front");
+  return patch(18, 2, sample, rear ? "rear" : "front");
+}
+
+function ducktailLip(spec) {
+  const x0 = spec.kammX || spec.tailX - 0.16;
+  const x1 = spec.tailX + 0.006;
+  const z0 = spec.kammZ || 0.64;
+  const y1 = Math.min((spec.halfWidth || 0.9) * 0.62, 0.62);
+  return patch(14, 3, (u, v) => {
+    const edge = 0.35 + 0.65 * v;
+    return {
+      x: lerp(x0 + 0.04, x1, v),
+      y: (u - 0.5) * 2 * y1 * edge,
+      z: z0 + 0.004 + v * v * 0.018,
+    };
+  }, "up");
+}
+
+function diffuserSheet(spec) {
+  const x1 = spec.tailX - 0.02;
+  const x0 = Math.max(spec.rearAxleX + 0.2, x1 - 0.62);
+  const y1 = Math.min((spec.halfWidth || 0.9) * 0.58, 0.58);
+  const zLo = (spec.floorZ || 0.12) + 0.015;
+  const zHi = zLo + 0.075;
+  return patch(10, 4, (u, v) => {
+    const kick = v ** 1.35;
+    return {
+      x: lerp(x0, x1, v),
+      y: (u - 0.5) * 2 * y1,
+      z: lerp(zLo, zHi, kick),
+    };
+  }, "down");
 }
 
 function handleBar(spec, side, x) {
@@ -1087,7 +1124,7 @@ function detailList(spec) {
       id, name, role: "lamp", group: "exterior",
       ...loc,
       material: "lamp",
-      note: rear ? "taillamp graphic on the kamm face, offset aft of the skin" : "headlamp graphic on the nose surface, offset outboard of the skin. Not photometry.",
+      note: rear ? "full-width thin taillamp bar on the kamm face, split left and right. Not photometry." : "thin horizontal lamp slit at the top corner of the nose. Not photometry.",
     });
   };
   lamp("LAMP_L", "Headlamp left", -1, false);
@@ -1097,7 +1134,7 @@ function detailList(spec) {
   const g = localise(grilleMeshWorld(spec));
   out.push({
     id: "GRILLE", name: "Cooling intake", role: "intake", group: "exterior", ...g, material: "intake",
-    note: "lower intake recessed aft of the bumper skin. Width follows the radiator face, clipped to the bumper. Height is an estimated slot, not the full core.",
+    note: "wide shallow slot under the bumper leading edge. Height is an estimated opening, not a radiator core.",
   });
   const cPost = spec.cPillarX || spec.rearAxleX;
   const doors = [
@@ -1110,6 +1147,16 @@ function detailList(spec) {
     const loc = localise(handleBar(spec, side, x));
     out.push({ id, name, role: "handle", group: "exterior", ...loc, material: "trim", note: "flush pull on the beltline, mid-door. Shape is an allowance, not a sourced handle." });
   }
+  const diffuser = localise(diffuserSheet(spec));
+  out.push({
+    id: "DIFFUSER", name: "Rear diffuser undertray", role: "trim", group: "exterior", ...diffuser, material: "trim",
+    note: "styling undertray kicked up toward the Kamm cutoff. Not a CFD surface.",
+  });
+  const lip = localise(ducktailLip(spec));
+  out.push({
+    id: "DUCKTAIL", name: "Ducktail lip", role: "trim", group: "exterior", ...lip, material: "paint",
+    note: "slight lip on the Kamm cutoff. A styling surface on the tail, not a measured aero device.",
+  });
   for (const [id, name, side] of [["MIRROR_L", "Mirror left", -1], ["MIRROR_R", "Mirror right", 1]]) {
     const loc = localise(mirrorHousing(spec, side));
     out.push({
@@ -1197,6 +1244,7 @@ export function loftBody(specInput, opts = {}) {
     normals: body.normals.map(round5),
     paint: body.indices,
     glass: pack(glass),
+    trim: built.trim && built.trim.positions.length ? pack(built.trim) : null,
     arch: pack(built.archWell),
     details,
     bounds: { min: min.map(round5), max: max.map(round5) },
@@ -1262,12 +1310,14 @@ export function wheelMesh(spec) {
     }
   }
   const tvid = (i, j) => (i % rings) * pj + j;
-  for (let i = 0; i < rings; i++) for (let j = 0; j < pj - 1; j++) {
-    const a = tvid(i, j);
-    const b = tvid(i + 1, j);
-    const c = tvid(i + 1, j + 1);
-    const d = tvid(i, j + 1);
-    tireIdx.push(a, b, c, a, c, d);
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < pj - 1; j++) {
+      const a = tvid(i, j);
+      const b = tvid(i + 1, j);
+      const c = tvid(i + 1, j + 1);
+      const d = tvid(i, j + 1);
+      tireIdx.push(a, b, c, a, c, d);
+    }
   }
 
   const spokes = spec.spokes || 10;

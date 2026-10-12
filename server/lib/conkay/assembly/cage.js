@@ -23,30 +23,52 @@ function archWeight(spec, x) {
   let w = 0;
   for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
     const dx = Math.abs(x - ax);
-    const span = R * 1.15;
+    const span = R * 0.92;
     if (dx < span) w = Math.max(w, Math.cos((dx / span) * Math.PI * 0.5) ** 2);
   }
   return w;
 }
 
+function sillWeight(spec, x) {
+  const a = spec.frontAxleX + spec.tyreRadius + 0.06;
+  const b = spec.rearAxleX - spec.tyreRadius - 0.06;
+  if (!(x > a && x < b)) return 0;
+  const fade = 0.22;
+  let w = 1;
+  if (x < a + fade) w = (x - a) / fade;
+  if (x > b - fade) w = Math.min(w, (b - x) / fade);
+  return clamp(w, 0, 1);
+}
+
 function sectionRows(spec, profileAt, x) {
   const p = profileAt(x);
   const archW = archWeight(spec, x);
-  const onHood = x < spec.cowlX - 0.02 && x > spec.noseX - 0.02;
-  const hoodT = onHood
-    ? Math.sin(Math.PI * clamp((x - spec.noseX) / Math.max(0.2, spec.cowlX - spec.noseX), 0, 1))
-    : 0;
-  const crownZ = p.crownZ + 0.011 * hoodT;
-  const shoulderY = p.shoulderY * (1 + 0.045 * archW);
-  let shoulderZ = p.shoulderZ + 0.014 * archW;
+  // The crown follows the styling spline. A longitudinal sine on top of it
+  // rose through the middle of the hood and fell back to zero at the cowl,
+  // which is the ripple ahead of the windshield.
+  const crownZ = p.crownZ;
+  const shoulderY = p.shoulderY * (1 + 0.055 * archW);
+  let shoulderZ = p.shoulderZ;
+  // The fender crown sits on the tyre circle plus the arch gap, so the
+  // opening reads as the tyre plus ~30 mm instead of a tall flat arch.
+  const lip = spec.tyreRadius + spec.archGap + 0.01;
+  for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
+    const dx = x - ax;
+    // Only the crown of the arch. Pulling the side of the opening down onto
+    // the circle puts sheet metal through the tyre.
+    if (Math.abs(dx) >= lip * 0.58) continue;
+    const arc = spec.tyreCenterZ + Math.sqrt(Math.max(0, lip * lip - dx * dx));
+    const w = Math.cos((Math.abs(dx) / (lip * 0.58)) * Math.PI * 0.5) ** 2;
+    shoulderZ = lerp(shoulderZ, arc, w);
+  }
   let beltZ = Math.min(p.beltZ, Math.max(shoulderZ, p.shoulderZ) - 0.004);
   if (shoulderZ > beltZ - 0.006) beltZ = shoulderZ - 0.012;
   let railZ = Math.min(p.railZ, crownZ - 0.008);
   if (railZ < beltZ + 0.02) railZ = Math.min(crownZ - 0.01, beltZ + Math.max(0.02, (crownZ - beltZ) * 0.45));
-  const beltY = shoulderY * 0.955;
-  const railY = Math.min(p.railY, beltY * 0.9);
+  const beltY = shoulderY * 0.935;
+  const railY = Math.min(p.railY, beltY * 0.84);
   const hoodY = Math.max(0.02, Math.min(railY * 0.46, railY - 0.015));
-  const rockerY = Math.min(p.rockerY * 0.9, shoulderY * 0.8);
+  const rockerY = Math.min(p.rockerY, shoulderY * 0.86);
   const floorZ = p.floorZ + 0.012;
   const side = (t, bow) => ({
     y: lerp(shoulderY, rockerY, t) + bow,
@@ -85,6 +107,25 @@ function sectionRows(spec, profileAt, x) {
   }
   rows[0].y = 0;
   rows[ROWS - 1].y = 0;
+  // Lower door scallop: the row above the rocker tucks in between the wheels.
+  // The shoulder crease is left alone.
+  const sw = sillWeight(spec, x);
+  if (sw > 0) rows[8].y = Math.max(rows[9].y + 0.02, rows[8].y - 0.034 * sw);
+  // Side rows that fall inside the tyre circle get a small lift. Moving x
+  // here folds the fender, so only z changes, and only by a few millimetres.
+  const clear = spec.tyreRadius + spec.archGap + 0.006;
+  for (let i = SHOULDER; i <= ROCKER; i++) {
+    for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
+      const dx = x - ax;
+      const dz = rows[i].z - spec.tyreCenterZ;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.05 && d < clear && rows[i].y > 0.72) {
+        const need = Math.sqrt(Math.max(0, clear * clear - dx * dx));
+        const lift = Math.min(0.012, Math.max(0, need - dz));
+        rows[i].z += lift;
+      }
+    }
+  }
   // Strictly descending z keeps a quad between two stations from twisting
   // when the fender would otherwise rise back above the belt.
   for (let i = 1; i < rows.length; i++) {
@@ -124,7 +165,8 @@ function stationList(spec) {
     { x: spec.headerX + 0.1, id: "sd0" },
     { x: lerp(spec.headerX, spec.bPillarX, 0.5), id: "sd1" },
     { x: spec.bPillarX - 0.05, id: "sd2" },
-    { x: spec.bPillarX, id: "bp", pin: true },
+    { x: spec.bPillarX - 0.016, id: "bp0", pin: true },
+    { x: spec.bPillarX + 0.016, id: "bp1", pin: true },
     { x: spec.bPillarX + 0.06, id: "sd3" },
     { x: lerp(spec.bPillarX, cPost, 0.5), id: "sd4" },
     { x: cPost - 0.05, id: "sd5" },
@@ -192,13 +234,18 @@ function makeGrid(spec, profileAt) {
     const end = i === 0 || i === n - 1;
     const srcN = pts[1][i];
     pts[0][i].z = srcN.z;
-    const wrap = Math.sin(Math.PI * (i / (n - 1)));
-    pts[0][i].y = end ? 0 : srcN.y * (0.42 + 0.2 * wrap);
-    pts[0][i].x = spec.noseX - 0.006 - 0.034 * wrap;
+    // Taut wedge. The leading edge stays at bumper height (the neighbour's z)
+    // and nearly one x. Only the outboard corner tucks aft, so the plan
+    // corner is tight instead of a round pelican bulb.
+    // One x for the leading edge. The plan spline turns to full width within
+    // 0.14 m, and the nose loop is creased, so the corner stays tight without
+    // a local tuck that breaks the hood highlight.
+    pts[0][i].y = end ? 0 : srcN.y * 0.98;
+    pts[0][i].x = spec.noseX - 0.002;
     const srcT = pts[pts.length - 2][i];
     pts[pts.length - 1][i].z = srcT.z;
-    pts[pts.length - 1][i].y = end ? 0 : srcT.y * 0.62;
-    pts[pts.length - 1][i].x = spec.tailX + 0.012;
+    pts[pts.length - 1][i].y = end ? 0 : srcT.y * 0.97;
+    pts[pts.length - 1][i].x = spec.tailX;
   }
   return { stations, pts, count: stations.length * ROWS + 2 };
 }
@@ -214,12 +261,15 @@ function inArch(corners, spec) {
   const ys = corners.map((p) => p.y);
   const maxY = Math.max(...ys);
   const minY = Math.min(...ys);
-  if (maxY < 0.8 || minY < 0.5) return false;
+  if (maxY < 0.78 || minY < 0.45) return false;
   const c = centroid(corners);
-  if (c.y < 0.74) return false;
-  const R = spec.tyreRadius + spec.archGap;
+  if (c.y < 0.7) return false;
+  const hole = spec.tyreRadius + 0.012;
+  const lip = spec.tyreRadius + spec.archGap + 0.012;
   for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
-    if (Math.hypot(c.x - ax, c.z - spec.tyreCenterZ) < R * 0.7) return true;
+    const ds = corners.map((p) => Math.hypot(p.x - ax, p.z - spec.tyreCenterZ));
+    const inside = ds.filter((d) => d < lip).length;
+    if (Math.hypot(c.x - ax, c.z - spec.tyreCenterZ) < hole && inside >= 3) return true;
   }
   return false;
 }
@@ -229,30 +279,41 @@ function inIntake(corners, spec, bay) {
   const c = centroid(corners);
   if (c.z > (spec.grilleZ || spec.floorZ + 0.2) + (spec.grilleHalfZ || 0.04) + 0.05) return false;
   if (c.z < spec.floorZ + 0.02) return false;
-  const gy = Math.max(0.07, Math.min(spec.grilleHalfY || 0.16, 0.28));
-  const gz = Math.max(0.028, spec.grilleHalfZ || 0.04);
+  const gy = Math.max(0.2, Math.min(spec.grilleHalfY || 0.7, (spec.halfWidth || 0.95) * 0.82));
+  const gz = Math.max(0.016, spec.grilleHalfZ || 0.024);
   const cz = spec.grilleZ || spec.floorZ + 0.09;
   const ellipse = (c.y / gy) ** 2 + ((c.z - cz) / gz) ** 2 < 1.2;
   const fallback = bay <= 1 && corners.every((p) => p.row >= ROCKER && p.row <= ROCKER + 2);
   return ellipse || fallback;
 }
 
+function inTrim(corners, spec) {
+  const xs = corners.map((p) => p.x);
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const rMax = Math.max(...corners.map((p) => p.row));
+  if (rMax > BELT) return false;
+  const b = spec.bPillarX;
+  // The two stations astride the pillar are ~32 mm apart. That bay is the
+  // dark trim, not a second bubble of glass.
+  return xMax - xMin < 0.05 && xMin < b && xMax > b;
+}
+
 function inGlass(corners, spec) {
   const xs = corners.map((p) => p.x);
   const xMin = Math.min(...xs);
   const xMax = Math.max(...xs);
-  const rows = corners.map((p) => p.row);
-  const rMin = Math.min(...rows);
-  const rMax = Math.max(...rows);
-  const eps = 0.02;
-  const interior = (a, b) => xMin > a + eps && xMax < b - eps;
-  const ws = interior(spec.cowlX, spec.headerX);
-  const sideF = interior(spec.headerX, spec.bPillarX);
-  const sideR = interior(spec.bPillarX, spec.cPillarX || spec.rearAxleX);
-  const back = interior(spec.backlightX || spec.rearAxleX, spec.kammX || spec.tailX);
-  if ((ws || back) && rMax <= BELT) return true;
-  if ((sideF || sideR) && rMin >= RAIL && rMax <= BELT) return true;
-  return false;
+  const rMax = Math.max(...corners.map((p) => p.row));
+  const cowl = spec.cowlX;
+  const cPost = spec.cPillarX || spec.rearAxleX;
+  if (xMax < cowl + 0.045) return false;
+  if (xMin > cPost - 0.01) return false;
+  // One daylight opening: crown through the belt, from the A-pillar base
+  // over the roof. The last stretch before the C-pillar drops to the rail
+  // so the quarter window tapers and the lower edge kicks up.
+  const kick = cPost - 0.18;
+  if (xMin > kick) return rMax <= RAIL;
+  return rMax <= BELT;
 }
 
 function classify(grid, spec) {
@@ -260,6 +321,7 @@ function classify(grid, spec) {
   const glass = [];
   const intake = [];
   const arch = [];
+  const trim = [];
   const nS = grid.pts.length;
   for (let s = 0; s < nS - 1; s++) {
     for (let r = 0; r < ROWS - 1; r++) {
@@ -267,11 +329,12 @@ function classify(grid, spec) {
       const quad = [[s, r], [s + 1, r], [s + 1, r + 1], [s, r + 1]];
       if (inArch(corners, spec)) { arch.push(quad); continue; }
       if (inIntake(corners, spec, s)) { intake.push(quad); continue; }
+      if (inTrim(corners, spec)) { trim.push(quad); continue; }
       if (inGlass(corners, spec)) { glass.push(quad); continue; }
       keep.push(quad);
     }
   }
-  return { keep, glass, intake, arch };
+  return { keep, glass, intake, arch, trim };
 }
 
 function snapArches(grid, keep, spec) {
@@ -336,7 +399,13 @@ function indexGrid(grid, groups) {
     verts.push([p.x, p.y, p.z]);
   }
   const toFaces = (quads) => quads.map((q) => q.map(([s, r]) => map.get(s * ROWS + r)));
-  return { verts, map, keep: toFaces(groups[0]), glass: toFaces(groups[1]), intake: toFaces(groups[2]) };
+  return {
+    verts, map,
+    keep: toFaces(groups[0]),
+    glass: toFaces(groups[1]),
+    intake: toFaces(groups[2]),
+    trim: toFaces(groups[3] || []),
+  };
 }
 
 function creaseLists(grid, idx) {
@@ -363,7 +432,8 @@ function creaseLists(grid, idx) {
     }
   }
   for (let s = 0; s < nS; s++) {
-    if (grid.stations[s].id !== "kamm" && grid.stations[s].id !== "tail") continue;
+    const id = grid.stations[s].id;
+    if (id !== "kamm" && id !== "tail" && id !== "nose") continue;
     for (let r = 0; r < ROWS - 1; r++) add(at(s, r), at(s, r + 1), 3.6);
   }
   return { creases, hard };
@@ -716,10 +786,12 @@ function highlightMetric(positions, facesOrIdx, hard) {
 function grilleFrom(verts, faces) {
   const pts = [];
   const seen = new Set();
-  for (const f of faces) for (const i of f) {
-    if (seen.has(i)) continue;
-    seen.add(i);
-    pts.push({ x: verts[i][0], y: verts[i][1], z: verts[i][2] });
+  for (const f of faces) {
+    for (const i of f) {
+      if (seen.has(i)) continue;
+      seen.add(i);
+      pts.push({ x: verts[i][0], y: verts[i][1], z: verts[i][2] });
+    }
   }
   return pts;
 }
@@ -817,11 +889,11 @@ function subdivideParts(spec, grid) {
     groups.intake = extra;
   }
   snapArches(grid, groups.keep, spec);
-  const indexed = indexGrid(grid, [groups.keep, groups.glass, groups.intake]);
-  indexed.keep.push(...spineCap(indexed.verts, indexed.map, 0, -1, null));
+  const indexed = indexGrid(grid, [groups.keep, groups.glass, groups.intake, groups.trim]);
+  indexed.keep.push(...spineCap(indexed.verts, indexed.map, 0, -1, 0.006));
   indexed.keep.push(...spineCap(indexed.verts, indexed.map, grid.pts.length - 1, 1, 0.004));
   const cre = creaseLists(grid, indexed);
-  const mirrored = mirrorMesh(indexed.verts, [indexed.keep, indexed.glass, indexed.intake], cre.creases, cre.hard);
+  const mirrored = mirrorMesh(indexed.verts, [indexed.keep, indexed.glass, indexed.intake, indexed.trim], cre.creases, cre.hard);
   const oriented = orient(mirrored.verts, mirrored.groups);
   const maps = toMaps(mirrored.creases, mirrored.hardPairs);
   markBoundaries(oriented.positions, oriented.groups[0], maps.hard);
@@ -838,10 +910,20 @@ function subdivideParts(spec, grid) {
     crease: new Map(),
     hard: new Set(),
   }, levels);
+  const trimIn = oriented.groups[3].length
+    ? catmullClark({
+      positions: oriented.positions.slice(),
+      faces: oriented.groups[3],
+      crease: new Map(),
+      hard: new Set(),
+    }, levels)
+    : { positions: new Float64Array(0), faces: [] };
   const bodyIdx = triangulate(body.faces);
   const glassIdx = triangulate(glassIn.faces);
+  const trimIdx = triangulate(trimIn.faces);
   const positions = asArray(body.positions);
-  const glassPos = asArray(glassIn.positions);
+  const glassRaw = asArray(glassIn.positions);
+  const glassPos = glassRaw.slice();
   const normals = computeNormals(positions, bodyIdx);
   const gNormals = computeNormals(glassPos, glassIdx);
   for (let i = 0; i < glassPos.length; i += 3) {
@@ -851,15 +933,27 @@ function subdivideParts(spec, grid) {
   }
   const glass = { positions: glassPos, normals: gNormals, indices: glassIdx };
   swapGlassFront(glass, positions);
+  const trimPos = asArray(trimIn.positions);
+  const trim = { positions: trimPos, normals: computeNormals(trimPos, trimIdx), indices: trimIdx };
   const hl = highlightMetric(positions, body.faces, body.hard);
-  const samples = sampleLimit(positions, spec);
+  // Roof glass is the crown. Sample it before the 4 mm offset, or the
+  // centreline bins under the daylight opening read as the floor.
+  const samples = sampleLimit(joinPos(positions, glassRaw), spec);
   const grillePts = grilleFrom(mirrored.verts, mirrored.groups[2]);
   const mesh = { positions, normals, indices: bodyIdx, triangles: bodyIdx.length / 3 };
   return {
-    mesh, glass, samples, highlight: hl, grillePts, levels,
+    mesh, glass, trim, samples, highlight: hl, grillePts, levels,
     archCount: archViolations(positions, spec),
     controlPoints: indexed.verts.length,
   };
+}
+
+function joinPos(a, b) {
+  if (!b.length) return a;
+  const out = new Float64Array(a.length + b.length);
+  out.set(a);
+  out.set(b, a.length);
+  return out;
 }
 
 export function buildCageBody(spec, profileAt) {
@@ -890,6 +984,7 @@ export function buildCageBody(spec, profileAt) {
     mesh: built.mesh,
     archWell,
     glass: built.glass,
+    trim: built.trim,
     stations: grid.stations.length,
     section: ROWS,
   };

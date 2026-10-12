@@ -125,7 +125,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     floorZ: floorClear, beltZ, bPillarX, cPillarX, aPillarBaseX,
     track, tyreRadius: tyreR, tyreHalfWidth: tyreW / 2,
     tyreCenterZ: centers.TIRE_FL?.z ?? tyreR,
-    noseTipZ: 0.32,
+    noseTipZ: 0.5,
     kammRatio: 0.45,
     kammZ: kammTarget,
     ahpX: scene.ahp.x,
@@ -136,9 +136,9 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     beltRiseM: 0.032,
     cowlZ: cowlTarget,
     headerZ: headerTarget,
-    grilleHalfY: halfWidth * 0.22,
-    grilleHalfZ: 0.036,
-    grilleZ: floorClear + 0.09,
+    grilleHalfY: halfWidth * 0.78,
+    grilleHalfZ: 0.026,
+    grilleZ: Math.max(floorClear + 0.12, 0.24),
     layout: layoutChoice.id,
   });
 
@@ -215,6 +215,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     parameters: [
       param("wheelbase", "Wheelbase", rearAxleX - frontAxleX, "m", prov("calculated", "rearAxleX − frontAxleX")),
       param("overallLength", "Overall length", tailX - noseX, "m", heightProvenance.state === "calculated" && measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "nose and tail stations")),
+      param("frontOverhang", "Front overhang", frontAxleX - noseX, "m", prov("calculated", "front axle minus nose station", "0.85 m is the short end of crash structure plus the front motor. The nose is a taut wedge at bumper height, not a longer drooping cap.")),
       param("overallWidth", "Overall width", halfWidth * 2, "m", measuredRoof ? prov("calculated", "cad.body bbox") : prov("calculated", "track + tyre + fender, capped at the body maxWidth design choice 1.95 m")),
       param("overallHeight", "Overall height", roofZ, "m", heightProvenance),
       param("layout", "Powertrain layout", layoutChoice.id, "1", prov(layoutChoice.chosenBy === "caller" ? "assumed" : "calculated", "style.js chooseLayout", layoutChoice.reason)),
@@ -235,7 +236,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     id: "GLAZING", name: "Greenhouse glass", group: "exterior", role: "glass",
     placement: { x: (cowlX + cPillarX) / 2, y: 0, z: (beltZ + roofZ) / 2 },
     half: [(cPillarX - cowlX) / 2, halfWidth * 0.85, (roofZ - beltZ) / 2],
-    geometry: { ...envelope("glass patches bounded by the cowl, header, belt and roof-rail splines, offset 4 mm outboard of the skin. Not an optical solid."), representation: "dlo-patch" },
+    geometry: { ...envelope("one daylight opening from the A-pillar base over the roof to a tapered quarter window at the C-pillar, offset 4 mm outboard of the skin. The B-pillar is a separate dark trim bay. Not an optical solid."), representation: "dlo-patch" },
     parameters: [
       param("beltZ", "Beltline", beltZ, "m", prov("calculated", "M95 shoulder height")),
       param("cowlX", "Cowl", cowlX, "m", prov("calculated", "behind the front arch, near the accelerator heel")),
@@ -268,7 +269,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
       parameters: [
         param("diameter", "Overall diameter", tyreR * 2, "m", prov("sourced", t.dims?.source || "component library")),
         param("section", "Section width", tyreW, "m", prov("sourced", t.dims?.source || "component library")),
-        param("rim", "Rim diameter", rimM, "m", rimIn ? prov("sourced", "library rimDiameterIn") : prov("estimated", "overall diameter minus an 0.40 aspect sidewall")),
+        param("rim", "Rim diameter", rimM, "m", rimIn ? prov("sourced", "library rimDiameterIn", "The sourced tyre is 245/40ZR18. Load index 97 is 730 kg and the (Y) speed rating is established at 300 km/h, which covers 180 mph. A 20–21 in rim is typical styling for this class; fitting one inside this overall diameter would invent a much lower aspect, and a larger overall diameter would be an unsourced tyre. The rim stays 18 in.") : prov("estimated", "overall diameter minus an 0.40 aspect sidewall")),
         param("rimWidth", "Rim width", rimWidthM, "m", Array.isArray(rimRange) ? prov("estimated", "midpoint of the published rim-width range; the design does not select a width inside it") : prov("estimated", "0.70 of the section width")),
         param("spokes", "Spoke count", 10, "1", prov("assumed", "no spoke count is published for the wheel")),
       ],
@@ -680,14 +681,18 @@ function fitChecks(ctx) {
       { valueM: r4(gap) });
   } else {
     const motors = ctx.components.filter((c) => c.id.startsWith("MOTOR_"));
-    if (!motors.length) add("powertrain-cabin", "warn", "no drive unit, powertrain-to-cabin not checked");
-    else {
+    if (!motors.length) {
+      add("powertrain-cabin", "warn", "no drive unit, powertrain-to-cabin not checked");
+    } else {
       const ahead = motors.filter((m) => m.placement.x + m.half[0] > wall - 1e-6 && m.placement.x < wall);
       const intruding = motors.find((m) => m.placement.x < wall && m.placement.x + m.half[0] > wall + 0.01);
-      if (intruding) add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`);
-      else add("powertrain-cabin", "pass",
-        `${motors.map((m) => m.id).join(" and ")} clear the firewall at ${mm(wall)} mm${ahead.length ? "" : ""}`,
-        { motors: motors.map((m) => m.id) });
+      if (intruding) {
+        add("powertrain-cabin", "fail", `${intruding.id} rear face crosses the firewall at ${mm(wall)} mm`);
+      } else {
+        add("powertrain-cabin", "pass",
+          `${motors.map((m) => m.id).join(" and ")} clear the firewall at ${mm(wall)} mm${ahead.length ? "" : ""}`,
+          { motors: motors.map((m) => m.id) });
+      }
     }
   }
   const layoutId = ctx.layoutChoice?.id || ctx.spec?.layout || "ev_skateboard";
@@ -746,18 +751,22 @@ function fitChecks(ctx) {
       { valueM: r4(gap), minimumApertureTopM: r4(need) });
   }
 
-  const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle"]);
+  const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle", "trim"]);
   const outside = [];
   for (const c of ctx.components) {
     if (EXTERIOR.has(c.role) || c.id === "SPARE") continue;
     if (!c.half || c.half.every((h) => h === 0)) continue;
     if (!partInsideEnvelope(ctx.spec, c, 0.05)) outside.push(c.id);
   }
-  if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
-  else if (outside.length) add("containment", "fail",
-    `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.`,
-    { outside });
-  else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
+  if (!ctx.spec) {
+    add("containment", "warn", "no body spec, containment not checked");
+  } else if (outside.length) {
+    add("containment", "fail",
+      `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.`,
+      { outside });
+  } else {
+    add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
+  }
 
   // Pillar vs occupant: B-pillar x should sit between the rows.
   if (ctx.spec) {
@@ -1018,9 +1027,14 @@ export function projectSideBox(c) {
   const b = boxOf(c);
   if (!b) return null;
   const xs = [], zs = [];
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
-    const p = [0, 1, 2].map((i) => b.center[i] + sx * b.half[0] * b.axes[0][i] + sy * b.half[1] * b.axes[1][i] + sz * b.half[2] * b.axes[2][i]);
-    xs.push(p[0]); zs.push(p[2]);
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const p = [0, 1, 2].map((i) => b.center[i] + sx * b.half[0] * b.axes[0][i] + sy * b.half[1] * b.axes[1][i] + sz * b.half[2] * b.axes[2][i]);
+        xs.push(p[0]);
+        zs.push(p[2]);
+      }
+    }
   }
   return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
 }

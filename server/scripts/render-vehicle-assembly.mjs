@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildCarFromLibrary } from "../lib/conkay/compiler/car-from-library.js";
 import { assemblyFromIr } from "../lib/conkay/assembly/build.js";
+import { studioHeroCamera } from "../../concord-frontend/lib/conkay/hero-camera.mjs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const root = join(__dir, "..", "..");
@@ -19,11 +20,12 @@ const brief = "Design a car that weighs 2,500 lb, can go 180 mph, seats 4 people
 const built = buildCarFromLibrary(brief);
 if (built.error) throw new Error(built.error);
 const assembly = assemblyFromIr(built.ir);
+const heroCam = studioHeroCamera(assembly.surface.mesh.bounds, 1280 / 800);
 mkdirSync(outDir, { recursive: true });
 const html = `<!doctype html>
 <html><head><meta charset="utf-8"/>
 <script type="importmap">{ "imports": { "three": "/three/build/three.module.js" } }</script>
-<style>html,body,canvas{margin:0;width:100%;height:100%;display:block;background:#d8d9db}</style>
+<style>html,body,canvas{margin:0;width:100%;height:100%;display:block;background:#3c3e42}</style>
 </head><body>
 <script type="module">
 import * as THREE from "three";
@@ -45,15 +47,30 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(1.5);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = view === "engineering" ? 1.05 : 0.86;
 renderer.localClippingEnabled = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
+function studioBackdrop() {
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 256;
+  const g = c.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, "#8d9096");
+  grd.addColorStop(0.42, "#5e6166");
+  grd.addColorStop(1, "#3c3e42");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(view === "engineering" ? 0xececec : 0xd8d9db);
+scene.background = view === "engineering" ? new THREE.Color(0xececec) : studioBackdrop();
 const pmrem = new THREE.PMREMGenerator(renderer);
 if (view !== "engineering") scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
@@ -86,25 +103,31 @@ function geo(mesh, index) {
 
 const explode = view === "exploded" ? 0.72 : 0;
 const engineering = view === "engineering";
-const showInterior = engineering || explode > 0.02 || view === "section";
+const showInterior = engineering || explode > 0.02 || view === "section" || view === "section-x";
 let clip = [];
 if (view === "section") {
   const y = 0.05;
   clip = [new THREE.Plane(new THREE.Vector3(0, 0, 1), y)];
 }
+if (view === "section-x") {
+  // Default viewer cut: vehicle x = 2, shifted by the same centring as the group.
+  const cut = 2;
+  clip = [new THREE.Plane(new THREE.Vector3(1, 0, 0), -(cut - cx))];
+}
 
 const paintMat = engineering
   ? new THREE.MeshLambertMaterial({ color: 0x9aa3ad, flatShading: true, transparent: true, opacity: 0.45, clippingPlanes: clip })
   : new THREE.MeshPhysicalMaterial({
-    color: 0xe4e7ee, metalness: 0.92, roughness: 0.11, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.35, clippingPlanes: clip,
+    color: 0x8b9098, metalness: 0.9, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.62, clippingPlanes: clip,
     // Explode keeps the hierarchy shift. The shell is also translucent so the
     // skateboard pack, which only moves a rank-2 step, is still visible inside it.
     transparent: explode > 0, opacity: explode > 0 ? 0.34 : 1, depthWrite: explode === 0,
   });
 const glassMat = new THREE.MeshPhysicalMaterial({
-  color: 0x102028, metalness: 0, roughness: 0.04, transmission: engineering ? 0.15 : 0.48,
-  thickness: 0.8, transparent: true, opacity: engineering ? 0.4 : 1, clippingPlanes: clip,
+  color: 0x07090c, metalness: 0, roughness: 0.08, transmission: engineering ? 0.12 : 0.22,
+  thickness: 0.8, transparent: true, opacity: engineering ? 0.55 : 0.92, clippingPlanes: clip,
 });
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.55, metalness: 0.35, side: THREE.DoubleSide, clippingPlanes: clip });
 const body = new THREE.Mesh(geo(assembly.surface.mesh, assembly.surface.mesh.paint), paintMat);
 body.castShadow = body.receiveShadow = true;
 group.add(body);
@@ -113,30 +136,38 @@ const glassMesh = glassSrc && glassSrc.positions
   ? geo(glassSrc)
   : geo(assembly.surface.mesh, glassSrc);
 group.add(new THREE.Mesh(glassMesh, glassMat));
+if (assembly.surface.mesh.trim && assembly.surface.mesh.trim.positions) {
+  group.add(new THREE.Mesh(geo(assembly.surface.mesh.trim), trimMat));
+}
 if (assembly.surface.mesh.arch && assembly.surface.mesh.arch.positions) {
   group.add(new THREE.Mesh(geo(assembly.surface.mesh.arch), new THREE.MeshStandardMaterial({ color: 0x141618, roughness: 0.92, metalness: 0.05, side: THREE.DoubleSide, clippingPlanes: clip })));
 }
 
 const wheels = assembly.components.filter((c) => c.role === "wheel");
-const parts = [
-  ["tire", new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.94, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["rim", new THREE.MeshPhysicalMaterial({ color: 0x8a8e94, metalness: 1, roughness: 0.22, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["disc", new THREE.MeshStandardMaterial({ color: 0x3e4248, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide, clippingPlanes: clip })],
-  ["caliper", new THREE.MeshStandardMaterial({ color: 0xc45c26, metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide, clippingPlanes: clip })],
-];
-const dummy = new THREE.Object3D();
-for (const [name, mat] of parts) {
-  const mesh = new THREE.InstancedMesh(geo(assembly.wheel[name]), mat, wheels.length);
-  mesh.castShadow = true;
-  wheels.forEach((w, i) => {
-    const [x, y, z] = shift(w, explode);
-    const [tx, ty, tz] = toThree(x, y, z);
-    dummy.position.set(tx, ty, tz);
-    dummy.scale.set(1, 1, w.placement.y < 0 ? -1 : 1);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-  });
-  group.add(mesh);
+const wheelGeos = {
+  tire: geo(assembly.wheel.tire),
+  rim: geo(assembly.wheel.rim),
+  disc: geo(assembly.wheel.disc),
+  caliper: geo(assembly.wheel.caliper),
+};
+const wheelMats = {
+  tire: new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.94, side: THREE.DoubleSide, clippingPlanes: clip }),
+  rim: new THREE.MeshPhysicalMaterial({ color: 0x8a8e94, metalness: 1, roughness: 0.22, clearcoat: 0.45, clearcoatRoughness: 0.12, side: THREE.DoubleSide, clippingPlanes: clip }),
+  disc: new THREE.MeshStandardMaterial({ color: 0x3e4248, metalness: 0.9, roughness: 0.32, side: THREE.DoubleSide, clippingPlanes: clip }),
+  caliper: new THREE.MeshStandardMaterial({ color: 0xc45c26, metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide, clippingPlanes: clip }),
+};
+for (const w of wheels) {
+  const [x, y, z] = shift(w, explode);
+  const [tx, ty, tz] = toThree(x, y, z);
+  const holder = new THREE.Group();
+  holder.position.set(tx, ty, tz);
+  holder.scale.set(1, 1, w.placement.y < 0 ? -1 : 1);
+  for (const name of ["tire", "rim", "disc", "caliper"]) {
+    const mesh = new THREE.Mesh(wheelGeos[name], wheelMats[name]);
+    mesh.castShadow = true;
+    holder.add(mesh);
+  }
+  group.add(holder);
 }
 
 const groupColor = { exterior: 0x9aa3ad, wheels: 0x2a2a2a, chassis: 0x8d6a45, powertrain: 0xc45c26, interior: 0x4c6b8a, storage: 0x6b7c5a };
@@ -144,7 +175,7 @@ const outside = new Set((assembly.checks.find((c) => c.id === "containment" && c
 for (const c of assembly.components) {
   if (c.role === "wheel" || c.role === "body" || c.role === "glass" || c.role === "opening" || c.role === "axle" || c.id === "SPARE") continue;
   if (!engineering && outside.has(c.id)) continue;
-  const studioDetail = c.role === "lamp" || c.role === "intake" || c.role === "mirror" || c.role === "handle";
+  const studioDetail = c.role === "lamp" || c.role === "intake" || c.role === "mirror" || c.role === "handle" || c.role === "trim";
   if (!showInterior && !studioDetail) continue;
   if (!c.half && !(c.mesh && c.mesh.positions)) continue;
   const [x, y, z] = shift(c, explode);
@@ -160,7 +191,8 @@ for (const c of assembly.components) {
   if (c.role === "lamp") mat = new THREE.MeshPhysicalMaterial({ color: tail ? 0xffd0d4 : 0xe7eef8, emissive: tail ? 0xff2a3a : 0xf7fbff, emissiveIntensity: engineering ? 0.4 : 1.6, roughness: 0.08, clearcoat: 1, clippingPlanes: clip });
   else if (c.role === "intake") mat = new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.72, metalness: 0.4, clippingPlanes: clip });
   else if (c.role === "mirror") mat = new THREE.MeshPhysicalMaterial({ color: 0xe6e8ee, metalness: 0.9, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05, clippingPlanes: clip });
-  else if (c.role === "handle") mat = new THREE.MeshStandardMaterial({ color: 0x2a2e33, metalness: 0.85, roughness: 0.28, clippingPlanes: clip });
+  else if (c.id === "DUCKTAIL") mat = new THREE.MeshPhysicalMaterial({ color: 0x8b9098, metalness: 0.9, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.62, clippingPlanes: clip });
+  else if (c.role === "handle" || c.role === "trim") mat = new THREE.MeshStandardMaterial({ color: 0x1a1c20, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide, clippingPlanes: clip });
   else mat = new THREE.MeshLambertMaterial({ color: groupColor[c.group] || 0x888888, flatShading: engineering, transparent: true, opacity: engineering ? 0.85 : 0.55, clippingPlanes: clip });
   const m = new THREE.Mesh(g, mat);
   m.position.set(tx, ty, tz);
@@ -174,8 +206,8 @@ if (engineering) for (const c of assembly.components.filter((d) => d.role === "o
   void x; void z;
 }
 
-scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.28));
-const key = new THREE.DirectionalLight(0xfff4ea, engineering ? 1 : 1.15);
+scene.add(new THREE.AmbientLight(0xffffff, engineering ? 0.7 : 0.1));
+const key = new THREE.DirectionalLight(0xfff6ee, engineering ? 1 : 1.85);
 key.position.set(2.4, 5.2, 3.4);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -188,7 +220,7 @@ key.shadow.camera.bottom = -6;
 key.shadow.bias = -0.0004;
 key.shadow.radius = 8;
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xd7e2f0, 0.42);
+const fill = new THREE.DirectionalLight(0xc5ced8, engineering ? 0.42 : 0.16);
 fill.position.set(-3.2, 2.4, 1.6);
 scene.add(fill);
 const rim = new THREE.DirectionalLight(0xe7eeff, engineering ? 0.15 : 1.35);
@@ -198,7 +230,7 @@ const kicker = new THREE.DirectionalLight(0xfff1e0, engineering ? 0 : 0.55);
 kicker.position.set(4.8, 1.6, -1.2);
 scene.add(kicker);
 
-const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0xd8d9db, roughness: 0.95 }));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 64), new THREE.MeshStandardMaterial({ color: engineering ? 0xececec : 0x3e4044, roughness: 0.96 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
@@ -222,12 +254,18 @@ if (!engineering) {
 }
 
 const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.05, 80);
+const hero = ${JSON.stringify(heroCam)};
 // Section camera sits on the clipped side (negative three Z, +vehicle Y) so the cut face is what we look at.
 if (view === "section") camera.position.set(nose + 0.6, 0.72, -2.6);
 else if (view === "exploded") camera.position.set(nose - 0.4, 1.7, 4.2);
 else if (view === "side") camera.position.set(0.2, 0.72, 7.2);
-else camera.position.set(nose - 1.8, 0.92, 2.6);
-camera.lookAt(view === "side" ? 0 : nose * 0.2, view === "side" ? 0.58 : 0.5, 0);
+else {
+  camera.fov = hero.fov;
+  camera.position.set(hero.position[0], hero.position[1], hero.position[2]);
+  camera.updateProjectionMatrix();
+}
+const look = view === "side" ? [0, 0.58, 0] : (view === "studio" || view === "section-x") ? hero.target : [nose * 0.2, 0.5, 0];
+camera.lookAt(look[0], look[1], look[2]);
 renderer.render(scene, camera);
 requestAnimationFrame(() => { renderer.render(scene, camera); window.__ready = true; });
 </script></body></html>`;
@@ -250,7 +288,9 @@ const server = createServer((req, res) => {
   res.writeHead(200, { "content-type": types[ext] || "application/octet-stream" });
   res.end(readFileSync(file));
 });
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+await new Promise((resolve) => {
+  server.listen(0, "127.0.0.1", resolve);
+});
 const port = server.address().port;
 
 const require = createRequire(join(root, "concord-frontend", "package.json"));
@@ -261,9 +301,10 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
 const shots = {};
-for (const view of ["studio", "exploded", "section", "engineering", "side"]) {
+for (const view of ["studio", "exploded", "section", "section-x", "engineering", "side"]) {
   await page.goto(`http://127.0.0.1:${port}/studio.html?view=${view}`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 20000 });
+  // Runs in the Playwright page; globalThis is defined in both Node and the browser.
+  await page.waitForFunction(() => globalThis.__ready === true, null, { timeout: 20000 });
   await page.waitForTimeout(250);
   const file = join(outDir, `car-${view}.png`);
   await page.screenshot({ path: file });

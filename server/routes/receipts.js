@@ -28,6 +28,7 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
     }
   });
 
+  // AUTH: public — anyone with a receipt can check its signature; rate-limited, no writes.
   router.post("/api/receipts/verify", verify, (req, res) => {
     const body = req.body;
     const receipt = body && typeof body === "object" && !Array.isArray(body) && body.receipt && typeof body.receipt === "object" && !Array.isArray(body.receipt)
