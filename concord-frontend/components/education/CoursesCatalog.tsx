@@ -10,8 +10,14 @@ export interface Lesson {
   id: string; title: string; videoUrl: string; durationMin: number;
   kind: 'video' | 'reading' | 'quiz' | 'assignment' | 'discussion'; order: number;
 }
+export interface CourseAuthorView {
+  isMine: boolean;
+  displayName?: string;
+  label?: string;
+}
 export interface Course {
-  id: string; authorId: string; title: string; description: string; category: string;
+  id: string; authorId?: string; author?: CourseAuthorView;
+  title: string; description: string; category: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   durationHours: number; instructor: string; institution: string;
   kind: 'course' | 'specialization' | 'certificate' | 'guided_project';
@@ -237,7 +243,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
               const enrolled = enrolledIds.has(c.id);
               const expanded = expandedId === c.id;
               const detail = detailById[c.id];
-              const isOwner = !!user && c.authorId === user.id;
+              const isOwner = c.author?.isMine === true || (!!user && !!c.authorId && c.authorId === user.id);
               return (
                 <li key={c.id} className="hover:bg-white/[0.03] group">
                   <div className="px-3 py-3 flex items-start gap-3">

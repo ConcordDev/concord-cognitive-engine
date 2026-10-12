@@ -401,12 +401,16 @@ describe("education — courses catalog + lessons + assignments (wave 17 top-up)
     assert.equal(asg.result.assignment.maxPoints, 50);
     const aid = asg.result.assignment.id;
 
+    await lensRun("education", "enrollments-enroll", { params: { courseId } }, ctx);
     const sub = await lensRun("education", "assignments-submit", { params: { assignmentId: aid, text: "my essay body" } }, ctx);
     // peerReviewCount > 0 → status awaits peer review
     assert.equal(sub.result.submission.status, "awaiting_peer_review");
     const sid = sub.result.submission.id;
 
-    const rev = await lensRun("education", "assignments-peer-review", { params: { submissionId: sid, score: 42, feedback: "solid argument" } }, ctx);
+    // A different enrolled learner reviews. The author cannot review their own submission.
+    const reviewer = await depthCtx("education-t17-peer");
+    await lensRun("education", "enrollments-enroll", { params: { courseId } }, reviewer);
+    const rev = await lensRun("education", "assignments-peer-review", { params: { submissionId: sid, score: 42, feedback: "solid argument" } }, reviewer);
     assert.equal(rev.result.submission.peerReviews.length, 1);
     assert.equal(rev.result.submission.peerReviews[0].score, 42);
 

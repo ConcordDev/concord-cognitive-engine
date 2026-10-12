@@ -483,11 +483,17 @@ describe("education.certificates-* (issue after course complete)", () => {
 describe("education.assignments-* (Coursera-style with peer review)", () => {
   it("create / submit / peer-review cycle", () => {
     const c = call("courses-create", ctxA, { title: "C" });
-    const a = call("assignments-create", ctxA, { courseId: c.result.course.id, title: "A1", peerReviewCount: 3, maxPoints: 100 });
+    const courseId = c.result.course.id;
+    const a = call("assignments-create", ctxA, { courseId, title: "A1", peerReviewCount: 3, maxPoints: 100 });
     assert.equal(a.ok, true);
-    const sub = call("assignments-submit", ctxA, { assignmentId: a.result.assignment.id, text: "my answer" });
+    // Submitter must be enrolled, and cannot review their own work.
+    assert.equal(call("enrollments-enroll", ctxB, { courseId }).ok, true);
+    const sub = call("assignments-submit", ctxB, { assignmentId: a.result.assignment.id, text: "my answer" });
+    assert.equal(sub.ok, true, sub.error);
     assert.equal(sub.result.submission.status, "awaiting_peer_review");
+    assert.equal(call("enrollments-enroll", ctxA, { courseId }).ok, true);
     const review = call("assignments-peer-review", ctxA, { submissionId: sub.result.submission.id, score: 85, feedback: "good" });
+    assert.equal(review.ok, true, review.error);
     assert.equal(review.result.submission.peerReviews.length, 1);
     assert.equal(review.result.submission.peerReviews[0].score, 85);
   });

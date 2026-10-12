@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 interface Cohort {
   id: string; title: string; instructor: string; courseId: string | null;
   scheduledAt: string; durationMin: number; capacity: number;
-  status: 'scheduled' | 'live' | 'ended'; roster: string[]; agenda: string;
+  status: 'scheduled' | 'live' | 'ended'; rosterCount: number; agenda: string;
+  author?: { isMine: boolean; displayName?: string; label?: string };
 }
 
 const STATUS_STYLE: Record<Cohort['status'], string> = {
@@ -29,8 +30,6 @@ export function LiveCohorts() {
   const [form, setForm] = useState({
     title: '', instructor: '', scheduledAt: '', durationMin: '60', capacity: '30', agenda: '',
   });
-  const [learnerName, setLearnerName] = useState('');
-
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -131,15 +130,6 @@ export function LiveCohorts() {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <label className="text-[10px] uppercase tracking-wider text-gray-400">Join as</label>
-        <input
-          value={learnerName} onChange={e => setLearnerName(e.target.value)}
-          placeholder="Your name (blank = your account)"
-          className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-xs text-white w-56"
-        />
-      </div>
-
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-gray-400 py-6">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading sessions…
@@ -166,28 +156,21 @@ export function LiveCohorts() {
                   {new Date(c.scheduledAt).toLocaleString()}
                 </span>
                 <span>{c.durationMin} min</span>
-                <span>{c.roster.length}/{c.capacity} seats</span>
+                <span>{c.rosterCount}/{c.capacity} seats</span>
               </div>
               {c.agenda && <p className="text-xs text-gray-400">{c.agenda}</p>}
-              {c.roster.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {c.roster.map((r, i) => (
-                    <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{r}</span>
-                  ))}
-                </div>
-              )}
               <div className="flex flex-wrap gap-2">
                 {c.status !== 'ended' && (
                   <>
                     <button
-                      onClick={() => action('cohorts-join', { id: c.id, learner: learnerName.trim() || undefined })}
-                      disabled={c.roster.length >= c.capacity}
+                      onClick={() => action('cohorts-join', { id: c.id })}
+                      disabled={c.rosterCount >= c.capacity}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded bg-neon-green/20 text-neon-green border border-neon-green/30 font-bold disabled:opacity-40"
                     >
                       <LogIn className="w-3 h-3" /> Join
                     </button>
                     <button
-                      onClick={() => action('cohorts-leave', { id: c.id, learner: learnerName.trim() || undefined })}
+                      onClick={() => action('cohorts-leave', { id: c.id })}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded border border-white/10 text-gray-400 hover:bg-white/5"
                     >
                       <LogOut className="w-3 h-3" /> Leave
