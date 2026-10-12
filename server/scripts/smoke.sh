@@ -123,15 +123,19 @@ check "Vocal analyze" "/api/studio/vocal/analyze" "POST" '{"project_id":"test","
 check "Master job" "/api/studio/master/job" "POST" '{"project_id":"test","preset":"balanced"}'
 
 # ── Events ───────────────────────────────────────────────
+# /api/events/log and /api/events/paginated are gated by gateLogRead
+# (PR #1089 / #1098): anonymous callers get 401. A session-bearing
+# member sees only their own rows; admins see the full feed. The
+# anonymous probe asserts the gate is wired, same as balance/buy below.
 echo ""
 echo "--- Events ---"
-check "Events log" "/api/events/log?limit=10"
+check "Events log (auth required)" "/api/events/log?limit=10" "GET" "" "401"
 
 # ── Guidance Layer ────────────────────────────────────────
 echo ""
 echo "--- Guidance Layer ---"
 check "System health" "/api/system/health"
-check "Events paginated" "/api/events/paginated?limit=5"
+check "Events paginated (auth required)" "/api/events/paginated?limit=5" "GET" "" "401"
 check "Suggestions" "/api/guidance/suggestions"
 check "First-win status" "/api/guidance/first-win"
 
