@@ -28,6 +28,7 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
     }
   });
 
+  // AUTH: public — verification reads a caller-supplied receipt and returns {valid, reason}; it writes nothing. CSRF-exempt on this exact path only.
   router.post("/api/receipts/verify", verify, (req, res) => {
     const body = req.body;
     const receipt = body && typeof body === "object" && !Array.isArray(body) && body.receipt && typeof body.receipt === "object" && !Array.isArray(body.receipt)
