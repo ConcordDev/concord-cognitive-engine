@@ -348,6 +348,10 @@ describe("INC-64 nonprofit mail and recorded payments", () => {
     const cross = await call("comm-send", ctxB, { donorId: d.id, kind: "thank_you" });
     assert.equal(cross.ok, false);
     assert.match(cross.error, /not found/);
+    // Owner response must not leak the organiser user id into the donor-facing payload.
+    const dump = JSON.stringify(r);
+    assert.equal(dump.includes("user_a"), false);
+    assert.equal(dump.includes("user_b"), false);
   });
 
   it("comm-send records sent only when the mail transport accepts the message", async () => {
@@ -427,6 +431,9 @@ describe("INC-64 nonprofit mail and recorded payments", () => {
     const cross = call("pledge-charge", ctxB, { donorId: d.id, pledgeId: p.id, method: "check" });
     assert.equal(cross.ok, false);
     assert.match(cross.error, /not found/);
+    const dump = JSON.stringify(recorded);
+    assert.equal(dump.includes("user_a"), false);
+    assert.equal(dump.includes("user_b"), false);
   });
 });
 

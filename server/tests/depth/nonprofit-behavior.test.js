@@ -480,6 +480,9 @@ describe("nonprofit — recurring giving / pledges (shared ctx)", () => {
     const gift = owner.result.donors.find((d) => d.id === donorId).gifts[0];
     assert.equal(gift.ackSent, false);
     assert.equal(owner.result.donors.find((d) => d.id === donorId).pledges[0].paid, 0);
+    const dump = JSON.stringify({ mail: mail.result, charge: charge.result, sweep: sweep.result, owner: owner.result });
+    assert.equal(dump.includes(acct1.actor.userId), false, "owner user id must not appear in nonprofit payloads");
+    assert.equal(dump.includes(acct2.actor.userId), false, "foreign user id must not appear in nonprofit payloads");
   });
 
   it("validation: pledge-charge on a non-active pledge is rejected", async () => {
