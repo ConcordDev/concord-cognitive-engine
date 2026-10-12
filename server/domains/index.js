@@ -224,6 +224,7 @@ import dila from './dila.js';
 import browserOrgan from './browser-organ.js';
 import sentinel from './sentinel.js';
 import traceFabric from './trace-fabric.js';
+import mcpExecutionBridge from './mcp-execution-bridge.js';
 import incidentEngine from './incident-engine.js';
 import researchFrontier from './research-frontier.js';
 import opportunityEngine from './opportunity-engine.js';
@@ -597,6 +598,7 @@ export default [
   browserOrgan,
   sentinel,
   traceFabric,
+  mcpExecutionBridge,
   incidentEngine,
   researchFrontier,
   opportunityEngine,

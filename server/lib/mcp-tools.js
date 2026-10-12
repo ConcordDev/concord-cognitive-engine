@@ -189,6 +189,55 @@ export const MCP_TOOLS = [
     inputSchema: jsonSchema({ lens_id: textProp("Lens id") }, ["lens_id"])
   },
 
+  // ── MCP EXECUTION BRIDGE (2026-10-12) ──────────────────────────────────
+  // Registry-backed — same dual-registry path as chat-agent run_lens_action,
+  // same ConKay Solver Registry as conkay_design.solvers. F0 + Hermes scopes.
+  {
+    name: "run_lens_action",
+    description:
+      "Invoke a registered Concord lens/macro action (same dual-registry path as the chat agent). Requires real auth. Pass dry_run/preview to validate without side effects. High-risk actions need approval:true + mcp:lens:high scope.",
+    inputSchema: jsonSchema({
+      domain: textProp("Lens/macro domain (e.g. physics, conkay_design)"),
+      action: textProp("Action name (use list_lens_actions to discover)"),
+      params: { type: "object", description: "Action input object" },
+      dry_run: boolProp("If true, validate + preview without executing", false),
+      preview: boolProp("Alias for dry_run", false),
+      approval: boolProp("Required for high-risk actions (pay/publish/deploy/destructive)", false),
+      approval_token: textProp("Optional approval token for high-risk actions"),
+      idempotency_key: textProp("Caller idempotency key for safe retries"),
+    }, ["domain", "action"]),
+  },
+  {
+    name: "list_lens_actions",
+    description:
+      "List real action names and input field hints for a domain. Call before run_lens_action when the exact action name is uncertain.",
+    inputSchema: jsonSchema({
+      domain: textProp("Lens/macro domain"),
+    }, ["domain"]),
+  },
+  {
+    name: "conkay_solver_list",
+    description:
+      "List ConKay solvers from the live Solver Registry (id, domain, fidelity, screening). One registry-backed tool — not one MCP tool per solver.",
+    inputSchema: jsonSchema({
+      domain: textProp("Optional physics domain filter"),
+      fidelity: { type: "integer", description: "Optional fidelity tier 0-4" },
+    }),
+  },
+  {
+    name: "conkay_solve",
+    description:
+      "Run one ConKay solver by id against a Design IR (or owned designId). Returns PASS/FAIL/WARN/NOT_COMPUTED envelopes with provenance (sourced/computed/estimated/assumed/unknown). screening ≠ validation; unknown stays unknown.",
+    inputSchema: jsonSchema({
+      solver_id: textProp("Solver id from conkay_solver_list (e.g. joint.bolt-shear)"),
+      ir: { type: "object", description: "Design IR object" },
+      designId: textProp("Owned design id (alternative to ir)"),
+      target: textProp("Optional target node id"),
+      dry_run: boolProp("Preview applicable targets without running", false),
+      idempotency_key: textProp("Caller idempotency key for safe retries"),
+    }, ["solver_id"]),
+  },
+
   // ── EMBEDDINGS ────────────────────────────────────────────────────────
   {
     name: "embedding_search",
@@ -2231,8 +2280,36 @@ async function concordiaCall(db, args, STATE, toolName) {
   return organCall(ORGANS.CONCORDIA, toolName, args, "concordia");
 }
 
-export async function callMCPTool(db, toolName, args, STATE) {
+// Boot-time Set so capability-registry health checks for implementation:
+// "mcp_builtin" can verify reachability without importing this module
+// circularly. Populated once MCP_TOOLS is defined.
+try {
+  globalThis.__concordMcpBuiltinTools = new Set(
+    MCP_TOOLS.filter((t) =>
+      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list"].includes(t.name)
+    ).map((t) => t.name)
+  );
+} catch { /* ignore */ }
+
+export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
   switch (toolName) {
+    // === 2026-10-12 MCP EXECUTION BRIDGE ===
+    case "run_lens_action": {
+      const { runLensActionMcp } = await import("./mcp-execution-bridge.js");
+      return runLensActionMcp(db, args, STATE, callCtx);
+    }
+    case "list_lens_actions": {
+      const { listLensActionsMcp } = await import("./mcp-execution-bridge.js");
+      return listLensActionsMcp(db, args, STATE, callCtx);
+    }
+    case "conkay_solver_list": {
+      const { conkaySolverListMcp } = await import("./mcp-execution-bridge.js");
+      return conkaySolverListMcp(db, args, STATE, callCtx);
+    }
+    case "conkay_solve": {
+      const { conkaySolveMcp } = await import("./mcp-execution-bridge.js");
+      return conkaySolveMcp(db, args, STATE, callCtx);
+    }
     case "dila_status":          return dilaStatus(db, args);
     case "dila_workers":         return dilaWorkers(db, args);
     case "dila_skill_list":      return dilaSkillList(db, args);

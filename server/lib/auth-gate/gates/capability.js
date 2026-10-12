@@ -4,7 +4,11 @@
 // Per the locked spec: this returns risk tier, authorization requirements,
 // and health. It does NOT define new policy.
 
-import { getCapabilityDescriptor, checkCapabilityHealth } from "../../runtime/capability-registry.js";
+import {
+  getCapabilityDescriptor,
+  checkCapabilityHealth,
+  listCapabilities,
+} from "../../runtime/capability-registry.js";
 import { RISK_TO_AUTHORITY } from "../envelope.js";
 
 /**
@@ -15,6 +19,9 @@ import { RISK_TO_AUTHORITY } from "../envelope.js";
  * Capabilities NOT registered (most current MCP tools) are NOT a denial —
  * they fall through to "unregistered_but_dispatchable" with a WARNING.
  * This matches the existing execution-envelope.js behavior.
+ *
+ * Bridge tools (run_lens_action, conkay_solve, …) register with
+ * mcp_tool_name so a mcp_tool_name fallback covers non-mechanical names.
  */
 export async function check(envelope) {
   // Most MCP tools are snake_case "web_search"; the registry expects "domain.action"
@@ -23,9 +30,16 @@ export async function check(envelope) {
   let descriptor = null;
   try {
     descriptor = getCapabilityDescriptor(capability);
-  } catch (e) {
-    // Registry may throw on unknown; treat as unregistered
+  } catch {
     descriptor = null;
+  }
+
+  if (!descriptor && envelope.WHAT) {
+    try {
+      descriptor = listCapabilities().find((c) => c.mcp_tool_name === envelope.WHAT) || null;
+    } catch {
+      descriptor = null;
+    }
   }
 
   if (!descriptor) {
@@ -40,7 +54,7 @@ export async function check(envelope) {
 
   let health = { reachable: true, reason: "no_health_check_available" };
   try {
-    health = checkCapabilityHealth(capability);
+    health = checkCapabilityHealth(descriptor.capability || capability);
   } catch (e) {
     health = { reachable: false, reason: e?.message || String(e) };
   }

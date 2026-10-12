@@ -299,7 +299,16 @@ export async function dispatchMCP(tool, args = {}, ctx = {}) {
                     },
                   });
   try {
-    rawResult = await callMCPTool(ctx.db, tool, args, ctx.STATE || globalThis.STATE || null);
+    // Pass actor/req so execution-bridge tools (run_lens_action, conkay_*)
+    // can enforce per-user auth + Hermes service identity. Older tools ignore
+    // the 5th argument.
+    rawResult = await callMCPTool(
+      ctx.db,
+      tool,
+      args,
+      ctx.STATE || globalThis.STATE || null,
+      { actor: ctx.actor || null, req: ctx.req || null, trace_id: auth.envelope?.TRACE_ID || ctx.trace_id || null },
+    );
   } catch (e) {
     // Tool handler threw — still record outcome
     recordIdempotentResult(auth.envelope, { ok: false, error: e?.message });
