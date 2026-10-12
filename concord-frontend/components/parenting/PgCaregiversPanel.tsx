@@ -10,13 +10,14 @@ import { Loader2, Users, KeyRound, Copy, Check, UserMinus, Share2 } from 'lucide
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
-interface Caregiver { caregiverId: string; role: string; childId: string; joinedAt: string; via: string }
-interface Invite { code: string; childId: string; childName: string; role: string }
+interface Caregiver { id: string; displayName: string | null; role: string; childId: string; joinedAt: string }
+interface Invite { code: string; childId: string; childName: string; role: string; expiresAt?: string }
 
 const ROLES = ['parent', 'nanny', 'grandparent', 'caregiver'] as const;
 
 export function PgCaregiversPanel({ childId }: { childId: string }) {
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
     }
     setLoadError(null);
     setCaregivers(r.data?.result?.caregivers || []);
+    setCanManage(r.data?.result?.canManage === true);
     setLoading(false);
   }, [childId]);
 
@@ -59,8 +61,9 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
     setRedeemMsg('Joined — you now share this baby log.');
     setRedeemCode('');
   };
-  const remove = async (caregiverId: string) => {
-    await lensRun('parenting', 'caregiver-remove', { caregiverId });
+  const remove = async (id: string) => {
+    const r = await lensRun('parenting', 'caregiver-remove', { id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not remove caregiver'); return; }
     await refresh();
   };
 
@@ -101,6 +104,9 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
             </button>
           </div>
         )}
+        {invite?.expiresAt && (
+          <p className="text-[10px] text-zinc-500">Single-use. Expires {invite.expiresAt.slice(0, 10)}.</p>
+        )}
       </section>
 
       {/* Redeem a code */}
@@ -126,14 +132,16 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
         ) : (
           <ul className="space-y-1">
             {caregivers.map((c) => (
-              <li key={c.caregiverId} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+              <li key={c.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <Users className="w-3.5 h-3.5 text-zinc-400" />
-                <span className="text-xs text-zinc-200 capitalize">{c.role}</span>
-                <span className="text-[10px] text-zinc-400">joined {c.joinedAt.slice(0, 10)} · via {c.via}</span>
-                <button type="button" onClick={() => remove(c.caregiverId)}
-                  className="ml-auto text-zinc-400 hover:text-rose-300" aria-label="Remove caregiver">
-                  <UserMinus className="w-3.5 h-3.5" />
-                </button>
+                <span className="text-xs text-zinc-200">{c.displayName || c.role}</span>
+                <span className="text-[10px] text-zinc-400 capitalize">{c.displayName ? `${c.role} · ` : ''}joined {c.joinedAt.slice(0, 10)}</span>
+                {canManage && (
+                  <button type="button" onClick={() => remove(c.id)}
+                    className="ml-auto text-zinc-400 hover:text-rose-300" aria-label="Remove caregiver">
+                    <UserMinus className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>

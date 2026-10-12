@@ -2,6 +2,8 @@
 // Domain actions for parenting: milestone tracking, growth percentiles,
 // sleep analysis, developmental screening, routine optimization.
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 export default function registerParentingActions(registerLensAction) {
   /**
    * milestoneCheck
@@ -399,6 +401,157 @@ export default function registerParentingActions(registerLensAction) {
     return (s.children.get(userId) || []).find((c) => c.id === childId) || null;
   }
 
+  // Share codes are single-use and die after a week. Membership is stored
+  // on the owner; child-scoped logs then read and write that owner's bucket.
+  const PG_SHARE_TTL_MS = 7 * PG_DAY;
+
+  function pgEnsureShare(s) {
+    if (!(s.shareCodes instanceof Map)) s.shareCodes = new Map();
+    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+  }
+  // Persisted rows used to keep the raw user id on `caregiverId`. Move it
+  // to an internal field and mint an opaque id before anything is returned.
+  function pgNormalizeMembers(arr) {
+    if (!Array.isArray(arr)) return [];
+    for (const m of arr) {
+      if (!m || typeof m !== "object") continue;
+      if (!m.caregiverUserId && typeof m.caregiverId === "string") m.caregiverUserId = m.caregiverId;
+      if ("caregiverId" in m) delete m.caregiverId;
+      if (!m.id || m.id === m.caregiverUserId) m.id = pgId("cg");
+      if (m.displayName && m.displayName === m.caregiverUserId) m.displayName = null;
+    }
+    return arr;
+  }
+  function pgMembers(s, ownerId) {
+    pgEnsureShare(s);
+    if (!Array.isArray(s.caregivers.get(ownerId))) s.caregivers.set(ownerId, []);
+    return pgNormalizeMembers(s.caregivers.get(ownerId));
+  }
+  function pgCaregiverEntries(s) {
+    if (!(s.caregivers instanceof Map)) return [];
+    return [...s.caregivers.keys()].map((ownerId) => [ownerId, pgNormalizeMembers(s.caregivers.get(ownerId))]);
+  }
+  // A label safe to show. Never the raw user id.
+  function pgNameFor(ctx, userId) {
+    if (!userId) return null;
+    const actor = ctx?.actor;
+    if (actor && (actor.userId === userId || actor.id === userId)) {
+      const fromActor = pgClean(actor.displayName || actor.username, 80);
+      if (fromActor && fromActor !== userId) return fromActor;
+    }
+    try {
+      const idn = lookupUserIdentity(ctx?.db || globalThis._concordSTATE?.db, userId);
+      const fromDb = pgClean(idn.displayName || idn.username, 80);
+      if (fromDb && fromDb !== userId) return fromDb;
+    } catch { /* no users table in this process */ }
+    return null;
+  }
+  function pgPublicCaregiver(ctx, m) {
+    return {
+      id: m.id,
+      displayName: (m.displayName && m.displayName !== m.caregiverUserId) ? m.displayName : pgNameFor(ctx, m.caregiverUserId),
+      role: m.role,
+      childId: m.childId,
+      joinedAt: m.joinedAt,
+    };
+  }
+  function pgInviteExpiryMs(invite) {
+    if (!invite) return 0;
+    if (invite.expiresAt) {
+      const t = Date.parse(invite.expiresAt);
+      if (Number.isFinite(t)) return t;
+    }
+    const created = Date.parse(invite.createdAt);
+    return Number.isFinite(created) ? created + PG_SHARE_TTL_MS : 0;
+  }
+  // Owner of the child, or a caregiver who redeemed a code for this child.
+  // Anyone else stays on their own bucket so a foreign childId reads empty
+  // and writes 404 — never another account's log.
+  function pgAccess(s, ctx, childId) {
+    const callerId = pgAid(ctx);
+    const id = childId == null || childId === "" ? "" : String(childId);
+    if (!id) return { callerId, ownerId: callerId, child: null, shared: false };
+    const own = pgChild(s, callerId, id);
+    if (own) return { callerId, ownerId: callerId, child: own, shared: false };
+    for (const [ownerId, members] of pgCaregiverEntries(s)) {
+      if (ownerId === callerId) continue;
+      if (!members.some((m) => m && m.caregiverUserId === callerId && m.childId === id)) continue;
+      const child = pgChild(s, ownerId, id);
+      if (child) return { callerId, ownerId, child, shared: true };
+    }
+    return { callerId, ownerId: callerId, child: null, shared: false };
+  }
+  function pgBucket(s, ctx, childId) {
+    return pgAccess(s, ctx, childId).ownerId;
+  }
+  function pgVisibleChildren(s, callerId) {
+    const own = (s.children.get(callerId) || []).map((c) => ({ ...c, shared: false }));
+    const seen = new Set(own.map((c) => c.id));
+    const shared = [];
+    for (const [ownerId, members] of pgCaregiverEntries(s)) {
+      if (ownerId === callerId) continue;
+      for (const m of members) {
+        if (!m || m.caregiverUserId !== callerId || !m.childId || seen.has(m.childId)) continue;
+        const child = pgChild(s, ownerId, m.childId);
+        if (!child || seen.has(child.id)) continue;
+        seen.add(child.id);
+        shared.push({ ...child, shared: true });
+      }
+    }
+    return own.concat(shared);
+  }
+  // Caller's own rows, plus rows tagged to a child this caller was granted.
+  // Untagged family-wide rows and siblings the caller was not invited to stay put.
+  function pgMergedEntries(s, bucketMap, callerId) {
+    if (!(bucketMap instanceof Map)) return [];
+    const own = bucketMap.get(callerId) || [];
+    const out = own.slice();
+    const seen = new Set(out.map((e) => e && e.id).filter(Boolean));
+    for (const [ownerId, members] of pgCaregiverEntries(s)) {
+      if (ownerId === callerId) continue;
+      const allowed = new Set();
+      for (const m of members) {
+        if (m && m.caregiverUserId === callerId && m.childId) allowed.add(m.childId);
+      }
+      if (!allowed.size) continue;
+      for (const e of (bucketMap.get(ownerId) || [])) {
+        if (!e || !allowed.has(e.childId) || (e.id && seen.has(e.id))) continue;
+        out.push(e);
+        if (e.id) seen.add(e.id);
+      }
+    }
+    return out;
+  }
+  function pgChildScopedEntries(s, ctx, bucketMap, childId) {
+    if (!(bucketMap instanceof Map)) return [];
+    const callerId = pgAid(ctx);
+    if (childId != null && childId !== "") {
+      const access = pgAccess(s, ctx, childId);
+      const ownerId = access.child ? access.ownerId : callerId;
+      return (bucketMap.get(ownerId) || []).filter((e) => e && e.childId === String(childId));
+    }
+    return pgMergedEntries(s, bucketMap, callerId);
+  }
+  // Id lookup across the caller's bucket and granted children only.
+  function pgLocateEntry(s, bucketMap, callerId, pred) {
+    if (!(bucketMap instanceof Map)) return null;
+    const own = bucketMap.get(callerId) || [];
+    let i = own.findIndex(pred);
+    if (i >= 0) return { ownerId: callerId, arr: own, i };
+    for (const [ownerId, members] of pgCaregiverEntries(s)) {
+      if (ownerId === callerId) continue;
+      const allowed = new Set();
+      for (const m of members) {
+        if (m && m.caregiverUserId === callerId && m.childId) allowed.add(m.childId);
+      }
+      if (!allowed.size) continue;
+      const arr = bucketMap.get(ownerId) || [];
+      i = arr.findIndex((item) => item && allowed.has(item.childId) && pred(item));
+      if (i >= 0) return { ownerId, arr, i };
+    }
+    return null;
+  }
+
   // Age-based wake windows in minutes (pediatric sleep science).
   const PG_WAKE_WINDOWS = [
     { maxMonths: 1, min: 35, typical: 50, max: 60 },
@@ -532,20 +685,36 @@ export default function registerParentingActions(registerLensAction) {
 
   registerLensAction("parenting", "child-list", (ctx, _a, _params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const children = (s.children.get(pgAid(ctx)) || []).map((c) => ({
-      ...c,
+    const children = pgVisibleChildren(s, pgAid(ctx)).map((c) => ({
+      id: c.id,
+      name: c.name,
+      birthDate: c.birthDate,
+      sex: c.sex,
+      createdAt: c.createdAt,
       ageMonths: Math.round(pgAgeMonths(c.birthDate) * 10) / 10,
       ageDisplay: pgAgeDisplay(c.birthDate),
+      shared: !!c.shared,
     }));
     return { ok: true, result: { children, count: children.length } };
   });
 
   registerLensAction("parenting", "child-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.children.get(pgAid(ctx)) || [];
+    const callerId = pgAid(ctx);
+    const arr = s.children.get(callerId) || [];
     const i = arr.findIndex((c) => c.id === params.id);
-    if (i < 0) return { ok: false, error: "child not found" };
+    if (i < 0) {
+      const access = pgAccess(s, ctx, params.id);
+      if (access.shared) return { ok: false, error: "only the owner can delete this child" };
+      return { ok: false, error: "child not found" };
+    }
     arr.splice(i, 1);
+    if (s.caregivers instanceof Map) {
+      const members = pgMembers(s, callerId);
+      for (let j = members.length - 1; j >= 0; j--) {
+        if (members[j].childId === params.id) members.splice(j, 1);
+      }
+    }
     savePgState();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -553,7 +722,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Feeding ─────────────────────────────────────────────────────────
   registerLensAction("parenting", "feed-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const kind = PG_FEED_KINDS.includes(String(params.kind).toLowerCase()) ? String(params.kind).toLowerCase() : "nursing";
     const entry = {
@@ -574,7 +743,7 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
-    const entries = (s.feeds.get(pgAid(ctx)) || [])
+    const entries = (s.feeds.get(pgBucket(s, ctx, params.childId)) || [])
       .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
@@ -583,7 +752,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "feed-stats", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const todayStr = pgNow().slice(0, 10);
-    const all = (s.feeds.get(pgAid(ctx)) || []).filter((e) => e.childId === String(params.childId));
+    const all = (s.feeds.get(pgBucket(s, ctx, params.childId)) || []).filter((e) => e.childId === String(params.childId));
     const today = all.filter((e) => e.at.slice(0, 10) === todayStr);
     const byKind = {};
     for (const k of PG_FEED_KINDS) byKind[k] = today.filter((e) => e.kind === k).length;
@@ -604,7 +773,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Sleep ───────────────────────────────────────────────────────────
   registerLensAction("parenting", "sleep-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const durationMin = Math.max(1, Math.round(pgNum(params.durationMin)));
     const startAt = pgClean(params.startAt, 30) || pgNow();
@@ -623,7 +792,7 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
-    const entries = (s.sleeps.get(pgAid(ctx)) || [])
+    const entries = (s.sleeps.get(pgBucket(s, ctx, params.childId)) || [])
       .filter((e) => e.childId === String(params.childId) && Date.parse(e.startAt) >= cutoff)
       .sort((a, b) => b.startAt.localeCompare(a.startAt));
     return { ok: true, result: { entries, count: entries.length } };
@@ -632,7 +801,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "sleep-stats", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const todayStr = pgNow().slice(0, 10);
-    const all = (s.sleeps.get(pgAid(ctx)) || []).filter((e) => e.childId === String(params.childId));
+    const all = (s.sleeps.get(pgBucket(s, ctx, params.childId)) || []).filter((e) => e.childId === String(params.childId));
     const today = all.filter((e) => e.startAt.slice(0, 10) === todayStr);
     const last7Days = [...new Set(all.map((e) => e.startAt.slice(0, 10)))].slice(-7);
     const last7Total = all
@@ -652,7 +821,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "sweet-spot", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const ageMonths = pgAgeMonths(child.birthDate);
@@ -694,7 +863,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Diapers ─────────────────────────────────────────────────────────
   registerLensAction("parenting", "diaper-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const entry = {
       id: pgId("dpr"), childId: String(params.childId),
@@ -711,7 +880,7 @@ export default function registerParentingActions(registerLensAction) {
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
     const todayStr = pgNow().slice(0, 10);
-    const all = (s.diapers.get(pgAid(ctx)) || []).filter((e) => e.childId === String(params.childId));
+    const all = (s.diapers.get(pgBucket(s, ctx, params.childId)) || []).filter((e) => e.childId === String(params.childId));
     const entries = all.filter((e) => Date.parse(e.at) >= cutoff).sort((a, b) => b.at.localeCompare(a.at));
     const today = all.filter((e) => e.at.slice(0, 10) === todayStr);
     const byKind = {};
@@ -753,7 +922,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Growth ──────────────────────────────────────────────────────────
   registerLensAction("parenting", "growth-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const weightKg = pgNum(params.weightKg);
     const heightCm = pgNum(params.heightCm);
@@ -776,7 +945,7 @@ export default function registerParentingActions(registerLensAction) {
 
   registerLensAction("parenting", "growth-history", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const entries = (s.growth.get(pgAid(ctx)) || [])
+    const entries = (s.growth.get(pgBucket(s, ctx, params.childId)) || [])
       .filter((e) => e.childId === String(params.childId))
       .sort((a, b) => a.date.localeCompare(b.date));
     return { ok: true, result: { entries, count: entries.length } };
@@ -785,7 +954,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "growth-percentile", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const latest = (s.growth.get(userId) || [])
@@ -816,7 +985,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "milestone-checklist", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const ageMonths = pgAgeMonths(child.birthDate);
@@ -844,7 +1013,7 @@ export default function registerParentingActions(registerLensAction) {
 
   registerLensAction("parenting", "milestone-record", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const milestone = PG_MILESTONES.find((m) => m.id === String(params.milestoneId));
     if (!milestone) return { ok: false, error: "unknown milestone" };
@@ -868,7 +1037,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "milestone-progress", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const ageMonths = pgAgeMonths(child.birthDate);
@@ -896,7 +1065,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Medicine ────────────────────────────────────────────────────────
   registerLensAction("parenting", "medicine-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const name = pgClean(params.name, 80);
     if (!name) return { ok: false, error: "medicine name required" };
@@ -914,7 +1083,7 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 14))));
     const cutoff = Date.now() - days * PG_DAY;
-    const entries = (s.meds.get(pgAid(ctx)) || [])
+    const entries = (s.meds.get(pgBucket(s, ctx, params.childId)) || [])
       .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
@@ -923,7 +1092,7 @@ export default function registerParentingActions(registerLensAction) {
   // ── Activities ──────────────────────────────────────────────────────
   registerLensAction("parenting", "activity-log", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const entry = {
       id: pgId("act"), childId: String(params.childId),
@@ -941,7 +1110,7 @@ export default function registerParentingActions(registerLensAction) {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(1, Math.min(60, Math.round(pgNum(params.days, 7))));
     const cutoff = Date.now() - days * PG_DAY;
-    const entries = (s.activities.get(pgAid(ctx)) || [])
+    const entries = (s.activities.get(pgBucket(s, ctx, params.childId)) || [])
       .filter((e) => e.childId === String(params.childId) && Date.parse(e.at) >= cutoff)
       .sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
@@ -951,7 +1120,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "day-timeline", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const childId = String(params.childId);
     const date = (pgClean(params.date, 10).slice(0, 10)) || pgNow().slice(0, 10);
@@ -980,9 +1149,13 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "parenting-dashboard", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
-    const children = s.children.get(userId) || [];
-    const child = params.childId ? pgChild(s, userId, params.childId) : children[0];
+    const callerId = pgAid(ctx);
+    const visible = pgVisibleChildren(s, callerId);
+    const access = params.childId
+      ? pgAccess(s, ctx, params.childId)
+      : (visible[0]?.shared ? pgAccess(s, ctx, visible[0].id) : { ownerId: callerId, child: visible[0] || null });
+    const userId = access.ownerId;
+    const child = access.child;
     if (!child) return { ok: true, result: { hasChild: false, childCount: 0 } };
     const todayStr = pgNow().slice(0, 10);
     const feeds = (s.feeds.get(userId) || []).filter((e) => e.childId === child.id);
@@ -994,7 +1167,7 @@ export default function registerParentingActions(registerLensAction) {
       ok: true,
       result: {
         hasChild: true,
-        childCount: children.length,
+        childCount: visible.length,
         child: { id: child.id, name: child.name, ageDisplay: pgAgeDisplay(child.birthDate) },
         feedsToday: feeds.filter((e) => e.at.slice(0, 10) === todayStr).length,
         sleepMinToday: sleeps.filter((e) => e.startAt.slice(0, 10) === todayStr).reduce((a, e) => a + e.durationMin, 0),
@@ -1012,7 +1185,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "sleep-schedule", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const ageMonths = pgAgeMonths(child.birthDate);
@@ -1094,7 +1267,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "growth-chart", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const metric = ["weight", "height", "head"].includes(String(params.metric))
@@ -1151,9 +1324,10 @@ export default function registerParentingActions(registerLensAction) {
 });
 
   // ── Multi-caregiver sync ─────────────────────────────────────────────
-  // The owner mints a share code; other caregivers redeem it to gain
-  // shared access. Children/log macros above always read by owner userId,
-  // so share resolves to a single canonical log everyone writes to.
+  // The owner mints a single-use code that expires in 7 days. Redeeming it
+  // records a membership on the owner. Child-scoped logs then resolve to
+  // that owner's bucket (pgAccess). Raw user ids stay on the membership
+  // record and are never returned.
   function pgShareCode() {
     const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     let c = "";
@@ -1162,58 +1336,79 @@ export default function registerParentingActions(registerLensAction) {
   }
   registerLensAction("parenting", "caregiver-invite", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    if (!(s.shareCodes instanceof Map)) s.shareCodes = new Map();
-    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    pgEnsureShare(s);
     const userId = pgAid(ctx);
     const child = pgChild(s, userId, params.childId);
-    if (!child) return { ok: false, error: "child not found" };
+    if (!child) {
+      if (pgAccess(s, ctx, params.childId).shared) {
+        return { ok: false, error: "only the owner can invite a caregiver" };
+      }
+      return { ok: false, error: "child not found" };
+    }
     const role = ["parent", "nanny", "grandparent", "caregiver"].includes(String(params.role))
       ? String(params.role) : "caregiver";
     const code = pgShareCode();
+    const expiresAt = new Date(Date.now() + PG_SHARE_TTL_MS).toISOString();
     s.shareCodes.set(code, {
       code, ownerId: userId, childId: child.id, role,
-      createdAt: pgNow(), redeemedBy: null,
+      createdAt: pgNow(), expiresAt, redeemedBy: null,
     });
     savePgState();
-    return { ok: true, result: { code, childId: child.id, childName: child.name, role } };
+    return { ok: true, result: { code, childId: child.id, childName: child.name, role, expiresAt } };
   });
   registerLensAction("parenting", "caregiver-redeem", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    if (!(s.shareCodes instanceof Map)) s.shareCodes = new Map();
-    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    pgEnsureShare(s);
     const userId = pgAid(ctx);
     const code = pgClean(params.code, 6).toUpperCase();
     const invite = s.shareCodes.get(code);
     if (!invite) return { ok: false, error: "invalid share code" };
     if (invite.ownerId === userId) return { ok: false, error: "cannot redeem your own code" };
-    const list = pgListB(s.caregivers, invite.ownerId);
-    if (!list.some((c) => c.caregiverId === userId)) {
+    if (pgInviteExpiryMs(invite) <= Date.now()) return { ok: false, error: "share code expired" };
+    if (invite.redeemedBy) return { ok: false, error: "share code already used" };
+    const child = pgChild(s, invite.ownerId, invite.childId);
+    if (!child) return { ok: false, error: "invalid share code" };
+    const list = pgMembers(s, invite.ownerId);
+    if (!list.some((c) => c.caregiverUserId === userId && c.childId === child.id)) {
       list.push({
-        caregiverId: userId, role: invite.role, childId: invite.childId,
-        joinedAt: pgNow(), via: code,
+        id: pgId("cg"),
+        caregiverUserId: userId,
+        displayName: pgNameFor(ctx, userId),
+        role: invite.role,
+        childId: child.id,
+        joinedAt: pgNow(),
       });
     }
     invite.redeemedBy = userId;
     savePgState();
-    return { ok: true, result: { ownerId: invite.ownerId, childId: invite.childId, role: invite.role } };
+    return { ok: true, result: { childId: child.id, childName: child.name, role: invite.role } };
   });
   registerLensAction("parenting", "caregiver-list", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
-    const userId = pgAid(ctx);
-    const members = (s.caregivers.get(userId) || []).filter(
-      (c) => !params.childId || c.childId === String(params.childId));
-    return { ok: true, result: { caregivers: members, count: members.length } };
+    const callerId = pgAid(ctx);
+    let ownerId = callerId;
+    let canManage = true;
+    if (params.childId) {
+      const access = pgAccess(s, ctx, params.childId);
+      if (!access.child) return { ok: true, result: { caregivers: [], count: 0, canManage: false } };
+      ownerId = access.ownerId;
+      canManage = ownerId === callerId;
+    }
+    const members = (s.caregivers instanceof Map ? pgNormalizeMembers(s.caregivers.get(ownerId)) : [])
+      .filter((c) => !params.childId || c.childId === String(params.childId));
+    const caregivers = members.map((m) => pgPublicCaregiver(ctx, m));
+    return { ok: true, result: { caregivers, count: caregivers.length, canManage } };
   });
   registerLensAction("parenting", "caregiver-remove", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
-    const arr = s.caregivers.get(pgAid(ctx)) || [];
-    const i = arr.findIndex((c) => c.caregiverId === String(params.caregiverId));
+    const key = pgClean(params.id || params.caregiverId, 80);
+    const arr = s.caregivers instanceof Map ? pgNormalizeMembers(s.caregivers.get(pgAid(ctx))) : [];
+    const i = arr.findIndex((c) => c.id === key);
     if (i < 0) return { ok: false, error: "caregiver not found" };
+    const removed = arr[i].id;
     arr.splice(i, 1);
     savePgState();
-    return { ok: true, result: { removed: String(params.caregiverId) } };
+    return { ok: true, result: { removed } };
   });
 
   // ── Live timers (one-tap start/stop nursing & sleep) ─────────────────
@@ -1222,7 +1417,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "timer-start", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const kind = ["nursing", "sleep"].includes(String(params.kind)) ? String(params.kind) : "nursing";
@@ -1245,8 +1440,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "timer-list", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
-    const running = (s.timers.get(pgAid(ctx)) || [])
-      .filter((t) => !params.childId || t.childId === String(params.childId))
+    const running = pgChildScopedEntries(s, ctx, s.timers, params.childId)
       .map((t) => ({ ...t, elapsedSec: Math.round((Date.now() - Date.parse(t.startedAt)) / 1000) }));
     return { ok: true, result: { timers: running, count: running.length } };
   });
@@ -1254,10 +1448,11 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
-    const userId = pgAid(ctx);
-    const arr = s.timers.get(userId) || [];
-    const i = arr.findIndex((t) => t.id === String(params.id));
-    if (i < 0) return { ok: false, error: "timer not found" };
+    const found = pgLocateEntry(s, s.timers, pgAid(ctx), (t) => t.id === String(params.id));
+    if (!found) return { ok: false, error: "timer not found" };
+    const userId = found.ownerId;
+    const arr = found.arr;
+    const i = found.i;
     const t = arr[i];
     arr.splice(i, 1);
     const durationMin = Math.max(1, Math.round((Date.now() - Date.parse(t.startedAt)) / 60000));
@@ -1284,12 +1479,12 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "timer-cancel", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
-    const arr = s.timers.get(pgAid(ctx)) || [];
-    const i = arr.findIndex((t) => t.id === String(params.id));
-    if (i < 0) return { ok: false, error: "timer not found" };
-    arr.splice(i, 1);
+    const found = pgLocateEntry(s, s.timers, pgAid(ctx), (t) => t.id === String(params.id));
+    if (!found) return { ok: false, error: "timer not found" };
+    const removedId = found.arr[found.i].id;
+    found.arr.splice(found.i, 1);
     savePgState();
-    return { ok: true, result: { cancelled: String(params.id) } };
+    return { ok: true, result: { cancelled: String(removedId) } };
   });
 
   // ── Personalized expert content (age-targeted) ───────────────────────
@@ -1339,7 +1534,7 @@ export default function registerParentingActions(registerLensAction) {
   ];
   registerLensAction("parenting", "expert-content", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const ageMonths = pgAgeMonths(child.birthDate);
@@ -1363,7 +1558,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "trends-insights", (ctx, _a, params = {}) => {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     const child = pgChild(s, userId, params.childId);
     if (!child) return { ok: false, error: "child not found" };
     const cid = child.id;
@@ -1439,7 +1634,7 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "appointment-add", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.appointments instanceof Map)) s.appointments = new Map();
-    const userId = pgAid(ctx);
+    const userId = pgBucket(s, ctx, params.childId);
     if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
     const title = pgClean(params.title, 100);
     if (!title) return { ok: false, error: "appointment title required" };
@@ -1463,10 +1658,8 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "appointment-list", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.appointments instanceof Map)) s.appointments = new Map();
-    const userId = pgAid(ctx);
     const todayStr = pgNow().slice(0, 10);
-    let all = (s.appointments.get(userId) || []).filter(
-      (e) => !params.childId || e.childId === String(params.childId));
+    let all = pgChildScopedEntries(s, ctx, s.appointments, params.childId);
     if (params.scope === "upcoming") all = all.filter((e) => !e.done && e.date >= todayStr);
     all.sort((a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
     const upcoming = all.filter((e) => !e.done && e.date >= todayStr);
@@ -1483,9 +1676,9 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "appointment-update", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.appointments instanceof Map)) s.appointments = new Map();
-    const arr = s.appointments.get(pgAid(ctx)) || [];
-    const apt = arr.find((e) => e.id === String(params.id));
-    if (!apt) return { ok: false, error: "appointment not found" };
+    const found = pgLocateEntry(s, s.appointments, pgAid(ctx), (e) => e.id === String(params.id));
+    if (!found) return { ok: false, error: "appointment not found" };
+    const apt = found.arr[found.i];
     if (params.done !== undefined) apt.done = !!params.done;
     if (params.title !== undefined) apt.title = pgClean(params.title, 100) || apt.title;
     if (params.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date))) apt.date = String(params.date);
@@ -1497,10 +1690,9 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "appointment-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.appointments instanceof Map)) s.appointments = new Map();
-    const arr = s.appointments.get(pgAid(ctx)) || [];
-    const i = arr.findIndex((e) => e.id === String(params.id));
-    if (i < 0) return { ok: false, error: "appointment not found" };
-    arr.splice(i, 1);
+    const found = pgLocateEntry(s, s.appointments, pgAid(ctx), (e) => e.id === String(params.id));
+    if (!found) return { ok: false, error: "appointment not found" };
+    found.arr.splice(found.i, 1);
     savePgState();
     return { ok: true, result: { deleted: String(params.id) } };
   });
@@ -1509,11 +1701,10 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.appointments instanceof Map)) s.appointments = new Map();
-    const userId = pgAid(ctx);
-    const children = s.children.get(userId) || [];
+    const children = pgVisibleChildren(s, pgAid(ctx));
     const todayStr = pgNow().slice(0, 10);
-    const appts = (s.appointments.get(userId) || []).filter(
-      (e) => !e.done && e.date >= todayStr && (!params.childId || e.childId === String(params.childId)));
+    const appts = pgChildScopedEntries(s, ctx, s.appointments, params.childId).filter(
+      (e) => !e.done && e.date >= todayStr);
     if (!appts.length) return { ok: false, error: "no upcoming appointments to export" };
     const esc = pgIcsEscape;
     const stamp = pgIcsStamp();
@@ -1604,7 +1795,7 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
-    const userId = pgAid(ctx);
+    let userId = pgAid(ctx);
     const title = pgClean(params.title, 100);
     if (!title) return { ok: false, error: "event title required" };
     const startAt = pgValidDateTime(params.startAt);
@@ -1626,8 +1817,10 @@ export default function registerParentingActions(registerLensAction) {
     // a family event may be family-wide, or tagged to a specific child.
     let childId = null;
     if (params.childId !== undefined && params.childId !== null && params.childId !== "") {
-      if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
-      childId = String(params.childId);
+      const access = pgAccess(s, ctx, params.childId);
+      if (!access.child) return { ok: false, error: "child not found" };
+      userId = access.ownerId;
+      childId = access.child.id;
     }
     const category = PG_EVENT_CATEGORIES.includes(String(params.category)) ? String(params.category) : "other";
     const entry = {
@@ -1648,9 +1841,7 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
-    const userId = pgAid(ctx);
-    let all = (s.events.get(userId) || []).filter(
-      (e) => !params.childId || e.childId === String(params.childId));
+    let all = pgChildScopedEntries(s, ctx, s.events, params.childId);
     const fromDate = params.from ? pgClean(params.from, 10).slice(0, 10) : null;
     const toDate = params.to ? pgClean(params.to, 10).slice(0, 10) : null;
     if (fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate)) all = all.filter((e) => e.startAt.slice(0, 10) >= fromDate);
@@ -1670,10 +1861,9 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
-    const userId = pgAid(ctx);
-    const arr = s.events.get(userId) || [];
-    const evt = arr.find((e) => e.id === String(params.id));
-    if (!evt) return { ok: false, error: "event not found" };
+    const found = pgLocateEntry(s, s.events, pgAid(ctx), (e) => e.id === String(params.id));
+    if (!found) return { ok: false, error: "event not found" };
+    const evt = found.arr[found.i];
     if (params.title !== undefined) {
       const t = pgClean(params.title, 100);
       if (!t) return { ok: false, error: "title cannot be empty" };
@@ -1710,10 +1900,18 @@ export default function registerParentingActions(registerLensAction) {
     evt.endAt = nextEndAt;
     if (params.childId !== undefined) {
       if (params.childId === null || params.childId === "") {
+        if (found.ownerId !== pgAid(ctx)) {
+          return { ok: false, error: "only the owner can make this a family-wide event" };
+        }
         evt.childId = null;
       } else {
-        if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
-        evt.childId = String(params.childId);
+        const access = pgAccess(s, ctx, params.childId);
+        if (!access.child) return { ok: false, error: "child not found" };
+        evt.childId = access.child.id;
+        if (access.ownerId !== found.ownerId) {
+          found.arr.splice(found.i, 1);
+          pgListB(s.events, access.ownerId).push(evt);
+        }
       }
     }
     if (params.category !== undefined) {
@@ -1729,10 +1927,9 @@ export default function registerParentingActions(registerLensAction) {
   registerLensAction("parenting", "event-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
-    const arr = s.events.get(pgAid(ctx)) || [];
-    const i = arr.findIndex((e) => e.id === String(params.id));
-    if (i < 0) return { ok: false, error: "event not found" };
-    arr.splice(i, 1);
+    const found = pgLocateEntry(s, s.events, pgAid(ctx), (e) => e.id === String(params.id));
+    if (!found) return { ok: false, error: "event not found" };
+    found.arr.splice(found.i, 1);
     savePgState();
     return { ok: true, result: { deleted: String(params.id) } };
   });
@@ -1773,11 +1970,10 @@ export default function registerParentingActions(registerLensAction) {
   try {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.events instanceof Map)) s.events = new Map();
-    const userId = pgAid(ctx);
-    const children = s.children.get(userId) || [];
+    const children = pgVisibleChildren(s, pgAid(ctx));
     const nowMs = Date.now();
-    const events = (s.events.get(userId) || [])
-      .filter((e) => (!params.childId || e.childId === String(params.childId)) && pgEventEndMs(e) >= nowMs)
+    const events = pgChildScopedEntries(s, ctx, s.events, params.childId)
+      .filter((e) => pgEventEndMs(e) >= nowMs)
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
     if (!events.length) return { ok: false, error: "no upcoming events to export" };
     const stamp = pgIcsStamp();
