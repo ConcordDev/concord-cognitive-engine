@@ -582,6 +582,48 @@ describe("fashion social privacy (INC-60)", () => {
     const after = call("social-feed", acct2, {});
     assert.equal(after.result.posts.some((p) => p.id === postId), false);
   });
+
+  it("friends-only feed still filters by stored owner without leaking raw ids", () => {
+    const ID_C = "c3c3c3c3-3333-4333-8333-cccccccccccc";
+    const acct3 = { actor: { userId: ID_C }, userId: ID_C, db: friendshipsDb };
+    const req = sendFriendRequest(friendshipsDb, ID_A, ID_B);
+    if (req.status !== "accepted") acceptFriendRequest(friendshipsDb, req.id, ID_B);
+
+    const friendItem = call("item-add", acct1, { name: "Friend tee", category: "top" }).result.item;
+    const friendOutfit = call("outfit-create", acct1, {
+      name: "Friends fit", itemIds: [friendItem.id],
+    }).result.outfit;
+    const friendPost = call("social-share-outfit", acct1, {
+      outfitId: friendOutfit.id, caption: "for friends",
+    }).result.post;
+
+    const strangerItem = call("item-add", acct3, { name: "Stranger tee", category: "top" }).result.item;
+    const strangerOutfit = call("outfit-create", acct3, {
+      name: "Stranger fit", itemIds: [strangerItem.id],
+    }).result.outfit;
+    const strangerPost = call("social-share-outfit", acct3, {
+      outfitId: strangerOutfit.id, caption: "not a friend",
+    }).result.post;
+
+    const friendsFeed = call("social-feed", acct2, { friendsOnly: true });
+    assert.equal(friendsFeed.ok, true);
+    assert.equal(friendsFeed.result.friendsOnly, true);
+    assert.ok(friendsFeed.result.posts.some((p) => p.id === friendPost.id));
+    assert.equal(friendsFeed.result.posts.some((p) => p.id === strangerPost.id), false);
+    for (const p of friendsFeed.result.posts) {
+      assert.equal(p.ownerId, undefined);
+    }
+    assertNoRawId(friendsFeed, ID_A);
+    assertNoRawId(friendsFeed, ID_C);
+
+    const friendClone = call("social-clone-item", acct2, {
+      postId: friendPost.id, itemId: friendItem.id,
+    });
+    assert.equal(friendClone.ok, true);
+    assert.equal(friendClone.result.item.clonedFrom.viaFriend, true);
+    assert.equal(friendClone.result.item.clonedFrom.ownerId, undefined);
+    assertNoRawId(friendClone, ID_A);
+  });
 });
 
 describe("fashion.wishlist", () => {
