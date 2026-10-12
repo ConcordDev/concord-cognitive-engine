@@ -285,7 +285,10 @@ function CarScene({
 }) {
   const bounds = assembly.surface.mesh.bounds;
   const cx = (bounds.min[0] + bounds.max[0]) / 2;
-  const look = useMemo(() => studioHeroCamera(bounds, 1.6).target, [bounds]);
+  const look = useMemo((): [number, number, number] => {
+    const t = studioHeroCamera(bounds, 1.6).target;
+    return [t[0], t[1], t[2]];
+  }, [bounds]);
   const paint = useMemo(
     () =>
       geo({
@@ -554,7 +557,14 @@ export function AssemblyViewer({
   const [isolated, setIsolated] = useState<string | null>(null);
   const part = assembly.components.find((c) => c.id === selected) || null;
   const bounds = assembly.surface.mesh.bounds;
-  const hero = useMemo(() => studioHeroCamera(bounds, 1.6), [bounds]);
+  const hero = useMemo(() => {
+    const h = studioHeroCamera(bounds, 1.6);
+    return {
+      position: [h.position[0], h.position[1], h.position[2]] as [number, number, number],
+      target: [h.target[0], h.target[1], h.target[2]] as [number, number, number],
+      fov: h.fov,
+    };
+  }, [bounds]);
   const section = sectionAxis ? { axis: sectionAxis, position: sectionPos } : null;
   const span =
     sectionAxis === 'y'

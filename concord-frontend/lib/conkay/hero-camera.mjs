@@ -5,22 +5,30 @@
 
 const FOV = 28;
 
+/** @typedef {[number, number, number]} Vec3 */
+
+/** @param {Vec3} v @returns {Vec3} */
 function normalize(v) {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
 }
+/** @param {Vec3} a @param {Vec3} b @returns {Vec3} */
 function cross(a, b) {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
+/** @param {Vec3} a @param {Vec3} b */
 function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
+/** @param {Vec3} a @param {Vec3} b @returns {Vec3} */
 function sub(a, b) {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
+/** @param {Vec3} a @param {Vec3} b @returns {Vec3} */
 function add(a, b) {
   return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }
+/** @param {Vec3} a @param {number} s @returns {Vec3} */
 function mul(a, s) {
   return [a[0] * s, a[1] * s, a[2] * s];
 }
@@ -28,6 +36,10 @@ function mul(a, s) {
 /**
  * Front-left hero view that keeps every corner of the body inside the frame.
  * `aspect` is canvas width / height. `margin` is the NDC limit (1 is the edge).
+ * @param {{ min: number[], max: number[] }} bounds
+ * @param {number} [aspect]
+ * @param {number} [margin]
+ * @returns {{ position: Vec3, target: Vec3, fov: number }}
  */
 export function studioHeroCamera(bounds, aspect = 1.6, margin = 0.82) {
   const cx = (bounds.min[0] + bounds.max[0]) / 2;
