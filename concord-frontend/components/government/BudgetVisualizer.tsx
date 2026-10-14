@@ -17,18 +17,44 @@ export function BudgetVisualizer() {
   const [scope, setScope] = useState<'federal' | 'state' | 'local'>('federal');
   const [year, setYear] = useState(2026);
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
+    setTotal(null);
+    setCategories([]);
     (async () => {
       try {
         const res = await lensRun({ domain: 'government', action: 'budget-breakdown', input: { scope, year } });
-        setCategories((res.data?.result?.categories || []) as BudgetCategory[]);
-        setTotal(Number(res.data?.result?.totalBillions) || 0);
-      } catch (e) { console.error('[Budget] failed', e); }
-      finally { setLoading(false); }
+        if (res.data?.ok === false) {
+          setError(res.data.error || 'budget lookup failed');
+          setCategories([]);
+          setTotal(null);
+          return;
+        }
+        const result = res.data?.result as {
+          categories?: BudgetCategory[];
+          totalBillions?: number;
+        } | null;
+        if (result == null || typeof result.totalBillions !== 'number' || !Number.isFinite(result.totalBillions)) {
+          setError(res.data?.error || 'budget response missing totalBillions');
+          setCategories([]);
+          setTotal(null);
+          return;
+        }
+        setCategories(result.categories || []);
+        setTotal(result.totalBillions);
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'budget lookup failed');
+        setCategories([]);
+        setTotal(null);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [scope, year]);
 
@@ -52,7 +78,9 @@ export function BudgetVisualizer() {
       </header>
       {loading ? (
         <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
-      ) : (
+      ) : error ? (
+        <div className="px-4 py-6 text-xs text-amber-300" role="alert">{error}</div>
+      ) : total != null ? (
         <>
           <div className="px-4 py-3 border-b border-white/5">
             <div className="text-3xl font-bold text-white tabular-nums">${total.toFixed(0)}B</div>
@@ -80,6 +108,8 @@ export function BudgetVisualizer() {
             ))}
           </div>
         </>
+      ) : (
+        <div className="px-4 py-6 text-xs text-gray-400">No budget data.</div>
       )}
     </div>
   );
