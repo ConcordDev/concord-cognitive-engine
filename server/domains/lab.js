@@ -1502,4 +1502,74 @@ export default function registerLabActions(registerLensAction) {
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+
+  // ── INC-SWEEP lab F8 — replace DOMAIN_ACTION_MANIFEST brain stubs ──
+  // design-experiment / validate-protocol were utility/repair brain catch-alls
+  // that returned fabricated tickets/DTUs / {"valid":true} without reading
+  // the lab stores. Prefer experimentDesign + protocol store, or refuse.
+  registerLensAction("lab", "design-experiment", (ctx, artifact, params = {}) => {
+    try {
+      const factors = Array.isArray(params.factors) && params.factors.length
+        ? params.factors
+        : (Array.isArray(artifact?.data?.factors) ? artifact.data.factors : []);
+      if (!factors.length) return { ok: false, error: "factors required" };
+      const actions = globalThis.__concordLensActions;
+      const fn = actions?.get?.("lab.experimentDesign");
+      if (typeof fn !== "function") return { ok: false, error: "experimentDesign unavailable" };
+      const synthetic = {
+        ...(artifact && typeof artifact === "object" ? artifact : {}),
+        data: { ...(artifact?.data || {}), factors },
+      };
+      const out = fn(ctx, synthetic, params);
+      if (out && out.ok && out.result && typeof out.result === "object") {
+        out.result.source = "experimentDesign";
+      }
+      return out;
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("lab", "validate-protocol", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const id = labClean(params.id || params.protocolId, 64);
+      if (!id) return { ok: false, error: "protocol id required" };
+      let p = labFind(labArr(L, "protocols", userId), id);
+      let scope = "personal";
+      if (!p && params.orgId) {
+        const orgId = labClean(params.orgId, 64);
+        const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
+        if (!gate.ok) return gate;
+        p = labFind(labArr(L, "orgProtocols", orgId), id);
+        scope = "org";
+      }
+      if (!p) return { ok: false, error: "protocol not found" };
+      const issues = [];
+      if (!Array.isArray(p.steps) || p.steps.length === 0) {
+        issues.push({ severity: "error", code: "no_steps", message: "protocol has no steps" });
+      }
+      for (const s of p.steps || []) {
+        if (!s.text) issues.push({ severity: "error", code: "empty_step", message: `step ${s.order || "?"} has no text` });
+        if (s.critical && !(s.durationMinutes > 0)) {
+          issues.push({ severity: "warning", code: "critical_no_duration", message: `critical step ${s.order || "?"} has no duration` });
+        }
+      }
+      const errors = issues.filter((i) => i.severity === "error");
+      return {
+        ok: true,
+        result: {
+          valid: errors.length === 0,
+          protocolId: p.id,
+          protocolName: p.name,
+          version: p.version,
+          stepCount: (p.steps || []).length,
+          totalMinutes: (p.steps || []).reduce((sum, st) => sum + (st.durationMinutes || 0), 0),
+          issues,
+          scope,
+          source: "protocol-store",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
 }
