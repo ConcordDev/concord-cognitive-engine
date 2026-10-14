@@ -46,7 +46,7 @@ const TABS: { id: Tab; label: string; keys: string; title: string; hint: string;
 
 export default function SufferingLensPage() {
   useLensNav('suffering');
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('board');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -89,7 +89,12 @@ export default function SufferingLensPage() {
     loadAll();
   }, [loadAll]);
 
-  useEffect(() => { void Promise.resolve().then(loadAll); }, [loadAll]);
+  // Wait for auth to settle so the first pain-list rides the session cookie
+  // (fresh mobile contexts were racing an empty/unauthed first paint).
+  useEffect(() => {
+    if (authLoading) return;
+    void Promise.resolve().then(loadAll);
+  }, [authLoading, loadAll]);
 
   useLensCommand(
     [
@@ -114,10 +119,10 @@ export default function SufferingLensPage() {
         title={`${current.title}${tab === 'board' && who ? `, ${who}` : ''}`}
         subtitle="Pain-point mapping, root-cause analysis and intervention tracking."
         actions={
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className="rounded-full bg-rose-500/15 px-3 py-1 text-rose-300"><span className="font-bold">{openPains}</span> open pains</span>
-            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300"><span className="font-bold">{pains.length - openPains}</span> resolved</span>
-            <span className="rounded-full bg-sky-500/15 px-3 py-1 text-sky-300"><span className="font-bold">{interventions.length}</span> interventions</span>
+          <div className="flex flex-wrap gap-2 text-sm" aria-busy={loading || authLoading}>
+            <span className="rounded-full bg-rose-500/15 px-3 py-1 text-rose-300"><span className="font-bold">{loading || authLoading ? '…' : openPains}</span> open pains</span>
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300"><span className="font-bold">{loading || authLoading ? '…' : pains.length - openPains}</span> resolved</span>
+            <span className="rounded-full bg-sky-500/15 px-3 py-1 text-sky-300"><span className="font-bold">{loading || authLoading ? '…' : interventions.length}</span> interventions</span>
           </div>
         }
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: `g ${t.keys}`, hint: t.hint }))}
