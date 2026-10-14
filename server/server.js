@@ -26078,7 +26078,15 @@ register("dtu", "create", async (ctx, input) => {
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
   _beat("persisting");
-  if (input.skipAutoTag === true || meta?.skipAutoTag === true) {
+  // INC-SWEEP research F2 — when the caller already named tags, store those
+  // tags only. Auto-classify used to append unrelated domains (e.g.
+  // photography/welding from keyword hits). Opt IN with autoTag:true.
+  const _callerNamedTags = Array.isArray(input.tags);
+  const _skipAuto =
+    input.skipAutoTag === true ||
+    meta?.skipAutoTag === true ||
+    (_callerNamedTags && input.autoTag !== true);
+  if (_skipAuto) {
     dtu._skipAutoTag = true;
     dtu.skipAutoTag = true;
     if (!dtu.meta || typeof dtu.meta !== "object") dtu.meta = {};
