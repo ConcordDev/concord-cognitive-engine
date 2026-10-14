@@ -14338,6 +14338,17 @@ function register(domain, name, fn, spec={}) {
     } catch (_e) { /* non-fatal */ }
   }
   MACROS.get(domain).set(name, { fn, spec: { domain, name, ...spec } });
+  // INC-SWEEP batch 012 — if COMMON_ACTIONS already installed a generic
+  // fill-in for this (domain, name), evict it so /api/lens/run reaches the
+  // real macro. Handles macros registered AFTER the COMMON_ACTIONS loop
+  // (e.g. collab.lock). Early macros are skipped at install time instead.
+  const _commonKey = `${domain}.${name}`;
+  const _commonKeys = globalThis.__concordCommonActionKeys;
+  const _lensActions = globalThis.__concordLensActions;
+  if (_commonKeys?.has?.(_commonKey) && _lensActions?.delete) {
+    _lensActions.delete(_commonKey);
+    _commonKeys.delete(_commonKey);
+  }
 }
 
 function listDomains() { return Array.from(MACROS.keys()).sort(); }
@@ -47119,8 +47130,13 @@ register("lens", "run", async (ctx, input={}) => {
   // missing here: any authenticated caller who knew another user's artifact
   // id could invoke any domain action against it (an IDOR).
   if (!_lensArtifactVisible(ctx, artifact)) return { ok: false, error: "not found" }; // Don't reveal existence
-  // Domain-specific action handlers can be registered via lens.registerAction
-  const handler = LENS_ACTIONS.get(`${artifact.domain}.${action}`);
+  // Domain-specific action handlers can be registered via lens.registerAction.
+  // INC-SWEEP batch 012: resolve via the same dual-registry helper as
+  // /api/lens/run so COMMON_ACTIONS generics cannot shadow a MACROS-owned verb.
+  const _lensResolved = _resolveDualRegistry(artifact.domain, action, {
+    lensActions: LENS_ACTIONS, runMacro, macros: MACROS,
+  });
+  const handler = _lensResolved.via === "lens_action" ? _lensResolved.handler : null;
   if (!handler) {
     // Featured-Actions dispatch bug (audit/LENS_DESIGN_UPGRADE_PLAN.md
     // cross-cutting note, #102/#109/etc): LensVerticalHero.tsx/AutoActionStrip.tsx
@@ -47136,7 +47152,7 @@ register("lens", "run", async (ctx, input={}) => {
     // real macro first via the same runMacro() every other caller uses —
     // only fall through to the AI guess if MACROS genuinely has no entry
     // either.
-    if (MACROS.get(artifact.domain)?.has(action)) {
+    if (_lensResolved.via === "macro" || MACROS.get(artifact.domain)?.has(action)) {
       try {
         // Call runMacro() directly rather than through ctx.macro.run — that
         // wrapper is only attached by makeCtx(req) for HTTP-originated ctx
@@ -48396,13 +48412,20 @@ function _unwrapLensEnvelope(r) {
 // a transport concern, separate from how the macro layer is graded.
 // No HTTP/auth — the harness supplies an internal owner ctx.
 async function _dispatchLensRunForTest(domain, name, input, ctx) {
-  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
-  if (lensHandler) {
+  // Same dual-registry resolution as /api/lens/run (incl. COMMON_ACTIONS
+  // fill-in → MACROS preference when the domain owns the verb).
+  const resolved = _resolveDualRegistry(domain, name, {
+    lensActions: LENS_ACTIONS, runMacro, macros: MACROS,
+  });
+  if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, data);
+    return await resolved.handler(ctx, virtualArtifact, data);
   }
-  return await runMacro(domain, name, input || {}, ctx);
+  if (resolved.via === "macro") {
+    return await runMacro(domain, name, input || {}, ctx);
+  }
+  return { ok: false, error: "unknown_macro", domain, name };
 }
 
 app.post("/api/lens/run", async (req, res) => {
@@ -48468,12 +48491,16 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:started", {});
       }
     }
-    // Prefer LENS_ACTIONS (legacy lens-action style: registerLensAction(...)).
-    const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
-    if (lensHandler) {
+    // Dual-registry dispatch (lib/dual-registry-resolve.js): prefer real
+    // LENS_ACTIONS, but COMMON_ACTIONS generics yield to a MACROS-owned pair
+    // (INC-SWEEP batch 012 — civic_bonds.vote / atlas.status / collab.lock / …).
+    const resolved = _resolveDualRegistry(domain, action, {
+      lensActions: LENS_ACTIONS, runMacro, macros: MACROS,
+    });
+    if (resolved.via === "lens_action") {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const _lensT0 = Date.now();
-      const lensRaw = await lensHandler(ctx, virtualArtifact, rest);
+      const lensRaw = await resolved.handler(ctx, virtualArtifact, rest);
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
       // Ownership refusals (engineering.deletePart / renamePart) carry
       // status 403 and an error that starts with "forbidden". That is an
@@ -48500,7 +48527,7 @@ app.post("/api/lens/run", async (req, res) => {
     // here — the legacy LENS_ACTIONS path can't see them. (This is also where
     // reason.verify/reason.evaluate_answer themselves register, so this is
     // the branch that actually fires the conkay:verdict emit below today.)
-    if (MACROS.get(domain)?.get(action)) {
+    if (resolved.via === "macro") {
       const macroRaw = await runMacro(domain, action, rest, ctx);
       const _macroHttpErr = _httpErrorFromLensAction(macroRaw);
       if (_macroHttpErr) {
@@ -51280,17 +51307,37 @@ registerUniversalLensActions();
     },
   };
 
+  // Keys installed by this loop — resolveDualRegistry consults the set so a
+  // COMMON_ACTIONS fill-in never shadows a MACROS-owned (domain, verb). Real
+  // registerLensAction handlers are never added here.
+  const COMMON_ACTION_KEYS = globalThis.__concordCommonActionKeys instanceof Set
+    ? globalThis.__concordCommonActionKeys
+    : new Set();
+  globalThis.__concordCommonActionKeys = COMMON_ACTION_KEYS;
+
   let commonCount = 0;
+  let skippedMacroOwned = 0;
   for (const domain of ALL_LENS_DOMAINS) {
     for (const [actionName, handler] of Object.entries(COMMON_ACTIONS)) {
       const key = `${domain}.${actionName}`;
-      if (!LENS_ACTIONS.has(key)) {
-        LENS_ACTIONS.set(key, handler);
-        commonCount++;
+      if (LENS_ACTIONS.has(key)) continue; // respect real domain LENS_ACTIONS
+      // INC-SWEEP batch 012 — do not install a generic when MACROS already
+      // owns this pair (civic_bonds.vote, atlas.status, hypothesis.archive, …).
+      if (MACROS.get(domain)?.has(actionName)) {
+        skippedMacroOwned++;
+        continue;
       }
+      LENS_ACTIONS.set(key, handler);
+      COMMON_ACTION_KEYS.add(key);
+      commonCount++;
     }
   }
-  structuredLog("info", "common_actions_registered", { actionsPerDomain: Object.keys(COMMON_ACTIONS).length, domains: ALL_LENS_DOMAINS.length, totalRegistered: commonCount });
+  structuredLog("info", "common_actions_registered", {
+    actionsPerDomain: Object.keys(COMMON_ACTIONS).length,
+    domains: ALL_LENS_DOMAINS.length,
+    totalRegistered: commonCount,
+    skippedMacroOwned,
+  });
 }
 
 // ===== ORACLE ENGINE (multi-phase reasoning for complex queries) =====
@@ -74841,12 +74888,14 @@ const DESIGN_COMMAND_ACTIONS = new Set([
 // `_dispatchLensRunForTest` (used by the invariant-engine test harness) for
 // the identical reason.
 async function _dispatchDesignCommand(domain, action, params, ctx) {
-  const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
-  if (lensHandler) {
+  const resolved = _resolveDualRegistry(domain, action, {
+    lensActions: LENS_ACTIONS, runMacro, macros: MACROS,
+  });
+  if (resolved.via === "lens_action") {
     const virtualArtifact = { id: null, domain, type: "domain_action", data: params, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, params);
+    return await resolved.handler(ctx, virtualArtifact, params);
   }
-  if (MACROS.get(domain)?.get(action)) {
+  if (resolved.via === "macro") {
     return await runMacro(domain, action, params, ctx);
   }
   return { ok: false, error: "unknown_macro", domain, action };

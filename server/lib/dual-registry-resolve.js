@@ -25,6 +25,15 @@
 // the "prefer LENS_ACTIONS, then MACROS" order can't silently drift
 // between server.js's runMcpTool and chat-agent.js's run_lens_action tool.
 //
+// INC-SWEEP batch 012 — COMMON_ACTIONS fill-ins: server.js registers generic
+// artifact handlers (vote/status/archive/lock/publish/…) into LENS_ACTIONS for
+// every ALL_LENS_DOMAINS entry. Those fill-ins must NOT shadow a real domain
+// macro of the same name. When `commonActionKeys` (or
+// `globalThis.__concordCommonActionKeys`) marks the LENS_ACTIONS entry as a
+// generic fill-in AND MACROS owns the pair, resolution returns via:"macro".
+// Real registerLensAction handlers are never in that set, so council.vote /
+// sim.archive / answers.vote keep winning over any same-named macro.
+//
 // Deliberately narrow: this ONLY answers "which registry, if either,
 // resolves this pair" — it does not build a virtualArtifact, does not peel
 // any input-wrapper convention (that's an /api/lens/run-specific concern
@@ -34,9 +43,11 @@
 /**
  * @param {string} domain
  * @param {string} name
- * @param {{ lensActions?: Map<string, Function>, runMacro?: Function, macros?: Map }} registries
+ * @param {{ lensActions?: Map<string, Function>, runMacro?: Function, macros?: Map, commonActionKeys?: Set<string>, strict?: boolean }} registries
  *        `macros` is the canonical MACROS registry (Map<domain, Map<name, entry>>).
  *        When omitted, `globalThis._concordMACROS` (set by server.js) is used.
+ *        `commonActionKeys` marks LENS_ACTIONS entries installed by COMMON_ACTIONS
+ *        generics; when omitted, `globalThis.__concordCommonActionKeys` is used.
  * @returns {{ via: 'lens_action', handler: Function, key: string }
  *         | { via: 'macro', key: string }
  *         | { via: 'none', key: string, reason?: string }}
@@ -51,11 +62,24 @@
  * for the real names". A caller can pass `strict: false` to opt back into the
  * old permissive behavior if it genuinely wants to attempt the call.
  */
-export function resolveDualRegistry(domain, name, { lensActions, runMacro, macros, strict = true } = {}) {
+export function resolveDualRegistry(domain, name, { lensActions, runMacro, macros, commonActionKeys, strict = true } = {}) {
   const key = `${domain}.${name}`;
   const hasLensActions = !!(lensActions && typeof lensActions.get === "function");
   const lensHandler = hasLensActions ? lensActions.get(key) : null;
-  if (lensHandler) return { via: "lens_action", handler: lensHandler, key };
+
+  const macroMap = macros || (typeof globalThis !== "undefined" ? globalThis._concordMACROS : null);
+  const hasMacro = !!(macroMap && typeof macroMap.get === "function" && macroMap.get(domain)?.get?.(name));
+
+  if (lensHandler) {
+    // COMMON_ACTIONS generics must yield to a real domain macro of the same name.
+    const commonKeys = commonActionKeys
+      || (typeof globalThis !== "undefined" ? globalThis.__concordCommonActionKeys : null);
+    const isCommonFillIn = !!(commonKeys && typeof commonKeys.has === "function" && commonKeys.has(key));
+    if (!(isCommonFillIn && hasMacro)) {
+      return { via: "lens_action", handler: lensHandler, key };
+    }
+    // Fall through to MACROS — the generic was shadowing a domain handler.
+  }
 
   if (typeof runMacro !== "function") return { via: "none", key, reason: "no_dispatcher" };
 
@@ -63,12 +87,8 @@ export function resolveDualRegistry(domain, name, { lensActions, runMacro, macro
   // the pair is not registered — i.e. a real MACROS map is available and the
   // lookup misses. With no map to consult (isolated unit contexts), or with
   // strict:false, fall back to the permissive "attempt it via runMacro".
-  const macroMap = strict
-    ? (macros || (typeof globalThis !== "undefined" ? globalThis._concordMACROS : null))
-    : null;
-  if (macroMap && typeof macroMap.get === "function") {
-    const registered = !!macroMap.get(domain)?.get?.(name);
-    if (!registered) return { via: "none", key, reason: "not_registered" };
+  if (strict && macroMap && typeof macroMap.get === "function") {
+    if (!hasMacro) return { via: "none", key, reason: "not_registered" };
   }
   return { via: "macro", key };
 }

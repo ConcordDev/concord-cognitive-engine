@@ -56,6 +56,43 @@ test("resolveDualRegistry prefers lens_action over macro when both could resolve
   assert.equal(result.handler, handler);
 });
 
+// INC-SWEEP batch 012 — COMMON_ACTIONS fill-ins must not shadow MACROS.
+test("COMMON_ACTIONS fill-in yields to MACROS when commonActionKeys marks the pair", () => {
+  const generic = async () => ({ ok: true, via: "common" });
+  const lensActions = new Map([["civic_bonds.vote", generic]]);
+  const macros = fakeMacros(["civic_bonds.vote"]);
+  const commonActionKeys = new Set(["civic_bonds.vote"]);
+  const result = resolveDualRegistry("civic_bonds", "vote", {
+    lensActions, runMacro: async () => ({ ok: true }), macros, commonActionKeys,
+  });
+  assert.equal(result.via, "macro");
+  assert.equal(result.handler, undefined);
+});
+
+test("real LENS_ACTION still wins over MACROS when the key is NOT a COMMON_ACTIONS fill-in", () => {
+  const real = async () => ({ ok: true, via: "lens_action" });
+  const lensActions = new Map([["council.vote", real]]);
+  const macros = fakeMacros(["council.vote"]);
+  const commonActionKeys = new Set(["civic_bonds.vote"]); // council.vote not marked
+  const result = resolveDualRegistry("council", "vote", {
+    lensActions, runMacro: async () => ({ ok: true }), macros, commonActionKeys,
+  });
+  assert.equal(result.via, "lens_action");
+  assert.equal(result.handler, real);
+});
+
+test("COMMON_ACTIONS fill-in with no MACROS peer stays via lens_action (intentionally-generic)", () => {
+  const generic = async () => ({ ok: true, via: "common" });
+  const lensActions = new Map([["accounting.vote", generic]]);
+  const macros = fakeMacros([]); // no accounting.vote macro
+  const commonActionKeys = new Set(["accounting.vote"]);
+  const result = resolveDualRegistry("accounting", "vote", {
+    lensActions, runMacro: async () => ({ ok: true }), macros, commonActionKeys,
+  });
+  assert.equal(result.via, "lens_action");
+  assert.equal(result.handler, generic);
+});
+
 // ── strict registration check (2026-09-10) ──────────────────────────────────
 // The "prefer LENS_ACTIONS, then MACROS" resolver used to return via:"macro"
 // for ANY pair as long as runMacro was a function — so a misnamed/nonexistent

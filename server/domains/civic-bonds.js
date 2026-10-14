@@ -159,6 +159,11 @@ export default function registerCivicBondsMacros(register) {
  * Called from domains/index.js *before* COMMON_ACTIONS so the
  * `if (!LENS_ACTIONS.has(key))` guard skips the generic vote for this domain.
  * Signature mirrors registerLensAction: (ctx, artifact, params) → domain fn(ctx, params).
+ *
+ * INC-SWEEP batch 012 made the systemic fix (COMMON_ACTIONS skip when MACROS
+ * owns the pair + resolveDualRegistry prefers MACROS over common fill-ins).
+ * This bridge is kept as belt-and-suspenders so civic_bonds verbs stay
+ * first-class LENS_ACTIONS even if the common-keys set is cleared.
  */
 export function registerCivicBondsLensActions(registerLensAction) {
   registerCivicBondsMacros((domain, name, fn) => {
