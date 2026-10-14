@@ -361,7 +361,7 @@ export function RealmActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = [
+      const message = [
         `Realm context: ${myRealm ? `${myRealm.name} (capital ${myRealm.capital_settlement_id ?? '—'}, loyalty ${loyaltyResult?.avg ?? '?'})` : 'no realm yet'}.`,
         realmList.length ? `${realmList.length} realms on the map.` : '',
         decreeResult ? `Recent decree: ${decreeResult.kind ?? decreeKind} in ${targetRealmId || '—'}.` : '',
@@ -369,7 +369,8 @@ export function RealmActionPanel() {
         'Suggest the single highest-leverage move for my realm this turn: which decree, when to call levies, whether to attempt a takeover (conquest / inheritance / election) and why.',
         'Speak in the voice of a CK3 council member. One paragraph. Direct.',
       ].filter(Boolean).join(' ');
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
+      // Handler contract is input.message (task is accepted as a fleet-wide alias).
+      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { message, maxTurns: 4 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Council member spoke.'); }
       else err('Agent returned empty.');
