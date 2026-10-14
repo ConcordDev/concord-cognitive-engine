@@ -1958,7 +1958,16 @@ export function StudioDawWorkspace() {
           the fold, ahead of the actual DAW canvas below, on every visit. */}
       <PipingProvider>
       <div className="px-4 mt-2">
-        <ShellPreview lensId="studio" defaultOpen={true} />
+        <ShellPreview
+          lensId="studio"
+          defaultOpen={true}
+          studioSession={project ? {
+            name: project.title,
+            bpm: project.bpm,
+            timeSignatureNum: project.timeSignature?.[0] || 4,
+            timeSignatureDen: project.timeSignature?.[1] || 4,
+          } : null}
+        />
         <button
           type="button"
           onClick={() => setShowDawWorkbench((v) => !v)}

@@ -62,13 +62,22 @@ const PLACEHOLDER_ONLY = ['code', 'legal', 'message', 'healthcare'] as const;
 // keep theirs — there it IS the primary surface.
 const DUPLICATES_BODY = ['education', 'agriculture', 'logistics', 'government', 'aviation', 'environment', 'realestate', 'trades', 'whiteboard'] as const;
 
+/** Live Studio session so Arrange chrome matches Keep / YOUR PROJECTS (not a stale empty dashboard-summary). */
+export type StudioLiveSession = {
+  name: string;
+  bpm: number;
+  timeSignatureNum?: number;
+  timeSignatureDen?: number;
+};
+
 export interface ShellPreviewProps {
   lensId: string;
   defaultOpen?: boolean;
   className?: string;
+  studioSession?: StudioLiveSession | null;
 }
 
-export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPreviewProps) {
+export function ShellPreview({ lensId, defaultOpen = true, className, studioSession = null }: ShellPreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
   const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
@@ -96,14 +105,14 @@ export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPre
       </button>
       {open && (
         <div className="border-t border-lattice-border bg-black/20">
-          <PreviewBody lensId={lensId as SupportedLens} />
+          <PreviewBody lensId={lensId as SupportedLens} studioSession={studioSession} />
         </div>
       )}
     </section>
   );
 }
 
-function PreviewBody({ lensId }: { lensId: SupportedLens }) {
+function PreviewBody({ lensId, studioSession }: { lensId: SupportedLens; studioSession?: StudioLiveSession | null }) {
   switch (lensId) {
     case 'code': return <EmptyShellPlaceholder label="Open the workbench below to load your repository." />;
     case 'crypto': return <CryptoPreview />;
@@ -118,7 +127,7 @@ function PreviewBody({ lensId }: { lensId: SupportedLens }) {
     case 'trades': return <TradesPreview />;
     case 'logistics': return <LogisticsPreview />;
     case 'agriculture': return <AgriculturePreview />;
-    case 'studio': return <StudioPreview />;
+    case 'studio': return <StudioPreview liveSession={studioSession} />;
     case 'aviation': return <AviationPreview />;
     case 'government': return <GovernmentPreview />;
     case 'environment': return <EnvironmentPreview />;
@@ -532,7 +541,7 @@ function AgriculturePreview() {
 
 /* ── Studio: hydrate from dashboard-summary + project + clips + scenes ── */
 
-function StudioPreview() {
+export function StudioPreview({ liveSession = null }: { liveSession?: StudioLiveSession | null }) {
   const [, setD] = useState<Record<string, unknown> | null>(null);
   const [proj, setProj] = useState<Record<string, unknown> | null>(null);
   const [clips, setClips] = useState<Array<Record<string, unknown>>>([]);
@@ -561,7 +570,8 @@ function StudioPreview() {
       finally { setLoading(false); }
     })();
   }, []);
-  if (loading) return <PreviewLoading />;
+  // Open DAW session wins over a one-shot dashboard fetch that may still be empty.
+  if (loading && !liveSession?.name) return <PreviewLoading />;
   const tracks = ((proj?.tracks as Array<Record<string, unknown>>) || []).map(t => ({
     id: String(t.id || ''),
     name: String(t.name || ''),
@@ -571,12 +581,23 @@ function StudioPreview() {
     solo: Boolean(t.solo),
     armed: Boolean(t.armed),
   }));
+  const sig = typeof proj?.timeSignature === 'string' ? String(proj.timeSignature).split('/') : [];
+  const projectName = liveSession?.name || (proj?.name as string) || '(no project yet)';
+  const bpm = liveSession?.bpm || (proj?.bpm as number) || 120;
+  const timeSignatureNum = liveSession?.timeSignatureNum
+    || (proj?.timeSignatureNum as number)
+    || Number(sig[0])
+    || 4;
+  const timeSignatureDen = liveSession?.timeSignatureDen
+    || (proj?.timeSignatureDen as number)
+    || Number(sig[1])
+    || 4;
   return (
     <DawShell
-      projectName={(proj?.name as string) || '(no project yet)'}
-      bpm={(proj?.bpm as number) || 120}
-      timeSignatureNum={(proj?.timeSignatureNum as number) || 4}
-      timeSignatureDen={(proj?.timeSignatureDen as number) || 4}
+      projectName={projectName}
+      bpm={bpm}
+      timeSignatureNum={timeSignatureNum}
+      timeSignatureDen={timeSignatureDen}
       isPlaying={isPlaying}
       isRecording={isRecording}
       positionBeats={0}
