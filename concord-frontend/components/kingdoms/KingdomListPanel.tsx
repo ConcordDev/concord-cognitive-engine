@@ -72,7 +72,7 @@ export function KingdomListPanel({ onPick }: { onPick: (id: string) => void }) {
                 <span className="text-xs text-slate-400">{k.world_id}</span>
               </div>
               <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-                <span>Ruler: {k.ruler_user_id ? k.ruler_user_id.slice(0, 12) : k.ruler_faction_id || 'None'}</span>
+                <span>Ruler: {k.ruler_display_name || k.ruler_faction_id || 'None'}</span>
                 <span>·</span>
                 <span>{k.region_polygon?.length ?? 0} vertices</span>
                 <span>·</span>

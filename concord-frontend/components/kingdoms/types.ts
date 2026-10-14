@@ -4,7 +4,9 @@ export interface Kingdom {
   id: string;
   world_id: string;
   name: string;
-  ruler_user_id: string | null;
+  /** Opaque public id — never a raw account uuid. */
+  ruler_id: string | null;
+  ruler_display_name: string | null;
   ruler_faction_id: string | null;
   claim_strength: number;
   founded_at: number;
@@ -21,7 +23,9 @@ export interface Decree {
 }
 
 export interface Resident {
-  user_id: string;
+  /** Opaque public id — never a raw account uuid. */
+  id: string;
+  display_name: string;
   role: string;
   joined_at: number;
 }

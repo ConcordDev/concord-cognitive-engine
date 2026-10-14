@@ -16,6 +16,8 @@ import {
   joinKingdom,
   listResidents,
   pointInKingdom,
+  presentKingdom,
+  presentResident,
   DECREE_KINDS,
 } from "../lib/kingdom.js";
 
@@ -26,7 +28,7 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
   router.get("/", requireAuth, (req, res) => {
     try {
       const worldId = req.query?.worldId ? String(req.query.worldId) : null;
-      const rows = listKingdoms(db, { worldId });
+      const rows = listKingdoms(db, { worldId }).map((r) => presentKingdom(db, r));
       res.json({ ok: true, kingdoms: rows });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
@@ -56,8 +58,8 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
       const k = getKingdom(db, req.params.id);
       if (!k) return res.status(404).json({ ok: false, error: "kingdom_not_found" });
       const decrees  = listDecrees(db, req.params.id, { activeOnly: false });
-      const residents = listResidents(db, req.params.id);
-      res.json({ ok: true, kingdom: k, decrees, residents });
+      const residents = listResidents(db, req.params.id).map((r) => presentResident(db, r));
+      res.json({ ok: true, kingdom: presentKingdom(db, k), decrees, residents });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 

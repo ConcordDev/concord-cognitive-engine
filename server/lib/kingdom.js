@@ -13,6 +13,7 @@
 
 import crypto from "crypto";
 import { applyTemporaryRefusal } from "./refusal-field.js";
+import { lookupUserIdentity } from "./user-identity.js";
 
 const DEFAULT_DECREE_DURATION_MS = 30 * 60 * 1000; // 30 min
 const ALIGNMENT_ENFORCED         = 0.6;
@@ -304,6 +305,57 @@ export function listResidents(db, kingdomId) {
   try {
     return db.prepare(`SELECT * FROM kingdom_residents WHERE kingdom_id = ? ORDER BY joined_at ASC`).all(kingdomId);
   } catch { return []; }
+}
+
+/* ── Wire presentation (no raw user ids) ──────────────────────────── */
+
+/**
+ * Stable opaque public id for a user. Deterministic so list/detail/browse
+ * agree without a session Map. Never equal to the raw uuid.
+ */
+export function opaqueUserRef(userId) {
+  if (!userId) return null;
+  const h = crypto.createHash("sha256").update(`kdm_uid:${userId}`).digest("hex").slice(0, 12);
+  return `u_${h}`;
+}
+
+function _publicDisplayName(db, userId, fallback) {
+  if (!userId) return fallback;
+  try {
+    const idn = lookupUserIdentity(db, userId);
+    const name = String(idn.displayName || idn.username || "").trim();
+    if (name && name !== userId) return name.slice(0, 80);
+  } catch { /* no users table */ }
+  return fallback;
+}
+
+/** Strip ruler_user_id; expose opaque ruler_id + ruler_display_name. */
+export function presentKingdom(db, row) {
+  if (!row) return null;
+  const {
+    ruler_user_id: rulerUserId,
+    region_polygon_json: _polyJson,
+    ...rest
+  } = row;
+  return {
+    ...rest,
+    region_polygon: Array.isArray(row.region_polygon)
+      ? row.region_polygon
+      : _safeJson(row.region_polygon_json, []),
+    ruler_id: opaqueUserRef(rulerUserId),
+    ruler_display_name: _publicDisplayName(db, rulerUserId, "Ruler"),
+  };
+}
+
+/** Strip user_id; expose opaque id + display_name. */
+export function presentResident(db, row) {
+  if (!row) return null;
+  const { user_id: userId, ...rest } = row;
+  return {
+    ...rest,
+    id: opaqueUserRef(userId),
+    display_name: _publicDisplayName(db, userId, "Member"),
+  };
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────── */

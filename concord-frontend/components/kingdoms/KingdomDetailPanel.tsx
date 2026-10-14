@@ -82,7 +82,7 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
               {kingdom.world_id} · founded {new Date(kingdom.founded_at * 1000).toISOString().split('T')[0]}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Ruler: <span className="font-mono">{kingdom.ruler_user_id || kingdom.ruler_faction_id || '—'}</span> ·
+              Ruler: <span>{kingdom.ruler_display_name || kingdom.ruler_faction_id || '—'}</span> ·
               Region: {kingdom.region_polygon?.length ?? 0} vertices ·
               Strength: <span className="tabular-nums">{Math.round(kingdom.claim_strength)}</span>
             </p>
@@ -176,8 +176,8 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
           <h4 className="mb-2 mt-3 text-xs font-semibold text-slate-300">Residents ({residents.length})</h4>
           <ul className="max-h-40 space-y-1 overflow-y-auto">
             {residents.map((r) => (
-              <li key={r.user_id} className="flex items-center justify-between rounded px-2 py-1 text-[11px]">
-                <span className="font-mono">{r.user_id.slice(0, 14)}</span>
+              <li key={r.id} className="flex items-center justify-between rounded px-2 py-1 text-[11px]">
+                <span>{r.display_name}</span>
                 <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] capitalize text-slate-400">{r.role}</span>
               </li>
             ))}
