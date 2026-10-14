@@ -23,7 +23,9 @@ export function composeToolTurnReply(results) {
       continue;
     }
     if (r.tool === "create_dtu" && r.dtuId) {
-      lines.push(`Saved a private DTU titled "${r.title || "Untitled"}" (id: ${r.dtuId}).`);
+      const title = r.title || "Untitled";
+      const visibility = r.visibility || "private";
+      lines.push(`Saved a ${visibility} DTU titled "${title}" (id: ${r.dtuId}).`);
     }
   }
   return lines.length ? lines.join("\n") : null;
@@ -63,7 +65,11 @@ export function ensureCreatedDtuIds(reply, results) {
   );
   if (!missing.length) return text;
   const extra = missing
-    .map((r) => `Saved a private DTU titled "${r.title || "Untitled"}" (id: ${r.dtuId}).`)
+    .map((r) => {
+      const title = r.title || "Untitled";
+      const visibility = r.visibility || "private";
+      return `Saved a ${visibility} DTU titled "${title}" (id: ${r.dtuId}).`;
+    })
     .join("\n");
   return text.trim() ? `${text.trim()}\n\n${extra}` : extra;
 }

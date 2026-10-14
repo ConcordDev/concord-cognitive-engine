@@ -30,6 +30,31 @@ test("parseExplicitDtuSave keeps the title and drops the 'then tell me' tail", (
   assert.equal(parseExplicitDtuSave("don't save a DTU titled X with content Y"), null);
 });
 
+test("parseExplicitDtuSave keeps compact date suffixes in the title", () => {
+  const parsed = parseExplicitDtuSave(
+    "Save a DTU titled Sweep Note 20261014 with content Concord chat walk private note.",
+  );
+  assert.deepEqual(parsed, {
+    title: "Sweep Note 20261014",
+    content: "Concord chat walk private note",
+  });
+});
+
+test("composeToolTurnReply for create_dtu is id + title + visibility", () => {
+  const reply = composeToolTurnReply([{
+    tool: "create_dtu",
+    ok: true,
+    dtuId: "dtu_8c06a7d00ea024c258d8",
+    title: "Sweep Note 20261014",
+    visibility: "private",
+  }]);
+  assert.equal(
+    reply,
+    'Saved a private DTU titled "Sweep Note 20261014" (id: dtu_8c06a7d00ea024c258d8).',
+  );
+  assert.equal(shouldSkipToolFollowup([{ tool: "create_dtu", ok: true, dtuId: "x" }]), true);
+});
+
 test("a PDF request is a capability statement, and a DTU save is not one", () => {
   assert.equal(isPdfCreateRequest("Make a PDF"), true);
   assert.equal(isPdfCreateRequest("create a pdf of this note"), true);

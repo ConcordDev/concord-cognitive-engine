@@ -71,8 +71,9 @@ export function explicitDtuCreateInput({ title, content }, sessionId) {
   };
 }
 
-export function savedDtuReply({ id, title }) {
-  return `Saved a private DTU titled "${title || "Untitled"}" (id: ${id}).`;
+export function savedDtuReply({ id, title, visibility = "private" }) {
+  const vis = visibility || "private";
+  return `Saved a ${vis} DTU titled "${title || "Untitled"}" (id: ${id}).`;
 }
 
 export const PDF_CAPABILITY_MESSAGE = "I can't create PDFs yet; use Export/Print.";

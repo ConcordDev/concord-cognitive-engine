@@ -42,6 +42,12 @@ import { createInitiativeEngine } from "./initiative-engine.js";
 import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 import { routeComputeQuestion, composeRoutedReply } from "./chat/compute-router.js";
 import { findToolCallSpans, governancePayloads, unwrapGovernancePayload } from "./v6-observe-bridge.js";
+import { parseExplicitDtuSave } from "./chat/dtu-save-intent.js";
+import {
+  composeToolTurnReply,
+  shouldSkipToolFollowup,
+  followUpFailureReply,
+} from "./chat/tool-turn-reply.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -759,12 +765,22 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // macro reads ctx.actor.role and checks it against
         // ["owner","founder"]/ctx.actor.internal itself, so we don't need to
         // pass a separate skipCouncilGate flag here.
+        //
+        // Title/body: when the user wrote an explicit "save a DTU titled X
+        // with content Y", prefer that verbatim over the model's (often
+        // truncated) tool-call params — INC-SWEEP chat F3.
+        const explicit = parseExplicitDtuSave(ctx?.userPrompt || "");
+        const title = String(explicit?.title || call.params.title || "Untitled");
+        const summary = String(explicit?.content || call.params.summary || "");
         const r = await runMacro("dtu", "create", {
-          title: String(call.params.title || "Untitled"),
-          human: { summary: String(call.params.summary || ""), bullets: [] },
+          title,
+          human: { summary, bullets: [] },
+          content: summary || undefined,
+          creti: summary || undefined,
           tags: Array.isArray(call.params.tags) ? call.params.tags : [],
           tier: "regular",
           source: "agent_tool",
+          visibility: "private",
         }, ctx);
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_dtu failed" };
         // R8/CL3 gap fix: echo the real summary this DTU was just minted
@@ -774,13 +790,14 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // id/title the faithfulness scorer can't match anything against.
         // Key is omitted entirely (not set to an empty/undefined value) when
         // the caller supplied no summary — an absent field, not a fabricated one.
-        const _summary = String(call.params.summary || "");
-        const artifact = { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title };
-        if (_summary) artifact.content = _summary;
+        const storedTitle = r.dtu?.title || title;
+        const artifact = { kind: "dtu", id: r.id || r.dtu?.id, title: storedTitle };
+        if (summary) artifact.content = summary;
         return {
           tool: call.tool, ok: true,
           dtuId: r.id || r.dtu?.id,
-          title: call.params.title,
+          title: storedTitle,
+          visibility: r.dtu?.visibility || r.visibility || "private",
           artifact,
         };
       }
@@ -1287,6 +1304,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
   const ctx = {
     db,
+    // Original user sentence — create_dtu reads this to keep an explicit
+    // "titled … with content …" title/body verbatim when the model shortens them.
+    userPrompt: message,
     actor: {
       userId,
       sessionId: opts.sessionId || null,
@@ -1448,6 +1468,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
           tool: call.tool, outcome: result.ok ? "ok" : "error",
         })).catch(() => {});
       }
+    }
+
+    // A failed tool, or a plain create_dtu save, is answered from the tool
+    // results — never a free-generated follow-up that leaks prompt fragments
+    // ("Mention in a sentence.") or drops the stored title (INC-SWEEP F3).
+    if (shouldSkipToolFollowup(results)) {
+      finalAnswer = composeToolTurnReply(results)
+        || followUpFailureReply(results, formatToolResults(results))
+        || visibleAnswer;
+      break;
     }
 
     // Append the brain's intermediate text + tool results to the message

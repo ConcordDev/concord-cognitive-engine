@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import {
   parseToolCalls, stripToolCalls,
   executeToolCall, formatToolResults,
+  runAgentLoop,
   CHAT_AGENT_CONSTANTS,
 } from "../lib/chat-agent.js";
 
@@ -172,6 +173,67 @@ test("executeToolCall create_dtu surfaces an artifact for inline UI render", asy
   });
   assert.equal(result.ok, true);
   assert.deepEqual(result.artifact, { kind: "dtu", id: "dtu_xyz", title: "My DTU" });
+});
+
+test("create_dtu keeps an explicit user title verbatim when the model shortens it", async () => {
+  let created = null;
+  const fakeRunMacro = async (_d, _n, input) => {
+    created = input;
+    return { ok: true, id: "dtu_8c06a7d00ea024c258d8", dtu: { id: "dtu_8c06a7d00ea024c258d8", title: input.title, visibility: "private" } };
+  };
+  const result = await executeToolCall(
+    { userPrompt: "Save a DTU titled Sweep Note 20261014 with content Concord chat walk private note." },
+    fakeRunMacro,
+    new Map(),
+    { tool: "create_dtu", params: { title: "Sweep Note", summary: "truncated" } },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(created.title, "Sweep Note 20261014");
+  assert.equal(created.human.summary, "Concord chat walk private note");
+  assert.equal(result.title, "Sweep Note 20261014");
+  assert.equal(result.visibility, "private");
+});
+
+test("runAgentLoop answers create_dtu from the tool result, not a free-gen follow-up", async () => {
+  let brainCalls = 0;
+  const brain = async () => {
+    brainCalls += 1;
+    if (brainCalls === 1) {
+      return {
+        ok: true,
+        text: '[TOOL_CALL: {"tool":"create_dtu","params":{"title":"Sweep Note","summary":"note"}}]',
+        provider: "test",
+        model: "test",
+      };
+    }
+    return {
+      ok: true,
+      text: "Dtu 8c06a7d00ea024c258d8 is live. Mention in a sentence.",
+      provider: "test",
+      model: "test",
+    };
+  };
+  const runMacro = async (_d, _n, input) => ({
+    ok: true,
+    id: "dtu_8c06a7d00ea024c258d8",
+    dtu: { id: "dtu_8c06a7d00ea024c258d8", title: input.title, visibility: "private" },
+  });
+  const r = await runAgentLoop({
+    db: null,
+    userId: "u1",
+    message: "Save a DTU titled Sweep Note 20261014 with content Concord chat walk private note.",
+    runMacro,
+    lensActions: new Map(),
+    history: [],
+    opts: { maxTurns: 5, brainChat: brain, shadowContext: false, actionMemory: false },
+  });
+  assert.equal(r.ok, true);
+  assert.equal(brainCalls, 1, "must not call the brain again after create_dtu");
+  assert.match(r.answer, /Sweep Note 20261014/);
+  assert.match(r.answer, /dtu_8c06a7d00ea024c258d8/);
+  assert.match(r.answer, /private/);
+  assert.doesNotMatch(r.answer, /Mention in a sentence/i);
+  assert.equal(r.toolCalls[0].title, "Sweep Note 20261014");
 });
 
 test("CHAT_AGENT_CONSTANTS exports caps", () => {
