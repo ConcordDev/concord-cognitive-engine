@@ -129,8 +129,9 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
     assert.match(String(bad.result.error), /neutral third party/i);
     const good = await lensRun("disputes", "mediator-assign", { params: { caseId, mediatorId: "mediator-7", mediatorName: "Pat" } }, ctx);
     assert.equal(good.ok, true);
-    assert.equal(good.result.mediatorId, "mediator-7");
-    assert.equal(good.result.case.status, "mediation");     // assignment moves to mediation
+    assert.equal(good.result.mediatorName, "Pat");
+    assert.ok(String(good.result.mediatorId).startsWith("u_"), "mediator id is opaque");
+    assert.equal(good.result.case.status, "mediation");
   });
 
   it("offer-make → offer-respond(accept): accepting an offer resolves the case", async () => {

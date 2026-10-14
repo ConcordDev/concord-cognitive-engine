@@ -25,18 +25,34 @@ function nowISO() {
  * Present a dispute for clients: user-facing `dispute_type` is the filed type
  * (metadata.original_type). The legal-liability bucket stays on `legal_bucket`.
  */
-function presentDispute(db, dispute) {
+function presentDispute(db, dispute, viewerId = null) {
   if (!dispute) return dispute;
   let meta = null;
   try {
     meta = db.prepare("SELECT * FROM dispute_metadata WHERE dispute_id = ?").get(dispute.id);
   } catch (_e) { /* table may not exist */ }
   const filedType = meta?.original_type || dispute.dispute_type;
+  // Opaque metadata for clients — no raw buyer/seller uuids on the wire.
+  const safeMeta = meta
+    ? {
+        amount: meta.amount,
+        transaction_id: meta.transaction_id,
+        original_type: meta.original_type,
+        seller_response_deadline: meta.seller_response_deadline,
+      }
+    : null;
+  const {
+    reporter_id: _r,
+    reported_user_id: _ru,
+    ...rest
+  } = dispute;
   return {
-    ...dispute,
+    ...rest,
     legal_bucket: dispute.dispute_type,
     dispute_type: filedType,
-    metadata: meta,
+    metadata: safeMeta,
+    isReporter: viewerId ? dispute.reporter_id === viewerId : undefined,
+    isReported: viewerId ? dispute.reported_user_id === viewerId : undefined,
   };
 }
 
@@ -170,7 +186,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
       // Enrich with role info + filed type (not the legal bucket)
       const enriched = userDisputes.map((d) => {
-        const presented = presentDispute(db, d);
+        const presented = presentDispute(db, d, userId);
         return {
           ...presented,
           userRole: d.reporter_id === userId ? "buyer" : "seller",
@@ -406,7 +422,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         return res.status(403).json({ ok: false, error: "forbidden" });
       }
 
-      const presented = presentDispute(db, dispute);
+      const presented = presentDispute(db, dispute, userId);
       return res.json({
         ok: true,
         dispute: {

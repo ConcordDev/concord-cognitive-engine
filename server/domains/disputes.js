@@ -9,6 +9,8 @@
 // STATE.disputesLens → lens-state-persistence. Every handler is wrapped in
 // try/catch and returns { ok, result?, error? } — never throws.
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 export default function registerDisputesActions(registerLensAction) {
   /* ---------------------------------------------------------------- */
   /*  State substrate — shared Map<caseId, case>, party access         */
@@ -87,6 +89,48 @@ export default function registerDisputesActions(registerLensAction) {
     return null;
   }
 
+  function ensurePublicIds(s) {
+    if (!(s.publicIds instanceof Map)) s.publicIds = new Map(); // opaque -> userId
+    if (!(s.userPublicIds instanceof Map)) s.userPublicIds = new Map(); // userId -> opaque
+  }
+
+  function publicId(s, userId) {
+    if (!userId) return null;
+    ensurePublicIds(s);
+    if (s.userPublicIds.has(userId)) return s.userPublicIds.get(userId);
+    const id = `u_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
+    s.publicIds.set(id, userId);
+    s.userPublicIds.set(userId, id);
+    return id;
+  }
+
+  function resolveUserRef(s, ref) {
+    if (!ref) return null;
+    ensurePublicIds(s);
+    if (s.publicIds.has(ref)) return s.publicIds.get(ref);
+    return String(ref); // allow raw id on input (new-case form); responses stay opaque
+  }
+
+  function dbOf(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+
+  function displayName(ctx, userId, fallback = null) {
+    if (!userId || userId === "system") return fallback || (userId === "system" ? "System" : null);
+    const actor = ctx?.actor;
+    if (actor && (actor.userId === userId || actor.id === userId)) {
+      const fromActor = String(actor.displayName || actor.username || "").trim();
+      if (fromActor && fromActor !== userId) return fromActor.slice(0, 80);
+    }
+    try {
+      const idn = lookupUserIdentity(dbOf(ctx), userId);
+      const fromDb = String(idn.displayName || idn.username || "").trim();
+      if (fromDb && fromDb !== userId) return fromDb.slice(0, 80);
+    } catch { /* no users table */ }
+    if (fallback && fallback !== userId) return fallback;
+    return "User";
+  }
+
   function findCase(s, userId, caseId) {
     if (!caseId) return null;
     const c = s.casesById.get(String(caseId));
@@ -122,7 +166,18 @@ export default function registerDisputesActions(registerLensAction) {
     "quality", "fraudulent_listing", "copyright", "derivative_claim", "other",
   ];
 
-  function publicCase(c) {
+  function presentOutcome(s, ctx, outcome, viewerId) {
+    if (!outcome) return null;
+    const { resolvedBy, ...rest } = outcome;
+    return {
+      ...rest,
+      resolvedById: resolvedBy ? publicId(s, resolvedBy) : null,
+      resolvedByName: resolvedBy ? displayName(ctx, resolvedBy) : null,
+      resolvedByMe: resolvedBy === viewerId,
+    };
+  }
+
+  function publicCase(s, ctx, c, viewerId) {
     return {
       id: c.id,
       caseNumber: c.caseNumber,
@@ -130,9 +185,14 @@ export default function registerDisputesActions(registerLensAction) {
       dispute_type: c.disputeType,
       status: c.status,
       disputeAmount: c.disputeAmount,
-      claimantId: c.claimantId,
-      respondentId: c.respondentId,
-      mediatorId: c.mediatorId,
+      claimantId: publicId(s, c.claimantId),
+      claimantName: displayName(ctx, c.claimantId),
+      claimantIsMe: c.claimantId === viewerId,
+      respondentId: c.respondentId ? publicId(s, c.respondentId) : null,
+      respondentName: c.respondentId ? displayName(ctx, c.respondentId) : null,
+      respondentIsMe: c.respondentId === viewerId,
+      mediatorId: c.mediatorId ? publicId(s, c.mediatorId) : null,
+      mediatorName: c.mediatorName || (c.mediatorId ? displayName(ctx, c.mediatorId) : null),
       escrowFrozen: c.escrowFrozen,
       escrowAmount: c.escrowAmount,
       evidenceCount: c.evidence.length,
@@ -140,10 +200,56 @@ export default function registerDisputesActions(registerLensAction) {
       offerCount: c.offers.length,
       slaDeadline: c.slaDeadline,
       slaBreached: c.slaDeadline ? new Date(c.slaDeadline).getTime() < Date.now() : false,
-      outcome: c.outcome,
+      outcome: presentOutcome(s, ctx, c.outcome, viewerId),
+      myRole: partyRole(c, viewerId),
       openedAt: c.openedAt,
       updatedAt: c.updatedAt,
       resolvedAt: c.resolvedAt,
+    };
+  }
+
+  function presentMessage(s, ctx, m, viewerId) {
+    return {
+      id: m.id,
+      role: m.role,
+      authorId: publicId(s, m.authorId),
+      authorName: displayName(ctx, m.authorId),
+      authorIsMe: m.authorId === viewerId,
+      body: m.body,
+      postedAt: m.postedAt,
+    };
+  }
+
+  function presentOffer(s, ctx, o, viewerId) {
+    const { fromId, respondedBy, ...rest } = o;
+    return {
+      ...rest,
+      fromId: fromId ? publicId(s, fromId) : null,
+      fromName: fromId ? displayName(ctx, fromId) : null,
+      fromMe: fromId === viewerId,
+      respondedById: respondedBy ? publicId(s, respondedBy) : null,
+    };
+  }
+
+  function presentEvidence(s, ctx, e, viewerId) {
+    const { uploadedBy, ...rest } = e;
+    return {
+      ...rest,
+      uploadedById: uploadedBy ? publicId(s, uploadedBy) : null,
+      uploadedByName: uploadedBy ? displayName(ctx, uploadedBy) : null,
+      uploadedByMe: uploadedBy === viewerId,
+    };
+  }
+
+  function presentHistory(s, ctx, h) {
+    const actorRaw = h.actor;
+    if (!actorRaw || actorRaw === "system") {
+      return { ...h, actor: "System", actorId: null };
+    }
+    return {
+      ...h,
+      actor: displayName(ctx, actorRaw),
+      actorId: publicId(s, actorRaw),
     };
   }
 
@@ -230,7 +336,8 @@ export default function registerDisputesActions(registerLensAction) {
       if (!VALID_TYPES.includes(disputeType)) return { ok: false, error: "invalid disputeType" };
       const disputeAmount = Math.max(0, parseFloat(params.disputeAmount) || 0);
       const description = String(params.description || "").trim();
-      const respondentId = params.respondentId ? String(params.respondentId).trim() : null;
+      const respondentRef = params.respondentId ? String(params.respondentId).trim() : null;
+      const respondentId = respondentRef ? resolveUserRef(s, respondentRef) : null;
       if (respondentId && respondentId === userId) {
         return { ok: false, error: "respondent must differ from claimant" };
       }
@@ -266,7 +373,7 @@ export default function registerDisputesActions(registerLensAction) {
       }
       s.casesById.set(c.id, c);
       saveState();
-      return { ok: true, result: { case: publicCase(c) } };
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -292,7 +399,7 @@ export default function registerDisputesActions(registerLensAction) {
         slaBreached: all.filter((c) => c.slaDeadline && new Date(c.slaDeadline).getTime() < Date.now() && !["resolved", "dismissed"].includes(c.status)).length,
         escrowHeld: all.filter((c) => c.escrowFrozen).reduce((sum, c) => sum + c.escrowAmount, 0),
       };
-      return { ok: true, result: { cases: list.map(publicCase), stats } };
+      return { ok: true, result: { cases: list.map((c) => publicCase(s, ctx, c, userId)), stats } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -307,12 +414,12 @@ export default function registerDisputesActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          case: publicCase(c),
+          case: publicCase(s, ctx, c, userId),
           description: c.description,
-          evidence: c.evidence,
-          messages: c.messages,
-          offers: c.offers,
-          history: c.history,
+          evidence: c.evidence.map((e) => presentEvidence(s, ctx, e, userId)),
+          messages: c.messages.map((m) => presentMessage(s, ctx, m, userId)),
+          offers: c.offers.map((o) => presentOffer(s, ctx, o, userId)),
+          history: c.history.map((h) => presentHistory(s, ctx, h)),
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -345,7 +452,7 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "status_changed", actor: userId, from: prev, to: target });
       saveState();
-      return { ok: true, result: { case: publicCase(c) } };
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -379,7 +486,13 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "evidence_added", actor: userId, label });
       saveState();
-      return { ok: true, result: { evidence: c.evidence, added: item } };
+      return {
+        ok: true,
+        result: {
+          evidence: c.evidence.map((e) => presentEvidence(s, ctx, e, userId)),
+          added: presentEvidence(s, ctx, item, userId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -397,7 +510,10 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "evidence_removed", actor: userId });
       saveState();
-      return { ok: true, result: { evidence: c.evidence } };
+      return {
+        ok: true,
+        result: { evidence: c.evidence.map((e) => presentEvidence(s, ctx, e, userId)) },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -428,7 +544,13 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "message_posted", actor: userId, role });
       saveState();
-      return { ok: true, result: { messages: c.messages, posted: msg } };
+      return {
+        ok: true,
+        result: {
+          messages: c.messages.map((m) => presentMessage(s, ctx, m, userId)),
+          posted: presentMessage(s, ctx, msg, userId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -440,7 +562,14 @@ export default function registerDisputesActions(registerLensAction) {
       const c = findCase(s, userId, String(params.caseId || ""));
       if (!c) return { ok: false, error: "case not found" };
       const byRole = c.messages.reduce((acc, m) => { acc[m.role] = (acc[m.role] || 0) + 1; return acc; }, {});
-      return { ok: true, result: { messages: c.messages, total: c.messages.length, byRole } };
+      return {
+        ok: true,
+        result: {
+          messages: c.messages.map((m) => presentMessage(s, ctx, m, userId)),
+          total: c.messages.length,
+          byRole,
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -455,13 +584,14 @@ export default function registerDisputesActions(registerLensAction) {
       const userId = actId(ctx);
       const c = findCase(s, userId, String(params.caseId || ""));
       if (!c) return { ok: false, error: "case not found" };
-      const mediatorId = String(params.mediatorId || "").trim();
-      if (!mediatorId) return { ok: false, error: "mediatorId required" };
+      const mediatorRef = String(params.mediatorId || "").trim();
+      if (!mediatorRef) return { ok: false, error: "mediatorId required" };
+      const mediatorId = resolveUserRef(s, mediatorRef);
       if (mediatorId === c.claimantId || mediatorId === c.respondentId) {
         return { ok: false, error: "mediator must be a neutral third party" };
       }
       c.mediatorId = mediatorId;
-      c.mediatorName = params.mediatorName ? String(params.mediatorName) : mediatorId;
+      c.mediatorName = params.mediatorName ? String(params.mediatorName).trim() : displayName(ctx, mediatorId);
       // Assignment moves a stalled case into the mediation stage.
       if (c.status === "open" || c.status === "under_review") {
         c.status = "mediation";
@@ -470,7 +600,14 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "mediator_assigned", actor: userId, mediatorId });
       saveState();
-      return { ok: true, result: { case: publicCase(c), mediatorId, mediatorName: c.mediatorName } };
+      return {
+        ok: true,
+        result: {
+          case: publicCase(s, ctx, c, userId),
+          mediatorId: publicId(s, mediatorId),
+          mediatorName: c.mediatorName,
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -488,7 +625,7 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "mediator_unassigned", actor: userId, previous: prev });
       saveState();
-      return { ok: true, result: { case: publicCase(c) } };
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -527,7 +664,13 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: offer.isCounter ? "counter_offer_made" : "offer_made", actor: userId, amount });
       saveState();
-      return { ok: true, result: { offers: c.offers, made: offer } };
+      return {
+        ok: true,
+        result: {
+          offers: c.offers.map((o) => presentOffer(s, ctx, o, userId)),
+          made: presentOffer(s, ctx, offer, userId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -568,7 +711,13 @@ export default function registerDisputesActions(registerLensAction) {
         c.history.push({ at: nowIso(), event: "case_resolved", actor: userId, via: "offer_accepted" });
       }
       saveState();
-      return { ok: true, result: { offers: c.offers, case: publicCase(c) } };
+      return {
+        ok: true,
+        result: {
+          offers: c.offers.map((o) => presentOffer(s, ctx, o, userId)),
+          case: publicCase(s, ctx, c, userId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -649,7 +798,13 @@ export default function registerDisputesActions(registerLensAction) {
         c.history.push({ at: nowIso(), event: "escrow_settled", actor: userId, refundAmount });
       }
       saveState();
-      return { ok: true, result: { case: publicCase(c), outcome: c.outcome } };
+      return {
+        ok: true,
+        result: {
+          case: publicCase(s, ctx, c, userId),
+          outcome: presentOutcome(s, ctx, c.outcome, userId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -691,7 +846,7 @@ export default function registerDisputesActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          cases: closed.map((c) => ({ ...publicCase(c), outcome: c.outcome })),
+          cases: closed.map((c) => publicCase(s, ctx, c, userId)),
           total: closed.length,
           totalRefunded,
           outcomeBreakdown,
@@ -722,7 +877,7 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "escrow_frozen", actor: userId, amount: freezeAmount });
       saveState();
-      return { ok: true, result: { case: publicCase(c), escrowAmount: freezeAmount } };
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId), escrowAmount: freezeAmount } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -743,7 +898,7 @@ export default function registerDisputesActions(registerLensAction) {
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "escrow_released", actor: userId, amount: released, releaseTo });
       saveState();
-      return { ok: true, result: { case: publicCase(c), released, releaseTo } };
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId), released, releaseTo } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

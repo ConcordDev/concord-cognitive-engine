@@ -19,14 +19,41 @@ function call(name, ctx, artifactOrParams = {}, maybeParams) {
 before(() => { registerDisputesActions(register); });
 
 beforeEach(() => {
-  // Fresh shared case substrate for every test.
-  globalThis._concordSTATE = { disputesLens: { casesById: new Map(), seq: 1 } };
+  // Fresh shared case substrate + users stub for lookupUserIdentity (INC-77).
+  const people = [
+    { id: "user_a", username: "acct_a", displayName: "Acct A" },
+    { id: "user_b", username: "acct_b", displayName: "Acct B" },
+    { id: "user_c", username: "acct_c", displayName: "Acct C" },
+  ];
+  globalThis._concordSTATE = {
+    disputesLens: { casesById: new Map(), seq: 1 },
+    db: {
+      prepare(sql) {
+        const s = String(sql);
+        if (s.includes("PRAGMA")) {
+          return { all() { return [{ name: "id" }, { name: "username" }, { name: "display_name" }]; } };
+        }
+        return {
+          get(param) {
+            return people.find((r) => r.id === String(param || "")) || null;
+          },
+        };
+      },
+    },
+  };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
-const ctx = { actor: { userId: "user_a" }, userId: "user_a" };
-const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
-const ctxC = { actor: { userId: "user_c" }, userId: "user_c" };
+const ctx = { actor: { userId: "user_a", displayName: "Acct A" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b", displayName: "Acct B" }, userId: "user_b" };
+const ctxC = { actor: { userId: "user_c", displayName: "Acct C" }, userId: "user_c" };
+const RAW_IDS = ["user_a", "user_b", "user_c"];
+function assertNoRawUserIds(value, ids = RAW_IDS) {
+  const blob = JSON.stringify(value);
+  for (const id of ids) {
+    assert.ok(!blob.includes(id), `payload must not contain raw id ${id}: ${blob.slice(0, 200)}`);
+  }
+}
 
 function openCase(extra = {}) {
   const r = call("case-open", ctx, {}, {
@@ -165,20 +192,19 @@ describe("disputes messaging", () => {
     const spoofMsg = call("message-post", ctx, {}, { caseId: c.id, body: "spoof", role: "respondent" });
     assert.equal(spoofMsg.ok, true);
     assert.equal(spoofMsg.result.posted.role, "claimant");
-    assert.equal(spoofMsg.result.posted.authorId, "user_a");
+    assert.equal(spoofMsg.result.posted.authorIsMe, true);
     const spoofOffer = call("offer-make", ctx, {}, { caseId: c.id, amount: 11, fromRole: "respondent", terms: "nope" });
     assert.equal(spoofOffer.ok, true);
     assert.equal(spoofOffer.result.made.fromRole, "claimant");
-    assert.equal(spoofOffer.result.made.fromId, "user_a");
+    assert.equal(spoofOffer.result.made.fromMe, true);
     const asResp = call("message-post", ctxB, {}, { caseId: c.id, body: "real respondent", role: "claimant" });
     assert.equal(asResp.ok, true);
     assert.equal(asResp.result.posted.role, "respondent");
-    assert.equal(asResp.result.posted.authorId, "user_b");
+    assert.equal(asResp.result.posted.authorIsMe, true);
     const detail = call("case-detail", ctx, {}, { caseId: c.id });
-    const rolesByAuthor = detail.result.messages.map((m) => [m.authorId, m.role]);
-    assert.deepEqual(rolesByAuthor, [
-      ["user_a", "claimant"],
-      ["user_b", "respondent"],
+    assert.deepEqual(detail.result.messages.map((m) => [m.authorIsMe, m.role]), [
+      [true, "claimant"],
+      [false, "respondent"],
     ]);
   });
 });
@@ -383,7 +409,8 @@ describe("disputes F1 shared party access + persistence", () => {
     assert.equal(call("offer-make", ctx, {}, { caseId, amount: 3, fromRole: "claimant", terms: "partial" }).ok, true);
 
     const snap = serializeLensState(globalThis._concordSTATE);
-    globalThis._concordSTATE = {};
+    const db = globalThis._concordSTATE.db;
+    globalThis._concordSTATE = { db };
     hydrateLensState(globalThis._concordSTATE, snap);
 
     const detailA = call("case-detail", ctx, {}, { caseId });
@@ -398,5 +425,27 @@ describe("disputes F1 shared party access + persistence", () => {
     assert.equal(detailB.result.offers.length, 1);
     assert.equal(detailB.result.offers[0].amount, 3);
     assert.equal(detailA.result.case.status, detailB.result.case.status);
+  });
+
+  it("F5 history + cross-account payloads contain no raw uuid", () => {
+    const opened = call("case-open", ctx, {}, {
+      title: "Privacy case",
+      disputeType: "other",
+      respondentId: "user_b",
+      description: "opaque",
+    });
+    const caseId = opened.result.case.id;
+    call("message-post", ctx, {}, { caseId, body: "hi" });
+    call("case-advance", ctxB, {}, { caseId });
+    const detailA = call("case-detail", ctx, {}, { caseId });
+    const detailB = call("case-detail", ctxB, {}, { caseId });
+    assert.equal(detailA.ok, true);
+    assertNoRawUserIds(detailA.result);
+    assertNoRawUserIds(detailB.result);
+    assert.ok(detailA.result.history.some((h) => h.actor === "Acct A" || h.actor === "Acct B"));
+    assert.ok(!detailA.result.history.some((h) => RAW_IDS.includes(h.actor)));
+    assert.ok(String(detailA.result.case.claimantId).startsWith("u_"));
+    assert.ok(String(caseId).startsWith("dispute_"));
+    assert.ok(!caseId.includes("user_a") && !caseId.includes("user_b"));
   });
 });
