@@ -77,43 +77,59 @@ export function lensDataToDTU(domain, artifactData, options = {}) {
   const tags = options.tags || [domain, "lens-export"];
   const author = options.author || "ConcordOS";
   const primaryType = getDomainPrimaryType(domain);
+  const createdAt = new Date().toISOString();
+  const id = options.id || `dtu_export_${domain}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-  const dtuPayload = {
-    primaryType,
-    title,
-    tags,
-    human: {
+  // encodeDTU expects humanLayer/coreLayer/machineLayer + id — not the
+  // free-form lens object shape. Artifact bytes are JSON of the payload.
+  const artifactJson = Buffer.from(JSON.stringify(artifactData ?? {}), "utf8");
+  const encoded = encodeDTU({
+    id,
+    creatorId: author,
+    createdAt,
+    artifactType: primaryType,
+    contentType: options.format || "json",
+    humanLayer: {
       summary: options.summary || `Exported from ${domain} lens`,
       bullets: options.bullets || [],
+      title,
+      tags,
     },
-    core: {
+    coreLayer: {
       definitions: options.definitions || [],
       invariants: options.invariants || [],
       claims: options.claims || [],
       examples: [],
       nextActions: [],
     },
-    machine: {
+    machineLayer: {
       kind: `${domain}_export`,
       domain,
       format: options.format || "json",
-      exportedAt: new Date().toISOString(),
+      exportedAt: createdAt,
       sourceVersion: "1.0",
     },
-    artifact: artifactData,
-    author,
-    createdAt: new Date().toISOString(),
-  };
-
-  const buffer = encodeDTU(dtuPayload);
+    artifactData: artifactJson,
+    artifactMimeType: "application/json",
+  });
+  if (!encoded || encoded.ok === false || !Buffer.isBuffer(encoded.buffer)) {
+    return {
+      ok: false,
+      error: encoded?.error || "encode_failed",
+      buffer: null,
+      metadata: { primaryType, title, domain, size: 0, createdAt },
+    };
+  }
   return {
-    buffer,
+    ok: true,
+    buffer: encoded.buffer,
     metadata: {
       primaryType,
       title,
       domain,
-      size: buffer.length,
-      createdAt: dtuPayload.createdAt,
+      size: encoded.buffer.length,
+      createdAt,
+      id,
     },
   };
 }

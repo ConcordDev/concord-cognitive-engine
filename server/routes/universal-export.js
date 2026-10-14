@@ -96,12 +96,20 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
     try {
       const { domain } = req.params;
       const { data, title, tags, format } = req.body || {};
-      if (!data) return res.status(400).json({ ok: false, error: "Missing 'data' field" });
+      if (data == null) return res.status(400).json({ ok: false, error: "Missing 'data' field" });
 
       const result = lensDataToDTU(domain, data, { title, tags, format });
+      // encodeDTU returns { ok, buffer } — never pass a result object to Buffer.from
+      const buf = Buffer.isBuffer(result?.buffer) ? result.buffer : null;
+      if (!buf) {
+        return res.status(500).json({
+          ok: false,
+          error: result?.error || "export_encode_failed",
+        });
+      }
       res.set("Content-Type", "application/octet-stream");
       res.set("Content-Disposition", `attachment; filename="${domain}-export.dtu"`);
-      res.send(Buffer.from(result.buffer));
+      res.send(buf);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
