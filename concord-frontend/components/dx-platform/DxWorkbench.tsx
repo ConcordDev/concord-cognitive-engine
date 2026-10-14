@@ -777,27 +777,57 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
   const [teamName, setTeamName] = useState('');
   const [teamId, setTeamId] = useState('');
   const [joinId, setJoinId] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [joinCb, setJoinCb] = useState('');
   const [dash, setDash] = useState<TeamDash | null>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [lastInvite, setLastInvite] = useState<string | null>(null);
 
   const create = async () => {
     if (!teamName.trim()) return;
     const r = await lensRun('dx-platform', 'createTeam', { name: teamName.trim() });
     if (r.data?.ok && r.data.result) {
-      const id = (r.data.result as { teamId: string }).teamId;
-      setTeamId(id); setJoinId(id); setMsg(`Team created — share ID ${id}`);
+      const result = r.data.result as { teamId: string; inviteCode?: string };
+      setTeamId(result.teamId);
+      setJoinId(result.teamId);
+      if (result.inviteCode) {
+        setLastInvite(result.inviteCode);
+        setInviteCode(result.inviteCode);
+        setMsg(`Team created — share invite code ${result.inviteCode} (team ${result.teamId})`);
+      } else {
+        setMsg(`Team created — share ID ${result.teamId}`);
+      }
+    }
+  };
+
+  const mintInvite = async () => {
+    if (!teamId.trim()) return;
+    const r = await lensRun('dx-platform', 'inviteToTeam', { teamId: teamId.trim() });
+    if (r.data?.ok && r.data.result) {
+      const code = (r.data.result as { inviteCode: string }).inviteCode;
+      setLastInvite(code);
+      setInviteCode(code);
+      setMsg(`Invite code ${code} — share with the person joining.`);
+    } else {
+      setMsg(r.data?.error || 'Invite failed.');
     }
   };
 
   const join = async () => {
     if (!joinId.trim()) return;
-    const r = await lensRun('dx-platform', 'joinTeam', { teamId: joinId.trim(), codebaseId: joinCb || undefined });
+    const r = await lensRun('dx-platform', 'joinTeam', {
+      teamId: joinId.trim(),
+      inviteCode: inviteCode.trim() || undefined,
+      codebaseId: joinCb || undefined,
+    });
     if (r.data?.ok) {
-      setTeamId(joinId.trim()); setMsg('Joined team / attached codebase.'); onChanged();
+      setTeamId(joinId.trim());
+      setMsg(inviteCode.trim() ? 'Joined team / attached codebase.' : 'Attached codebase / refreshed team.');
+      onChanged();
     } else {
-      setMsg(r.data?.error || 'Join failed.');
+      const err = r.data?.error || 'Join failed.';
+      setMsg(err === 'not_invited' ? 'not_invited — ask a member for an invite code.' : err);
     }
   };
 
@@ -832,6 +862,15 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               Create
             </button>
           </div>
+          {teamId && (
+            <button type="button" onClick={mintInvite}
+              className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:border-amber-500/50">
+              Mint invite code
+            </button>
+          )}
+          {lastInvite && (
+            <p className="font-mono text-[11px] text-amber-200/90">Invite: {lastInvite}</p>
+          )}
         </section>
         <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-2">
           <h3 className="text-sm font-medium text-white">Join / attach codebase</h3>
@@ -839,6 +878,12 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
             value={joinId}
             onChange={(e) => setJoinId(e.target.value)}
             placeholder="Team ID"
+            className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-xs text-white"
+          />
+          <input
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value)}
+            placeholder="Invite code (required to join)"
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-xs text-white"
           />
           <div className="flex gap-2">

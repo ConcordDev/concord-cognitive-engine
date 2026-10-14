@@ -16,13 +16,47 @@ function call(name, ctx, params = {}) {
 
 before(() => { registerDxPlatformActions(register); });
 beforeEach(() => {
-  globalThis._concordSTATE = {};
+  // Stands in for users-table lookupUserIdentity (PRAGMA + SELECT).
+  const people = [
+    { id: "user_a", username: "acct1", displayName: "Acct One" },
+    { id: "user_b", username: "acct2", displayName: "Acct Two" },
+    { id: "user_c", username: "acct3", displayName: "Acct Three" },
+  ];
+  globalThis._concordSTATE = {
+    db: {
+      prepare(sql) {
+        const s = String(sql);
+        if (s.includes("PRAGMA")) {
+          return { all() { return [{ name: "id" }, { name: "username" }, { name: "display_name" }]; } };
+        }
+        return {
+          get(param) {
+            const p = String(param || "");
+            return people.find((r) =>
+              r.id === p || r.username.toLowerCase() === p.toLowerCase()
+            ) || null;
+          },
+        };
+      },
+    },
+  };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
-const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
-const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+const ctxA = { actor: { userId: "user_a", displayName: "Acct One" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b", displayName: "Acct Two" }, userId: "user_b" };
+const ctxC = { actor: { userId: "user_c", displayName: "Acct Three" }, userId: "user_c" };
 const noAuth = {};
+const RAW_IDS = ["user_a", "user_b", "user_c"];
+
+function assertNoRawUserIds(value, ids = RAW_IDS) {
+  const blob = JSON.stringify(value);
+  for (const id of ids) {
+    assert.equal(blob.includes(id), false, `response leaked ${id}: ${blob}`);
+  }
+  assert.equal(blob.includes("ownerId"), false, `response leaked ownerId: ${blob}`);
+  assert.equal(blob.includes("caregiverUserId"), false);
+}
 
 function indexSample(ctx, codebaseId = "cb1") {
   return call("indexCodebase", ctx, {
@@ -108,6 +142,7 @@ describe("dx-platform.createTeam + joinTeam + teamDashboard", () => {
     indexSample(ctxA, "cb1");
     const t = call("createTeam", ctxA, { name: "Platform team" });
     assert.equal(t.ok, true);
+    // Owner is already a member — attach does not need a fresh invite.
     call("joinTeam", ctxA, { teamId: t.result.teamId, codebaseId: "cb1" });
     const dash = call("teamDashboard", ctxA, { teamId: t.result.teamId });
     assert.equal(dash.ok, true);
@@ -115,12 +150,95 @@ describe("dx-platform.createTeam + joinTeam + teamDashboard", () => {
     assert.ok(dash.result.totalFindings > 0);
     assert.ok(dash.result.topDetectors.length > 0);
     assert.ok(dash.result.perCodebase[0].riskScore > 0);
+    assertNoRawUserIds(t);
+    assertNoRawUserIds(dash);
   });
   it("rejects non-members and unknown teams", () => {
     const t = call("createTeam", ctxA, { name: "T" });
     assert.equal(call("teamDashboard", ctxB, { teamId: t.result.teamId }).ok, false);
     assert.equal(call("teamDashboard", ctxA, { teamId: "nope" }).ok, false);
     assert.equal(call("createTeam", ctxA, { name: "" }).ok, false);
+  });
+
+  // INC-77 / F1 — uninvited join must fail; private codebase + raw ids must
+  // never appear in team responses for the outsider.
+  it("INC-77 two-account: uninvited join refused; no private codebase or raw ids", () => {
+    const indexed = call("indexCodebase", ctxA, {
+      codebaseId: "cb_private",
+      name: "sweep-private-secret",
+      files: [{ path: "src/secret.js", content: "export const marker = 'SWEEP_MARKER';\n" }],
+    });
+    assert.equal(indexed.ok, true);
+    const t = call("createTeam", ctxA, { name: "Sweep team" });
+    assert.equal(t.ok, true);
+    assert.ok(t.result.inviteCode);
+    assertNoRawUserIds(t);
+
+    // Owner attaches private codebase (already a member).
+    const attach = call("joinTeam", ctxA, {
+      teamId: t.result.teamId,
+      codebaseId: "cb_private",
+    });
+    assert.equal(attach.ok, true);
+    assertNoRawUserIds(attach);
+
+    // acct2: bare teamId join with no invite → not_invited, not added.
+    const bare = call("joinTeam", ctxB, { teamId: t.result.teamId });
+    assert.equal(bare.ok, false);
+    assert.equal(bare.error, "not_invited");
+    assert.equal(call("teamDashboard", ctxB, { teamId: t.result.teamId }).ok, false);
+    assert.equal(call("teamDashboard", ctxB, { teamId: t.result.teamId }).error, "not_a_member");
+
+    // Wrong / spent invite also refused.
+    assert.equal(
+      call("joinTeam", ctxB, { teamId: t.result.teamId, inviteCode: "inv_nope" }).ok,
+      false
+    );
+
+    // Invited join succeeds; responses stay free of raw ids.
+    const inv = call("inviteToTeam", ctxA, { teamId: t.result.teamId });
+    assert.equal(inv.ok, true);
+    assert.ok(inv.result.inviteCode);
+    assertNoRawUserIds(inv);
+
+    const joined = call("joinTeam", ctxB, {
+      teamId: t.result.teamId,
+      inviteCode: inv.result.inviteCode,
+    });
+    assert.equal(joined.ok, true);
+    assert.equal(joined.result.memberCount, 2);
+    assertNoRawUserIds(joined);
+    for (const m of joined.result.members) {
+      assert.ok(m.id);
+      assert.notEqual(m.id, "user_a");
+      assert.notEqual(m.id, "user_b");
+      assert.equal(m.userId, undefined);
+    }
+
+    const dashB = call("teamDashboard", ctxB, { teamId: t.result.teamId });
+    assert.equal(dashB.ok, true);
+    assert.equal(dashB.result.codebaseCount, 1);
+    assert.equal(dashB.result.perCodebase[0].name, "sweep-private-secret");
+    assert.equal(dashB.result.perCodebase[0].ownerId, undefined);
+    assert.ok(dashB.result.perCodebase[0].owner?.id);
+    assertNoRawUserIds(dashB);
+
+    // Stranger still blocked + listMyTeams isolation.
+    assert.equal(call("joinTeam", ctxC, { teamId: t.result.teamId }).error, "not_invited");
+    assert.equal(call("listMyTeams", ctxC, {}).result.count, 0);
+    assert.equal(call("listMyTeams", ctxB, {}).result.count, 1);
+    assertNoRawUserIds(call("listMyTeams", ctxA, {}));
+  });
+
+  it("leaveTeam removes membership and listMyTeams stays private", () => {
+    const t = call("createTeam", ctxA, { name: "Leave me" });
+    const inv = call("inviteToTeam", ctxA, { teamId: t.result.teamId });
+    call("joinTeam", ctxB, { teamId: t.result.teamId, inviteCode: inv.result.inviteCode });
+    const left = call("leaveTeam", ctxB, { teamId: t.result.teamId });
+    assert.equal(left.ok, true);
+    assert.equal(call("teamDashboard", ctxB, { teamId: t.result.teamId }).error, "not_a_member");
+    assert.equal(call("listMyTeams", ctxB, {}).result.count, 0);
+    assertNoRawUserIds(left);
   });
 });
 

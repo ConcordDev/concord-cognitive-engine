@@ -56,6 +56,7 @@ function badNumericField(input, keys) {
 // `r.data.result.<field>`).
 
 import { writeGitHubCommitStatus } from "../lib/connector-client.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerDxPlatformActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
@@ -538,7 +539,84 @@ export default function registerDxPlatformActions(register) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  // ── 3. Team dashboard ───────────────────────────────────────────────
+  // ── 3. Team dashboard (INC-77 / F1) ──────────────────────────────────
+  // Join is invite-gated. Responses never echo raw user ids — opaque
+  // public member ids + display names (lookupUserIdentity), same house
+  // pattern as parenting INC-59 / fashion INC-60.
+  function dxDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function dxPublicName(ctx, userId) {
+    if (!userId) return null;
+    const actorObj = ctx?.actor;
+    if (actorObj && (actorObj.userId === userId || actorObj.id === userId)) {
+      const fromActor = String(actorObj.displayName || actorObj.username || "").trim();
+      if (fromActor && fromActor !== userId) return fromActor.slice(0, 80);
+    }
+    const ident = lookupUserIdentity(dxDb(ctx), userId);
+    const display = typeof ident?.displayName === "string" ? ident.displayName.trim() : "";
+    const handle = typeof ident?.username === "string" ? ident.username.trim() : "";
+    if (display && display !== userId) return display.slice(0, 80);
+    if (handle && handle !== userId) return handle.slice(0, 80);
+    return null;
+  }
+  // Persist member rows as { userId, id }. Legacy string[] migrates in place.
+  function dxNormalizeMembers(team) {
+    if (!team) return [];
+    const raw = Array.isArray(team.members) ? team.members : [];
+    const out = [];
+    for (const m of raw) {
+      if (typeof m === "string" && m) {
+        out.push({ userId: m, id: uid("tm") });
+      } else if (m && typeof m === "object" && m.userId) {
+        if (!m.id || m.id === m.userId) m.id = uid("tm");
+        out.push(m);
+      }
+    }
+    team.members = out;
+    if (!Array.isArray(team.invites)) team.invites = [];
+    return out;
+  }
+  function dxIsMember(team, userId) {
+    return dxNormalizeMembers(team).some((m) => m.userId === userId);
+  }
+  function dxAddMember(team, userId) {
+    const members = dxNormalizeMembers(team);
+    if (members.some((m) => m.userId === userId)) return members;
+    members.push({ userId, id: uid("tm") });
+    team.members = members;
+    return members;
+  }
+  function dxPresentMembers(ctx, team, viewerId) {
+    return dxNormalizeMembers(team).map((m) => ({
+      id: m.id,
+      displayName: dxPublicName(ctx, m.userId),
+      isMe: m.userId === viewerId,
+      isOwner: m.userId === team.ownerId,
+    }));
+  }
+  function dxPresentTeam(ctx, team, viewerId) {
+    const members = dxPresentMembers(ctx, team, viewerId);
+    return {
+      teamId: team.id,
+      name: team.name,
+      memberCount: members.length,
+      members,
+      isOwner: team.ownerId === viewerId,
+    };
+  }
+  function dxMemberUserIds(team) {
+    return dxNormalizeMembers(team).map((m) => m.userId);
+  }
+  function dxPublicOwner(ctx, team, ownerUserId) {
+    const row = dxNormalizeMembers(team).find((m) => m.userId === ownerUserId);
+    return {
+      id: row?.id || uid("tm"),
+      displayName: dxPublicName(ctx, ownerUserId),
+      isMe: ownerUserId === actor(ctx),
+    };
+  }
+
   registerLensAction("dx-platform", "createTeam", (ctx, _a, params = {}) => {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
@@ -546,16 +624,79 @@ export default function registerDxPlatformActions(register) {
     if (!name) return { ok: false, error: "no_name" };
     const s = getState();
     const teamId = uid("team");
+    const inviteCode = uid("inv");
     const team = {
       id: teamId,
       name: name.slice(0, 120),
       ownerId: userId,
-      members: [userId],
+      members: [{ userId, id: uid("tm") }],
+      invites: [{
+        code: inviteCode,
+        createdBy: userId,
+        inviteeUserId: null,
+        status: "pending",
+        createdAt: now(),
+      }],
       createdAt: now(),
     };
     s.teams.set(teamId, team);
     save();
-    return { ok: true, result: { teamId, name: team.name, members: team.members } };
+    return {
+      ok: true,
+      result: {
+        ...dxPresentTeam(ctx, team, userId),
+        inviteCode,
+      },
+    };
+  });
+
+  // Member-only: mint a single-use invite code (optionally bound to a handle).
+  registerLensAction("dx-platform", "inviteToTeam", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const s = getState();
+    const team = s.teams.get(String(params.teamId || ""));
+    if (!team) return { ok: false, error: "team_not_found" };
+    if (!dxIsMember(team, userId)) return { ok: false, error: "not_a_member" };
+    let inviteeUserId = null;
+    const handle = String(params.handle || params.username || "").trim().replace(/^@/, "");
+    if (handle) {
+      const db = dxDb(ctx);
+      if (!db || typeof db.prepare !== "function") {
+        return { ok: false, error: "invitee_not_found" };
+      }
+      let row = null;
+      try {
+        row = db.prepare(
+          "SELECT id FROM users WHERE lower(username) = lower(?) LIMIT 1"
+        ).get(handle);
+      } catch {
+        row = null;
+      }
+      if (!row?.id) return { ok: false, error: "invitee_not_found" };
+      if (dxIsMember(team, row.id)) return { ok: false, error: "already_a_member" };
+      inviteeUserId = row.id;
+    }
+    const inviteCode = uid("inv");
+    dxNormalizeMembers(team);
+    team.invites.push({
+      code: inviteCode,
+      createdBy: userId,
+      inviteeUserId,
+      status: "pending",
+      createdAt: now(),
+    });
+    save();
+    return {
+      ok: true,
+      result: {
+        teamId: team.id,
+        inviteCode,
+        invitee: inviteeUserId
+          ? { displayName: dxPublicName(ctx, inviteeUserId) }
+          : null,
+      },
+    };
   });
 
   registerLensAction("dx-platform", "joinTeam", (ctx, _a, params = {}) => {
@@ -564,33 +705,86 @@ export default function registerDxPlatformActions(register) {
     const s = getState();
     const team = s.teams.get(String(params.teamId || ""));
     if (!team) return { ok: false, error: "team_not_found" };
-    if (!team.members.includes(userId)) team.members.push(userId);
-    // Optionally attach a codebase to the team.
+    const already = dxIsMember(team, userId);
+    if (!already) {
+      const code = String(params.inviteCode || params.inviteId || "").trim();
+      if (!code) return { ok: false, error: "not_invited" };
+      const inv = (team.invites || []).find(
+        (i) => i && i.status === "pending" && i.code === code
+      );
+      if (!inv) return { ok: false, error: "not_invited" };
+      if (inv.inviteeUserId && inv.inviteeUserId !== userId) {
+        return { ok: false, error: "not_invited" };
+      }
+      inv.status = "accepted";
+      inv.acceptedAt = now();
+      dxAddMember(team, userId);
+    }
+    // Optionally attach a codebase the caller owns.
     if (params.codebaseId) {
       const cb = userCodebases(s, userId).get(String(params.codebaseId));
       if (cb) cb.teamId = team.id;
     }
     save();
-    return { ok: true, result: { teamId: team.id, name: team.name, members: team.members } };
+    return { ok: true, result: dxPresentTeam(ctx, team, userId) };
+  });
+
+  registerLensAction("dx-platform", "leaveTeam", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const s = getState();
+    const team = s.teams.get(String(params.teamId || ""));
+    if (!team) return { ok: false, error: "team_not_found" };
+    if (!dxIsMember(team, userId)) return { ok: false, error: "not_a_member" };
+    const members = dxNormalizeMembers(team).filter((m) => m.userId !== userId);
+    if (members.length === 0) {
+      s.teams.delete(team.id);
+      save();
+      return { ok: true, result: { teamId: team.id, left: true, dissolved: true } };
+    }
+    if (team.ownerId === userId) {
+      team.ownerId = members[0].userId;
+    }
+    team.members = members;
+    // Detach caller's codebases from this team (ownership stays with caller).
+    for (const cb of userCodebases(s, userId).values()) {
+      if (cb.teamId === team.id) cb.teamId = null;
+    }
+    save();
+    return { ok: true, result: { teamId: team.id, left: true, dissolved: false } };
+  });
+
+  registerLensAction("dx-platform", "listMyTeams", (ctx) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const s = getState();
+    const teams = [];
+    for (const team of s.teams.values()) {
+      if (!dxIsMember(team, userId)) continue;
+      teams.push(dxPresentTeam(ctx, team, userId));
+    }
+    teams.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    return { ok: true, result: { teams, count: teams.length } };
   });
 
   // Aggregate findings + severity trends across all codebases attached
   // to a team. Findings are computed live from each member's indexed
   // codebase content — no stored finding rows, no stale data.
+  // Member-only: non-members get not_a_member (no codebase name/findings).
   registerLensAction("dx-platform", "teamDashboard", (ctx, _a, params = {}) => {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const s = getState();
     const team = s.teams.get(String(params.teamId || ""));
     if (!team) return { ok: false, error: "team_not_found" };
-    if (!team.members.includes(userId)) return { ok: false, error: "not_a_member" };
+    if (!dxIsMember(team, userId)) return { ok: false, error: "not_a_member" };
     const enabled = defaultEnabled();
     const perCodebase = [];
     const severityTotals = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     const detectorTotals = {};
     let totalFindings = 0;
     let totalFiles = 0;
-    for (const memberId of team.members) {
+    for (const memberId of dxMemberUserIds(team)) {
       const mine = userCodebases(s, memberId);
       for (const cb of mine.values()) {
         if (cb.teamId !== team.id) continue;
@@ -611,7 +805,7 @@ export default function registerDxPlatformActions(register) {
         perCodebase.push({
           codebaseId: cb.id,
           name: cb.name,
-          ownerId: memberId,
+          owner: dxPublicOwner(ctx, team, memberId),
           fileCount: cb.files.length,
           findingCount: findings.length,
           bySeverity: cbSeverity,
@@ -628,7 +822,8 @@ export default function registerDxPlatformActions(register) {
       result: {
         teamId: team.id,
         teamName: team.name,
-        memberCount: team.members.length,
+        memberCount: dxNormalizeMembers(team).length,
+        members: dxPresentMembers(ctx, team, userId),
         codebaseCount: perCodebase.length,
         totalFiles,
         totalFindings,

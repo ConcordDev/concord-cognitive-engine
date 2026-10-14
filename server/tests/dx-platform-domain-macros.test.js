@@ -61,7 +61,8 @@ describe("dx-platform — registration", () => {
   it("registers every macro the DxWorkbench calls", () => {
     for (const m of [
       "indexCodebase", "listCodebases", "chatWithCodebase", "reviewDiff",
-      "createTeam", "joinTeam", "teamDashboard", "searchCodebase",
+      "createTeam", "inviteToTeam", "joinTeam", "leaveTeam", "listMyTeams",
+      "teamDashboard", "searchCodebase",
       "getDetectorConfig", "setDetectorConfig", "recordDetectorFire",
       "recordFixOutcome", "usageAnalytics", "generateCiConfig", "ciGateCheck",
     ]) {
@@ -285,7 +286,8 @@ describe("dx-platform — per-user isolation + auth guard", () => {
     const anon = {};
     for (const m of [
       "indexCodebase", "listCodebases", "chatWithCodebase", "reviewDiff",
-      "createTeam", "joinTeam", "teamDashboard", "searchCodebase",
+      "createTeam", "inviteToTeam", "joinTeam", "leaveTeam", "listMyTeams",
+      "teamDashboard", "searchCodebase",
       "getDetectorConfig", "setDetectorConfig", "recordDetectorFire",
       "recordFixOutcome", "usageAnalytics", "generateCiConfig", "ciGateCheck",
     ]) {
