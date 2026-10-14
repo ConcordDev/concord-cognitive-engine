@@ -62,7 +62,8 @@ interface EventItem {
   id: string;
   type: string;
   summary: string;
-  createdAt: string;
+  /** May be absent from older/partial event payloads — never crash the rail. */
+  createdAt?: string | null;
   undoToken: string | null;
   scope: string;
   entityType: string | null;
@@ -255,12 +256,20 @@ function HealthDot({ ok, label }: { ok?: boolean; label: string }) {
   );
 }
 
-function formatTime(iso: string): string {
+/** Honest clock label for activity rows; never throws on missing/bad timestamps. */
+export function formatTime(iso: string | null | undefined): string {
+  if (iso == null || typeof iso !== 'string' || iso.trim() === '') {
+    return '—';
+  }
   try {
-    const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z');
+    const normalized = iso.includes('T') ? iso : `${iso.replace(' ', 'T')}Z`;
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) {
+      return iso.length >= 16 ? iso.slice(11, 16) : '—';
+    }
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   } catch {
-    return iso.slice(11, 16);
+    return iso.length >= 16 ? iso.slice(11, 16) : '—';
   }
 }
 
