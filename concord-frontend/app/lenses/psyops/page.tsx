@@ -36,6 +36,7 @@ import type {
   PsyopsRule, PsyopsAlert, AlertCounts, PsyopsIncident,
   PsyopsNotification, QuarantineLogEntry,
 } from '@/components/psyops/types';
+import { isPsyopsOperator, PSYOPS_OPERATOR_ROLES } from '@/components/psyops/psyops-access';
 
 interface SkillAlert {
   id: number;
@@ -64,16 +65,6 @@ async function skillMacro(name: string, input: Record<string, unknown> = {}) {
 }
 
 type Tab = 'console' | 'incidents' | 'rules' | 'skill' | 'reference';
-
-// Same allow-list as requireOperatorRole (server/domains/psyops.js) and
-// _psyopsRequireOperatorRole (server.js). A non-operator used to render the
-// access gate only after these reads came back 403, so the six admin queries
-// still fired on load and the shell counted them as an issue.
-const PSYOPS_OPERATOR_ROLES = new Set(['owner', 'admin', 'founder']);
-
-function isPsyopsOperator(role: string | undefined): boolean {
-  return !!role && PSYOPS_OPERATOR_ROLES.has(role);
-}
 
 const TABS: { id: Tab; label: string; title: string; hint: string; icon: typeof Siren }[] = [
   { id: 'console', label: 'Console', title: 'What is moving out of pattern', hint: 'Signal scanner, alert triage and quarantine log', icon: Siren },
@@ -174,7 +165,7 @@ export default function PsyopsPage() {
 
   if (!isOperator || forbidden) return (
     <LensShell lensId="psyops">
-      <AdminRequiredState roles={['admin', 'operator']} />
+      <AdminRequiredState roles={[...PSYOPS_OPERATOR_ROLES]} />
     </LensShell>
   );
 

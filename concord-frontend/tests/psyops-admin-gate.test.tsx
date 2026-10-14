@@ -69,8 +69,10 @@ vi.mock('@/components/psyops/NotificationBell', () => ({ NotificationBell: () =>
 vi.mock('@/components/psyops/QuarantineLog', () => ({ QuarantineLog: () => null }));
 
 import PsyopsPage from '@/app/lenses/psyops/page';
+import { PSYOPS_OPERATOR_ROLES } from '@/components/psyops/psyops-access';
 
 const CONSOLE_MACROS = ['rules_list', 'alerts_list', 'incident_list', 'notifications_list', 'quarantine_log'] as const;
+const GATE_ROLES_COPY = PSYOPS_OPERATOR_ROLES.join(', ');
 
 function user(role: string, scopes?: string[]): AuthUser {
   return { id: 'u1', username: 'tester', email: 'tester@test.local', role, scopes };
@@ -152,12 +154,28 @@ describe('psyops lens — skip admin queries without an operator role', () => {
     authState.user = user('member');
     const { findByText, queryByTestId } = render(<PsyopsPage />);
     expect(await findByText(/Admin access required/i)).toBeInTheDocument();
-    expect(await findByText(/admin, operator/i)).toBeInTheDocument();
+    expect(await findByText(new RegExp(`one of: ${GATE_ROLES_COPY}`))).toBeInTheDocument();
     expect(queryByTestId('psyops-frame')).toBeNull();
     await waitFor(() => expect(psyopsLensCalls()).toEqual([]));
     expect(skillCalls()).toEqual([]);
     expect(lensRun).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('gate copy lists exactly the enforced roles and omits operator', async () => {
+    authState.isLoading = false;
+    authState.user = user('member');
+    const { findByText } = render(<PsyopsPage />);
+    const desc = await findByText(new RegExp(`one of: ${GATE_ROLES_COPY}`));
+    expect(desc.textContent).toBe(
+      `This operator surface needs one of: ${GATE_ROLES_COPY}. Ask an administrator for access.`,
+    );
+    expect(GATE_ROLES_COPY).toBe('owner, admin, founder');
+    // Role name "operator" must not appear in the listed set (phrase
+    // "operator surface" is chrome wording, not a role).
+    const listed = desc.textContent?.match(/one of: ([^.]+)/)?.[1] ?? '';
+    expect(listed.split(',').map((s) => s.trim())).toEqual([...PSYOPS_OPERATOR_ROLES]);
+    expect(listed.split(',').map((s) => s.trim())).not.toContain('operator');
   });
 
   it('still withholds the admin queries when a member carries an admin scope', async () => {
