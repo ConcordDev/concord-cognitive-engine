@@ -46839,6 +46839,33 @@ function _lensArtifactVisible(ctx, artifact) {
   return vis === "published" || vis === "public";
 }
 
+// INC-SWEEP debate F2 / INC-77: debate floor create/list/detail payloads must
+// not echo the owner's raw user uuid. Authz still reads the stored ownerId;
+// this only shapes the wire copy. Other domains keep the legacy shape.
+function _presentLensArtifact(artifact, ctx) {
+  if (!artifact || typeof artifact !== "object") return artifact;
+  if (artifact.domain !== "debate") return artifact;
+  const rawOwner = artifact.ownerId || artifact.createdBy || artifact.createdByUser || null;
+  const viewerId = ctx?.actor?.userId || null;
+  const isMine = !!(rawOwner && viewerId && rawOwner === viewerId);
+  let displayName = null;
+  if (rawOwner && rawOwner !== "anon") {
+    try {
+      const ident = lookupUserIdentity(ctx?.db || STATE?.db || null, rawOwner);
+      const fromDb = (ident?.displayName || ident?.username || "").trim();
+      if (fromDb && fromDb !== rawOwner) displayName = fromDb.slice(0, 80);
+    } catch { /* identity lookup is best-effort */ }
+    if (!displayName && isMine) displayName = "You";
+  }
+  const presented = { ...artifact };
+  delete presented.ownerId;
+  delete presented.owner;
+  delete presented.createdBy;
+  delete presented.createdByUser;
+  presented.owner = { displayName, isMine };
+  return presented;
+}
+
 function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
   try {
     const dtuId = uid("dtu");
@@ -46941,7 +46968,7 @@ register("lens", "list", (ctx, input={}) => {
 
   artifacts.sort((a,b) => (b.updatedAt||b.createdAt||"").localeCompare(a.updatedAt||a.createdAt||""));
   const total = artifacts.length;
-  artifacts = artifacts.slice(offset, offset + limit);
+  artifacts = artifacts.slice(offset, offset + limit).map((a) => _presentLensArtifact(a, ctx));
   const _domainRule = DOMAIN_RULES.get(domain);
   return { ok: true, artifacts, total, domain, type, schema: _domainRule ? { types: _domainRule.types, validStatuses: _domainRule.validStatuses } : null };
 });
@@ -46959,7 +46986,7 @@ register("lens", "get", (ctx, input={}) => {
   if (!SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== currentUserId && vis !== "published" && vis !== "public") {
     return { ok: false, error: "not found" }; // Don't reveal existence
   }
-  return { ok: true, artifact };
+  return { ok: true, artifact: _presentLensArtifact(artifact, ctx) };
 });
 
 register("lens", "create", async (ctx, input={}) => {
@@ -47015,7 +47042,7 @@ register("lens", "create", async (ctx, input={}) => {
   _lensDomainIndexAdd(domain, id);
   saveStateDebounced();
   _lensEmitDTU(ctx, domain, "create", type, artifact);
-  return { ok: true, artifact, warnings: validation.warnings?.length ? validation.warnings : undefined, scopeWarnings: scopeCheck?.warnings?.length ? scopeCheck.warnings : undefined };
+  return { ok: true, artifact: _presentLensArtifact(artifact, ctx), warnings: validation.warnings?.length ? validation.warnings : undefined, scopeWarnings: scopeCheck?.warnings?.length ? scopeCheck.warnings : undefined };
   } finally { releaseMutex(); }
 });
 
@@ -47052,7 +47079,7 @@ register("lens", "update", async (ctx, input={}) => {
   artifact.qualityScore = scoreArtifact(artifact.domain, artifact.type, artifact.data);
   saveStateDebounced();
   _lensEmitDTU(ctx, artifact.domain, "update", artifact.type, artifact, { claims: [`updated from v${artifact.version-1}`], before });
-  return { ok: true, artifact };
+  return { ok: true, artifact: _presentLensArtifact(artifact, ctx) };
   } finally { releaseMutex(); }
 });
 
@@ -47162,7 +47189,7 @@ register("lens", "export", (ctx, input={}) => {
   // GET /api/lens/<domain>/<id>/export — an IDOR.
   if (!_lensArtifactVisible(ctx, artifact)) return { ok: false, error: "not found" }; // Don't reveal existence
   _lensEmitDTU(ctx, artifact.domain, "export", artifact.type, artifact, { format });
-  if (format === "json") return { ok: true, format: "json", data: artifact };
+  if (format === "json") return { ok: true, format: "json", data: _presentLensArtifact(artifact, ctx) };
   if (format === "csv") return { ok: true, format: "csv", data: _lensExportCSV(artifact) };
   if (format === "pdf") return { ok: true, format: "pdf", data: _lensExportPDFMarkup(artifact) };
   if (format === "markdown" || format === "md") return { ok: true, format: "markdown", data: _lensExportMarkdown(artifact) };
@@ -48614,7 +48641,7 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     artifact.meta.publishedAt = new Date().toISOString();
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
-    res.json({ ok: true, artifact });
+    res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
