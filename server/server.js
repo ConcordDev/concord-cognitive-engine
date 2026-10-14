@@ -49044,6 +49044,11 @@ registerLensAction("agents", "stop", (ctx, artifact, _params) => {
   return { ok: true, status: "dormant" };
 });
 registerLensAction("agents", "reset", (ctx, artifact, _params) => {
+  // INC-SWEEP agents F11 — reset is domain-local (not COMMON); still require a
+  // real fleet row so `{}` cannot report status:reset against nothing.
+  if (!artifact?.id || !STATE.lensArtifacts.has(artifact.id)) {
+    return { ok: false, error: "artifact id required" };
+  }
   artifact.data = { ...artifact.data, status: "idle", memory: [], logs: [], tickCount: 0, resetAt: nowISO() };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
