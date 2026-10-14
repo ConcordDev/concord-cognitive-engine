@@ -24,8 +24,10 @@ vi.mock('@/lib/api/client', () => ({
 
 // Control useQuery return value
 const mockQueryReturn = {
-  data: { ok: true, version: '5.0.0', infrastructure: { auth: { mode: 'jwt' } } } as Record<string, unknown>,
+  data: { ok: true, version: '5.0.0', infrastructure: { auth: { mode: 'jwt' } } } as Record<string, unknown> | null,
   isError: false,
+  isPending: false,
+  isFetched: true,
   error: null as unknown,
 };
 
@@ -65,6 +67,8 @@ describe('SystemStatus', () => {
     mockUIStoreState.requestErrors = [];
     mockQueryReturn.data = { ok: true, version: '5.0.0', infrastructure: { auth: { mode: 'jwt' } } };
     mockQueryReturn.isError = false;
+    mockQueryReturn.isPending = false;
+    mockQueryReturn.isFetched = true;
     mockQueryReturn.error = null;
   });
 
@@ -109,13 +113,27 @@ describe('SystemStatus', () => {
   });
 
   it('shows "Backend Unreachable" when backend is down', () => {
-    mockQueryReturn.data = null as unknown;
+    mockQueryReturn.data = null;
     mockQueryReturn.isError = true;
+    mockQueryReturn.isPending = false;
+    mockQueryReturn.isFetched = true;
     mockQueryReturn.error = new Error('Network error');
 
     render(<SystemStatus />);
 
     expect(screen.getByText('Backend Unreachable')).toBeInTheDocument();
+  });
+
+  it('stays quiet while /api/status is still loading (no false Unreachable)', () => {
+    mockQueryReturn.data = undefined as unknown as null;
+    mockQueryReturn.isError = false;
+    mockQueryReturn.isPending = true;
+    mockQueryReturn.isFetched = false;
+    mockQueryReturn.error = null;
+
+    const { container } = render(<SystemStatus />);
+    expect(container.innerHTML).toBe('');
+    expect(screen.queryByText('Backend Unreachable')).not.toBeInTheDocument();
   });
 
   it('shows error count badge when there are errors', () => {

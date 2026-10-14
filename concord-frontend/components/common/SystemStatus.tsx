@@ -63,6 +63,8 @@ function SystemStatus() {
   const {
     data: status,
     isError: isBackendDown,
+    isPending,
+    isFetched,
     error: backendError,
   } = useQuery<StatusResponse>({
     queryKey: ['system-status'],
@@ -74,7 +76,9 @@ function SystemStatus() {
     retry: 1,
   });
 
-  const isHealthy = status?.ok && !isBackendDown;
+  // Pending/unsettled must not read as Unreachable — only a failed fetch does.
+  const statusSettled = isFetched && !isPending;
+  const isHealthy = Boolean(status?.ok) && !isBackendDown;
 
   // Filter errors: only show critical ones (500+, timeouts, network errors)
   // Suppress: 404 resource lookups, 401 auth checks, WebSocket reconnects
@@ -94,8 +98,11 @@ function SystemStatus() {
 
   // Nothing to report: render nothing. Healthy status already lives in the
   // Topbar's health indicator; this corner only speaks up when the backend is
-  // unreachable or a critical request failed.
-  if (isHealthy && !hasErrors && !expanded) return null;
+  // unreachable or a critical request failed. While /api/status is still
+  // loading, stay silent (neutral) — do not flash Unreachable.
+  const showUnreachable = statusSettled && isBackendDown;
+  if (!showUnreachable && isHealthy && !hasErrors && !expanded) return null;
+  if (!statusSettled && !hasErrors && !expanded) return null;
 
   return (
     <div
@@ -103,7 +110,7 @@ function SystemStatus() {
       className={cn(
         'fixed left-4 rounded-lg border shadow-lg text-sm max-w-sm transition-[bottom] duration-300',
         bottomOffsetClass,
-        isHealthy ? 'bg-lattice-surface border-lattice-border' : 'bg-red-950/90 border-red-500/40'
+        showUnreachable ? 'bg-red-950/90 border-red-500/40' : 'bg-lattice-surface border-lattice-border'
       )}
     >
       {/* Header */}
@@ -111,13 +118,13 @@ function SystemStatus() {
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full px-3 py-2"
       >
-        {isHealthy ? (
-          <Wifi className="w-4 h-4 text-neon-green" />
-        ) : (
+        {showUnreachable ? (
           <WifiOff className="w-4 h-4 text-red-400 animate-pulse" />
+        ) : (
+          <Wifi className="w-4 h-4 text-neon-green" />
         )}
-        <span className={cn('font-medium', isHealthy ? 'text-white' : 'text-red-300')}>
-          {isHealthy ? 'System Status' : 'Backend Unreachable'}
+        <span className={cn('font-medium', showUnreachable ? 'text-red-300' : 'text-white')}>
+          {showUnreachable ? 'Backend Unreachable' : !statusSettled ? 'Checking backend…' : 'System Status'}
         </span>
         {hasErrors && (
           <span className="ml-auto px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">
@@ -137,8 +144,12 @@ function SystemStatus() {
           {/* Backend status */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-gray-400">Backend:</span>
-            <span className={isHealthy ? 'text-neon-green' : 'text-red-400'}>
-              {isHealthy ? 'Connected' : (backendError as Error)?.message || 'Unreachable'}
+            <span className={showUnreachable ? 'text-red-400' : 'text-neon-green'}>
+              {showUnreachable
+                ? ((backendError as Error)?.message || 'Unreachable')
+                : !statusSettled
+                  ? 'Checking…'
+                  : 'Connected'}
             </span>
           </div>
 
