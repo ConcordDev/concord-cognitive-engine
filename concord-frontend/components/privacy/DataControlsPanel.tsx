@@ -205,9 +205,13 @@ function DsarSection() {
   useEffect(() => { void reload(); }, [reload]);
 
   const submit = useCallback(async () => {
+    if (!note.trim()) {
+      setError('note required');
+      return;
+    }
     setBusy(true);
     setError(null);
-    const r = await lensRun<{ totalRequests: number }>('privacy', 'dsarSubmit', { kind, note });
+    const r = await lensRun<{ totalRequests: number }>('privacy', 'dsarSubmit', { kind, note: note.trim() });
     if (r.data.ok) { setNote(''); await reload(); }
     else setError(r.data.error || 'submit failed');
     setBusy(false);
@@ -249,12 +253,12 @@ function DsarSection() {
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Optional note for the request…"
+          placeholder="Describe the request…"
           className="flex-1 min-w-[180px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <button
           onClick={submit}
-          disabled={busy}
+          disabled={busy || !note.trim()}
           className="px-3 py-1.5 text-xs bg-neon-blue/15 border border-neon-blue/30 rounded-lg hover:bg-neon-blue/25 disabled:opacity-50 flex items-center gap-1.5 text-neon-blue"
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}

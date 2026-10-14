@@ -91,7 +91,7 @@ describe("privacy.dsar* (data subject requests)", () => {
   });
 
   it("isolates DSARs per user", () => {
-    call("dsarSubmit", ctxA, {}, { kind: "access" });
+    call("dsarSubmit", ctxA, {}, { kind: "access", note: "acct-a access" });
     assert.equal(call("dsarList", ctxB, {}, {}).result.totalRequests, 0);
   });
 });
@@ -133,7 +133,7 @@ describe("privacy.accessLog / recordAccess", () => {
 
 describe("privacy.dataExport", () => {
   it("bundles all privacy sections with counts + a size estimate", () => {
-    call("dsarSubmit", ctxA, {}, { kind: "access" });
+    call("dsarSubmit", ctxA, {}, { kind: "access", note: "export bundle seed" });
     call("recordAccess", ctxA, {}, { actor: "world-lens", operation: "read" });
     const r = call("dataExport", ctxA, {}, {});
     assert.equal(r.ok, true);

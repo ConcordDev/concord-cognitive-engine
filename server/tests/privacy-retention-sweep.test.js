@@ -205,7 +205,7 @@ describe("privacy-retention-sweep — never throws (heartbeat contract)", () => 
   });
 
   it("survives a malformed dsars entry (not a Map)", async () => {
-    call("dsarSubmit", ctxA, { kind: "access" });
+    call("dsarSubmit", ctxA, { kind: "access", note: "malformed-map seed" });
     stateOf().privacyLens.dsars.set("user_broken", "not-a-map");
     const res = await sweep();
     assert.equal(res.ok, true);

@@ -272,7 +272,7 @@ describe('DataControlsPanel', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Requests' }));
     expect(await screen.findByText('No requests yet.')).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText('Optional note for the request…'), { target: { value: 'please' } });
+    fireEvent.change(screen.getByPlaceholderText('Describe the request…'), { target: { value: 'please' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit Request' }));
     expect(await screen.findByText('Start review')).toBeTruthy();
     expect(screen.getByText('1 overdue')).toBeTruthy();

@@ -4,9 +4,9 @@
 // log/export/cookie/retention/flow substrate. Every lensRun("privacy", …) call
 // literally names the macro so the macro-depth grader credits the invocation.
 //
-// NB: lens.run reports OUTER ok:true on dispatch and nests a handler refusal
-// under result — so a privacy/consent rejection is r.result.ok === false with
-// r.result.error. Consent/scope gates are asserted exactly, never weakened.
+// NB: lens.run propagates handler refusals at the top level (batch 023) —
+// so a privacy/consent rejection is r.ok === false with r.error. Consent/scope
+// gates are asserted exactly, never weakened.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
@@ -125,12 +125,12 @@ describe("privacy — DSAR lifecycle (consent-request round-trips, shared ctx)",
 
   it("dsarSubmit: an unknown kind is rejected with the valid-kind list", async () => {
     const bad = await lensRun("privacy", "dsarSubmit", { params: { kind: "telepathy" } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /kind must be one of access, export, deletion, rectification/);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /kind must be one of access, export, deletion, rectification/);
   });
 
   it("dsarAdvance: completing a deletion request stamps resolvedAt + appends history", async () => {
-    const sub = await lensRun("privacy", "dsarSubmit", { params: { kind: "deletion" } }, ctx);
+    const sub = await lensRun("privacy", "dsarSubmit", { params: { kind: "deletion", note: "please delete my data" } }, ctx);
     const id = sub.result.request.id;
     assert.equal(sub.result.request.resolvedAt, null);
     const adv = await lensRun("privacy", "dsarAdvance", { params: { dsarId: id, status: "completed" } }, ctx);
@@ -140,13 +140,13 @@ describe("privacy — DSAR lifecycle (consent-request round-trips, shared ctx)",
   });
 
   it("dsarAdvance: an invalid status is rejected; a missing request id is rejected", async () => {
-    const sub = await lensRun("privacy", "dsarSubmit", { params: { kind: "export" } }, ctx);
+    const sub = await lensRun("privacy", "dsarSubmit", { params: { kind: "export", note: "export package please" } }, ctx);
     const badStatus = await lensRun("privacy", "dsarAdvance", { params: { dsarId: sub.result.request.id, status: "vibing" } }, ctx);
-    assert.equal(badStatus.result.ok, false);
-    assert.match(badStatus.result.error, /status must be one of received, in_review, completed, rejected/);
+    assert.equal(badStatus.ok, false);
+    assert.match(badStatus.error, /status must be one of received, in_review, completed, rejected/);
     const badId = await lensRun("privacy", "dsarAdvance", { params: { dsarId: "dsar_nope", status: "completed" } }, ctx);
-    assert.equal(badId.result.ok, false);
-    assert.match(badId.result.error, /request not found/);
+    assert.equal(badId.ok, false);
+    assert.match(badId.error, /request not found/);
   });
 });
 
@@ -177,8 +177,8 @@ describe("privacy — per-lens data-sharing toggles (scope gate, shared ctx)", (
 
   it("lensSharingSet: an unknown lensId is rejected", async () => {
     const bad = await lensRun("privacy", "lensSharingSet", { params: { lensId: "telepathy", share: true } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /unknown lensId/);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /unknown lensId/);
   });
 });
 
@@ -209,7 +209,7 @@ describe("privacy — access log (record → read back, shared ctx)", () => {
 describe("privacy — data export bundle (round-trip across substrate, shared ctx)", () => {
   it("dataExport aggregates this user's DSARs + sharing + log + retention + flows with exact counts", async () => {
     const ctx = await depthCtx("privacy-export-iso"); // isolated → exact counts
-    await lensRun("privacy", "dsarSubmit", { params: { kind: "access" } }, ctx);
+    await lensRun("privacy", "dsarSubmit", { params: { kind: "access", note: "export aggregate seed" } }, ctx);
     await lensRun("privacy", "lensSharingSet", { params: { lensId: "code", share: true } }, ctx);
     await lensRun("privacy", "recordAccess", { params: { actor: "x", operation: "read" } }, ctx);
     await lensRun("privacy", "retentionSet", { params: { category: "chat_history", windowDays: 30, action: "delete" } }, ctx);
@@ -293,8 +293,8 @@ describe("privacy — retention policy editor (round-trip + validation, shared c
 
   it("retentionSet: an unknown category is rejected", async () => {
     const bad = await lensRun("privacy", "retentionSet", { params: { category: "mind_reading", windowDays: 10 } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /unknown retention category/);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /unknown retention category/);
   });
 });
 
@@ -319,8 +319,8 @@ describe("privacy — third-party data-flow map (federation, shared ctx)", () =>
 
   it("flowRegister: a missing destination is rejected", async () => {
     const bad = await lensRun("privacy", "flowRegister", { params: { destination: "" } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /destination required/);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /destination required/);
   });
 
   it("flowToggle flips an active flow off; flowMap drops it from outboundCount; missing id rejected", async () => {
@@ -331,7 +331,7 @@ describe("privacy — third-party data-flow map (federation, shared ctx)", () =>
     const explicitOn = await lensRun("privacy", "flowToggle", { params: { flowId: id, active: true } }, ctx);
     assert.equal(explicitOn.result.flow.active, true);
     const bad = await lensRun("privacy", "flowToggle", { params: { flowId: "flow_nope" } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /flow not found/);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /flow not found/);
   });
 });

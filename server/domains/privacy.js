@@ -192,12 +192,18 @@ export default function registerPrivacyActions(registerLensAction) {
       if (!valid.includes(kind)) {
         return { ok: false, error: `kind must be one of ${valid.join(", ")}` };
       }
+      // Blank-that-saves: a DSAR with an empty note is not a request worth
+      // queueing — refuse rather than persist note:"".
+      const note = clean(params?.note, 1000);
+      if (!note) {
+        return { ok: false, error: "note required" };
+      }
       const s = privacyState();
       const bucket = userMap(s.dsars, uid);
       const req = {
         id: rid("dsar"),
         kind,
-        note: clean(params?.note || "", 1000),
+        note,
         status: "received",
         submittedAt: now(),
         // GDPR: controller must respond within one month.
