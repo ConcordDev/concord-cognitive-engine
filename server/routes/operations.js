@@ -786,19 +786,33 @@ export default function registerOperationRoutes(app, {
   }));
 
   app.get("/api/agents", (req, res) => {
+    // INC-SWEEP agents F8/F15 — roster is auth-scoped; anonymous → 401.
+    const userId = req.user?.id || req.user?.userId || req.ctx?.actor?.userId;
+    if (!userId || userId === "anon") {
+      return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+    }
     const agents = Array.from(STATE.personas.values()).filter(p =>
-      p && p.goal // Simple heuristic: agents have goals
+      p && p.goal && (p.ownerId === userId || !p.ownerId)
     );
-    return res.json({ ok: true, agents });
+    return res.json({ ok: true, agents, n: agents.length });
   });
 
   // GET /api/agents/status — Aggregate agent system status with metrics (must be before :id)
-  app.get("/api/agents/status", async (_req, res) => {
+  app.get("/api/agents/status", async (req, res) => {
     try {
+      // INC-SWEEP agents F2 — status board is per-caller, not world-readable.
+      const userId = req.user?.id || req.user?.userId;
+      if (!userId || userId === "anon") {
+        return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+      }
       const mod = await import("../emergent/agent-system.js");
       const list = mod.listAgents();
       const metrics = mod.getAgentMetrics();
-      const agents = list.agents || [];
+      const all = list.agents || [];
+      const agents = all.filter((a) => {
+        const owner = a.metadata?.ownerId || a.metadata?.createdByUserId;
+        return owner === userId;
+      });
       return res.json({
         ok: true,
         agentCount: agents.length,
@@ -823,24 +837,86 @@ export default function registerOperationRoutes(app, {
     }
   });
 
-  app.get("/api/agents/:id", (req, res) => {
+  app.get("/api/agents/:id", async (req, res) => {
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId || userId === "anon") {
+      return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+    }
     const agent = STATE.personas.get(req.params.id);
-    if (!agent || !agent.goal) {
+    if (agent && agent.goal) {
+      if (agent.ownerId && agent.ownerId !== userId) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
+      return res.json({ ok: true, agent });
+    }
+    // INC-SWEEP agents F8 — fall through to emergent store (spawn-research).
+    try {
+      const mod = await import("../emergent/agent-system.js");
+      const emergent = mod.getAgent(req.params.id);
+      if (!emergent.ok || !emergent.agent) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
+      const owner = emergent.agent.metadata?.ownerId || emergent.agent.metadata?.createdByUserId;
+      if (owner && owner !== userId) {
+        return res.status(404).json({ ok: false, error: "Agent not found" });
+      }
+      return res.json({ ok: true, agent: emergent.agent });
+    } catch {
       return res.status(404).json({ ok: false, error: "Agent not found" });
     }
-    return res.json({ ok: true, agent });
   });
 
   app.post("/api/agents/:id/enable", asyncHandler(async (req, res) => {
     const enabled = Boolean(req.body?.enabled);
-    const out = await runMacro("agent", "enable", { id: req.params.id, enabled }, makeCtx(req));
-    return res.json(out);
+    // INC-SWEEP agents F8 — enable works for personas OR emergent spawn rows.
+    const persona = STATE.personas.get(req.params.id);
+    if (persona) {
+      const out = await runMacro("agent", "enable", { id: req.params.id, enabled }, makeCtx(req));
+      return res.json(out);
+    }
+    try {
+      const mod = await import("../emergent/agent-system.js");
+      const got = mod.getAgent(req.params.id);
+      if (!got.ok || !got.agent) return res.json({ ok: false, error: "agent not found" });
+      const userId = req.user?.id || req.user?.userId;
+      const owner = got.agent.metadata?.ownerId || got.agent.metadata?.createdByUserId;
+      if (owner && userId && owner !== userId) return res.json({ ok: false, error: "agent not found" });
+      const out = enabled === false ? mod.pauseAgent(req.params.id) : mod.resumeAgent(req.params.id);
+      // Mirror enable flag onto personas row when present (spawn mirrors one).
+      const mirrored = STATE.personas.get(req.params.id);
+      if (mirrored) {
+        mirrored.enabled = enabled;
+        saveStateDebounced();
+      }
+      return res.json(out.ok ? { ok: true, agent: out.agent || got.agent, enabled } : out);
+    } catch (e) {
+      return res.json({ ok: false, error: String(e?.message || e) });
+    }
   }));
 
   app.post("/api/agents/:id/tick", asyncHandler(async (req, res) => {
     const prompt = req.body?.prompt || "";
-    const out = await runMacro("agent", "tick", { id: req.params.id, prompt }, makeCtx(req));
-    return res.json(out);
+    const persona = STATE.personas.get(req.params.id);
+    if (persona) {
+      const out = await runMacro("agent", "tick", { id: req.params.id, prompt }, makeCtx(req));
+      return res.json(out);
+    }
+    // Emergent spawn: run against the caller's DTUs; skipped only when missing.
+    try {
+      const mod = await import("../emergent/agent-system.js");
+      const got = mod.getAgent(req.params.id);
+      if (!got.ok || !got.agent) return res.json({ ok: true, skipped: true, reason: "agent not found" });
+      if (got.agent.status !== "active") return res.json({ ok: true, skipped: true, reason: "not_active" });
+      const userId = req.user?.id || req.user?.userId;
+      const dtus = Array.from(STATE.dtus?.values?.() || []).filter((d) => {
+        const owner = d.ownerId || d.author || d.userId || d.createdBy;
+        return !owner || owner === userId;
+      }).slice(0, 200);
+      const runResult = mod.runAgent(req.params.id, dtus);
+      return res.json({ ok: true, skipped: false, findingsCount: runResult.count || 0, findings: runResult.findings || [] });
+    } catch (e) {
+      return res.json({ ok: false, error: String(e?.message || e) });
+    }
   }));
 
   // POST /api/agents/spawn-research — Spawn a research agent for a given topic
@@ -848,21 +924,54 @@ export default function registerOperationRoutes(app, {
     try {
       const { topic } = req.body || {};
       if (!topic) return res.status(400).json({ ok: false, error: "topic required" });
+      const userId = req.user?.id || req.user?.userId;
+      if (!userId || userId === "anon") {
+        return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+      }
       const mod = await import("../emergent/agent-system.js");
       const result = mod.createAgent("synthesis", {
         territory: "*",
-        metadata: { purpose: "research", topic, createdBy: "user", spawnedAt: new Date().toISOString() },
+        metadata: {
+          purpose: "research",
+          topic,
+          createdBy: "user",
+          createdByUserId: userId,
+          ownerId: userId,
+          spawnedAt: new Date().toISOString(),
+        },
       });
       if (!result.ok) return res.json(result);
-      // Immediately run the agent with DTUs related to the topic
+      // INC-SWEEP agents F8 — one store of truth: mirror into personas so
+      // GET /api/agents, GET /:id, and enable see the same id.
+      const goal = `Research: ${String(topic).slice(0, 200)}`;
+      const mirrored = {
+        id: result.agent.agentId,
+        orgId: req.user?.orgId || null,
+        ownerId: userId,
+        name: `Research (${String(topic).slice(0, 60)})`,
+        goal,
+        cadenceMs: 60000,
+        allowedMacros: ["dtu.list", "system.synthesize"],
+        enabled: true,
+        createdAt: result.agent.createdAt || new Date().toISOString(),
+        lastTickAt: null,
+        emergentType: "synthesis",
+      };
+      STATE.personas.set(result.agent.agentId, mirrored);
+      STATE.queues.agents = Array.isArray(STATE.queues.agents) ? STATE.queues.agents : [];
+      if (!STATE.queues.agents.includes(result.agent.agentId)) STATE.queues.agents.push(result.agent.agentId);
+      saveStateDebounced();
+      // Immediately run the agent with DTUs related to the topic (caller-owned).
       const dtus = Array.from(STATE.dtus?.values?.() || []).filter(d => {
+        const owner = d.ownerId || d.author || d.userId || d.createdBy;
+        if (owner && owner !== userId) return false;
         const text = `${d.title || ""} ${d.summary || ""} ${(d.tags || []).join(" ")}`.toLowerCase();
         return text.includes(topic.toLowerCase());
       }).slice(0, 200);
       const runResult = mod.runAgent(result.agent.agentId, dtus);
       return res.json({
         ok: true,
-        agent: result.agent,
+        agent: { ...result.agent, goal, ownerId: userId },
         findings: runResult.findings || [],
         findingsCount: runResult.count || 0,
         topic,
