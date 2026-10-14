@@ -155,7 +155,7 @@ import {
   activateForAutogen,
   getContextPanel, getContextProfiles,
   decaySessionContext, completeSessionContext,
-  getContextEngineMetrics,
+  getContextEngineMetrics, getContextInspector,
 } from "./context-engine.js";
 
 // ── Lens Integration ────────────────────────────────────────────────────────
@@ -1458,6 +1458,11 @@ function init({ register, STATE, helpers }) {
   register("emergent", "context.metrics", (_ctx) => {
     return getContextEngineMetrics(STATE);
   }, { description: "Get context engine metrics", public: true });
+
+  register("emergent", "context.inspector", (_ctx) => {
+    const userId = _ctx?.actor?.userId || _ctx?.userId || null;
+    return getContextInspector(STATE, userId);
+  }, { description: "Auth-scoped context inspector aggregate for Debug lens", public: false });
 
   // ══════════════════════════════════════════════════════════════════════════
   // LENS INTEGRATION (Rich DTU Enrichment + Emergent Lens Actions)

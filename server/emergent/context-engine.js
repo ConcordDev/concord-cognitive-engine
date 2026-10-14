@@ -114,6 +114,12 @@ function getContextEngine(STATE) {
       // Session query counter: sessionId → number
       sessionQueryCounts: new Map(),
 
+      // sessionId → userId (set when processQuery runs with userId)
+      sessionOwners: new Map(),
+
+      // sessionId → Set<dtuId> of pins observed for that session
+      sessionPins: new Map(),
+
       metrics: {
         queriesProcessed: 0,
         coActivationEdgesProposed: 0,
@@ -122,6 +128,13 @@ function getContextEngine(STATE) {
         profileSeeds: 0,
       },
     };
+  }
+  // Backfill maps on older in-memory engines (hot reload / long-lived STATE).
+  if (!(es._contextEngine.sessionOwners instanceof Map)) {
+    es._contextEngine.sessionOwners = new Map();
+  }
+  if (!(es._contextEngine.sessionPins instanceof Map)) {
+    es._contextEngine.sessionPins = new Map();
   }
   return es._contextEngine;
 }
@@ -157,6 +170,18 @@ export function processQuery(STATE, sessionId, opts = {}) {
   // Track query index for co-activation analysis
   const queryIndex = (ce.sessionQueryCounts.get(sessionId) || 0) + 1;
   ce.sessionQueryCounts.set(sessionId, queryIndex);
+
+  // Ownership + pin ledger for the debug inspector (auth-scoped reads).
+  if (opts.userId) {
+    ce.sessionOwners.set(sessionId, opts.userId);
+  }
+  if (pinnedIds.length) {
+    const pinSet = ce.sessionPins.get(sessionId) || new Set();
+    for (const id of pinnedIds) {
+      if (id) pinSet.add(String(id));
+    }
+    ce.sessionPins.set(sessionId, pinSet);
+  }
 
   // ── Step 0: Seed from user profile (first query in session) ──
   if (queryIndex === 1 && opts.userId) {
@@ -1144,5 +1169,102 @@ export function getContextEngineMetrics(STATE) {
     userProfiles: ce.userProfiles.size,
     shadowDtus: STATE.shadowDtus?.size || 0,
     profiles: Object.keys(CONTEXT_PROFILES),
+  };
+}
+
+/**
+ * Auth-scoped aggregate for GET /api/context/inspector (Debug Context panel).
+ *
+ * Derives the panel shape from the live context engine — never fabricates
+ * working-set / pin / profile rows. Only the caller's sessions and profile
+ * are included; other users' context is omitted.
+ *
+ * @param {Object} STATE
+ * @param {string} userId - Authenticated caller id
+ */
+export function getContextInspector(STATE, userId) {
+  const ce = getContextEngine(STATE);
+  ce.metrics.contextPanelQueries++;
+
+  if (!userId) {
+    return { ok: false, error: "auth_required" };
+  }
+
+  const mySessions = [];
+  for (const [sessionId, owner] of ce.sessionOwners) {
+    if (owner === userId) mySessions.push(sessionId);
+  }
+
+  const sys = getActivationSystem(STATE);
+  let totalSize = 0;
+  for (const sessionId of mySessions) {
+    const sessionMap = sys.sessions.get(sessionId);
+    if (sessionMap) totalSize += sessionMap.size;
+  }
+
+  const pinnedDtus = [];
+  for (const sessionId of mySessions) {
+    const pins = ce.sessionPins.get(sessionId);
+    if (!pins || pins.size === 0) continue;
+    const sessionMap = sys.sessions.get(sessionId);
+    for (const dtuId of pins) {
+      const dtu = STATE.dtus?.get(dtuId);
+      const entry = sessionMap?.get(dtuId);
+      pinnedDtus.push({
+        dtuId,
+        title: dtu?.title || "(unknown)",
+        score: entry ? Math.round(entry.score * 1000) / 1000 : 0,
+        session: sessionId,
+      });
+    }
+  }
+
+  const coActivationPatterns = [];
+  for (const sessionId of mySessions) {
+    const tracker = ce.coActivationTracker.get(sessionId);
+    if (!tracker) continue;
+    coActivationPatterns.push({
+      sessionId,
+      trackedDtus: tracker.size,
+      queryCount: ce.sessionQueryCounts.get(sessionId) || 0,
+    });
+  }
+
+  const profile = ce.userProfiles.get(userId);
+  const userProfiles = [];
+  if (profile) {
+    userProfiles.push({
+      // Opaque self-label — never echo another account's id (none are included).
+      label: "you",
+      topDtuCount: profile.topDTUs.length,
+      sessionCount: profile.sessionCount,
+      lastSession: profile.lastSession,
+      topDtus: profile.topDTUs.map((t) => ({
+        dtuId: t.dtuId,
+        frequency: Math.round(Number(t.frequency) * 1000) / 1000 || 0,
+        title: STATE.dtus?.get(t.dtuId)?.title || "(unknown)",
+      })),
+    });
+  }
+
+  const engineMetrics = getContextEngineMetrics(STATE);
+
+  return {
+    ok: true,
+    workingSet: { totalSize },
+    pinnedDtus,
+    coActivationPatterns,
+    userProfiles,
+    engine: {
+      activeSessions: mySessions.length,
+      userProfileCount: profile ? 1 : 0,
+      shadowDtuCount: engineMetrics.shadowDtus,
+    },
+    metrics: {
+      queriesProcessed: engineMetrics.metrics.queriesProcessed || 0,
+      coActivationEdgesProposed: engineMetrics.metrics.coActivationEdgesProposed || 0,
+      profileSeeds: engineMetrics.metrics.profileSeeds || 0,
+      contextPanelQueries: engineMetrics.metrics.contextPanelQueries || 0,
+    },
   };
 }

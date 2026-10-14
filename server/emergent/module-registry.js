@@ -1116,7 +1116,8 @@ export const MODULE_REGISTRY = {
           "queryGlobalFallback",
           "createGlobalCitationShadow",
           "applyDistrictBias",
-          "getContextEngineMetrics"
+          "getContextEngineMetrics",
+          "getContextInspector"
       ],
       "subsystem": "activation",
       "neverDisable": false,

@@ -47551,6 +47551,20 @@ app.get("/api/context/metrics", asyncHandler(async (req, res) => {
   res.json(await runMacro("emergent", "context.metrics", {}, makeCtx(req)));
 }));
 
+// Debug lens ContextInspectorPanel — aggregate of real context-engine state,
+// scoped to the authenticated caller (never fabricates working-set rows).
+app.get("/api/context/inspector", asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.actor?.userId || null;
+  if (!userId) {
+    return res.status(401).json({ ok: false, error: "auth_required" });
+  }
+  const result = await runMacro("emergent", "context.inspector", {}, makeCtx(req));
+  if (result?.ok === false && result?.error === "auth_required") {
+    return res.status(401).json(result);
+  }
+  res.json(result);
+}));
+
 // ── Lens Integration API ──────────────────────────────────────────────────────
 
 app.get("/api/dtus/:id/context", asyncHandler(async (req, res) => {

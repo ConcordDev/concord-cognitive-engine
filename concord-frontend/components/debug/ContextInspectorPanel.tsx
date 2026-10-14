@@ -127,10 +127,11 @@ export function ContextInspectorPanel() {
           <p className="text-xs text-gray-400">No user profiles tracked yet</p>
         ) : (
           <div className="max-h-48 overflow-y-auto space-y-2">
-            {userProfiles.map(
+            {            userProfiles.map(
               (
                 up: {
-                  userId: string;
+                  label?: string;
+                  userId?: string;
                   topDtuCount: number;
                   sessionCount: number;
                   lastSession: string;
@@ -143,7 +144,9 @@ export function ContextInspectorPanel() {
                   className="bg-lattice-deep rounded-lg p-2 border border-lattice-border"
                 >
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-gray-300 font-mono">{up.userId.slice(0, 20)}</span>
+                    <span className="text-gray-300 font-mono">
+                      {up.label || (up.userId ? up.userId.slice(0, 20) : 'profile')}
+                    </span>
                     <span className="text-gray-400">{up.sessionCount} sessions</span>
                   </div>
                   {up.topDtus.length > 0 && (
