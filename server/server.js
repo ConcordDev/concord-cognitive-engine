@@ -51215,61 +51215,109 @@ registerUniversalLensActions();
 // Beyond analyze/generate/suggest, register computational handlers for actions
 // that many lenses need: save, publish, archive, compute, transform, summarize
 {
+  // INC-SWEEP research F4 (+ lab class) — COMMON_ACTIONS mutate a lens artifact.
+  // /api/lens/run builds virtualArtifact={id:null}; without a resolvable id these
+  // handlers used to return fabricated ok:true (shareUrl …/null, rate avg 5).
+  // Require a concrete artifact id (Map lookup or the live object from lens.run).
+  function _requirePersistedLensArtifact(artifact, params = {}) {
+    const paramId = params?.id || params?.artifactId || null;
+    if (paramId && STATE.lensArtifacts?.has?.(paramId)) {
+      return { ok: true, artifact: STATE.lensArtifacts.get(paramId) };
+    }
+    if (artifact?.id && typeof artifact.id === "string" && artifact.id !== "null") {
+      const stored = STATE.lensArtifacts?.get?.(artifact.id);
+      return { ok: true, artifact: stored || artifact };
+    }
+    return { ok: false, error: "artifact id required" };
+  }
+
   const COMMON_ACTIONS = {
     save: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       if (params && typeof params === "object") {
-        artifact.data = { ...artifact.data, ...params };
+        const { id: _id, artifactId: _aid, ...rest } = params;
+        artifact.data = { ...artifact.data, ...rest };
         artifact.updatedAt = nowISO();
         artifact.version = (artifact.version || 1) + 1;
         saveStateDebounced();
       }
       return { ok: true, saved: true, version: artifact.version };
     },
-    publish: (ctx, artifact) => {
+    publish: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, status: "published", visibility: "public" };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, published: true, visibility: "public" };
     },
-    archive: (ctx, artifact) => {
+    archive: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, status: "archived" };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, archived: true };
     },
-    duplicate: (ctx, artifact) => {
-      const copy = { ...structuredClone(artifact), id: uid("lart"), title: `Copy of ${artifact.title}`, createdAt: nowISO(), updatedAt: nowISO(), version: 1 };
+    duplicate: (ctx, artifact, params) => {
+      // INC-SWEEP research F6 — reject empty/virtual source (no "Copy of undefined").
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
+      if (!artifact.title && !artifact.data) {
+        return { ok: false, error: "artifact id required" };
+      }
+      const copy = { ...structuredClone(artifact), id: uid("lart"), title: `Copy of ${artifact.title || "untitled"}`, createdAt: nowISO(), updatedAt: nowISO(), version: 1 };
       STATE.lensArtifacts.set(copy.id, copy);
       _lensDomainIndexAdd(copy.domain, copy.id);
       saveStateDebounced();
       return { ok: true, artifact: copy };
     },
-    pin: (ctx, artifact) => {
+    pin: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, pinned: !artifact.meta?.pinned };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, pinned: artifact.meta.pinned };
     },
-    star: (ctx, artifact) => {
+    star: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, starred: !artifact.meta?.starred };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, starred: artifact.meta.starred };
     },
-    lock: (ctx, artifact) => {
+    lock: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, locked: !artifact.meta?.locked };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, locked: artifact.meta.locked };
     },
-    like: (ctx, artifact) => {
+    like: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
       artifact.data.likes = (artifact.data.likes || 0) + 1;
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, likes: artifact.data.likes };
     },
-    dislike: (ctx, artifact) => {
+    dislike: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
       artifact.data.dislikes = (artifact.data.dislikes || 0) + 1;
       artifact.updatedAt = nowISO();
@@ -51277,6 +51325,9 @@ registerUniversalLensActions();
       return { ok: true, dislikes: artifact.data.dislikes };
     },
     comment: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
       if (!artifact.data.comments) artifact.data.comments = [];
       // INC-SWEEP research F3 — public label on the wire; never raw uuid.
@@ -51291,25 +51342,37 @@ registerUniversalLensActions();
       saveStateDebounced();
       return { ok: true, comment, totalComments: artifact.data.comments.length };
     },
-    share: (ctx, artifact) => {
+    share: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.data = { ...artifact.data, shares: (artifact.data?.shares || 0) + 1 };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, shares: artifact.data.shares, shareUrl: `/lenses/${artifact.domain}/${artifact.id}` };
     },
-    repost: (ctx, artifact) => {
+    repost: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.data = { ...artifact.data, reposts: (artifact.data?.reposts || 0) + 1 };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, reposts: artifact.data.reposts };
     },
-    bookmark: (ctx, artifact) => {
+    bookmark: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       artifact.meta = { ...artifact.meta, bookmarked: !artifact.meta?.bookmarked };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, bookmarked: artifact.meta.bookmarked };
     },
     vote: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       if (!artifact.data) artifact.data = {};
       const direction = params?.direction || params?.vote || 1;
       artifact.data.score = (artifact.data.score || 0) + Number(direction);
@@ -51319,8 +51382,19 @@ registerUniversalLensActions();
       return { ok: true, score: artifact.data.score, voteCount: artifact.data.voteCount };
     },
     rate: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
+      // INC-SWEEP research F4 — never default a fabricated 5-star rating.
+      const raw = params?.rating ?? params?.stars;
+      if (raw === undefined || raw === null || raw === "") {
+        return { ok: false, error: "rating required" };
+      }
+      const rating = Number(raw);
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return { ok: false, error: "rating must be a number from 1 to 5" };
+      }
       if (!artifact.data) artifact.data = {};
-      const rating = Number(params?.rating || params?.stars || 5);
       if (!artifact.data.ratings) artifact.data.ratings = [];
       artifact.data.ratings.push(rating);
       artifact.data.averageRating = artifact.data.ratings.reduce((a, b) => a + b, 0) / artifact.data.ratings.length;
@@ -51329,6 +51403,9 @@ registerUniversalLensActions();
       return { ok: true, averageRating: artifact.data.averageRating, totalRatings: artifact.data.ratings.length };
     },
     tag: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       const newTags = Array.isArray(params?.tags) ? params.tags : [params?.tag].filter(Boolean);
       artifact.meta = { ...artifact.meta, tags: [...new Set([...(artifact.meta?.tags || []), ...newTags])] };
       artifact.updatedAt = nowISO();
@@ -51336,6 +51413,9 @@ registerUniversalLensActions();
       return { ok: true, tags: artifact.meta.tags };
     },
     assign: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       // INC-SWEEP research F3 — assignee on the wire is a public label.
       const rawAssignee = params?.assignee || ctx?.actor?.userId || "unassigned";
       const assignee = _looksLikeRawUserId(rawAssignee)
@@ -51347,6 +51427,9 @@ registerUniversalLensActions();
       return { ok: true, assignee: artifact.data.assignee };
     },
     status: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       const newStatus = params?.status || params?.state;
       if (newStatus) {
         artifact.meta = { ...artifact.meta, status: newStatus };
@@ -51356,19 +51439,27 @@ registerUniversalLensActions();
       return { ok: true, status: artifact.meta?.status };
     },
     priority: (ctx, artifact, params) => {
-      artifact.data = { ...artifact.data, priority: params?.priority || "medium" };
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
+      if (params?.priority === undefined || params?.priority === null || params?.priority === "") {
+        return { ok: false, error: "priority required" };
+      }
+      artifact.data = { ...artifact.data, priority: params.priority };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, priority: artifact.data.priority };
     },
     move: (ctx, artifact, params) => {
+      const resolved = _requirePersistedLensArtifact(artifact, params);
+      if (!resolved.ok) return resolved;
+      artifact = resolved.artifact;
       const newColumn = params?.column || params?.status || params?.to;
-      if (newColumn) {
-        artifact.meta = { ...artifact.meta, status: newColumn };
-        artifact.data = { ...artifact.data, column: newColumn };
-        artifact.updatedAt = nowISO();
-        saveStateDebounced();
-      }
+      if (!newColumn) return { ok: false, error: "column required" };
+      artifact.meta = { ...artifact.meta, status: newColumn };
+      artifact.data = { ...artifact.data, column: newColumn };
+      artifact.updatedAt = nowISO();
+      saveStateDebounced();
       return { ok: true, moved: newColumn };
     },
   };
