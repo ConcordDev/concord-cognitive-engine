@@ -4280,10 +4280,14 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
-    dataTier: 'SIM_GRADE_A',
+    // Pain board / themes / interventions are the caller's own persisted
+    // records; Wikipedia reference is live open data. SIM_GRADE_A painted a
+    // false "Simulated · Not real data" chip over both (same class as
+    // Accounting / Trades / HVAC honesty fixes).
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Suffering + ethics.",
-      caption: "Cases, dilemmas, frameworks, analyses, interventions \u2014 SIM_GRADE_A engine.",
+      caption: "Pain points, themes, root-cause trees, and interventions \u2014 your records plus open reference.",
       firstActionLabel: "Open a case",
     },
     firstRunGuide: {
