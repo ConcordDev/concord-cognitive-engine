@@ -801,6 +801,20 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
     }
   };
 
+  const loadDash = useCallback(async (id: string) => {
+    if (!id) return;
+    setLoading(true); setDash(null);
+    try {
+      const r = await lensRun('dx-platform', 'teamDashboard', { teamId: id });
+      if (r.data?.ok && r.data.result) setDash(r.data.result as TeamDash);
+      else setMsg(r.data?.error || 'Dashboard unavailable.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (teamId) void loadDash(teamId); }, [teamId, loadDash]);
+
   const mintInvite = async () => {
     if (!teamId.trim()) return;
     const r = await lensRun('dx-platform', 'inviteToTeam', { teamId: teamId.trim() });
@@ -822,28 +836,17 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       codebaseId: joinCb || undefined,
     });
     if (r.data?.ok) {
-      setTeamId(joinId.trim());
+      const id = joinId.trim();
+      setTeamId(id);
       setMsg(inviteCode.trim() ? 'Joined team / attached codebase.' : 'Attached codebase / refreshed team.');
       onChanged();
+      // F2: teamId may already equal id (owner attach) — force a dashboard reload.
+      void loadDash(id);
     } else {
       const err = r.data?.error || 'Join failed.';
       setMsg(err === 'not_invited' ? 'not_invited — ask a member for an invite code.' : err);
     }
   };
-
-  const loadDash = useCallback(async (id: string) => {
-    if (!id) return;
-    setLoading(true); setDash(null);
-    try {
-      const r = await lensRun('dx-platform', 'teamDashboard', { teamId: id });
-      if (r.data?.ok && r.data.result) setDash(r.data.result as TeamDash);
-      else setMsg(r.data?.error || 'Dashboard unavailable.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { if (teamId) void loadDash(teamId); }, [teamId, loadDash]);
 
   return (
     <div className="space-y-4">
