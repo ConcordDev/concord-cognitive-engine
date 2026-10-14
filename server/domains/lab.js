@@ -327,7 +327,8 @@ export default function registerLabActions(registerLensAction) {
   registerLensAction("lab", "sampleTracker", (ctx, artifact, _params) => {
   try {
     const samples = artifact.data?.samples || [];
-    if (samples.length === 0) return { ok: true, result: { message: "No samples." } };
+    // INC-SWEEP lab F3 — empty sample set is a refusal, not ok:true "No samples."
+    if (samples.length === 0) return { ok: false, error: "samples required" };
 
     const analyzed = samples.map(s => {
       const steps = s.steps || [];

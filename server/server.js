@@ -47247,6 +47247,11 @@ register("lens", "run", async (ctx, input={}) => {
     }
   }
   const handlerResult = await handler(ctx, artifact, params);
+  // INC-SWEEP lab F3 — a handler { ok:false } must not ride out as outer ok:true
+  // (Lab Analysis calibrationCurve / sampleTracker looked successful to the page).
+  if (handlerResult && typeof handlerResult === "object" && handlerResult.ok === false) {
+    return handlerResult;
+  }
   // Normalize: if handler returns { ok, result }, unwrap to avoid double-nesting
   const result = (handlerResult && typeof handlerResult === 'object' && 'result' in handlerResult) ? handlerResult.result : handlerResult;
   _lensEmitDTU(ctx, artifact.domain, action, artifact.type, artifact, { actionResult: handlerResult });
@@ -48752,7 +48757,11 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
 app.post("/api/lens/:domain/:id/run", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "run", { id: req.params.id, ...req.body }, ctx));
+    // INC-SWEEP lab F3 — same shapeLensRunHttp envelope as /api/lens/run so a
+    // nested handler refusal is not HTTP 200 { ok:true, result:{ ok:false } }.
+    const raw = await runMacro("lens", "run", { id: req.params.id, ...req.body }, ctx);
+    const shaped = _shapeLensRunHttp(raw);
+    return res.status(shaped.status).json(shaped.body);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
