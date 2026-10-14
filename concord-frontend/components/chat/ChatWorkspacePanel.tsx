@@ -1219,6 +1219,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             message: messageContent,
             mode: aiMode.id,
             sessionId: activeSessionId,
+            clientTurnId: userMsg.id,
             ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
@@ -1320,6 +1321,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             message: messageContent,
             mode: aiMode.id,
             sessionId: activeSessionId,
+            clientTurnId: userMsg.id,
             ...(systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           },
@@ -1445,6 +1447,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           message: lastUserContent,
           mode: aiMode.id,
           sessionId: selectedConversation,
+          regenerate: true,
+          forceNewTurn: true,
         },
         { signal: abortController.signal }
       );

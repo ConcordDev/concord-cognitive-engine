@@ -2137,6 +2137,12 @@ import {
   followUpFailureReply,
   ensureCreatedDtuIds,
 } from "./lib/chat/tool-turn-reply.js";
+import {
+  chatTurnKey,
+  coalesceChatTurn,
+  findCompletedChatTurn,
+  rememberCompletedChatTurn,
+} from "./lib/chat/turn-pipeline.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -27122,7 +27128,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
 }, { description: "Detect stable clusters (gaps) and soft-promote them into MEGA DTUs." });
 
 // Chat domain
-register("chat", "respond", async (ctx, input) => {
+async function __chatRespondImpl(ctx, input) {
   const sessionId = normalizeText(input.sessionId || "default");
 
 const prompt = String(input.prompt || input.message || input.query || "");
@@ -27353,6 +27359,22 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
 
   const sess = STATE.sessions.get(sessionId);
 
+  const _clientTurnId = input.clientTurnId || input.turnId || null;
+  const _forceNewTurn = !!(input.regenerate || input.forceNewTurn);
+  if (!_forceNewTurn) {
+    const _completed = findCompletedChatTurn(sess, prompt, { clientTurnId: _clientTurnId });
+    if (_completed && _completed.reply != null) {
+      return {
+        ok: true,
+        reply: _completed.reply,
+        content: _completed.reply,
+        sessionId,
+        deduped: true,
+        llmUsed: false,
+      };
+    }
+  }
+
 sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
 
 // Persist user msg + a deterministic assistant reply when the chat takes
@@ -27366,6 +27388,7 @@ function _persistDeterministicTurn(replyContent, replyMeta = {}) {
       userMsg: { role: 'user', content: prompt, ts: Date.now() - 1 },
       assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: replyMeta },
     });
+    rememberCompletedChatTurn(sess, _clientTurnId, replyContent);
   } catch { /* never block chat on persistence failure */ }
 }
 
@@ -29564,6 +29587,10 @@ ${_operatorV6Block}` : "";
     });
   } catch (_e) { /* never block chat on persistence failure */ }
 
+  try {
+    rememberCompletedChatTurn(sess, _clientTurnId, finalReply);
+  } catch { /* cache is optional */ }
+
   // ===== PARALLEL BRAINS: subconscious "unsaid" analysis + repair consistency check =====
   // chat-parallel-brains.js was imported (top of file) but runParallelBrains/
   // recordParallelMetrics had zero call sites anywhere — genuinely dead
@@ -29655,6 +29682,15 @@ ${_operatorV6Block}` : "";
       params: _chatRoute._cortexIntent.params,
     } : null,
   };
+}
+
+register("chat", "respond", async (ctx, input) => {
+  const sessionId = normalizeText(input.sessionId || "default");
+  const prompt = String(input.prompt || input.message || input.query || "");
+  const clientTurnId = input.clientTurnId || input.turnId || null;
+  const forceNew = !!(input.regenerate || input.forceNewTurn);
+  const turnKey = chatTurnKey(sessionId, { clientTurnId, prompt, forceNew });
+  return coalesceChatTurn(turnKey, () => __chatRespondImpl(ctx, input));
 }, { description: "Mode-aware chat with DTU retrieval, universal lens routing, and inline artifact forge. Outputs GRC v1 envelope." });
 
 // ===== CHAT PIPELINE MACROS =====

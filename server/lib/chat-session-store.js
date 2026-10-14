@@ -20,6 +20,7 @@
 
 import logger from "../logger.js";
 import { stripGovernanceLeak } from "./chat-governance-leak.js";
+import { recentDuplicateUserRow, assistantFollowsUserInDb } from "./chat/turn-pipeline.js";
 
 // Override via CONCORD_CHAT_HYDRATE_LIMIT env var. Default 200 — large
 // enough that a power user with weeks of history rehydrates the full
@@ -124,7 +125,21 @@ export function persistChatTurn(db, sessionId, { ownerId, lastLens, userMsg, ass
       }
     } catch { /* non-fatal */ }
 
-    if (userMsg) persistChatMessage(db, sessionId, { ...userMsg, ts: userMsg.ts || now });
+    // A stream+fallback double-hit (or raced retry) must not insert the same
+    // user row twice. Match the latest *user* row (an assistant may sit on
+    // top). If that user already has a following assistant, the full turn
+    // is done — skip both inserts. If only the user landed, write assistant.
+    let skipUser = false;
+    if (userMsg?.content != null) {
+      const priorUser = recentDuplicateUserRow(db, sessionId, userMsg.content, { now });
+      if (priorUser) {
+        skipUser = true;
+        if (assistantFollowsUserInDb(db, sessionId, priorUser.id)) {
+          return;
+        }
+      }
+    }
+    if (userMsg && !skipUser) persistChatMessage(db, sessionId, { ...userMsg, ts: userMsg.ts || now });
     if (assistantMsg) {
       const _assistantContent = assistantMsg.content == null
         ? assistantMsg.content
