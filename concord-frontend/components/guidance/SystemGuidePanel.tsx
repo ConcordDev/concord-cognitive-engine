@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Z_INDEX } from '@/lib/ui/z-index';
+import { useUIStore } from '@/store/ui';
 
 interface HealthData {
   ok: boolean;
@@ -73,6 +74,9 @@ function SystemGuidePanel() {
   // Default collapsed to a single bulb on the right edge — the full-height rail
   // (alongside the First-Win card) cluttered the lens. Expands on demand.
   const [collapsed, setCollapsed] = useState(true);
+  // Sidebar rail is fixed z-50 (lg:w-16 collapsed / lg:w-64 expanded). The bulb
+  // must sit in the main-content gutter so the rail avatar never steals its hit target.
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
 
   const { data: health } = useQuery<HealthData>({
     queryKey: ['system-health'],
@@ -106,9 +110,15 @@ function SystemGuidePanel() {
   if (collapsed) {
     return (
       <button
+        type="button"
         onClick={() => setCollapsed(false)}
         style={{ zIndex: Z_INDEX.GUIDE_PASSIVE }}
-        className="fixed bottom-6 left-6 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
+        data-testid="expand-guide"
+        className={cn(
+          'fixed bottom-6 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors',
+          // Mobile: sidebar is off-canvas. Desktop: clear collapsed (4rem) or expanded (16rem) rail + 1.5rem gap.
+          sidebarCollapsed ? 'left-6 lg:left-20' : 'left-6 lg:left-[17.5rem]',
+        )}
         title="Expand Guide"
       >
         <Lightbulb className="w-4 h-4 text-neon-blue" />

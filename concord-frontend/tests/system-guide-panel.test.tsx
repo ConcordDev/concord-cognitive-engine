@@ -7,6 +7,14 @@ vi.mock('@/lib/api/client', () => ({
   api: { get: (...args: unknown[]) => mockApiGet(...args) },
 }));
 
+let mockSidebarCollapsed = true;
+vi.mock('@/store/ui', () => ({
+  useUIStore: (selector?: (s: { sidebarCollapsed: boolean }) => unknown) => {
+    const state = { sidebarCollapsed: mockSidebarCollapsed };
+    return typeof selector === 'function' ? selector(state) : state;
+  },
+}));
+
 import { SystemGuidePanel, formatTime } from '@/components/guidance/SystemGuidePanel';
 
 function renderGuide() {
@@ -77,5 +85,37 @@ describe('SystemGuidePanel — missing createdAt (F1)', () => {
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
     expect(screen.queryByText(/reading 'slice'/i)).not.toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
+  });
+});
+
+describe('SystemGuidePanel — Expand Guide hit target (F2)', () => {
+  beforeEach(() => {
+    mockSidebarCollapsed = true;
+    mockApiGet.mockReset();
+    mockApiGet.mockResolvedValue({ data: {} });
+  });
+
+  it('places the bulb clear of the collapsed lg:w-16 sidebar rail', () => {
+    renderGuide();
+    const btn = screen.getByTitle('Expand Guide');
+    expect(btn.className).toMatch(/lg:left-20/);
+    expect(btn.className).not.toMatch(/lg:left-6\b/);
+  });
+
+  it('places the bulb clear of the expanded lg:w-64 sidebar', () => {
+    mockSidebarCollapsed = false;
+    renderGuide();
+    const btn = screen.getByTitle('Expand Guide');
+    expect(btn.className).toMatch(/lg:left-\[17\.5rem\]/);
+  });
+
+  it('opens the guide rail on a real pointer click', () => {
+    renderGuide();
+    const btn = screen.getByTitle('Expand Guide');
+    fireEvent.pointerDown(btn);
+    fireEvent.pointerUp(btn);
+    fireEvent.click(btn);
+    expect(screen.getByText('Guide')).toBeInTheDocument();
+    expect(screen.getByLabelText('Collapse guide panel')).toBeInTheDocument();
   });
 });
