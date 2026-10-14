@@ -41,11 +41,45 @@ const _userPositions = new Map();
 /** "${cityId}:${chunkX}:${chunkZ}" -> Set<userId> */
 const _cityChunks = new Map();
 
+/**
+ * Cities whose `city:positions` payload must be rebuilt + emitted on the
+ * next broadcast tick. Cleared after a successful rebuild attempt (emit or
+ * empty early-return). A tick where the city is absent from this set does
+ * zero serialize work and zero emits (dirty-skip).
+ */
+const _broadcastDirtyCities = new Set();
+
+/**
+ * Optional observer for sync-slice timing (tests / profiling).
+ * Called as `fn({ cityId, phase, syncMs })` where phase is
+ * `"rebuild"` (full serialize+emit work) or `"skip"` (dirty-skip).
+ */
+let _broadcastSliceObserver = null;
+
 /** Pluggable DB handle + fireTrigger hook set by server.js at startup. */
 let _db = null;
 let _fireTrigger = null;
 let _flushTimer = null;
 let _npcSpawnTimer = null;
+
+/** Mark a city dirty for the next presence broadcast. */
+function markCityBroadcastDirty(cityId) {
+  if (cityId) _broadcastDirtyCities.add(cityId);
+}
+
+/**
+ * Test/ops hook: observe sync slices of broadcastPositions.
+ * Pass `null` to clear. Not used in production paths.
+ * @param {null|((info: {cityId:string, phase:string, syncMs:number}) => void)} fn
+ */
+export function setBroadcastSliceObserver(fn) {
+  _broadcastSliceObserver = typeof fn === "function" ? fn : null;
+}
+
+/** Test hook: whether a city is pending a broadcast rebuild. */
+export function isCityBroadcastDirty(cityId) {
+  return _broadcastDirtyCities.has(cityId);
+}
 
 const CHUNK_SIZE = 100; // metres per chunk edge
 const MAX_VISIBLE_AVATARS = 100;
@@ -265,6 +299,7 @@ export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {})
       lastUpdate: Date.now(), createdAt: Date.now(),
       dirty: true, avatar: null,
     });
+    markCityBroadcastDirty("concordia-central");
     return true;
   }
   entry.movementMode = mode;
@@ -281,6 +316,7 @@ export function setUserMovementMode(userId, mode, { mountSpeedMps = null } = {})
     entry.vehicleId = null;
   }
   entry.dirty = true;
+  markCityBroadcastDirty(entry.cityId);
   return true;
 }
 
@@ -343,10 +379,12 @@ export function setUserVisibility(userId, mode) {
       lastUpdate: Date.now(), createdAt: Date.now(),
       dirty: true, avatar: null,
     });
+    markCityBroadcastDirty("concordia-central");
     return true;
   }
   entry.visibility = normalized;
   entry.dirty = true;
+  markCityBroadcastDirty(entry.cityId);
   return true;
 }
 
@@ -433,10 +471,12 @@ export function setUserPresenceStatus(userId, status) {
       lastUpdate: Date.now(), createdAt: Date.now(),
       dirty: true, avatar: null,
     });
+    markCityBroadcastDirty("concordia-central");
     return true;
   }
   entry.presenceStatus = status;
   entry.dirty = true;
+  markCityBroadcastDirty(entry.cityId);
   return true;
 }
 
@@ -588,6 +628,7 @@ export function loadPlayerState(userId) {
     };
     _userPositions.set(userId, entry);
     addToChunk(userId, entry.cityId, toChunk(entry.x), toChunk(entry.z));
+    markCityBroadcastDirty(entry.cityId);
     return entry;
   } catch (err) {
     logger.warn?.("city-presence", `loadPlayerState failed for ${userId}: ${err.message}`);
@@ -906,6 +947,11 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     avatar: prev?.avatar ?? null,
   };
   _userPositions.set(userId, entry);
+  // Broadcast dirty — peers need the new coords / join / city change.
+  markCityBroadcastDirty(cityId);
+  if (prev && prev.cityId && prev.cityId !== cityId) {
+    markCityBroadcastDirty(prev.cityId);
+  }
 
   // Fire world-mechanics triggers when the player crosses a chunk
   // (or city) boundary. The hook is optional — tests and stand-alone
@@ -1231,6 +1277,7 @@ export function removeUser(userId) {
     pos.dirty = true;
     flushDirtyPositions();
     removeFromChunk(userId, pos.cityId, toChunk(pos.x), toChunk(pos.z));
+    markCityBroadcastDirty(pos.cityId);
     _userPositions.delete(userId);
     logger.debug("city-presence", `User ${userId} removed from presence`);
   }
@@ -1281,10 +1328,33 @@ export function getChunkUsers(cityId, chunkX, chunkZ) {
  * Broadcast position updates for every occupied chunk in a city.
  * Caps at MAX_VISIBLE_AVATARS per chunk — furthest users are dropped first.
  *
+ * Dirty-skip: when nothing has changed for `cityId` since the last rebuild
+ * attempt, this returns immediately with no serialize and no emit. Pass
+ * `{ force: true }` to rebuild regardless (tests / recovery).
+ *
+ * Wire format is unchanged: one `city:positions` message per city with
+ * `chunk: null` and the full `users` array. Profiling (batch 019) showed
+ * sync cost at 1000 occupants is ~1–3 ms median — well under the 25 ms
+ * slice budget — so setImmediate per-chunk yielding is intentionally NOT
+ * added (would only complicate the hot path without measurable gain).
+ *
  * @param {string} cityId
- * @param {(event: string, data: object) => void} realtimeEmit
+ * @param {(event: string, data: object, opts?: object) => void} realtimeEmit
+ * @param {{ force?: boolean }} [opts]
+ * @returns {{ skipped: boolean, emitted: boolean, reason?: string }}
  */
-export function broadcastPositions(cityId, realtimeEmit) {
+export function broadcastPositions(cityId, realtimeEmit, opts = {}) {
+  const force = opts?.force === true;
+  const t0 = process.hrtime.bigint();
+
+  if (!force && !_broadcastDirtyCities.has(cityId)) {
+    const syncMs = Number(process.hrtime.bigint() - t0) / 1e6;
+    try {
+      _broadcastSliceObserver?.({ cityId, phase: "skip", syncMs });
+    } catch { /* observer must never break broadcast */ }
+    return { skipped: true, emitted: false, reason: "clean" };
+  }
+
   const visited = new Set();
   // One message per world per tick, not one per occupied chunk: at 100
   // players over ~16 chunks each player received ~157 position messages/s
@@ -1364,7 +1434,18 @@ export function broadcastPositions(cityId, realtimeEmit) {
     for (const u of users) allUsers.push(u);
   }
 
-  if (allUsers.length === 0) return;
+  // Clear dirty whether we emit or not — empty cities still consumed the
+  // dirty bit (no payload to send; clients stale-timeout the last users,
+  // same as the pre-dirty-skip empty early-return).
+  _broadcastDirtyCities.delete(cityId);
+
+  if (allUsers.length === 0) {
+    const syncMs = Number(process.hrtime.bigint() - t0) / 1e6;
+    try {
+      _broadcastSliceObserver?.({ cityId, phase: "rebuild", syncMs });
+    } catch { /* observer must never break broadcast */ }
+    return { skipped: false, emitted: false, reason: "empty" };
+  }
   // Scoped to the world's room (clients move with cityId = their world id
   // and join `world:<id>`). Unscoped, positions went to EVERY connected
   // socket on the site — including people in other lenses — and caused
@@ -1376,6 +1457,12 @@ export function broadcastPositions(cityId, realtimeEmit) {
     users: allUsers,
     timestamp: new Date().toISOString(),
   }, { worldId: cityId });
+
+  const syncMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  try {
+    _broadcastSliceObserver?.({ cityId, phase: "rebuild", syncMs });
+  } catch { /* observer must never break broadcast */ }
+  return { skipped: false, emitted: true };
 }
 
 /**
@@ -1400,16 +1487,17 @@ export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
   // — there's no startup cost on activation.
   registerIdleGate("city_presence_broadcast", () => shouldRunHeavyMaintenance());
 
-  // Collect distinct cityIds on each tick
+  // Collect dirty cityIds on each tick. Clean cities are skipped entirely
+  // (no Map walk of _cityChunks, no payload rebuild, no emit). Occupied
+  // cities that never received a mutation stay silent until someone moves
+  // or a presence field changes.
   const timer = setInterval(() => {
     // Sprint 60+ — lag probe attribution
     try { markLagProbe("city_presence_broadcast"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
     if (!shouldRunHeavyMaintenance()) return;
-    const cities = new Set();
-    for (const [, pos] of _userPositions) {
-      cities.add(pos.cityId);
-    }
-    for (const cityId of cities) {
+    // Snapshot the dirty set — broadcastPositions deletes entries as it goes.
+    const dirtyCities = [..._broadcastDirtyCities];
+    for (const cityId of dirtyCities) {
       broadcastPositions(cityId, realtimeEmit);
     }
     // Stamina regen — 1 point per second
