@@ -442,21 +442,31 @@ export default function registerAgentsActions(registerLensAction) {
         .map(e => ({ from: aClean(e.from, 80), to: aClean(e.to, 80), label: aClean(e.label, 60) || "delegates" }))
         .filter(e => nodeIds.has(e.from) && nodeIds.has(e.to)) : [];
       const graphs = arr(s.graphs, userId);
-      const existing = params.id ? graphs.find(g => g.id === params.id) : null;
+      const requestedId = aClean(params.id, 80);
+      // INC-SWEEP agents F12 — unknown id is a refuse, not create-on-miss.
+      if (requestedId) {
+        const existing = graphs.find(g => g.id === requestedId);
+        if (!existing) return { ok: false, error: "graph not found" };
+        const graph = {
+          id: existing.id,
+          name, nodes, edges,
+          createdAt: existing.createdAt,
+          updatedAt: new Date().toISOString(),
+        };
+        graphs[graphs.indexOf(existing)] = graph;
+        saveAgents();
+        return { ok: true, result: { graph, created: false } };
+      }
       const graph = {
-        id: existing ? existing.id : aId("graph"),
+        id: aId("graph"),
         name, nodes, edges,
-        createdAt: existing ? existing.createdAt : new Date().toISOString(),
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      if (existing) {
-        graphs[graphs.indexOf(existing)] = graph;
-      } else {
-        graphs.unshift(graph);
-        if (graphs.length > 50) graphs.length = 50;
-      }
+      graphs.unshift(graph);
+      if (graphs.length > 50) graphs.length = 50;
       saveAgents();
-      return { ok: true, result: { graph } };
+      return { ok: true, result: { graph, created: true } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -512,18 +522,42 @@ export default function registerAgentsActions(registerLensAction) {
         }
         dispatched.push({ node: w.id, agentLabel: w.label, role: w.role, steps: sub, tokens: toks, status: runStatus(sub) });
       }
+      const totalTokens = dispatched.reduce((x, d) => x + d.tokens, 0);
       const orchestration = {
         id: aId("orch"),
         graphId: graph.id,
         graphName: graph.name,
         goal,
         dispatched,
-        totalTokens: dispatched.reduce((x, d) => x + d.tokens, 0),
+        totalTokens,
         tokensEstimated: true,
         workerCount: dispatched.length,
         ranAt: new Date().toISOString(),
       };
-      return { ok: true, result: { orchestration } };
+      // INC-SWEEP agents F5 — a completed graph run is a run: append to s.runs
+      // so listRuns / runtimeOverview count the same tokens the response reports.
+      const run = {
+        id: orchestration.id,
+        agentId: graph.id,
+        agentName: graph.name,
+        goal,
+        status: dispatched.every((d) => d.status === "completed") ? "completed"
+          : dispatched.some((d) => d.status === "completed" || d.status === "partial") ? "partial" : "failed",
+        stoppedReason: null,
+        trigger: "graph",
+        tokensEstimated: true,
+        steps: dispatched.flatMap((d) => d.steps || []),
+        stepCount: dispatched.reduce((n, d) => n + (d.steps?.length || 0), 0),
+        totalLatencyMs: 0,
+        totalTokens,
+        startedAt: orchestration.ranAt,
+        finishedAt: orchestration.ranAt,
+      };
+      const runs = arr(s.runs, userId);
+      runs.unshift(run);
+      if (runs.length > 200) runs.length = 200;
+      saveAgents();
+      return { ok: true, result: { orchestration, run } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -639,10 +673,18 @@ export default function registerAgentsActions(registerLensAction) {
       const runs = arr(s.runs, userId);
       runs.unshift(run);
       if (runs.length > 200) runs.length = 200;
+      // INC-SWEEP agents F7 — schedule spend must move the same budget counter
+      // executeRun updates, so getBudget.tokensUsed reconciles with overview.
+      const budgetMap = submap(s.budgets, userId);
+      const budget = budgetMap.get(sch.agentId) || null;
+      if (budget) {
+        budget.tokensUsed = (budget.tokensUsed || 0) + toks;
+        budgetMap.set(sch.agentId, budget);
+      }
       sch.lastFiredAt = new Date().toISOString();
       sch.fireCount = (sch.fireCount || 0) + 1;
       saveAgents();
-      return { ok: true, result: { run, schedule: sch } };
+      return { ok: true, result: { run, schedule: sch, budgetRemaining: budget ? Math.max(0, budget.tokenLimit - budget.tokensUsed) : null } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -704,8 +746,10 @@ export default function registerAgentsActions(registerLensAction) {
       const userId = aActor(ctx);
       const agentId = aClean(params.agentId, 80);
       if (!agentId) return { ok: false, error: "agentId required" };
-      const thread = submap(s.threads, userId).get(agentId)
-        || { agentId, agentName: agentId, messages: [], createdAt: null };
+      // INC-SWEEP agents F15 — never fabricate an empty thread (or echo the raw
+      // id as agentName) for a missing / other-account agentId.
+      const thread = submap(s.threads, userId).get(agentId);
+      if (!thread) return { ok: false, error: "thread not found" };
       return { ok: true, result: { thread } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -864,18 +908,36 @@ export default function registerAgentsActions(registerLensAction) {
     },
   ];
 
-  registerLensAction("agents", "listTemplates", (_ctx, _a, _params = {}) => {
-    return { ok: true, result: { templates: AGENT_TEMPLATES, total: AGENT_TEMPLATES.length } };
+  // INC-SWEEP agents F13 — install counts are per-account, not process-global.
+  function templateInstallsFor(userId) {
+    const s = getAgentState();
+    if (!s) return new Map();
+    if (!(s.templateInstalls instanceof Map)) s.templateInstalls = new Map();
+    return submap(s.templateInstalls, userId);
+  }
+
+  registerLensAction("agents", "listTemplates", (ctx, _a, _params = {}) => {
+    const installs = templateInstallsFor(aActor(ctx));
+    const templates = AGENT_TEMPLATES.map((t) => ({
+      ...t,
+      installs: installs.get(t.id) || 0,
+    }));
+    return { ok: true, result: { templates, total: templates.length } };
   });
 
   // Import a template — returns a fully-formed agent definition object the
   // frontend persists via the generic artifact store, and bumps install count.
   registerLensAction("agents", "importTemplate", (ctx, _a, params = {}) => {
     try {
-      const templateId = aClean(params.templateId, 80);
+      const templateId = aClean(params.templateId || params.id, 80);
       const tpl = AGENT_TEMPLATES.find(t => t.id === templateId);
       if (!tpl) return { ok: false, error: "template not found" };
-      tpl.installs = (tpl.installs || 0) + 1;
+      const userId = aActor(ctx);
+      const installs = templateInstallsFor(userId);
+      const next = (installs.get(tpl.id) || 0) + 1;
+      installs.set(tpl.id, next);
+      saveAgents();
+      const template = { ...tpl, installs: next };
       const agentDefinition = {
         name: aClean(params.name, 120) || tpl.name,
         type: tpl.type,
@@ -895,7 +957,7 @@ export default function registerAgentsActions(registerLensAction) {
         logs: [],
         importedFrom: tpl.id,
       };
-      return { ok: true, result: { agentDefinition, template: tpl } };
+      return { ok: true, result: { agentDefinition, template } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

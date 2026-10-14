@@ -218,8 +218,10 @@ describe("agents — conversation threads", () => {
     await call("postMessage", ctxA, { agentId: "ag1", text: "hi" });
     const cleared = await call("clearThread", ctxA, { agentId: "ag1" });
     assert.equal(cleared.ok, true);
+    // INC-SWEEP agents F15 — cleared / missing threads refuse, not fabricate.
     const get = await call("getThread", ctxA, { agentId: "ag1" });
-    assert.equal(get.result.thread.messages.length, 0);
+    assert.equal(get.ok, false);
+    assert.match(get.error, /thread not found/i);
   });
 
   it("postMessage rejects empty text", async () => {
