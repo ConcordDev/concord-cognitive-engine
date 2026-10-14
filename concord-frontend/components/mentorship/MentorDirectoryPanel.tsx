@@ -12,6 +12,7 @@ import {
   Loader2, Plus, Search, Star, Users, Send, ChevronLeft, BadgeCheck, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
 import { cn } from '@/lib/utils';
 import { ReviewHistogram, type ReviewHistogramBucket } from '@/components/mentorship/ReviewHistogram';
 
@@ -132,6 +133,7 @@ export function MentorDirectoryPanel() {
     if (r.data?.ok === false) { setError(r.data.error || 'Registration failed.'); return; }
     setShowRegister(false);
     setRegForm({ name: '', headline: '', bio: '', skills: '', experienceYears: '3', availability: 'weekly', capacity: '3', hourlyFocus: 'career' });
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 

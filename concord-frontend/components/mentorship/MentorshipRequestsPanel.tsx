@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
 
 interface MentorshipRequest {
   id: string;
@@ -62,6 +63,7 @@ export function MentorshipRequestsPanel() {
     const r = await lensRun('mentorship', 'request-respond', { requestId, decision });
     setBusyId(null);
     if (r.data?.ok === false) { setError(r.data.error || 'Action failed.'); return; }
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 
@@ -70,6 +72,7 @@ export function MentorshipRequestsPanel() {
     const r = await lensRun('mentorship', 'request-withdraw', { requestId });
     setBusyId(null);
     if (r.data?.ok === false) { setError(r.data.error || 'Withdraw failed.'); return; }
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 

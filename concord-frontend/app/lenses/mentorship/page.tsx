@@ -49,6 +49,7 @@ import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+import { MENTORSHIP_PROGRAM_CHANGED } from '@/lib/mentorship/program-stats';
 
 interface ProgramReport {
   mentors: number;
@@ -86,6 +87,13 @@ export default function MentorshipLensPage() {
   const loadStats = useCallback(() => { void stats.dispatch('mentorship', 'program-report', {}); }, [stats]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadStats(); }, []);
+  // F4 — panels notify after create/complete/check-in so the strip matches a
+  // fresh program-report without a manual Refresh.
+  useEffect(() => {
+    const onChanged = () => { loadStats(); };
+    window.addEventListener(MENTORSHIP_PROGRAM_CHANGED, onChanged);
+    return () => window.removeEventListener(MENTORSHIP_PROGRAM_CHANGED, onChanged);
+  }, [loadStats]);
 
   const navTabs = omitCommunityRedditViews(TABS, ['community']);
   useLensCommand(

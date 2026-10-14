@@ -15,6 +15,7 @@ import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { GroupSessionsPanel } from '@/components/mentorship/GroupSessionsPanel';
 import { cn } from '@/lib/utils';
+import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
 
 interface ActionItem { id: string; text: string; done: boolean; createdAt: string }
 interface MentorSession {
@@ -92,6 +93,7 @@ export function MentorshipSessionsPanel() {
     if (r.data?.ok === false) { setError(r.data.error || 'Booking failed.'); return; }
     setShowBook(false);
     setBookForm({ partnerId: '', partnerName: '', title: '', startAt: '', durationMin: '45', videoLink: '', agenda: '' });
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 
@@ -101,6 +103,7 @@ export function MentorshipSessionsPanel() {
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data.error || 'Update failed.'); return; }
     if (selected?.id === id && r.data?.result?.session) setSelected(r.data.result.session as MentorSession);
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 

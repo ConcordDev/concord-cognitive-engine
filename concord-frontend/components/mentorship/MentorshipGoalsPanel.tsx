@@ -13,6 +13,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
 
 interface CheckIn { id: string; note: string; progress: number; at: string }
 interface MentorshipGoal {
@@ -71,6 +72,7 @@ export function MentorshipGoalsPanel() {
     if (r.data?.ok === false) { setError(r.data.error || 'Create failed.'); return; }
     setShowCreate(false);
     setForm({ title: '', detail: '', targetDate: '', partnerId: '' });
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 
@@ -84,6 +86,7 @@ export function MentorshipGoalsPanel() {
     if (r.data?.ok === false) { setError(r.data.error || 'Check-in failed.'); return; }
     if (r.data?.result?.goal) setSelected(r.data.result.goal as MentorshipGoal);
     setCheckInDraft({ note: '', progress: 0 });
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 
@@ -94,6 +97,7 @@ export function MentorshipGoalsPanel() {
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data.error || 'Update failed.'); return; }
     if (r.data?.result?.goal) setSelected(r.data.result.goal as MentorshipGoal);
+    notifyMentorshipProgramChanged();
     void refresh();
   };
 

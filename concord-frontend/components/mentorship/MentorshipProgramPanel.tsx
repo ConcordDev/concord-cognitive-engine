@@ -10,6 +10,7 @@ import { Loader2, BarChart3, RefreshCw, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
+import { MENTORSHIP_PROGRAM_CHANGED } from '@/lib/mentorship/program-stats';
 
 interface CohortRow {
   mentorId: string;
@@ -49,6 +50,11 @@ export function MentorshipProgramPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const onChanged = () => { void refresh(); };
+    window.addEventListener(MENTORSHIP_PROGRAM_CHANGED, onChanged);
+    return () => window.removeEventListener(MENTORSHIP_PROGRAM_CHANGED, onChanged);
+  }, [refresh]);
 
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;

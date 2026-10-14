@@ -139,6 +139,13 @@ describe('mentorship lens — tab wiring', () => {
     render(<MentorshipLens />);
     expect(dispatchSpy).toHaveBeenCalledWith('mentorship', 'program-report', {});
   });
+
+  it('F4 after a create mutation event, strip refetches program-report without Refresh', async () => {
+    render(<MentorshipLens />);
+    dispatchSpy.mockClear();
+    window.dispatchEvent(new Event('mentorship:program-changed'));
+    await waitFor(() => expect(dispatchSpy).toHaveBeenCalledWith('mentorship', 'program-report', {}));
+  });
 });
 
 describe('mentorship lens — header KPI states', () => {
