@@ -1130,11 +1130,29 @@ export default function registerForkActions(registerLensAction) {
       if (dtuIds.length === 0) {
         return { ok: false, error: "missing_input", reason: "forkObjectId or a non-empty dtuIds array is required" };
       }
+      // INC-SWEEP agents F16 — bound check first (same as createForkObject), then
+      // missing DTU ids refuse; never mint a draft whose dtuCount disagrees with
+      // the readable preview array. Sandbox reads `dtus` (lattice-fork.js#readDtu).
+      const ids = [...new Set(dtuIds.map((x) => String(x || "").trim()).filter(Boolean))];
+      if (ids.length > MAX_FORK_DTUS) {
+        return { ok: false, error: "fork_bound_exceeded", reason: `dtuIds exceeds bounded cap ${MAX_FORK_DTUS}`, maxForkDtus: MAX_FORK_DTUS };
+      }
+      const missing = [];
+      for (const id of ids) {
+        let row = null;
+        try {
+          row = db.prepare("SELECT id FROM dtus WHERE id = ?").get(id);
+        } catch { row = null; }
+        if (!row) missing.push(id);
+      }
+      if (missing.length) {
+        return { ok: false, error: "dtu_not_found", reason: "one or more dtuIds do not exist", missing };
+      }
       try {
         const created = createForkObject(db, {
           ownerUserId: userId,
           sourceUserId: typeof params.sourceUserId === "string" && params.sourceUserId ? params.sourceUserId : userId,
-          dtuIds,
+          dtuIds: ids,
         });
         fork = loadForkObject(db, created.id);
       } catch (e) {
@@ -1212,7 +1230,9 @@ export default function registerForkActions(registerLensAction) {
         ownerUserId: fork.ownerUserId,
         sourceUserId: fork.sourceUserId,
         sourceDisplayName,
-        dtuCount: fork.dtuCount,
+        // Count must describe the array returned (readable DTUs), not the
+        // raw id list that may include rows the sandbox could not resolve.
+        dtuCount: dtuPreviews.length,
         maxForkDtus: MAX_FORK_DTUS,
         status: fork.status,
         agentUserId: disclosure.agentUserId,
