@@ -56,6 +56,14 @@ function blankIntv(): InterventionDraft {
   return { key: `i_${seq}`, description: '', targetKeys: [], cost: 50, effort: 5, effectiveness: 0.5, timeToImplement: 30 };
 }
 
+/** Match the server-returned roi at stored precision (1.5 -> "1.5", not toFixed(0) "2"). */
+export function formatRoiPct(roi: number): string {
+  if (!Number.isFinite(roi)) return '—';
+  // Server rounds via Math.round(v * 1000) / 1000; drop trailing zeros only.
+  const rounded = Math.round(roi * 1000) / 1000;
+  return String(rounded);
+}
+
 export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
   const [causes, setCauses] = useState<CauseDraft[]>([blankCause(), blankCause()]);
   const [interventions, setInterventions] = useState<InterventionDraft[]>([blankIntv()]);
@@ -108,7 +116,7 @@ export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
     setErr(null);
     const res = await lensRun('suffering', 'intervention-track', {
       title: r.description,
-      description: `From ROI planner — priority ${r.priorityScore}, ROI ${r.roi}%, cost-benefit ${r.costBenefitRatio}, coverage ${(r.coverage * 100).toFixed(0)}%.`,
+      description: `From ROI planner — priority ${r.priorityScore}, ROI ${formatRoiPct(r.roi)}%, cost-benefit ${r.costBenefitRatio}, coverage ${(r.coverage * 100).toFixed(0)}%.`,
     });
     setTracking(null);
     if (!res.data.ok) { setErr(res.data.error || 'Track failed'); return; }
@@ -232,7 +240,7 @@ export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
                 <span className="text-xs text-gray-500 w-5 shrink-0">#{i + 1}</span>
                 <span className="text-sm flex-1 truncate">{r.description}</span>
                 <span className="text-[11px] text-gray-400 shrink-0">cov {(r.coverage * 100).toFixed(0)}%</span>
-                <span className="text-[11px] text-gray-400 shrink-0">ROI {r.roi.toFixed(0)}%</span>
+                <span className="text-[11px] text-gray-400 shrink-0">ROI {formatRoiPct(r.roi)}%</span>
                 <span className="text-xs font-bold text-neon-purple shrink-0" title="Priority score">{r.priorityScore.toFixed(1)}</span>
                 <button
                   onClick={() => track(r)}
