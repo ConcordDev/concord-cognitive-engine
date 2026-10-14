@@ -5,6 +5,7 @@ import { FileText, Loader2, ExternalLink, Star, StarOff } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
+/** Canonical UI bill shape after normalizing the congress.gov macro payload. */
 export interface Bill {
   id: string;
   number: string;
@@ -14,12 +15,44 @@ export interface Bill {
   introducedDate: string;
   latestActionDate?: string;
   latestActionText?: string;
-  status: 'introduced' | 'committee' | 'floor' | 'passed_chamber' | 'passed_both' | 'signed' | 'vetoed' | 'failed';
+  status: BillStatus;
   sponsor?: { name: string; party: string; state: string };
   cosponsors?: number;
   subjects?: string[];
   url?: string;
 }
+
+export type BillStatus =
+  | 'introduced'
+  | 'committee'
+  | 'floor'
+  | 'passed_chamber'
+  | 'passed_both'
+  | 'signed'
+  | 'vetoed'
+  | 'failed'
+  | 'unknown';
+
+/** Raw row from government.bills-list (congress.gov) — no status/id. */
+export type BillsListRow = {
+  billId?: string;
+  id?: string;
+  congress?: number;
+  type?: string;
+  number?: string | number;
+  title?: string;
+  introducedDate?: string | null;
+  latestAction?: string | null;
+  latestActionDate?: string | null;
+  latestActionText?: string | null;
+  status?: string | null;
+  originChamber?: string | null;
+  url?: string | null;
+  summary?: string;
+  sponsor?: Bill['sponsor'];
+  cosponsors?: number;
+  subjects?: string[];
+};
 
 const STORAGE_KEY = 'concord:gov:bill-watch:v1';
 function loadWatch(): string[] {
@@ -31,7 +64,7 @@ function saveWatch(ids: string[]) {
   try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids)); } catch { /* noop */ }
 }
 
-const STATUS_COLOR: Record<Bill['status'], string> = {
+const STATUS_COLOR: Record<BillStatus, string> = {
   introduced: 'bg-gray-500/20 text-gray-300',
   committee: 'bg-blue-500/20 text-blue-200',
   floor: 'bg-cyan-500/20 text-cyan-200',
@@ -40,12 +73,65 @@ const STATUS_COLOR: Record<Bill['status'], string> = {
   signed: 'bg-green-500/20 text-green-300',
   vetoed: 'bg-red-500/20 text-red-300',
   failed: 'bg-red-500/20 text-red-300',
+  unknown: 'bg-gray-500/20 text-gray-400',
 };
+
+const KNOWN_STATUSES = new Set<string>(Object.keys(STATUS_COLOR));
+
+/** Infer a coarse status from latest-action text when the macro omits status. */
+export function deriveBillStatus(latestAction: string | null | undefined): BillStatus {
+  if (!latestAction) return 'unknown';
+  const t = latestAction.toLowerCase();
+  if (/\bveto/.test(t)) return 'vetoed';
+  if (/\bfailed\b|\brejected\b/.test(t)) return 'failed';
+  if (/\bsigned\b|\bbecame public law\b|\benacted\b/.test(t)) return 'signed';
+  if (/\bpassed\b.*\b(house|senate)\b.*\b(house|senate)\b|\bcleared (for|both)/.test(t)) return 'passed_both';
+  if (/\bpassed\b/.test(t)) return 'passed_chamber';
+  if (/\bfloor\b|\bconsidered\b|\bdebate\b/.test(t)) return 'floor';
+  if (/\bcommittee\b|\breferred\b/.test(t)) return 'committee';
+  if (/\bintroduced\b|\bread twice\b/.test(t)) return 'introduced';
+  return 'unknown';
+}
+
+export function normalizeBill(raw: BillsListRow): Bill {
+  const latestActionText = raw.latestActionText ?? raw.latestAction ?? undefined;
+  const rawStatus = typeof raw.status === 'string' && raw.status.trim() ? raw.status.trim() : '';
+  const status: BillStatus = KNOWN_STATUSES.has(rawStatus)
+    ? (rawStatus as BillStatus)
+    : deriveBillStatus(latestActionText);
+  const type = raw.type || '';
+  const number = raw.number != null ? String(raw.number) : '';
+  const id = String(raw.id || raw.billId || `${type}${number}-${raw.congress || ''}` || cryptoRandomId());
+  return {
+    id,
+    number: number ? `${type}${number}` : id,
+    congress: Number(raw.congress) || 0,
+    title: raw.title || id,
+    summary: raw.summary,
+    introducedDate: raw.introducedDate || '',
+    latestActionDate: raw.latestActionDate || undefined,
+    latestActionText: latestActionText || undefined,
+    status,
+    sponsor: raw.sponsor,
+    cosponsors: raw.cosponsors,
+    subjects: raw.subjects,
+    url: raw.url || undefined,
+  };
+}
+
+function cryptoRandomId(): string {
+  return `bill_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function statusLabel(status: string | null | undefined): string {
+  const s = typeof status === 'string' && status.trim() ? status : 'unknown';
+  return s.replace(/_/g, ' ');
+}
 
 export function BillTracker() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'watched' | Bill['status']>('all');
+  const [filter, setFilter] = useState<'all' | 'watched' | BillStatus>('all');
   const [topic, setTopic] = useState('');
   const [watched, setWatched] = useState<string[]>([]);
 
@@ -55,7 +141,8 @@ export function BillTracker() {
     setLoading(true);
     try {
       const res = await lensRun({ domain: 'government', action: 'bills-list', input: { topic: searchTopic, limit: 40 } });
-      setBills((res.data?.result?.bills || []) as Bill[]);
+      const rows = (res.data?.result?.bills || []) as BillsListRow[];
+      setBills(rows.map(normalizeBill));
     } catch (e) { console.error('[Bills] failed', e); }
     finally { setLoading(false); }
   }
@@ -90,7 +177,7 @@ export function BillTracker() {
           className="flex-1 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white"
         />
         <button onClick={() => refresh(topic)} className="px-3 py-1 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Search</button>
-        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | Bill['status'])} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | BillStatus)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All status</option>
           <option value="watched">Watched only</option>
           <option value="introduced">Introduced</option>
@@ -101,6 +188,7 @@ export function BillTracker() {
           <option value="signed">Signed</option>
           <option value="vetoed">Vetoed</option>
           <option value="failed">Failed</option>
+          <option value="unknown">Unknown</option>
         </select>
       </div>
       <div className="max-h-[600px] overflow-y-auto">
@@ -119,7 +207,7 @@ export function BillTracker() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-cyan-300 text-xs">{b.number}</span>
-                      <span className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold', STATUS_COLOR[b.status])}>{b.status.replace(/_/g, ' ')}</span>
+                      <span className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold', STATUS_COLOR[b.status] || STATUS_COLOR.unknown)}>{statusLabel(b.status)}</span>
                       {b.url && (
                         <a href={b.url} target="_blank" rel="noreferrer noopener" className="ml-auto text-[10px] text-cyan-300 hover:text-cyan-100 inline-flex items-center gap-0.5">
                           congress.gov <ExternalLink className="w-3 h-3" />
