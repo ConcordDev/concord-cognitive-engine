@@ -46945,6 +46945,9 @@ function _presentLensArtifact(artifact, ctx) {
 function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
   try {
     const dtuId = uid("dtu");
+    // INC-SWEEP agents F1 — shadow exhaust of a private fleet artifact must
+    // carry owner + private visibility so anon/acct2 cannot read the id.
+    const ownerId = artifact?.ownerId || ctx?.actor?.userId || null;
     const dtu = {
       id: dtuId,
       title: `Lens:${domain} ${action} ${artifactType}`,
@@ -46954,6 +46957,8 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       tags: [`lens:${domain}`, `artifact:${artifactType}`, `action:${action}`],
       createdAt: nowISO(),
       updatedAt: nowISO(),
+      ownerId: ownerId || undefined,
+      visibility: "private",
       machine: { kind: "lens_exhaust", domain, action, artifactType, artifactId: artifact.id },
       human: { summary: `${action} ${artifactType} in ${domain}` },
       claims: extra.claims || [],
@@ -47072,9 +47077,12 @@ register("lens", "create", async (ctx, input={}) => {
   if (!domain || !type) return { ok: false, error: "domain and type required" };
 
   // INC-SWEEP lab F2 — lab must not invent "New experiment" for a blank title.
-  // Other domains keep the legacy default; lab requires a real title.
+  // INC-SWEEP agents F3 — empty fleet title must refuse too (same bar as task
+  // name), not invent "New agent". Other domains keep the legacy default;
+  // lab and agents require a real title. (Union resolution, Zuko 2026-10-14:
+  // trimmedTitle is load-bearing — the artifact below is created with it.)
   const trimmedTitle = typeof title === "string" ? title.trim() : (title == null ? "" : String(title).trim());
-  if (domain === "lab" && !trimmedTitle) {
+  if ((domain === "lab" || domain === "agents") && !trimmedTitle) {
     return { ok: false, error: "title required" };
   }
 
@@ -48698,6 +48706,13 @@ app.post("/api/lens/run", async (req, res) => {
 app.get("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
+    // INC-SWEEP agents F15 — private fleet list is not an anonymous catalog.
+    if (req.params.domain === "agents") {
+      const uid = ctx?.actor?.userId;
+      if (!uid || uid === "anon") {
+        return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+      }
+    }
     const out = await runMacro("lens", "list", { domain: req.params.domain, type: req.query.type, search: req.query.search, tags: req.query.tags?.split(","), status: req.query.status, limit: Number(req.query.limit)||100, offset: Number(req.query.offset)||0 }, ctx);
     res.json(out);
   } catch (e) {
@@ -48709,7 +48724,9 @@ app.get("/api/lens/:domain", async (req, res) => {
 app.get("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "get", { id: req.params.id, domain: req.params.domain }, ctx));
+    // INC-SWEEP agents F15 — not-found / unauthorized must be HTTP 404/401,
+    // not 200 with ok:false (same envelope as create/update/delete).
+    _respondMacroResult(res, await runMacro("lens", "get", { id: req.params.id, domain: req.params.domain }, ctx));
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -49032,16 +49049,35 @@ registerLensAction("council", "audit", (ctx, artifact, _params) => {
 
 // === Agents ===
 registerLensAction("agents", "start", (ctx, artifact, _params) => {
-  artifact.data = { ...artifact.data, status: "active", startedAt: nowISO() };
+  // INC-SWEEP agents F4 — persist the run flags the fleet GET reads.
+  if (!artifact?.id || !STATE.lensArtifacts.has(artifact.id)) {
+    return { ok: false, error: "artifact id required" };
+  }
+  artifact.data = {
+    ...artifact.data,
+    status: "active",
+    enabled: true,
+    isRunning: true,
+    startedAt: nowISO(),
+  };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
-  return { ok: true, status: "active" };
+  return { ok: true, status: "active", enabled: true, isRunning: true };
 });
 registerLensAction("agents", "stop", (ctx, artifact, _params) => {
-  artifact.data = { ...artifact.data, status: "dormant", stoppedAt: nowISO() };
+  if (!artifact?.id || !STATE.lensArtifacts.has(artifact.id)) {
+    return { ok: false, error: "artifact id required" };
+  }
+  artifact.data = {
+    ...artifact.data,
+    status: "dormant",
+    enabled: false,
+    isRunning: false,
+    stoppedAt: nowISO(),
+  };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
-  return { ok: true, status: "dormant" };
+  return { ok: true, status: "dormant", enabled: false, isRunning: false };
 });
 registerLensAction("agents", "reset", (ctx, artifact, _params) => {
   // INC-SWEEP agents F11 — reset is domain-local (not COMMON); still require a
