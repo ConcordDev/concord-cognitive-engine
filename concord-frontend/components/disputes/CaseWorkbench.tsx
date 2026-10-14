@@ -722,9 +722,15 @@ function EscrowControls({ c, busy, run, closed }: { c: PublicCase; busy: string 
 /*  Mediator controls                                                  */
 /* ------------------------------------------------------------------ */
 
-function MediatorControls({ c, busy, run }: { c: PublicCase; busy: string | null; run: RunFn }) {
+export function MediatorControls({ c, busy, run }: { c: PublicCase; busy: string | null; run: RunFn }) {
   const [mediatorId, setMediatorId] = useState('');
   const [mediatorName, setMediatorName] = useState('');
+
+  // Reset draft inputs when the selected case changes (F8).
+  useEffect(() => {
+    setMediatorId('');
+    setMediatorName('');
+  }, [c.id]);
 
   return (
     <div className="rounded-md border border-zinc-800 p-2.5">
