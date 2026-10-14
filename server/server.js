@@ -51328,12 +51328,15 @@ registerUniversalLensActions();
       const resolved = _requirePersistedLensArtifact(artifact, params);
       if (!resolved.ok) return resolved;
       artifact = resolved.artifact;
+      // INC-SWEEP research F5 — blank comment is a validation refusal, not a save.
+      const text = typeof params?.text === "string" ? params.text.trim() : "";
+      if (!text) return { ok: false, error: "text required" };
       if (!artifact.data) artifact.data = {};
       if (!artifact.data.comments) artifact.data.comments = [];
       // INC-SWEEP research F3 — public label on the wire; never raw uuid.
       const comment = {
         id: uid("cmt"),
-        text: params?.text || "",
+        text,
         author: _publicActorLabel(ctx, ctx?.actor?.userId || null),
         createdAt: nowISO(),
       };
