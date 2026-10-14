@@ -104,35 +104,108 @@ function resolveFocus(focus) {
   return FOCUS_MODES[String(focus || "all").toLowerCase()] || FOCUS_MODES.all;
 }
 
-// ---- live web search -----------------------------------------------------
+// ---- live web grounding (shared by ask + sources_preview) ---------------
+//
+// Root cause of F1 (example.com walk): ask ran Wikipedia search on the
+// shaped question and attached unrelated hits, while sources_preview only
+// read the DTU corpus — so preview said [] and ask claimed "2 live web"
+// that were never the requested page. One path now:
+//   1. URLs in the question → fetchPublicPage those pages only.
+//   2. If a URL was named but no usable extract → zero web sources (no filler).
+//   3. No URL → webSearchForChat, with entity-decoded snippets.
+
+const HONEST_URL_FETCH_FAILED =
+  "Could not fetch a usable extract from the URL in the question. No web sources are cited.";
+
+function shapeWebRow(r, query, decodeHtmlEntities) {
+  const decode = typeof decodeHtmlEntities === "function" ? decodeHtmlEntities : (s) => String(s || "");
+  const title = decode(r.title || query).slice(0, 200);
+  const snippet = decode(r.snippet || r.content || "").slice(0, 240);
+  const content = decode(r.content || r.snippet || "").slice(0, EXPERT_SOURCE_TEXT_CAP);
+  const url = r.url || "";
+  return {
+    id: `web_${crypto.createHash("sha1").update(url || title || query).digest("hex").slice(0, 12)}`,
+    title,
+    snippet,
+    content,
+    url,
+    creator_id: null,
+    scope: "web",
+    origin: "web",
+    source_name: r.source || "web",
+    minted_by_provider: null,
+    minted_by_model: null,
+  };
+}
 
 /**
- * Run a live web search and shape the results into expert-mode source
- * rows. Lazy-imports the conscious-web-search engine so this domain
- * loads without the web stack present (tests, offline).
+ * Shared web grounding for ask + sources_preview.
+ * @returns {Promise<{ sources: object[], urlAttempted: boolean, urlFetched: number }>}
  */
-async function liveWebSources(query, limit) {
+async function gatherWebGrounding(query, limit) {
+  const empty = { sources: [], urlAttempted: false, urlFetched: 0 };
   try {
     const mod = await import("../emergent/conscious-web-search.js");
+    const cap = Math.max(1, Number(limit) || 5);
+    const urls = (mod.extractUrls(query) || []).slice(0, cap);
+
+    if (urls.length > 0) {
+      const sources = [];
+      for (const url of urls) {
+        const page = await mod.fetchPublicPage(url);
+        if (!page?.text || String(page.text).trim().length < 12) continue;
+        let host = "web";
+        try { host = new URL(page.url || url).hostname; } catch { /* keep web */ }
+        sources.push(shapeWebRow({
+          title: page.title || host,
+          url: page.url || url,
+          snippet: page.text.slice(0, 240),
+          content: page.text.slice(0, EXPERT_SOURCE_TEXT_CAP),
+          source: host,
+        }, query, mod.decodeHtmlEntities));
+      }
+      return { sources, urlAttempted: true, urlFetched: sources.length };
+    }
+
     const results = await mod.webSearchForChat([query]);
-    return (results || []).slice(0, limit).map((r) => ({
-      id: `web_${crypto.createHash("sha1").update(r.url || r.title || query).digest("hex").slice(0, 12)}`,
-      title: r.title || query,
-      // snippet stays the short search blurb for the source card.
-      // content is the lead extract (height, capital, …) the answer prompt reads.
-      snippet: (r.snippet || r.content || "").slice(0, 240),
-      content: (r.content || r.snippet || "").slice(0, EXPERT_SOURCE_TEXT_CAP),
-      url: r.url || "",
-      creator_id: null,
-      scope: "web",
-      origin: "web",
-      source_name: r.source || "web",
-      minted_by_provider: null,
-      minted_by_model: null,
-    }));
+    const sources = (results || []).slice(0, cap).map((r) =>
+      shapeWebRow(r, query, mod.decodeHtmlEntities),
+    );
+    return { sources, urlAttempted: false, urlFetched: 0 };
   } catch {
-    return [];
+    return empty;
   }
+}
+
+/** @deprecated use gatherWebGrounding — kept for web_search standalone macro */
+async function liveWebSources(query, limit) {
+  const g = await gatherWebGrounding(query, limit);
+  return g.sources;
+}
+
+/**
+ * Compose the same source list ask will hand the brain (DTU + web).
+ * Preview and ask must agree.
+ */
+async function gatherExpertSources({ db, userId, query, wantWeb, maxSources }) {
+  const cap = Math.min(20, Math.max(2, Number(maxSources) || 8));
+  const webCap = Math.min(5, cap);
+  const grounded = wantWeb
+    ? await gatherWebGrounding(query, webCap)
+    : { sources: [], urlAttempted: false, urlFetched: 0 };
+  const web = grounded.sources;
+  const dtuRoom = Math.max(0, cap - web.length);
+  const dtu = dtuRoom > 0
+    ? gatherSourcesForQuery(db, { query, userId, limit: dtuRoom })
+    : [];
+  return {
+    sources: [...dtu, ...web],
+    web,
+    dtu,
+    urlAttempted: grounded.urlAttempted,
+    urlFetched: grounded.urlFetched,
+    cap,
+  };
 }
 
 function relatedQuestions(query, answer) {
@@ -212,11 +285,35 @@ export default function registerExpertModeMacros(register) {
   register("expert_mode", "sources_preview", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = actorId(ctx);
-    const { query, maxSources } = input || {};
+    const { query, maxSources, useWeb, focus } = input || {};
     if (!db || !query) return { ok: false, reason: "missing_inputs" };
-    const sources = gatherSourcesForQuery(db, { query, userId, limit: maxSources || 8 });
-    return { ok: true, query, sources };
-  }, { note: "Preview the sources that would be cited for a query, WITHOUT running the brain. Cheap; lets the UI show 'about to consult N sources' before the user commits." });
+    const mode = resolveFocus(focus);
+    const wantWeb = useWeb != null ? !!useWeb : mode.web;
+    const packed = await gatherExpertSources({
+      db, userId, query: String(query).trim(), wantWeb, maxSources,
+    });
+    // Same rows ask will pass as extras + DTUs (shape the UI chip expects).
+    const sources = packed.sources.map((s) => ({
+      id: s.id,
+      title: s.title,
+      snippet: s.snippet || "",
+      url: s.url || "",
+      scope: s.scope,
+      origin: s.origin || (s.scope === "web" ? "web" : s.scope),
+      creator_id: s.creator_id ?? null,
+      minted_by_provider: s.minted_by_provider ?? null,
+      minted_by_model: s.minted_by_model ?? null,
+      source_name: s.source_name || null,
+    }));
+    return {
+      ok: true,
+      query: String(query).trim(),
+      sources,
+      webCount: packed.web.length,
+      urlAttempted: packed.urlAttempted,
+      urlFetched: packed.urlFetched,
+    };
+  }, { note: "Preview the sources that would be cited for a query, WITHOUT running the brain. Shares gatherExpertSources with ask so the chip count matches." });
 
   register("expert_mode", "extract_citations", async (_ctx, input = {}) => {
     const text = input?.text ?? input?.answer ?? "";
@@ -251,25 +348,42 @@ export default function registerExpertModeMacros(register) {
     // Live web search runs when the focus mode allows it AND the caller
     // opts in (default on for web-capable modes).
     const wantWeb = useWeb != null ? !!useWeb : mode.web;
-    const cap = Math.min(20, Math.max(2, Number(maxSources) || 8));
 
     // Threaded context: prior Q+A folds into the query the brain sees.
     const contextQuery = threadContextQuery(thread, String(query).trim());
     const augmented = `${contextQuery}${mode.directive ? `\n\n[Focus directive] ${mode.directive}` : ""}`;
 
-    // Web pages have to be in the numbered source list BEFORE the brain
-    // answers. Fetching them afterwards left the card showing Wikipedia
-    // while the prompt still said the sources do not address the question.
-    const web = wantWeb
-      ? await liveWebSources(`${query}${mode.queryAugment}`, Math.min(5, cap))
-      : [];
+    // Shared path with sources_preview. URL questions fetch that page;
+    // never pad with unrelated Wikipedia when the URL fetch fails.
+    const searchQuery = `${String(query).trim()}${mode.queryAugment || ""}`;
+    const packed = wantWeb
+      ? await gatherExpertSources({
+        db, userId, query: searchQuery, wantWeb: true, maxSources,
+      })
+      : {
+        web: [], dtu: null, sources: null, urlAttempted: false, urlFetched: 0,
+        cap: Math.min(20, Math.max(2, Number(maxSources) || 8)),
+      };
+    const web = packed.web;
+    const cap = packed.cap;
 
     let answerRes;
     try {
-      answerRes = await expertAnswer({
-        db, userId, query: augmented,
-        opts: { maxSources: cap, extraSources: web, refuseWhenNoSources: wantWeb },
-      });
+      if (wantWeb && packed.urlAttempted && packed.urlFetched === 0) {
+        answerRes = {
+          ok: true,
+          answer: HONEST_URL_FETCH_FAILED,
+          sources: [],
+          provider: null,
+          model: null,
+          citationsRecorded: 0,
+        };
+      } else {
+        answerRes = await expertAnswer({
+          db, userId, query: augmented,
+          opts: { maxSources: cap, extraSources: web, refuseWhenNoSources: wantWeb },
+        });
+      }
     } catch (e) {
       return { ok: false, reason: "brain_failed", error: String(e?.message || e) };
     }

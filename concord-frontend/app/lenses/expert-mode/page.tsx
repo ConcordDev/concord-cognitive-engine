@@ -97,7 +97,7 @@ export default function ExpertModeLens() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- sources preview (cheap, before committing the brain call) --------
+  // ---- sources preview (same gatherExpertSources path as ask) -----------
   useEffect(() => {
     const q = query.trim();
     if (q.length < 4) return;
@@ -106,6 +106,8 @@ export default function ExpertModeLens() {
       const r = await lensRun<{ sources: any[] }>('expert_mode', 'sources_preview', {
         query: q,
         maxSources: 8,
+        useWeb,
+        focus,
       });
       if (!cancelled && r.data.ok && r.data.result?.sources) {
         setPreviewCount(r.data.result.sources.length);
@@ -115,7 +117,7 @@ export default function ExpertModeLens() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [query]);
+  }, [query, useWeb, focus]);
 
   // ---- ask a (possibly threaded) question -------------------------------
   const ask = useCallback(

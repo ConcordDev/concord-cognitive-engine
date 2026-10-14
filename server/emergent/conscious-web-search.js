@@ -366,8 +366,9 @@ export async function webSearchForChat(queries) {
             url: articleUrl,
             // Search blurb only — often the first sentence, and not the fact.
             // content is the plain-text lead. Expert Mode cites content.
-            snippet: (result.snippet || "").replace(/<[^>]+>/g, "").slice(0, 300),
-            content: page.extract.slice(0, 2000),
+            // Decode entities so chips never show &quot; / &#039;.
+            snippet: decodeHtmlEntities((result.snippet || "").replace(/<[^>]+>/g, "")).slice(0, 300),
+            content: decodeHtmlEntities(page.extract).slice(0, 2000),
             source: "en.wikipedia.org",
             query,
             fetchedAt: new Date().toISOString(),
@@ -410,10 +411,51 @@ export async function webSearchForChat(queries) {
   return allResults;
 }
 
+// ── HTML entity decode (search blurbs + page extracts) ───────────────────────
+
+/**
+ * Decode common HTML entities in search blurbs and page text.
+ * Wikipedia list=search snippets ship `&quot;` / `&#039;` — those must not
+ * reach the expert-mode source chip as markup.
+ */
+export function decodeHtmlEntities(s) {
+  return String(s || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => {
+      const n = parseInt(h, 16);
+      return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : "";
+    })
+    .replace(/&#(\d+);/g, (_, d) => {
+      const n = parseInt(d, 10);
+      return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : "";
+    })
+    .replace(/&amp;/gi, "&");
+}
+
+function extractTitleFromHtml(html) {
+  const titleTag = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleTag) {
+    const t = decodeHtmlEntities(titleTag[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    if (t) return t.slice(0, 200);
+  }
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1) {
+    const t = decodeHtmlEntities(h1[1].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    if (t) return t.slice(0, 200);
+  }
+  return "";
+}
+
 // ── Fetch Public Page Content ───────────────────────────────────────────────
 
 /**
  * Fetch a public page's text content with full legal compliance.
+ * Returns { text, url, title } or null. Title comes from <title>/<h1>.
  */
 export async function fetchPublicPage(url) {
   if (isBlockedUrl(url)) return null;
@@ -430,16 +472,20 @@ export async function fetchPublicPage(url) {
     if (!res.ok) return null;
 
     const html = await res.text();
-    // Basic HTML → text extraction (strip tags)
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 3000);
+    const title = extractTitleFromHtml(html);
+    // Basic HTML → text extraction (strip tags) + entity decode
+    const text = decodeHtmlEntities(
+      html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    ).slice(0, 3000);
 
-    return { text, url };
+    if (!text || text.length < 12) return null;
+
+    return { text, url, title: title || null };
   } catch {
     return null;
   }

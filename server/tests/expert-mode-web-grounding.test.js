@@ -243,3 +243,178 @@ describe("expert_mode ask grounds the answer in the page extract", () => {
     assert.ok(!net.urls.some((u) => u.includes("/api/chat")));
   });
 });
+
+const EXAMPLE_HTML = `<!doctype html><html><head><title>Example Domain</title></head>
+<body><h1>Example Domain</h1>
+<p>This domain is for use in illustrative examples in documents.</p>
+</body></html>`;
+
+/**
+ * Mock fetch for a URL-in-question grounding path (robots + page + brain).
+ * When pageHtml is null the page fetch fails (503 / empty).
+ */
+function installUrlFetch({ pageHtml, brainText = null, wikiSearch = [] }) {
+  const urls = [];
+  let prompt = "";
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    urls.push(u);
+    if (u.includes("/api/chat")) {
+      if (brainText == null) throw new Error("brain should not have been called");
+      const body = JSON.parse(init?.body || "{}");
+      prompt = (body.messages || []).map((m) => m.content || "").join("\n\n");
+      return jsonResponse({
+        message: { content: brainText },
+        prompt_eval_count: 10,
+        eval_count: 8,
+      });
+    }
+    if (u.includes("/robots.txt")) {
+      return { ok: true, status: 200, text: async () => "User-agent: *\nAllow: /\n", json: async () => ({}) };
+    }
+    if (u.includes("example.com") && !u.includes("robots")) {
+      if (pageHtml == null) {
+        return { ok: false, status: 503, text: async () => "", json: async () => ({}) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => pageHtml,
+        json: async () => ({}),
+      };
+    }
+    if (u.includes("api.duckduckgo.com")) {
+      return jsonResponse({ AbstractText: "", Answer: "", Heading: "" });
+    }
+    if (u.includes("list=search")) {
+      return jsonResponse({ query: { search: wikiSearch } });
+    }
+    if (u.includes("prop=extracts")) {
+      return jsonResponse({ query: { pages: {} } });
+    }
+    return { ok: false, status: 503, json: async () => ({}), text: async () => "" };
+  };
+  return { urls, prompt: () => prompt };
+}
+
+describe("expert_mode URL question grounds on the fetched page (F1)", () => {
+  it("puts example.com extract in the source list and cites it in the answer", async () => {
+    const net = installUrlFetch({
+      pageHtml: EXAMPLE_HTML,
+      brainText: 'The heading is "Example Domain" [1].',
+      // Unrelated wiki hits must NOT be attached when a URL was named.
+      wikiSearch: [
+        { title: "List of films with post-credits scenes (2020s)", snippet: 'season 2 episode &quot;1893&quot;' },
+        { title: "List of Google Easter eggs", snippet: "bruno&quot; referencing Encanto" },
+      ],
+    });
+
+    const r = await call("ask", ctxA(setupDb()), {
+      query: "In one short sentence, what heading does https://example.com show? Quote the heading.",
+      focus: "all",
+      useWeb: true,
+      maxSources: 4,
+    });
+
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.turn.webCount, 1);
+    const web = r.turn.sources.filter((s) => s.origin === "web" || s.scope === "web");
+    assert.equal(web.length, 1, JSON.stringify(r.turn.sources));
+    assert.match(web[0].url, /example\.com/);
+    assert.match(web[0].title, /Example Domain/i);
+    assert.ok(!/&quot;|&#039;/.test(web[0].snippet || ""));
+    assert.match(net.prompt(), /Example Domain/);
+    assert.match(r.turn.answer, /Example Domain/);
+    assert.match(r.turn.answer, /\[1\]/);
+    assert.ok(!r.turn.sources.some((s) => /films with post-credits|Google Easter eggs/i.test(s.title)));
+    assert.ok(net.urls.some((u) => u.includes("example.com")));
+  });
+
+  it("returns an honest no-source answer when the URL fetch fails (no filler wiki)", async () => {
+    const net = installUrlFetch({
+      pageHtml: null,
+      brainText: null,
+      wikiSearch: [
+        { title: "List of films with post-credits scenes (2020s)", snippet: 'episode &quot;1893&quot;' },
+      ],
+    });
+
+    const r = await call("ask", ctxA(setupDb()), {
+      query: "What heading does https://example.com show?",
+      focus: "all",
+      useWeb: true,
+      maxSources: 4,
+    });
+
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.turn.sources.length, 0);
+    assert.equal(r.turn.webCount, 0);
+    assert.match(r.turn.answer, /could not fetch/i);
+    assert.ok(!/&quot;|films with post-credits/i.test(r.turn.answer));
+    assert.ok(!net.urls.some((u) => u.includes("/api/chat")));
+  });
+
+  it("sources_preview and ask agree on the web source list for a URL question", async () => {
+    installUrlFetch({
+      pageHtml: EXAMPLE_HTML,
+      brainText: 'The heading is "Example Domain" [1].',
+    });
+
+    const q = "What heading does https://example.com show?";
+    const preview = await call("sources_preview", ctxA(setupDb()), {
+      query: q,
+      useWeb: true,
+      focus: "all",
+      maxSources: 4,
+    });
+    assert.equal(preview.ok, true, JSON.stringify(preview));
+    assert.equal(preview.urlAttempted, true);
+    assert.equal(preview.urlFetched, 1);
+    assert.equal(preview.webCount, 1);
+    const previewWeb = preview.sources.filter((s) => s.origin === "web" || s.scope === "web");
+    assert.equal(previewWeb.length, 1);
+    assert.match(previewWeb[0].url, /example\.com/);
+
+    const asked = await call("ask", ctxA(setupDb()), {
+      query: q,
+      useWeb: true,
+      focus: "all",
+      maxSources: 4,
+    });
+    assert.equal(asked.ok, true, JSON.stringify(asked));
+    const askWeb = asked.turn.sources.filter((s) => s.origin === "web" || s.scope === "web");
+    assert.equal(askWeb.length, 1);
+    assert.equal(askWeb[0].url, previewWeb[0].url);
+    assert.equal(askWeb[0].title, previewWeb[0].title);
+    assert.equal(askWeb[0].id, previewWeb[0].id);
+  });
+
+  it("decodes HTML entities in Wikipedia search snippets", async () => {
+    const net = installFetch({
+      search: [
+        {
+          title: "List of Google Easter eggs",
+          snippet: 'Shows &quot;Yup, he won.&quot; referencing &#039;I win&#039;',
+        },
+      ],
+      extracts: {
+        "List of Google Easter eggs": 'Shows "Yup, he won." referencing \'I win\'',
+      },
+      brainText: "Google has Easter eggs [1].",
+    });
+
+    const r = await call("ask", ctxA(setupDb()), {
+      query: "List of Google Easter eggs",
+      focus: "all",
+      useWeb: true,
+      maxSources: 4,
+    });
+
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const row = r.turn.sources.find((s) => s.title === "List of Google Easter eggs");
+    assert.ok(row, JSON.stringify(r.turn.sources));
+    assert.ok(!/&quot;|&#039;/.test(row.snippet || ""), row.snippet);
+    assert.ok(row.snippet.includes('"') || row.snippet.includes("'"), row.snippet);
+    assert.ok(net.prompt().includes("Yup, he won") || net.prompt().includes("Easter"));
+  });
+});
