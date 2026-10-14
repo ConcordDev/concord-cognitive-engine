@@ -40117,19 +40117,30 @@ app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, r
     if (MCP_TOOLS_REQUIRE_REAL_AUTH.has(tool) && (!req.user || req.authMethod === "mcp-bypass")) {
       return res.status(403).json({ ok: false, error: "forbidden", reason: "this tool requires real authentication; the CONCORD_MCP_PUBLIC/AUTH_MODE=public bypass does not cover it" });
     }
+    // Option B admission: cap concurrent /mcp/call executions. Macros have no
+    // AbortSignal path — a Promise.race timeout would fake interruption while
+    // work kept running — so we shed excess at the door with busy_retry.
+    // See server/lib/mcp-call-guard.js.
+    const { runGuardedMcpCall } = await import("./lib/mcp-call-guard.js");
     try {
-      // F0.5: wrap callMCPTool with AuthGate composition layer (lib/auth-gate/dispatch.js).
-      // The dispatch is HTTP-agnostic; AuthGate builds the 14-field envelope and routes
-      // through the existing authority systems. observe_only is the default for safety.
-      const { dispatchMCP } = await import("./lib/auth-gate/dispatch.js");
-      const result = await dispatchMCP(tool, args || {}, {
-        actor: req.user || null,
-        req,
-        db,
-        STATE: globalThis.STATE || null,
-        trace_id: req.headers['x-trace-id'] || null,
+      const guarded = await runGuardedMcpCall(tool, async () => {
+        // F0.5: wrap callMCPTool with AuthGate composition layer (lib/auth-gate/dispatch.js).
+        // The dispatch is HTTP-agnostic; AuthGate builds the 14-field envelope and routes
+        // through the existing authority systems. observe_only is the default for safety.
+        const { dispatchMCP } = await import("./lib/auth-gate/dispatch.js");
+        return dispatchMCP(tool, args || {}, {
+          actor: req.user || null,
+          req,
+          db,
+          STATE: globalThis.STATE || null,
+          trace_id: req.headers['x-trace-id'] || null,
+        });
       });
-      res.json(result);
+      if (!guarded.admitted) {
+        res.set("Retry-After", String(guarded.retryAfterS));
+        return res.status(503).json(guarded.body);
+      }
+      res.json(guarded.result);
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });
     }
