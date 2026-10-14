@@ -22,6 +22,8 @@ export function NotificationsPanel() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  // Channel values still travel as email/sms/both (macro enum) but are labels
+  // on an in-app notice row — no mail or SMS is ever sent.
   const [subForm, setSubForm] = useState({ subjectKind: 'permit', subjectId: '', channel: 'email', contact: '' });
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subError, setSubError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function NotificationsPanel() {
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BellRing className="w-4 h-4 text-cyan-400" />
-        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Case-status notifications</span>
+        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">In-app case notices</span>
         {unreadCount > 0 && (
           <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-bold">{unreadCount} unread</span>
         )}
@@ -109,20 +111,20 @@ export function NotificationsPanel() {
 
       {/* Subscribe to case updates */}
       <div className="p-3 border-b border-white/10">
-        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Subscribe to a case for email / SMS updates</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Subscribe to in-app notices for a case</div>
         <div className="grid grid-cols-6 gap-2">
           <select value={subForm.subjectKind} onChange={e => setSubForm({ ...subForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SUBJECT_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <input value={subForm.subjectId} onChange={e => setSubForm({ ...subForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <select value={subForm.channel} onChange={e => setSubForm({ ...subForm, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
-            <option value="both">Both</option>
+          <select value={subForm.channel} onChange={e => setSubForm({ ...subForm, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" aria-label="Notice label">
+            <option value="email">In-app (email label)</option>
+            <option value="sms">In-app (SMS label)</option>
+            <option value="both">In-app (both labels)</option>
           </select>
           <button onClick={subscribe} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Sub</button>
         </div>
-        <input value={subForm.contact} onChange={e => setSubForm({ ...subForm, contact: e.target.value })} placeholder="Email address or phone number" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input value={subForm.contact} onChange={e => setSubForm({ ...subForm, contact: e.target.value })} placeholder="Contact note stored on the notice row (not delivered)" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         {subError && <div className="mt-1 text-[10px] text-rose-400">{subError}</div>}
         {subscriptions.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5">
