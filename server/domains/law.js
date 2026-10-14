@@ -3,9 +3,10 @@
 // tracking, billing calculation, plus real USPTO PatentsView (patent
 // search) and CourtListener (federal + state case opinions).
 //
-// USPTO PatentsView is free + no API key.
-// CourtListener search is free without auth; full text + dockets
-// require a free COURTLISTENER_API_TOKEN env (courtlistener.com/help/api/rest/).
+// USPTO PatentsView PatentSearch API requires PATENTSVIEW_API_KEY
+// (keyless Legacy API retired 2025-05-01). CourtListener search is free
+// without auth; full text + dockets require a free COURTLISTENER_API_TOKEN
+// env (courtlistener.com/help/api/rest/).
 
 import { createHash } from "node:crypto";
 import { KNOWN_SCOPES, getDoc } from "../lib/yjs-realtime.js";
@@ -536,9 +537,16 @@ export default function registerLawActions(registerLensAction) {
 
   /**
    * uspto-patent-search — Real US patent search via USPTO PatentsView.
-   * Free, no API key. Searches by inventor name, title keyword, or
-   * assignee. Returns patent number, title, abstract, grant date,
-   * inventor, assignee.
+   * Searches by inventor name, title keyword, or assignee. Returns patent
+   * number, title, abstract, grant date, inventor, assignee.
+   *
+   * API-KEY REALITY (aligned with `patent-claims` below): PatentsView
+   * retired its keyless Legacy API on 2025-05-01. The live PatentSearch
+   * API at `search.patentsview.org/api/v1` requires an `X-Api-Key` header
+   * on every request. A keyless GET was a guaranteed 401/403 (or a bare
+   * undici "fetch failed" when the edge drops the connection) — never a
+   * silent empty success. Fail fast when `PATENTSVIEW_API_KEY` is unset.
+   * Free key: patentsview-support.atlassian.net/servicedesk/customer/portals.
    *
    * params: { query: string, field?: "title"|"abstract"|"inventor"|"assignee", limit?: 1-100 }
    *
@@ -586,10 +594,26 @@ export default function registerLawActions(registerLensAction) {
       queryShape = _usptoFieldClause(field, query);
     }
 
+    // Validate inputs before the key gate so empty-query still says
+    // "query required" (depth pin) rather than the API-key message.
+    const apiKey = process.env.PATENTSVIEW_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "PATENTSVIEW_API_KEY env required — PatentsView's PatentSearch API has required an API key on every request since its keyless Legacy API was retired 2025-05-01 (free key: patentsview-support.atlassian.net/servicedesk/customer/portals)",
+      };
+    }
+
     try {
       const url = `${USPTO_PATENTSVIEW}/patent/?q=${encodeURIComponent(JSON.stringify(queryShape))}&f=${encodeURIComponent(JSON.stringify(["patent_id","patent_title","patent_abstract","patent_date","inventors","assignees"]))}&o=${encodeURIComponent(JSON.stringify({ per_page: limit }))}`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`uspto ${r.status}`);
+      const headers = { "X-Api-Key": apiKey, Accept: "application/json" };
+      const r = await fetch(url, { headers });
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) {
+          return { ok: false, error: `patentsview auth rejected — check PATENTSVIEW_API_KEY validity (uspto ${r.status})` };
+        }
+        return { ok: false, error: `uspto unreachable: uspto ${r.status}` };
+      }
       const data = await r.json();
       const patents = (data.patents || []).map((p) => ({
         patentId: p.patent_id,
@@ -623,22 +647,12 @@ export default function registerLawActions(registerLensAction) {
    * `uspto-patent-search` above returns only the abstract, never the
    * claims — the part that actually defines the scope of protection.
    *
-   * API-KEY REALITY CHECK (verified 2026-07-17, this macro only): unlike
-   * `uspto-patent-search`'s "Free, no API key" header comment above, that
-   * claim is now STALE for the live API — PatentsView retired its truly
-   * keyless Legacy API on 2025-05-01, and the PatentSearch API (the SAME
-   * `search.patentsview.org/api/v1` base both macros hit) has required an
-   * `X-Api-Key` header on every request since (confirmed via PatentsView's
-   * own forum + the rOpenSci client's docs; a direct fetch of
-   * patentsview.org / search.patentsview.org itself is DNS/policy-blocked
-   * in this sandbox, the same constraint already documented on
-   * `recapDocketSearchHandler`/`citation-graph` below — so this was cross-
-   * checked across two independent sources rather than taken on faith).
-   * Dispatching a keyless request today would be a guaranteed 401/403 on
-   * every call, burning the 45-req/min budget for nothing — so this macro
-   * fails FAST and HONEST when `PATENTSVIEW_API_KEY` is unset, the exact
-   * convention `materials.mp-structure` already uses for
-   * `MATERIALS_PROJECT_API_KEY`. Free key: PatentsView's support portal
+   * API-KEY REALITY CHECK (verified 2026-07-17): PatentsView retired its
+   * truly keyless Legacy API on 2025-05-01, and the PatentSearch API (the
+   * SAME `search.patentsview.org/api/v1` base both this macro and
+   * `uspto-patent-search` hit) has required an `X-Api-Key` header on every
+   * request since. Both macros fail FAST and HONEST when
+   * `PATENTSVIEW_API_KEY` is unset. Free key: PatentsView's support portal
    * (patentsview-support.atlassian.net/servicedesk/customer/portals).
    *
    * FIELD NAMES: the `g_claim`/`g_patent` field names below

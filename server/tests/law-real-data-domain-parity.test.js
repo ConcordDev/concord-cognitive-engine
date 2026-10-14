@@ -17,19 +17,39 @@ before(() => { registerLawActions(register); });
 beforeEach(() => {
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
   delete process.env.COURTLISTENER_API_TOKEN;
+  delete process.env.PATENTSVIEW_API_KEY;
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 
 describe("law.uspto-patent-search (USPTO PatentsView)", () => {
+  beforeEach(() => {
+    // Default: key present so success/shape tests exercise the network path.
+    // The unset-key test clears it explicitly.
+    process.env.PATENTSVIEW_API_KEY = "test-key";
+  });
+
   it("rejects empty query", async () => {
     assert.equal((await call("uspto-patent-search", ctxA, {})).ok, false);
   });
 
+  it("fails honestly when PATENTSVIEW_API_KEY is unset (no fabricated rows)", async () => {
+    delete process.env.PATENTSVIEW_API_KEY;
+    let fetched = false;
+    globalThis.fetch = async () => { fetched = true; return { ok: true, json: async () => ({ patents: [] }) }; };
+    const r = await call("uspto-patent-search", ctxA, { query: "neural network", field: "title" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /PATENTSVIEW_API_KEY/);
+    assert.equal(fetched, false, "must not hit the network without a key");
+    assert.equal(r.result, undefined);
+  });
+
   it("hits PatentsView + parses + flattens inventors/assignees", async () => {
     let capturedUrl = "";
-    globalThis.fetch = async (url) => {
+    let capturedHeaders = null;
+    globalThis.fetch = async (url, init) => {
       capturedUrl = url;
+      capturedHeaders = init?.headers || null;
       return {
         ok: true,
         json: async () => ({
@@ -53,11 +73,28 @@ describe("law.uspto-patent-search (USPTO PatentsView)", () => {
     assert.match(capturedUrl, /search\.patentsview\.org\/api\/v1\/patent/);
     // q should be URL-encoded JSON
     assert.match(capturedUrl, /patent_title/);
+    assert.equal(capturedHeaders?.["X-Api-Key"], "test-key");
     assert.equal(r.result.patents[0].patentId, "11000000");
     assert.deepEqual(r.result.patents[0].inventors, ["Jane Doe", "Bob Smith"]);
     assert.deepEqual(r.result.patents[0].assignees, ["Acme Quantum Corp"]);
     assert.equal(r.result.totalHits, 1247);
     assert.equal(r.result.source, "uspto-patentsview");
+  });
+
+  it("upstream failure returns honest error shape (no empty-list-as-success)", async () => {
+    globalThis.fetch = async () => { throw new Error("fetch failed"); };
+    const r = await call("uspto-patent-search", ctxA, { query: "neural network", field: "title" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /uspto unreachable: fetch failed/);
+    assert.equal(r.result, undefined);
+  });
+
+  it("auth rejection (401/403) names the key validity problem", async () => {
+    process.env.PATENTSVIEW_API_KEY = "bad-key";
+    globalThis.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
+    const r = await call("uspto-patent-search", ctxA, { query: "quantum", field: "title" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /patentsview auth rejected/);
   });
 
   it("supports inventor / assignee / abstract field switching", async () => {
