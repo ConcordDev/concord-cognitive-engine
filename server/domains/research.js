@@ -1340,9 +1340,15 @@ export default function registerResearchActions(registerLensAction) {
         const results = mapArxivWork(xml);
         return { ok: true, result: { provider, query, count: results.length, results } };
       }
-      const fields = "id,display_name,publication_year,authorships,cited_by_count,primary_location,host_venue,open_access,doi,abstract_inverted_index";
-      const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}&select=${fields}&sort=relevance_score:desc`;
+      // Match research.live_openalex (scholarly-apis.js): no `select=` —
+      // OpenAlex 400s when select includes abstract_inverted_index. Full
+      // works payloads still carry that field when present for mapOpenAlexWork.
+      const mailto = process.env.OPENALEX_MAILTO || "hello@concord-os.org";
+      const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}&mailto=${encodeURIComponent(mailto)}&sort=relevance_score:desc`;
       const data = await cachedFetchJson(url, { ttlMs: 10 * 60 * 1000, timeoutMs: 9000 });
+      if (!data || typeof data !== "object") {
+        return { ok: false, error: "academic search failed: empty OpenAlex response" };
+      }
       const results = (data.results || []).map(mapOpenAlexWork);
       return { ok: true, result: { provider, query, count: results.length, results } };
     } catch (e) {

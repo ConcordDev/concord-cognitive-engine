@@ -1,6 +1,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerActions from "../domains/research.js";
+import { clearExternalFetchCache } from "../lib/external-fetch.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -306,6 +307,70 @@ describe("research — academic search", () => {
     const r = await call("academic-search", ctxA, { query: "graph neural networks", provider: "arxiv" });
     assert.equal(r.ok, false);
     assert.match(r.error, /academic search failed/);
+  });
+
+  // INC-SWEEP research F1 — OpenAlex provider must not use select=abstract_inverted_index
+  // (HTTP 400 upstream). Aligns with research.live_openalex's working URL shape.
+  it("openalex provider uses a live_openalex-shaped URL and maps works (no fake empty ok)", async () => {
+    clearExternalFetchCache();
+    const seen = [];
+    globalThis.fetch = async (url) => {
+      seen.push(String(url));
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            results: [{
+              id: "https://openalex.org/W123",
+              display_name: "Attention Is All You Need",
+              publication_year: 2017,
+              authorships: [{ author: { display_name: "Ashish Vaswani" } }],
+              cited_by_count: 100,
+              primary_location: { source: { display_name: "NeurIPS" } },
+              open_access: { oa_url: null },
+              doi: "https://doi.org/10.48550/arXiv.1706.03762",
+              abstract_inverted_index: { Attention: [0], Is: [1], All: [2], You: [3], Need: [4] },
+            }],
+            meta: { count: 1 },
+          };
+        },
+        async text() { return ""; },
+      };
+    };
+    const r = await call("academic-search", ctxA, {
+      query: "attention is all you need",
+      provider: "openalex",
+      limit: 2,
+    });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.result.provider, "openalex");
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.results[0].title, "Attention Is All You Need");
+    assert.ok(seen.length >= 1, "fetch was called");
+    const url = seen[0];
+    assert.match(url, /api\.openalex\.org\/works/);
+    assert.match(url, /mailto=/);
+    assert.ok(!url.includes("select="), `must not use select= (got ${url})`);
+    assert.ok(!url.includes("abstract_inverted_index"), `must not select abstract_inverted_index (got ${url})`);
+  });
+
+  it("openalex provider stays ok:false on upstream HTTP 400 (no fake empty list)", async () => {
+    clearExternalFetchCache();
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 400,
+      async json() { return { error: "bad request" }; },
+      async text() { return "bad request"; },
+    });
+    const r = await call("academic-search", ctxA, {
+      query: "attention is all you need",
+      provider: "openalex",
+      limit: 2,
+    });
+    assert.equal(r.ok, false);
+    assert.match(String(r.error || ""), /academic search failed|HTTP 400/i);
+    assert.equal(r.result?.results, undefined);
   });
 });
 
