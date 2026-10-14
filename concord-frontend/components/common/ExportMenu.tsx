@@ -13,6 +13,21 @@ export const EMPTY_EXPORT_NOTICE =
 export const CONKAY_EMPTY_EXPORT_NOTICE =
   'Nothing to export yet. Save a model or open a study first — nothing was downloaded.';
 
+/**
+ * GET /api/lens/:domain returns `{ artifacts, total }` (no `items` key).
+ * Prefer that shape; keep a legacy `items` fallback for older mocks.
+ */
+export function lensListExportRows(data: unknown): Record<string, unknown>[] {
+  if (!data || typeof data !== 'object') return [];
+  const d = data as { artifacts?: unknown; items?: unknown };
+  const rows = Array.isArray(d.artifacts)
+    ? d.artifacts
+    : Array.isArray(d.items)
+      ? d.items
+      : [];
+  return rows.filter((row): row is Record<string, unknown> => !!row && typeof row === 'object');
+}
+
 interface ExportMenuProps {
   domain: string;
 }
@@ -53,7 +68,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     let lensItemsError: string | null = null;
     try {
       const response = await apiHelpers.lens.list(domain, { limit: 1000 });
-      lensItems = Array.isArray(response.data?.items) ? response.data.items : [];
+      lensItems = lensListExportRows(response.data);
     } catch (err) {
       lensItemsError = err instanceof Error ? err.message : 'Could not list lens items.';
     }
@@ -89,7 +104,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         return;
       }
       const response = await apiHelpers.lens.list(domain, { limit: 1000 });
-      const items = response.data?.items || [];
+      const items = lensListExportRows(response.data);
       if (items.length === 0) {
         keepOpen = true;
         setNotice(EMPTY_EXPORT_NOTICE);
@@ -107,7 +122,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
       } else {
         // CSV export
         const headers = ['id', 'title', 'type', 'createdAt', 'updatedAt'];
-        const rows = items.map((item: Record<string, unknown>) =>
+        const rows = items.map((item) =>
           headers.map(h => JSON.stringify(item[h] ?? '')).join(',')
         );
         content = [headers.join(','), ...rows].join('\n');
