@@ -1123,15 +1123,21 @@ export default function registerLabActions(registerLensAction) {
 
   // plate-design — build a 96- or 384-well plate map from well assignments.
   // params.format: 96 | 384. params.wells = [{ well:"A1", sample, role }]
+  // INC-SWEEP lab F1 — refuse blank submit (no name and no wells). Do not
+  // invent "Plate 96" with assignedWells:0.
   registerLensAction("lab", "plate-design", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const name = labClean(params.name, 160);
+      const inputWells = Array.isArray(params.wells) ? params.wells : [];
+      if (!name && inputWells.length === 0) {
+        return { ok: false, error: "plate name or wells required" };
+      }
       const format = params.format === 384 || params.format === "384" ? 384 : 96;
       const rows = format === 384 ? 16 : 8;
       const cols = format === 384 ? 24 : 12;
       const rowLabels = Array.from({ length: rows }, (_, i) => String.fromCharCode(65 + i));
       const grid = {};
-      const inputWells = Array.isArray(params.wells) ? params.wells : [];
       let assigned = 0;
       for (const w of inputWells) {
         const well = labClean(w.well, 6).toUpperCase();
@@ -1146,11 +1152,14 @@ export default function registerLabActions(registerLensAction) {
         };
         assigned++;
       }
+      if (!name && assigned === 0) {
+        return { ok: false, error: "plate name or wells required" };
+      }
       const roleCounts = {};
       for (const v of Object.values(grid)) roleCounts[v.role] = (roleCounts[v.role] || 0) + 1;
       const plate = {
         id: labId("plate"),
-        name: labClean(params.name, 160) || `Plate ${format}`,
+        name: name || `Plate ${format}`,
         format, rows, cols, rowLabels,
         grid,
         assignedWells: assigned,
