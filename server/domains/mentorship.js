@@ -764,33 +764,38 @@ export default function registerMentorshipActions(registerLensAction) {
   });
 
   // ── 7. Program admin / cohort reporting ───────────────────────────────
+  // Per-user aggregates (goals / sessions / requests) are scoped to the
+  // caller — never other accounts' private rows. Directory mentors + cohort
+  // stay public (listed directory).
   registerLensAction("mentorship", "program-report", (ctx, _a, _params = {}) => {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
       const mentors = [...s.mentors.values()];
-      // aggregate every request across all mentor inboxes
-      const allRequests = [];
-      for (const [k, v] of s.requests.entries()) {
-        if (!k.startsWith("out:")) allRequests.push(...v);
+      const mineIncoming = mList(s.requests, userId);
+      const mineOutgoing = mList(s.requests, `out:${userId}`);
+      // Dedupe by id (a request appears in both mentor inbox + mentee outbox).
+      const mineById = new Map();
+      for (const r of [...mineIncoming, ...mineOutgoing]) {
+        if (r && r.id) mineById.set(r.id, r);
       }
+      const allRequests = [...mineById.values()];
       const accepted = allRequests.filter((r) => r.status === "accepted").length;
       const declined = allRequests.filter((r) => r.status === "declined").length;
       const pending = allRequests.filter((r) => r.status === "pending").length;
       const resolved = accepted + declined;
-      // sessions: shared Map<sessionId, session> (legacy mirrors migrated on read)
       let totalSessions = 0, completedSessions = 0;
       const ratings = [];
       for (const x of s.sessions.values()) {
         if (!x || typeof x !== "object" || Array.isArray(x)) continue;
+        if (!sessionVisibleTo(x, userId)) continue;
         totalSessions += 1;
         if (x.status === "completed") completedSessions += 1;
         if (x.rating > 0) ratings.push(x.rating);
       }
-      const goalIds = new Set();
-      let totalGoals = 0, doneGoals = 0;
-      for (const list of s.goals.values()) {
-        for (const g of list) { if (goalIds.has(g.id)) continue; goalIds.add(g.id); totalGoals += 1; if (g.status === "done") doneGoals += 1; }
-      }
+      const myGoals = mList(s.goals, userId);
+      const totalGoals = myGoals.length;
+      const doneGoals = myGoals.filter((g) => g.status === "done").length;
       const ratedMentors = mentors.filter((m) => m.reviewCount > 0);
       const cohort = mentors.map((m) => ({
         mentorId: m.id, name: m.name, skills: m.skills.slice(0, 4),
@@ -801,7 +806,7 @@ export default function registerMentorshipActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          mentors: mentors.length,
+          mentors: mentors.filter((m) => m.listed).length,
           activeMatches: accepted,
           requests: { total: allRequests.length, accepted, declined, pending },
           matchAcceptanceRate: resolved > 0 ? Math.round((accepted / resolved) * 100) : 0,
@@ -814,6 +819,7 @@ export default function registerMentorshipActions(registerLensAction) {
           avgMentorRating: ratedMentors.length
             ? Math.round((ratedMentors.reduce((a, m) => a + m.rating, 0) / ratedMentors.length) * 10) / 10 : 0,
           cohort,
+          scope: "caller",
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }

@@ -304,7 +304,7 @@ describe("mentorship reviews", () => {
 });
 
 describe("mentorship program report", () => {
-  it("program-report aggregates the whole platform", () => {
+  it("program-report aggregates the caller's matches", () => {
     call("mentor-register", ctxM, { name: "Ada", capacity: 3 });
     const send = call("request-send", ctxE, {
       mentorId: "user_mentor", topic: "Rust", message: "Please mentor me.", menteeName: "Eve",
@@ -316,6 +316,21 @@ describe("mentorship program report", () => {
     assert.equal(r.result.activeMatches, 1);
     assert.equal(r.result.matchAcceptanceRate, 100);
     assert.ok(Array.isArray(r.result.cohort));
+  });
+
+  it("F5 goals/sessions totals are caller-scoped (no foreign private goals)", () => {
+    call("mentor-register", ctxM, { name: "Ada" });
+    call("goal-create", ctxM, { title: "Owner goal one" });
+    call("goal-create", ctxM, { title: "Owner goal two" });
+    call("session-book", ctxM, { partnerId: "user_mentee", startAt: "2030-01-01T10:00:00Z" });
+    // acct2 (mentee) owns 0 goals; is party to 1 session
+    const rE = call("program-report", ctxE, {});
+    assert.equal(rE.result.goals.total, 0);
+    assert.equal(rE.result.goals.done, 0);
+    assert.equal(rE.result.sessions.total, 1);
+    const rM = call("program-report", ctxM, {});
+    assert.equal(rM.result.goals.total, 2);
+    assert.equal(rM.result.sessions.total, 1);
   });
 });
 
