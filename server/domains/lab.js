@@ -1122,6 +1122,7 @@ export default function registerLabActions(registerLensAction) {
   // This EXECUTES a protocol without editing its definition, so with orgId
   // it only requires membership (any tier, including guest, may run it) —
   // distinct from protocol-create/-revise which are PI-only.
+  // INC-SWEEP lab F10 — persist into the runs store so run-list can read it.
   registerLensAction("lab", "protocol-run", (ctx, _a, params = {}) => {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
@@ -1137,14 +1138,23 @@ export default function registerLabActions(registerLensAction) {
       const p = labFind(arr, labClean(params.id, 64));
       if (!p) return { ok: false, error: "protocol not found" };
       if (p.steps.length === 0) return { ok: false, error: "protocol has no steps" };
+      const runId = labId("run");
+      const startedAt = new Date().toISOString();
       const run = {
-        runId: labId("run"),
+        id: runId,
+        runId,
+        kind: "protocol",
+        name: p.name,
         protocolId: p.id, protocolName: p.name, protocolVersion: p.version,
         steps: p.steps.map(s => ({ ...s, done: false })),
         currentStep: 1,
-        startedAt: new Date().toISOString(),
+        startedAt,
+        importedAt: startedAt,
         estimatedMinutes: p.steps.reduce((s, st) => s + (st.durationMinutes || 0), 0),
+        recordCount: p.steps.length,
       };
+      labArr(L, "runs", userId).push(run);
+      saveLab();
       return { ok: true, result: { run } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
