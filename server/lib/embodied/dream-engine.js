@@ -309,25 +309,47 @@ export async function tryComposeForUser(db, userId, opts = {}) {
   if (!dreamData) return { ok: false, reason: 'compose_returned_null' };
 
   // Insert DTU + dreams row in a single transaction.
+  // Canonical readers (MCP dtu_get / dtu_search) select content + body_json,
+  // never `data`. Keep writing `data` for any data-dialect consumers, and
+  // also populate content (human prose) + body_json (structured payload) so
+  // newly composed dreams are readable through the dtu_get surface.
   const dtuId = `dream_${crypto.randomUUID()}`;
   const dreamRowId = `drm_${crypto.randomUUID()}`;
+  const bodyPayload = {
+    human: dreamData.human,
+    core: dreamData.core,
+    machine: dreamData.machine,
+    // scope is folded into the body blob — dtus has no scope column.
+    scope: dreamData.scope || 'personal',
+  };
+  const bodyJson = JSON.stringify(bodyPayload);
+  const humanText = String(dreamData.human || '');
+  const title = dreamData.title || 'Dream';
   const tx = db.transaction(() => {
     try {
       db.prepare(`
         INSERT INTO dtus
-          (id, creator_id, type, title, data, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+          (id, creator_id, type, title, data, content, body_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        dtuId, userId, 'dream', dreamData.title || 'Dream',
-        // scope is folded into the data blob — dtus has no scope column.
-        JSON.stringify({ human: dreamData.human, core: dreamData.core, machine: dreamData.machine, scope: dreamData.scope || 'personal' }),
+        dtuId, userId, 'dream', title,
+        bodyJson, humanText, bodyJson,
         now,
       );
     } catch {
-      // Minimal fallback if the rich insert fails; the outer tx try/catch
-      // surfaces a hard failure as { ok: false, reason: 'insert_failed' }.
-      db.prepare(`INSERT INTO dtus (id, creator_id, type, data, created_at) VALUES (?, ?, ?, ?, ?)`)
-        .run(dtuId, userId, 'dream', JSON.stringify(dreamData), now);
+      try {
+        // Schema without content/body_json (older/minimal test DBs).
+        db.prepare(`
+          INSERT INTO dtus
+            (id, creator_id, type, title, data, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(dtuId, userId, 'dream', title, bodyJson, now);
+      } catch {
+        // Minimal fallback if the rich insert fails; the outer tx try/catch
+        // surfaces a hard failure as { ok: false, reason: 'insert_failed' }.
+        db.prepare(`INSERT INTO dtus (id, creator_id, type, data, created_at) VALUES (?, ?, ?, ?, ?)`)
+          .run(dtuId, userId, 'dream', bodyJson, now);
+      }
     }
     db.prepare(`
       INSERT INTO dreams

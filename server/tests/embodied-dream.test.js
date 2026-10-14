@@ -16,6 +16,9 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import {
   gatherFragments,
@@ -29,8 +32,12 @@ import { runEmbodiedDreamCycle } from "../emergent/embodied-dream-cycle.js";
 import { up as up109 } from "../migrations/114_pain_signals.js";
 import { up as up110 } from "../migrations/115_dreams.js";
 
-function setupDb() {
-  const db = new Database(":memory:");
+/** MCP dtu_get column set (server/lib/mcp-tools.js) — never selects `data`. */
+const DTU_GET_COLS =
+  "id, title, tier, type, status, content, body_json, tags_json, visibility, creator_id, created_at, updated_at";
+
+function setupDb(dbPath = ":memory:") {
+  const db = new Database(dbPath);
   up109(db);
   up110(db);
   db.exec(`
@@ -72,6 +79,13 @@ function setupDb() {
       title TEXT,
       scope TEXT,
       data TEXT,
+      content TEXT,
+      body_json TEXT DEFAULT '{}',
+      tier TEXT,
+      status TEXT,
+      tags_json TEXT,
+      visibility TEXT,
+      updated_at INTEGER,
       created_at INTEGER
     );
   `);
@@ -219,6 +233,54 @@ describe("tryComposeForUser", () => {
     assert.ok(dtu);
     assert.equal(dtu.type, 'dream');
     assert.equal(JSON.parse(dtu.data).scope, 'personal');
+  });
+
+  it("populates content + body_json for the dtu_get read surface", async () => {
+    const r = await tryComposeForUser(db, "u1");
+    assert.equal(r.ok, true);
+
+    const row = db.prepare(
+      `SELECT ${DTU_GET_COLS} FROM dtus WHERE id = ? LIMIT 1`
+    ).get(r.dreamDtuId);
+    assert.ok(row, "dream DTU must be selectable via dtu_get columns");
+    assert.ok(typeof row.content === "string" && row.content.length > 0,
+      "content must be non-empty human dream text");
+    const body = JSON.parse(row.body_json);
+    assert.equal(row.content, body.human,
+      "content must equal composed human text in body_json");
+    assert.equal(body.scope, "personal");
+    assert.ok(body.core && body.machine);
+
+    // dtu_search-style title/content scan must find it by content snippet.
+    const needle = row.content.slice(0, Math.min(24, row.content.length));
+    const hit = db.prepare(
+      `SELECT id FROM dtus WHERE title LIKE ? OR content LIKE ? LIMIT 1`
+    ).get("%Dream%", `%${needle}%`);
+    assert.ok(hit && hit.id === r.dreamDtuId);
+  });
+
+  it("fresh-connection re-read still returns non-empty content", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dream-read-surface-"));
+    const dbPath = path.join(dir, "t.db");
+    const db1 = setupDb(dbPath);
+    seedActivity(db1, "u1");
+    const r = await tryComposeForUser(db1, "u1");
+    assert.equal(r.ok, true);
+    const id = r.dreamDtuId;
+    db1.close();
+
+    const db2 = new Database(dbPath, { readonly: true });
+    try {
+      const row = db2.prepare(
+        `SELECT ${DTU_GET_COLS} FROM dtus WHERE id = ? LIMIT 1`
+      ).get(id);
+      assert.ok(row);
+      assert.ok(row.content && row.content.length > 0);
+      assert.equal(row.content, JSON.parse(row.body_json).human);
+    } finally {
+      db2.close();
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
   });
 
   it("respects MIN_COMPOSE_INTERVAL_S (cooldown)", async () => {
