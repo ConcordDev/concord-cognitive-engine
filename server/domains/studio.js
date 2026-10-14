@@ -201,6 +201,39 @@ export default function registerStudioActions(registerLensAction) {
   function nowIsoStudio() { return new Date().toISOString(); }
 
   // ── Projects CRUD ──
+  //
+  // studioLens.projects is the durable roster (LENS_STATE_KEYS + saveStudioState).
+  // The DAW UI used to POST only a generic lens artifact (`/api/lens/studio`)
+  // while Arrange / dashboard-summary / Keep read this Map — create looked
+  // successful and then vanished from every read path that mattered (INC-SWEEP
+  // studio F1). Create/save/list/get all go through this store; `daw` holds the
+  // JSON-safe DAWProject snapshot the browser reopens after reload.
+
+  function normalizeStudioTimeSig(raw) {
+    if (Array.isArray(raw) && raw.length >= 2) {
+      const num = Math.max(1, Math.min(16, Number(raw[0]) || 4));
+      const den = [1, 2, 4, 8, 16].includes(Number(raw[1])) ? Number(raw[1]) : 4;
+      return `${num}/${den}`;
+    }
+    const s = String(raw || "4/4").trim();
+    return /^\d{1,2}\/\d{1,2}$/.test(s) ? s : "4/4";
+  }
+
+  /** Strip non-JSON DAW fields (AudioBuffer, etc.) so the snapshot round-trips. */
+  function sanitizeDawSnapshot(daw) {
+    if (!daw || typeof daw !== "object") return null;
+    try {
+      const clone = JSON.parse(JSON.stringify(daw, (_k, v) => {
+        if (typeof v === "function") return undefined;
+        if (typeof AudioBuffer !== "undefined" && v instanceof AudioBuffer) return undefined;
+        return v;
+      }));
+      if (clone && typeof clone === "object") clone.audioBuffers = {};
+      return clone;
+    } catch {
+      return null;
+    }
+  }
 
   registerLensAction("studio", "project-list", (ctx, _artifact, _params = {}) => {
     const s = getStudioState();
@@ -210,7 +243,11 @@ export default function registerStudioActions(registerLensAction) {
     if (!map) return { ok: true, result: { projects: [] } };
     const projects = Array.from(map.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .map(({ tracks, ...meta }) => ({ ...meta, trackCount: tracks.length }));
+      .map(({ tracks, daw, ...meta }) => ({
+        ...meta,
+        trackCount: Array.isArray(tracks) ? tracks.length : 0,
+        hasDaw: !!daw,
+      }));
     return { ok: true, result: { projects } };
   });
 
@@ -218,23 +255,67 @@ export default function registerStudioActions(registerLensAction) {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
-    const name = String(params.name || "").trim();
+    const name = String(params.name || params.title || "").trim();
     if (!name) return { ok: false, error: "name required" };
     if (name.length > 80) return { ok: false, error: "name too long" };
     const bpm = Number(params.bpm) || 120;
     if (bpm < 30 || bpm > 300) return { ok: false, error: "bpm 30-300" };
+    const daw = sanitizeDawSnapshot(params.daw);
+    const now = nowIsoStudio();
     const project = {
       id: nextStudioId("proj"),
       name,
       bpm,
-      timeSignature: String(params.timeSignature || "4/4"),
+      key: String(params.key || "C").trim().slice(0, 8) || "C",
+      scale: String(params.scale || "major").trim().slice(0, 16) || "major",
+      genre: params.genre != null && String(params.genre).trim()
+        ? String(params.genre).trim().slice(0, 40)
+        : null,
+      timeSignature: normalizeStudioTimeSig(params.timeSignature),
       masterVolume: 0.8,
       tracks: [],
-      createdAt: nowIsoStudio(),
-      updatedAt: nowIsoStudio(),
+      daw,
+      createdAt: now,
+      updatedAt: now,
     };
     if (!s.projects.has(userId)) s.projects.set(userId, new Map());
     s.projects.get(userId).set(project.id, project);
+    saveStudioState();
+    return { ok: true, result: { project } };
+  });
+
+  registerLensAction("studio", "project-save", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const id = String(params.id || "");
+    const resolved = resolveStudioProject(s, ctx, id);
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    const project = resolved.project;
+    if (params.name != null || params.title != null) {
+      const name = String(params.name || params.title || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      if (name.length > 80) return { ok: false, error: "name too long" };
+      project.name = name;
+    }
+    if (params.bpm != null) {
+      const bpm = Number(params.bpm);
+      if (!Number.isFinite(bpm) || bpm < 30 || bpm > 300) return { ok: false, error: "bpm 30-300" };
+      project.bpm = bpm;
+    }
+    if (params.key != null) project.key = String(params.key).trim().slice(0, 8) || project.key;
+    if (params.scale != null) project.scale = String(params.scale).trim().slice(0, 16) || project.scale;
+    if (params.genre !== undefined) {
+      project.genre = params.genre != null && String(params.genre).trim()
+        ? String(params.genre).trim().slice(0, 40)
+        : null;
+    }
+    if (params.timeSignature != null) project.timeSignature = normalizeStudioTimeSig(params.timeSignature);
+    if (params.daw !== undefined) {
+      const daw = sanitizeDawSnapshot(params.daw);
+      if (params.daw != null && !daw) return { ok: false, error: "daw snapshot not serializable" };
+      project.daw = daw;
+    }
+    project.updatedAt = nowIsoStudio();
     saveStudioState();
     return { ok: true, result: { project } };
   });

@@ -27,8 +27,8 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
-import { useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Music,
@@ -144,6 +144,48 @@ const TRACK_COLORS = [
   '#3b82f6',
   '#f43f5e',
 ];
+
+/** JSON-safe DAW snapshot for studio.project-create / project-save (no AudioBuffers). */
+function dawSnapshotForPersist(project: DAWProject): Record<string, unknown> {
+  const { audioBuffers: _audioBuffers, ...rest } = project;
+  return { ...rest, audioBuffers: {} };
+}
+
+type StudioDomainProject = {
+  id: string;
+  name: string;
+  bpm: number;
+  key?: string;
+  scale?: string;
+  genre?: string | null;
+  timeSignature?: string;
+  trackCount?: number;
+  hasDaw?: boolean;
+  updatedAt?: string;
+  daw?: Partial<DAWProject> | null;
+};
+
+function domainProjectsToItems(projects: StudioDomainProject[]): LensItem<Record<string, unknown>>[] {
+  return projects.map((p) => ({
+    id: p.id,
+    title: p.name,
+    updatedAt: p.updatedAt || '',
+    createdAt: p.updatedAt || '',
+    version: 1,
+    meta: { tags: [], status: 'draft', visibility: 'private' },
+    data: {
+      id: p.id,
+      title: p.name,
+      bpm: p.bpm,
+      key: p.key || 'C',
+      scale: p.scale || 'major',
+      genre: p.genre ?? null,
+      tracks: [],
+      trackCount: p.trackCount ?? 0,
+      hasDaw: !!p.hasDaw,
+    },
+  }));
+}
 
 function createDefaultProject(
   title: string,
@@ -442,6 +484,25 @@ export function StudioDawWorkspace() {
     create: createLensItem,
     update: updateLensItem,
   } = useLensData('studio', 'project', { noSeed: true });
+  // Canonical durable roster: studio.project-list (studioLens). Lens artifacts
+  // remain a secondary mirror for "My Creations"; landing / reopen / dashboard
+  // must not depend on them alone (INC-SWEEP studio F1).
+  const {
+    data: domainProjects = [],
+    refetch: refetchDomainProjects,
+  } = useQuery({
+    queryKey: ['studio', 'project-list'],
+    queryFn: async () => {
+      const r = await lensRun<{ projects?: StudioDomainProject[] }>('studio', 'project-list', {});
+      if (r.data?.ok === false) return [] as StudioDomainProject[];
+      const projects = r.data?.result?.projects;
+      return Array.isArray(projects) ? projects : [];
+    },
+  });
+  const recentProjectItems = useMemo(
+    () => domainProjectsToItems(domainProjects),
+    [domainProjects],
+  );
   const { createDTU, publishToMarketplace } = useLensDTUs({ lens: 'studio' });
   const { user: _user } = useAuth();
   const who = titleCaseDisplayName(_user?.username);
@@ -765,20 +826,37 @@ export function StudioDawWorkspace() {
 
   // ---- Load / reopen a previously-saved project ----
   // Shared by the "recent projects" landing-screen list (empty-state) and
-  // the studio Workbench's project switcher. `item.data` is the full
-  // DAWProject snapshot persisted by handleCreateProject/handleSave; we
-  // re-stamp its `id` to the backend lens-artifact id (`item.id`) rather
-  // than trusting the client-generated id baked into the snapshot, so
-  // subsequent saves (handleSave / DTU-picker citation writes /
-  // handlePublishProject) target the artifact that was actually loaded
-  // instead of silently 404ing against a stale client id.
-  const loadProject = useCallback((item: LensItem<Record<string, unknown>>) => {
-    if (!item?.data) return;
-    const loaded = { ...(item.data as unknown as DAWProject), id: item.id };
-    setProject(loaded);
-    setShowNewProject(false);
-    transportRef.current?.updateConfig({ bpm: loaded.bpm, timeSignature: loaded.timeSignature });
-    showToast('success', `Reopened "${loaded.title || item.title || 'project'}"`);
+  // the studio Workbench's project switcher. Reopen reads studio.project-get
+  // so the DAW snapshot comes from the same studioLens store create wrote.
+  const loadProject = useCallback(async (item: LensItem<Record<string, unknown>>) => {
+    if (!item?.id) return;
+    try {
+      const r = await lensRun<{ project?: StudioDomainProject }>('studio', 'project-get', { id: item.id });
+      if (r.data?.ok === false || !r.data?.result?.project) {
+        showToast('error', `Could not reopen: ${String(r.data?.error || 'not found').replace(/_/g, ' ')}`);
+        return;
+      }
+      const server = r.data.result.project;
+      const daw = (server.daw || {}) as Partial<DAWProject>;
+      const loaded: DAWProject = {
+        ...createDefaultProject(server.name || item.title || 'Untitled', server.bpm || 120, server.key || 'C', server.genre ?? null),
+        ...daw,
+        id: server.id,
+        title: server.name || daw.title || item.title || 'Untitled',
+        bpm: server.bpm || daw.bpm || 120,
+        key: server.key || daw.key || 'C',
+        scale: server.scale || daw.scale || 'major',
+        genre: server.genre ?? daw.genre ?? null,
+        audioBuffers: {},
+      };
+      setProject(loaded);
+      setShowNewProject(false);
+      transportRef.current?.updateConfig({ bpm: loaded.bpm, timeSignature: loaded.timeSignature });
+      showToast('success', `Reopened "${loaded.title}"`);
+    } catch (err) {
+      console.error('Failed to reopen project:', err instanceof Error ? err.message : err);
+      showToast('error', 'Failed to reopen project');
+    }
   }, []);
 
   const handleCreateProject = useCallback(async () => {
@@ -788,33 +866,47 @@ export function StudioDawWorkspace() {
       newKey,
       newGenre || null
     );
-    // Persist first. 'draft' is a real studio status; 'active' is not, so the
-    // create used to come back validation_failed while the workspace already
-    // showed a project that vanished on refresh.
+    // Persist into studioLens via project-create (dashboard-summary / Keep /
+    // Arrange / landing all read that store). Lens artifacts alone reported
+    // 200 while every domain read stayed empty across reload.
     try {
-      const created = await createLensItem({
+      const created = await lensRun<{ project?: StudioDomainProject }>('studio', 'project-create', {
+        name: proj.title,
         title: proj.title,
-        data: proj as unknown as Record<string, unknown>,
-        meta: {
-          status: 'draft',
-          tags: [proj.key, `${proj.bpm}bpm`, proj.genre].filter(Boolean) as string[],
-        },
-      }) as { ok?: boolean; error?: string; artifact?: { id?: string } };
-      if (created?.ok === false) {
-        showToast('error', `Failed: ${String(created.error || 'validation failed').replace(/_/g, ' ')}`);
+        bpm: proj.bpm,
+        key: proj.key,
+        scale: proj.scale,
+        genre: proj.genre,
+        timeSignature: proj.timeSignature,
+        daw: dawSnapshotForPersist(proj),
+      });
+      if (created.data?.ok === false || !created.data?.result?.project?.id) {
+        showToast('error', `Failed: ${String(created.data?.error || 'create failed').replace(/_/g, ' ')}`);
         return;
       }
-      const saved = created?.artifact?.id ? { ...proj, id: created.artifact.id } : proj;
+      const server = created.data.result.project;
+      const saved = { ...proj, id: server.id };
       setProject(saved);
       setShowNewProject(false);
       setNewTitle('');
       transportRef.current?.updateConfig({ bpm: saved.bpm, timeSignature: saved.timeSignature });
       emitSessionDTU(saved, 'Project created');
+      void queryClient.invalidateQueries({ queryKey: ['studio', 'project-list'] });
+      void refetchDomainProjects();
+      // Best-effort mirror into lens artifacts for legacy "My Creations" cards.
+      void createLensItem({
+        title: saved.title,
+        data: { ...dawSnapshotForPersist(saved), id: saved.id },
+        meta: {
+          status: 'draft',
+          tags: [saved.key, `${saved.bpm}bpm`, saved.genre].filter(Boolean) as string[],
+        },
+      }).catch(() => { /* domain project is the durability contract */ });
     } catch (err) {
       console.error('Failed to persist project:', err instanceof Error ? err.message : err);
       showToast('error', 'Failed to create project');
     }
-  }, [newTitle, newBpm, newKey, newGenre, createLensItem]);
+  }, [newTitle, newBpm, newKey, newGenre, createLensItem, queryClient, refetchDomainProjects]);
 
   // ---- Transport controls ----
   const handlePlay = useCallback(() => {
@@ -1521,14 +1613,34 @@ export function StudioDawWorkspace() {
   const handleSave = useCallback(() => {
     if (!project) return;
     emitSessionDTU(project, 'Manual save');
-    updateLensItem(project.id, {
-      title: project.title,
-      data: project as unknown as Record<string, unknown>,
-    }).catch((err) => {
-      console.error('Failed to save project:', err instanceof Error ? err.message : err);
-      showToast('error', 'Failed to save project');
-    });
-  }, [project, updateLensItem]);
+    void (async () => {
+      try {
+        const r = await lensRun('studio', 'project-save', {
+          id: project.id,
+          name: project.title,
+          bpm: project.bpm,
+          key: project.key,
+          scale: project.scale,
+          genre: project.genre,
+          timeSignature: project.timeSignature,
+          daw: dawSnapshotForPersist(project),
+        });
+        if (r.data?.ok === false) {
+          showToast('error', `Failed to save: ${String(r.data?.error || 'save failed').replace(/_/g, ' ')}`);
+          return;
+        }
+        void queryClient.invalidateQueries({ queryKey: ['studio', 'project-list'] });
+        // Best-effort legacy mirror (lens artifact id may differ; ignore failures).
+        void updateLensItem(project.id, {
+          title: project.title,
+          data: dawSnapshotForPersist(project),
+        }).catch(() => undefined);
+      } catch (err) {
+        console.error('Failed to save project:', err instanceof Error ? err.message : err);
+        showToast('error', 'Failed to save project');
+      }
+    })();
+  }, [project, updateLensItem, queryClient]);
 
   // ---- Publish to Marketplace ----
   const handlePublishProject = useCallback(async () => {
@@ -1711,12 +1823,12 @@ export function StudioDawWorkspace() {
 
           <div>
             <RecentProjectsList
-              items={studioArtifacts}
-              onSelect={loadProject}
+              items={recentProjectItems}
+              onSelect={(item) => { void loadProject(item); }}
               title="Continue a recent project"
               limit={8}
             />
-            {studioArtifacts.length === 0 && (
+            {recentProjectItems.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
                 <p className="text-[15px] text-zinc-300">No saved sessions yet.</p>
                 <p className="mt-1 text-[13px] text-zinc-500">Start one and it will be listed here, ready to reopen.</p>
@@ -2996,13 +3108,15 @@ export function StudioDawWorkspace() {
         )}
       </section>
       </PipingProvider>
-          <SessionRail lensId="studio" hideWhenEmpty className="mt-4" />          <RecentProjectsList
-            items={studioArtifacts}
-            onSelect={loadProject}
+          <SessionRail lensId="studio" hideWhenEmpty className="mt-4" />
+          <RecentProjectsList
+            items={recentProjectItems}
+            onSelect={(item) => { void loadProject(item); }}
             title="Your projects"
             activeId={project.id}
             className="mt-4 mx-auto max-w-7xl"
-          />          <CrossLensRecentsPanel lensId="studio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          />
+          <CrossLensRecentsPanel lensId="studio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
           {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar (most-used DAW views). */}
           <MobileTabBar
             tabs={[
