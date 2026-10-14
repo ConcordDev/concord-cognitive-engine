@@ -36,11 +36,19 @@ const DAY_MS = 86_400_000;
 // extraWhere: a fixed SQL condition (a literal here, never caller input).
 // ordered: false skips ORDER BY where the table has no index to sort by
 // cheaply (storage order is roughly insertion order, i.e. oldest first).
+// archive: false skips the gzip JSONL write and deletes only (default true —
+// existing specs keep archive-then-delete). Used for template one-liner
+// tables with no archive value (npc_conversations).
 export const RETAINED_LOGS = Object.freeze([
   { table: "emergent_activity_feed", tsColumn: "created_at", tsKind: "ms", keyColumn: "id", envDays: "CONCORD_EMERGENT_FEED_RETENTION_DAYS", defaultDays: 14 },
   { table: "inference_spans", tsColumn: "recorded_at", tsKind: "text", keyColumn: "id", envDays: "CONCORD_INFERENCE_SPANS_RETENTION_DAYS", defaultDays: 14 },
   { table: "brain_interactions", tsColumn: "created_at", tsKind: "s", keyColumn: "id", envDays: "CONCORD_BRAIN_INTERACTIONS_RETENTION_DAYS", defaultDays: 7,
     extraWhere: "outcome NOT IN ('pending', 'positive')", ordered: false },
+  // Closed NPC ambient chats: expires_at is epoch seconds (npc-dialogue.js);
+  // the TTL sweeper only flips status→closed, so retention deletes closed rows
+  // past the window. Active rows are never matched (extraWhere).
+  { table: "npc_conversations", tsColumn: "expires_at", tsKind: "s", keyColumn: "id", envDays: "CONCORD_NPC_CONVERSATIONS_RETENTION_DAYS", defaultDays: 7,
+    extraWhere: "status = 'closed'", archive: false },
 ].map((spec) => Object.freeze(spec)));
 
 function cutoffFor(tsKind, days, now) {
@@ -62,12 +70,16 @@ function dayOf(tsKind, value) {
  */
 export async function pruneLog(db, spec, { days, now = Date.now(), archiveRoot, batchSize = 5000, maxBatches = 20 } = {}) {
   const { table, tsColumn, tsKind, keyColumn } = spec;
+  const doArchive = spec.archive !== false;
   try {
     const retentionDays = Number(days ?? process.env[spec.envDays] ?? spec.defaultDays ?? 14);
     if (!Number.isFinite(retentionDays) || retentionDays <= 0) return { ok: true, table, skipped: "retention_disabled" };
     const cutoff = cutoffFor(tsKind, retentionDays, now);
-    const dir = path.join(archiveRoot, table);
-    fs.mkdirSync(dir, { recursive: true });
+    let dir = null;
+    if (doArchive) {
+      dir = path.join(archiveRoot, table);
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
     const where = spec.extraWhere ? `${tsColumn} < ? AND (${spec.extraWhere})` : `${tsColumn} < ?`;
     const order = spec.ordered === false ? "" : ` ORDER BY ${tsColumn}`;
@@ -80,16 +92,18 @@ export async function pruneLog(db, spec, { days, now = Date.now(), archiveRoot, 
       if (b > 0) await new Promise((r) => { setImmediate(r); });
       const rows = select.all(cutoff, batchSize);
       if (rows.length === 0) { done = true; break; }
-      const byDay = new Map();
-      for (const r of rows) {
-        const d = dayOf(tsKind, r[tsColumn]);
-        if (!byDay.has(d)) byDay.set(d, []);
-        byDay.get(d).push(JSON.stringify(r));
-      }
-      // Archive must land on disk before the rows are deleted.
-      for (const [d, lines] of byDay) {
-        fs.appendFileSync(path.join(dir, `${d}.jsonl.gz`), zlib.gzipSync(lines.join("\n") + "\n"));
-        archived += lines.length;
+      if (doArchive) {
+        const byDay = new Map();
+        for (const r of rows) {
+          const d = dayOf(tsKind, r[tsColumn]);
+          if (!byDay.has(d)) byDay.set(d, []);
+          byDay.get(d).push(JSON.stringify(r));
+        }
+        // Archive must land on disk before the rows are deleted.
+        for (const [d, lines] of byDay) {
+          fs.appendFileSync(path.join(dir, `${d}.jsonl.gz`), zlib.gzipSync(lines.join("\n") + "\n"));
+          archived += lines.length;
+        }
       }
       deleteMany(rows);
       deleted += rows.length;
