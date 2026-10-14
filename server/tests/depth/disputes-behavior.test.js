@@ -188,8 +188,12 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
     const caseId = open.result.case.id;
     // force the SLA deadline into the past by reaching into STATE
     const { STATE } = await import("../../server.js").then((m) => m.__TEST__);
-    const list = STATE.disputesLens.cases.get(ctx.actor.userId) || [];
-    const target = list.find((c) => c.id === caseId);
+    // Shared store keyed by case id (post F1); migrateLegacy also folds old Maps.
+    const store = STATE.disputesLens;
+    const target = (store.casesById && store.casesById.get(caseId))
+      || [...(store.casesById?.values?.() || [])].find((c) => c.id === caseId)
+      || null;
+    assert.ok(target, "case present in shared store");
     target.slaDeadline = new Date(Date.now() - 3600000).toISOString();
     const check = await lensRun("disputes", "sla-check", { params: {} }, ctx);
     assert.equal(check.ok, true);

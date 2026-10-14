@@ -19,11 +19,14 @@ function call(name, ctx, artifactOrParams = {}, maybeParams) {
 before(() => { registerDisputesActions(register); });
 
 beforeEach(() => {
-  // Fresh per-user case substrate for every test.
-  globalThis._concordSTATE = { disputesLens: { cases: new Map(), seq: new Map() } };
+  // Fresh shared case substrate for every test.
+  globalThis._concordSTATE = { disputesLens: { casesById: new Map(), seq: 1 } };
+  globalThis._concordSaveStateDebounced = () => {};
 });
 
 const ctx = { actor: { userId: "user_a" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+const ctxC = { actor: { userId: "user_c" }, userId: "user_c" };
 
 function openCase(extra = {}) {
   const r = call("case-open", ctx, {}, {
@@ -219,7 +222,7 @@ describe("disputes SLA timers", () => {
   it("sla-check auto-escalates a case past its deadline", () => {
     const c = openCase();
     // Force the deadline into the past.
-    const stored = globalThis._concordSTATE.disputesLens.cases.get("user_a")[0];
+    const stored = globalThis._concordSTATE.disputesLens.casesById.get(c.id);
     stored.slaDeadline = new Date(Date.now() - 3600000).toISOString();
     const r = call("sla-check", ctx, {}, {});
     assert.equal(r.ok, true);
@@ -298,5 +301,78 @@ describe("disputes escrow", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.activeHolds, 1);
     assert.equal(r.result.totalHeld, 200);
+  });
+});
+
+/* ---------------------------------------------------------------- */
+/*  F1 — shared store, party access, restart persistence             */
+/* ---------------------------------------------------------------- */
+
+describe("disputes F1 shared party access + persistence", () => {
+  it("respondent lists and reads the case; status change is identical; third party 404", () => {
+    const opened = call("case-open", ctx, {}, {
+      title: "Shared case",
+      disputeType: "non_delivery",
+      disputeAmount: 42,
+      description: "Named respondent must see this",
+      respondentId: "user_b",
+    });
+    assert.equal(opened.ok, true);
+    const caseId = opened.result.case.id;
+    assert.ok(!caseId.includes("user_a"), "case id must not embed claimant uuid");
+
+    const listB = call("case-list", ctxB, {}, {});
+    assert.equal(listB.ok, true);
+    assert.equal(listB.result.cases.length, 1);
+    assert.equal(listB.result.cases[0].id, caseId);
+
+    const detailB = call("case-detail", ctxB, {}, { caseId });
+    assert.equal(detailB.ok, true);
+    assert.equal(detailB.result.case.status, "open");
+    assert.equal(detailB.result.description, "Named respondent must see this");
+
+    const adv = call("case-advance", ctxB, {}, { caseId });
+    assert.equal(adv.ok, true);
+    assert.equal(adv.result.case.status, "under_review");
+
+    const detailA = call("case-detail", ctx, {}, { caseId });
+    assert.equal(detailA.result.case.status, "under_review");
+
+    const third = call("case-detail", ctxC, {}, { caseId });
+    assert.equal(third.ok, false);
+    assert.match(String(third.error), /case not found/i);
+    const listC = call("case-list", ctxC, {}, {});
+    assert.equal(listC.result.cases.length, 0);
+  });
+
+  it("RESTART-PERSISTENCE: case + messages + offers survive serialize/hydrate for both parties", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const opened = call("case-open", ctx, {}, {
+      title: "Persist me",
+      disputeType: "not_as_described",
+      disputeAmount: 7,
+      description: "survives restart",
+      respondentId: "user_b",
+    });
+    const caseId = opened.result.case.id;
+    assert.equal(call("message-post", ctx, {}, { caseId, body: "from claimant", role: "claimant" }).ok, true);
+    assert.equal(call("offer-make", ctx, {}, { caseId, amount: 3, fromRole: "claimant", terms: "partial" }).ok, true);
+
+    const snap = serializeLensState(globalThis._concordSTATE);
+    globalThis._concordSTATE = {};
+    hydrateLensState(globalThis._concordSTATE, snap);
+
+    const detailA = call("case-detail", ctx, {}, { caseId });
+    const detailB = call("case-detail", ctxB, {}, { caseId });
+    assert.equal(detailA.ok, true);
+    assert.equal(detailB.ok, true);
+    assert.equal(detailA.result.description, "survives restart");
+    assert.equal(detailB.result.description, "survives restart");
+    assert.equal(detailA.result.messages.length, 1);
+    assert.equal(detailB.result.messages.length, 1);
+    assert.equal(detailA.result.messages[0].body, "from claimant");
+    assert.equal(detailB.result.offers.length, 1);
+    assert.equal(detailB.result.offers[0].amount, 3);
+    assert.equal(detailA.result.case.status, detailB.result.case.status);
   });
 });

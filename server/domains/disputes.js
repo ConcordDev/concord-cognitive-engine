@@ -4,28 +4,50 @@
 // platform modeled on eBay/PayPal Resolution Center.
 //
 // Pure-math AI helpers (assessDispute / timelineTrack / settlementCalc /
-// evidenceStrength) plus a real per-user case substrate backed by
-// globalThis._concordSTATE Maps. Every handler is wrapped in try/catch and
-// returns { ok, result?, error? } — never throws.
+// evidenceStrength) plus a SHARED case store keyed by case id (claimant +
+// respondent + assigned mediator can read/act). Persisted via
+// STATE.disputesLens → lens-state-persistence. Every handler is wrapped in
+// try/catch and returns { ok, result?, error? } — never throws.
 
 export default function registerDisputesActions(registerLensAction) {
   /* ---------------------------------------------------------------- */
-  /*  State substrate                                                  */
+  /*  State substrate — shared Map<caseId, case>, party access         */
   /* ---------------------------------------------------------------- */
+
+  function migrateLegacyDisputesState(s) {
+    if (!(s.casesById instanceof Map)) s.casesById = new Map();
+    // Legacy shape: cases: Map<userId, case[]>. Fold into the shared store.
+    if (s.cases instanceof Map) {
+      for (const [, list] of s.cases) {
+        if (!Array.isArray(list)) continue;
+        for (const c of list) {
+          if (c?.id && !s.casesById.has(c.id)) s.casesById.set(c.id, c);
+        }
+      }
+      s.cases = undefined;
+    }
+    if (typeof s.seq !== "number") {
+      let n = 1;
+      if (s.seq instanceof Map) {
+        for (const v of s.seq.values()) n = Math.max(n, Number(v) || 1);
+      } else if (Number.isFinite(Number(s.seq))) {
+        n = Math.max(1, Number(s.seq));
+      }
+      s.seq = n;
+    }
+  }
 
   function getDisputesState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
     if (!STATE.disputesLens) {
       STATE.disputesLens = {
-        cases: new Map(),     // userId -> Array<case>
-        seq: new Map(),       // userId -> next case number
+        casesById: new Map(), // caseId -> case (shared; party-gated access)
+        seq: 1,
       };
     }
-    const s = STATE.disputesLens;
-    if (!s.cases) s.cases = new Map();
-    if (!s.seq) s.seq = new Map();
-    return s;
+    migrateLegacyDisputesState(STATE.disputesLens);
+    return STATE.disputesLens;
   }
 
   function saveState() {
@@ -38,20 +60,38 @@ export default function registerDisputesActions(registerLensAction) {
     return ctx?.actor?.userId || ctx?.userId || "anon";
   }
 
-  function ensureList(map, userId) {
-    if (!map.has(userId)) map.set(userId, []);
-    return map.get(userId);
-  }
-
-  function nextSeq(s, userId) {
-    const n = s.seq.get(userId) || 1;
-    s.seq.set(userId, n + 1);
+  function nextSeq(s) {
+    const n = s.seq || 1;
+    s.seq = n + 1;
     return n;
   }
 
+  function newCaseId() {
+    // Opaque id — never embeds a user uuid (INC-SWEEP F5 companion).
+    return `dispute_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function isParty(c, userId) {
+    if (!c || !userId) return false;
+    return c.claimantId === userId
+      || (c.respondentId && c.respondentId === userId)
+      || (c.mediatorId && c.mediatorId === userId);
+  }
+
   function findCase(s, userId, caseId) {
-    const list = s.cases.get(userId) || [];
-    return list.find((c) => c.id === caseId) || null;
+    if (!caseId) return null;
+    const c = s.casesById.get(String(caseId));
+    if (!c) return null;
+    if (!isParty(c, userId)) return null;
+    return c;
+  }
+
+  function casesForUser(s, userId) {
+    const out = [];
+    for (const c of s.casesById.values()) {
+      if (isParty(c, userId)) out.push(c);
+    }
+    return out;
   }
 
   const nowIso = () => new Date().toISOString();
@@ -181,11 +221,13 @@ export default function registerDisputesActions(registerLensAction) {
       if (!VALID_TYPES.includes(disputeType)) return { ok: false, error: "invalid disputeType" };
       const disputeAmount = Math.max(0, parseFloat(params.disputeAmount) || 0);
       const description = String(params.description || "").trim();
-      const respondentId = params.respondentId ? String(params.respondentId) : null;
-      const list = ensureList(s.cases, userId);
-      const caseNumber = nextSeq(s, userId);
+      const respondentId = params.respondentId ? String(params.respondentId).trim() : null;
+      if (respondentId && respondentId === userId) {
+        return { ok: false, error: "respondent must differ from claimant" };
+      }
+      const caseNumber = nextSeq(s);
       const c = {
-        id: `dispute_${userId}_${caseNumber}`,
+        id: newCaseId(),
         caseNumber,
         title,
         disputeType,
@@ -193,7 +235,7 @@ export default function registerDisputesActions(registerLensAction) {
         description,
         status: "open",
         claimantId: userId,
-        respondentId,
+        respondentId: respondentId || null,
         mediatorId: null,
         evidence: [],
         messages: [],
@@ -213,7 +255,7 @@ export default function registerDisputesActions(registerLensAction) {
         c.escrowAmount = disputeAmount;
         c.history.push({ at: nowIso(), event: "escrow_frozen", actor: userId, amount: disputeAmount });
       }
-      list.push(c);
+      s.casesById.set(c.id, c);
       saveState();
       return { ok: true, result: { case: publicCase(c) } };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -225,13 +267,13 @@ export default function registerDisputesActions(registerLensAction) {
       const s = getDisputesState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
-      let list = (s.cases.get(userId) || []).slice();
+      const all = casesForUser(s, userId);
+      let list = all.slice();
       const statusFilter = params.status ? String(params.status) : null;
       if (statusFilter && statusFilter !== "all") {
         list = list.filter((c) => c.status === statusFilter);
       }
       list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      const all = s.cases.get(userId) || [];
       const stats = {
         total: all.length,
         open: all.filter((c) => c.status === "open").length,
@@ -530,7 +572,7 @@ export default function registerDisputesActions(registerLensAction) {
       const s = getDisputesState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
-      const list = s.cases.get(userId) || [];
+      const list = casesForUser(s, userId);
       const now = Date.now();
       const escalated = [];
       const watch = [];
@@ -608,7 +650,7 @@ export default function registerDisputesActions(registerLensAction) {
       const s = getDisputesState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
-      const all = s.cases.get(userId) || [];
+      const all = casesForUser(s, userId);
       let closed = all.filter((c) => ["resolved", "dismissed"].includes(c.status));
       const q = String(params.query || "").trim().toLowerCase();
       if (q) {
@@ -702,7 +744,7 @@ export default function registerDisputesActions(registerLensAction) {
       const s = getDisputesState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
-      const all = s.cases.get(userId) || [];
+      const all = casesForUser(s, userId);
       const frozen = all.filter((c) => c.escrowFrozen);
       const holds = frozen.map((c) => ({
         caseId: c.id,
