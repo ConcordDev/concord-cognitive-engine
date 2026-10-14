@@ -251,11 +251,24 @@ describe("residents", () => {
     assert.equal(list.length, 2); // ruler + citizen
   });
 
-  it("joinKingdom is idempotent (upsert)", () => {
+  it("joinKingdom already-resident is no-op (never changes role)", () => {
     joinKingdom(db, kingdomId, "u2", "citizen");
-    joinKingdom(db, kingdomId, "u2", "guard");
+    const again = joinKingdom(db, kingdomId, "u2", "guard");
+    assert.equal(again.ok, true);
+    assert.equal(again.alreadyResident, true);
     const list = listResidents(db, kingdomId);
     const u2 = list.find((r) => r.user_id === "u2");
-    assert.equal(u2.role, "guard");
+    assert.equal(u2.role, "citizen");
+    assert.equal(list.filter((r) => r.user_id === "u2").length, 1);
+  });
+
+  it("ruler joining own kingdom stays ruler", () => {
+    const r = joinKingdom(db, kingdomId, "u1", "citizen");
+    assert.equal(r.ok, true);
+    assert.equal(r.alreadyResident, true);
+    assert.equal(r.role, "ruler");
+    const list = listResidents(db, kingdomId);
+    assert.equal(list.length, 1);
+    assert.equal(list[0].role, "ruler");
   });
 });

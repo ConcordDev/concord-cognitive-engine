@@ -292,12 +292,21 @@ export function resolveContest(db, contestId) {
 
 export function joinKingdom(db, kingdomId, userId, role = "citizen") {
   try {
+    if (!getKingdom(db, kingdomId)) return { ok: false, error: "kingdom_not_found" };
+    const existing = db.prepare(
+      `SELECT role FROM kingdom_residents WHERE kingdom_id = ? AND user_id = ?`,
+    ).get(kingdomId, userId);
+    // Already a resident: no-op success. Never lower (or rewrite) role via Join.
+    if (existing) {
+      return { ok: true, alreadyResident: true, role: existing.role };
+    }
+    // New residents always join as citizen; role changes need an explicit action.
+    const joinRole = "citizen";
     db.prepare(`
       INSERT INTO kingdom_residents (kingdom_id, user_id, role)
       VALUES (?, ?, ?)
-      ON CONFLICT(kingdom_id, user_id) DO UPDATE SET role = excluded.role
-    `).run(kingdomId, userId, role);
-    return { ok: true };
+    `).run(kingdomId, userId, joinRole);
+    return { ok: true, role: joinRole };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 

@@ -201,8 +201,8 @@ describe("kingdoms lens — resident registry isolation", () => {
     const db = restDb();
     const k1 = foundKingdom(db, { rulerId: "ruler1", worldId: "wa", regionPolygon: SQUARE, name: "Alpha" });
     const k2 = foundKingdom(db, { rulerId: "ruler2", worldId: "wb", regionPolygon: SQUARE, name: "Beta" });
-    joinKingdom(db, k1.kingdomId, "citizenX", "citizen");
-    joinKingdom(db, k2.kingdomId, "citizenY", "noble");
+    joinKingdom(db, k1.kingdomId, "citizenX");
+    joinKingdom(db, k2.kingdomId, "citizenY");
 
     const r1 = listResidents(db, k1.kingdomId).map((r) => r.user_id);
     const r2 = listResidents(db, k2.kingdomId).map((r) => r.user_id);
@@ -212,14 +212,15 @@ describe("kingdoms lens — resident registry isolation", () => {
     assert.ok(!r2.includes("citizenX"));
   });
 
-  it("join is idempotent on (kingdom_id, user_id) — upserts role", () => {
+  it("join is idempotent on (kingdom_id, user_id) — never changes existing role", () => {
     const db = restDb();
     const k = foundKingdom(db, { rulerId: "r", worldId: "w", regionPolygon: SQUARE, name: "K" });
     joinKingdom(db, k.kingdomId, "u", "citizen");
-    joinKingdom(db, k.kingdomId, "u", "guard");
+    const again = joinKingdom(db, k.kingdomId, "u", "guard");
+    assert.equal(again.alreadyResident, true);
     const residents = listResidents(db, k.kingdomId).filter((r) => r.user_id === "u");
     assert.equal(residents.length, 1, "no duplicate resident rows");
-    assert.equal(residents[0].role, "guard", "role upserted");
+    assert.equal(residents[0].role, "citizen", "role unchanged on re-join");
   });
 });
 
