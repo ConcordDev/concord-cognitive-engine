@@ -101,7 +101,11 @@ export function NorthStarFrame({
           onClick={cta.onClick}
           disabled={cta.disabled}
           title={cta.title}
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+          data-testid="north-star-cta"
+          /* MobileNav is fixed bottom-0 z-50 h-14 + safe-area. Sit above it on
+             small viewports (bottom-20 + safe-area, same family as HelpButton /
+             ReelsFeed); restore bottom-8 from md up where the tab bar is hidden. */
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-6 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 md:bottom-8 md:right-8"
         >
           {CtaIcon && <CtaIcon className="h-4 w-4" />}
           {cta.label}
