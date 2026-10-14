@@ -26219,10 +26219,10 @@ register("dtu", "create", async (ctx, input) => {
   const _dtuUserDayCount = STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId];
   if (_dtuUserDayCount > DAILY_DTU_SOFT_CAP) {
     structuredLog("warn", "dtu_daily_soft_cap_exceeded", { userId: _dtuUserId, count: _dtuUserDayCount, cap: DAILY_DTU_SOFT_CAP });
-    return { ok: true, dtu, warning: `Daily DTU soft cap exceeded: ${_dtuUserDayCount}/${DAILY_DTU_SOFT_CAP} DTUs created today` };
+    return { ok: true, dtu: _presentDtuPublic(dtu, ctx), warning: `Daily DTU soft cap exceeded: ${_dtuUserDayCount}/${DAILY_DTU_SOFT_CAP} DTUs created today` };
   }
 
-  return { ok: true, dtu };
+  return { ok: true, dtu: _presentDtuPublic(dtu, ctx) };
   } finally { releaseMutex(); }
 }, { description: "Create a DTU (regular/mega/hyper) with structured core; UI receives human projection." });
 
@@ -26256,7 +26256,7 @@ register("dtu", "get", async (ctx, input) => {
   // the id exists. Internal callers (makeInternalCtx) are exempt.
   // visibility "internal" is hidden here too (ctxMayReadDtu).
   if (!ctxMayReadDtu(ctx, dtu)) return { ok: false, error: "DTU not found" };
-  return { ok: true, dtu };
+  return { ok: true, dtu: _presentDtuPublic(dtu, ctx) };
 });
 
 register("dtu", "update", async (ctx, input) => {
@@ -46869,6 +46869,42 @@ function _lensArtifactVisible(ctx, artifact) {
   return vis === "published" || vis === "public";
 }
 
+// INC-SWEEP research F3 / law F5 identity class — public-facing actor label.
+// Ownership Map/DB keys stay raw; wire bodies use displayName / username /
+// "member". Never invent a name from the uuid itself.
+const _PUBLIC_ACTOR_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function _looksLikeRawUserId(v) {
+  return typeof v === "string" && (_PUBLIC_ACTOR_UUID_RE.test(v) || /^user[_-]/i.test(v));
+}
+function _publicActorLabel(ctx, userId = null) {
+  const actor = ctx?.actor || {};
+  const uid = userId || actor.userId || actor.id || null;
+  if (uid && actor.userId && uid === actor.userId) {
+    const self = actor.displayName || actor.username;
+    if (typeof self === "string" && self.trim()) return String(self).trim().slice(0, 80);
+  }
+  if (uid && uid !== "anon") {
+    try {
+      const ident = lookupUserIdentity(ctx?.db || STATE?.db || null, uid);
+      const fromDb = (ident?.displayName || ident?.username || "").trim();
+      if (fromDb && fromDb !== uid) return fromDb.slice(0, 80);
+    } catch { /* best-effort */ }
+  }
+  const fallback = actor.displayName || actor.username;
+  if (typeof fallback === "string" && fallback.trim()) return String(fallback).trim().slice(0, 80);
+  return "member";
+}
+/** Wire-copy of a DTU: scrub raw uuids from identity fields; storage unchanged. */
+function _presentDtuPublic(dtu, ctx) {
+  if (!dtu || typeof dtu !== "object") return dtu;
+  if (ctx?.internal === true || ctx?.actor?.internal === true) return dtu;
+  const out = { ...dtu };
+  for (const key of ["ownerId", "createdBy", "createdByUser", "author", "userId"]) {
+    if (_looksLikeRawUserId(out[key])) out[key] = _publicActorLabel(ctx, out[key]);
+  }
+  return out;
+}
+
 // INC-SWEEP debate F2 / INC-77: debate floor create/list/detail payloads must
 // not echo the owner's raw user uuid. Authz still reads the stored ownerId;
 // this only shapes the wire copy. Other domains keep the legacy shape.
@@ -51243,7 +51279,13 @@ registerUniversalLensActions();
     comment: (ctx, artifact, params) => {
       if (!artifact.data) artifact.data = {};
       if (!artifact.data.comments) artifact.data.comments = [];
-      const comment = { id: uid("cmt"), text: params?.text || "", author: ctx?.actor?.userId || "anon", createdAt: nowISO() };
+      // INC-SWEEP research F3 — public label on the wire; never raw uuid.
+      const comment = {
+        id: uid("cmt"),
+        text: params?.text || "",
+        author: _publicActorLabel(ctx, ctx?.actor?.userId || null),
+        createdAt: nowISO(),
+      };
       artifact.data.comments.push(comment);
       artifact.updatedAt = nowISO();
       saveStateDebounced();
@@ -51294,7 +51336,12 @@ registerUniversalLensActions();
       return { ok: true, tags: artifact.meta.tags };
     },
     assign: (ctx, artifact, params) => {
-      artifact.data = { ...artifact.data, assignee: params?.assignee || ctx?.actor?.userId || "unassigned" };
+      // INC-SWEEP research F3 — assignee on the wire is a public label.
+      const rawAssignee = params?.assignee || ctx?.actor?.userId || "unassigned";
+      const assignee = _looksLikeRawUserId(rawAssignee)
+        ? _publicActorLabel(ctx, rawAssignee)
+        : (rawAssignee || "unassigned");
+      artifact.data = { ...artifact.data, assignee };
       artifact.updatedAt = nowISO();
       saveStateDebounced();
       return { ok: true, assignee: artifact.data.assignee };
@@ -54618,11 +54665,15 @@ async function conductResearch(userId, topic) {
 app.post("/api/research/conduct", requireAuth(), validate("researchConduct"), async (req, res) => {
   const { topic } = req.validated || req.body;
   const userId = req.user.id;
+  const ctx = makeCtx(req);
 
   realtimeEmit("research:started", { userId, topic });
 
   try {
     const result = await conductResearch(userId, topic);
+    // INC-SWEEP research F3 — wire body uses a public label; ownership key
+    // on the in-memory execution stays the raw userId for authz/routing.
+    const research = { ...result, userId: _publicActorLabel(ctx, userId) };
 
     realtimeEmit("research:completed", {
       userId,
@@ -54631,7 +54682,7 @@ app.post("/api/research/conduct", requireAuth(), validate("researchConduct"), as
       breakthroughs: result.phases.find(p => p.phase === "breakthrough_detection")?.clusters?.length || 0,
     });
 
-    res.json({ ok: true, research: result });
+    res.json({ ok: true, research });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
