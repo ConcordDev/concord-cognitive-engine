@@ -146,6 +146,9 @@ export function useLensDraft<T>(
   const pendingRef = useRef<T | null>(null);
   // Avoid re-firing save right after hydrate plants a value.
   const hydratedRef = useRef(false);
+  // User typed before drafts.load finished — never clobber their live value.
+  const dirtyBeforeHydrateRef = useRef(false);
+  const valueRef = useRef<T>(initial);
   const saveSerialRef = useRef(0);
 
   const pushSave = useCallback(async (payload: T): Promise<void> => {
@@ -202,13 +205,20 @@ export function useLensDraft<T>(
       const serverNewer =
         serverDraft && (!localMirror || serverDraft.updatedAt >= localMirror.updatedAt);
 
-      if (serverDraft && serverNewer) {
+      if (dirtyBeforeHydrateRef.current) {
+        // Keep the field the user already typed; submit must see that value.
+        setStatus('dirty');
+        onHydrated?.(valueRef.current, 'local');
+        pendingRef.current = valueRef.current;
+      } else if (serverDraft && serverNewer) {
+        valueRef.current = serverDraft.payload as T;
         setValueState(serverDraft.payload as T);
         setLastSavedAt(serverDraft.updatedAt);
         setStatus('saved');
         onHydrated?.(serverDraft.payload as T, 'server');
       } else if (localMirror) {
         // Local copy is newer → adopt + re-push to flush the offline queue.
+        valueRef.current = localMirror.payload;
         setValueState(localMirror.payload);
         setStatus('dirty');
         onHydrated?.(localMirror.payload, 'local');
@@ -232,8 +242,11 @@ export function useLensDraft<T>(
   }, [lensId, draftKey]);
 
   const setValue = useCallback((next: T) => {
+    valueRef.current = next;
     setValueState(next);
     if (!hydratedRef.current) {
+      // User edited before hydrate — keep their value when load lands.
+      dirtyBeforeHydrateRef.current = true;
       // Don't fire saves before hydrate finishes — would clobber the
       // server copy with the initial sentinel.
       return;

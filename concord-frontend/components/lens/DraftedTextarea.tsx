@@ -79,7 +79,8 @@ export function DraftedTextarea({
     },
   );
 
-  // Mirror to caller on every keystroke so optimistic submit handlers see the live value.
+  // Mirror hydrate / external value changes. Keystrokes also notify
+  // synchronously in onChange so a submit in the same tick sees the live field.
   useEffect(() => {
     onValueChange?.(value);
     // We deliberately do NOT depend on onValueChange — only the value changes
@@ -92,7 +93,11 @@ export function DraftedTextarea({
       <textarea
         {...textareaProps}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          setValue(next);
+          onValueChange?.(next);
+        }}
         className={className}
         aria-describedby={!hideStatus ? `${lensId}-${draftKey}-status` : undefined}
       />

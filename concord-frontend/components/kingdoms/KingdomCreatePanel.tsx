@@ -1,16 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RegionPolygonEditor } from '@/components/kingdoms/RegionPolygonEditor';
 import type { Kingdom } from './types';
+
+const DEFAULT_POLYGON = '[[0,0],[100,0],[100,100],[0,100]]';
 
 export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => void }) {
   const [name, setName] = useState('');
   const [worldId, setWorldId] = useState('concordia-hub');
   const [mode, setMode] = useState<'visual' | 'advanced'>('visual');
   const [points, setPoints] = useState<number[][]>([]);
-  const [polygon, setPolygon] = useState('[[0,0],[100,0],[100,100],[0,100]]');
+  // Live advanced-field value for submit (avoids hydrate/useEffect race).
+  const polygonRef = useRef(DEFAULT_POLYGON);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingKingdoms, setExistingKingdoms] = useState<Kingdom[]>([]);
@@ -29,6 +32,10 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
     .filter((k) => k.world_id === worldId && Array.isArray(k.region_polygon) && k.region_polygon.length >= 3)
     .map((k) => ({ id: k.id, name: k.name, region_polygon: k.region_polygon }));
 
+  const onPolygonChange = useCallback((v: string) => {
+    polygonRef.current = v;
+  }, []);
+
   const trimmedName = name.trim();
 
   const submit = useCallback(async () => {
@@ -43,7 +50,8 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
         regionPolygon = points;
       } else {
         try {
-          regionPolygon = JSON.parse(polygon);
+          // Always read the live field — not a possibly-stale React state copy.
+          regionPolygon = JSON.parse(polygonRef.current);
           if (!Array.isArray(regionPolygon) || regionPolygon.length < 3) throw new Error('need 3+ vertices');
         } catch (e) {
           setError(`polygon JSON invalid: ${e instanceof Error ? e.message : String(e)}`);
@@ -60,7 +68,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
       if (j?.ok) onCreated(j.kingdomId);
       else setError(j?.error || 'create_failed');
     } finally { setSubmitting(false); }
-  }, [mode, points, polygon, name, worldId, onCreated]);
+  }, [mode, points, name, worldId, onCreated]);
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
@@ -102,7 +110,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
                 lensId="kingdoms"
                 draftKey="newKingdomPolygon"
                 initial=""
-                onValueChange={setPolygon}
+                onValueChange={onPolygonChange}
                 rows={4}
                 className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
               />
