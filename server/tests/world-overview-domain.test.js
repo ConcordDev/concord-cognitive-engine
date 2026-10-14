@@ -252,4 +252,33 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(overview.worlds.length, 1);
     assert.equal(overview.worlds[0].worldId, WORLD);
   });
+
+  it("F1: stuckSchedulersDistinct is unique subjectIds, not the sum of per-world finding rows", async () => {
+    seedWorld();
+    const WORLD_B = "test_world_overview_2";
+    db.prepare(`INSERT INTO worlds (id, name, universe_type) VALUES (?, ?, 'fantasy')`)
+      .run(WORLD_B, "Second Overview World");
+    // Same stuck faction also has living NPCs in WORLD_B — would double-count
+    // if the header summed per-world finding-list lengths.
+    db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES (?, ?, ?)`)
+      .run("npc_f1_b", WORLD_B, "faction_alpha");
+
+    const overview = await call("worldstate.overview", { db }, {
+      worldIds: [WORLD, WORLD_B],
+    });
+    assert.equal(overview.ok, true);
+    assert.equal(typeof overview.stuckSchedulersDistinct, "number");
+
+    const perWorldSum = overview.worlds.reduce(
+      (sum, w) => sum + (w.stuckFactionSchedulers || 0),
+      0,
+    );
+    // Both worlds list faction_alpha → sum is 2; distinct is 1.
+    assert.equal(perWorldSum, 2);
+    assert.equal(overview.stuckSchedulersDistinct, 1);
+    assert.ok(
+      overview.stuckSchedulersDistinct < perWorldSum,
+      "distinct must be strictly less than the dishonest per-world sum",
+    );
+  });
 });

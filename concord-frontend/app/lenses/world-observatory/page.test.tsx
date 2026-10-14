@@ -109,6 +109,8 @@ describe('World Observatory lens page', () => {
           worldRow(),
           worldRow({ worldId: 'crime', name: 'Crime City', activeUsers: 4, factionCount: 3, realmCount: 0, districtCount: 2, stuckFactionSchedulers: 2 }),
         ],
+        // Distinct platform-wide (1), not the sum of per-world rows (0+2=2).
+        stuckSchedulersDistinct: 1,
       }),
       () => ok(detailPayload()),
     );
@@ -127,6 +129,10 @@ describe('World Observatory lens page', () => {
     expect(screen.getByLabelText('Drill into Crime City')).toBeInTheDocument();
     const stuckBadges = screen.getAllByText('2');
     expect(stuckBadges.length).toBeGreaterThan(0);
+
+    // F1: header uses distinct count, not the dishonest per-world sum
+    expect(screen.getByText(/1 stuck scheduler$/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 stuck schedulers/)).not.toBeInTheDocument();
   });
 
   it('drills into worldstate.world_detail on click and renders real faction/realm/district sections', async () => {

@@ -41,6 +41,20 @@ describe("world-health classification boundary", () => {
     const kinds = p.map((x) => x.pathology).sort();
     assert.deepEqual(kinds, ["dupe_citation", "negative_balance", "stuck_scheduler"]);
   });
+
+  it("F1: stuck_scheduler detection is not silently truncated at 50", () => {
+    // Seed 60 distinct overdue schedulers — the old LIMIT 50 would drop 10.
+    const overdue = NOW - 200_000;
+    for (let i = 0; i < 60; i++) {
+      db.prepare(`INSERT INTO faction_strategy_state VALUES (?, ?)`).run(`fExtra_${i}`, overdue);
+    }
+    const stuck = detectPathologies(db, NOW).filter((x) => x.pathology === "stuck_scheduler");
+    const ids = new Set(stuck.map((x) => x.subjectId));
+    assert.equal(stuck.length, 61); // fStuck + 60 extras
+    assert.equal(ids.size, 61);
+    assert.ok(ids.has("fStuck"));
+    assert.ok(ids.has("fExtra_59"));
+  });
 });
 
 describe("runWorldHealthPass", () => {

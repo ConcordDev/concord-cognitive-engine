@@ -327,6 +327,15 @@ export default function registerWorldOverviewMacros(register) {
     // per-world filtering happens in computeWorldAggregate/healthForWorld.
     const pathologies = safe(() => detectPathologies(db), []);
 
+    // Platform-wide distinct stuck schedulers (unique subjectId). Per-world
+    // finding-list lengths double-count a faction with NPCs in multiple
+    // worlds; the header badge must use this distinct set, not the sum.
+    const stuckSchedulersDistinct = new Set(
+      pathologies
+        .filter((f) => f.pathology === "stuck_scheduler")
+        .map((f) => f.subjectId),
+    ).size;
+
     const worlds = worldRows.map((w) => {
       const agg = computeWorldAggregate(db, w.id, { pathologies });
       return {
@@ -336,11 +345,12 @@ export default function registerWorldOverviewMacros(register) {
         factionCount: agg.factions.count,
         realmCount: agg.realms.length,
         districtCount: agg.districts.length,
+        // World-scoped: distinct stuck schedulers with living presence here.
         stuckFactionSchedulers: agg.health.factionSchedulerFindings.length,
       };
     });
 
-    return { ok: true, worlds };
+    return { ok: true, worlds, stuckSchedulersDistinct };
   });
 
   // connections — cross-world edge list (trade / scheme / royalty /

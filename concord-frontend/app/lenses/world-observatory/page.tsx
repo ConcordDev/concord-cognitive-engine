@@ -165,6 +165,8 @@ export default function WorldObservatoryPage() {
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ObsView>('worlds');
   const [overview, setOverview] = useState<WorldSummary[]>([]);
+  /** Platform-wide distinct stuck schedulers from overview (not a sum of per-world rows). */
+  const [stuckSchedulersDistinct, setStuckSchedulersDistinct] = useState<number | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -183,14 +185,20 @@ export default function WorldObservatoryPage() {
     setOverviewLoading(true);
     setOverviewError(null);
     try {
-      const res = await lensRun<{ ok: boolean; worlds?: WorldSummary[]; reason?: string }>(
-        'worldstate',
-        'overview',
-        {},
-      );
+      const res = await lensRun<{
+        ok: boolean;
+        worlds?: WorldSummary[];
+        stuckSchedulersDistinct?: number;
+        reason?: string;
+      }>('worldstate', 'overview', {});
       const payload = res.data.result;
       if (res.data.ok && payload?.ok) {
         setOverview(payload.worlds || []);
+        setStuckSchedulersDistinct(
+          typeof payload.stuckSchedulersDistinct === 'number'
+            ? payload.stuckSchedulersDistinct
+            : null,
+        );
         setHasLoadedOnce(true);
       } else {
         setOverviewError(res.data.error || payload?.reason || 'Failed to load world overview');
@@ -281,10 +289,9 @@ export default function WorldObservatoryPage() {
 
   const currentTab = OBS_TABS.find((t) => t.id === view)!;
 
-  const totalStuck = useMemo(
-    () => overview.reduce((sum, w) => sum + (w.stuckFactionSchedulers || 0), 0),
-    [overview],
-  );
+  // Prefer the backend's distinct platform-wide count. Never sum per-world
+  // finding-list lengths — that double-counts schedulers present in >1 world.
+  const totalStuck = stuckSchedulersDistinct ?? 0;
   const totalActiveUsers = useMemo(
     () => overview.reduce((sum, w) => sum + (w.activeUsers || 0), 0),
     [overview],
