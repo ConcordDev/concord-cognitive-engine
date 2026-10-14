@@ -71,3 +71,53 @@ describe("legacy F2 technicalDebt coverage honesty", () => {
     assert.equal(m.remediationHours, 50);
   });
 });
+
+describe("legacy F3 technicalDebt complexity honesty", () => {
+  it("explicit cyclomaticComplexity 0 stays 0 in metrics (not rewritten to 1)", async () => {
+    const r = await lensRun("legacy", "technicalDebt", {
+      data: {
+        modules: [{
+          name: "mod-zero-cc",
+          linesOfCode: 1000,
+          cyclomaticComplexity: 0,
+          testCoverage: 0,
+          dependencyCount: 0,
+          dependencyAgeYears: 0,
+          duplicateRatio: 0,
+          lastModifiedDaysAgo: 0,
+        }],
+      },
+    });
+    assert.equal(r.ok, true);
+    const m = r.result.modules[0];
+    assert.equal(m.metrics.cyclomaticComplexity, 0);
+    // complexity debt term is 0 for any cc ≤ 10; MI uses the real 0 in -0.23*cc
+    assert.equal(m.debtBreakdown.complexity, 0);
+    // volume = loc * log2(max(2, cc)) still uses max(2,0)=2; MI differs from coerced-1
+    // Re-read: second call with same payload must echo 0 again.
+    const r2 = await lensRun("legacy", "technicalDebt", {
+      data: {
+        modules: [{
+          name: "mod-zero-cc",
+          linesOfCode: 1000,
+          cyclomaticComplexity: 0,
+          testCoverage: 0,
+        }],
+      },
+    });
+    assert.equal(r2.ok, true);
+    assert.equal(r2.result.modules[0].metrics.cyclomaticComplexity, 0);
+    assert.equal(r2.result.modules[0].maintainabilityIndex, m.maintainabilityIndex);
+  });
+
+  it("omitted cyclomaticComplexity still defaults to 1", async () => {
+    const r = await lensRun("legacy", "technicalDebt", {
+      data: {
+        modules: [{ name: "mod-omit-cc", linesOfCode: 100, testCoverage: 80 }],
+      },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.modules[0].metrics.cyclomaticComplexity, 1);
+  });
+});
+
