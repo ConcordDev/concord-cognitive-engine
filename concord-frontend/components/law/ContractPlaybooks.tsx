@@ -5,11 +5,15 @@
  * Applying a playbook drops a curated bundle of clauses onto a new or
  * existing contract. Backlog item 6. Wires law.playbook-list /
  * -detail / -apply.
+ *
+ * List states are honest: loading / error (with retry) / genuinely-empty.
+ * A failed playbook-list must NEVER render as "No playbooks available."
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BookCheck, Loader2, ChevronRight, FilePlus2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { ErrorState, Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface PlaybookMeta {
@@ -18,18 +22,38 @@ interface PlaybookMeta {
 interface PlaybookClause { category: string; title: string; text: string }
 interface PlaybookDetail extends PlaybookMeta { clauses: PlaybookClause[] }
 
+type ListStatus = 'loading' | 'ready' | 'error';
+
 export function ContractPlaybooks({ onApplied }: { onApplied?: (contractId: string) => void }) {
   const [playbooks, setPlaybooks] = useState<PlaybookMeta[]>([]);
+  const [listStatus, setListStatus] = useState<ListStatus>('loading');
+  const [listError, setListError] = useState<string | null>(null);
   const [detail, setDetail] = useState<PlaybookDetail | null>(null);
   const [title, setTitle] = useState('');
   const [counterparty, setCounterparty] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    void lensRun('law', 'playbook-list', {}).then((r) => {
-      if (r.data?.ok) setPlaybooks((r.data.result.playbooks as PlaybookMeta[]) || []);
-    });
+  const loadPlaybooks = useCallback(async () => {
+    setListStatus('loading');
+    setListError(null);
+    try {
+      const r = await lensRun('law', 'playbook-list', {});
+      if (r.data?.ok) {
+        setPlaybooks((r.data.result?.playbooks as PlaybookMeta[]) || []);
+        setListStatus('ready');
+      } else {
+        setPlaybooks([]);
+        setListError(String(r.data?.error || 'Could not load playbooks.'));
+        setListStatus('error');
+      }
+    } catch (e) {
+      setPlaybooks([]);
+      setListError(e instanceof Error ? e.message : 'Could not load playbooks.');
+      setListStatus('error');
+    }
   }, []);
+
+  useEffect(() => { void loadPlaybooks(); }, [loadPlaybooks]);
 
   async function openDetail(id: string) {
     const r = await lensRun('law', 'playbook-detail', { id });
@@ -62,8 +86,27 @@ export function ContractPlaybooks({ onApplied }: { onApplied?: (contractId: stri
 
       {!detail ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {playbooks.length === 0 && <p className="text-xs text-gray-400 italic">No playbooks available.</p>}
-          {playbooks.map((p) => (
+          {listStatus === 'loading' && (
+            <div className="md:col-span-2" data-testid="playbooks-loading">
+              <Skeleton variant="line" lines={3} />
+            </div>
+          )}
+          {listStatus === 'error' && (
+            <div className="md:col-span-2" data-testid="playbooks-error">
+              <ErrorState
+                variant="inline"
+                title="Could not load playbooks."
+                message={listError || 'Playbook catalog request failed.'}
+                onRetry={() => void loadPlaybooks()}
+              />
+            </div>
+          )}
+          {listStatus === 'ready' && playbooks.length === 0 && (
+            <p className="text-xs text-gray-400 italic" data-testid="playbooks-empty">
+              No playbooks available.
+            </p>
+          )}
+          {listStatus === 'ready' && playbooks.map((p) => (
             <button key={p.id} onClick={() => openDetail(p.id)}
               className="text-left bg-black/40 border border-white/10 rounded-lg p-3 hover:border-neon-green/30 transition-colors">
               <div className="flex items-center gap-1.5 mb-1">
