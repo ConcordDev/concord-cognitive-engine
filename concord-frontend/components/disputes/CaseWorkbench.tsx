@@ -923,10 +923,10 @@ function EvidenceTab({ c, items, busy, run, closed }: { c: PublicCase; items: Ev
 
 function MessagesTab({ c, messages, busy, run }: { c: PublicCase; messages: ThreadMessage[]; busy: string | null; run: RunFn }) {
   const [body, setBody] = useState('');
-  const [role, setRole] = useState('claimant');
 
   const post = async () => {
-    const ok = await run('message-post', { caseId: c.id, body: body.trim(), role }, 'message-post');
+    // Role is derived server-side from the authenticated party — never from the body.
+    const ok = await run('message-post', { caseId: c.id, body: body.trim() }, 'message-post');
     if (ok) setBody('');
   };
 
@@ -952,12 +952,7 @@ function MessagesTab({ c, messages, busy, run }: { c: PublicCase; messages: Thre
         )}
       </div>
       <div className="flex gap-2">
-        <select className="rounded-md bg-zinc-900 border border-zinc-700 px-2 py-1.5 text-sm text-zinc-100" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="claimant">Claimant</option>
-          <option value="respondent">Respondent</option>
-          <option value="mediator">Mediator</option>
-        </select>
-        <input className={inputCls} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message…" onKeyDown={(e) => { if (e.key === 'Enter' && body.trim()) post(); }} />
+        <input className={inputCls} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message as your case role…" onKeyDown={(e) => { if (e.key === 'Enter' && body.trim()) post(); }} />
         <button className={btnPrimary} disabled={!body.trim() || busy === 'message-post'} onClick={post}>
           {busy === 'message-post' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
         </button>
@@ -972,11 +967,11 @@ function MessagesTab({ c, messages, busy, run }: { c: PublicCase; messages: Thre
 
 function OffersTab({ c, offers, busy, run, closed }: { c: PublicCase; offers: SettlementOffer[]; busy: string | null; run: RunFn; closed: boolean }) {
   const [amount, setAmount] = useState('');
-  const [fromRole, setFromRole] = useState('respondent');
   const [terms, setTerms] = useState('');
 
   const make = async () => {
-    const ok = await run('offer-make', { caseId: c.id, amount: Number(amount), fromRole, terms: terms.trim() || undefined }, 'offer-make');
+    // fromRole is derived server-side from the authenticated party.
+    const ok = await run('offer-make', { caseId: c.id, amount: Number(amount), terms: terms.trim() || undefined }, 'offer-make');
     if (ok) { setAmount(''); setTerms(''); }
   };
 
@@ -984,18 +979,9 @@ function OffersTab({ c, offers, busy, run, closed }: { c: PublicCase; offers: Se
     <div className="space-y-3">
       {!closed && (
         <div className="rounded-md border border-zinc-800 p-3 space-y-2.5">
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Offer Amount (CC)">
-              <input className={inputCls} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </Field>
-            <Field label="From">
-              <select className={inputCls} value={fromRole} onChange={(e) => setFromRole(e.target.value)}>
-                <option value="claimant">Claimant</option>
-                <option value="respondent">Respondent</option>
-                <option value="mediator">Mediator</option>
-              </select>
-            </Field>
-          </div>
+          <Field label="Offer Amount (CC)">
+            <input className={inputCls} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </Field>
           <Field label="Terms (optional)">
             <input className={inputCls} value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Conditions of this offer…" />
           </Field>

@@ -144,19 +144,42 @@ describe("disputes evidence", () => {
 
 describe("disputes messaging", () => {
   it("message-post appends, message-list returns thread with byRole", () => {
-    const c = openCase();
-    assert.equal(call("message-post", ctx, {}, { caseId: c.id, body: "Hello", role: "claimant" }).ok, true);
-    assert.equal(call("message-post", ctx, {}, { caseId: c.id, body: "Reply", role: "respondent" }).ok, true);
+    const c = openCase({ respondentId: "user_b" });
+    assert.equal(call("message-post", ctx, {}, { caseId: c.id, body: "Hello" }).ok, true);
+    assert.equal(call("message-post", ctxB, {}, { caseId: c.id, body: "Reply" }).ok, true);
     const list = call("message-list", ctx, {}, { caseId: c.id });
     assert.equal(list.ok, true);
     assert.equal(list.result.total, 2);
     assert.equal(list.result.byRole.claimant, 1);
+    assert.equal(list.result.byRole.respondent, 1);
   });
 
   it("message-post rejects an empty body", () => {
     const c = openCase();
     const r = call("message-post", ctx, {}, { caseId: c.id, body: "" });
     assert.equal(r.ok, false);
+  });
+
+  it("F2 claimant cannot store a message/offer as respondent", () => {
+    const c = openCase({ respondentId: "user_b" });
+    const spoofMsg = call("message-post", ctx, {}, { caseId: c.id, body: "spoof", role: "respondent" });
+    assert.equal(spoofMsg.ok, true);
+    assert.equal(spoofMsg.result.posted.role, "claimant");
+    assert.equal(spoofMsg.result.posted.authorId, "user_a");
+    const spoofOffer = call("offer-make", ctx, {}, { caseId: c.id, amount: 11, fromRole: "respondent", terms: "nope" });
+    assert.equal(spoofOffer.ok, true);
+    assert.equal(spoofOffer.result.made.fromRole, "claimant");
+    assert.equal(spoofOffer.result.made.fromId, "user_a");
+    const asResp = call("message-post", ctxB, {}, { caseId: c.id, body: "real respondent", role: "claimant" });
+    assert.equal(asResp.ok, true);
+    assert.equal(asResp.result.posted.role, "respondent");
+    assert.equal(asResp.result.posted.authorId, "user_b");
+    const detail = call("case-detail", ctx, {}, { caseId: c.id });
+    const rolesByAuthor = detail.result.messages.map((m) => [m.authorId, m.role]);
+    assert.deepEqual(rolesByAuthor, [
+      ["user_a", "claimant"],
+      ["user_b", "respondent"],
+    ]);
   });
 });
 
@@ -188,9 +211,10 @@ describe("disputes mediator workflow", () => {
 
 describe("disputes settlement offers", () => {
   it("offer-make + offer-respond(accept) resolves the case", () => {
-    const c = openCase();
-    const made = call("offer-make", ctx, {}, { caseId: c.id, amount: 150, fromRole: "respondent", terms: "partial" });
+    const c = openCase({ respondentId: "user_b" });
+    const made = call("offer-make", ctxB, {}, { caseId: c.id, amount: 150, terms: "partial" });
     assert.equal(made.ok, true);
+    assert.equal(made.result.made.fromRole, "respondent");
     const offerId = made.result.made.id;
     const resp = call("offer-respond", ctx, {}, { caseId: c.id, offerId, decision: "accept" });
     assert.equal(resp.ok, true);
@@ -198,9 +222,9 @@ describe("disputes settlement offers", () => {
   });
 
   it("offer-make supersedes a prior pending offer", () => {
-    const c = openCase();
-    const first = call("offer-make", ctx, {}, { caseId: c.id, amount: 100, fromRole: "respondent" });
-    call("offer-make", ctx, {}, { caseId: c.id, amount: 130, fromRole: "claimant" });
+    const c = openCase({ respondentId: "user_b" });
+    const first = call("offer-make", ctxB, {}, { caseId: c.id, amount: 100 });
+    call("offer-make", ctx, {}, { caseId: c.id, amount: 130 });
     const detail = call("case-detail", ctx, {}, { caseId: c.id });
     const firstOffer = detail.result.offers.find((o) => o.id === first.result.made.id);
     assert.equal(firstOffer.status, "superseded");
@@ -208,7 +232,7 @@ describe("disputes settlement offers", () => {
 
   it("offer-respond rejects an unknown decision", () => {
     const c = openCase();
-    const made = call("offer-make", ctx, {}, { caseId: c.id, amount: 50, fromRole: "respondent" });
+    const made = call("offer-make", ctx, {}, { caseId: c.id, amount: 50 });
     const r = call("offer-respond", ctx, {}, { caseId: c.id, offerId: made.result.made.id, decision: "maybe" });
     assert.equal(r.ok, false);
   });

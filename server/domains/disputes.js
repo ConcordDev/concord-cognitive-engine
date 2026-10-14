@@ -78,6 +78,15 @@ export default function registerDisputesActions(registerLensAction) {
       || (c.mediatorId && c.mediatorId === userId);
   }
 
+  /** Role on the case for this authenticated caller — never from request body. */
+  function partyRole(c, userId) {
+    if (!c || !userId) return null;
+    if (c.claimantId === userId) return "claimant";
+    if (c.respondentId && c.respondentId === userId) return "respondent";
+    if (c.mediatorId && c.mediatorId === userId) return "mediator";
+    return null;
+  }
+
   function findCase(s, userId, caseId) {
     if (!caseId) return null;
     const c = s.casesById.get(String(caseId));
@@ -406,8 +415,8 @@ export default function registerDisputesActions(registerLensAction) {
       const body = String(params.body || "").trim();
       if (!body) return { ok: false, error: "message body required" };
       if (body.length > 2000) return { ok: false, error: "message too long (max 2000)" };
-      const VALID_ROLES = ["claimant", "respondent", "mediator"];
-      const role = VALID_ROLES.includes(params.role) ? params.role : "claimant";
+      const role = partyRole(c, userId);
+      if (!role) return { ok: false, error: "case not found" };
       const msg = {
         id: `msg_${c.id}_${c.messages.length + 1}`,
         role,
@@ -499,8 +508,8 @@ export default function registerDisputesActions(registerLensAction) {
       }
       const amount = parseFloat(params.amount);
       if (!Number.isFinite(amount) || amount < 0) return { ok: false, error: "valid amount required" };
-      const VALID_ROLES = ["claimant", "respondent", "mediator"];
-      const fromRole = VALID_ROLES.includes(params.fromRole) ? params.fromRole : "claimant";
+      const fromRole = partyRole(c, userId);
+      if (!fromRole) return { ok: false, error: "case not found" };
       // Supersede any prior pending offers — only one is live at a time.
       c.offers.forEach((o) => { if (o.status === "pending") o.status = "superseded"; });
       const offer = {

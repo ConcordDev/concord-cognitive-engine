@@ -136,9 +136,10 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
   it("offer-make → offer-respond(accept): accepting an offer resolves the case", async () => {
     const open = await lensRun("disputes", "case-open", { params: { title: "Settle this", disputeType: "non_delivery", disputeAmount: 400 } }, ctx);
     const caseId = open.result.case.id;
-    const mk = await lensRun("disputes", "offer-make", { params: { caseId, amount: 300, fromRole: "respondent", terms: "partial" } }, ctx);
+    const mk = await lensRun("disputes", "offer-make", { params: { caseId, amount: 300, terms: "partial" } }, ctx);
     assert.equal(mk.ok, true);
     assert.equal(mk.result.made.amount, 300);
+    assert.equal(mk.result.made.fromRole, "claimant"); // role from auth, not body
     const offerId = mk.result.made.id;
     const resp = await lensRun("disputes", "offer-respond", { params: { caseId, offerId, decision: "accept" } }, ctx);
     assert.equal(resp.ok, true);
