@@ -303,21 +303,34 @@ export default function registerMentorshipActions(registerLensAction) {
       const name = mClean(params.name, 80);
       if (!name) return { ok: false, error: "mentor name required" };
       const skills = mArr(params.skills).map((x) => mClean(x, 40)).filter(Boolean).slice(0, 20);
+      const existing = s.mentors.get(userId) || null;
+      // Patch semantics: omitted numeric/optional fields keep stored values so a
+      // headline-only re-publish does not reset experienceYears to the form default.
+      const yearsProvided = params.experienceYears != null && params.experienceYears !== "";
+      const capacityProvided = params.capacity != null && params.capacity !== "";
       const mentor = {
         id: userId,
         name,
-        headline: mClean(params.headline, 140),
-        bio: mClean(params.bio, 800),
-        skills,
-        experienceYears: Math.max(0, Math.round(mNum(params.experienceYears))),
-        availability: mClean(params.availability, 40) || "flexible",
-        capacity: Math.max(1, Math.round(mNum(params.capacity, 3))),
-        hourlyFocus: mClean(params.hourlyFocus, 40) || "career",
-        rating: 0,
-        reviewCount: 0,
-        menteeCount: 0,
-        listed: params.listed !== false,
-        createdAt: s.mentors.has(userId) ? s.mentors.get(userId).createdAt : mNow(),
+        headline: params.headline !== undefined ? mClean(params.headline, 140) : (existing?.headline || ""),
+        bio: params.bio !== undefined ? mClean(params.bio, 800) : (existing?.bio || ""),
+        skills: params.skills !== undefined ? skills : (existing?.skills || skills),
+        experienceYears: yearsProvided
+          ? Math.max(0, Math.round(mNum(params.experienceYears)))
+          : Math.max(0, Math.round(mNum(existing?.experienceYears, 0))),
+        availability: params.availability !== undefined
+          ? (mClean(params.availability, 40) || existing?.availability || "flexible")
+          : (existing?.availability || "flexible"),
+        capacity: capacityProvided
+          ? Math.max(1, Math.round(mNum(params.capacity, 3)))
+          : Math.max(1, Math.round(mNum(existing?.capacity, 3))),
+        hourlyFocus: params.hourlyFocus !== undefined
+          ? (mClean(params.hourlyFocus, 40) || existing?.hourlyFocus || "career")
+          : (existing?.hourlyFocus || "career"),
+        rating: existing?.rating || 0,
+        reviewCount: existing?.reviewCount || 0,
+        menteeCount: existing?.menteeCount || 0,
+        listed: params.listed !== undefined ? params.listed !== false : (existing ? existing.listed : true),
+        createdAt: existing?.createdAt || mNow(),
         updatedAt: mNow(),
       };
       s.mentors.set(userId, mentor);

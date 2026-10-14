@@ -14,6 +14,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 import { ReviewHistogram, type ReviewHistogramBucket } from '@/components/mentorship/ReviewHistogram';
 
 interface Mentor {
@@ -53,6 +54,7 @@ const SORTS = [
 ];
 
 export function MentorDirectoryPanel() {
+  const { user } = useAuth();
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [allSkills, setAllSkills] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,7 @@ export function MentorDirectoryPanel() {
     availability: 'weekly', capacity: '3', hourlyFocus: 'career',
   });
   const [busy, setBusy] = useState(false);
+  const [editingExisting, setEditingExisting] = useState(false);
 
   const [selected, setSelected] = useState<Mentor | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -116,22 +119,68 @@ export function MentorDirectoryPanel() {
     void loadReviewStats(m.id);
   };
 
+  const openRegisterForm = async () => {
+    if (showRegister) {
+      setShowRegister(false);
+      setEditingExisting(false);
+      return;
+    }
+    setShowRegister(true);
+    const myId = user?.id;
+    if (!myId) {
+      setEditingExisting(false);
+      return;
+    }
+    // Prefill from the live profile so a headline-only edit keeps years/skills.
+    const fromDir = mentors.find((m) => m.id === myId);
+    let mine = fromDir || null;
+    if (!mine) {
+      const r = await lensRun('mentorship', 'mentor-profile', { mentorId: myId });
+      if (r.data?.ok !== false && r.data?.result?.mentor) mine = r.data.result.mentor as Mentor;
+    }
+    if (!mine) {
+      setEditingExisting(false);
+      setRegForm({
+        name: '', headline: '', bio: '', skills: '', experienceYears: '3',
+        availability: 'weekly', capacity: '3', hourlyFocus: 'career',
+      });
+      return;
+    }
+    setEditingExisting(true);
+    setRegForm({
+      name: mine.name || '',
+      headline: mine.headline || '',
+      bio: mine.bio || '',
+      skills: (mine.skills || []).join(', '),
+      experienceYears: String(mine.experienceYears ?? 0),
+      availability: mine.availability || 'weekly',
+      capacity: String(mine.capacity ?? 3),
+      hourlyFocus: mine.hourlyFocus || 'career',
+    });
+  };
+
   const register = async () => {
     if (!regForm.name.trim()) { setError('Mentor name is required.'); return; }
     setBusy(true);
-    const r = await lensRun('mentorship', 'mentor-register', {
+    const payload: Record<string, unknown> = {
       name: regForm.name,
       headline: regForm.headline,
       bio: regForm.bio,
       skills: regForm.skills.split(',').map((s) => s.trim()).filter(Boolean),
-      experienceYears: Number(regForm.experienceYears) || 0,
       availability: regForm.availability,
       capacity: Number(regForm.capacity) || 1,
       hourlyFocus: regForm.hourlyFocus,
-    });
+    };
+    // Always send the form years when editing a loaded profile; server also
+    // patches omitted years so a partial API client cannot wipe them.
+    if (regForm.experienceYears !== '' || !editingExisting) {
+      payload.experienceYears = Number(regForm.experienceYears) || 0;
+    }
+    const r = await lensRun('mentorship', 'mentor-register', payload);
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data.error || 'Registration failed.'); return; }
     setShowRegister(false);
+    setEditingExisting(false);
     setRegForm({ name: '', headline: '', bio: '', skills: '', experienceYears: '3', availability: 'weekly', capacity: '3', hourlyFocus: 'career' });
     notifyMentorshipProgramChanged();
     void refresh();
@@ -273,8 +322,9 @@ export function MentorDirectoryPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Mentor Directory</h3>
-        <button onClick={() => setShowRegister(!showRegister)} className="btn-neon text-sm">
-          {showRegister ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />} {showRegister ? 'Cancel' : 'List as mentor'}
+        <button onClick={() => { void openRegisterForm(); }} className="btn-neon text-sm">
+          {showRegister ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />}{' '}
+          {showRegister ? 'Cancel' : (mentors.some((m) => m.id === user?.id) ? 'Edit mentor profile' : 'List as mentor')}
         </button>
       </div>
 

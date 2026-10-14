@@ -119,6 +119,25 @@ describe("mentorship directory / discovery", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.openSlots, 4);
   });
+
+  it("F7 headline-only re-publish keeps experienceYears", () => {
+    call("mentor-register", ctxM, {
+      name: "Ada", headline: "Original", bio: "Bio stays",
+      skills: ["rust"], experienceYears: 4, hourlyFocus: "career",
+    });
+    const edit = call("mentor-register", ctxM, {
+      name: "Ada", headline: "Edited headline",
+      // omit experienceYears / bio / skills — patch keeps stored values
+    });
+    assert.equal(edit.ok, true);
+    assert.equal(edit.result.mentor.headline, "Edited headline");
+    assert.equal(edit.result.mentor.experienceYears, 4);
+    assert.equal(edit.result.mentor.bio, "Bio stays");
+    assert.deepEqual(edit.result.mentor.skills, ["rust"]);
+    const reload = call("mentor-profile", ctxE, { mentorId: "user_mentor" });
+    assert.equal(reload.result.mentor.experienceYears, 4);
+    assert.equal(reload.result.mentor.headline, "Edited headline");
+  });
 });
 
 describe("mentorship request → accept flow", () => {
