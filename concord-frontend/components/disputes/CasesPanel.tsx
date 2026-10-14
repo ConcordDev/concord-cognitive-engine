@@ -231,9 +231,14 @@ function CreateDisputeForm({ onClose, onSuccess }: { onClose: () => void; onSucc
     onSuccess: () => onSuccess(),
   });
 
+  const txTrimmed = transactionId.trim();
+  const statementTrimmed = statement.trim();
+  const canSubmit = Boolean(txTrimmed && statementTrimmed);
+
   const handleSubmit = () => {
+    if (!canSubmit) return;
     const evidenceList = evidence ? evidence.split('\n').filter(Boolean) : undefined;
-    mutation.mutate({ transactionId, type, statement, evidence: evidenceList });
+    mutation.mutate({ transactionId: txTrimmed, type, statement: statementTrimmed, evidence: evidenceList });
   };
 
   return (
@@ -311,7 +316,7 @@ function CreateDisputeForm({ onClose, onSuccess }: { onClose: () => void; onSucc
           <button onClick={onClose} className={cn(ds.btnSecondary, 'flex-1')}>Cancel</button>
           <button
             onClick={handleSubmit}
-            disabled={!transactionId || !statement || mutation.isPending}
+            disabled={!canSubmit || mutation.isPending}
             className={cn(ds.btnPrimary, 'flex-1')}
           >
             {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

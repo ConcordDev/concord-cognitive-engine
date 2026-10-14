@@ -49,7 +49,9 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
-      const { transactionId, type, statement, evidence } = req.body || {};
+      const { type, evidence } = req.body || {};
+      const transactionId = String(req.body?.transactionId ?? "").trim();
+      const statement = String(req.body?.statement ?? "").trim();
 
       if (!transactionId || !type || !statement) {
         return res.status(400).json({
@@ -459,8 +461,10 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
     }
   }
 
-  // Run auto-escalation check periodically (every 15 minutes)
+  // Run auto-escalation check periodically (every 15 minutes).
+  // unref so unit tests that mount the router can exit cleanly.
   const escalationInterval = setInterval(checkAutoEscalation, 15 * 60 * 1000);
+  if (typeof escalationInterval.unref === "function") escalationInterval.unref();
 
   // Also run on startup
   try { checkAutoEscalation(); } catch (_e) { /* ignore */ }
