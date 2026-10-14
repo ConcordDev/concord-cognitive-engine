@@ -55,7 +55,11 @@ const DOMAIN_TYPE_MAP = Object.freeze({
   // Knowledge / reasoning lenses.
   chat:          { type: ["chat_session", "conversation", "message"] },
   paper:         { type: ["paper", "claim", "hypothesis"] },
-  research:      { type: ["reasoning_session", "research"] },
+  // INC-SWEEP research F6 — desk Save-as-DTU uses contentClass/source tags
+  // (not type "research"/"reasoning_session"). A narrow type filter left
+  // list_mine/recent_mine at total:0 over real private DTUs the user just
+  // created. Null type = caller-scoped DTUs for this lens.
+  research:      { type: null },
   hypothesis:    { type: ["hypothesis"] },
   reasoning:     { type: ["reasoning_session"] },
   debate:        { type: ["debate", "argument"] },
