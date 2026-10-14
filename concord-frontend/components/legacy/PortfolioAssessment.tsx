@@ -36,6 +36,13 @@ interface RiskComponent {
 }
 
 const num = (v: string, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+/** Empty / whitespace → undefined (omit from payload). Number("") is 0 — never treat blank as measured 0. */
+const optNum = (v: string): number | undefined => {
+  const t = v.trim();
+  if (t === '') return undefined;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : undefined;
+};
 const blankDebt = (): DebtModule => ({ name: '', linesOfCode: '', cyclomaticComplexity: '', testCoverage: '', dependencyCount: '', dependencyAgeYears: '', duplicateRatio: '', lastModifiedDaysAgo: '' });
 const blankMig = (): MigModule => ({ name: '', dependencies: '', apiEndpoints: '', apiConsumers: '', storeType: '', storeSizeGb: '', storePortable: true });
 const blankRisk = (): RiskComponent => ({ name: '', criticality: '3', knowledgeHolders: '', failures: '' });
@@ -60,11 +67,23 @@ export function PortfolioAssessment() {
   const [err, setErr] = useState<string | null>(null);
 
   const runDebt = async () => {
-    const modules = debtModules.filter((m) => m.name.trim()).map((m) => ({
-      name: m.name.trim(), linesOfCode: num(m.linesOfCode), cyclomaticComplexity: num(m.cyclomaticComplexity, 1),
-      testCoverage: num(m.testCoverage, 50), dependencyCount: num(m.dependencyCount), dependencyAgeYears: num(m.dependencyAgeYears),
-      duplicateRatio: num(m.duplicateRatio) / 100, lastModifiedDaysAgo: num(m.lastModifiedDaysAgo),
-    }));
+    const modules = debtModules.filter((m) => m.name.trim()).map((m) => {
+      const row: Record<string, string | number> = {
+        name: m.name.trim(),
+        linesOfCode: num(m.linesOfCode),
+        dependencyCount: num(m.dependencyCount),
+        dependencyAgeYears: num(m.dependencyAgeYears),
+        duplicateRatio: num(m.duplicateRatio) / 100,
+        lastModifiedDaysAgo: num(m.lastModifiedDaysAgo),
+      };
+      // Cleared numeric fields are omitted so server defaults apply (coverage→50,
+      // complexity→1). Explicit 0 is sent and scored as measured 0.
+      const cc = optNum(m.cyclomaticComplexity);
+      if (cc !== undefined) row.cyclomaticComplexity = cc;
+      const cov = optNum(m.testCoverage);
+      if (cov !== undefined) row.testCoverage = cov;
+      return row;
+    });
     if (modules.length === 0) { setErr('Add at least one module with a name.'); return; }
     setErr(null); setBusy(true);
     const r = await lensRun('legacy', 'technicalDebt', { modules });
@@ -211,6 +230,7 @@ function DebtResult({ r }: { r: any }) {
   if (r.error) return <p className="text-xs text-rose-400">Analysis failed: {r.error}</p>;
   if (r.message) return <p className="text-xs text-zinc-400">{r.message}</p>;
   const s = r.summary || {};
+  const defaultedCoverage = (r.modules || []).filter((m: any) => m?.metrics?.testCoverageDefaulted);
   return (
     <div className="rounded-lg border border-zinc-800 bg-black/30 p-3 space-y-2 text-xs">
       <div className="flex flex-wrap gap-3">
@@ -220,6 +240,12 @@ function DebtResult({ r }: { r: any }) {
         <Stat label="Avg Maintainability" value={s.avgMaintainability} />
         <Stat label="Remediation (hrs)" value={s.totalRemediationHours} />
       </div>
+      {defaultedCoverage.length > 0 && (
+        <p className="text-[10px] text-zinc-500">
+          Test coverage defaulted to 50% (not measured) for:{' '}
+          {defaultedCoverage.map((m: any) => m.name).join(', ')}.
+        </p>
+      )}
       {(r.topDebtSources || []).length > 0 && (
         <div className="space-y-1">
           <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Top Debt Sources</p>

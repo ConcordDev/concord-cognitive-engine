@@ -19,7 +19,9 @@ export default function registerLegacyActions(registerLensAction) {
       const cc = mod.cyclomaticComplexity || 1;
       const depCount = mod.dependencyCount || 0;
       const depAge = mod.dependencyAgeYears || 0;
-      const testCoverage = mod.testCoverage != null ? mod.testCoverage : 50;
+      // Omitted / null / "" → default 50. Explicit 0 is measured 0% coverage.
+      const coverageProvided = mod.testCoverage != null && mod.testCoverage !== "";
+      const testCoverage = coverageProvided ? Number(mod.testCoverage) : 50;
       const duplicateRatio = mod.duplicateRatio || 0;
       const lastModifiedDays = mod.lastModifiedDaysAgo || 0;
 
@@ -49,7 +51,15 @@ export default function registerLegacyActions(registerLensAction) {
 
       return {
         name: mod.name,
-        metrics: { linesOfCode: loc, cyclomaticComplexity: cc, testCoverage, duplicateRatio, dependencyCount: depCount, dependencyAgeYears: depAge },
+        metrics: {
+          linesOfCode: loc,
+          cyclomaticComplexity: cc,
+          testCoverage,
+          testCoverageDefaulted: !coverageProvided,
+          duplicateRatio,
+          dependencyCount: depCount,
+          dependencyAgeYears: depAge,
+        },
         maintainabilityIndex,
         maintainabilityLevel: maintainabilityIndex >= 65 ? "good" : maintainabilityIndex >= 40 ? "moderate" : "poor",
         debtScore,
