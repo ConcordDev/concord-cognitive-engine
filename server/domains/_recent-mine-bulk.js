@@ -66,7 +66,9 @@ const DOMAIN_TYPE_MAP = Object.freeze({
   ethics:        { type: ["ethics_dilemma"] },
   philosophy:    { type: ["philosophy_argument"] },
   science:       { type: ["experiment", "science"] },
-  lab:           { type: ["lab_protocol", "experiment"] },
+  // INC-SWEEP lab F5 — same class as research F6: narrow type filter left
+  // list_mine/recent_mine at total:0 while Save-as-DTU / notebook DTUs exist.
+  lab:           { type: null },
   math:          { type: ["math_proof", "math"] },
   physics:       { type: ["physics", "experiment"] },
   chem:          { type: ["chem_synthesis", "chem"] },
