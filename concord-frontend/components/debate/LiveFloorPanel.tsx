@@ -25,13 +25,29 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
+/** Server verdict from debate.evaluateArgument — never invent client-side. */
+export type ArgumentEvaluation = {
+  overallScore: number;
+  strength: string;
+  evidenceScore?: number;
+  reasoningScore?: number;
+  evaluatedAt?: string;
+};
+
+type FloorArgument = {
+  author: string;
+  text: string;
+  votes: number;
+  evaluation?: ArgumentEvaluation | null;
+};
+
 interface DebateData {
   topic: string;
   description: string;
   status: 'open' | 'in-progress' | 'voting' | 'closed';
   format: 'open' | 'structured' | 'oxford' | 'lincoln-douglas';
-  proArguments: { author: string; text: string; votes: number }[];
-  conArguments: { author: string; text: string; votes: number }[];
+  proArguments: FloorArgument[];
+  conArguments: FloorArgument[];
   proVotes: number;
   conVotes: number;
   moderator: string;
@@ -50,30 +66,40 @@ const STATUS_COLORS: Record<string, string> = {
 /*  Argument Strength Meter                                            */
 /* ------------------------------------------------------------------ */
 
-function ArgumentStrengthMeter({ text }: { text: string }) {
-  const strength = useMemo(() => {
-    if (!text) return 0;
-    let score = 0;
-    if (text.length > 20) score += 20;
-    if (text.length > 60) score += 20;
-    if (/because|therefore|since|thus|hence|evidence|data|study|research|shows?/i.test(text)) score += 25;
-    if (/however|although|moreover|furthermore|consequently/i.test(text)) score += 15;
-    if (/\d+%|\d+ (million|billion|thousand)|\d{4}/i.test(text)) score += 20;
-    return Math.min(100, score);
-  }, [text]);
-
-  const label = strength >= 80 ? 'Strong' : strength >= 50 ? 'Moderate' : strength >= 25 ? 'Weak' : 'Insufficient';
-  const color = strength >= 80 ? '#22c55e' : strength >= 50 ? '#eab308' : strength >= 25 ? '#f97316' : '#6b7280';
+/**
+ * Honest server-backed strength. Renders evaluateArgument's overallScore /
+ * strength when present; otherwise "Not evaluated" with no invented percent.
+ * (F1 — the old client length/'Because' meter contradicted the evaluator.)
+ */
+export function ArgumentStrengthMeter({
+  evaluation,
+}: {
+  evaluation?: ArgumentEvaluation | null;
+}) {
+  const score = evaluation && Number.isFinite(Number(evaluation.overallScore))
+    ? Math.max(0, Math.min(100, Math.round(Number(evaluation.overallScore))))
+    : null;
+  const strengthRaw = evaluation?.strength ? String(evaluation.strength).toLowerCase() : '';
+  const label = score == null
+    ? 'Not evaluated'
+    : strengthRaw === 'strong' ? 'Strong'
+      : strengthRaw === 'moderate' ? 'Moderate'
+        : strengthRaw === 'weak' ? 'Weak'
+          : strengthRaw ? strengthRaw.charAt(0).toUpperCase() + strengthRaw.slice(1) : 'Scored';
+  const color = score == null ? '#6b7280'
+    : score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#f97316';
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" data-testid="argument-strength-meter">
       <div className="flex items-center justify-between text-xs">
         <span className="text-gray-400 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Argument Strength</span>
-        <span className="font-semibold" style={{ color }}>{label} ({strength}%)</span>
+        <span className="font-semibold" style={{ color }} data-testid="argument-strength-label">
+          {score == null ? label : `${label} (${score}%)`}
+        </span>
       </div>
       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
         <motion.div className="h-full rounded-full" style={{ backgroundColor: color }}
-          initial={{ width: 0 }} animate={{ width: `${strength}%` }} transition={{ duration: 0.4 }} />
+          initial={{ width: 0 }} animate={{ width: `${score ?? 0}%` }} transition={{ duration: 0.4 }} />
       </div>
     </div>
   );
@@ -477,16 +503,23 @@ export function LiveFloorPanel() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const handleDebateAction = useCallback(async (action: string) => {
-    const targetId = items[0]?.id;
+    const targetId = selectedDebate || items[0]?.id;
     if (!targetId) return;
     setActiveAction(action);
     setActionResult(null);
     try {
       const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+      if (res.ok === false) {
+        setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` });
+      } else {
+        setActionResult(res.result as Record<string, unknown>);
+        // evaluateArgument stamps per-arg evaluation on the server artifact;
+        // refetch so Argument Strength cards read the persisted verdict.
+        if (action === 'evaluateArgument') await refetch();
+      }
     } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
     setActiveAction(null);
-  }, [items, runAction]);
+  }, [selectedDebate, items, runAction, refetch]);
 
   const debates = useMemo(() =>
     items.map(item => ({ id: item.id, ...item.data, topic: item.title || item.data?.topic || 'Untitled Debate' }))
@@ -889,7 +922,7 @@ export function LiveFloorPanel() {
                         <div key={i} className="bg-neon-green/5 border border-neon-green/20 rounded-lg p-3 space-y-2">
                           <p className="text-sm text-gray-200">{arg.text}</p>
                           <p className="text-xs text-gray-400">{arg.author}</p>
-                          <ArgumentStrengthMeter text={arg.text} />
+                          <ArgumentStrengthMeter evaluation={arg.evaluation} />
                         </div>
                       ))}
                     </div>
@@ -902,7 +935,7 @@ export function LiveFloorPanel() {
                         <div key={i} className="bg-red-400/5 border border-red-400/20 rounded-lg p-3 space-y-2">
                           <p className="text-sm text-gray-200">{arg.text}</p>
                           <p className="text-xs text-gray-400">{arg.author}</p>
-                          <ArgumentStrengthMeter text={arg.text} />
+                          <ArgumentStrengthMeter evaluation={arg.evaluation} />
                         </div>
                       ))}
                     </div>
@@ -952,7 +985,7 @@ export function LiveFloorPanel() {
                 </div>
                 {newArgument.trim() && canSubmitArgument && (
                   <div className="mt-3">
-                    <ArgumentStrengthMeter text={newArgument} />
+                    <ArgumentStrengthMeter evaluation={null} />
                   </div>
                 )}
               </div>

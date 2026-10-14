@@ -131,6 +131,25 @@ describe("debate.evaluateArgument — page.tsx Evaluate Argument panel", () => {
       assert.ok(r.ok === true || r.ok === false, "never throws");
     }
   });
+
+  it("F1: stamps per-argument evaluation (weak/20) onto the artifact — never invents a local %", () => {
+    // Same shape as the sweep floor pro: "Because …" ~70 chars → reasoningScore 50 → overall 20 / weak.
+    const proText = "Because a recorded pro argument for sdbtmv7zxahd should survive a reload.";
+    const data = {
+      topic: "Sweep floor sdbtmv7zxahd",
+      proArguments: [{ author: "You", text: proText, votes: 0 }],
+      conArguments: [],
+    };
+    const r = callArtifact("evaluateArgument", ctxA, data, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.overallScore, 20);
+    assert.equal(r.result.strength, "weak");
+    const stamped = data.proArguments[0].evaluation;
+    assert.ok(stamped, "evaluation persisted on the argument");
+    assert.equal(stamped.overallScore, 20);
+    assert.equal(stamped.strength, "weak");
+    assert.ok(typeof stamped.evaluatedAt === "string" && stamped.evaluatedAt.length > 0);
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────

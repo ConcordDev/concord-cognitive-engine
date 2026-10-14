@@ -28,6 +28,23 @@ export default function registerDebateActions(registerLensAction) {
     return [...pro, ...con].filter(Boolean).join(". ");
   }
 
+  // Score one claim/reasoning blob with the same formula the AI Analysis
+  // panel has always shown. Used both for the top-level result and to stamp
+  // per-argument `evaluation` onto the live floor artifact (F1 — cards must
+  // render this, never a local string-length meter).
+  function scoreArgumentBlob({ claim, reasoning, evidence, hasCounterpoint }) {
+    const evidenceScore = Math.min(100, asArray(evidence).length * 20);
+    const reasoningScore = reasoning.length > 200 ? 80 : reasoning.length > 50 ? 50 : reasoning.length > 0 ? 25 : 0;
+    const overallScore = Math.round(evidenceScore * 0.4 + reasoningScore * 0.4 + (hasCounterpoint ? 20 : 0));
+    const fallacies = [];
+    const lowerClaim = (claim + " " + reasoning).toLowerCase();
+    if (lowerClaim.includes("everyone knows") || lowerClaim.includes("obviously")) fallacies.push("Appeal to common knowledge");
+    if (lowerClaim.includes("always") || lowerClaim.includes("never")) fallacies.push("Overgeneralization");
+    if (lowerClaim.match(/if .* then .* therefore/)) fallacies.push("Possible slippery slope");
+    const strength = overallScore >= 70 ? "strong" : overallScore >= 40 ? "moderate" : "weak";
+    return { evidenceScore, reasoningScore, overallScore, fallaciesDetected: fallacies, strength };
+  }
+
   registerLensAction("debate", "evaluateArgument", (ctx, artifact, params = {}) => {
    try {
     const data = artifact?.data || {};
@@ -39,16 +56,68 @@ export default function registerDebateActions(registerLensAction) {
     const reasoningRaw = p.reasoning ?? data.reasoning ?? debateText(data, p) ?? "";
     const reasoning = typeof reasoningRaw === "string" ? reasoningRaw : String(reasoningRaw || "");
     if (!claim.trim()) return { ok: true, result: { message: "State a claim to evaluate the argument." } };
-    const evidenceScore = Math.min(100, evidence.length * 20);
-    const reasoningScore = reasoning.length > 200 ? 80 : reasoning.length > 50 ? 50 : reasoning.length > 0 ? 25 : 0;
     const hasCounterpoint = !!(data.counterpoint || data.rebuttal);
-    const overallScore = Math.round(evidenceScore * 0.4 + reasoningScore * 0.4 + (hasCounterpoint ? 20 : 0));
-    const fallacies = [];
-    const lowerClaim = (claim + " " + reasoning).toLowerCase();
-    if (lowerClaim.includes("everyone knows") || lowerClaim.includes("obviously")) fallacies.push("Appeal to common knowledge");
-    if (lowerClaim.includes("always") || lowerClaim.includes("never")) fallacies.push("Overgeneralization");
-    if (lowerClaim.match(/if .* then .* therefore/)) fallacies.push("Possible slippery slope");
-    return { ok: true, result: { claim: claim.slice(0, 200), evidenceCount: evidence.length, evidenceScore, reasoningScore, addressesCounterpoints: hasCounterpoint, overallScore, fallaciesDetected: fallacies, strength: overallScore >= 70 ? "strong" : overallScore >= 40 ? "moderate" : "weak" } };
+    const scored = scoreArgumentBlob({ claim, reasoning, evidence, hasCounterpoint });
+
+    // Persist per-argument server verdicts onto the floor artifact so the
+    // Argument Strength cards survive reload and never invent a local %.
+    // Explicit {text}/{claim} params evaluate that one blob and stamp any
+    // matching arg; bare Evaluate stamps every pro/con row individually.
+    const stampAt = new Date().toISOString();
+    const stampArg = (arg, blob) => {
+      if (!arg || typeof arg !== "object") return;
+      arg.evaluation = {
+        overallScore: blob.overallScore,
+        strength: blob.strength,
+        evidenceScore: blob.evidenceScore,
+        reasoningScore: blob.reasoningScore,
+        evaluatedAt: stampAt,
+      };
+    };
+    const pro = asArray(data.proArguments);
+    const con = asArray(data.conArguments);
+    const explicitText = (typeof p.text === "string" && p.text.trim())
+      || (typeof p.claim === "string" && p.claim.trim())
+      || "";
+    if (explicitText) {
+      const one = scoreArgumentBlob({
+        claim: explicitText,
+        reasoning: (typeof p.reasoning === "string" && p.reasoning.trim()) ? p.reasoning : explicitText,
+        evidence: asArray(p.evidence),
+        hasCounterpoint: false,
+      });
+      for (const arg of [...pro, ...con]) {
+        if (argText(arg) === explicitText) stampArg(arg, one);
+      }
+    } else {
+      for (const arg of [...pro, ...con]) {
+        const t = argText(arg);
+        if (!t.trim()) continue;
+        stampArg(arg, scoreArgumentBlob({
+          claim: t,
+          reasoning: t,
+          evidence: asArray(arg && arg.evidence),
+          hasCounterpoint: !!(arg && (arg.counterpoint || arg.rebuttal)),
+        }));
+      }
+    }
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+
+    return {
+      ok: true,
+      result: {
+        claim: claim.slice(0, 200),
+        evidenceCount: evidence.length,
+        evidenceScore: scored.evidenceScore,
+        reasoningScore: scored.reasoningScore,
+        addressesCounterpoints: hasCounterpoint,
+        overallScore: scored.overallScore,
+        fallaciesDetected: scored.fallaciesDetected,
+        strength: scored.strength,
+      },
+    };
    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
   registerLensAction("debate", "steelmanPosition", (ctx, artifact, params = {}) => {
