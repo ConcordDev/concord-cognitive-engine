@@ -137,12 +137,19 @@ export function MentorDirectoryPanel() {
 
   const sendRequest = async () => {
     if (!selected) return;
+    const menteeName = reqForm.menteeName.trim();
+    const topic = reqForm.topic.trim();
+    const message = reqForm.message.trim();
+    if (!menteeName || !topic || !message) {
+      setError('Your name, topic, and message are required.');
+      return;
+    }
     setBusy(true);
     const r = await lensRun('mentorship', 'request-send', {
       mentorId: selected.id,
-      menteeName: reqForm.menteeName || 'Mentee',
-      topic: reqForm.topic,
-      message: reqForm.message,
+      menteeName,
+      topic,
+      message,
       goals: reqForm.goals.split(',').map((s) => s.trim()).filter(Boolean),
     });
     setBusy(false);
@@ -212,7 +219,11 @@ export function MentorDirectoryPanel() {
           </div>
           <input value={reqForm.goals} onChange={(e) => setReqForm((p) => ({ ...p, goals: e.target.value }))} placeholder="Goals (comma-separated)" className="input-lattice w-full" />
           <textarea value={reqForm.message} onChange={(e) => setReqForm((p) => ({ ...p, message: e.target.value }))} placeholder="Message to the mentor..." rows={2} className="input-lattice w-full" />
-          <button onClick={sendRequest} disabled={busy} className="btn-neon w-full">
+          <button
+            onClick={sendRequest}
+            disabled={busy || !reqForm.menteeName.trim() || !reqForm.topic.trim() || !reqForm.message.trim()}
+            className="btn-neon w-full"
+          >
             {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Send request'}
           </button>
         </div>

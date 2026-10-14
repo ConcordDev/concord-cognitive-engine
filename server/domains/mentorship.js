@@ -222,6 +222,8 @@ export default function registerMentorshipActions(registerLensAction) {
 
   // ── 2. Request → accept matching flow ─────────────────────────────────
   // Mentee sends a connection request to a mentor.
+  // Topic + message are required user fields — never invent defaults for them
+  // (a blank "General mentorship" row used to block a later real request).
   registerLensAction("mentorship", "request-send", (ctx, _a, params = {}) => {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -231,17 +233,23 @@ export default function registerMentorshipActions(registerLensAction) {
       const mentor = s.mentors.get(mentorId);
       if (!mentor) return { ok: false, error: "mentor not found" };
       if (mentorId === menteeId) return { ok: false, error: "cannot mentor yourself" };
+      const topic = mClean(params.topic, 120);
+      const message = mClean(params.message, 600);
+      const menteeName = mClean(params.menteeName, 80);
+      if (!topic) return { ok: false, error: "topic required", status: 400 };
+      if (!message) return { ok: false, error: "message required", status: 400 };
+      if (!menteeName) return { ok: false, error: "menteeName required", status: 400 };
       const incoming = mList(s.requests, mentorId);
       if (incoming.some((r) => r.menteeId === menteeId && r.status === "pending"))
-        {return { ok: false, error: "you already have a pending request to this mentor" };}
+        {return { ok: false, error: "you already have a pending request to this mentor", status: 400 };}
       const request = {
         id: mId("req"),
         mentorId,
         mentorName: mentor.name,
         menteeId,
-        menteeName: mClean(params.menteeName, 80) || "Mentee",
-        topic: mClean(params.topic, 120) || "General mentorship",
-        message: mClean(params.message, 600),
+        menteeName,
+        topic,
+        message,
         goals: mArr(params.goals).map((x) => mClean(x, 80)).filter(Boolean).slice(0, 8),
         status: "pending",
         createdAt: mNow(),

@@ -99,20 +99,62 @@ describe("mentorship directory / discovery", () => {
 describe("mentorship request → accept flow", () => {
   beforeEach(() => { call("mentor-register", ctxM, { name: "Ada", skills: ["rust"] }); });
 
+  const validReq = {
+    mentorId: "user_mentor",
+    topic: "Rust",
+    message: "I want to learn systems programming.",
+    menteeName: "Eve",
+  };
+
   it("request-send creates a pending request", () => {
-    const r = call("request-send", ctxE, { mentorId: "user_mentor", topic: "Rust", menteeName: "Eve" });
+    const r = call("request-send", ctxE, validReq);
     assert.equal(r.ok, true);
     assert.equal(r.result.request.status, "pending");
   });
 
+  it("F1 blank topic/message/name are refused and store no pending row", () => {
+    const before = call("request-list", ctxM, {});
+    assert.equal(before.result.pendingIncoming, 0);
+    for (const bad of [
+      { ...validReq, topic: "" },
+      { ...validReq, topic: "   " },
+      { ...validReq, message: "" },
+      { ...validReq, menteeName: "" },
+    ]) {
+      const r = call("request-send", ctxE, bad);
+      assert.equal(r.ok, false);
+      assert.ok(r.status === 400 || /required/i.test(r.error || ""));
+    }
+    const after = call("request-list", ctxM, {});
+    assert.equal(after.result.pendingIncoming, 0);
+    assert.equal(after.result.incoming.length, 0);
+    const out = call("request-list", ctxE, {});
+    assert.equal(out.result.outgoing.length, 0);
+  });
+
+  it("F1 withdrawn blank-style failure does not block a later real request", () => {
+    // Simulate a prior withdrawn row (the old bug left a pending phantom).
+    const phantom = call("request-send", ctxE, validReq);
+    assert.equal(phantom.ok, true);
+    call("request-withdraw", ctxE, { requestId: phantom.result.request.id });
+    const again = call("request-send", ctxE, {
+      ...validReq,
+      topic: "Advanced Rust",
+      message: "Ready for a real request after withdraw.",
+    });
+    assert.equal(again.ok, true);
+    assert.equal(again.result.request.status, "pending");
+    assert.equal(again.result.request.topic, "Advanced Rust");
+  });
+
   it("request-send rejects duplicate pending requests", () => {
-    call("request-send", ctxE, { mentorId: "user_mentor" });
-    const dup = call("request-send", ctxE, { mentorId: "user_mentor" });
+    call("request-send", ctxE, validReq);
+    const dup = call("request-send", ctxE, validReq);
     assert.equal(dup.ok, false);
   });
 
   it("request-list shows incoming + outgoing", () => {
-    call("request-send", ctxE, { mentorId: "user_mentor" });
+    call("request-send", ctxE, validReq);
     const inbox = call("request-list", ctxM, {});
     assert.equal(inbox.result.pendingIncoming, 1);
     const sent = call("request-list", ctxE, {});
@@ -120,7 +162,7 @@ describe("mentorship request → accept flow", () => {
   });
 
   it("request-respond accept bumps mentee count", () => {
-    const send = call("request-send", ctxE, { mentorId: "user_mentor" });
+    const send = call("request-send", ctxE, validReq);
     const r = call("request-respond", ctxM, { requestId: send.result.request.id, decision: "accept" });
     assert.equal(r.ok, true);
     assert.equal(r.result.request.status, "accepted");
@@ -129,7 +171,7 @@ describe("mentorship request → accept flow", () => {
   });
 
   it("request-withdraw cancels a pending request", () => {
-    const send = call("request-send", ctxE, { mentorId: "user_mentor" });
+    const send = call("request-send", ctxE, validReq);
     const r = call("request-withdraw", ctxE, { requestId: send.result.request.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.request.status, "withdrawn");
@@ -218,7 +260,9 @@ describe("mentorship reviews", () => {
 describe("mentorship program report", () => {
   it("program-report aggregates the whole platform", () => {
     call("mentor-register", ctxM, { name: "Ada", capacity: 3 });
-    const send = call("request-send", ctxE, { mentorId: "user_mentor" });
+    const send = call("request-send", ctxE, {
+      mentorId: "user_mentor", topic: "Rust", message: "Please mentor me.", menteeName: "Eve",
+    });
     call("request-respond", ctxM, { requestId: send.result.request.id, decision: "accept" });
     const r = call("program-report", ctxM, {});
     assert.equal(r.ok, true);
