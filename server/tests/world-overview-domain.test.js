@@ -162,7 +162,9 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(r.health.factionSchedulerFindings.length, 1);
     assert.equal(r.health.factionSchedulerFindings[0].subjectId, "faction_alpha");
     assert.equal(r.health.factionSchedulerFindings[0].pathology, "stuck_scheduler");
-    assert.equal(r.health.factionSchedulerFindings[0].disposition, "healed");
+    // F2: still-overdue rows are STATUS overdue; repair CLASS stays healed.
+    assert.equal(r.health.factionSchedulerFindings[0].disposition, "overdue");
+    assert.equal(r.health.factionSchedulerFindings[0].repairClass, "healed");
 
     // No 'economy' findings ever leak through this surface, even though
     // detectPathologies would report them for other users on this box.
@@ -175,6 +177,45 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     const now = Math.floor(Date.now() / 1000);
     const row = db.prepare(`SELECT next_move_at FROM faction_strategy_state WHERE faction_id = 'faction_alpha'`).get();
     assert.ok(row.next_move_at < now - STUCK_SCHEDULER_GRACE_S, "world_detail must not heal the stuck scheduler it reports on");
+  });
+
+  it("F2: overdue stuck schedulers never get disposition healed on the observatory surface", async () => {
+    seedWorld();
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    const finding = r.health.factionSchedulerFindings[0];
+    assert.ok(finding.detail?.overdue_s > 0);
+    assert.equal(finding.disposition, "overdue");
+    assert.notEqual(finding.disposition, "healed");
+    assert.equal(finding.repairClass, "healed");
+  });
+
+  it("F4: relations with a counterpart outside this world are stamped crossWorld", async () => {
+    seedWorld();
+    db.prepare(`
+      INSERT INTO faction_relations (faction_a, faction_b, score, kind)
+      VALUES (?, ?, ?, ?)
+    `).run("faction_alpha", "foreign_faction", -1, "war");
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    const local = r.factions.relations.find((x) => x.a === "faction_alpha" && x.b === "faction_beta");
+    const foreign = r.factions.relations.find((x) => x.a === "faction_alpha" && x.b === "foreign_faction");
+    assert.ok(local && foreign);
+    assert.equal(local.crossWorld, false);
+    assert.equal(foreign.crossWorld, true);
+  });
+
+  it("F3: factions.count is living presence; states may be a shorter stance subset", async () => {
+    seedWorld();
+    // Living NPC for a third faction with no strategy_state row.
+    db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES (?, ?, ?)`)
+      .run("npc_f3_a", WORLD, "faction_gamma");
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    assert.equal(r.factions.count, 3);
+    assert.equal(r.factions.states.length, 2);
+    assert.ok(
+      r.factions.count > r.factions.states.length,
+      "presence count must be able to exceed stance rows",
+    );
+    assert.ok(!r.factions.states.some((s) => s.factionId === "faction_gamma"));
   });
 
   it("realm legitimacy/treasury/taxRate/citizens exactly match realms.js's own getters", async () => {
@@ -251,5 +292,34 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(overview.ok, true);
     assert.equal(overview.worlds.length, 1);
     assert.equal(overview.worlds[0].worldId, WORLD);
+  });
+
+  it("F1: stuckSchedulersDistinct is unique subjectIds, not the sum of per-world finding rows", async () => {
+    seedWorld();
+    const WORLD_B = "test_world_overview_2";
+    db.prepare(`INSERT INTO worlds (id, name, universe_type) VALUES (?, ?, 'fantasy')`)
+      .run(WORLD_B, "Second Overview World");
+    // Same stuck faction also has living NPCs in WORLD_B — would double-count
+    // if the header summed per-world finding-list lengths.
+    db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES (?, ?, ?)`)
+      .run("npc_f1_b", WORLD_B, "faction_alpha");
+
+    const overview = await call("worldstate.overview", { db }, {
+      worldIds: [WORLD, WORLD_B],
+    });
+    assert.equal(overview.ok, true);
+    assert.equal(typeof overview.stuckSchedulersDistinct, "number");
+
+    const perWorldSum = overview.worlds.reduce(
+      (sum, w) => sum + (w.stuckFactionSchedulers || 0),
+      0,
+    );
+    // Both worlds list faction_alpha → sum is 2; distinct is 1.
+    assert.equal(perWorldSum, 2);
+    assert.equal(overview.stuckSchedulersDistinct, 1);
+    assert.ok(
+      overview.stuckSchedulersDistinct < perWorldSum,
+      "distinct must be strictly less than the dishonest per-world sum",
+    );
   });
 });

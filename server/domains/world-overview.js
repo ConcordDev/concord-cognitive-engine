@@ -100,6 +100,7 @@ function factionIdsForWorld(db, worldId) {
 function factionSummaryForWorld(db, factionIds) {
   if (!factionIds.length) return { count: 0, states: [], relations: [] };
   const ph = factionIds.map(() => "?").join(",");
+  const idSet = new Set(factionIds);
   const states = safe(() => db.prepare(`
     SELECT faction_id AS factionId, stance, target_id AS target,
            ROUND(momentum, 3) AS momentum, phase
@@ -107,12 +108,17 @@ function factionSummaryForWorld(db, factionIds) {
      WHERE faction_id IN (${ph})
      ORDER BY factionId
   `).all(...factionIds), []);
+  // Keep OR-either-side edges (a faction can have foreign counterparts) but
+  // stamp crossWorld when the other side has no living presence in this world.
   const relations = safe(() => db.prepare(`
     SELECT faction_a AS a, faction_b AS b, ROUND(score, 3) AS score, kind
       FROM faction_relations
      WHERE faction_a IN (${ph}) OR faction_b IN (${ph})
      ORDER BY a, b
-  `).all(...factionIds, ...factionIds), []);
+  `).all(...factionIds, ...factionIds).map((r) => ({
+    ...r,
+    crossWorld: !idSet.has(r.a) || !idSet.has(r.b),
+  })), []);
   return { count: factionIds.length, states, relations };
 }
 
@@ -157,11 +163,31 @@ function districtSummaryForWorld(db, worldId) {
  * escalates — so calling it here adds no side effects beyond the existing
  * ~4h heartbeat pass.
  */
+/**
+ * Observability status for a liveness finding. classifyDisposition returns the
+ * mechanical-repair CLASS ("healed" = auto-heal candidate), not whether the
+ * scheduler is currently resolved. Rows still in detectPathologies are overdue;
+ * reserve "healed" only when the repair class says heal AND current state is
+ * no longer overdue (those rows never appear here).
+ */
+function livenessStatus(finding) {
+  const repairClass = classifyDisposition(finding.pathology);
+  const overdueS = finding.detail?.overdue_s;
+  const stillOverdue = overdueS != null && Number.isFinite(overdueS) && overdueS > 0;
+  if (stillOverdue) return "overdue";
+  if (repairClass === "healed") return "healed";
+  return repairClass;
+}
+
 function healthForWorld(allFindings, factionIds) {
   const ids = new Set(factionIds);
   const findings = allFindings
     .filter((f) => f.category === "liveness" && ids.has(f.subjectId))
-    .map((f) => ({ ...f, disposition: classifyDisposition(f.pathology) }));
+    .map((f) => ({
+      ...f,
+      repairClass: classifyDisposition(f.pathology),
+      disposition: livenessStatus(f),
+    }));
   return {
     // Platform-wide total pathology count (all categories, all worlds) —
     // explicitly NOT a per-world number; detectPathologies scans the whole
@@ -327,6 +353,15 @@ export default function registerWorldOverviewMacros(register) {
     // per-world filtering happens in computeWorldAggregate/healthForWorld.
     const pathologies = safe(() => detectPathologies(db), []);
 
+    // Platform-wide distinct stuck schedulers (unique subjectId). Per-world
+    // finding-list lengths double-count a faction with NPCs in multiple
+    // worlds; the header badge must use this distinct set, not the sum.
+    const stuckSchedulersDistinct = new Set(
+      pathologies
+        .filter((f) => f.pathology === "stuck_scheduler")
+        .map((f) => f.subjectId),
+    ).size;
+
     const worlds = worldRows.map((w) => {
       const agg = computeWorldAggregate(db, w.id, { pathologies });
       return {
@@ -336,11 +371,12 @@ export default function registerWorldOverviewMacros(register) {
         factionCount: agg.factions.count,
         realmCount: agg.realms.length,
         districtCount: agg.districts.length,
+        // World-scoped: distinct stuck schedulers with living presence here.
         stuckFactionSchedulers: agg.health.factionSchedulerFindings.length,
       };
     });
 
-    return { ok: true, worlds };
+    return { ok: true, worlds, stuckSchedulersDistinct };
   });
 
   // connections — cross-world edge list (trade / scheme / royalty /

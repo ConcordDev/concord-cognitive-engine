@@ -74,6 +74,8 @@ interface FactionRelation {
   b: string;
   score: number;
   kind: string;
+  /** True when at least one side has no living presence in this world. */
+  crossWorld?: boolean;
 }
 
 interface RealmCitizens {
@@ -107,7 +109,10 @@ interface HealthFinding {
   pathology: string;
   category: string;
   subjectId: string;
+  /** Current status (overdue/stuck/healed) — never the repair class alone. */
   disposition: string;
+  /** Mechanical-repair class from classifyDisposition; not the row STATUS. */
+  repairClass?: string;
   detail?: { overdue_s?: number };
 }
 
@@ -165,6 +170,8 @@ export default function WorldObservatoryPage() {
   const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ObsView>('worlds');
   const [overview, setOverview] = useState<WorldSummary[]>([]);
+  /** Platform-wide distinct stuck schedulers from overview (not a sum of per-world rows). */
+  const [stuckSchedulersDistinct, setStuckSchedulersDistinct] = useState<number | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -183,14 +190,20 @@ export default function WorldObservatoryPage() {
     setOverviewLoading(true);
     setOverviewError(null);
     try {
-      const res = await lensRun<{ ok: boolean; worlds?: WorldSummary[]; reason?: string }>(
-        'worldstate',
-        'overview',
-        {},
-      );
+      const res = await lensRun<{
+        ok: boolean;
+        worlds?: WorldSummary[];
+        stuckSchedulersDistinct?: number;
+        reason?: string;
+      }>('worldstate', 'overview', {});
       const payload = res.data.result;
       if (res.data.ok && payload?.ok) {
         setOverview(payload.worlds || []);
+        setStuckSchedulersDistinct(
+          typeof payload.stuckSchedulersDistinct === 'number'
+            ? payload.stuckSchedulersDistinct
+            : null,
+        );
         setHasLoadedOnce(true);
       } else {
         setOverviewError(res.data.error || payload?.reason || 'Failed to load world overview');
@@ -281,10 +294,9 @@ export default function WorldObservatoryPage() {
 
   const currentTab = OBS_TABS.find((t) => t.id === view)!;
 
-  const totalStuck = useMemo(
-    () => overview.reduce((sum, w) => sum + (w.stuckFactionSchedulers || 0), 0),
-    [overview],
-  );
+  // Prefer the backend's distinct platform-wide count. Never sum per-world
+  // finding-list lengths — that double-counts schedulers present in >1 world.
+  const totalStuck = stuckSchedulersDistinct ?? 0;
   const totalActiveUsers = useMemo(
     () => overview.reduce((sum, w) => sum + (w.activeUsers || 0), 0),
     [overview],
@@ -484,6 +496,15 @@ export default function WorldObservatoryPage() {
                       <p className="text-[11px] text-slate-500">No factions have a living presence in this world.</p>
                     ) : (
                       <div className="space-y-2">
+                        {/* F3: card factionCount = living presence; this tab lists stance rows only. */}
+                        <p className="text-[11px] text-slate-400" data-testid="faction-count-legend">
+                          {detail.factions.states.length} with stance rows
+                          {' · '}
+                          {detail.factions.count} with living presence
+                          {detail.factions.count > detail.factions.states.length
+                            ? ` · ${detail.factions.count - detail.factions.states.length} present without a strategy stance`
+                            : ''}
+                        </p>
                         <div className="grid gap-1.5 sm:grid-cols-2">
                           {detail.factions.states.map((s) => (
                             <div key={s.factionId} className="rounded border border-fuchsia-500/20 bg-fuchsia-500/5 px-2.5 py-1.5 text-[11px]">
@@ -506,6 +527,7 @@ export default function WorldObservatoryPage() {
                               <span
                                 key={`${r.a}:${r.b}`}
                                 className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] ${relationTone(r.kind)}`}
+                                data-cross-world={r.crossWorld ? 'true' : 'false'}
                               >
                                 <span className="font-mono">{r.a}</span>
                                 <span aria-hidden="true">⇄</span>
@@ -513,6 +535,11 @@ export default function WorldObservatoryPage() {
                                 <span className="opacity-70">·</span>
                                 <span className="font-semibold uppercase">{r.kind}</span>
                                 <span className="font-mono opacity-80">{r.score}</span>
+                                {r.crossWorld && (
+                                  <span className="rounded bg-black/30 px-1 py-0.5 text-[9px] uppercase tracking-wide opacity-90">
+                                    cross-world
+                                  </span>
+                                )}
                               </span>
                             ))}
                           </div>

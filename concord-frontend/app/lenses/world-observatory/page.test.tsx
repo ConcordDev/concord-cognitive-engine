@@ -76,7 +76,14 @@ function detailPayload(over: Record<string, unknown> = {}) {
     health: {
       platformWideChecked: 5,
       factionSchedulerFindings: [
-        { pathology: 'stuck_scheduler', category: 'liveness', subjectId: 'faction_alpha', disposition: 'healed', detail: { overdue_s: 90000 } },
+        {
+          pathology: 'stuck_scheduler',
+          category: 'liveness',
+          subjectId: 'faction_alpha',
+          disposition: 'overdue',
+          repairClass: 'healed',
+          detail: { overdue_s: 90000 },
+        },
       ],
     },
     ...over,
@@ -109,6 +116,8 @@ describe('World Observatory lens page', () => {
           worldRow(),
           worldRow({ worldId: 'crime', name: 'Crime City', activeUsers: 4, factionCount: 3, realmCount: 0, districtCount: 2, stuckFactionSchedulers: 2 }),
         ],
+        // Distinct platform-wide (1), not the sum of per-world rows (0+2=2).
+        stuckSchedulersDistinct: 1,
       }),
       () => ok(detailPayload()),
     );
@@ -127,6 +136,10 @@ describe('World Observatory lens page', () => {
     expect(screen.getByLabelText('Drill into Crime City')).toBeInTheDocument();
     const stuckBadges = screen.getAllByText('2');
     expect(stuckBadges.length).toBeGreaterThan(0);
+
+    // F1: header uses distinct count, not the dishonest per-world sum
+    expect(screen.getByText(/1 stuck scheduler$/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 stuck schedulers/)).not.toBeInTheDocument();
   });
 
   it('drills into worldstate.world_detail on click and renders real faction/realm/district sections', async () => {
@@ -157,6 +170,13 @@ describe('World Observatory lens page', () => {
 
     // Faction state cards
     expect(screen.getByText('momentum 0.42')).toBeInTheDocument();
+    // F3: legend reconciles card count (living presence) with stance rows
+    expect(screen.getByTestId('faction-count-legend')).toHaveTextContent(
+      '2 with stance rows · 2 with living presence',
+    );
+
+    // F4: local relation has no cross-world label
+    expect(screen.queryByText(/^cross-world$/i)).not.toBeInTheDocument();
 
     // Realm card — real legitimacy/treasury/tax/citizens, not rounded-fabricated
     openView('Realms');
@@ -175,7 +195,84 @@ describe('World Observatory lens page', () => {
     // Liveness finding surfaced with real overdue detail
     openView('Liveness');
     expect(await screen.findByText(/stuck_scheduler/)).toBeInTheDocument();
-    expect(screen.getByText(/overdue/)).toBeInTheDocument();
+    // Duration copy ("… overdue") + status chip both contain the word.
+    expect(screen.getAllByText(/overdue/i).length).toBeGreaterThanOrEqual(2);
+    // F2: status chip is OVERDUE, never the mechanical-repair class HEALED
+    expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^healed$/i)).not.toBeInTheDocument();
+  });
+
+  it('F4: labels relation chips whose counterpart is outside this world', async () => {
+    routeLensRun(
+      ok({ worlds: [worldRow()] }),
+      (input) =>
+        ok(
+          detailPayload({
+            worldId: input.worldId,
+            factions: {
+              count: 2,
+              states: [
+                { factionId: 'faction_alpha', stance: 'war', target: null, momentum: 0.1, phase: null },
+                { factionId: 'faction_beta', stance: 'consolidate', target: null, momentum: -0.1, phase: null },
+              ],
+              relations: [
+                { a: 'faction_alpha', b: 'faction_beta', score: -0.65, kind: 'war', crossWorld: false },
+                {
+                  a: 'faction_alpha',
+                  b: 'superhero_civic_super_taskforce',
+                  score: -1,
+                  kind: 'war',
+                  crossWorld: true,
+                },
+              ],
+            },
+          }),
+        ),
+    );
+
+    render(<WorldObservatoryPage />);
+    await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() =>
+      expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }),
+    );
+    openView('Factions');
+
+    expect(await screen.findByText('superhero_civic_super_taskforce')).toBeInTheDocument();
+    expect(screen.getByText(/^cross-world$/i)).toBeInTheDocument();
+    const foreignChip = screen.getByText('superhero_civic_super_taskforce').closest('[data-cross-world]');
+    expect(foreignChip).toHaveAttribute('data-cross-world', 'true');
+  });
+
+  it('F3: annotates when living-presence count exceeds stance rows', async () => {
+    routeLensRun(
+      ok({ worlds: [worldRow({ factionCount: 23 })] }),
+      (input) =>
+        ok(
+          detailPayload({
+            worldId: input.worldId,
+            factions: {
+              count: 23,
+              states: [
+                { factionId: 'faction_alpha', stance: 'war', target: null, momentum: 0.1, phase: null },
+              ],
+              relations: [],
+            },
+          }),
+        ),
+    );
+
+    render(<WorldObservatoryPage />);
+    await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() =>
+      expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }),
+    );
+    openView('Factions');
+
+    const legend = await screen.findByTestId('faction-count-legend');
+    expect(legend).toHaveTextContent('1 with stance rows · 23 with living presence');
+    expect(legend).toHaveTextContent('22 present without a strategy stance');
   });
 
   it('shows honest empty states for a world with zero factions/realms/districts — never a fabricated card', async () => {

@@ -51,12 +51,15 @@ export function detectPathologies(db, nowS = Math.floor(Date.now() / 1000)) {
   }
 
   // ── liveness: a faction scheduler whose next move is long overdue (MECHANICAL
-  //    — the dispatcher missed it; re-tick by resetting next_move_at to now). ──
+  //    — the dispatcher missed it; re-tick by resetting next_move_at to now).
+  //    No LIMIT: observatory totals must trace to the full distinct set, not a
+  //    silently truncated sample. Heal still processes every returned row. ──
   if (tableExists(db, "faction_strategy_state")) {
     try {
       for (const r of db.prepare(`
         SELECT faction_id, next_move_at FROM faction_strategy_state
-        WHERE next_move_at > 0 AND next_move_at < ? LIMIT 50
+        WHERE next_move_at > 0 AND next_move_at < ?
+        ORDER BY faction_id
       `).all(nowS - STUCK_SCHEDULER_GRACE_S)) {
         out.push({ pathology: "stuck_scheduler", category: "liveness", subjectId: r.faction_id, detail: { overdue_s: nowS - r.next_move_at } });
       }
