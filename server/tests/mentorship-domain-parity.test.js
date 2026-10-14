@@ -19,12 +19,37 @@ function call(name, ctx, artifactOrParams = {}, maybeParams) {
 before(() => { registerMentorshipActions(register); });
 
 beforeEach(() => {
-  // Fresh state per test.
-  globalThis._concordSTATE = {};
+  // Fresh state per test + users-table stub for lookupUserIdentity (INC-77).
+  const people = [
+    { id: "user_mentor", username: "mentor", displayName: "Ada Mentor" },
+    { id: "user_mentee", username: "mentee", displayName: "Eve Mentee" },
+  ];
+  globalThis._concordSTATE = {
+    db: {
+      prepare(sql) {
+        const s = String(sql);
+        if (s.includes("PRAGMA")) {
+          return { all() { return [{ name: "id" }, { name: "username" }, { name: "display_name" }]; } };
+        }
+        return {
+          get(param) {
+            return people.find((r) => r.id === String(param || "")) || null;
+          },
+        };
+      },
+    },
+  };
 });
 
-const ctxM = { actor: { userId: "user_mentor" }, userId: "user_mentor" };
-const ctxE = { actor: { userId: "user_mentee" }, userId: "user_mentee" };
+const ctxM = { actor: { userId: "user_mentor", displayName: "Ada Mentor" }, userId: "user_mentor" };
+const ctxE = { actor: { userId: "user_mentee", displayName: "Eve Mentee" }, userId: "user_mentee" };
+const RAW_IDS = ["user_mentor", "user_mentee"];
+function assertNoRawUserIds(value, ids = RAW_IDS) {
+  const blob = JSON.stringify(value);
+  for (const id of ids) {
+    assert.equal(blob.includes(id), false, `response leaked ${id}: ${blob}`);
+  }
+}
 
 describe("mentorship pure-compute analytics", () => {
   it("matchScore grades compatibility", () => {
@@ -348,11 +373,30 @@ describe("mentorship messaging", () => {
     assert.equal(thread.result.count, 2);
   });
 
+  it("F6 inbox row title is a display name; payloads carry no raw user ids", () => {
+    call("message-send", ctxM, { toId: "user_mentee", body: "Hi", fromName: "Ada" });
+    const inbox = call("message-inbox", ctxM, {});
+    assert.equal(inbox.ok, true);
+    assert.equal(inbox.result.count, 1);
+    assert.equal(inbox.result.threads[0].partnerName, "Eve Mentee");
+    assert.ok(String(inbox.result.threads[0].partnerId).startsWith("u_"));
+    assertNoRawUserIds(inbox.result);
+    const inboxE = call("message-inbox", ctxE, {});
+    assert.equal(inboxE.result.threads[0].partnerName, "Ada Mentor");
+    assertNoRawUserIds(inboxE.result);
+    const threadE = call("message-thread", ctxE, { partnerId: inboxE.result.threads[0].partnerId });
+    assert.equal(threadE.ok, true);
+    assert.equal(threadE.result.count, 1);
+    assertNoRawUserIds(threadE.result);
+    assert.equal(threadE.result.messages[0].fromName, "Ada");
+    assert.equal(threadE.result.messages[0].fromMe, false);
+  });
+
   it("message-inbox lists conversation threads", () => {
     call("message-send", ctxM, { toId: "user_mentee", body: "Hi" });
     const r = call("message-inbox", ctxM, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
-    assert.equal(r.result.threads[0].partnerId, "user_mentee");
+    assert.ok(String(r.result.threads[0].partnerId).startsWith("u_"));
   });
 });

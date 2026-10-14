@@ -14,6 +14,7 @@ import { lensRun } from '@/lib/api/client';
 
 interface ThreadSummary {
   partnerId: string;
+  partnerName?: string;
   threadKey: string;
   lastMessage: string;
   lastFrom: string;
@@ -22,9 +23,8 @@ interface ThreadSummary {
 }
 interface Message {
   id: string;
-  fromId: string;
-  toId: string;
   fromName: string;
+  fromMe?: boolean;
   body: string;
   at: string;
 }
@@ -145,7 +145,7 @@ export function MentorshipMessagesPanel() {
           {threads.map((t) => (
             <button key={t.threadKey} onClick={() => openThread(t.partnerId)} className="lens-card text-left w-full hover:border-neon-blue transition-colors">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{t.partnerId}</span>
+                <span className="font-medium text-sm">{t.partnerName || 'Partner'}</span>
                 <span className="text-[10px] text-zinc-400">{new Date(t.lastAt).toLocaleDateString()}</span>
               </div>
               <p className="text-xs text-zinc-400 truncate">

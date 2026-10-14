@@ -39,7 +39,9 @@ describe("mentorship — group-session-create", () => {
     assert.equal(r.ok, true);
     const { session } = r.result;
     assert.ok(typeof session.id === "string" && session.id.length > 0);
-    assert.equal(session.hostId, host.actor.userId);
+    assert.equal(session.isHost, true);
+    assert.ok(typeof session.hostId === "string" && session.hostId.startsWith("u_"));
+    assert.equal(JSON.stringify(session).includes(host.actor.userId), false);
     assert.equal(session.hostName, "Mentor");
     assert.equal(session.title, "Resume Review Workshop");
     assert.equal(session.startAt, FUTURE);
@@ -142,7 +144,10 @@ describe("mentorship — group-session-join / group-session-leave", () => {
   it("a first attendee joins successfully, spotsRemaining reflects capacity - attendees", async () => {
     const r = await lensRun("mentorship", "group-session-join", { params: { sessionId } }, attendeeA);
     assert.equal(r.ok, true);
-    assert.ok(r.result.session.attendees.includes(attendeeA.actor.userId));
+    assert.equal(r.result.session.isAttending, true);
+    assert.equal(r.result.session.attendees.length, 1);
+    assert.ok(r.result.session.attendees[0].id.startsWith("u_"));
+    assert.equal(JSON.stringify(r.result.session).includes(attendeeA.actor.userId), false);
     assert.equal(r.result.spotsRemaining, 1);
   });
 
@@ -180,8 +185,9 @@ describe("mentorship — group-session-join / group-session-leave", () => {
   it("attendeeA leaves successfully, freeing a spot", async () => {
     const r = await lensRun("mentorship", "group-session-leave", { params: { sessionId } }, attendeeA);
     assert.equal(r.ok, true);
-    assert.ok(!r.result.session.attendees.includes(attendeeA.actor.userId));
+    assert.equal(r.result.session.isAttending, false);
     assert.equal(r.result.session.attendees.length, 1);
+    assert.equal(JSON.stringify(r.result.session).includes(attendeeA.actor.userId), false);
   });
 
   it("the freed spot can be filled by a new attendee (join is re-enterable after leave)", async () => {

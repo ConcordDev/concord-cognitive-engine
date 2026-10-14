@@ -29,7 +29,7 @@ import { GroupSessionsPanel } from '@/components/mentorship/GroupSessionsPanel';
 
 const HOSTED_SESSION = {
   id: 'gses_1',
-  hostId: 'user_host',
+  hostId: 'u_host',
   hostName: 'HostMentor',
   title: 'Resume Review Workshop',
   topic: 'resumes',
@@ -39,7 +39,9 @@ const HOSTED_SESSION = {
   capacity: 4,
   videoLink: 'https://meet.example/room',
   agenda: 'Round-robin feedback',
-  attendees: ['user_mentee_1'],
+  attendees: [{ id: 'u_mentee_1', displayName: 'Mentee One' }],
+  isHost: true,
+  isAttending: false,
   status: 'scheduled',
   notes: '',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -48,10 +50,12 @@ const HOSTED_SESSION = {
 const ATTENDING_SESSION = {
   ...HOSTED_SESSION,
   id: 'gses_2',
-  hostId: 'user_other_mentor',
+  hostId: 'u_other_mentor',
   hostName: 'OtherMentor',
   title: 'Mock Interview Circle',
-  attendees: ['user_host'],
+  attendees: [{ id: 'u_host', displayName: 'HostMentor' }],
+  isHost: false,
+  isAttending: true,
 };
 
 function installMock(overrides: Partial<Record<string, (input: Record<string, unknown>) => unknown>> = {}) {

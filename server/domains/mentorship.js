@@ -8,6 +8,8 @@
 //
 // Persistent per-user data lives in globalThis._concordSTATE Maps.
 
+import { lookupUserIdentity } from "../lib/user-identity.js";
+
 export default function registerMentorshipActions(registerLensAction) {
   // ─── Pure-compute analytics ──────────────────────────────────────────
   //
@@ -181,7 +183,7 @@ export default function registerMentorshipActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.mentorshipLens) STATE.mentorshipLens = {};
     const s = STATE.mentorshipLens;
-    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages", "groupSessions"]) {
+    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages", "groupSessions", "publicIds", "userPublicIds"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     migrateSessionsToShared(s);
@@ -195,23 +197,101 @@ export default function registerMentorshipActions(registerLensAction) {
   function sessionVisibleTo(ses, userId) {
     return sessionPartyIds(ses).includes(userId);
   }
-  function presentSession(ses, viewerId) {
+  function presentSession(ses, viewerId, s, ctx) {
     const bookerId = ses.bookerId || ses.ownerId;
     const otherId = bookerId === viewerId ? ses.partnerId : bookerId;
     const otherName = bookerId === viewerId
-      ? (ses.partnerName || "Partner")
-      : (ses.bookerName || ses.partnerName || "Partner");
+      ? (ses.partnerName || mDisplayName(ctx, otherId, "Partner") || "Partner")
+      : (ses.bookerName || mDisplayName(ctx, otherId, "Partner") || "Partner");
     return {
-      ...ses,
-      ownerId: viewerId,
-      partnerId: otherId,
+      id: ses.id,
+      bookerId: mPublicId(s, bookerId),
+      ownerId: mPublicId(s, viewerId),
+      partnerId: mPublicId(s, otherId),
       partnerName: otherName,
+      title: ses.title,
+      startAt: ses.startAt,
+      durationMin: ses.durationMin,
+      videoLink: ses.videoLink,
+      agenda: ses.agenda,
+      status: ses.status,
+      notes: ses.notes,
+      actionItems: ses.actionItems || [],
+      rating: ses.rating,
+      createdAt: ses.createdAt,
+      updatedAt: ses.updatedAt,
     };
   }
   function findSharedSession(s, sesId, userId) {
     const ses = s.sessions.get(sesId);
     if (!ses || !sessionVisibleTo(ses, userId)) return null;
     return ses;
+  }
+
+  // Opaque public ids + display names (INC-77 / parenting house pattern).
+  // Internal Maps still key by real userId; responses never echo raw ids.
+  function mEnsurePublicIds(s) {
+    if (!(s.publicIds instanceof Map)) s.publicIds = new Map(); // opaque -> userId
+    if (!(s.userPublicIds instanceof Map)) s.userPublicIds = new Map(); // userId -> opaque
+  }
+  function mPublicId(s, userId) {
+    if (!userId) return null;
+    mEnsurePublicIds(s);
+    if (s.userPublicIds.has(userId)) return s.userPublicIds.get(userId);
+    const id = mId("u");
+    s.publicIds.set(id, userId);
+    s.userPublicIds.set(userId, id);
+    return id;
+  }
+  function mResolveUserRef(s, ref, callerId) {
+    if (!ref) return null;
+    mEnsurePublicIds(s);
+    if (s.publicIds.has(ref)) return s.publicIds.get(ref);
+    // Allow caller to address a known raw id as input (new-thread form);
+    // responses still use opaque ids only.
+    return ref;
+  }
+  function mDb(ctx) {
+    return ctx?.db || globalThis._concordSTATE?.db || null;
+  }
+  function mDisplayName(ctx, userId, fallback = null) {
+    if (!userId) return fallback;
+    const actor = ctx?.actor;
+    if (actor && (actor.userId === userId || actor.id === userId)) {
+      const fromActor = mClean(actor.displayName || actor.username, 80);
+      if (fromActor && fromActor !== userId) return fromActor;
+    }
+    try {
+      const idn = lookupUserIdentity(mDb(ctx), userId);
+      const fromDb = mClean(idn.displayName || idn.username, 80);
+      if (fromDb && fromDb !== userId) return fromDb;
+    } catch { /* no users table */ }
+    return fallback && fallback !== userId ? fallback : null;
+  }
+  function presentMessage(msg, viewerId, s, ctx) {
+    return {
+      id: msg.id,
+      fromName: msg.fromName || mDisplayName(ctx, msg.fromId, "User") || "User",
+      fromMe: msg.fromId === viewerId,
+      body: msg.body,
+      at: msg.at,
+    };
+  }
+  function presentAttendee(s, ctx, userId) {
+    return {
+      id: mPublicId(s, userId),
+      displayName: mDisplayName(ctx, userId, null),
+    };
+  }
+  function presentGroupSession(ses, viewerId, s, ctx) {
+    return {
+      ...ses,
+      hostId: mPublicId(s, ses.hostId),
+      hostName: ses.hostName || mDisplayName(ctx, ses.hostId, "Mentor") || "Mentor",
+      attendees: (ses.attendees || []).map((uid) => presentAttendee(s, ctx, uid)),
+      isHost: ses.hostId === viewerId,
+      isAttending: (ses.attendees || []).includes(viewerId),
+    };
   }
 
   // ── 1. Mentor directory / discovery ───────────────────────────────────
@@ -422,7 +502,7 @@ export default function registerMentorshipActions(registerLensAction) {
       };
       s.sessions.set(session.id, session);
       saveState();
-      return { ok: true, result: { session: presentSession(session, userId) } };
+      return { ok: true, result: { session: presentSession(session, userId, s, ctx) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -433,7 +513,7 @@ export default function registerMentorshipActions(registerLensAction) {
       const userId = mAid(ctx);
       let sessions = [...s.sessions.values()]
         .filter((x) => sessionVisibleTo(x, userId))
-        .map((x) => presentSession(x, userId));
+        .map((x) => presentSession(x, userId, s, ctx));
       const now = Date.now();
       if (params.filter === "upcoming") sessions = sessions.filter((x) => x.status === "scheduled" && new Date(x.startAt).getTime() >= now);
       else if (params.filter === "past") sessions = sessions.filter((x) => x.status !== "scheduled" || new Date(x.startAt).getTime() < now);
@@ -469,7 +549,7 @@ export default function registerMentorshipActions(registerLensAction) {
       if (params.videoLink != null) session.videoLink = mClean(params.videoLink, 300);
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session: presentSession(session, userId) } };
+      return { ok: true, result: { session: presentSession(session, userId, s, ctx) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -497,7 +577,7 @@ export default function registerMentorshipActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          session: presentSession(session, userId),
+          session: presentSession(session, userId, s, ctx),
           openActionItems: session.actionItems.filter((i) => !i.done).length,
         },
       };
@@ -559,7 +639,7 @@ export default function registerMentorshipActions(registerLensAction) {
       };
       s.groupSessions.set(session.id, session);
       saveState();
-      return { ok: true, result: { session } };
+      return { ok: true, result: { session: presentGroupSession(session, userId, s, ctx) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -570,20 +650,21 @@ export default function registerMentorshipActions(registerLensAction) {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = mAid(ctx);
       const now = Date.now();
-      let sessions = [...s.groupSessions.values()].filter((x) => x.hostId === userId || x.attendees.includes(userId));
-      if (params.filter === "hosting") sessions = sessions.filter((x) => x.hostId === userId);
-      else if (params.filter === "attending") sessions = sessions.filter((x) => x.attendees.includes(userId));
+      let raw = [...s.groupSessions.values()].filter((x) => x.hostId === userId || x.attendees.includes(userId));
+      if (params.filter === "hosting") raw = raw.filter((x) => x.hostId === userId);
+      else if (params.filter === "attending") raw = raw.filter((x) => x.attendees.includes(userId));
       else if (params.filter === "upcoming") {
-        sessions = sessions.filter((x) => x.status === "scheduled" && new Date(x.startAt).getTime() >= now);
+        raw = raw.filter((x) => x.status === "scheduled" && new Date(x.startAt).getTime() >= now);
       }
-      sessions.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      raw.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+      const sessions = raw.map((x) => presentGroupSession(x, userId, s, ctx));
       return {
         ok: true,
         result: {
           sessions,
           count: sessions.length,
-          hostingCount: sessions.filter((x) => x.hostId === userId).length,
-          attendingCount: sessions.filter((x) => x.attendees.includes(userId)).length,
+          hostingCount: raw.filter((x) => x.hostId === userId).length,
+          attendingCount: raw.filter((x) => x.attendees.includes(userId)).length,
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -604,7 +685,13 @@ export default function registerMentorshipActions(registerLensAction) {
       session.attendees.push(userId);
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session, spotsRemaining: Math.max(0, session.capacity - session.attendees.length) } };
+      return {
+        ok: true,
+        result: {
+          session: presentGroupSession(session, userId, s, ctx),
+          spotsRemaining: Math.max(0, session.capacity - session.attendees.length),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -622,7 +709,7 @@ export default function registerMentorshipActions(registerLensAction) {
       session.attendees.splice(idx, 1);
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session } };
+      return { ok: true, result: { session: presentGroupSession(session, userId, s, ctx) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -643,7 +730,7 @@ export default function registerMentorshipActions(registerLensAction) {
       if (params.notes != null) session.notes = mClean(params.notes, 4000);
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session } };
+      return { ok: true, result: { session: presentGroupSession(session, userId, s, ctx) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -827,26 +914,48 @@ export default function registerMentorshipActions(registerLensAction) {
 
   // ── 8. Messaging between mentor & mentee ──────────────────────────────
   // Thread key is a sorted pair so both sides converge on the same thread.
+  // Responses never expose the raw pair — present an opaque threadKey instead.
   function threadKey(a, b) { return [a, b].sort().join("::"); }
+  function presentThreadKey(s, rawKey) {
+    if (!rawKey) return null;
+    if (!(s.threadPublicKeys instanceof Map)) s.threadPublicKeys = new Map();
+    if (!(s.threadKeyByPublic instanceof Map)) s.threadKeyByPublic = new Map();
+    if (s.threadPublicKeys.has(rawKey)) return s.threadPublicKeys.get(rawKey);
+    const opaque = mId("th");
+    s.threadPublicKeys.set(rawKey, opaque);
+    s.threadKeyByPublic.set(opaque, rawKey);
+    return opaque;
+  }
 
   registerLensAction("mentorship", "message-send", (ctx, _a, params = {}) => {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const fromId = mAid(ctx);
-      const toId = mClean(params.toId, 64);
+      const toRef = mClean(params.toId, 64);
+      const toId = mResolveUserRef(s, toRef, fromId);
       const body = mClean(params.body, 2000);
       if (!toId) return { ok: false, error: "toId required" };
       if (!body) return { ok: false, error: "message body required" };
       const key = threadKey(fromId, toId);
       const thread = mList(s.messages, key);
+      const fromName = mClean(params.fromName, 80) || mDisplayName(ctx, fromId, "User") || "User";
       const message = {
         id: mId("msg"), fromId, toId,
-        fromName: mClean(params.fromName, 80) || "User",
-        body, at: mNow(),
+        fromName, body, at: mNow(),
       };
       thread.push(message);
+      // Ensure opaque ids exist for both parties before presenting.
+      mPublicId(s, fromId);
+      mPublicId(s, toId);
       saveState();
-      return { ok: true, result: { message, threadKey: key } };
+      return {
+        ok: true,
+        result: {
+          message: presentMessage(message, fromId, s, ctx),
+          threadKey: presentThreadKey(s, key),
+          partnerId: mPublicId(s, toId),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -855,11 +964,21 @@ export default function registerMentorshipActions(registerLensAction) {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = mAid(ctx);
-      const partnerId = mClean(params.partnerId, 64);
-      if (!partnerId) return { ok: false, error: "partnerId required" };
+      const partnerRef = mClean(params.partnerId, 64);
+      if (!partnerRef) return { ok: false, error: "partnerId required" };
+      const partnerId = mResolveUserRef(s, partnerRef, userId);
       const key = threadKey(userId, partnerId);
-      const messages = mList(s.messages, key).slice();
-      return { ok: true, result: { messages, count: messages.length, threadKey: key } };
+      const messages = mList(s.messages, key).slice().map((m) => presentMessage(m, userId, s, ctx));
+      return {
+        ok: true,
+        result: {
+          messages,
+          count: messages.length,
+          threadKey: presentThreadKey(s, key),
+          partnerId: mPublicId(s, partnerId),
+          partnerName: mDisplayName(ctx, partnerId, null),
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -872,15 +991,20 @@ export default function registerMentorshipActions(registerLensAction) {
       for (const [key, msgs] of s.messages.entries()) {
         const parts = key.split("::");
         if (!parts.includes(userId) || msgs.length === 0) continue;
-        const partnerId = parts.find((p) => p !== userId) || parts[0];
+        const partnerRaw = parts.find((p) => p !== userId) || parts[0];
         const last = msgs[msgs.length - 1];
         threads.push({
-          partnerId, threadKey: key,
-          lastMessage: last.body, lastFrom: last.fromName, lastAt: last.at,
+          partnerId: mPublicId(s, partnerRaw),
+          partnerName: mDisplayName(ctx, partnerRaw, null) || "Partner",
+          threadKey: presentThreadKey(s, key),
+          lastMessage: last.body,
+          lastFrom: last.fromName,
+          lastAt: last.at,
           messageCount: msgs.length,
         });
       }
       threads.sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime());
+      saveState();
       return { ok: true, result: { threads, count: threads.length } };
     } catch (e) { return { ok: false, error: e.message }; }
   });

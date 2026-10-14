@@ -32,6 +32,7 @@ import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
+interface GroupAttendee { id: string; displayName: string | null }
 interface GroupSession {
   id: string;
   hostId: string;
@@ -44,7 +45,9 @@ interface GroupSession {
   capacity: number;
   videoLink: string;
   agenda: string;
-  attendees: string[];
+  attendees: GroupAttendee[];
+  isHost?: boolean;
+  isAttending?: boolean;
   status: 'scheduled' | 'completed' | 'cancelled';
   notes: string;
   createdAt: string;
@@ -161,8 +164,8 @@ export function GroupSessionsPanel() {
     } catch { /* clipboard unavailable — non-fatal */ }
   };
 
-  const isHost = (s: GroupSession) => !!user && s.hostId === user.id;
-  const isAttending = (s: GroupSession) => !!user && s.attendees.includes(user.id);
+  const isHost = (s: GroupSession) => s.isHost === true;
+  const isAttending = (s: GroupSession) => s.isAttending === true;
 
   if (selected) {
     const full = selected.attendees.length >= selected.capacity;
@@ -234,7 +237,9 @@ export function GroupSessionsPanel() {
               <p className="text-xs text-zinc-400">No one has joined yet.</p>
             ) : (
               <ul className="text-xs text-zinc-300 space-y-0.5">
-                {selected.attendees.map((a) => <li key={a}>{a}</li>)}
+                {selected.attendees.map((a) => (
+                  <li key={a.id}>{a.displayName || 'Participant'}</li>
+                ))}
               </ul>
             )}
           </div>
