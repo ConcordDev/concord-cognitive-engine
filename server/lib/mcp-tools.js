@@ -2246,6 +2246,48 @@ async function traceFabricCall(db, args, STATE, toolName) {
 async function incidentEngineCall(db, args, STATE, toolName) {
   return organCall(ORGANS.INCIDENT_ENGINE, toolName, args, "incident-engine");
 }
+
+/**
+ * In-process chunked incident_watch (Batch 020).
+ * Replaces the Python-organ one-shot pass for this tool only — classify /
+ * active / history / recover still go through the organ. Same decisions +
+ * 5m class/source dedupe; work is sliced (K signals + setImmediate) with a
+ * ~2s wall budget so backlog carries to the next tick.
+ */
+async function incidentWatchChunked(args = {}) {
+  const Database = (await import("better-sqlite3")).default;
+  const { runIncidentWatchTick } = await import("./incident-engine/watch-tick.js");
+  const { gatherWatchSignals, DEFAULT_INCIDENT_DB } = await import("./incident-engine/gather.js");
+  const { executeRecovery, sendTelegram } = await import("./incident-engine/actions.js");
+
+  const f0TraceId =
+    (args && args.__trace_id) || globalThis.__concordLastTraceId || null;
+  const cleanArgs = { ...(args || {}) };
+  delete cleanArgs.__trace_id;
+
+  const dbPath = process.env.CONCORD_INCIDENT_DB || DEFAULT_INCIDENT_DB;
+  const incidentDb = new Database(dbPath);
+  try {
+    const since = cleanArgs.since_minutes ?? 10;
+    const wrapped = await runIncidentWatchTick({
+      db: incidentDb,
+      since_minutes: since,
+      gatherSignals: (m) => gatherWatchSignals(m),
+      hooks: { executeRecovery, sendTelegram },
+      traceId: f0TraceId || undefined,
+    });
+    if (f0TraceId) wrapped.f0_trace_id = f0TraceId;
+    // Internal timing stays off the public observation envelope.
+    delete wrapped._tick;
+    return wrapped;
+  } finally {
+    try {
+      incidentDb.close();
+    } catch {
+      /* ignore */
+    }
+  }
+}
 async function researchFrontierCall(db, args, STATE, toolName) {
   return organCall(ORGANS.RESEARCH, toolName, args, "research-frontier");
 }
@@ -2379,7 +2421,8 @@ export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
     case "trace_root_cause":             return traceFabricCall(db, args, STATE, "trace_root_cause");
     case "trace_backfill":               return traceFabricCall(db, args, STATE, "trace_backfill");
     // === 2026-08-31 INCIDENT ENGINE ORGAN (B) ===
-    case "incident_watch":               return incidentEngineCall(db, args, STATE, "incident_watch");
+    // incident_watch: in-process chunked tick (Batch 020). Other tools stay on the organ.
+    case "incident_watch":               return incidentWatchChunked(args);
     case "incident_active":              return incidentEngineCall(db, args, STATE, "incident_active");
     case "incident_history":             return incidentEngineCall(db, args, STATE, "incident_history");
     case "incident_classify":            return incidentEngineCall(db, args, STATE, "incident_classify");

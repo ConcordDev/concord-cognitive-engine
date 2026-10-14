@@ -1,6 +1,11 @@
 // server/domains/incident-engine.js
 //
 // B.3 — Pre-register incident_* tools in the capability registry.
+//
+// Tick work for incident_watch lives in-process (Batch 020):
+//   server/lib/incident-engine/watch-tick.js — K=10 signals/slice, setImmediate
+//   yields, ~2s wall; wired from server/lib/mcp-tools.js (incidentWatchChunked).
+// Other incident_* tools still dispatch to the Python organ.
 
 import { registerCapability } from "../lib/runtime/capability-registry.js";
 
