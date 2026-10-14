@@ -84,7 +84,8 @@ export function foundKingdom(db, {
   storylineId = null, hqDistrictId = null,
 }) {
   if (!db) return { ok: false, error: "db_required" };
-  if (!rulerId || !name) return { ok: false, error: "ruler_and_name_required" };
+  const trimmedName = String(name ?? "").trim();
+  if (!rulerId || !trimmedName) return { ok: false, error: "ruler_and_name_required" };
   if (!Array.isArray(regionPolygon) || regionPolygon.length < 3) {
     return { ok: false, error: "polygon_min_3_points" };
   }
@@ -109,7 +110,7 @@ export function foundKingdom(db, {
                             current_storyline_id, hq_district_id)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
-      id, worldId, String(name).slice(0, 80),
+      id, worldId, trimmedName.slice(0, 80),
       JSON.stringify(regionPolygon),
       rulerId, storylineId, hqDistrictId,
     );

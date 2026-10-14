@@ -80,6 +80,11 @@ describe("foundKingdom", () => {
     assert.equal(r1.ok, false);
     const r2 = foundKingdom(db, { rulerId: "u1", regionPolygon: [[0, 0], [1, 0], [1, 1]] });
     assert.equal(r2.ok, false);
+    const r3 = foundKingdom(db, {
+      rulerId: "u1", regionPolygon: [[0, 0], [1, 0], [1, 1], [0, 1]], name: "   ",
+    });
+    assert.equal(r3.ok, false);
+    assert.equal(r3.error, "ruler_and_name_required");
   });
 
   it("creates a kingdom + ruler resident", () => {

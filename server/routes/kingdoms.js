@@ -41,11 +41,14 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
         rulerId: req.user.id,
         worldId: worldId ? String(worldId).slice(0, 64) : "concordia-hub",
         regionPolygon,
-        name: String(name || "").slice(0, 80),
+        name: String(name || "").trim().slice(0, 80),
         storylineId, hqDistrictId,
       });
+      if (!result.ok && result.error === "ruler_and_name_required") {
+        return res.status(400).json(result);
+      }
       if (result.ok && realtimeEmit) {
-        try { realtimeEmit("kingdom:founded", { kingdomId: result.kingdomId, rulerId: req.user.id, worldId, name }); }
+        try { realtimeEmit("kingdom:founded", { kingdomId: result.kingdomId, rulerId: req.user.id, worldId, name: result.ok ? String(name || "").trim() : name }); }
         catch { /* ok */ }
       }
       res.json(result);

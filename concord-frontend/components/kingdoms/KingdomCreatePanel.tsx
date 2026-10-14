@@ -29,7 +29,11 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
     .filter((k) => k.world_id === worldId && Array.isArray(k.region_polygon) && k.region_polygon.length >= 3)
     .map((k) => ({ id: k.id, name: k.name, region_polygon: k.region_polygon }));
 
+  const trimmedName = name.trim();
+
   const submit = useCallback(async () => {
+    const nameToPost = name.trim();
+    if (!nameToPost) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -50,7 +54,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, worldId, regionPolygon }),
+        body: JSON.stringify({ name: nameToPost, worldId, regionPolygon }),
       });
       const j = await r.json();
       if (j?.ok) onCreated(j.kingdomId);
@@ -109,7 +113,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
         {error && <div className="rounded bg-rose-950/40 px-2 py-1 text-sm text-rose-300">{error}</div>}
         <button
           onClick={submit}
-          disabled={!name || submitting}
+          disabled={!trimmedName || submitting}
           className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50"
         >
           {submitting ? 'Founding…' : 'Found kingdom'}
