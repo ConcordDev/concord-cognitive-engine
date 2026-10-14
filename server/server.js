@@ -47061,6 +47061,13 @@ register("lens", "create", async (ctx, input={}) => {
   const { domain, type, title, data={}, meta={} } = input;
   if (!domain || !type) return { ok: false, error: "domain and type required" };
 
+  // INC-SWEEP lab F2 — lab must not invent "New experiment" for a blank title.
+  // Other domains keep the legacy default; lab requires a real title.
+  const trimmedTitle = typeof title === "string" ? title.trim() : (title == null ? "" : String(title).trim());
+  if (domain === "lab" && !trimmedTitle) {
+    return { ok: false, error: "title required" };
+  }
+
   // v5.5: Scope enforcement via capability bridge
   //
   // ctx.macro.run() calls runMacro(), an `async function` — it ALWAYS
@@ -47096,7 +47103,7 @@ register("lens", "create", async (ctx, input={}) => {
   const artifact = {
     id, domain, type,
     ownerId: ctx.actor?.userId || "anon",
-    title: title || `New ${type}`,
+    title: trimmedTitle || `New ${type}`,
     data: enrichedData,
     meta: { tags: meta.tags || [], status: meta.status || "draft", visibility: meta.visibility || "private", scope: meta.scope || "local", ...meta, consent: meta.consent || { publishToMarketplace: false, shareToFeed: false, allowCitations: false, allowAiTraining: false } },
     createdAt: nowISO(),
