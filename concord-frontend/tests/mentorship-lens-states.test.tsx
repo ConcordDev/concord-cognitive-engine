@@ -181,9 +181,23 @@ describe('mentorship lens — header KPI states', () => {
     const kpis = within(screen.getByRole('list'));
     expect(kpis.getByText('5')).toBeInTheDocument(); // Mentors listed
     expect(kpis.getByText(/80% acceptance/)).toBeInTheDocument();
-    // avgMentorRating is passed through StatTile's own compact-integer
-    // formatter (by design — see formatCompactStatValue); the caption is a
-    // literal string this page controls directly and keeps the real decimal.
-    expect(kpis.getByText(/4\.2\/5 session avg/)).toBeInTheDocument();
+    // Caption must key off the same field as the value (avgMentorRating), not
+    // avgSessionRating — otherwise ★5 can sit above "no ratings yet".
+    expect(kpis.getByText(/4\.5\/5 mentor avg/)).toBeInTheDocument();
+    expect(kpis.queryByText(/no ratings yet/i)).not.toBeInTheDocument();
+  });
+
+  it('F8 with mentor rating present, caption is consistent (no no-ratings-yet)', () => {
+    statsState.status = 'done';
+    statsState.result = {
+      mentors: 1, activeMatches: 0, matchAcceptanceRate: 0,
+      sessions: { total: 0, completed: 0 }, sessionCompletionRate: 0,
+      goals: { total: 0, done: 0 }, goalCompletionRate: 0,
+      avgSessionRating: 0, avgMentorRating: 5,
+    };
+    render(<MentorshipLens />);
+    const kpis = within(screen.getByRole('list'));
+    expect(kpis.getByText(/5\/5 mentor avg/)).toBeInTheDocument();
+    expect(kpis.queryByText(/no ratings yet/i)).not.toBeInTheDocument();
   });
 });

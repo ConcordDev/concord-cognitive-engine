@@ -166,7 +166,7 @@ export default function MentorshipLensPage() {
               label="Avg mentor rating"
               value={report.avgMentorRating > 0 ? report.avgMentorRating : '--'}
               unit={report.avgMentorRating > 0 ? '★' : undefined}
-              caption={report.avgSessionRating > 0 ? `${report.avgSessionRating}/5 session avg` : 'no ratings yet'}
+              caption={report.avgMentorRating > 0 ? `${report.avgMentorRating}/5 mentor avg` : 'no ratings yet'}
             />
           </StatTileGrid>
         ) : null}
