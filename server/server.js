@@ -94,6 +94,12 @@ import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { lookupUserIdentity } from "./lib/user-identity.js";
+import {
+  addSpoFact as _inferenceAddSpoFact,
+  querySpoFacts as _inferenceQuerySpoFacts,
+  getDeskStatus as _inferenceGetDeskStatus,
+  actorIdFromCtx as _inferenceActorId,
+} from "./lib/inference-lens-kb.js";
 import { validateMimeType } from "./lib/upload-mime.js";
 import { mountArtifactUploadRoutes } from "./lib/artifact-upload-routes.js";
 import { bytesForViewer, viewerHasFullArtAccess } from "./lib/art-paywall.js";
@@ -17278,12 +17284,13 @@ register("reasoning", "list_chains", (ctx, _input = {}) => {
 
 register("inference", "status", (ctx, _input = {}) => {
   enforceEthosInvariant("inference_status");
-  return getInferenceStatus();
+  return getInferenceStatus(_inferenceActorId(ctx));
 }, { public: true });
 
 register("inference", "add_fact", (ctx, input = {}) => {
   enforceEthosInvariant("inference_add_fact");
-  return addInferenceFact(input);
+  // Owner from auth ctx — never trust client-supplied user ids (INC-59).
+  return addInferenceFact(input, _inferenceActorId(ctx));
 }, { public: true });
 
 register("inference", "add_rule", (ctx, input = {}) => {
@@ -17294,13 +17301,13 @@ register("inference", "add_rule", (ctx, input = {}) => {
 register("inference", "query", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("inference_query");
-  return queryWithInference(input);
+  return queryWithInference(input, _inferenceActorId(ctx));
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("inference", "syllogism", (ctx, input = {}) => {
   enforceEthosInvariant("inference_syllogism");
-  return syllogisticReason(input);
+  return syllogisticReason(input, _inferenceActorId(ctx));
 }, { public: true });
 
 register("inference", "forward_chain", (ctx, input = {}) => {
@@ -79332,31 +79339,21 @@ const INFERENCE_RULES = Object.freeze({
   TRANSITIVITY: "transitivity"             // A⊆B, B⊆C ⊢ A⊆C
 });
 
-// Add a fact to the knowledge base
-function addInferenceFact(input = {}) {
+// Add a fact to the knowledge base.
+// Canonical durable store is per-user STATE.inferenceLens (same as kb-list).
+// Also mirrors into the legacy in-memory reasoning.knowledgeBase so
+// syllogism / forwardChain keep working in-process.
+function addInferenceFact(input = {}, userId = "anon") {
+  const desk = _inferenceAddSpoFact(userId, input);
+  if (!desk.ok) return desk;
+
   ensureReasoningEngine();
   ensureInferenceKnowledgeBase();
-
-  const id = uid("fact");
-  const fact = {
-    id,
-    subject: String(input.subject || "").slice(0, 200),
-    predicate: String(input.predicate || "").slice(0, 100),
-    object: String(input.object || "").slice(0, 200),
-    negated: Boolean(input.negated),
-    universal: Boolean(input.universal),  // "all X" vs specific X
-    confidence: clamp(Number(input.confidence || 1.0), 0, 1),
-    source: String(input.source || "user").slice(0, 100),
-    createdAt: nowISO()
-  };
-
-  STATE.reasoning.knowledgeBase.facts.set(id, fact);
+  STATE.reasoning.knowledgeBase.facts.set(desk.fact.id, desk.fact);
   saveStateDebounced();
 
-  // Trigger forward chaining to derive new conclusions
   const derived = forwardChain();
-
-  return { ok: true, fact, newDerivations: derived.length };
+  return { ok: true, fact: desk.fact, newDerivations: derived.length };
 }
 
 // Add an inference rule
@@ -79608,40 +79605,10 @@ function forwardChain(maxIterations = 10) {
   return newDerivations;
 }
 
-// Query the knowledge base with inference
-function queryWithInference(query) {
-  ensureReasoningEngine();
-  ensureInferenceKnowledgeBase();
-
-  // First, try forward chaining to derive any new facts
-  forwardChain();
-
-  // Search for matching facts
-  const matches = findMatchingFacts({
-    subject: query.subject,
-    predicate: query.predicate,
-    object: query.object
-  });
-
-  if (matches.length > 0) {
-    return {
-      ok: true,
-      found: true,
-      facts: matches,
-      explanation: matches.map(f =>
-        f.derivedFrom
-          ? `"${f.subject} ${f.predicate} ${f.object}" was derived using ${f.derivedFrom.rule}`
-          : `"${f.subject} ${f.predicate} ${f.object}" is a known fact`
-      )
-    };
-  }
-
-  return {
-    ok: true,
-    found: false,
-    facts: [],
-    explanation: ["No matching facts found in knowledge base"]
-  };
+// Query the durable per-user store (inferenceLens) — same facts kb-list
+// returns after reload. Does not read the process-local knowledgeBase.
+function queryWithInference(query, userId = "anon") {
+  return _inferenceQuerySpoFacts(userId, query || {});
 }
 
 // Perform syllogistic reasoning: Given "All A are B" and "X is A", derive "X is B"
@@ -79657,7 +79624,7 @@ function _singularizeCategory(word) {
   return w;
 }
 
-function syllogisticReason(input = {}) {
+function syllogisticReason(input = {}, userId = "anon") {
   ensureReasoningEngine();
   ensureInferenceKnowledgeBase();
 
@@ -79694,21 +79661,21 @@ function syllogisticReason(input = {}) {
     };
   }
 
-  // Add facts and rule to knowledge base
+  // Add facts and rule to knowledge base (desk store + legacy engine)
   addInferenceFact({
     subject: category,
     predicate: "is",
     object: property,
     universal: true,
     source: "major_premise"
-  });
+  }, userId);
 
   addInferenceFact({
     subject,
     predicate: "is",
     object: category,
     source: "minor_premise"
-  });
+  }, userId);
 
   addInferenceRule({
     name: `All ${category} are ${property}`,
@@ -79747,18 +79714,10 @@ function syllogisticReason(input = {}) {
   };
 }
 
-// Get knowledge base status
-function getInferenceStatus() {
-  ensureReasoningEngine();
-  ensureInferenceKnowledgeBase();
-
-  return {
-    ok: true,
-    facts: STATE.reasoning.knowledgeBase.facts.size,
-    rules: STATE.reasoning.knowledgeBase.rules.size,
-    derived: STATE.reasoning.knowledgeBase.derived.size,
-    stats: STATE.reasoning.knowledgeBase.stats
-  };
+// Status / Facts tile — counts from the durable per-user inferenceLens store
+// (same read-back as kb-list), not the process-local knowledgeBase.
+function getInferenceStatus(userId = "anon") {
+  return _inferenceGetDeskStatus(userId);
 }
 
 // ===== END INFERENCE ENGINE =====

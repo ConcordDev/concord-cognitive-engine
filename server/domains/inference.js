@@ -2,6 +2,14 @@
 // Domain actions for logical inference: forward chaining, backward chaining
 // (goal-directed reasoning), and unification algorithm.
 
+import {
+  getInferenceLensState,
+  saveInferenceLens,
+  actorIdFromCtx,
+  userInferenceKb,
+  enrichPrologFact,
+} from "../lib/inference-lens-kb.js";
+
 export default function registerInferenceActions(registerLensAction) {
   /**
    * forwardChain
@@ -523,30 +531,12 @@ export default function registerInferenceActions(registerLensAction) {
   // explanation ("why"/"how"), built-in predicates, step-through console.
   // ───────────────────────────────────────────────────────────────────────
 
-  // ── Persistent per-user knowledge base in globalThis._concordSTATE ──
-  function getInfState() {
-    const STATE = globalThis._concordSTATE;
-    if (!STATE) return null;
-    if (!STATE.inferenceLens) {
-      STATE.inferenceLens = {
-        kb: new Map(), // userId -> { facts: [], rules: [] }
-      };
-    }
-    return STATE.inferenceLens;
-  }
-  function saveInfState() {
-    if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
-    }
-  }
-  function infActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // ── Persistent per-user knowledge base (shared with desk add_fact/query/status) ──
+  function getInfState() { return getInferenceLensState(); }
+  function saveInfState() { saveInferenceLens(); }
+  function infActor(ctx) { return actorIdFromCtx(ctx); }
   function infId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
-  function userKb(userId) {
-    const s = getInfState();
-    if (!s) return null;
-    if (!s.kb.has(userId)) s.kb.set(userId, { facts: [], rules: [] });
-    return s.kb.get(userId);
-  }
+  function userKb(userId) { return userInferenceKb(userId); }
 
   // ── Shared term helpers (used by KB-aware macros below) ──
   function isVarT(s) { return typeof s === "string" && s.startsWith("?"); }
@@ -637,7 +627,12 @@ export default function registerInferenceActions(registerLensAction) {
             errors.push({ line, error: "duplicate fact" });
             continue;
           }
-          const fact = { id: infId("fact"), predicate: r.then.predicate, args: r.then.args, addedAt: new Date().toISOString() };
+          const fact = enrichPrologFact({
+            id: infId("fact"),
+            predicate: r.then.predicate,
+            args: r.then.args,
+            addedAt: new Date().toISOString(),
+          });
           kb.facts.push(fact);
           added.push({ kind: "fact", ...fact });
         } else {
@@ -1201,7 +1196,12 @@ export default function registerInferenceActions(registerLensAction) {
         if (r.if.length === 0) {
           const key = factKeyT(r.then);
           if (kb.facts.some((f) => factKeyT(f) === key)) continue;
-          kb.facts.push({ id: infId("fact"), predicate: r.then.predicate, args: r.then.args, addedAt: new Date().toISOString() });
+          kb.facts.push(enrichPrologFact({
+            id: infId("fact"),
+            predicate: r.then.predicate,
+            args: r.then.args,
+            addedAt: new Date().toISOString(),
+          }));
           added.push(line);
         } else {
           kb.rules.push({
