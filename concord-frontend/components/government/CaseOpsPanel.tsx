@@ -194,62 +194,57 @@ const TYPE_TO_TAB: Record<ArtifactType, ModeTab> = {
   CourtCase: 'Court',
 };
 
+/**
+ * Government lens-artifact status enum (server/lib/domain-logic-extended.js).
+ * Form-selectable values MUST match this list — any other status 422s create.
+ */
+export const GOVERNMENT_ARTIFACT_STATUSES = [
+  'draft',
+  'proposed',
+  'public-comment',
+  'enacted',
+  'repealed',
+  'archived',
+] as const;
+
+export type GovernmentArtifactStatus = (typeof GOVERNMENT_ARTIFACT_STATUSES)[number];
+
+const ARTIFACT_STATUS_LABELS: Record<GovernmentArtifactStatus, string> = {
+  draft: 'Draft',
+  proposed: 'Proposed',
+  'public-comment': 'Public Comment',
+  enacted: 'Enacted',
+  repealed: 'Repealed',
+  archived: 'Archived',
+};
+
+function statusDisplayLabel(status: string): string {
+  return (
+    ARTIFACT_STATUS_LABELS[status as GovernmentArtifactStatus] ||
+    status.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
 const STATUS_COLORS: Record<string, string> = {
-  submitted: 'neon-blue',
-  under_review: 'yellow-400',
-  inspection: 'neon-purple',
-  approved: 'green-400',
-  denied: 'red-400',
-  expired: 'gray-400',
-  revoked: 'red-500',
-  cited: 'yellow-400',
-  notice_sent: 'orange-400',
-  compliance_period: 'neon-cyan',
-  resolved: 'green-400',
-  escalated: 'red-400',
-  hearing: 'neon-purple',
-  fined: 'red-500',
-  standby: 'gray-400',
-  watch: 'yellow-400',
-  warning: 'orange-400',
-  activated: 'red-400',
-  recovery: 'neon-cyan',
-  deactivated: 'green-400',
-  active: 'green-400',
-  pending: 'yellow-400',
-  fulfilled: 'green-400',
-  overdue: 'red-400',
-  closed: 'gray-400',
+  draft: 'neon-blue',
+  proposed: 'yellow-400',
+  'public-comment': 'neon-purple',
+  enacted: 'green-400',
+  repealed: 'red-400',
   archived: 'gray-500',
-  scheduled: 'neon-blue',
-  in_progress: 'neon-cyan',
-  completed: 'green-400',
-  on_hold: 'orange-400',
-  cancelled: 'red-400',
-  open: 'neon-blue',
-  continued: 'yellow-400',
-  disposed: 'green-400',
-  appealed: 'orange-400',
   public: 'green-400',
   confidential: 'red-400',
   exempt: 'orange-400',
 };
 
+/** Every case-file type shares the domain artifact status enum. */
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
-  Permit: ['submitted', 'under_review', 'inspection', 'approved', 'denied', 'expired', 'revoked'],
-  Project: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'],
-  Violation: [
-    'cited',
-    'notice_sent',
-    'compliance_period',
-    'hearing',
-    'resolved',
-    'fined',
-    'escalated',
-  ],
-  EmergencyPlan: ['standby', 'watch', 'warning', 'activated', 'recovery', 'deactivated'],
-  Record: ['active', 'pending', 'fulfilled', 'overdue', 'closed', 'archived'],
-  CourtCase: ['open', 'scheduled', 'continued', 'hearing', 'disposed', 'appealed', 'closed'],
+  Permit: [...GOVERNMENT_ARTIFACT_STATUSES],
+  Project: [...GOVERNMENT_ARTIFACT_STATUSES],
+  Violation: [...GOVERNMENT_ARTIFACT_STATUSES],
+  EmergencyPlan: [...GOVERNMENT_ARTIFACT_STATUSES],
+  Record: [...GOVERNMENT_ARTIFACT_STATUSES],
+  CourtCase: [...GOVERNMENT_ARTIFACT_STATUSES],
 };
 
 const PERMIT_TYPES = [
@@ -335,7 +330,7 @@ const seedData: Record<
         estimatedDays: 90,
         reviewNotes: 'Structural plans under review',
       },
-      meta: { status: 'under_review' },
+      meta: { status: 'proposed' },
     },
     {
       title: 'Event Permit - Summer Music Festival',
@@ -352,7 +347,7 @@ const seedData: Record<
         estimatedDays: 30,
         reviewNotes: 'Awaiting fire marshal approval',
       },
-      meta: { status: 'submitted' },
+      meta: { status: 'draft' },
     },
     {
       title: 'Business License - New Restaurant',
@@ -369,7 +364,7 @@ const seedData: Record<
         estimatedDays: 45,
         reviewNotes: 'Health inspection scheduled',
       },
-      meta: { status: 'inspection' },
+      meta: { status: 'public-comment' },
     },
   ],
   Project: [
@@ -396,7 +391,7 @@ const seedData: Record<
         roadClosures: 'Main St between 1st and 3rd Ave closed M-F 7AM-6PM',
         contactPhone: '555-0142',
       },
-      meta: { status: 'in_progress' },
+      meta: { status: 'proposed' },
     },
     {
       title: 'Northside Water Main Replacement',
@@ -421,7 +416,7 @@ const seedData: Record<
         roadClosures: 'Rolling closures on Elm, Maple, and Pine streets',
         contactPhone: '555-0198',
       },
-      meta: { status: 'in_progress' },
+      meta: { status: 'proposed' },
     },
   ],
   Violation: [
@@ -443,7 +438,7 @@ const seedData: Record<
         hearingDate: '',
         escalationHistory: 'Initial citation issued 01/28',
       },
-      meta: { status: 'notice_sent' },
+      meta: { status: 'proposed' },
     },
     {
       title: 'Property Maintenance - 156 Birch St',
@@ -463,7 +458,7 @@ const seedData: Record<
         hearingDate: '',
         escalationHistory: '',
       },
-      meta: { status: 'cited' },
+      meta: { status: 'draft' },
     },
   ],
   EmergencyPlan: [
@@ -490,7 +485,7 @@ const seedData: Record<
         evacuationRoutes: 'Route A: River Rd to Hwy 9, Route B: Bridge St to I-40',
         shelterLocations: 'Springfield HS Gym, Community Center, First Baptist Church',
       },
-      meta: { status: 'standby' },
+      meta: { status: 'draft' },
     },
   ],
   Record: [
@@ -512,7 +507,7 @@ const seedData: Record<
         pageCount: 24,
         dispositionDate: '',
       },
-      meta: { status: 'active' },
+      meta: { status: 'enacted' },
     },
     {
       title: 'FOIA Request - Police Records 2025',
@@ -532,7 +527,7 @@ const seedData: Record<
         pageCount: 156,
         dispositionDate: '',
       },
-      meta: { status: 'pending' },
+      meta: { status: 'proposed' },
     },
   ],
   CourtCase: [
@@ -555,7 +550,7 @@ const seedData: Record<
         courtroom: 'Room 204',
         continuanceCount: 0,
       },
-      meta: { status: 'open' },
+      meta: { status: 'draft' },
     },
   ],
 };
@@ -615,7 +610,7 @@ export function CaseOpsPanel({
   const [showActionPanel, setShowActionPanel] = useState(false);
 
   const [formTitle, setFormTitle] = useState('');
-  const [formStatus, setFormStatus] = useState<string>('submitted');
+  const [formStatus, setFormStatus] = useState<string>('draft');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
@@ -747,7 +742,7 @@ export function CaseOpsPanel({
   /* ---- status badge ---- */
   const renderStatusBadge = (status: string) => {
     const color = STATUS_COLORS[status] || 'gray-400';
-    return <span className={ds.badge(color)}>{status.replace(/_/g, ' ')}</span>;
+    return <span className={ds.badge(color)}>{statusDisplayLabel(status)}</span>;
   };
 
   /* ---- progress bar ---- */
@@ -1752,10 +1747,10 @@ export function CaseOpsPanel({
         <div className={ds.panel}>
           <h3 className={cn(ds.heading3, 'mb-3')}>Processing Timeline</h3>
           <div className="space-y-3">
-            {['submitted', 'under_review', 'inspection', 'approved'].map((step, idx) => {
+            {(['draft', 'proposed', 'public-comment', 'enacted'] as const).map((step, idx) => {
               const currentIdx = STATUSES_BY_TYPE.Permit.indexOf(detailItem.meta.status);
               const stepIdx = STATUSES_BY_TYPE.Permit.indexOf(step);
-              const done = stepIdx <= currentIdx;
+              const done = stepIdx >= 0 && currentIdx >= 0 && stepIdx <= currentIdx;
               return (
                 <div key={step} className="flex items-center gap-3">
                   <div
@@ -1767,7 +1762,7 @@ export function CaseOpsPanel({
                     {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                   </div>
                   <span className={cn('text-sm', done ? 'text-white' : 'text-gray-400')}>
-                    {step.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {statusDisplayLabel(step)}
                   </span>
                 </div>
               );
@@ -1996,7 +1991,7 @@ export function CaseOpsPanel({
                       {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                     </div>
                     <span className={cn('text-sm', done ? 'text-white' : 'text-gray-400')}>
-                      {step.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                      {statusDisplayLabel(step)}
                     </span>
                   </div>
                 );
@@ -2767,10 +2762,10 @@ export function CaseOpsPanel({
     const allCourt = courtData.items;
 
     const openPermits = allPermits.filter((i) =>
-      ['submitted', 'under_review', 'inspection'].includes(i.meta.status)
+      ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
     ).length;
     const activeViolations = allViolations.filter(
-      (i) => !['resolved', 'fined'].includes(i.meta.status)
+      (i) => !['enacted', 'repealed', 'archived'].includes(i.meta.status)
     ).length;
     const totalProjectBudget = allProjects.reduce(
       (s, i) => s + (((i.data as unknown as Record<string, unknown>).budget as number) || 0),
@@ -2784,12 +2779,12 @@ export function CaseOpsPanel({
       totalProjectBudget > 0 ? Math.round((totalProjectSpent / totalProjectBudget) * 100) : 0;
     const pendingRecordRequests = allRecords.filter((i) => {
       const d = i.data as unknown as Record<string, unknown>;
-      return d.requestType && ['pending', 'active'].includes(i.meta.status);
+      return d.requestType && ['draft', 'proposed', 'public-comment'].includes(i.meta.status);
     }).length;
     const emergencyReadiness =
       allEmergency.length > 0
         ? Math.round(
-            (allEmergency.filter((i) => ['standby', 'deactivated'].includes(i.meta.status)).length /
+            (allEmergency.filter((i) => ['draft', 'archived'].includes(i.meta.status)).length /
               allEmergency.length) *
               100
           )
@@ -2932,9 +2927,7 @@ export function CaseOpsPanel({
                     key={s}
                     className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/30"
                   >
-                    <span className="text-sm text-gray-300">
-                      {s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </span>
+                    <span className="text-sm text-gray-300">{statusDisplayLabel(s)}</span>
                     <span className={ds.badge(STATUS_COLORS[s] || 'gray-400')}>{count}</span>
                   </div>
                 );
@@ -2951,7 +2944,7 @@ export function CaseOpsPanel({
             </div>
             <div className="mt-3 space-y-3">
               {allProjects
-                .filter((p) => p.meta.status === 'in_progress')
+                .filter((p) => ['proposed', 'public-comment'].includes(p.meta.status))
                 .slice(0, 4)
                 .map((proj) => {
                   const pd = proj.data as unknown as Record<string, unknown>;
@@ -2977,7 +2970,7 @@ export function CaseOpsPanel({
                     </div>
                   );
                 })}
-              {allProjects.filter((p) => p.meta.status === 'in_progress').length === 0 && (
+              {allProjects.filter((p) => ['proposed', 'public-comment'].includes(p.meta.status)).length === 0 && (
                 <p className={ds.textMuted}>No active projects.</p>
               )}
             </div>
@@ -2992,7 +2985,7 @@ export function CaseOpsPanel({
             </div>
             <div className="mt-3 space-y-2">
               {allViolations
-                .filter((v) => !['resolved', 'fined'].includes(v.meta.status))
+                .filter((v) => !['enacted', 'repealed', 'archived'].includes(v.meta.status))
                 .slice(0, 4)
                 .map((viol) => {
                   const vd = viol.data as unknown as Record<string, unknown>;
@@ -3025,7 +3018,7 @@ export function CaseOpsPanel({
                     </div>
                   );
                 })}
-              {allViolations.filter((v) => !['resolved', 'fined'].includes(v.meta.status))
+              {allViolations.filter((v) => !['enacted', 'repealed', 'archived'].includes(v.meta.status))
                 .length === 0 && <p className={ds.textMuted}>No active violations.</p>}
             </div>
           </div>
@@ -3226,7 +3219,7 @@ export function CaseOpsPanel({
                 <option value="all">All Statuses</option>
                 {availableStatuses.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {statusDisplayLabel(s)}
                   </option>
                 ))}
               </select>
@@ -3269,7 +3262,7 @@ export function CaseOpsPanel({
                       : 'bg-lattice-elevated text-gray-400 hover:text-white'
                   )}
                 >
-                  {s.replace(/_/g, ' ')} ({count})
+                  {statusDisplayLabel(s)} ({count})
                 </button>
               );
             })}
@@ -3363,7 +3356,7 @@ export function CaseOpsPanel({
                     >
                       {availableStatuses.map((s) => (
                         <option key={s} value={s}>
-                          {s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                          {statusDisplayLabel(s)}
                         </option>
                       ))}
                     </select>
