@@ -170,6 +170,10 @@ describe('World Observatory lens page', () => {
 
     // Faction state cards
     expect(screen.getByText('momentum 0.42')).toBeInTheDocument();
+    // F3: legend reconciles card count (living presence) with stance rows
+    expect(screen.getByTestId('faction-count-legend')).toHaveTextContent(
+      '2 with stance rows · 2 with living presence',
+    );
 
     // Realm card — real legitimacy/treasury/tax/citizens, not rounded-fabricated
     openView('Realms');
@@ -193,6 +197,37 @@ describe('World Observatory lens page', () => {
     // F2: status chip is OVERDUE, never the mechanical-repair class HEALED
     expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
     expect(screen.queryByText(/^healed$/i)).not.toBeInTheDocument();
+  });
+
+  it('F3: annotates when living-presence count exceeds stance rows', async () => {
+    routeLensRun(
+      ok({ worlds: [worldRow({ factionCount: 23 })] }),
+      (input) =>
+        ok(
+          detailPayload({
+            worldId: input.worldId,
+            factions: {
+              count: 23,
+              states: [
+                { factionId: 'faction_alpha', stance: 'war', target: null, momentum: 0.1, phase: null },
+              ],
+              relations: [],
+            },
+          }),
+        ),
+    );
+
+    render(<WorldObservatoryPage />);
+    await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() =>
+      expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }),
+    );
+    openView('Factions');
+
+    const legend = await screen.findByTestId('faction-count-legend');
+    expect(legend).toHaveTextContent('1 with stance rows · 23 with living presence');
+    expect(legend).toHaveTextContent('22 present without a strategy stance');
   });
 
   it('shows honest empty states for a world with zero factions/realms/districts — never a fabricated card', async () => {

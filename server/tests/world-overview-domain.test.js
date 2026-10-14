@@ -189,6 +189,21 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(finding.repairClass, "healed");
   });
 
+  it("F3: factions.count is living presence; states may be a shorter stance subset", async () => {
+    seedWorld();
+    // Living NPC for a third faction with no strategy_state row.
+    db.prepare(`INSERT INTO world_npcs (id, world_id, faction) VALUES (?, ?, ?)`)
+      .run("npc_f3_a", WORLD, "faction_gamma");
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    assert.equal(r.factions.count, 3);
+    assert.equal(r.factions.states.length, 2);
+    assert.ok(
+      r.factions.count > r.factions.states.length,
+      "presence count must be able to exceed stance rows",
+    );
+    assert.ok(!r.factions.states.some((s) => s.factionId === "faction_gamma"));
+  });
+
   it("realm legitimacy/treasury/taxRate/citizens exactly match realms.js's own getters", async () => {
     seedWorld();
     const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });

@@ -494,6 +494,15 @@ export default function WorldObservatoryPage() {
                       <p className="text-[11px] text-slate-500">No factions have a living presence in this world.</p>
                     ) : (
                       <div className="space-y-2">
+                        {/* F3: card factionCount = living presence; this tab lists stance rows only. */}
+                        <p className="text-[11px] text-slate-400" data-testid="faction-count-legend">
+                          {detail.factions.states.length} with stance rows
+                          {' · '}
+                          {detail.factions.count} with living presence
+                          {detail.factions.count > detail.factions.states.length
+                            ? ` · ${detail.factions.count - detail.factions.states.length} present without a strategy stance`
+                            : ''}
+                        </p>
                         <div className="grid gap-1.5 sm:grid-cols-2">
                           {detail.factions.states.map((s) => (
                             <div key={s.factionId} className="rounded border border-fuchsia-500/20 bg-fuchsia-500/5 px-2.5 py-1.5 text-[11px]">
