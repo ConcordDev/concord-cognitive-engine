@@ -105,6 +105,32 @@ function pick(category, config, selection, { key = category, where, extra } = {}
   return r.chosen;
 }
 
+/**
+ * Structured refusal when no library tyre fits. Names the established-speed wall
+ * in the library's own terms when that is why every candidate was rejected —
+ * so an out-of-envelope brief fails as a judgment, not a tub-openings throw.
+ */
+function tyreSelectionRefusal(selection, config) {
+  const candidates = selection.tyres?.candidates || [];
+  const req = config.requiredTopSpeedKmh;
+  const r1 = (x) => Math.round(x * 10) / 10;
+  // Whole mph: the library states the wall as 186 mph (300 km/h), not 186.4.
+  const mph = (kmh) => Math.round(kmh / 1.609344);
+  const established = candidates
+    .map((c) => getComponent(c.id)?.applicability?.establishedMaxSpeedKmh)
+    .filter((v) => Number.isFinite(v));
+  const maxEst = established.length ? Math.max(...established) : null;
+  const speedWall = Number.isFinite(maxEst) && Number.isFinite(req) && req > maxEst
+    && candidates.length > 0
+    && candidates.every((c) => !c.ok && (c.mismatches || []).some((m) => m.field === "requiredTopSpeedKmh"));
+  if (speedWall) {
+    return `no tyre in the library is established above ${maxEst} km/h (${mph(maxEst)} mph); the brief requires ${r1(req)} km/h (${mph(req)} mph)`;
+  }
+  if (!candidates.length) return "no tyre in the library fits this configuration";
+  const reasons = [...new Set(candidates.flatMap((c) => (c.mismatches || []).map((m) => `${m.field} ${m.required}`)))];
+  return `no tyre in the library fits this configuration${reasons.length ? ` (${reasons.join("; ")})` : ""}`;
+}
+
 const at = (x, z, y = 0) => ({ x: metres(x), y: metres(y), z: metres(z) });
 
 function libraryNode(entry, { id, kind, critical, config, position, share = 1, props = {} }) {
@@ -201,13 +227,16 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     }
   }
   const tyre = pick("tyres", config, selection);
-  if (tyre) {
-    for (const [p, x] of [["FL", 1.0], ["FR", 1.0], ["RL", 3.7], ["RR", 3.7]]) {
-      replace(libraryNode(tyre, {
-        id: `TIRE_${p}`, kind: "Tire", critical: "tyres", config, position: at(x, 0.33, p.endsWith("L") ? -0.8 : 0.8),
-        props: { speedRating: tyre.ratings.speedSymbol, loadIndex: tyre.ratings.loadIndex },
-      }));
-    }
+  if (!tyre) {
+    // Without a library tyre the package has no TIRE_RL diameter, and the
+    // structural-tub openings step would throw. Refuse here as { error }.
+    return { error: tyreSelectionRefusal(selection, config) };
+  }
+  for (const [p, x] of [["FL", 1.0], ["FR", 1.0], ["RL", 3.7], ["RR", 3.7]]) {
+    replace(libraryNode(tyre, {
+      id: `TIRE_${p}`, kind: "Tire", critical: "tyres", config, position: at(x, 0.33, p.endsWith("L") ? -0.8 : 0.8),
+      props: { speedRating: tyre.ratings.speedSymbol, loadIndex: tyre.ratings.loadIndex },
+    }));
   }
   // Brakes, one kit per axle.
   for (const [axle, x] of [["front", 1.0], ["rear", 3.7]]) {
