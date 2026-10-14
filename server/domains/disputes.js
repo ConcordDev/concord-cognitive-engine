@@ -779,12 +779,18 @@ export default function registerDisputesActions(registerLensAction) {
       } else if (outcomeType === "negotiated_settlement") {
         refundAmount = Math.max(0, parseFloat(params.settlementAmount) || 0);
       }
+      const roleOnCase = partyRole(c, userId);
+      const actorRole = String(ctx?.actor?.role || ctx?.role || "").toLowerCase();
+      let resolvedRole = "member";
+      if (["admin", "owner", "founder"].includes(actorRole)) resolvedRole = "admin";
+      else if (roleOnCase === "mediator") resolvedRole = "mediator";
+      else if (roleOnCase) resolvedRole = "member";
       c.outcome = {
         type: outcomeType,
         refundAmount,
         rationale: params.rationale ? String(params.rationale).slice(0, 1000) : "",
         resolvedBy: userId,
-        resolvedRole: params.role ? String(params.role) : "admin",
+        resolvedRole,
         resolvedAt: nowIso(),
       };
       c.status = outcomeType === "dismissed" || outcomeType === "no_refund" ? "dismissed" : "resolved";

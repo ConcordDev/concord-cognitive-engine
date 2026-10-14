@@ -301,6 +301,18 @@ describe("disputes resolution + archive", () => {
     assert.equal(r.result.outcome.refundAmount, 100);
   });
 
+  it("F6 member resolve records resolvedRole member (not admin)", () => {
+    const c = openCase({ respondentId: "user_b" });
+    const r = call("case-resolve", ctx, {}, {
+      caseId: c.id,
+      outcomeType: "replacement",
+      rationale: "member clicked resolve",
+      role: "admin", // ignored — must derive from caller
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.outcome.resolvedRole, "member");
+  });
+
   it("archive-search returns closed cases with analytics", () => {
     const c = openCase();
     call("case-resolve", ctx, {}, { caseId: c.id, outcomeType: "full_refund" });
