@@ -79,6 +79,81 @@ describe('civic-bonds lens — four UX states', () => {
     await waitFor(() => expect(view!.getByTestId('civic-bonds-empty')).toBeInTheDocument());
     expect(view!.getByTestId('civic-bonds-empty').textContent).toMatch(/no civic bonds/i);
     expect(view!.getByLabelText('Refresh civic bonds')).toBeInTheDocument();
+    // INC-SWEEP F3 — create form is present even when the list is empty.
+    expect(view!.getByTestId('civic-bonds-create')).toBeInTheDocument();
+    expect(view!.getByTestId('civic-bonds-create-submit')).toBeDisabled();
+  });
+
+  // INC-SWEEP F3 — blank/whitespace title stays gated; create through the UI
+  // lists the bond; Open moves proposed → voting.
+  it('CREATE: blank and whitespace titles keep Create disabled (no post)', async () => {
+    lensRunMock.mockResolvedValue({ data: { result: { ok: true, bonds: [] } } });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-create')).toBeInTheDocument());
+
+    const submit = view!.getByTestId('civic-bonds-create-submit');
+    expect(submit).toBeDisabled();
+    await act(async () => {
+      fireEvent.change(view!.getByLabelText('Bond title'), { target: { value: '   ' } });
+    });
+    expect(submit).toBeDisabled();
+    expect(lensRunMock.mock.calls.filter((c) => c[1] === 'create')).toHaveLength(0);
+  });
+
+  it('CREATE: submitting a titled drive calls create and lists the returned bond', async () => {
+    const created = { ...BOND, id: 'b_new', title: 'Sweep bridge', status: 'proposed', current_pledged: 0, votes_for: 0, votes_against: 0 };
+    let listed: typeof BOND[] = [];
+    lensRunMock.mockImplementation((_d: string, action: string, input?: Record<string, unknown>) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: listed } } });
+      if (action === 'create') {
+        listed = [created];
+        return Promise.resolve({ data: { result: { ok: true, bondId: created.id } } });
+      }
+      if (action === 'scopes') return Promise.resolve({ data: { result: { ok: true, scopes: [] } } });
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-create')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.change(view!.getByLabelText('Bond title'), { target: { value: 'Sweep bridge' } });
+    });
+    expect(view!.getByTestId('civic-bonds-create-submit')).not.toBeDisabled();
+    await act(async () => { fireEvent.click(view!.getByTestId('civic-bonds-create-submit')); });
+
+    await waitFor(() =>
+      expect(lensRunMock.mock.calls.some((c) => c[1] === 'create' && c[2]?.title === 'Sweep bridge')).toBe(true),
+    );
+    await waitFor(() => expect(view!.getByText('Sweep bridge')).toBeInTheDocument());
+    expect(view!.getByLabelText('Open Sweep bridge for voting')).toBeInTheDocument();
+  });
+
+  it('OPEN: moves a proposed bond into voting via civic_bonds.open', async () => {
+    const proposed = { ...BOND, status: 'proposed', current_pledged: 0, votes_for: 0, votes_against: 0 };
+    let bonds = [proposed];
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds } } });
+      if (action === 'open') {
+        bonds = [{ ...proposed, status: 'voting' }];
+        return Promise.resolve({ data: { result: { ok: true } } });
+      }
+      if (action === 'scopes') return Promise.resolve({ data: { result: { ok: true, scopes: [] } } });
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByText('New Aqueduct')).toBeInTheDocument());
+    expect(view!.getByText('proposed')).toBeInTheDocument();
+
+    await act(async () => { fireEvent.click(view!.getByLabelText('Open New Aqueduct for voting')); });
+    await waitFor(() =>
+      expect(lensRunMock.mock.calls.some((c) => c[1] === 'open' && c[2]?.bondId === 'b_1')).toBe(true),
+    );
+    await waitFor(() => expect(view!.getByText('voting')).toBeInTheDocument());
+    expect(view!.queryByLabelText('Open New Aqueduct for voting')).not.toBeInTheDocument();
+    expect(view!.getByLabelText('Vote for New Aqueduct')).toBeInTheDocument();
   });
 
   it('DISABLED: shows the coming-soon note when the kill-switch is off', async () => {

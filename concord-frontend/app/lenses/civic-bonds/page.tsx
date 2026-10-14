@@ -86,9 +86,16 @@ export default function CivicBondsLens() {
   const [selectedScope, setSelectedScope] = useState<string>('');
   const [spilloverAmount, setSpilloverAmount] = useState<number | null>(null);
   const [spilloverLoading, setSpilloverLoading] = useState(false);
+  // Create drive form — macros are auth-gated (not role-gated); blank title is
+  // blocked client-side and again by createBond's missing_inputs.
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
+  const [draftTarget, setDraftTarget] = useState(20);
+  const [creating, setCreating] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
   const { user } = useAuth();
   const who = titleCaseDisplayName(user?.username);
+  const titleReady = draftTitle.trim().length > 0;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -180,6 +187,48 @@ export default function CivicBondsLens() {
     setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
   }, [act]);
 
+  const createDrive = useCallback(async () => {
+    const title = draftTitle.trim();
+    if (!title) {
+      setNote('create: title required');
+      addToast({ type: 'error', message: 'create failed: title required' });
+      return;
+    }
+    setCreating(true);
+    try {
+      const envelope = (await lensRun<{ ok: boolean; reason?: string; bondId?: string }>('civic_bonds', 'create', {
+        worldId,
+        title,
+        description: draftDescription.trim() || undefined,
+        targetAmount: Math.max(1, Math.trunc(Number(draftTarget) || 0)),
+        denomination: 1,
+        quorum: 1,
+        returnRate: 0,
+      })).data;
+      const r = envelope.result;
+      const reason =
+        (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason) ||
+        (typeof envelope.error === 'string' && envelope.error) ||
+        null;
+      if (!r?.ok) {
+        setNote(`create: ${reason || 'failed'}`);
+        addToast({ type: 'error', message: `create failed: ${reason || 'unknown error'}` });
+      } else {
+        setNote('create ✓');
+        addToast({ type: 'success', message: 'create succeeded', duration: 2500 });
+        setDraftTitle('');
+        setDraftDescription('');
+        setDraftTarget(20);
+      }
+      await refresh();
+    } catch {
+      setNote('create: error');
+      addToast({ type: 'error', message: 'create request failed' });
+    } finally {
+      setCreating(false);
+    }
+  }, [draftTitle, draftDescription, draftTarget, worldId, refresh, addToast]);
+
   useLensCommand(
     [{ id: 'civic-refresh', keys: 'r', description: 'Refresh civic bonds', category: 'actions' as const, action: () => void refresh() }],
     { lensId: 'civic-bonds' },
@@ -201,6 +250,69 @@ export default function CivicBondsLens() {
       >
     <div className="w-full">
       {note && <div role="status" aria-live="polite" className="mb-3 text-sm text-amber-300">{note}</div>}
+
+      {/* Open a drive — create is auth-gated server-side (not admin/ruler-only);
+          blank/whitespace titles stay client-gated and re-validated by createBond. */}
+      {!error && !disabled && (
+        <section
+          aria-label="Open a civic bond drive"
+          data-testid="civic-bonds-create"
+          className="mb-4 rounded-2xl border border-white/10 bg-[#111] p-4"
+        >
+          <div className="text-sm font-medium text-gray-200 mb-2">Open a drive</div>
+          <p className="text-xs text-gray-500 mb-3">
+            Propose a sparks-backed project for this world. After create, use Open on the card to move it into voting.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="flex-1 min-w-[12rem]">
+              <label htmlFor="civic-bond-title" className="block text-xs text-gray-400 mb-1">Title</label>
+              <input
+                id="civic-bond-title"
+                type="text"
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                placeholder="Community project title"
+                className="w-full px-2 py-1.5 rounded bg-black/30 border border-white/10 text-sm"
+                aria-label="Bond title"
+              />
+            </div>
+            <div className="w-full sm:w-28">
+              <label htmlFor="civic-bond-target" className="block text-xs text-gray-400 mb-1">Target (sparks)</label>
+              <input
+                id="civic-bond-target"
+                type="number"
+                min={1}
+                step={1}
+                value={draftTarget}
+                onChange={(e) => setDraftTarget(Number(e.target.value))}
+                className="w-full px-2 py-1.5 rounded bg-black/30 border border-white/10 text-sm"
+                aria-label="Target amount in sparks"
+              />
+            </div>
+            <button
+              type="button"
+              data-testid="civic-bonds-create-submit"
+              onClick={() => void createDrive()}
+              disabled={!titleReady || creating}
+              className="px-3 py-1.5 rounded bg-amber-500/20 text-amber-200 text-sm hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Create civic bond"
+            >
+              {creating ? 'Creating…' : 'Create bond'}
+            </button>
+          </div>
+          <div className="mt-2">
+            <label htmlFor="civic-bond-description" className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+            <textarea
+              id="civic-bond-description"
+              value={draftDescription}
+              onChange={(e) => setDraftDescription(e.target.value)}
+              rows={2}
+              className="w-full px-2 py-1.5 rounded bg-black/30 border border-white/10 text-sm"
+              aria-label="Bond description"
+            />
+          </div>
+        </section>
+      )}
 
       {/* Restricted spillover fund — real GOVERNANCE_SCOPES picker, hidden
           honestly (not with a fake empty dropdown) when no scopes loaded. */}
@@ -265,7 +377,9 @@ export default function CivicBondsLens() {
 
       {/* STATE 3 — empty */}
       {!error && !loading && !disabled && bonds.length === 0 && (
-        <div data-testid="civic-bonds-empty" role="status" className="text-gray-400 text-sm">No civic bonds in this world yet. A realm ruler can open a drive to fund a project.</div>
+        <div data-testid="civic-bonds-empty" role="status" className="text-gray-400 text-sm">
+          No civic bonds in this world yet. Use Open a drive above to propose one, then Open it for voting.
+        </div>
       )}
 
       {/* STATE 4 — data */}
@@ -301,6 +415,14 @@ export default function CivicBondsLens() {
                   className="w-full sm:w-24 px-2 py-1 rounded bg-black/30 border border-white/10 text-sm"
                   aria-label="Pledge amount (sparks)"
                 />
+                {b.status === 'proposed' && (
+                  <button
+                    onClick={() => void act('open', { bondId: b.id })}
+                    className="px-3 py-1 rounded bg-sky-500/20 text-sky-200 text-sm hover:bg-sky-500/30"
+                    aria-label={`Open ${b.title} for voting`}
+                    data-testid={`civic-bonds-open-${b.id}`}
+                  >Open</button>
+                )}
                 <button
                   onClick={() => {
                     if (badAmount(amount, b.denomination)) {
