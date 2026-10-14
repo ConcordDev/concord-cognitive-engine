@@ -1569,4 +1569,161 @@ ${corpus}`;
     saveResearchState();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // ── INC-SWEEP research F7 — replace DOMAIN_ACTION_MANIFEST brain stubs ──
+  // These names were registered as utility/subconscious brain catch-alls that
+  // returned ok:true model prose citing fabricated ids. Prefer the real
+  // library (references / collections) or refuse honestly.
+  registerLensAction("research", "generate-bibliography", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = rfAid(ctx);
+      const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
+        ? String(params.style).toLowerCase() : "apa";
+      let refs;
+      if (params.collectionId) {
+        const col = (s.collections.get(userId) || []).find((c) => c.id === params.collectionId);
+        if (!col) return { ok: false, error: "collection not found" };
+        refs = col.referenceIds.map((id) => findRef(s, userId, id)).filter(Boolean);
+      } else {
+        refs = [...(s.references.get(userId) || [])];
+      }
+      if (refs.length === 0) {
+        return { ok: false, error: "references required", reason: "no_references" };
+      }
+      refs.sort((a, b) => rfClean(a.authors, 400).localeCompare(rfClean(b.authors, 400)));
+      const entries = refs.map((r) => formatCitation(r, style));
+      return {
+        ok: true,
+        result: {
+          style,
+          count: entries.length,
+          entries,
+          bibliography: entries.join(style === "bibtex" ? "\n\n" : "\n"),
+          source: "library",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "evaluate-source", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const id = params.id || params.referenceId || params.sourceId;
+      if (!id) return { ok: false, error: "reference id required" };
+      const ref = findRef(s, rfAid(ctx), id);
+      if (!ref) return { ok: false, error: "reference not found" };
+      const signals = [];
+      if (ref.doi) signals.push("has_doi");
+      if (ref.journal) signals.push("has_venue");
+      if (ref.year) signals.push("has_year");
+      if (ref.abstract) signals.push("has_abstract");
+      if (ref.authors) signals.push("has_authors");
+      const credibility =
+        signals.length >= 4 ? "high" : signals.length >= 2 ? "moderate" : "low";
+      return {
+        ok: true,
+        result: {
+          referenceId: ref.id,
+          title: ref.title,
+          credibility,
+          signals,
+          status: ref.status,
+          source: "library",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "find-gaps", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = rfAid(ctx);
+      const refs = [...(s.references.get(userId) || [])];
+      const topic = rfClean(params.topic || params.query || "", 200);
+      if (refs.length === 0 && !topic) {
+        return { ok: false, error: "references or topic required" };
+      }
+      if (refs.length === 0) {
+        return { ok: false, error: "references required", reason: "no_references" };
+      }
+      const byYear = {};
+      const tagCounts = {};
+      const missingAbstract = [];
+      for (const r of refs) {
+        const y = r.year || "unknown";
+        byYear[y] = (byYear[y] || 0) + 1;
+        for (const t of r.tags || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
+        if (!r.abstract) missingAbstract.push(r.id);
+      }
+      const years = Object.keys(byYear).filter((y) => y !== "unknown").map(Number).sort((a, b) => a - b);
+      const gaps = [];
+      if (missingAbstract.length) {
+        gaps.push({ kind: "missing_abstract", count: missingAbstract.length, referenceIds: missingAbstract.slice(0, 20) });
+      }
+      if (years.length >= 2) {
+        for (let y = years[0]; y < years[years.length - 1]; y++) {
+          if (!byYear[y]) gaps.push({ kind: "year_gap", year: y });
+        }
+      }
+      const thinTags = Object.entries(tagCounts).filter(([, n]) => n === 1).map(([t]) => t);
+      if (thinTags.length) gaps.push({ kind: "singleton_tags", tags: thinTags.slice(0, 20) });
+      return {
+        ok: true,
+        result: {
+          referenceCount: refs.length,
+          topic: topic || null,
+          gaps,
+          byYear,
+          source: "library",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("research", "match-questions", (ctx, _a, params = {}) => {
+    try {
+      const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const question = rfClean(params.question || params.query || params.text || "", 500);
+      if (!question) return { ok: false, error: "question required" };
+      const userId = rfAid(ctx);
+      const refs = [...(s.references.get(userId) || [])];
+      if (refs.length === 0) {
+        return { ok: false, error: "references required", reason: "no_references" };
+      }
+      const q = question.toLowerCase();
+      const tokens = q.split(/\W+/).filter((t) => t.length >= 3);
+      const matches = [];
+      for (const r of refs) {
+        const hay = `${r.title} ${r.abstract || ""} ${(r.tags || []).join(" ")}`.toLowerCase();
+        const hit = tokens.filter((t) => hay.includes(t));
+        if (hit.length) {
+          matches.push({
+            referenceId: r.id,
+            title: r.title,
+            score: hit.length,
+            matchedTokens: hit.slice(0, 12),
+          });
+        }
+      }
+      matches.sort((a, b) => b.score - a.score);
+      return {
+        ok: true,
+        result: {
+          question,
+          matchCount: matches.length,
+          matches: matches.slice(0, 25),
+          source: "library",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 }
