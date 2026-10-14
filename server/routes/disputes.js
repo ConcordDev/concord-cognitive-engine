@@ -22,6 +22,25 @@ function nowISO() {
 }
 
 /**
+ * Present a dispute for clients: user-facing `dispute_type` is the filed type
+ * (metadata.original_type). The legal-liability bucket stays on `legal_bucket`.
+ */
+function presentDispute(db, dispute) {
+  if (!dispute) return dispute;
+  let meta = null;
+  try {
+    meta = db.prepare("SELECT * FROM dispute_metadata WHERE dispute_id = ?").get(dispute.id);
+  } catch (_e) { /* table may not exist */ }
+  const filedType = meta?.original_type || dispute.dispute_type;
+  return {
+    ...dispute,
+    legal_bucket: dispute.dispute_type,
+    dispute_type: filedType,
+    metadata: meta,
+  };
+}
+
+/**
  * Create the dispute router.
  * @param {{ db: object, requireAuth: function, adminOnly: function }} deps
  */
@@ -149,12 +168,15 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         (d) => d.reporter_id === userId || d.reported_user_id === userId
       );
 
-      // Enrich with role info
-      const enriched = userDisputes.map((d) => ({
-        ...d,
-        userRole: d.reporter_id === userId ? "buyer" : "seller",
-        canRespond: d.reported_user_id === userId && d.status === "open",
-      }));
+      // Enrich with role info + filed type (not the legal bucket)
+      const enriched = userDisputes.map((d) => {
+        const presented = presentDispute(db, d);
+        return {
+          ...presented,
+          userRole: d.reporter_id === userId ? "buyer" : "seller",
+          canRespond: d.reported_user_id === userId && d.status === "open",
+        };
+      });
 
       return res.json({ ok: true, disputes: enriched, total: enriched.length });
     } catch (err) {
@@ -384,19 +406,11 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         return res.status(403).json({ ok: false, error: "forbidden" });
       }
 
-      // Try to attach metadata
-      let metadata = null;
-      try {
-        metadata = db.prepare("SELECT * FROM dispute_metadata WHERE dispute_id = ?").get(req.params.id);
-      } catch (_e) {
-        // Table may not exist
-      }
-
+      const presented = presentDispute(db, dispute);
       return res.json({
         ok: true,
         dispute: {
-          ...dispute,
-          metadata,
+          ...presented,
           userRole: dispute.reporter_id === userId ? "buyer" : dispute.reported_user_id === userId ? "seller" : "admin",
         },
       });

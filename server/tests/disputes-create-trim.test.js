@@ -161,4 +161,46 @@ describe("disputes F3 create trim", () => {
     assert.equal(db.metadata.length, 1);
     assert.equal(db.metadata[0].transaction_id, "tx_real_1");
   });
+
+  it("F4 create non_delivery -> GET dispute_type is non_delivery (legal_bucket quality)", async () => {
+    const created = await post(app, {
+      transactionId: "tx_nd_1",
+      type: "non_delivery",
+      statement: "Never shipped",
+    });
+    assert.equal(created.status, 201);
+    const id = created.json.disputeId;
+    const server = app.listen(0);
+    const { port } = server.address();
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/disputes/${id}`);
+      const json = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(json.dispute.dispute_type, "non_delivery");
+      assert.equal(json.dispute.legal_bucket, "quality");
+      assert.equal(json.dispute.metadata.original_type, "non_delivery");
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+  });
+
+  it("F4 create not_as_described -> GET dispute_type is not_as_described", async () => {
+    const created = await post(app, {
+      transactionId: "tx_nad_1",
+      type: "not_as_described",
+      statement: "Wrong color",
+    });
+    assert.equal(created.status, 201);
+    const id = created.json.disputeId;
+    const server = app.listen(0);
+    const { port } = server.address();
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/disputes/${id}`);
+      const json = await res.json();
+      assert.equal(json.dispute.dispute_type, "not_as_described");
+      assert.equal(json.dispute.legal_bucket, "quality");
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+  });
 });

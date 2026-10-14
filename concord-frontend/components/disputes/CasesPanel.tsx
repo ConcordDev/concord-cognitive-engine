@@ -539,7 +539,9 @@ function DisputeCard({
           </div>
           <div className="text-left">
             <p className="text-white font-medium text-sm">
-              {TYPE_LABELS[fullDispute.dispute_type] || fullDispute.dispute_type}
+              {TYPE_LABELS[fullDispute.metadata?.original_type || fullDispute.dispute_type]
+                || fullDispute.metadata?.original_type
+                || fullDispute.dispute_type}
             </p>
             <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
               <span className="font-mono">{fullDispute.id}</span>
