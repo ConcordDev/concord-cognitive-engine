@@ -34,8 +34,15 @@ export function RepresentativeFinder() {
       const res = await lensRun({
         domain: 'government', action: 'representatives-find', input: { address: address.trim() },
       });
-      setReps((res.data?.result?.representatives || []) as Rep[]);
-      if ((res.data?.result?.representatives || []).length === 0) setError('No representatives found for that address.');
+      if (res.data?.ok === false) {
+        setReps([]);
+        setError(res.data.error || 'lookup failed');
+        return;
+      }
+      const list = (res.data?.result?.representatives || []) as Rep[];
+      setReps(list);
+      // Not-found copy only for a successful empty result — never for 422/errors.
+      if (list.length === 0) setError('No representatives found for that address.');
     } catch (e) { setError(e instanceof Error ? e.message : 'lookup failed'); }
     finally { setLoading(false); }
   }

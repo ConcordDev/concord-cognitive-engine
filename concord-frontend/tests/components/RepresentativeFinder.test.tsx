@@ -46,6 +46,20 @@ describe('RepresentativeFinder', () => {
     expect(await screen.findByText(/No representatives found/i)).toBeInTheDocument();
   });
 
+  it('surfaces a 422 server error inline instead of the not-found copy (F4)', async () => {
+    lensRunMock.mockResolvedValue({
+      data: {
+        ok: false,
+        result: null,
+        error: 'state required as 2-letter code (e.g. CA, NY, TX)',
+      },
+    });
+    render(<RepresentativeFinder />);
+    fillAndSubmit('20500');
+    expect(await screen.findByText(/state required as 2-letter code/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No representatives found/i)).not.toBeInTheDocument();
+  });
+
   it('surfaces a thrown error message instead of a fabricated result', async () => {
     lensRunMock.mockRejectedValue(new Error('network down'));
     render(<RepresentativeFinder />);
