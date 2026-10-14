@@ -11,6 +11,7 @@ import {
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyAllianceSummaryChanged } from '@/lib/alliance/summary-stats';
 
 // ── Shared shapes ─────────────────────────────────────────────────
 interface Member { userId: string; displayName: string | null; handle?: string | null; role: 'owner' | 'admin' | 'member' | 'guest'; joinedAt: string; isMe?: boolean }
@@ -274,6 +275,7 @@ export function AllianceWorkspace() {
     setNewAllianceName(''); setNewAllianceDesc(''); setShowCreateAlliance(false);
     await loadAlliances();
     if (r.result?.alliance) setSelAlliance(r.result.alliance.id);
+    notifyAllianceSummaryChanged();
   });
 
   const createChannel = () => guard('create-channel', async () => {
@@ -307,6 +309,7 @@ export function AllianceWorkspace() {
   const markRead = (channelId: string) => guard(`mark-${channelId}`, async () => {
     await run('mark-read', { channelId });
     await Promise.all([loadNotifs(), selAlliance ? loadChannels(selAlliance) : Promise.resolve()]);
+    notifyAllianceSummaryChanged();
   });
 
   const sendInvite = () => guard('invite', async () => {
@@ -322,6 +325,7 @@ export function AllianceWorkspace() {
     const r = await run('invite-respond', { inviteId, accept });
     if (!r.ok) { setErr(r.error); return; }
     await Promise.all([loadAlliances(), loadNotifs()]);
+    notifyAllianceSummaryChanged();
   });
 
   const setMemberRole = (memberId: string, role: string) => guard(`role-${memberId}`, async () => {
@@ -336,6 +340,7 @@ export function AllianceWorkspace() {
     const r = await run('member-remove', { allianceId: selAlliance, memberId });
     if (!r.ok) { setErr(r.error); return; }
     await loadAlliances();
+    notifyAllianceSummaryChanged();
   });
 
   const createProposal = () => guard('create-prop', async () => {
@@ -344,6 +349,7 @@ export function AllianceWorkspace() {
     if (!r.ok) { setErr(r.error); return; }
     setPropTitle(''); setPropBody(''); setShowCreateProp(false);
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
+    notifyAllianceSummaryChanged();
   });
 
   const voteProposal = (proposalId: string, choice: string) => guard(`vote-${proposalId}-${choice}`, async () => {
@@ -358,6 +364,7 @@ export function AllianceWorkspace() {
     const r = await run('proposal-close', { allianceId: selAlliance, proposalId });
     if (!r.ok) { setErr(r.error); return; }
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
+    notifyAllianceSummaryChanged();
   });
 
   const deleteAlliance = () => guard('delete-alliance', async () => {
@@ -367,6 +374,7 @@ export function AllianceWorkspace() {
     setSelAlliance(null);
     setOutgoingInvites([]);
     await loadAlliances();
+    notifyAllianceSummaryChanged();
   });
 
   const leaveAlliance = () => guard('leave-alliance', async () => {
@@ -376,6 +384,7 @@ export function AllianceWorkspace() {
     setSelAlliance(null);
     setOutgoingInvites([]);
     await loadAlliances();
+    notifyAllianceSummaryChanged();
   });
 
   const transferAlliance = (memberId: string) => guard(`xfer-${memberId}`, async () => {
@@ -404,6 +413,7 @@ export function AllianceWorkspace() {
     const r = await run('proposal-delete', { allianceId: selAlliance, proposalId });
     if (!r.ok) { setErr(r.error); return; }
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
+    notifyAllianceSummaryChanged();
   });
 
   const revokeInvite = (inviteId: string) => guard(`revoke-${inviteId}`, async () => {

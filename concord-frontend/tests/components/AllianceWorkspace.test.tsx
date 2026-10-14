@@ -158,6 +158,44 @@ describe('AllianceWorkspace — channel search', () => {
     expect(screen.queryByText('u1')).not.toBeInTheDocument();
   });
 
+  it('F1 create alliance dispatches alliance:summary-changed after successful create', async () => {
+    let alliances: typeof ALLIANCE[] = [];
+    lensRunMock.mockImplementation(async (domain: string, action: string, input: Record<string, unknown> = {}) => {
+      if (domain !== 'alliance') return { data: { ok: true, result: null, error: null } };
+      switch (action) {
+        case 'alliance-list':
+          return { data: { ok: true, result: { alliances, count: alliances.length }, error: null } };
+        case 'notifications':
+          return { data: { ok: true, result: { totalUnread: 0, pendingInvites: 0, perAlliance: [], invites: [] }, error: null } };
+        case 'alliance-create': {
+          const row = { ...ALLIANCE, id: 'alc_created', name: String(input.name || 'Created') };
+          alliances = [row];
+          return { data: { ok: true, result: { alliance: row }, error: null } };
+        }
+        case 'dm-inbox':
+          return { data: { ok: true, result: { threads: [] }, error: null } };
+        default:
+          return { data: { ok: true, result: null, error: null } };
+      }
+    });
+    const notifySpy = vi.spyOn(window, 'dispatchEvent');
+    render(<AllianceWorkspace />);
+    await screen.findByText(/No alliances yet/i);
+    fireEvent.click(screen.getByLabelText('new alliance'));
+    fireEvent.change(screen.getByPlaceholderText('Alliance name'), { target: { value: 'Created' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Create$/i }));
+    await waitFor(() => {
+      expect(lensRunMock.mock.calls.some((c) => c[1] === 'alliance-create')).toBe(true);
+    });
+    await waitFor(() => {
+      const fired = notifySpy.mock.calls.some(
+        (c) => c[0] instanceof Event && (c[0] as Event).type === 'alliance:summary-changed'
+      );
+      expect(fired).toBe(true);
+    });
+    notifySpy.mockRestore();
+  });
+
   it('clearing the query reverts to the normal (unfiltered) message list', async () => {
     installLensRunMock();
     const input = await openWorkspace();

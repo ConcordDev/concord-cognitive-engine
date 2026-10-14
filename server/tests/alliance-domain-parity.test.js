@@ -370,4 +370,23 @@ describe("alliance notifications + read state", () => {
     assert.equal(r.ok, false);
     assert.match(r.error, /STATE/);
   });
+
+  it("RESTART-PERSISTENCE: create → serialize/hydrate → alliance-list count matches", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const created = call("alliance-create", ctxOwner, {}, { name: "Persist Pact", type: "research" });
+    assert.equal(created.ok, true);
+    const before = call("alliance-list", ctxOwner, {}, {});
+    assert.equal(before.result.count, 1);
+    assert.equal(before.result.alliances[0].id, created.result.alliance.id);
+
+    const snap = serializeLensState(globalThis._concordSTATE);
+    const db = globalThis._concordSTATE.db;
+    globalThis._concordSTATE = { db };
+    hydrateLensState(globalThis._concordSTATE, snap);
+
+    const after = call("alliance-list", ctxOwner, {}, {});
+    assert.equal(after.result.count, 1);
+    assert.equal(after.result.alliances[0].id, created.result.alliance.id);
+    assert.equal(after.result.alliances[0].name, "Persist Pact");
+  });
 });

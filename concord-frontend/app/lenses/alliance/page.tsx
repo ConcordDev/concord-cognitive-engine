@@ -32,6 +32,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { lensRun } from '@/lib/api/client';
+import { ALLIANCE_SUMMARY_CHANGED } from '@/lib/alliance/summary-stats';
 
 interface AllianceSummary {
   alliances: { id: string; name: string; type: string; members: unknown[]; activeProposals: number }[];
@@ -68,6 +69,13 @@ export default function AllianceLensPage() {
     let cancelled = false;
     void Promise.resolve().then(() => { if (!cancelled) void loadHeader(); });
     return () => { cancelled = true; };
+  }, [loadHeader]);
+  // F1 — workspace notifies after create/join/leave/dissolve so the strip
+  // matches a fresh alliance-list without a manual Refresh.
+  useEffect(() => {
+    const onChanged = () => { void loadHeader(); };
+    window.addEventListener(ALLIANCE_SUMMARY_CHANGED, onChanged);
+    return () => window.removeEventListener(ALLIANCE_SUMMARY_CHANGED, onChanged);
   }, [loadHeader]);
 
   useLensCommand(
