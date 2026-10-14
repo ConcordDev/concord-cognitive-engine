@@ -8,7 +8,7 @@ import { logAudit } from "../lib/audit-logger.js";
 import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
-import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
+import { ctxMayReadDtu, viewerIdFromCtx, privateDtuHiddenFrom } from "../lib/dtu-read-access.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
 
@@ -195,7 +195,19 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.get("/api/dtus/:id", asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);
-      const out = await runMacro("dtu","get",{ id:req.params.id }, ctx);
+      // INC-SWEEP research F8 — anon + private/hidden DTU → 401 AUTH_REQUIRED
+      // (align with lens macros). Other-user / missing stay 404; no body leak.
+      const id = req.params.id;
+      const existing = STATE.dtus?.get?.(id) || null;
+      const viewerId = viewerIdFromCtx(ctx);
+      if (existing && !viewerId && privateDtuHiddenFrom(existing, viewerId)) {
+        return res.status(401).json({
+          ok: false,
+          error: "Login required",
+          code: "AUTH_REQUIRED",
+        });
+      }
+      const out = await runMacro("dtu", "get", { id }, ctx);
       if (!out.ok) return res.status(404).json(out);
       res.json(out);
     } catch (e) {
