@@ -157,11 +157,31 @@ function districtSummaryForWorld(db, worldId) {
  * escalates — so calling it here adds no side effects beyond the existing
  * ~4h heartbeat pass.
  */
+/**
+ * Observability status for a liveness finding. classifyDisposition returns the
+ * mechanical-repair CLASS ("healed" = auto-heal candidate), not whether the
+ * scheduler is currently resolved. Rows still in detectPathologies are overdue;
+ * reserve "healed" only when the repair class says heal AND current state is
+ * no longer overdue (those rows never appear here).
+ */
+function livenessStatus(finding) {
+  const repairClass = classifyDisposition(finding.pathology);
+  const overdueS = finding.detail?.overdue_s;
+  const stillOverdue = overdueS != null && Number.isFinite(overdueS) && overdueS > 0;
+  if (stillOverdue) return "overdue";
+  if (repairClass === "healed") return "healed";
+  return repairClass;
+}
+
 function healthForWorld(allFindings, factionIds) {
   const ids = new Set(factionIds);
   const findings = allFindings
     .filter((f) => f.category === "liveness" && ids.has(f.subjectId))
-    .map((f) => ({ ...f, disposition: classifyDisposition(f.pathology) }));
+    .map((f) => ({
+      ...f,
+      repairClass: classifyDisposition(f.pathology),
+      disposition: livenessStatus(f),
+    }));
   return {
     // Platform-wide total pathology count (all categories, all worlds) —
     // explicitly NOT a per-world number; detectPathologies scans the whole

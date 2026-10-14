@@ -76,7 +76,14 @@ function detailPayload(over: Record<string, unknown> = {}) {
     health: {
       platformWideChecked: 5,
       factionSchedulerFindings: [
-        { pathology: 'stuck_scheduler', category: 'liveness', subjectId: 'faction_alpha', disposition: 'healed', detail: { overdue_s: 90000 } },
+        {
+          pathology: 'stuck_scheduler',
+          category: 'liveness',
+          subjectId: 'faction_alpha',
+          disposition: 'overdue',
+          repairClass: 'healed',
+          detail: { overdue_s: 90000 },
+        },
       ],
     },
     ...over,
@@ -181,7 +188,11 @@ describe('World Observatory lens page', () => {
     // Liveness finding surfaced with real overdue detail
     openView('Liveness');
     expect(await screen.findByText(/stuck_scheduler/)).toBeInTheDocument();
-    expect(screen.getByText(/overdue/)).toBeInTheDocument();
+    // Duration copy ("… overdue") + status chip both contain the word.
+    expect(screen.getAllByText(/overdue/i).length).toBeGreaterThanOrEqual(2);
+    // F2: status chip is OVERDUE, never the mechanical-repair class HEALED
+    expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^healed$/i)).not.toBeInTheDocument();
   });
 
   it('shows honest empty states for a world with zero factions/realms/districts — never a fabricated card', async () => {

@@ -162,7 +162,9 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(r.health.factionSchedulerFindings.length, 1);
     assert.equal(r.health.factionSchedulerFindings[0].subjectId, "faction_alpha");
     assert.equal(r.health.factionSchedulerFindings[0].pathology, "stuck_scheduler");
-    assert.equal(r.health.factionSchedulerFindings[0].disposition, "healed");
+    // F2: still-overdue rows are STATUS overdue; repair CLASS stays healed.
+    assert.equal(r.health.factionSchedulerFindings[0].disposition, "overdue");
+    assert.equal(r.health.factionSchedulerFindings[0].repairClass, "healed");
 
     // No 'economy' findings ever leak through this surface, even though
     // detectPathologies would report them for other users on this box.
@@ -175,6 +177,16 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     const now = Math.floor(Date.now() / 1000);
     const row = db.prepare(`SELECT next_move_at FROM faction_strategy_state WHERE faction_id = 'faction_alpha'`).get();
     assert.ok(row.next_move_at < now - STUCK_SCHEDULER_GRACE_S, "world_detail must not heal the stuck scheduler it reports on");
+  });
+
+  it("F2: overdue stuck schedulers never get disposition healed on the observatory surface", async () => {
+    seedWorld();
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    const finding = r.health.factionSchedulerFindings[0];
+    assert.ok(finding.detail?.overdue_s > 0);
+    assert.equal(finding.disposition, "overdue");
+    assert.notEqual(finding.disposition, "healed");
+    assert.equal(finding.repairClass, "healed");
   });
 
   it("realm legitimacy/treasury/taxRate/citizens exactly match realms.js's own getters", async () => {

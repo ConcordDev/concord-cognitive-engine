@@ -107,7 +107,10 @@ interface HealthFinding {
   pathology: string;
   category: string;
   subjectId: string;
+  /** Current status (overdue/stuck/healed) — never the repair class alone. */
   disposition: string;
+  /** Mechanical-repair class from classifyDisposition; not the row STATUS. */
+  repairClass?: string;
   detail?: { overdue_s?: number };
 }
 
