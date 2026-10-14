@@ -1008,6 +1008,29 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     expect(screen.getByText('Alpha plans')).toBeInTheDocument();
   });
 
+  it('does not show "No messages" on a non-empty conversation with an empty preview', async () => {
+    // Server sessions API has msg_count but no lastMessage snippet; local seed
+    // may also have lastMessage:''. The empty-state label must not contradict
+    // the count (INC-SWEEP chat F2).
+    seedConversations([
+      { id: 'conv-srv', title: 'From my laptop', lastMessage: '', messageCount: 0 },
+    ]);
+    fetchHandler = async (url) => {
+      if (url.startsWith('/api/chat/sessions')) {
+        return jsonResponse({
+          ok: true,
+          sessions: [
+            { id: 'conv-srv', title: 'From my laptop', lens: 'chat', updated_at: Date.parse('2026-10-05T00:00:00Z'), created_at: 0, msg_count: 4 },
+          ],
+        });
+      }
+      return jsonResponse({ ok: false });
+    };
+    renderPanel();
+    expect(await screen.findByText('4 messages')).toBeInTheDocument();
+    expect(screen.queryByText('No messages')).not.toBeInTheDocument();
+  });
+
   it('hydrates an empty local thread from /api/chat/messages (cross-device)', async () => {
     window.localStorage.setItem(SESSION_KEY, 'conv-remote');
     fetchHandler = async (url) => {

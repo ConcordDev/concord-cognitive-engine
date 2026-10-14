@@ -2798,9 +2798,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         {formatRelativeTime(conv.updatedAt)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">
-                      {conv.lastMessage || 'No messages'}
-                    </p>
+                    {(conv.messageCount === 0 || conv.lastMessage) && (
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        {conv.messageCount === 0 ? 'No messages' : conv.lastMessage}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-gray-400">
                         {conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}
