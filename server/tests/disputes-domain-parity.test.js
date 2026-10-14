@@ -339,14 +339,18 @@ describe("disputes resolution + archive", () => {
 /* ---------------------------------------------------------------- */
 
 describe("disputes escrow", () => {
-  it("escrow-freeze holds funds, escrow-release frees them", () => {
+  it("escrow-freeze requests (does not hold funds), escrow-release clears", () => {
     const c = openCase();
     const f = call("escrow-freeze", ctx, {}, { caseId: c.id, amount: 200 });
     assert.equal(f.ok, true);
     assert.equal(f.result.case.escrowFrozen, true);
+    assert.equal(f.result.escrowFundsHeld, false);
+    assert.equal(f.result.escrowRequested, true);
     const rel = call("escrow-release", ctx, {}, { caseId: c.id, releaseTo: "claimant" });
     assert.equal(rel.ok, true);
     assert.equal(rel.result.released, 200);
+    assert.equal(rel.result.escrowRequested, false);
+    assert.equal(rel.result.case.escrowFrozen, false);
   });
 
   it("escrow-freeze rejects a double freeze", () => {
@@ -356,13 +360,23 @@ describe("disputes escrow", () => {
     assert.equal(r.ok, false);
   });
 
-  it("escrow-status aggregates active holds", () => {
+  it("F7 escrow-status: totalHeld 0; totalRequested matches flag; strip text matches", () => {
     const c = openCase();
     call("escrow-freeze", ctx, {}, { caseId: c.id, amount: 200 });
     const r = call("escrow-status", ctx, {}, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.activeHolds, 1);
-    assert.equal(r.result.totalHeld, 200);
+    assert.equal(r.result.totalHeld, 0);
+    assert.equal(r.result.totalRequested, 200);
+    assert.equal(r.result.fundsActuallyHeld, false);
+    assert.equal(r.result.holds[0].fundsHeld, false);
+    const detail = call("case-detail", ctx, {}, { caseId: c.id });
+    assert.equal(detail.result.case.escrowFundsHeld, false);
+    assert.equal(detail.result.case.escrowRequested, true);
+    call("escrow-release", ctx, {}, { caseId: c.id, releaseTo: "claimant" });
+    const after = call("escrow-status", ctx, {}, {});
+    assert.equal(after.result.activeHolds, 0);
+    assert.equal(after.result.totalRequested, 0);
   });
 });
 

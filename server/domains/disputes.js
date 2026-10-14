@@ -193,7 +193,10 @@ export default function registerDisputesActions(registerLensAction) {
       respondentIsMe: c.respondentId === viewerId,
       mediatorId: c.mediatorId ? publicId(s, c.mediatorId) : null,
       mediatorName: c.mediatorName || (c.mediatorId ? displayName(ctx, c.mediatorId) : null),
+      // Flag-only: ODR has no wallet/ledger hold path. Never claim funds are held.
       escrowFrozen: c.escrowFrozen,
+      escrowRequested: !!c.escrowFrozen,
+      escrowFundsHeld: false,
       escrowAmount: c.escrowAmount,
       evidenceCount: c.evidence.length,
       messageCount: c.messages.length,
@@ -369,7 +372,7 @@ export default function registerDisputesActions(registerLensAction) {
       if (params.freezeEscrow && disputeAmount > 0) {
         c.escrowFrozen = true;
         c.escrowAmount = disputeAmount;
-        c.history.push({ at: nowIso(), event: "escrow_frozen", actor: userId, amount: disputeAmount });
+        c.history.push({ at: nowIso(), event: "escrow_requested", actor: userId, amount: disputeAmount });
       }
       s.casesById.set(c.id, c);
       saveState();
@@ -881,9 +884,18 @@ export default function registerDisputesActions(registerLensAction) {
       c.escrowFrozen = true;
       c.escrowAmount = freezeAmount;
       c.updatedAt = nowIso();
-      c.history.push({ at: nowIso(), event: "escrow_frozen", actor: userId, amount: freezeAmount });
+      c.history.push({ at: nowIso(), event: "escrow_requested", actor: userId, amount: freezeAmount });
       saveState();
-      return { ok: true, result: { case: publicCase(s, ctx, c, userId), escrowAmount: freezeAmount } };
+      return {
+        ok: true,
+        result: {
+          case: publicCase(s, ctx, c, userId),
+          escrowAmount: freezeAmount,
+          escrowRequested: true,
+          escrowFundsHeld: false,
+          note: "Escrow requested on the case record only — no wallet funds were held.",
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -902,9 +914,19 @@ export default function registerDisputesActions(registerLensAction) {
       const released = c.escrowAmount;
       c.escrowFrozen = false;
       c.updatedAt = nowIso();
-      c.history.push({ at: nowIso(), event: "escrow_released", actor: userId, amount: released, releaseTo });
+      c.history.push({ at: nowIso(), event: "escrow_request_cleared", actor: userId, amount: released, releaseTo });
       saveState();
-      return { ok: true, result: { case: publicCase(s, ctx, c, userId), released, releaseTo } };
+      return {
+        ok: true,
+        result: {
+          case: publicCase(s, ctx, c, userId),
+          released,
+          releaseTo,
+          escrowRequested: false,
+          escrowFundsHeld: false,
+          note: "Escrow request cleared — no wallet funds moved.",
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -921,14 +943,20 @@ export default function registerDisputesActions(registerLensAction) {
         title: c.title,
         amount: c.escrowAmount,
         status: c.status,
-        frozenSince: (c.history.find((h) => h.event === "escrow_frozen") || {}).at || c.openedAt,
+        fundsHeld: false,
+        requested: true,
+        frozenSince: (c.history.find((h) => h.event === "escrow_requested" || h.event === "escrow_frozen") || {}).at || c.openedAt,
       }));
+      const totalRequested = holds.reduce((sum, h) => sum + h.amount, 0);
       return {
         ok: true,
         result: {
           holds,
-          totalHeld: holds.reduce((sum, h) => sum + h.amount, 0),
+          totalRequested,
+          // Honest: no ledger hold exists for ODR escrow flags.
+          totalHeld: 0,
           activeHolds: holds.length,
+          fundsActuallyHeld: false,
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }

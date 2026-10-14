@@ -299,7 +299,7 @@ export function CaseWorkbench() {
                   <span className="flex items-center gap-0.5"><Paperclip className="w-3 h-3" />{c.evidenceCount}</span>
                   <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{c.messageCount}</span>
                   <span className="flex items-center gap-0.5"><Gavel className="w-3 h-3" />{c.offerCount}</span>
-                  {c.escrowFrozen && <span className="flex items-center gap-0.5 text-amber-500"><Lock className="w-3 h-3" />{c.escrowAmount}</span>}
+                  {c.escrowFrozen && <span className="flex items-center gap-0.5 text-amber-500"><Lock className="w-3 h-3" />{c.escrowAmount} req</span>}
                   {c.slaBreached && <span className="text-rose-400 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" />SLA</span>}
                 </div>
               </button>
@@ -401,9 +401,7 @@ function SlaCheckButton({ onDone }: { onDone: () => void }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Escrow ledger — aggregate view across every case with funds frozen */
-/*  (disputes.escrow-status: a portfolio-wide ledger the per-case      */
-/*  escrow-freeze/release buttons don't surface on their own)          */
+/*  Escrow ledger — case-flag requests only (no wallet hold path)      */
 /* ------------------------------------------------------------------ */
 
 interface EscrowHold { caseId: string; title: string; amount: number; status: string; frozenSince: string }
@@ -412,14 +410,15 @@ function EscrowLedgerPanel({ onOpenCase }: { onOpenCase: (caseId: string) => voi
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [holds, setHolds] = useState<EscrowHold[]>([]);
-  const [totalHeld, setTotalHeld] = useState(0);
+  const [totalRequested, setTotalRequested] = useState(0);
 
   const load = async () => {
     setLoading(true);
     const r = await lensRun('disputes', 'escrow-status', {});
     if (r.data.ok && r.data.result) {
-      setHolds(((r.data.result as any).holds as EscrowHold[]) || []);
-      setTotalHeld((r.data.result as any).totalHeld || 0);
+      const result = r.data.result as any;
+      setHolds((result.holds as EscrowHold[]) || []);
+      setTotalRequested(result.totalRequested ?? 0);
     }
     setLoading(false);
   };
@@ -439,11 +438,12 @@ function EscrowLedgerPanel({ onOpenCase }: { onOpenCase: (caseId: string) => voi
       {open && (
         <div className="absolute right-6 mt-2 z-10 w-80 rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-zinc-200">Escrow ledger</p>
-            <p className="text-xs text-amber-400 font-mono">{totalHeld} CC held</p>
+            <p className="text-xs font-semibold text-zinc-200">Escrow requests</p>
+            <p className="text-xs text-amber-400 font-mono">{totalRequested} CC requested</p>
           </div>
+          <p className="text-[10px] text-zinc-500">Case flags only — no wallet funds are held.</p>
           {holds.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No funds currently frozen.</p>
+            <p className="text-xs text-zinc-500 italic">No escrow requests on open cases.</p>
           ) : (
             <ul className="space-y-1 max-h-64 overflow-y-auto">
               {holds.map((h) => (
@@ -456,7 +456,7 @@ function EscrowLedgerPanel({ onOpenCase }: { onOpenCase: (caseId: string) => voi
                       <span className="text-xs text-zinc-200 truncate">{h.title}</span>
                       <span className="text-xs font-mono text-amber-400">{h.amount}</span>
                     </div>
-                    <p className="text-[10px] text-zinc-500">{h.status} · frozen {new Date(h.frozenSince).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-zinc-500">{h.status} · requested {new Date(h.frozenSince).toLocaleDateString()}</p>
                   </button>
                 </li>
               ))}
@@ -674,8 +674,9 @@ function EscrowControls({ c, busy, run, closed }: { c: PublicCase; busy: string 
       {c.escrowFrozen ? (
         <div className="space-y-2">
           <p className="text-sm text-amber-400 flex items-center gap-1">
-            <DollarSign className="w-3.5 h-3.5" />{c.escrowAmount} CC held
+            <DollarSign className="w-3.5 h-3.5" />{c.escrowAmount} CC escrow requested
           </p>
+          <p className="text-[10px] text-zinc-500">No wallet funds held — case flag only.</p>
           <div className="flex gap-2">
             <select className={inputCls} value={releaseTo} onChange={(e) => setReleaseTo(e.target.value)}>
               <option value="claimant">To claimant</option>
