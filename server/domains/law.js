@@ -1160,9 +1160,48 @@ export default function registerLawActions(registerLensAction) {
   const lwId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const lwNow = () => new Date().toISOString();
   const lwActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // Public-facing actor label for version/esign payloads — never the raw
+  // account uuid (Kingdoms F1 identity class). Prefer display name, else
+  // username, else the non-identifying role label "member".
+  const lwPublicActor = (ctx) => {
+    const name = ctx?.actor?.displayName || ctx?.actor?.username;
+    if (typeof name === "string" && name.trim()) return String(name).trim().slice(0, 80);
+    return "member";
+  };
+  const LW_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const lwLooksLikeUserId = (v) => typeof v === "string" && (LW_UUID_RE.test(v) || /^user[_-]/i.test(v));
+  /** Scrub raw user ids from a stored label; keep honest display names. */
+  const lwPublicLabel = (stored, ctx) => {
+    if (stored == null || stored === "" || lwLooksLikeUserId(stored) || stored === lwActor(ctx)) {
+      return lwPublicActor(ctx);
+    }
+    return String(stored);
+  };
   const lwClean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const lwList = (s, userId) => { if (!s.contracts.has(userId)) s.contracts.set(userId, []); return s.contracts.get(userId); };
   const lwAlerts = (s, userId) => { if (!s.searchAlerts.has(userId)) s.searchAlerts.set(userId, []); return s.searchAlerts.get(userId); };
+  /** Present a contract for API responses — strip raw uuids from version/esign fields. */
+  function lwPresentContract(c, ctx) {
+    if (!c) return c;
+    const versions = (c.versions || []).map((v) => ({
+      ...v,
+      savedBy: lwPublicLabel(v.savedBy, ctx),
+    }));
+    const signatures = (c.signatures || []).map((sig) => {
+      const next = { ...sig };
+      if (Object.prototype.hasOwnProperty.call(sig, "signerUserId")) {
+        next.signerUserId = lwPublicLabel(sig.signerUserId, ctx);
+      }
+      if (sig.certificate && typeof sig.certificate === "object") {
+        next.certificate = {
+          ...sig.certificate,
+          signerUserId: lwPublicLabel(sig.certificate.signerUserId, ctx),
+        };
+      }
+      return next;
+    });
+    return { ...c, versions, signatures };
+  }
 
   const CONTRACT_TYPES = ["nda", "services", "employment", "license", "lease", "sale", "partnership", "other"];
   const CONTRACT_STATUSES = ["draft", "in_review", "sent", "signed", "active", "expired", "terminated"];
@@ -1251,7 +1290,7 @@ export default function registerLawActions(registerLensAction) {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
     if (!c) return { ok: false, error: "contract not found" };
-    return { ok: true, result: { contract: c } };
+    return { ok: true, result: { contract: lwPresentContract(c, ctx) } };
   });
 
   registerLensAction("law", "contract-update", (ctx, _a, params = {}) => {
@@ -1338,11 +1377,12 @@ export default function registerLawActions(registerLensAction) {
     // You sign once, for your own side. The counterparty signs from the link
     // sent by contract-request-signature — never by you typing their name.
     if (c.signatures.some((sig) => sig.side !== "counterparty")) return { ok: false, error: "you have already signed this contract" };
-    c.signatures.push({ party, side: "owner", signerUserId: lwActor(ctx), signedAt: lwNow() });
+    c.signatures.push({ party, side: "owner", signerUserId: lwPublicActor(ctx), signedAt: lwNow() });
     if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
     c.updatedAt = lwNow();
     saveLaw();
-    return { ok: true, result: { contractId: c.id, signatures: c.signatures, status: c.status } };
+    const presented = lwPresentContract(c, ctx);
+    return { ok: true, result: { contractId: c.id, signatures: presented.signatures, status: c.status } };
   });
 
   registerLensAction("law", "contract-dashboard", (ctx, _a, _params = {}) => {
@@ -1526,13 +1566,19 @@ export default function registerLawActions(registerLensAction) {
       label: lwClean(params.label, 120) || `Version ${c.versions.length + 1}`,
       body: clauseTextBlock(c),
       clauseCount: c.clauses.length,
-      savedBy: lwActor(ctx),
+      savedBy: lwPublicActor(ctx),
       savedAt: lwNow(),
     };
     c.versions.push(snapshot);
     c.updatedAt = lwNow();
     saveLaw();
-    return { ok: true, result: { version: snapshot, versionCount: c.versions.length } };
+    return {
+      ok: true,
+      result: {
+        version: { ...snapshot, savedBy: lwPublicActor(ctx) },
+        versionCount: c.versions.length,
+      },
+    };
   });
 
   registerLensAction("law", "contract-version-list", (ctx, _a, params = {}) => {
@@ -1541,7 +1587,7 @@ export default function registerLawActions(registerLensAction) {
     if (!c) return { ok: false, error: "contract not found" };
     const versions = (c.versions || []).map((v) => ({
       version: v.version, label: v.label, clauseCount: v.clauseCount,
-      savedBy: v.savedBy, savedAt: v.savedAt, charCount: v.body.length,
+      savedBy: lwPublicLabel(v.savedBy, ctx), savedAt: v.savedAt, charCount: v.body.length,
     }));
     return { ok: true, result: { versions, count: versions.length } };
   });
@@ -1998,10 +2044,14 @@ export default function registerLawActions(registerLensAction) {
     if (!party) return { ok: false, error: "party name required" };
     const intent = lwClean(params.intent, 200) || "I agree to be bound by this contract.";
     if (c.signatures.some((sig) => sig.side !== "counterparty")) return { ok: false, error: "you have already signed this contract" };
-    const certificate = certifiedSignature(c, { party, intent, side: "owner", signerUserId: lwActor(ctx) });
+    const certificate = certifiedSignature(c, { party, intent, side: "owner", signerUserId: lwPublicActor(ctx) });
     saveLaw();
-    return { ok: true, result: { contractId: c.id, certificate, status: c.status, signatureCount: c.signatures.length } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+    const presentedCert = {
+      ...certificate,
+      signerUserId: lwPublicLabel(certificate.signerUserId, ctx),
+    };
+    return { ok: true, result: { contractId: c.id, certificate: presentedCert, status: c.status, signatureCount: c.signatures.length } };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
   registerLensAction("law", "contract-verify", (ctx, _a, params = {}) => {
