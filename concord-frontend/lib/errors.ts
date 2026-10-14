@@ -151,15 +151,27 @@ export function fromAxiosError(error: unknown): ConcordError {
   }
 
   const { status, data } = axiosErr.response;
-  const body = data as { error?: string; code?: string; message?: string; reason?: string } | undefined;
+  const body = data as {
+    error?: string;
+    code?: string;
+    message?: string;
+    reason?: string;
+    violations?: string[];
+  } | undefined;
   if (status === 503 && (body?.reason === 'shutting_down' || body?.code === 'shutting_down')) {
     return new ServerError('Server restarting, try again.', 503);
   }
   const msg = data?.error || data?.message || axiosErr.message || 'Unknown error';
+  const violations = Array.isArray(body?.violations) ? body.violations : undefined;
 
   switch (status) {
-    case 400:
-      return new ValidationError(msg);
+    case 400: {
+      const fullMsg = violations?.length ? `${msg}: ${violations.join('; ')}` : msg;
+      return new ValidationError(fullMsg, {
+        ...(violations ? { violations } : {}),
+        ...(body?.code ? { apiCode: body.code } : {}),
+      });
+    }
     case 401:
       return new SessionExpiredError();
     case 403:

@@ -97,6 +97,13 @@ export interface SaveAsDtuButtonProps {
 }
 
 const RAW_SNAPSHOT_BUDGET = 8000;
+/** Matches server `INPUT_LIMITS.title` (server.js) — POST /api/dtus rejects longer. */
+export const DTU_TITLE_MAX = 200;
+
+/** Clamp a prefilled/source title to the DTU title cap (no ellipsis — keep a clean prefix). */
+export function clampDtuTitle(title: string): string {
+  return String(title ?? '').slice(0, DTU_TITLE_MAX);
+}
 
 function truncateForSnapshot(data: unknown): string | undefined {
   if (data === undefined || data === null) return undefined;
@@ -106,6 +113,36 @@ function truncateForSnapshot(data: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function dtuSaveErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const o = err as {
+      message?: string;
+      code?: string;
+      context?: { violations?: unknown; apiCode?: unknown };
+      response?: { data?: { error?: string; code?: string; violations?: string[] } };
+    };
+    const data = o.response?.data;
+    if (data) {
+      const violations = Array.isArray(data.violations) ? data.violations : [];
+      const base = data.error || data.code || o.message || 'Failed to save DTU';
+      if (violations.length) return `${base}: ${violations.join('; ')}`;
+      if (data.code) return `${base} (${data.code})`;
+      return base;
+    }
+    const violations = Array.isArray(o.context?.violations) ? o.context.violations.map(String) : [];
+    const apiCode = typeof o.context?.apiCode === 'string' ? o.context.apiCode : o.code;
+    if (o.message) {
+      if (violations.length) return `${o.message}: ${violations.join('; ')}`;
+      if (apiCode && apiCode !== 'VALIDATION_ERROR' && !o.message.includes(apiCode)) {
+        return `${o.message} (${apiCode})`;
+      }
+      return o.message;
+    }
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return 'Failed to save DTU';
 }
 
 export function SaveAsDtuButton({
@@ -124,7 +161,7 @@ export function SaveAsDtuButton({
 }: SaveAsDtuButtonProps) {
   const [open, setOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState(title);
+  const [editTitle, setEditTitle] = useState(() => clampDtuTitle(title));
   const [editTags, setEditTags] = useState([apiSource, ...extraTags].join(', '));
   const [isGlobal, setIsGlobal] = useState(false);
   const [contentClass, setContentClass] = useState<ContentClass>((defaultContentClass as ContentClass) || 'dataset');
@@ -132,7 +169,7 @@ export function SaveAsDtuButton({
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
-  useEffect(() => { setEditTitle(title); }, [title]);
+  useEffect(() => { setEditTitle(clampDtuTitle(title)); }, [title]);
   useEffect(() => { setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags]);
 
   const createMutation = useMutation({
@@ -159,7 +196,7 @@ export function SaveAsDtuButton({
       );
 
       return apiHelpers.dtus.create({
-        title: opts.title || title,
+        title: clampDtuTitle(opts.title || title),
         content,
         tags: allTags,
         source: apiSource,
@@ -182,8 +219,8 @@ export function SaveAsDtuButton({
       onSaved?.(id);
       setOpen(false);
     },
-    onError: () => {
-      addToast({ type: 'error', message: 'Failed to save DTU' });
+    onError: (err) => {
+      addToast({ type: 'error', message: dtuSaveErrorMessage(err) });
     },
   });
 
@@ -194,7 +231,7 @@ export function SaveAsDtuButton({
       return;
     }
     createMutation.mutate({
-      title,
+      title: clampDtuTitle(title),
       tags: [apiSource, ...extraTags],
       isGlobal: false,
       contentClass,
@@ -205,7 +242,7 @@ export function SaveAsDtuButton({
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
-    createMutation.mutate({ title: editTitle, tags, isGlobal, contentClass, licenseScopes });
+    createMutation.mutate({ title: clampDtuTitle(editTitle), tags, isGlobal, contentClass, licenseScopes });
   };
 
   return (
@@ -331,11 +368,15 @@ function SaveModal(props: ModalProps) {
             <div>
               <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
                 Title
+                <span className="ml-2 font-normal normal-case text-zinc-600">
+                  {props.editTitle.length}/{DTU_TITLE_MAX}
+                </span>
               </label>
               <input
                 type="text"
                 value={props.editTitle}
-                onChange={(e) => props.setEditTitle(e.target.value)}
+                maxLength={DTU_TITLE_MAX}
+                onChange={(e) => props.setEditTitle(clampDtuTitle(e.target.value))}
                 className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
                 placeholder="Descriptive title"
               />

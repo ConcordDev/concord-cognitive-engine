@@ -44,7 +44,8 @@ vi.mock('lucide-react', async (importOriginal) => {
   return { ...actual, ...o };
 });
 
-import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { SaveAsDtuButton, clampDtuTitle, DTU_TITLE_MAX } from '@/components/dtu/SaveAsDtuButton';
+import { ValidationError } from '@/lib/errors';
 
 function renderWithQuery(node: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -144,8 +145,55 @@ describe('SaveAsDtuButton', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /Save as DTU/i }));
     await waitFor(() =>
-      expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'boom' }))
     );
+  });
+
+  it('toasts the real INPUT_TOO_LONG reason (not a generic Failed to save DTU)', async () => {
+    create.mockRejectedValue(
+      new ValidationError('Input too long: title: 202 chars (max 200)', {
+        apiCode: 'INPUT_TOO_LONG',
+        violations: ['title: 202 chars (max 200)'],
+      }),
+    );
+    renderWithQuery(
+      <SaveAsDtuButton apiSource="courtlistener" title="T" content="C" confirm={false} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Save as DTU/i }));
+    await waitFor(() =>
+      expect(addToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringMatching(/Input too long|202 chars|INPUT_TOO_LONG/),
+        }),
+      ),
+    );
+    expect(addToast.mock.calls[0][0].message).not.toBe('Failed to save DTU');
+  });
+
+  it('clamps a >200-char CourtListener title at prefill and saves the clamped title', async () => {
+    create.mockResolvedValue({ data: { id: 'dtu-long-ok' } });
+    const long = `Statutes Severability – Lead Poisoning Prevention – "Qualified Offer" Provisions ${'x'.repeat(120)}`;
+    expect(long.length).toBeGreaterThan(DTU_TITLE_MAX);
+    const clamped = clampDtuTitle(long);
+    expect(clamped.length).toBe(DTU_TITLE_MAX);
+
+    renderWithQuery(
+      <SaveAsDtuButton
+        apiSource="courtlistener"
+        title={long}
+        content="Opinion body"
+        confirm
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Save as DTU/i }));
+    const titleInput = await screen.findByDisplayValue(clamped);
+    expect((titleInput as HTMLInputElement).value.length).toBe(DTU_TITLE_MAX);
+    expect((titleInput as HTMLInputElement).maxLength).toBe(DTU_TITLE_MAX);
+    fireEvent.click(screen.getByRole('button', { name: /Save DTU/ }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].title).toBe(clamped);
+    expect(create.mock.calls[0][0].title.length).toBeLessThanOrEqual(DTU_TITLE_MAX);
   });
 
   it('truncates oversized rawData snapshots', async () => {
