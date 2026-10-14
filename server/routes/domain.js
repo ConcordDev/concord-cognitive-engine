@@ -1221,16 +1221,28 @@ export default function registerDomainRoutes(app, {
   }));
 
   // ---- Agents (macro-level capability scoring, task routing, swarm status) ----
+  // INC-SWEEP agents F10 — these verbs live in LENS_ACTIONS (registerLensAction),
+  // not MACROS. runMacro threw "macro not found" → bare 500. Invoke the lens
+  // handler (same as /api/lens/run) so empty bodies get the honest macro answer.
+  async function _runAgentsLensAction(name, input, ctx) {
+    const lensActions = globalThis.__concordLensActions;
+    const fn = lensActions?.get?.(`agents.${name}`);
+    if (typeof fn !== "function") {
+      return { ok: false, error: `${name} not registered` };
+    }
+    const artifact = { id: null, domain: "agents", title: "", data: {}, meta: {} };
+    return await fn(ctx, artifact, input || {});
+  }
   app.get("/api/agents/swarm", asyncHandler(async (req, res) => {
-    const out = await runMacro("agents", "swarmStatus", req.query, makeCtx(req));
-    return res.json(out);
+    const out = await _runAgentsLensAction("swarmStatus", req.query, makeCtx(req));
+    return res.status(out?.ok === false ? 400 : 200).json(out);
   }));
   app.post("/api/agents/evaluate", asyncHandler(async (req, res) => {
-    const out = await runMacro("agents", "evaluateCapability", req.body, makeCtx(req));
-    return res.json(out);
+    const out = await _runAgentsLensAction("evaluateCapability", req.body, makeCtx(req));
+    return res.status(out?.ok === false ? 400 : 200).json(out);
   }));
   app.post("/api/agents/route", asyncHandler(async (req, res) => {
-    const out = await runMacro("agents", "routeTask", req.body, makeCtx(req));
-    return res.json(out);
+    const out = await _runAgentsLensAction("routeTask", req.body, makeCtx(req));
+    return res.status(out?.ok === false ? 400 : 200).json(out);
   }));
 }
