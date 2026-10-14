@@ -43,9 +43,13 @@ describe("integrations.connectorCatalog + connections (OAuth-style)", () => {
   });
 
   it("connects an app, lists it, then disconnects", () => {
-    const conn = call("connectApp", ctxA, { connectorId: "slack" });
+    // Internal connector needs no external credential; oauth/api_key without
+    // a stored token are refused (see integrations-connect-credential.test.js).
+    const conn = call("connectApp", ctxA, { connectorId: "concord_dtu" });
     assert.equal(conn.ok, true);
-    assert.equal(conn.result.connection.connectorId, "slack");
+    assert.equal(conn.result.connection.connectorId, "concord_dtu");
+    assert.equal(conn.result.connection.status, "connected");
+    assert.equal(conn.result.connection.account, null);
     const list = call("connectionList", ctxA, {});
     assert.equal(list.result.count, 1);
     const disc = call("disconnectApp", ctxA, { connectionId: conn.result.connection.id });
@@ -53,9 +57,11 @@ describe("integrations.connectorCatalog + connections (OAuth-style)", () => {
     assert.equal(call("connectionList", ctxA, {}).result.count, 0);
   });
 
-  it("rejects unknown connectors and is per-user isolated", () => {
+  it("rejects unknown connectors, credential-less oauth, and is per-user isolated", () => {
     assert.equal(call("connectApp", ctxA, { connectorId: "nope" }).ok, false);
-    call("connectApp", ctxA, { connectorId: "gmail" });
+    assert.equal(call("connectApp", ctxA, { connectorId: "gmail" }).ok, false);
+    assert.equal(call("connectApp", ctxA, { connectorId: "stripe" }).ok, false);
+    call("connectApp", ctxA, { connectorId: "concord_dtu" });
     assert.equal(call("connectionList", ctxB, {}).result.count, 0);
   });
 });

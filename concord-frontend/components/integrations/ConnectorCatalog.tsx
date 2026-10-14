@@ -43,6 +43,7 @@ export function ConnectorCatalog() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadConnections = useCallback(async () => {
     const r = await lensRun<{ connections: Connection[] }>('integrations', 'connectionList', {});
@@ -66,9 +67,11 @@ export function ConnectorCatalog() {
 
   const connect = async (c: Connector) => {
     setBusy(c.id);
+    setError(null);
     try {
       const r = await lensRun('integrations', 'connectApp', { connectorId: c.id });
       if (r.data.ok) await loadConnections();
+      else setError(r.data.error || 'Connect refused — no credential stored');
     } finally { setBusy(null); }
   };
 
@@ -94,7 +97,7 @@ export function ConnectorCatalog() {
             {connections.map((conn) => (
               <div key={conn.id} className="flex items-center gap-2 bg-lattice-surface rounded px-2 py-1 text-xs">
                 <span className={conn.credentialStored ? 'text-neon-green' : 'text-yellow-400'}>{conn.connectorName}</span>
-                <span className="text-gray-400">· {conn.account}</span>
+                {conn.account ? <span className="text-gray-400">· {conn.account}</span> : null}
                 {!conn.credentialStored && (
                   <span className="text-[10px] text-yellow-400/80 flex items-center gap-0.5" title="No OAuth token stored — real egress refused until authorized">
                     <ShieldAlert className="w-3 h-3" /> needs auth
@@ -113,10 +116,13 @@ export function ConnectorCatalog() {
           </div>
           {connections.some((c) => !c.credentialStored) && (
             <p className="mt-2 text-[10px] text-gray-500">
-              Selecting an app records your intent. OAuth apps need an authorized token before Concord can read or send on your behalf — until then the egress path honestly refuses.
+              A linked app without a stored credential cannot egress. Complete OAuth (or supply a real API key when that path lands) before Concord can read or send on your behalf.
             </p>
           )}
         </div>
+      )}
+      {error && (
+        <p className="text-xs text-rose-400" role="alert">{error}</p>
       )}
 
       {/* Filters */}

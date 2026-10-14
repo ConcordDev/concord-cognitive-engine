@@ -6,12 +6,11 @@
 // fetch). So every branch here is exercised for real under the no-egress
 // preload — there are no network-dependent success paths to skip.
 //
-// Wrapping note (verified against server.js:37511-37517 `lens.run`): a handler
-// returning { ok:true, result } is unwrapped → the test sees r.ok===true /
-// r.result.<field>. A handler returning a bare { ok:false, error } (no `result`
-// key) is NOT unwrapped → the test sees r.ok===true (outer) / r.result.ok===false
-// / r.result.error. Each lensRun("integrations","<macro>",…) literally names the
-// macro → the macro-depth grader credits it as a behavioral invocation.
+// Wrapping note (batch 023 lens.run ok-propagation): a handler returning
+// { ok:true, result } unwraps to r.ok===true / r.result.<field>. A handler
+// returning { ok:false, error } propagates at the top level → r.ok===false /
+// r.error. Each lensRun("integrations","<macro>",…) literally names the macro
+// → the macro-depth grader credits it as a behavioral invocation.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
@@ -213,11 +212,14 @@ describe("integrations — connector catalog + connections CRUD (shared ctx)", (
   });
 
   it("connectApp mints a connection that connectionList returns, then disconnectApp removes it", async () => {
-    const conn = await lensRun("integrations", "connectApp", { params: { connectorId: "slack", label: "team" } }, ctx);
+    // Internal connector — oauth/api_key without a stored credential refuse
+    // (pinned in integrations-connect-credential.test.js).
+    const conn = await lensRun("integrations", "connectApp", { params: { connectorId: "concord_dtu", label: "team" } }, ctx);
     assert.equal(conn.ok, true);
-    assert.equal(conn.result.connection.connectorId, "slack");
+    assert.equal(conn.result.connection.connectorId, "concord_dtu");
     assert.equal(conn.result.connection.status, "connected");
     assert.equal(conn.result.connection.label, "team");
+    assert.equal(conn.result.connection.account, null);
     const id = conn.result.connection.id;
 
     const list = await lensRun("integrations", "connectionList", {}, ctx);
@@ -232,8 +234,8 @@ describe("integrations — connector catalog + connections CRUD (shared ctx)", (
 
   it("connectApp with an unknown connector is refused", async () => {
     const r = await lensRun("integrations", "connectApp", { params: { connectorId: "no-such-app" } }, ctx);
-    assert.equal(r.result.ok, false);
-    assert.ok(String(r.result.error).includes("Unknown connector"));
+    assert.equal(r.ok, false);
+    assert.ok(String(r.error).includes("Unknown connector"));
   });
 });
 
@@ -243,14 +245,14 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
 
   it("zapSave rejects a missing name and an invalid step kind", async () => {
     const noName = await lensRun("integrations", "zapSave", { params: { trigger: { event: "x" } } }, ctx);
-    assert.equal(noName.result.ok, false);
-    assert.ok(String(noName.result.error).includes("name required"));
+    assert.equal(noName.ok, false);
+    assert.ok(String(noName.error).includes("name required"));
 
     const badStep = await lensRun("integrations", "zapSave", {
       params: { name: "z", trigger: { event: "x" }, steps: [{ kind: "nonsense" }] },
     }, ctx);
-    assert.equal(badStep.result.ok, false);
-    assert.ok(String(badStep.result.error).includes("unknown kind"));
+    assert.equal(badStep.ok, false);
+    assert.ok(String(badStep.error).includes("unknown kind"));
   });
 
   it("a zap whose filter passes runs to success; a filter that fails halts as 'filtered'", async () => {
@@ -294,8 +296,8 @@ describe("integrations — zap builder, run engine, and history (shared ctx)", (
 
   it("zapRun on an unknown zap id is refused", async () => {
     const r = await lensRun("integrations", "zapRun", { params: { zapId: "nope" } }, ctx);
-    assert.equal(r.result.ok, false);
-    assert.ok(String(r.result.error).includes("Zap not found"));
+    assert.equal(r.ok, false);
+    assert.ok(String(r.error).includes("Zap not found"));
   });
 });
 
@@ -323,8 +325,8 @@ describe("integrations — primitive evaluators (condition / formatter / code / 
     const split = await lensRun("integrations", "runFormatter", { params: { op: "split", value: "a,b,c" } });
     assert.deepEqual(split.result.output, ["a", "b", "c"]);
     const bad = await lensRun("integrations", "runFormatter", { params: { op: "explode", value: "x" } });
-    assert.equal(bad.result.ok, false);
-    assert.ok(String(bad.result.error).includes("unknown formatter op"));
+    assert.equal(bad.ok, false);
+    assert.ok(String(bad.error).includes("unknown formatter op"));
   });
 
   it("runCodeStep evaluates sum/concat/len intrinsics over the bag", async () => {
@@ -333,7 +335,7 @@ describe("integrations — primitive evaluators (condition / formatter / code / 
     const concat = await lensRun("integrations", "runCodeStep", { params: { expression: "concat($.first, '-', $.last)", data: { first: "ada", last: "lovelace" } } });
     assert.equal(concat.result.output, "ada-lovelace");
     const noExpr = await lensRun("integrations", "runCodeStep", { params: {} });
-    assert.equal(noExpr.result.ok, false);
+    assert.equal(noExpr.ok, false);
   });
 
   it("previewFieldMap resolves $.paths and flags unresolved fields", async () => {
@@ -401,13 +403,13 @@ describe("integrations — webhook test, signature verify, and retry backoff (sh
 
     // A 4th attempt exceeds maxAttempts (3) → refused.
     const r4 = await lensRun("integrations", "webhookRetry", { params: { webhookId: "wh4", deliveryId: r3.result.retry.id } }, ctx);
-    assert.equal(r4.result.ok, false);
-    assert.ok(String(r4.result.error).includes("max retry attempts"));
+    assert.equal(r4.ok, false);
+    assert.ok(String(r4.error).includes("max retry attempts"));
   });
 
   it("webhookRetry on a missing delivery is refused", async () => {
     const r = await lensRun("integrations", "webhookRetry", { params: { webhookId: "wh5", deliveryId: "nope" } }, ctx);
-    assert.equal(r.result.ok, false);
-    assert.ok(String(r.result.error).includes("Delivery not found"));
+    assert.equal(r.ok, false);
+    assert.ok(String(r.error).includes("Delivery not found"));
   });
 });

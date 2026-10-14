@@ -268,17 +268,23 @@ describe("integrations.connectionList — live credentialStored (was a stale con
     assert.equal(conn.result.connection.credentialStored, true, "must find the real token under its real key");
   });
 
-  it("connectionList reflects a token that appears AFTER connectApp was called (not frozen at connect time)", () => {
+  it("connectApp refuses oauth without a token; connectionList re-checks live after a later grant", () => {
     const { call } = harness();
-    // Connect before any token exists -> credentialStored starts false.
-    const conn = call("integrations.connectApp", { connectorId: "slack" });
-    assert.equal(conn.result.connection.credentialStored, false);
-    // A real OAuth flow completes afterwards.
+    // No token yet → connect must refuse (never invent status connected).
+    const refused = call("integrations.connectApp", { connectorId: "slack" });
+    assert.equal(refused.ok, false);
+    assert.match(String(refused.error), /oauth credential required/i);
+    // A real OAuth flow completes, then connect succeeds.
     persistConnectorToken(db, "u1", "slack", { access_token: "slack-at" });
+    const conn = call("integrations.connectApp", { connectorId: "slack" });
+    assert.equal(conn.ok, true);
+    assert.equal(conn.result.connection.credentialStored, true);
+    // Drop the token after connect — connectionList must re-check live.
+    db.prepare("DELETE FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ?").run("u1", "slack");
     const list = call("integrations.connectionList", {});
     const row = list.result.connections.find((c) => c.connectorId === "slack");
-    assert.equal(row.credentialStored, true, "connectionList re-checks live, not the stale false snapshot");
-    assert.equal(row.needsOauth, false);
+    assert.equal(row.credentialStored, false, "connectionList re-checks live, not the connect-time snapshot");
+    assert.equal(row.needsOauth, true);
   });
 
   it("connectionList flips to false when a refresh-failure drops the token (honest degraded state, not stuck 'Connected')", () => {

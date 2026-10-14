@@ -481,20 +481,39 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (!connector) return { ok: false, error: "Unknown connector" };
     const userId = intActor(ctx);
     const m = userMap(s, "connections", userId);
-    // Honesty (Track C): do NOT fabricate a credential-looking token. Whether a
-    // REAL OAuth credential exists is derived from the connector_oauth_tokens
-    // store (migration 331) — populated only by a completed OAuth flow. This
-    // record is the user's local "I selected this connector" choice; the real
-    // egress path (connector-client.js) refuses when credentialStored is false.
+    // Honesty: never claim status "connected" or invent an account label when
+    // no real credential exists. oauth2 credentials live in
+    // connector_oauth_tokens (migration 331). api_key connectors have no
+    // stored-key path yet — refuse rather than mint stripe-account/etc.
+    // internal (Concord DTU) needs no external credential.
     let credentialStored = false;
-    try {
-      if (ctx?.db && connector.authType === "oauth2") {
-        const row = ctx.db
-          .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
-          .get(userId, tokenKeyForCatalogId(connector.id));
-        credentialStored = !!row;
-      }
-    } catch { /* table may not exist on minimal builds — credentialStored stays false */ }
+    if (connector.authType === "internal") {
+      credentialStored = true;
+    } else if (connector.authType === "oauth2") {
+      try {
+        if (ctx?.db) {
+          const row = ctx.db
+            .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
+            .get(userId, tokenKeyForCatalogId(connector.id));
+          credentialStored = !!row;
+        }
+      } catch { /* table may not exist on minimal builds — credentialStored stays false */ }
+    } else if (connector.authType === "api_key") {
+      // No durable api-key store on this surface yet. A typed key that is not
+      // persisted must not become credentialStored:true — refuse instead.
+      credentialStored = false;
+    }
+    if (!credentialStored) {
+      return {
+        ok: false,
+        error: connector.authType === "oauth2"
+          ? "oauth credential required"
+          : "credential required",
+      };
+    }
+    // Account label only when the caller supplies one — never invent
+    // `${connector.id}-account`.
+    const account = typeof params.account === "string" ? params.account.trim() : "";
     const connection = {
       id: nextIntId("conn"),
       connectorId: connector.id,
@@ -504,10 +523,10 @@ export default function registerIntegrationsActions(registerLensAction) {
       scopes: connector.scopes,
       // No fabricated token. Real credentials live in connector_oauth_tokens.
       tokenRef: null,
-      credentialStored,
-      needsOauth: connector.authType === "oauth2" && !credentialStored,
+      credentialStored: true,
+      needsOauth: false,
       status: "connected",
-      account: params.account || `${connector.id}-account`,
+      account: account || null,
       createdAt: nowIso(),
       lastUsedAt: null,
     };
