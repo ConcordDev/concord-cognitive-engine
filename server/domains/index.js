@@ -287,6 +287,10 @@ import trading from './trading.js';
 import pentester from './pentester.js';
 import concordia from './concordia.js';
 import constellation from './constellation.js';
+// Civic Bonds lives primarily in MACROS (`registerCivicBondsMacros(register)`
+// in server.js). Bridge the same handlers into LENS_ACTIONS so COMMON_ACTIONS
+// cannot shadow civic_bonds.vote (INC-SWEEP F1 — see domains/civic-bonds.js).
+import { registerCivicBondsLensActions } from './civic-bonds.js';
 
 // ── TheVault ⇄ DTU-permanence handshake ───────────────────────────────────
 //
@@ -608,4 +612,5 @@ export default [
   pentester,
   concordia,
   constellation,
+  registerCivicBondsLensActions,
 ];

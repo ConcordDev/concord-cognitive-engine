@@ -95,4 +95,26 @@ describe("civic_bonds macros", () => {
       assert.equal(r.amount, 0);
     }
   });
+
+  // INC-SWEEP F1 — voteBond semantics: one ballot per voter (PK); repeat returns
+  // { ok:true, idempotent:true } and does not change vote or recount.
+  it("vote is one-per-account; repeat is idempotent and does not flip for→against", async () => {
+    mkUser(db, "ruler");
+    const create = await M.get("civic_bonds.create")(ctxFor(db, "ruler"),
+      { worldId: "w1", title: "Quorum road", targetAmount: 100, denomination: 1, quorum: 1 });
+    const bondId = create.bondId;
+    assert.equal((await M.get("civic_bonds.open")(ctxFor(db, "ruler"), { bondId })).ok, true);
+
+    const first = await M.get("civic_bonds.vote")(ctxFor(db, "v1"), { bondId, vote: "for" });
+    assert.equal(first.ok, true);
+    assert.notEqual(first.idempotent, true);
+
+    const again = await M.get("civic_bonds.vote")(ctxFor(db, "v1"), { bondId, vote: "against" });
+    assert.equal(again.ok, true);
+    assert.equal(again.idempotent, true);
+
+    const get = await M.get("civic_bonds.get")(ctxFor(db, "ruler"), { bondId });
+    assert.equal(get.bond.votes_for, 1);
+    assert.equal(get.bond.votes_against, 0);
+  });
 });

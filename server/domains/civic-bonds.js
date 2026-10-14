@@ -147,3 +147,21 @@ export default function registerCivicBondsMacros(register) {
     return raidBondEscrow(ctx.db, input.bondId, uid);
   }, { note: "CORRUPT: divert escrow to treasury (legitimacy + refusal_debt fallout)" });
 }
+
+/**
+ * INC-SWEEP F1 — bridge every civic_bonds macro into LENS_ACTIONS.
+ *
+ * `/api/lens/run` prefers LENS_ACTIONS over MACROS. COMMON_ACTIONS in server.js
+ * registers a generic artifact `vote` for every ALL_LENS_DOMAINS entry (including
+ * civic_bonds) that does `Number(params.vote)` → NaN/`score:null` + increments
+ * `artifact.data.voteCount`. That shadowed `voteBond` and left tallies at 0.
+ *
+ * Called from domains/index.js *before* COMMON_ACTIONS so the
+ * `if (!LENS_ACTIONS.has(key))` guard skips the generic vote for this domain.
+ * Signature mirrors registerLensAction: (ctx, artifact, params) → domain fn(ctx, params).
+ */
+export function registerCivicBondsLensActions(registerLensAction) {
+  registerCivicBondsMacros((domain, name, fn) => {
+    registerLensAction(domain, name, async (ctx, _artifact, params = {}) => fn(ctx, params || {}));
+  });
+}
