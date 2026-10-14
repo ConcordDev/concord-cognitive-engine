@@ -20,10 +20,15 @@ const project: StudioProject = {
 const save = () => screen.getByRole('button', { name: /Save project as DTU/i });
 const draft = () => screen.getByRole('button', { name: /Draft in Thread/i });
 
+function mockStudioGet() {
+  return { data: { ok: true, result: { project } } };
+}
+
 beforeEach(() => {
   lensRunMock.mockReset();
   lensRunMock.mockImplementation(async (domain: string, action: string) => {
     if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+    if (domain === 'studio' && action === 'project-get') return mockStudioGet();
     return { data: { ok: true, result: {} } };
   });
 });
@@ -37,6 +42,7 @@ describe('studio project handoff', () => {
   it('saves, reads back, then drafts citing that exact DTU', async () => {
     lensRunMock.mockImplementation(async (domain: string, action: string) => {
       if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+      if (domain === 'studio' && action === 'project-get') return mockStudioGet();
       if (domain === 'dtu' && action === 'create') return { data: { ok: true, result: { dtu: { id: 'dtu_a1' } } } };
       if (domain === 'dtu' && action === 'get') return { data: { ok: true, result: { dtu: { id: 'dtu_a1' } } } };
       if (domain === 'thread' && action === 'thread-draft') {
@@ -48,6 +54,7 @@ describe('studio project handoff', () => {
     render(<StudioKeepMenu project={project} />);
     fireEvent.click(save());
     await waitFor(() => expect(screen.getByText(/Saved as private DTU dtu_a1\./)).toBeTruthy());
+    expect(save()).not.toHaveTextContent('Saving');
 
     fireEvent.click(draft());
     await waitFor(() => expect(screen.getByText(/Drafted in Thread as th_1, citing dtu_a1\. Not posted\./)).toBeTruthy());
@@ -57,9 +64,40 @@ describe('studio project handoff', () => {
     expect(String((draftCall?.[2] as Record<string, unknown>).content)).toContain('Proof Track');
   });
 
+  it('does not claim a save when the durable project-get misses', async () => {
+    lensRunMock.mockImplementation(async (domain: string, action: string) => {
+      if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+      if (domain === 'studio' && action === 'project-get') {
+        return { data: { ok: false, result: null, error: 'not found' } };
+      }
+      return { data: { ok: true, result: {} } };
+    });
+
+    render(<StudioKeepMenu project={project} />);
+    fireEvent.click(save());
+    await waitFor(() => expect(screen.getByText(/no durable project/i)).toBeTruthy());
+    expect(save()).not.toHaveTextContent('Saving');
+    expect(draft()).toBeDisabled();
+  });
+
+  it('clears Saving when dtu.create throws', async () => {
+    lensRunMock.mockImplementation(async (domain: string, action: string) => {
+      if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+      if (domain === 'studio' && action === 'project-get') return mockStudioGet();
+      if (domain === 'dtu' && action === 'create') throw new Error('network down');
+      return { data: { ok: true, result: {} } };
+    });
+
+    render(<StudioKeepMenu project={project} />);
+    fireEvent.click(save());
+    await waitFor(() => expect(screen.getByText(/Not saved\. network down/)).toBeTruthy());
+    expect(save()).not.toHaveTextContent('Saving');
+  });
+
   it('does not claim a save when the read-back fails', async () => {
     lensRunMock.mockImplementation(async (domain: string, action: string) => {
       if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+      if (domain === 'studio' && action === 'project-get') return mockStudioGet();
       if (domain === 'dtu' && action === 'create') return { data: { ok: true, result: { dtu: { id: 'dtu_a1' } } } };
       if (domain === 'dtu' && action === 'get') return { data: { ok: true, result: { dtu: { id: 'dtu_other' } } } };
       return { data: { ok: true, result: {} } };
@@ -74,6 +112,7 @@ describe('studio project handoff', () => {
   it('does not claim a save when the store refuses', async () => {
     lensRunMock.mockImplementation(async (domain: string, action: string) => {
       if (domain === 'thread' && action === 'draft-list') return { data: { ok: true, result: { drafts: [] } } };
+      if (domain === 'studio' && action === 'project-get') return mockStudioGet();
       if (domain === 'dtu' && action === 'create') return { data: { ok: false, error: 'quota exceeded' } };
       return { data: { ok: true, result: {} } };
     });
@@ -95,6 +134,7 @@ describe('studio project handoff', () => {
       if (domain === 'thread' && action === 'draft-detail') {
         return { data: { ok: true, result: { draft: { id: 'th_9', status: 'draft', citedDtuId: 'dtu_a1' } } } };
       }
+      if (domain === 'studio' && action === 'project-get') return mockStudioGet();
       if (domain === 'dtu' && action === 'create') return { data: { ok: true, result: { dtu: { id: 'dtu_a1' } } } };
       if (domain === 'dtu' && action === 'get') return { data: { ok: true, result: { dtu: { id: 'dtu_a1' } } } };
       return { data: { ok: true, result: {} } };

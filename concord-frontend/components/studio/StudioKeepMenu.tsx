@@ -55,27 +55,49 @@ export function StudioKeepMenu({ project, platform = 'x' }: Props) {
   }, [dtuId]);
 
   const save = useCallback(async () => {
-    const call = projectDtuCall(facts);
-    if (!call) { setNote('Nothing to save — the project returned no real figures.'); return; }
+    const projectId = String(facts.project?.id || '').trim();
+    if (!projectId) {
+      setNote('Nothing to save — no project id.');
+      return;
+    }
     setBusy('save');
     setNote('');
-    const created = await lensRun(call.domain, call.action, call.input);
-    const id = dtuRecordId(created.data);
-    if (!id) {
+    try {
+      // Durable store first (studioLens). A lens-artifact-only session used to
+      // leave Keep spinning while project-get / the DTU path had nothing real.
+      const got = await lensRun('studio', 'project-get', { id: projectId });
+      const serverProject = (got.data?.ok !== false && got.data?.result && typeof got.data.result === 'object')
+        ? (got.data.result as { project?: StudioProject }).project
+        : null;
+      if (!serverProject?.id || !serverProject.name) {
+        setNote(`Not saved. Studio has no durable project for this session (${got.data?.error || 'not found'}). Create/save the project first.`);
+        return;
+      }
+      const reportFacts = { project: serverProject };
+      const call = projectDtuCall(reportFacts);
+      if (!call) {
+        setNote('Nothing to save — the project returned no real figures.');
+        return;
+      }
+      const created = await lensRun(call.domain, call.action, call.input);
+      const id = dtuRecordId(created.data);
+      if (!id) {
+        setNote(`Not saved. ${created.data?.error || 'The record store refused this report.'}`);
+        return;
+      }
+      const back = await lensRun(dtuReadBackCall(id).domain, 'get', dtuReadBackCall(id).input);
+      if (!dtuReadBackMatches(id, back.data)) {
+        setDtuId('');
+        setNote(`Saved as ${id} but the read-back did not return it. Not treating this as saved.`);
+        return;
+      }
+      setDtuId(id);
+      setNote(`Saved as private DTU ${id}. Nothing was published.`);
+    } catch (err) {
+      setNote(`Not saved. ${err instanceof Error ? err.message : 'Save failed.'}`);
+    } finally {
       setBusy(null);
-      setNote(`Not saved. ${created.data?.error || 'The record store refused this report.'}`);
-      return;
     }
-    const back = await lensRun(dtuReadBackCall(id).domain, 'get', dtuReadBackCall(id).input);
-    if (!dtuReadBackMatches(id, back.data)) {
-      setBusy(null);
-      setDtuId('');
-      setNote(`Saved as ${id} but the read-back did not return it. Not treating this as saved.`);
-      return;
-    }
-    setDtuId(id);
-    setBusy(null);
-    setNote(`Saved as private DTU ${id}. Nothing was published.`);
   }, [facts]);
 
   const draft = useCallback(async () => {
@@ -83,17 +105,21 @@ export function StudioKeepMenu({ project, platform = 'x' }: Props) {
     if (!call) { setNote('Save the project as a DTU first — a draft must cite a real project.'); return; }
     setBusy('draft');
     setNote('');
-    const r = await lensRun(call.domain, call.action, call.input);
-    const outcome = projectThreadDraftOutcome(r.data, dtuId);
-    if (!outcome) {
+    try {
+      const r = await lensRun(call.domain, call.action, call.input);
+      const outcome = projectThreadDraftOutcome(r.data, dtuId);
+      if (!outcome) {
+        setNote(`Not drafted. ${r.data?.error || 'Thread did not keep a draft citing that project.'}`);
+        return;
+      }
+      setDraftId(outcome.draftId);
+      setSentDrafts((prev) => ({ ...prev, [dtuId]: outcome.draftId }));
+      setNote(`Drafted in Thread as ${outcome.draftId}, citing ${outcome.citedDtuId}. Not posted.`);
+    } catch (err) {
+      setNote(`Not drafted. ${err instanceof Error ? err.message : 'Draft failed.'}`);
+    } finally {
       setBusy(null);
-      setNote(`Not drafted. ${r.data?.error || 'Thread did not keep a draft citing that project.'}`);
-      return;
     }
-    setDraftId(outcome.draftId);
-    setSentDrafts((prev) => ({ ...prev, [dtuId]: outcome.draftId }));
-    setBusy(null);
-    setNote(`Drafted in Thread as ${outcome.draftId}, citing ${outcome.citedDtuId}. Not posted.`);
   }, [facts, dtuId, platform]);
 
   if (!sentence) return null;

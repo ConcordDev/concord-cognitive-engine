@@ -123,4 +123,15 @@ describe("studio project create survives a snapshot restart", () => {
     assert.equal(call("project-list", ctxB, {}).result.projects.length, 0);
     assert.equal(call("dashboard-summary", ctxB, {}).result.projectCount, 0);
   });
+
+  it("project-get after restart still returns name+bpm for Keep DTU", () => {
+    const created = call("project-create", ctxA, { name: "Keep Me", bpm: 128, key: "D" });
+    const id = created.result.project.id;
+    restartFromSnapshot();
+    const got = call("project-get", ctxA, { id });
+    assert.equal(got.ok, true);
+    assert.equal(got.result.project.id, id);
+    assert.equal(got.result.project.name, "Keep Me");
+    assert.equal(got.result.project.bpm, 128);
+  });
 });
