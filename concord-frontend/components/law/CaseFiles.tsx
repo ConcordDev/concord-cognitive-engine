@@ -39,7 +39,10 @@ import { EmptyState, ErrorState, Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import type { CaseFileSummary, CaseOutcome, CaseStatus, CaseType, Jurisdiction } from './case-types';
-import { JURISDICTIONS, CASE_STATUSES, CASE_TYPES, CASE_OUTCOMES, STATUS_COLORS, JURISDICTION_COLORS, OUTCOME_COLORS } from './case-types';
+import {
+  JURISDICTIONS, CASE_STATUSES, CASE_TYPES, CASE_OUTCOMES, STATUS_COLORS,
+  JURISDICTION_COLORS, OUTCOME_COLORS, normalizeCaseStatus,
+} from './case-types';
 
 interface TimelineStep { label: string; date: string; done: boolean }
 /** Real shape returned by `law.draft` (server.js:40502) — appended to `artifact.data.drafts[]`. */
@@ -80,6 +83,8 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
   const [citeText, setCiteText] = useState('');
   const [lawActionBusy, setLawActionBusy] = useState<'draft' | 'cite' | null>(null);
   const [lawActionError, setLawActionError] = useState<string | null>(null);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const caseSearchInputRef = useRef<HTMLInputElement>(null);
   const newCaseInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,7 +108,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
         title: item.title,
         jurisdiction: (item.data?.jurisdiction as Jurisdiction) || 'US',
         caseType: (item.data?.caseType as CaseType) || 'litigation',
-        status: (item.meta?.status as CaseStatus) || 'open',
+        status: normalizeCaseStatus(item.meta?.status),
         outcome: (item.data?.outcome as CaseOutcome) || 'pending',
         judge: item.data?.judge || null,
         deadline: item.data?.deadline || null,
@@ -121,7 +126,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
   const visibleCases = useMemo(() => {
     const q = caseSearch.trim().toLowerCase();
     return caseItems.filter((item) => {
-      const status = (item.meta?.status as CaseStatus) || 'open';
+      const status = normalizeCaseStatus(item.meta?.status);
       if (statusFilter !== 'all' && status !== statusFilter) return false;
       const jurisdiction = (item.data?.jurisdiction as Jurisdiction) || 'US';
       if (jurisdictionFilter !== 'all' && jurisdiction !== jurisdictionFilter) return false;
@@ -130,28 +135,42 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
     });
   }, [caseItems, caseSearch, statusFilter, jurisdictionFilter]);
 
-  function handleCreateCase() {
-    if (!newTitle.trim()) return;
-    createCase({
-      title: newTitle,
-      data: {
-        jurisdiction: newJurisdiction,
-        caseType: newCaseType,
-        deadline: newDeadline || null,
-        outcome: 'pending',
-        judge: null,
-        closedAt: null,
-        timeline: [
-          { label: 'Filed', date: new Date().toISOString(), done: true },
-          { label: 'Review', date: '', done: false },
-          { label: 'Hearing', date: '', done: false },
-          { label: 'Ruling', date: '', done: false },
-        ],
-      },
-      meta: { status: 'open' },
-    });
-    setNewTitle('');
-    setNewDeadline('');
+  async function handleCreateCase() {
+    const title = newTitle.trim();
+    if (!title || createBusy) return;
+    setCreateBusy(true);
+    setCreateError(null);
+    try {
+      // Status MUST be a law artifact enum value (domain-logic.js). The old
+      // default 'open' always 422'd — draft is the honest create default.
+      await createCase({
+        title,
+        data: {
+          jurisdiction: newJurisdiction,
+          caseType: newCaseType,
+          deadline: newDeadline || null,
+          outcome: 'pending',
+          judge: null,
+          closedAt: null,
+          timeline: [
+            { label: 'Filed', date: new Date().toISOString(), done: true },
+            { label: 'Review', date: '', done: false },
+            { label: 'Hearing', date: '', done: false },
+            { label: 'Ruling', date: '', done: false },
+          ],
+        },
+        meta: { status: 'draft' },
+      });
+      setNewTitle('');
+      setNewDeadline('');
+    } catch (e) {
+      // Keep the user's title/deadline on failure so a reject doesn't look
+      // like a successful submit. Surface the server validation string.
+      const msg = e instanceof Error ? e.message : 'Could not create case.';
+      setCreateError(msg);
+    } finally {
+      setCreateBusy(false);
+    }
   }
 
   async function setStatus(item: (typeof caseItems)[number], status: CaseStatus) {
@@ -314,11 +333,20 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
             className={cn(ds.input, 'flex-1 text-xs py-1.5')}
             title="Filing deadline"
           />
-          <button onClick={handleCreateCase} className="px-3 py-1.5 rounded bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 border border-neon-cyan/40" aria-label="Add case">
-            <Plus className="w-4 h-4" />
+          <button
+            onClick={() => void handleCreateCase()}
+            disabled={createBusy || !newTitle.trim()}
+            className="px-3 py-1.5 rounded bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 border border-neon-cyan/40 disabled:opacity-40"
+            aria-label="Add case"
+          >
+            {createBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           </button>
         </div>
       </div>
+
+      {createError && (
+        <p role="alert" className="text-xs text-red-400">{createError}</p>
+      )}
 
       <div className="space-y-2">
         {caseItems.length === 0 ? (
@@ -339,7 +367,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
             const judge = item.data?.judge || null;
             const deadline = item.data?.deadline || null;
             const timeline = item.data?.timeline || [];
-            const status = (item.meta?.status as CaseStatus) || 'open';
+            const status = normalizeCaseStatus(item.meta?.status);
             const daysLeft = deadline ? deadlineDays(deadline) : null;
             const isExpanded = expandedCase === item.id;
 
@@ -366,7 +394,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                       <Globe className="w-2.5 h-2.5" />{jurisdiction}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-300 capitalize">{caseType.replace('-', ' ')}</span>
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', STATUS_COLORS[status] || STATUS_COLORS.open)}>{status}</span>
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', STATUS_COLORS[status])}>{status}</span>
                     {outcome !== 'pending' && (
                       <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium capitalize', OUTCOME_COLORS[outcome])}>{outcome}</span>
                     )}

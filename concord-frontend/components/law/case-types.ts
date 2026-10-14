@@ -2,6 +2,9 @@
  * Shared case-file constants/types — used by CaseFiles (the per-user case
  * tracker) and CaseAnalytics (which runs the real `law.caseAnalysis` /
  * `law.deadlineTracker` macros over the real case list CaseFiles produces).
+ *
+ * Statuses MUST match `DOMAIN_RULES.law.validStatuses` in
+ * `server/lib/domain-logic.js` — anything else 422s on create/update.
  */
 
 export const JURISDICTIONS = ['US', 'EU', 'UK', 'CA', 'AU', 'INT'] as const;
@@ -16,14 +19,17 @@ export const JURISDICTION_COLORS: Record<Jurisdiction, string> = {
   INT: 'bg-teal-400/15 border-teal-400/30 text-teal-400',
 };
 
-export const CASE_STATUSES = ['open', 'in-review', 'hearing', 'closed'] as const;
+/** Law artifact enum — draft, review, filed, active, closed, archived. */
+export const CASE_STATUSES = ['draft', 'review', 'filed', 'active', 'closed', 'archived'] as const;
 export type CaseStatus = typeof CASE_STATUSES[number];
 
 export const STATUS_COLORS: Record<CaseStatus, string> = {
-  open: 'bg-blue-400/15 border-blue-400/30 text-blue-400',
-  'in-review': 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
-  hearing: 'bg-orange-400/15 border-orange-400/30 text-orange-400',
+  draft: 'bg-gray-500/15 border-gray-500/30 text-gray-400',
+  review: 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
+  filed: 'bg-blue-400/15 border-blue-400/30 text-blue-400',
+  active: 'bg-cyan-400/15 border-cyan-400/30 text-cyan-300',
   closed: 'bg-green-400/15 border-green-400/30 text-green-400',
+  archived: 'bg-zinc-500/15 border-zinc-500/30 text-zinc-400',
 };
 
 export const CASE_TYPES = ['litigation', 'contract-dispute', 'regulatory', 'ip', 'employment', 'other'] as const;
@@ -57,4 +63,16 @@ export interface CaseFileSummary {
   filedDate: string;
   /** Stamped the moment status transitions to `closed` — null otherwise. */
   closedDate: string | null;
+}
+
+/** Coerce a stored/legacy status onto the artifact enum (default draft). */
+export function normalizeCaseStatus(raw: unknown): CaseStatus {
+  if (typeof raw === 'string' && (CASE_STATUSES as readonly string[]).includes(raw)) {
+    return raw as CaseStatus;
+  }
+  // Legacy UI vocabulary → nearest valid enum value.
+  if (raw === 'open') return 'active';
+  if (raw === 'in-review') return 'review';
+  if (raw === 'hearing') return 'active';
+  return 'draft';
 }
