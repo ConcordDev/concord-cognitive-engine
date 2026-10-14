@@ -559,7 +559,35 @@ export default function registerLabActions(registerLensAction) {
     }
   }
   const labId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  // Storage / authz key — always the raw user id.
   const labActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // INC-SWEEP lab F9 — wire label (displayName/username/"member"), never raw uuid.
+  const labPublicActor = (ctx, userId = null) => {
+    const actor = ctx?.actor || {};
+    const uid = userId || actor.userId || ctx?.userId || null;
+    if (uid && actor.userId && uid === actor.userId) {
+      const self = actor.displayName || actor.username;
+      if (typeof self === "string" && self.trim()) return String(self).trim().slice(0, 80);
+    }
+    const fallback = actor.displayName || actor.username;
+    if (typeof fallback === "string" && fallback.trim()) return String(fallback).trim().slice(0, 80);
+    if (uid && typeof uid === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)) {
+      return "member";
+    }
+    if (uid && typeof uid === "string" && /^user[_-]/i.test(uid)) return "member";
+    return uid || "anon";
+  };
+  const labPresentEntry = (ctx, entry) => {
+    if (!entry || typeof entry !== "object") return entry;
+    if (ctx?.internal === true || ctx?.actor?.internal === true) return entry;
+    const out = { ...entry };
+    for (const key of ["author", "addedBy", "generatedBy", "ownerId", "userId"]) {
+      if (typeof out[key] === "string" && out[key] && out[key] !== "anon") {
+        out[key] = labPublicActor(ctx, out[key]);
+      }
+    }
+    return out;
+  };
   const labClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const labNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const labArr = (L, store, userId) => {
@@ -693,7 +721,7 @@ export default function registerLabActions(registerLensAction) {
       const gate = requireLabOrgAccess(ctx?.db, orgId, userId, null);
       if (!gate.ok) return gate;
       const members = getOrgMembers(ctx?.db, orgId).map(m => ({
-        userId: m.userId,
+        userId: labPublicActor(ctx, m.userId),
         orgRole: m.role,
         tier: labTierForOrgRole(m.role) || "guest",
       }));
@@ -723,7 +751,7 @@ export default function registerLabActions(registerLensAction) {
       const orgRole = LAB_ORG_ROLE_BY_TIER[tier];
       const result = setMemberRole(ctx?.db, orgId, targetUserId, orgRole, userId);
       if (!result.ok) return result;
-      return { ok: true, result: { orgId, userId: targetUserId, tier, orgRole: result.role } };
+      return { ok: true, result: { orgId, userId: labPublicActor(ctx, targetUserId), tier, orgRole: result.role } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -764,7 +792,7 @@ export default function registerLabActions(registerLensAction) {
       };
       labArr(L, store, key).push(entry);
       saveLab();
-      return { ok: true, result: { entry } };
+      return { ok: true, result: { entry: labPresentEntry(ctx, entry) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -782,7 +810,8 @@ export default function registerLabActions(registerLensAction) {
         store = "orgNotebook"; key = orgId;
       }
       const entries = labArr(L, store, key)
-        .slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+        .slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+        .map((e) => labPresentEntry(ctx, e));
       return {
         ok: true, result: {
           entries,
@@ -819,7 +848,7 @@ export default function registerLabActions(registerLensAction) {
       if (Array.isArray(params.tags)) entry.tags = params.tags.map(t => labClean(t, 40)).filter(Boolean).slice(0, 16);
       entry.updatedAt = new Date().toISOString();
       saveLab();
-      return { ok: true, result: { entry } };
+      return { ok: true, result: { entry: labPresentEntry(ctx, entry) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -852,7 +881,7 @@ export default function registerLabActions(registerLensAction) {
       }
       entry.updatedAt = now;
       saveLab();
-      return { ok: true, result: { entry } };
+      return { ok: true, result: { entry: labPresentEntry(ctx, entry) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -893,7 +922,7 @@ export default function registerLabActions(registerLensAction) {
       };
       labArr(L, store, key).push(item);
       saveLab();
-      return { ok: true, result: { item } };
+      return { ok: true, result: { item: labPresentEntry(ctx, item) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -922,7 +951,7 @@ export default function registerLabActions(registerLensAction) {
           }
         }
         const lowStock = it.lowThreshold > 0 && it.quantity <= it.lowThreshold;
-        return { ...it, daysToExpiry, expiryStatus, lowStock };
+        return labPresentEntry(ctx, { ...it, daysToExpiry, expiryStatus, lowStock });
       });
       const alerts = items.filter(i => i.expiryStatus !== "ok" || i.lowStock);
       return {
@@ -1029,7 +1058,7 @@ export default function registerLabActions(registerLensAction) {
       };
       labArr(L, store, key).push(protocol);
       saveLab();
-      return { ok: true, result: { protocol } };
+      return { ok: true, result: { protocol: labPresentEntry(ctx, protocol) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -1046,7 +1075,7 @@ export default function registerLabActions(registerLensAction) {
         if (!gate.ok) return gate;
         store = "orgProtocols"; key = orgId;
       }
-      const protocols = labArr(L, store, key).map(p => ({
+      const protocols = labArr(L, store, key).map(p => labPresentEntry(ctx, {
         ...p,
         stepCount: p.steps.length,
         totalMinutes: p.steps.reduce((s, st) => s + (st.durationMinutes || 0), 0),
@@ -1085,7 +1114,7 @@ export default function registerLabActions(registerLensAction) {
       if (params.description != null) p.description = labClean(params.description, 4000);
       p.updatedAt = new Date().toISOString();
       saveLab();
-      return { ok: true, result: { protocol: p } };
+      return { ok: true, result: { protocol: labPresentEntry(ctx, p) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -1431,7 +1460,7 @@ export default function registerLabActions(registerLensAction) {
 
       labArr(L, "labels", labActor(ctx)).push(label);
       saveLab();
-      return { ok: true, result: { label } };
+      return { ok: true, result: { label: labPresentEntry(ctx, label) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -1440,7 +1469,8 @@ export default function registerLabActions(registerLensAction) {
     try {
       const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
       const labels = labArr(L, "labels", labActor(ctx))
-        .slice().sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""));
+        .slice().sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""))
+        .map((l) => labPresentEntry(ctx, l));
       return { ok: true, result: { labels, total: labels.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });

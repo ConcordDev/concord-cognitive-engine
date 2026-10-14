@@ -46910,6 +46910,16 @@ function _presentDtuPublic(dtu, ctx) {
 // this only shapes the wire copy. Other domains keep the legacy shape.
 function _presentLensArtifact(artifact, ctx) {
   if (!artifact || typeof artifact !== "object") return artifact;
+  // INC-SWEEP lab F9 — scrub ownerId on lab experiment artifacts (debate keeps
+  // its richer presenter below).
+  if (artifact.domain === "lab") {
+    if (ctx?.internal === true || ctx?.actor?.internal === true) return artifact;
+    const out = { ...artifact };
+    for (const key of ["ownerId", "createdBy", "createdByUser", "author", "userId"]) {
+      if (_looksLikeRawUserId(out[key])) out[key] = _publicActorLabel(ctx, out[key]);
+    }
+    return out;
+  }
   if (artifact.domain !== "debate") return artifact;
   const rawOwner = artifact.ownerId || artifact.createdBy || artifact.createdByUser || null;
   const viewerId = ctx?.actor?.userId || null;
