@@ -302,4 +302,59 @@ describe("expert mode survives a snapshot restart", () => {
     assert.equal(list.total, 1);
     assert.equal(list.uploads[0].id, atCap.upload.id);
   });
+
+  // F2 mandatory restart-persistence: name/content identical after
+  // serialize/hydrate, still selectable for grounding, acct2 isolated.
+  it("F2 stored source survives serialize/hydrate with identical name/content and acct2 isolation", async () => {
+    stubBrainFetch();
+    const db = setupDb();
+    const owner = ctxA(db);
+    const other = ctxB(db);
+    const name = "Sweep source 20261014";
+    const text = "Sweep document. The sweep token is MAGENTA-ORCHID-kznt. End of extract.";
+
+    const up = await call("upload_source", owner, { name, kind: "text", text });
+    assert.equal(up.ok, true, JSON.stringify(up));
+    const uploadId = up.upload.id;
+    assert.equal(up.upload.name, name);
+    assert.equal(up.upload.chars, text.length);
+
+    restartFromSnapshot();
+
+    const list = await call("upload_list", owner);
+    assert.equal(list.ok, true);
+    assert.equal(list.total, 1);
+    assert.equal(list.uploads[0].id, uploadId);
+    assert.equal(list.uploads[0].name, name);
+    assert.equal(list.uploads[0].chars, text.length);
+
+    const restored = globalThis._concordSTATE.expertModeLens.uploads.get(uploadId);
+    assert.ok(restored, "upload row present after hydrate");
+    assert.equal(restored.name, name);
+    assert.equal(restored.text, text);
+    assert.equal(restored.userId, "user_a");
+
+    const grounded = await call("ask_with_upload", owner, {
+      query: "What is the sweep token in the uploaded document?",
+      uploadId,
+      focus: "writing",
+    });
+    assert.equal(grounded.ok, true, JSON.stringify(grounded));
+    assert.equal(grounded.sources[0].id, uploadId);
+    assert.equal(grounded.uploadName, name);
+
+    const otherList = await call("upload_list", other);
+    assert.equal(otherList.ok, true);
+    assert.equal(otherList.total, 0);
+    assert.ok(!otherList.uploads.some((u) => u.id === uploadId));
+
+    const otherRead = await call("ask_with_upload", other, {
+      query: "What is the sweep token?",
+      uploadId,
+      focus: "writing",
+    });
+    assert.equal(otherRead.ok, false);
+    assert.equal(otherRead.reason, "upload_not_found");
+    assert.equal(httpStatusForLensFailure(otherRead.reason), 404);
+  });
 });

@@ -18,6 +18,29 @@ export interface UploadDoc {
   createdAt: number;
 }
 
+/** Never surface raw codes like service_overloaded to the user. */
+export function humanUploadError(error: string | null | undefined): string {
+  const raw = String(error || '').trim();
+  if (!raw) return 'Could not store the document. Your paste is still here — try again.';
+  if (/service_overloaded|busy_retry|event_loop_lag|service_warming|status code 503/i.test(raw)) {
+    return 'Server is busy right now. Your paste is still here — tap Store as source to retry.';
+  }
+  if (/too_large/i.test(raw)) {
+    return 'That document is too large to store (200,000 character cap).';
+  }
+  if (/missing_text/i.test(raw)) {
+    return 'Paste document text first.';
+  }
+  if (/no_actor|unauthorized|401/i.test(raw)) {
+    return 'Sign in to store a document source.';
+  }
+  // Strip snake_case codes that slipped through as the only message.
+  if (/^[a-z][a-z0-9_]+$/i.test(raw) && raw.includes('_')) {
+    return 'Could not store the document. Your paste is still here — try again.';
+  }
+  return raw;
+}
+
 export function UploadSourcePanel({
   selectedId,
   onSelect,
@@ -46,6 +69,8 @@ export function UploadSourcePanel({
     if (!text.trim()) { setErr('Paste document text first.'); return; }
     setBusy(true);
     setErr(null);
+    const pasteKept = text;
+    const nameKept = name;
     const r = await lensRun<{ upload: UploadDoc }>('expert_mode', 'upload_source', {
       name: name.trim() || 'Untitled document',
       text,
@@ -59,7 +84,10 @@ export function UploadSourcePanel({
       await refresh();
       onSelect(r.data.result.upload.id);
     } else {
-      setErr(r.data.error || 'Upload failed.');
+      // Keep the user's paste + name for a working retry.
+      setText(pasteKept);
+      setName(nameKept);
+      setErr(humanUploadError(r.data.error));
     }
   }, [name, text, refresh, onSelect]);
 

@@ -603,6 +603,14 @@ export default function registerExpertModeMacros(register) {
   }, { note: "Delete a Space and revoke its share token." });
 
   // ----- file / text upload as a query source ----------------------------
+  //
+  // F2 root cause (walk): three POSTs 503'd with event_loop_lag_critical
+  // (lagMs ~3193) BEFORE this handler ran — admission shed under process-
+  // wide lag (snapshot stringify / other traffic), not embedding/hashing
+  // inside upload. This path must stay cooperative: yield before parking a
+  // large paste, never sync-embed/hash, and schedule persistence on the
+  // chunked saveStateDebounced path so the request itself does not take a
+  // multi-hundred-ms stringify.
   register("expert_mode", "upload_source", async (ctx, input = {}) => {
   try {
     const userId = actorId(ctx);
@@ -611,6 +619,13 @@ export default function registerExpertModeMacros(register) {
     const text = String(input?.text || "");
     if (!text.trim()) return { ok: false, reason: "missing_text" };
     if (text.length > UPLOAD_TEXT_CAP) return { ok: false, reason: "too_large" };
+
+    // Yield so a large paste does not monopolize the loop next to admission
+    // recovery (same setImmediate pattern as npc-simulator / chunked-json).
+    if (text.length > 4_096) {
+      await new Promise((resolve) => { setImmediate(resolve); });
+    }
+
     const st = store();
     const upload = {
       id: uid("upl"),
@@ -622,6 +637,13 @@ export default function registerExpertModeMacros(register) {
       createdAt: now(),
     };
     st.uploads.set(upload.id, upload);
+
+    // Schedule chunked snapshot — never JSON.stringify the whole STATE here.
+    try {
+      const save = globalThis._concordSaveStateDebounced;
+      if (typeof save === "function") save();
+    } catch { /* persistence best-effort; in-memory row is already set */ }
+
     return {
       ok: true,
       upload: { id: upload.id, name: upload.name, kind: upload.kind, chars: upload.chars, createdAt: upload.createdAt },
