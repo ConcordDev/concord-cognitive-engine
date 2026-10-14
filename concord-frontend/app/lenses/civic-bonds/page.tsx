@@ -132,10 +132,20 @@ export default function CivicBondsLens() {
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
     try {
-      const r = (await lensRun<{ ok: boolean; reason?: string }>('civic_bonds', action, input)).data.result;
+      // On 400s lensRun's catch returns { result: null, error: body.error } —
+      // the server reason (insufficient_sparks, not_open_for_pledges, no_pledge)
+      // lives on error, not result.reason. Prefer result.reason when present,
+      // then the envelope error (announcements / services desk pattern).
+      const envelope = (await lensRun<{ ok: boolean; reason?: string }>('civic_bonds', action, input)).data;
+      const r = envelope.result;
+      const reason =
+        (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason) ||
+        (typeof envelope.error === 'string' && envelope.error) ||
+        (typeof envelope.reason === 'string' && envelope.reason) ||
+        null;
       if (!r?.ok) {
-        setNote(`${action}: ${r?.reason || 'failed'}`);
-        addToast({ type: 'error', message: `${action} failed: ${r?.reason || 'unknown error'}` });
+        setNote(`${action}: ${reason || 'failed'}`);
+        addToast({ type: 'error', message: `${action} failed: ${reason || 'unknown error'}` });
       } else {
         setNote(`${action} ✓`);
         addToast({ type: 'success', message: `${action} succeeded`, duration: 2500 });

@@ -163,6 +163,34 @@ describe('civic-bonds lens — four UX states', () => {
     await waitFor(() => expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })));
   });
 
+  // INC-SWEEP F2 — 400s put the server reason on envelope.error (result null).
+  // Status line + toast must surface insufficient_sparks / not_open_for_pledges /
+  // no_pledge, never "failed" / "unknown error".
+  it('REJECTED PLEDGE: surfaces the real server reason from envelope.error', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] }, error: null } });
+      if (action === 'pledge') {
+        return Promise.resolve({
+          data: { ok: false, result: null, error: 'insufficient_sparks' },
+        });
+      }
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-list')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(view!.getByLabelText('Pledge to New Aqueduct')); });
+
+    await waitFor(() => {
+      const statusLine = view!.container.querySelector('[role="status"][aria-live="polite"]');
+      expect(statusLine?.textContent).toMatch(/pledge:\s*insufficient_sparks/);
+    });
+    expect(addToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'pledge failed: insufficient_sparks' }),
+    );
+  });
+
   it('ERROR: shows role=alert + a Retry that re-issues the list call', async () => {
     let calls = 0;
     lensRunMock.mockImplementation(() => {
