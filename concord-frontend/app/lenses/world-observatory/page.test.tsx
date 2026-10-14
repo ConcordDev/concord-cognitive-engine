@@ -175,6 +175,9 @@ describe('World Observatory lens page', () => {
       '2 with stance rows · 2 with living presence',
     );
 
+    // F4: local relation has no cross-world label
+    expect(screen.queryByText(/^cross-world$/i)).not.toBeInTheDocument();
+
     // Realm card — real legitimacy/treasury/tax/citizens, not rounded-fabricated
     openView('Realms');
     expect(await screen.findByText('Test Realm')).toBeInTheDocument();
@@ -197,6 +200,48 @@ describe('World Observatory lens page', () => {
     // F2: status chip is OVERDUE, never the mechanical-repair class HEALED
     expect(screen.getByText(/^overdue$/i)).toBeInTheDocument();
     expect(screen.queryByText(/^healed$/i)).not.toBeInTheDocument();
+  });
+
+  it('F4: labels relation chips whose counterpart is outside this world', async () => {
+    routeLensRun(
+      ok({ worlds: [worldRow()] }),
+      (input) =>
+        ok(
+          detailPayload({
+            worldId: input.worldId,
+            factions: {
+              count: 2,
+              states: [
+                { factionId: 'faction_alpha', stance: 'war', target: null, momentum: 0.1, phase: null },
+                { factionId: 'faction_beta', stance: 'consolidate', target: null, momentum: -0.1, phase: null },
+              ],
+              relations: [
+                { a: 'faction_alpha', b: 'faction_beta', score: -0.65, kind: 'war', crossWorld: false },
+                {
+                  a: 'faction_alpha',
+                  b: 'superhero_civic_super_taskforce',
+                  score: -1,
+                  kind: 'war',
+                  crossWorld: true,
+                },
+              ],
+            },
+          }),
+        ),
+    );
+
+    render(<WorldObservatoryPage />);
+    await waitFor(() => expect(screen.getByText('Tunya')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Drill into Tunya'));
+    await waitFor(() =>
+      expect(lensRun).toHaveBeenCalledWith('worldstate', 'world_detail', { worldId: 'tunya' }),
+    );
+    openView('Factions');
+
+    expect(await screen.findByText('superhero_civic_super_taskforce')).toBeInTheDocument();
+    expect(screen.getByText(/^cross-world$/i)).toBeInTheDocument();
+    const foreignChip = screen.getByText('superhero_civic_super_taskforce').closest('[data-cross-world]');
+    expect(foreignChip).toHaveAttribute('data-cross-world', 'true');
   });
 
   it('F3: annotates when living-presence count exceeds stance rows', async () => {

@@ -100,6 +100,7 @@ function factionIdsForWorld(db, worldId) {
 function factionSummaryForWorld(db, factionIds) {
   if (!factionIds.length) return { count: 0, states: [], relations: [] };
   const ph = factionIds.map(() => "?").join(",");
+  const idSet = new Set(factionIds);
   const states = safe(() => db.prepare(`
     SELECT faction_id AS factionId, stance, target_id AS target,
            ROUND(momentum, 3) AS momentum, phase
@@ -107,12 +108,17 @@ function factionSummaryForWorld(db, factionIds) {
      WHERE faction_id IN (${ph})
      ORDER BY factionId
   `).all(...factionIds), []);
+  // Keep OR-either-side edges (a faction can have foreign counterparts) but
+  // stamp crossWorld when the other side has no living presence in this world.
   const relations = safe(() => db.prepare(`
     SELECT faction_a AS a, faction_b AS b, ROUND(score, 3) AS score, kind
       FROM faction_relations
      WHERE faction_a IN (${ph}) OR faction_b IN (${ph})
      ORDER BY a, b
-  `).all(...factionIds, ...factionIds), []);
+  `).all(...factionIds, ...factionIds).map((r) => ({
+    ...r,
+    crossWorld: !idSet.has(r.a) || !idSet.has(r.b),
+  })), []);
   return { count: factionIds.length, states, relations };
 }
 

@@ -74,6 +74,8 @@ interface FactionRelation {
   b: string;
   score: number;
   kind: string;
+  /** True when at least one side has no living presence in this world. */
+  crossWorld?: boolean;
 }
 
 interface RealmCitizens {
@@ -525,6 +527,7 @@ export default function WorldObservatoryPage() {
                               <span
                                 key={`${r.a}:${r.b}`}
                                 className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] ${relationTone(r.kind)}`}
+                                data-cross-world={r.crossWorld ? 'true' : 'false'}
                               >
                                 <span className="font-mono">{r.a}</span>
                                 <span aria-hidden="true">⇄</span>
@@ -532,6 +535,11 @@ export default function WorldObservatoryPage() {
                                 <span className="opacity-70">·</span>
                                 <span className="font-semibold uppercase">{r.kind}</span>
                                 <span className="font-mono opacity-80">{r.score}</span>
+                                {r.crossWorld && (
+                                  <span className="rounded bg-black/30 px-1 py-0.5 text-[9px] uppercase tracking-wide opacity-90">
+                                    cross-world
+                                  </span>
+                                )}
                               </span>
                             ))}
                           </div>

@@ -189,6 +189,20 @@ describe("worldstate — world_detail / overview (real aggregation, no mutation)
     assert.equal(finding.repairClass, "healed");
   });
 
+  it("F4: relations with a counterpart outside this world are stamped crossWorld", async () => {
+    seedWorld();
+    db.prepare(`
+      INSERT INTO faction_relations (faction_a, faction_b, score, kind)
+      VALUES (?, ?, ?, ?)
+    `).run("faction_alpha", "foreign_faction", -1, "war");
+    const r = await call("worldstate.world_detail", { db }, { worldId: WORLD });
+    const local = r.factions.relations.find((x) => x.a === "faction_alpha" && x.b === "faction_beta");
+    const foreign = r.factions.relations.find((x) => x.a === "faction_alpha" && x.b === "foreign_faction");
+    assert.ok(local && foreign);
+    assert.equal(local.crossWorld, false);
+    assert.equal(foreign.crossWorld, true);
+  });
+
   it("F3: factions.count is living presence; states may be a shorter stance subset", async () => {
     seedWorld();
     // Living NPC for a third faction with no strategy_state row.
