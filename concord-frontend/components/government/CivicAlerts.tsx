@@ -18,18 +18,33 @@ export interface CivicAlert {
   url?: string;
 }
 
+/** San Francisco — used only when geolocation is denied/unavailable. */
+export const FALLBACK_COORDS = { lat: 37.7749, lng: -122.4194 };
+export const FALLBACK_AREA_LABEL =
+  'location unavailable — showing default area (San Francisco)';
+
 export function CivicAlerts() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
   const [alerts, setAlerts] = useState<CivicAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setCoords({ lat: 37.7749, lng: -122.4194 }),
+        pos => {
+          setUsingFallback(false);
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          setUsingFallback(true);
+          setCoords({ ...FALLBACK_COORDS });
+        },
         { maximumAge: 5 * 60 * 1000, timeout: 5000 }
       );
+    } else {
+      setUsingFallback(true);
+      setCoords({ ...FALLBACK_COORDS });
     }
   }, []);
 
@@ -54,18 +69,27 @@ export function CivicAlerts() {
     minor: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
   };
 
+  const emptyCopy = usingFallback
+    ? `No active alerts for default area (San Francisco). ${FALLBACK_AREA_LABEL}.`
+    : 'No active alerts for your area.';
+
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Bell className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Civic alerts</span>
-        {coords && <span className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {coords.lat.toFixed(2)}, {coords.lng.toFixed(2)}</span>}
+        {coords && (
+          <span className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {usingFallback ? FALLBACK_AREA_LABEL : `${coords.lat.toFixed(2)}, ${coords.lng.toFixed(2)}`}
+          </span>
+        )}
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading || !coords ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> {coords ? 'Loading alerts…' : 'Locating…'}</div>
         ) : alerts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400">No active alerts for your area.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">{emptyCopy}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {alerts.map(a => (
