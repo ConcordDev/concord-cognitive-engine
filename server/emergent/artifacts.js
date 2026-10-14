@@ -115,6 +115,50 @@ export function createAttributedArtifact(emergentIdentity, task, result, db) {
     console.error("[artifacts] observation insert failed:", e?.message);
   }
 
+  // Persist the real artifact body into `dtus` so MCP dtu_get/dtu_search
+  // can recover content. owner_user_id stays NULL (FK → users); attribution
+  // lives on creator_id = emergent id. Lineage stays in body_json only —
+  // dtu_citations population is a separate bridge slice.
+  const bodyJson = {
+    type,
+    title,
+    body,
+    lineage,
+    lens,
+    task_id: task.id,
+    task_type: task.task_type,
+    created_by_type: "emergent",
+    creator_emergent_id: emergentIdentity.id,
+    created_by: artifact.created_by,
+    brain_used: artifact.brain_used,
+    tokens_used: artifact.tokens_used,
+  };
+  const createdAt = new Date(now).toISOString();
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO dtus
+        (id, owner_user_id, title, body_json, tags_json, visibility, tier,
+         type, creator_id, content, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      null,
+      title,
+      JSON.stringify(bodyJson),
+      JSON.stringify(["emergent", "artifact", type, lens].filter(Boolean)),
+      "private",
+      "shadow",
+      type,
+      emergentIdentity.id,
+      body,
+      "active",
+      createdAt,
+      createdAt
+    );
+  } catch (e) {
+    console.error("[artifacts] dtu insert failed:", e?.message);
+  }
+
   return artifact;
 }
 
