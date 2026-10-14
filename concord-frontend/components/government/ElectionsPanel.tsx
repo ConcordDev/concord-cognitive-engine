@@ -95,7 +95,7 @@ export function ElectionsPanel() {
             <div><span className="text-gray-400">Name:</span> {registration.fullName}</div>
             <div><span className="text-gray-400">State:</span> {registration.stateCode} · <span className="text-gray-400">Party:</span> {registration.partyPreference}</div>
             <div><span className="text-gray-400">Mail-in ballot:</span> {registration.mailInRequested ? 'requested' : 'no'}</div>
-            <div><span className="text-gray-400">Status:</span> <span className="text-emerald-300">{registration.status}</span> · filed {new Date(registration.submittedAt).toLocaleDateString()}</div>
+            <div><span className="text-gray-400">Status:</span> <span className="text-emerald-300">{registration.status}</span> · recorded in Concord {new Date(registration.submittedAt).toLocaleDateString()} — not filed with any election office</div>
           </div>
         ) : (
           <div className="space-y-2">
