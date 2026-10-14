@@ -179,13 +179,14 @@ describe("mentorship request → accept flow", () => {
 });
 
 describe("mentorship session scheduling + notes", () => {
-  it("session-book mirrors onto both parties", () => {
+  it("session-book is visible to both parties from one shared record", () => {
     const r = call("session-book", ctxM, { partnerId: "user_mentee", startAt: "2030-01-01T10:00:00Z", title: "Kickoff" });
     assert.equal(r.ok, true);
     const mentorList = call("session-list", ctxM, {});
     const menteeList = call("session-list", ctxE, {});
     assert.equal(mentorList.result.count, 1);
     assert.equal(menteeList.result.count, 1);
+    assert.equal(mentorList.result.sessions[0].id, menteeList.result.sessions[0].id);
   });
 
   it("session-book rejects missing fields", () => {
@@ -199,6 +200,51 @@ describe("mentorship session scheduling + notes", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.session.status, "completed");
     assert.equal(r.result.session.rating, 5);
+  });
+
+  it("F2 complete as owner is visible to partner list + program-report", () => {
+    const b = call("session-book", ctxM, { partnerId: "user_mentee", startAt: "2030-01-01T10:00:00Z", title: "Sync" });
+    const id = b.result.session.id;
+    call("session-update", ctxM, { sessionId: id, status: "completed", rating: 5 });
+    const partnerList = call("session-list", ctxE, {});
+    const partnerRow = partnerList.result.sessions.find((x) => x.id === id);
+    assert.ok(partnerRow);
+    assert.equal(partnerRow.status, "completed");
+    assert.equal(partnerRow.rating, 5);
+    const report = call("program-report", ctxM, {});
+    assert.equal(report.result.sessions.total, 1);
+    assert.equal(report.result.sessions.completed, 1);
+    assert.equal(report.result.avgSessionRating, 5);
+  });
+
+  it("F2 note-save by either party is identical on both lists", () => {
+    const b = call("session-book", ctxM, { partnerId: "user_mentee", startAt: "2030-01-01T10:00:00Z" });
+    const id = b.result.session.id;
+    call("session-note-save", ctxE, { sessionId: id, notes: "Partner wrote this" });
+    const owner = call("session-list", ctxM, {}).result.sessions.find((x) => x.id === id);
+    const partner = call("session-list", ctxE, {}).result.sessions.find((x) => x.id === id);
+    assert.equal(owner.notes, "Partner wrote this");
+    assert.equal(partner.notes, "Partner wrote this");
+  });
+
+  it("F2 RESTART-PERSISTENCE: shared session survives serialize/hydrate for both", () => {
+    const b = call("session-book", ctxM, { partnerId: "user_mentee", startAt: "2030-01-01T10:00:00Z", title: "Persist" });
+    const id = b.result.session.id;
+    call("session-update", ctxM, { sessionId: id, status: "completed", rating: 4 });
+    call("session-note-save", ctxE, { sessionId: id, notes: "survives restart" });
+    // Simulate disk snapshot: Maps → plain objects → Maps (same path STATE hydrate uses).
+    const snap = JSON.parse(JSON.stringify({
+      sessions: Object.fromEntries(globalThis._concordSTATE.mentorshipLens.sessions),
+    }));
+    globalThis._concordSTATE = { mentorshipLens: { sessions: new Map(Object.entries(snap.sessions)) } };
+    const owner = call("session-list", ctxM, {}).result.sessions.find((x) => x.id === id);
+    const partner = call("session-list", ctxE, {}).result.sessions.find((x) => x.id === id);
+    assert.equal(owner.status, "completed");
+    assert.equal(partner.status, "completed");
+    assert.equal(owner.notes, "survives restart");
+    assert.equal(partner.notes, "survives restart");
+    assert.equal(owner.rating, 4);
+    assert.equal(partner.rating, 4);
   });
 
   it("session-note-save adds notes + action items", () => {

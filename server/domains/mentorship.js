@@ -118,16 +118,6 @@ export default function registerMentorshipActions(registerLensAction) {
   });
 
   // ─── Shared state helpers ─────────────────────────────────────────────
-  function getMentorshipState() {
-    const STATE = globalThis._concordSTATE;
-    if (!STATE) return null;
-    if (!STATE.mentorshipLens) STATE.mentorshipLens = {};
-    const s = STATE.mentorshipLens;
-    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages", "groupSessions"]) {
-      if (!(s[k] instanceof Map)) s[k] = new Map();
-    }
-    return s;
-  }
   function saveState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
@@ -144,6 +134,85 @@ export default function registerMentorshipActions(registerLensAction) {
   const REQUEST_STATUS = ["pending", "accepted", "declined", "withdrawn"];
   const SESSION_STATUS = ["scheduled", "completed", "cancelled"];
   const GOAL_STATUS = ["active", "done", "paused"];
+
+  // 1:1 sessions used to be Map<userId, session[]> with a mirrored copy per
+  // party. Completes/notes/ratings then diverged. Migrate in place to a single
+  // Map<sessionId, session> both parties read/write (same shape as groupSessions).
+  function migrateSessionsToShared(s) {
+    if (!(s.sessions instanceof Map) || s.sessions.size === 0) return;
+    const first = s.sessions.values().next().value;
+    if (!Array.isArray(first)) return; // already sessionId-keyed
+    const byId = new Map();
+    for (const list of s.sessions.values()) {
+      if (!Array.isArray(list)) continue;
+      for (const raw of list) {
+        if (!raw || !raw.id) continue;
+        const prev = byId.get(raw.id);
+        if (!prev) {
+          byId.set(raw.id, {
+            ...raw,
+            bookerId: raw.bookerId || raw.ownerId,
+            actionItems: Array.isArray(raw.actionItems) ? raw.actionItems.slice() : [],
+          });
+          continue;
+        }
+        // Merge diverged mirrors — prefer completed, richer notes, higher rating.
+        if (raw.status === "completed") prev.status = "completed";
+        else if (prev.status !== "completed" && raw.status && SESSION_STATUS.includes(raw.status)) {
+          prev.status = raw.status;
+        }
+        if (typeof raw.notes === "string" && raw.notes && (!prev.notes || raw.notes.length >= prev.notes.length)) {
+          prev.notes = raw.notes;
+        }
+        if (mNum(raw.rating) > mNum(prev.rating)) prev.rating = raw.rating;
+        if (Array.isArray(raw.actionItems) && raw.actionItems.length > (prev.actionItems?.length || 0)) {
+          prev.actionItems = raw.actionItems.slice();
+        }
+        if (raw.agenda && !prev.agenda) prev.agenda = raw.agenda;
+        if (raw.updatedAt && (!prev.updatedAt || raw.updatedAt > prev.updatedAt)) prev.updatedAt = raw.updatedAt;
+        if (!prev.bookerId) prev.bookerId = raw.bookerId || raw.ownerId;
+        if (!prev.bookerName && raw.bookerName) prev.bookerName = raw.bookerName;
+      }
+    }
+    s.sessions = byId;
+  }
+  function getMentorshipState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.mentorshipLens) STATE.mentorshipLens = {};
+    const s = STATE.mentorshipLens;
+    for (const k of ["mentors", "requests", "sessions", "goals", "reviews", "messages", "groupSessions"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    migrateSessionsToShared(s);
+    return s;
+  }
+  function sessionPartyIds(ses) {
+    const a = ses.bookerId || ses.ownerId;
+    const b = ses.partnerId;
+    return [a, b].filter(Boolean);
+  }
+  function sessionVisibleTo(ses, userId) {
+    return sessionPartyIds(ses).includes(userId);
+  }
+  function presentSession(ses, viewerId) {
+    const bookerId = ses.bookerId || ses.ownerId;
+    const otherId = bookerId === viewerId ? ses.partnerId : bookerId;
+    const otherName = bookerId === viewerId
+      ? (ses.partnerName || "Partner")
+      : (ses.bookerName || ses.partnerName || "Partner");
+    return {
+      ...ses,
+      ownerId: viewerId,
+      partnerId: otherId,
+      partnerName: otherName,
+    };
+  }
+  function findSharedSession(s, sesId, userId) {
+    const ses = s.sessions.get(sesId);
+    if (!ses || !sessionVisibleTo(ses, userId)) return null;
+    return ses;
+  }
 
   // ── 1. Mentor directory / discovery ───────────────────────────────────
   // Register a mentor profile (any user can list themselves as a mentor).
@@ -323,6 +392,8 @@ export default function registerMentorshipActions(registerLensAction) {
   });
 
   // ── 3. Session scheduling ─────────────────────────────────────────────
+  // Single shared record keyed by sessionId — both parties read/write the
+  // same object (no per-account mirror that can diverge on complete/notes).
   registerLensAction("mentorship", "session-book", (ctx, _a, params = {}) => {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -333,6 +404,8 @@ export default function registerMentorshipActions(registerLensAction) {
       if (!startAt) return { ok: false, error: "startAt required" };
       const session = {
         id: mId("ses"),
+        bookerId: userId,
+        bookerName: mClean(params.bookerName, 80) || mClean(params.fromName, 80) || "Mentor",
         ownerId: userId,
         partnerId,
         partnerName: mClean(params.partnerName, 80) || "Partner",
@@ -347,11 +420,9 @@ export default function registerMentorshipActions(registerLensAction) {
         rating: 0,
         createdAt: mNow(),
       };
-      mList(s.sessions, userId).push(session);
-      // mirror onto partner so both parties see the booking
-      mList(s.sessions, partnerId).push({ ...session, ownerId: partnerId, partnerId: userId });
+      s.sessions.set(session.id, session);
       saveState();
-      return { ok: true, result: { session } };
+      return { ok: true, result: { session: presentSession(session, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -360,7 +431,9 @@ export default function registerMentorshipActions(registerLensAction) {
     try {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = mAid(ctx);
-      let sessions = mList(s.sessions, userId).slice();
+      let sessions = [...s.sessions.values()]
+        .filter((x) => sessionVisibleTo(x, userId))
+        .map((x) => presentSession(x, userId));
       const now = Date.now();
       if (params.filter === "upcoming") sessions = sessions.filter((x) => x.status === "scheduled" && new Date(x.startAt).getTime() >= now);
       else if (params.filter === "past") sessions = sessions.filter((x) => x.status !== "scheduled" || new Date(x.startAt).getTime() < now);
@@ -388,7 +461,7 @@ export default function registerMentorshipActions(registerLensAction) {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = mAid(ctx);
       const sesId = mClean(params.sessionId, 64);
-      const session = mList(s.sessions, userId).find((x) => x.id === sesId);
+      const session = findSharedSession(s, sesId, userId);
       if (!session) return { ok: false, error: "session not found" };
       if (params.status && SESSION_STATUS.includes(params.status)) session.status = params.status;
       if (params.rating != null) session.rating = Math.min(5, Math.max(0, Math.round(mNum(params.rating))));
@@ -396,7 +469,7 @@ export default function registerMentorshipActions(registerLensAction) {
       if (params.videoLink != null) session.videoLink = mClean(params.videoLink, 300);
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session } };
+      return { ok: true, result: { session: presentSession(session, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -406,8 +479,9 @@ export default function registerMentorshipActions(registerLensAction) {
       const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = mAid(ctx);
       const sesId = mClean(params.sessionId, 64);
-      const session = mList(s.sessions, userId).find((x) => x.id === sesId);
+      const session = findSharedSession(s, sesId, userId);
       if (!session) return { ok: false, error: "session not found" };
+      if (!Array.isArray(session.actionItems)) session.actionItems = [];
       if (params.notes != null) session.notes = mClean(params.notes, 4000);
       const newItem = mClean(params.actionItem, 240);
       if (newItem) {
@@ -420,7 +494,13 @@ export default function registerMentorshipActions(registerLensAction) {
       }
       session.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { session, openActionItems: session.actionItems.filter((i) => !i.done).length } };
+      return {
+        ok: true,
+        result: {
+          session: presentSession(session, userId),
+          openActionItems: session.actionItems.filter((i) => !i.done).length,
+        },
+      };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -697,18 +777,14 @@ export default function registerMentorshipActions(registerLensAction) {
       const declined = allRequests.filter((r) => r.status === "declined").length;
       const pending = allRequests.filter((r) => r.status === "pending").length;
       const resolved = accepted + declined;
-      // sessions: dedupe mirrored copies by id
-      const sessIds = new Set();
+      // sessions: shared Map<sessionId, session> (legacy mirrors migrated on read)
       let totalSessions = 0, completedSessions = 0;
       const ratings = [];
-      for (const list of s.sessions.values()) {
-        for (const x of list) {
-          if (sessIds.has(x.id)) continue;
-          sessIds.add(x.id);
-          totalSessions += 1;
-          if (x.status === "completed") completedSessions += 1;
-          if (x.rating > 0) ratings.push(x.rating);
-        }
+      for (const x of s.sessions.values()) {
+        if (!x || typeof x !== "object" || Array.isArray(x)) continue;
+        totalSessions += 1;
+        if (x.status === "completed") completedSessions += 1;
+        if (x.rating > 0) ratings.push(x.rating);
       }
       const goalIds = new Set();
       let totalGoals = 0, doneGoals = 0;
