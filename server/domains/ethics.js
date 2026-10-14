@@ -434,11 +434,30 @@ export default function registerEthicsActions(registerLensAction) {
     if (!dilemma) return { ok: false, error: "dilemma text required" };
     if (options.length === 0) return { ok: false, error: "at least one option required" };
 
+    // Scoring signal = explicit finite benefit/harm OR at least one keyword hit.
+    // Blank numeric fields + keyword-free text used to fall through to midpoint
+    // defaults (util 50 / deon 50 / virtue 42) and label that "consensus" — dishonest.
     const analyzed = options.map((o) => {
       const desc = `${o.name || ""} ${o.description || ""}`;
       const { pos, neg } = scoreText(desc);
-      const benefit = Number.isFinite(o.benefitScore) ? Math.max(0, Math.min(100, o.benefitScore)) : pos * 20;
-      const harm = Number.isFinite(o.harmScore) ? Math.max(0, Math.min(100, o.harmScore)) : neg * 20;
+      const hasExplicitBenefit = Number.isFinite(o.benefitScore);
+      const hasExplicitHarm = Number.isFinite(o.harmScore);
+      const hasKeywordSignal = pos > 0 || neg > 0;
+      const hasSignal = hasExplicitBenefit || hasExplicitHarm || hasKeywordSignal;
+      const name = o.name || "Option";
+      const description = o.description || "";
+
+      if (!hasSignal) {
+        return {
+          name,
+          description,
+          unscored: true,
+          reason: "insufficient_input",
+        };
+      }
+
+      const benefit = hasExplicitBenefit ? Math.max(0, Math.min(100, o.benefitScore)) : pos * 20;
+      const harm = hasExplicitHarm ? Math.max(0, Math.min(100, o.harmScore)) : neg * 20;
 
       // Utilitarian: net welfare.
       const utilitarian = Math.max(0, Math.min(100, 50 + (benefit - harm) / 2));
@@ -449,8 +468,8 @@ export default function registerEthicsActions(registerLensAction) {
       const composite = Math.round((utilitarian + deontological + virtue) / 3);
       const spread = Math.max(utilitarian, deontological, virtue) - Math.min(utilitarian, deontological, virtue);
       return {
-        name: o.name || "Option",
-        description: o.description || "",
+        name,
+        description,
         scores: {
           utilitarian: Math.round(utilitarian),
           deontological: Math.round(deontological),
@@ -461,14 +480,23 @@ export default function registerEthicsActions(registerLensAction) {
         benefit, harm,
       };
     });
-    analyzed.sort((a, b) => b.composite - a.composite);
-    const recommended = analyzed[0];
-    const conflicted = analyzed.filter((a) => a.agreement === "frameworks-conflict").map((a) => a.name);
+
+    const scored = analyzed.filter((a) => !a.unscored);
+    scored.sort((a, b) => b.composite - a.composite);
+    // Keep unscored options after scored ones (stable relative order among unscored).
+    const unscoredOpts = analyzed.filter((a) => a.unscored);
+    const ordered = [...scored, ...unscoredOpts];
+    const allUnscored = scored.length === 0;
+    const recommended = allUnscored ? undefined : scored[0]?.name;
+    const conflicted = scored.filter((a) => a.agreement === "frameworks-conflict").map((a) => a.name);
 
     const st = getEthicsState();
     const id = euid("mfa");
     const record = {
-      id, dilemma, options: analyzed, recommended: recommended?.name,
+      id, dilemma, options: ordered,
+      ...(allUnscored
+        ? { unscored: true, reason: "insufficient_input" }
+        : { recommended }),
       conflicted, createdAt: enow(),
     };
     elist(st.analyses, eid(ctx)).unshift(record);

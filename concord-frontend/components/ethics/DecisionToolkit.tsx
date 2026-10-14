@@ -50,17 +50,23 @@ export const TOOL_TABS: { id: ToolTab; label: string; icon: typeof Scale; key: s
 interface MfaOption {
   name: string;
   description: string;
-  scores: { utilitarian: number; deontological: number; virtue: number };
-  composite: number;
-  agreement: string;
-  benefit: number;
-  harm: number;
+  /** True when benefit/harm were blank and no keyword signal — not a measured score. */
+  unscored?: boolean;
+  reason?: string;
+  scores?: { utilitarian: number; deontological: number; virtue: number };
+  composite?: number;
+  agreement?: string;
+  benefit?: number;
+  harm?: number;
 }
 interface MfaRecord {
   id: string;
   dilemma: string;
   options: MfaOption[];
   recommended?: string;
+  /** True when every option lacked scoring signal — no measured verdict. */
+  unscored?: boolean;
+  reason?: string;
   conflicted: string[];
   createdAt: string;
 }
@@ -428,45 +434,65 @@ function MultiFrameworkPanel() {
               <SavedRecordDelete label="Delete analysis" onDelete={() => remove(rec.id)} />
             </div>
           </div>
-          <p className={ds.textMuted}>
-            Recommended: <span className="text-neon-cyan">{rec.recommended}</span>
-            {rec.conflicted.length > 0 && (
-              <span className="text-yellow-400"> · Framework conflict on {rec.conflicted.join(', ')}</span>
-            )}
-          </p>
-          <ChartKit
-            kind="bar"
-            xKey="name"
-            height={200}
-            data={rec.options.map((o) => ({
-              name: o.name,
-              Utilitarian: o.scores.utilitarian,
-              Deontological: o.scores.deontological,
-              Virtue: o.scores.virtue,
-            }))}
-            series={[
-              { key: 'Utilitarian', color: '#6366f1' },
-              { key: 'Deontological', color: '#22c55e' },
-              { key: 'Virtue', color: '#f59e0b' },
-            ]}
-          />
-          <div className="space-y-1">
-            {rec.options.map((o) => (
-              <div key={o.name} className="flex items-center justify-between text-sm">
-                <span className="text-gray-300">{o.name}</span>
-                <span className="flex items-center gap-3">
-                  <span className="text-gray-400">composite {o.composite}</span>
-                  <span className={
-                    o.agreement === 'consensus' ? 'text-green-400'
-                      : o.agreement === 'frameworks-conflict' ? 'text-red-400'
-                      : 'text-yellow-400'
-                  }>
-                    {o.agreement}
-                  </span>
-                </span>
+          {rec.unscored ? (
+            <p className={ds.textMuted}>
+              Unscored — insufficient input. Provide benefit/harm scores or describe options with ethical keywords before frameworks can measure agreement.
+            </p>
+          ) : (
+            <>
+              {rec.recommended != null && rec.recommended !== '' && (
+                <p className={ds.textMuted}>
+                  Recommended: <span className="text-neon-cyan">{rec.recommended}</span>
+                  {rec.conflicted.length > 0 && (
+                    <span className="text-yellow-400"> · Framework conflict on {rec.conflicted.join(', ')}</span>
+                  )}
+                </p>
+              )}
+              {(() => {
+                const scoredOpts = rec.options.filter((o) => !o.unscored && o.scores);
+                if (scoredOpts.length === 0) return null;
+                return (
+                  <ChartKit
+                    kind="bar"
+                    xKey="name"
+                    height={200}
+                    data={scoredOpts.map((o) => ({
+                      name: o.name,
+                      Utilitarian: o.scores!.utilitarian,
+                      Deontological: o.scores!.deontological,
+                      Virtue: o.scores!.virtue,
+                    }))}
+                    series={[
+                      { key: 'Utilitarian', color: '#6366f1' },
+                      { key: 'Deontological', color: '#22c55e' },
+                      { key: 'Virtue', color: '#f59e0b' },
+                    ]}
+                  />
+                );
+              })()}
+              <div className="space-y-1">
+                {rec.options.map((o) => (
+                  <div key={o.name} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">{o.name}</span>
+                    {o.unscored ? (
+                      <span className="text-gray-500">unscored — insufficient input</span>
+                    ) : (
+                      <span className="flex items-center gap-3">
+                        <span className="text-gray-400">composite {o.composite}</span>
+                        <span className={
+                          o.agreement === 'consensus' ? 'text-green-400'
+                            : o.agreement === 'frameworks-conflict' ? 'text-red-400'
+                            : 'text-yellow-400'
+                        }>
+                          {o.agreement}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       ))}
       </LoadGate>

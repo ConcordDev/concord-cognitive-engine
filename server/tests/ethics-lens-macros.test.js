@@ -136,6 +136,60 @@ describe("ethics.multiFrameworkDilemma — verdict + composite the panel renders
     assert.ok(Number.isFinite(r.result.options[0].composite));
     assertNoNonFinite(r.result);
   });
+
+  // INC-SWEEP ethics F1 — blank benefit/harm + keyword-free text must not
+  // present midpoint defaults as a measured "consensus" verdict.
+  it("unscored: empty benefit/harm + keyword-free text → insufficient_input (no consensus/recommendation)", () => {
+    const r = call("multiFrameworkDilemma", ctxA, {
+      dilemma: "Sweep dilemma: keep the note or drop it.",
+      options: [{ name: "Keep", description: "Retain the sweep note." }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.unscored, true);
+    assert.equal(r.result.reason, "insufficient_input");
+    assert.equal(r.result.recommended, undefined);
+    assert.ok(!("recommended" in r.result) || r.result.recommended == null);
+    const opt = r.result.options[0];
+    assert.equal(opt.unscored, true);
+    assert.equal(opt.reason, "insufficient_input");
+    assert.equal(opt.scores, undefined);
+    assert.equal(opt.composite, undefined);
+    assert.equal(opt.agreement, undefined);
+    assert.ok(!Object.prototype.hasOwnProperty.call(opt, "scores"));
+    assert.ok(!Object.prototype.hasOwnProperty.call(opt, "composite"));
+    assert.ok(!Object.prototype.hasOwnProperty.call(opt, "agreement"));
+    assertNoNonFinite(r.result);
+  });
+
+  it("with signal: keyword or numeric scores still produce scores/composite/agreement", () => {
+    const byKeyword = call("multiFrameworkDilemma", ctxA, {
+      dilemma: "d",
+      options: [{ name: "Care", description: "help protect care benefit" }],
+    });
+    assert.equal(byKeyword.ok, true);
+    assert.ok(!byKeyword.result.unscored);
+    assert.ok(byKeyword.result.recommended);
+    assert.ok(byKeyword.result.options[0].scores);
+    assert.ok(Number.isFinite(byKeyword.result.options[0].composite));
+    assert.ok(typeof byKeyword.result.options[0].agreement === "string");
+
+    const byNumeric = call("multiFrameworkDilemma", ctxA, {
+      dilemma: "d",
+      options: [{ name: "Keep", description: "Retain the sweep note.", benefitScore: 60, harmScore: 20 }],
+    });
+    assert.equal(byNumeric.ok, true);
+    assert.ok(!byNumeric.result.unscored);
+    assert.equal(byNumeric.result.recommended, "Keep");
+    assert.deepEqual(byNumeric.result.options[0].scores, {
+      utilitarian: 70,
+      deontological: 50,
+      virtue: 58,
+    });
+    assert.equal(byNumeric.result.options[0].composite, 59);
+    // spread 70−50 = 20 → mild-disagreement band (not the dishonest midpoint "consensus").
+    assert.equal(byNumeric.result.options[0].agreement, "mild-disagreement");
+    assertNoNonFinite(byNumeric.result);
+  });
 });
 
 // ── decisionMatrix — weighted winner + poisoned-weight fail-closed ─────────
