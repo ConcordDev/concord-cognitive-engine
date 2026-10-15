@@ -27,6 +27,7 @@
 // "screening_pass_claims_unvalidated" only when there is no caveat at all.
 
 import { registerSolver } from "../registry.js";
+import { getComponent } from "../../components/index.js";
 import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 import { summarizeMassStates } from "../../verification/mass-state.js";
 import { TOP_SPEED_CLAIM_STATUS, TOP_SPEED_UNVERIFIED_DEPENDENCIES, SPEED_LIMITER_DEPENDENCY } from "./vehicle.js";
@@ -164,6 +165,17 @@ export const vehicleAcceptance = registerSolver({
     const critical = [];
     for (const cat of CRITICAL_VEHICLE_COMPONENTS) {
       if (cat.id === "exhaust" && fuelType === "electric") { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: "electric: no exhaust" }); continue; }
+      if (fuelType === "electric" && cat.id === "transmission") {
+        const ratios = ctx.get(id, "props.vehicle.gearRatios");
+        const direct = Array.isArray(ratios) && ratios.length === 1 && ratios[0] === 1 && !nodes.some((n) => criticalOf(ctx, n).includes("transmission"));
+        if (direct) { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: `electric, direct drive: ${ctx.get(id, "props.vehicle.gearRatiosSource") || "no gearbox"}` }); continue; }
+      }
+      if (fuelType === "electric" && cat.id === "wiring") {
+        const motor = nodes.find((n) => criticalOf(ctx, n).includes("engine_or_motor"));
+        const entry = motor ? getComponent(ctx.get(motor.id, "props.component") || "") : null;
+        const integrated = (entry?.mass?.includes || []).find((x) => /inverter/i.test(x));
+        if (integrated) { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: `electric: the motor module integrates its control electronics (${integrated}); its excluded HV cables and LV connector kit are listed as not included`, parts: [motor.id] }); continue; }
+      }
       const tagged = nodes.filter((n) => criticalOf(ctx, n).includes(cat.id));
       if (!tagged.length) { critical.push({ category: cat.id, label: cat.label, status: "missing", reason: "not in the design yet (placeholder)", parts: [] }); continue; }
       const parts = [];

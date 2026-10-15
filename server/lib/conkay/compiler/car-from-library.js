@@ -21,6 +21,8 @@
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent, governingCvJointLimit } from "../components/index.js";
+import { CELL_P45B, PACK_DESIGN_CHOICES, packElectrical, NOT_INCLUDED as EV_PACK_NOT_INCLUDED } from "../powertrain/ev-pack.js";
+const r6 = (v) => Math.round(v * 1e6) / 1e6;
 import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
@@ -68,10 +70,11 @@ export function vehicleConfiguration(parsed, overrides = {}) {
   const massMax = req.mass?.max?.si ?? null;
   const vReq = req.topSpeed?.min?.si ?? null;
   const seats = req.seats?.min?.si ?? null;
+  const electric = overrides.fuelType === "electric";
   const config = {
     fuelType: "gasoline",
     drivetrain: "RWD",
-    transmissionType: "manual",
+    transmissionType: electric ? "none" : "manual",
     frontSuspension: "Ford S550 Mustang front (2015-2023)",
     rearSuspension: "Ford S550 IRS (2015-2023 Mustang)",
     boltPattern: "5x114.3",
@@ -86,7 +89,7 @@ export function vehicleConfiguration(parsed, overrides = {}) {
   const sources = {
     fuelType: overrides.fuelType ? "given" : "design choice: the brief does not name an energy source",
     drivetrain: overrides.drivetrain ? "given" : "design choice (rear-wheel drive)",
-    transmissionType: overrides.transmissionType ? "given" : "design choice (manual: Coyote V8 + TREMEC manual)",
+    transmissionType: overrides.transmissionType ? "given" : electric ? "design choice: none (direct drive: the motor module drives the differential's final drive; no gearbox)" : "design choice (manual: Coyote V8 + TREMEC manual)",
     frontSuspension: overrides.frontSuspension ? "given" : "design choice: S550 Mustang running gear, so suspension, steering, brakes and axle have published fitment to each other",
     rearSuspension: overrides.rearSuspension ? "given" : "design choice: S550 Mustang IRS (see frontSuspension)",
     boltPattern: overrides.boltPattern ? "given" : "design choice (5x114.3 hub pattern)",
@@ -172,33 +175,48 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
   const add = (parent, node) => { ir.nodes.push(node); byId.set(node.id, node); edges.push({ type: "CONTAINS", from: parent, to: node.id }); };
   const replace = (node) => { const i = ir.nodes.findIndex((n) => n.id === node.id); ir.nodes[i] = node; byId.set(node.id, node); };
 
-  // Engine or motor.
-  const engine = pick("engine_or_motor", config, selection);
-  if (engine) {
+  // Engine or motor. An electric motor is picked after the differential and the tyres (below), because it
+  // must reach the required top speed through them: v = max motor rpm / (integral reduction, or the
+  // differential's final drive when the motor has none) × tyre circumference.
+  const electric = config.fuelType === "electric";
+  let engine = null;
+  const pickEngine = (extra) => {
+    engine = pick("engine_or_motor", config, selection, extra ? { extra } : {});
+    if (!engine) return;
     config.engineId = engine.id;
     config.engineTorqueNm = engine.ratings.peakTorqueNm?.value ?? null;
     config.enginePattern = engine.applicability.transmissionPattern ?? null;
     config.engineMaxRpm = engine.ratings.redlineRpm?.value ?? engine.ratings.maxSpeedRpm?.value ?? null;
     const rl = engine.ratings.redlineRpm;
-    replace(libraryNode(engine, {
-      id: "ENGINE", kind: "Actuator", critical: "engine_or_motor", config, position: at(3.3, 0.5),
-      props: {
-        maxPower: `${engine.ratings.peakPowerW.value} W`,
-        maxPowerSource: `${engine.ratings.peakPowerW.published} (${engine.mass.massState.source.title})`,
-        ...(Number.isFinite(engine.ratings.peakPowerW.rpm) ? { peakPowerRpm: engine.ratings.peakPowerW.rpm } : {}),
-        ...(Number.isFinite(rl?.value) ? {
-          redlineRpm: rl.value,
-          redlineBasis: rl.state === "estimated" ? `estimated: ${rl.method}` : `published: ${rl.published || ""}`,
-          ...(rl.range ? { redlineRange: rl.range } : {}),
-        } : {}),
-      },
-    }));
-  }
+    const ms = engine.ratings.maxSpeedRpm;
+    const cont = engine.ratings.continuousPowerW;
+    const motorProps = electric ? {
+      // sustained top speed is held on the continuous rating; the peak is reported beside it
+      maxPower: `${(cont?.value ?? engine.ratings.peakPowerW.value)} W`,
+      maxPowerSource: cont ? `continuous rating: ${cont.published} (${engine.mass.massState.source.title}); peak ${engine.ratings.peakPowerW.published}` : `${engine.ratings.peakPowerW.published} (no continuous rating published: peak used)`,
+      peakPower: `${engine.ratings.peakPowerW.value} W`,
+      ...(Number.isFinite(ms?.value) ? { redlineRpm: ms.value, redlineBasis: `published: ${ms.published} (motor maximum speed)` } : {}),
+      ...(Number.isFinite(engine.ratings.maxDcVoltageV?.value) ? { maxDcVoltageV: engine.ratings.maxDcVoltageV.value } : {}),
+      ...(Number.isFinite(engine.ratings.combinedEfficiency?.value) ? { peakEfficiency: engine.ratings.combinedEfficiency.value } : {}),
+    } : {
+      maxPower: `${engine.ratings.peakPowerW.value} W`,
+      maxPowerSource: `${engine.ratings.peakPowerW.published} (${engine.mass.massState.source.title})`,
+      ...(Number.isFinite(engine.ratings.peakPowerW.rpm) ? { peakPowerRpm: engine.ratings.peakPowerW.rpm } : {}),
+      ...(Number.isFinite(rl?.value) ? {
+        redlineRpm: rl.value,
+        redlineBasis: rl.state === "estimated" ? `estimated: ${rl.method}` : `published: ${rl.published || ""}`,
+        ...(rl.range ? { redlineRange: rl.range } : {}),
+      } : {}),
+    };
+    replace(libraryNode(engine, { id: "ENGINE", kind: "Actuator", critical: "engine_or_motor", config, position: at(3.3, 0.5), props: motorProps }));
+  };
+  if (!electric) pickEngine();
   // Engine wiring: the control pack made for this engine.
-  const wiring = pick("wiring", config, selection);
+  const wiring = electric ? null : pick("wiring", config, selection);
   if (wiring) add("ELECTRICAL", libraryNode(wiring, { id: "CONTROL_PACK", kind: "Part", critical: "wiring", config, position: at(2.6, 0.6) }));
   // Transmission (must take the engine's torque and bolt to its pattern).
-  const gearbox = pick("transmission", config, selection);
+  // (an electric car drives the differential directly: no gearbox is selected)
+  const gearbox = electric ? null : pick("transmission", config, selection);
   if (gearbox) {
     add("DRIVELINE", libraryNode(gearbox, {
       id: "TRANSMISSION", kind: "Part", critical: "transmission", config, position: at(3.7, 0.35),
@@ -237,7 +255,24 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
       id: `TIRE_${p}`, kind: "Tire", critical: "tyres", config, position: at(x, 0.33, p.endsWith("L") ? -0.8 : 0.8),
       props: { speedRating: tyre.ratings.speedSymbol, loadIndex: tyre.ratings.loadIndex },
     }));
+  }  if (electric) {
+    const fd = diff?.ratings?.finalDrive?.value;
+    const circ = Math.PI * tyre.dimensions.overallDiameterM;
+    const reqMs = Number.isFinite(config.requiredTopSpeedKmh) ? config.requiredTopSpeedKmh / 3.6 : null;
+    selection.motorSpeedRule = { finalDrive: fd ?? null, tyreCircumferenceM: circ, requiredMs: reqMs, basis: "v_max = max motor rpm / 60 / (integral reduction, else the differential's final drive) × tyre circumference ≥ the required top speed" };
+    pickEngine((m) => {
+      // a repair (carAcceptance) may name the motor: every other candidate is then set aside
+      if (config.motorId && m.id !== config.motorId) return `set aside: the design names ${config.motorId} (a repair)`;
+      const rpm = m.ratings.maxSpeedRpm?.value;
+      const red = m.ratings.reductionRatio?.value || fd;
+      // selectComponent's `extra`: a rejection reason, or null to accept
+      if (!(Number.isFinite(rpm) && Number.isFinite(red) && Number.isFinite(reqMs))) return "max speed, a reduction or the required speed is unknown";
+      const v = (rpm / 60 / red) * circ;
+      return v >= reqMs ? null : `reaches ${Math.round(v * 3.6)} km/h at ${rpm} rpm through ${red}:1, below the required ${Math.round(reqMs * 3.6)} km/h`;
+    });
+    if (!engine) return { error: `no motor in the library reaches the required top speed: ${(selection.engine_or_motor?.candidates || []).map((c) => `${c.id}: ${c.rejected || (c.mismatches || []).map((x) => x.field).join(", ")}`).join("; ")}` };
   }
+
   // Brakes, one kit per axle.
   for (const [axle, x] of [["front", 1.0], ["rear", 3.7]]) {
     const kit = pick("brakes", config, selection, { key: `brakes_${axle}`, where: (c) => c.applicability.axle === axle });
@@ -250,8 +285,25 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     const exhaust = pick("exhaust", config, selection);
     if (exhaust) add("POWERTRAIN", libraryNode(exhaust, { id: "EXHAUST", kind: "Part", critical: "exhaust", config, position: at(3.0, 0.2) }));
   }
-  const fuel = pick("fuel_or_battery", config, selection);
+  const fuel = electric ? null : pick("fuel_or_battery", config, selection);
   if (fuel) add("POWERTRAIN", libraryNode(fuel, { id: "FUEL_CELL", kind: "Part", critical: "fuel_or_battery", config, position: at(2.9, 0.3) }));
+  if (electric) {
+    // The traction battery: a designed pack of sourced cells (powertrain/ev-pack.js). Cells: sourced mass
+    // (count × the data sheet's maximum); enclosure: computed (shell area × sheet × density) once the
+    // layout has placed it (car-layout.js); BMS, contactors, busbars and cooling: not included.
+    const S = PACK_DESIGN_CHOICES.series.value, Pn = PACK_DESIGN_CHOICES.parallel.value;
+    const pe = packElectrical({ series: S, parallel: Pn });
+    add("ELECTRICAL", {
+      id: "BATTERY_CELLS", kind: "Part", name: `Traction battery cells ${S}S${Pn}P ${CELL_P45B.model}`, position: at(2.4, 0.4),
+      props: {
+        critical: "fuel_or_battery",
+        mass: `${r6(pe.cells * CELL_P45B.massKg)} kg`,
+        massState: { state: "sourced", variant: `${pe.cells} × ${CELL_P45B.model} at the data sheet's maximum weight (70 g each)`, source: { url: CELL_P45B.source.url, title: CELL_P45B.source.title, retrieved: CELL_P45B.source.retrieved } },
+        massExcludes: [...EV_PACK_NOT_INCLUDED],
+        battery: { series: S, parallel: Pn, cell: CELL_P45B, choices: PACK_DESIGN_CHOICES, electrical: { ...pe, lossAtW: undefined } },
+      },
+    });
+  }
 
   // Designed geometry: mass computed from geometry × density.
   const part = (id, material, geometry, x, z) => ({ id, kind: "Part", material, geometry, position: at(x, z) });
@@ -321,7 +373,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
       frontAxleX: "1.0 m",
       rearAxleX: "3.7 m",
       ...(tyre ? { tireRadius: `${tyre.dimensions.overallDiameterM / 2} m` } : {}),
-      ...(gearbox ? { gearRatios: gearbox.ratings.gearRatios } : {}),
+      ...(gearbox ? { gearRatios: gearbox.ratings.gearRatios } : electric ? { gearRatios: [1], gearRatiosSource: "direct drive: the motor module into the differential's final drive (no gearbox)" } : {}),
       ...(Number.isFinite(diff?.ratings?.finalDrive?.value) ? {
         finalDrive: diff.ratings.finalDrive.value,
         finalDriveSource: `${diff.id}: ${diff.ratings.finalDrive.published}`,
@@ -566,11 +618,55 @@ function tyreOptions({ b, gear, tyreEntry, load, s }) {
  * components with their sources.
  */
 export function carAcceptance(brief, opts = {}) {
-  const b = buildCarFromLibrary(brief, opts);
-  if (b.error) return { ok: false, error: b.error };
-  const opened = openDesign(b.ir);
-  if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
-  return acceptanceReport(brief, b, opened.session);
+  return withMotorRepair(brief, opts, (o) => {
+    const b = buildCarFromLibrary(brief, o);
+    if (b.error) return { ok: false, error: b.error };
+    const opened = openDesign(b.ir);
+    if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
+    return acceptanceReport(brief, b, opened.session);
+  });
+}
+
+/**
+ * The electric car's motor repair. The lightest motor that reaches the required speed through the
+ * final drive is picked first; when the top-speed requirement then fails because the car is power
+ * limited (the continuous rating can't hold the speed), the next heavier speed-capable motor is
+ * tried. A repair changes a design parameter (which motor), never the requirement. Every attempt is
+ * recorded. `run(opts)` builds and opens the car and returns its acceptance report.
+ */
+function withMotorRepair(brief, opts, run) {
+  const first = run(opts);
+  const isPending = first && typeof first.then === "function";
+  const step = (r) => {
+    if (!r?.ok || opts.motorRepair === false || r.report?.configuration?.config?.fuelType !== "electric") return r;
+    const repairs = [];
+    const tried = new Set([r.report.selection?.engine_or_motor?.chosen]);
+    const fails = (rep) => (rep.requirements || []).some((q) => /topSpeed/i.test(q.id) && q.status === "FAIL") && /power|drag/i.test(rep.topSpeed?.limitedBy || "");
+    let cur = r;
+    const candidates = (cur.report.selection?.engine_or_motor?.candidates || []).filter((c) => c.ok).sort((a, b) => a.massKg - b.massKg);
+    const next = () => candidates.find((c) => !tried.has(c.id));
+    const loop = (res) => {
+      if (!fails(res.report)) return finish(res);
+      const n = next();
+      if (!n) return finish(res, "no heavier speed-capable motor in the library holds the required speed");
+      tried.add(n.id);
+      repairs.push({ variable: "motor", before: res.report.selection.engine_or_motor.chosen, after: n.id, reason: `the top-speed requirement fails, ${res.report.topSpeed?.limitedBy}: ${res.report.topSpeed?.mph} mph on ${res.report.selection.engine_or_motor.chosen}'s continuous rating` });
+      const o = { ...opts, config: { ...(opts.config || {}), motorId: n.id } };
+      const again = run(o);
+      return again && typeof again.then === "function" ? again.then((a) => (a.ok ? loop(a) : a)) : again.ok ? loop(again) : again;
+    };
+    const finish = (res, note) => {
+      if (repairs.length) {
+        repairs[repairs.length - 1].result = fails(res.report) ? "still failing" : "requirement met";
+        res.report.repairs = repairs;
+        if (note) res.report.repairNote = note;
+      }
+      return res;
+    };
+    cur = loop(cur);
+    return cur;
+  };
+  return isPending ? first.then(step) : step(first);
 }
 
 /**
@@ -578,13 +674,15 @@ export function carAcceptance(brief, opts = {}) {
  * pending (NOT_COMPUTED), never blocking on a kernel; this one runs them off the request path first.
  */
 export async function carAcceptanceAsync(brief, opts = {}) {
-  const b = buildCarFromLibrary(brief, opts);
-  if (b.error) return { ok: false, error: b.error };
-  const opened = openDesign(b.ir);
-  if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
-  const settled = await opened.session.settle();
-  const r = acceptanceReport(brief, b, opened.session);
-  return r.ok ? { ...r, settled } : r;
+  return withMotorRepair(brief, opts, async (o) => {
+    const b = buildCarFromLibrary(brief, o);
+    if (b.error) return { ok: false, error: b.error };
+    const opened = openDesign(b.ir);
+    if (!opened.ok) return { ok: false, error: "the library-built design did not compile", errors: opened.errors };
+    const settled = await opened.session.settle();
+    const r = acceptanceReport(brief, b, opened.session);
+    return r.ok ? { ...r, settled } : r;
+  });
 }
 
 function acceptanceReport(brief, b, s) {

@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "note": "ConKay component library. Every number carries its source. Masses are SI (kg) with the published figure kept verbatim. Nothing here is estimated unless massState.state says 'estimated', and then the method and range say how.",
   "references": {
     "speedSymbols": {
@@ -444,6 +444,214 @@
         "requires": [
           "traction inverter",
           "high-voltage battery"
+        ]
+      }
+    },
+    {
+      "id": "motor.cascadia.im-225-dz",
+      "category": "engine_or_motor",
+      "manufacturer": "Cascadia Motion (BorgWarner)",
+      "model": "iM-225 integrated motor module",
+      "variant": "iM-225 with CM200DZ inverter (840 V)",
+      "mass": {
+        "kg": 64,
+        "published": "Weight 64 kg",
+        "massState": {
+          "state": "sourced",
+          "variant": "iM-225 with CM200DZ inverter (840 V)",
+          "source": {
+            "url": "https://www.cascadiamotion.com/_files/ugd/01ef68_ba74c42ff5c6483a9ce65647326adcc1.pdf",
+            "title": "Cascadia Motion, iM-225 (Integrated Module) product data sheet, linked from https://www.cascadiamotion.com/im-225",
+            "retrieved": "2026-10-15",
+            "sha256": "365532302bbaa31e9789aefbd8636a8c3f1c61e6920d0c4c33ae2c72d2451b47",
+            "excerpt": "Peak Torque 500Nm; Peak Power 225kW; Continuous Torque 230Nm; Continuous Power 110-135 kW; Maximum Speed 12000rpm; Weight 64 kg; Only 300mm in axial length and 405mm in total height"
+          }
+        },
+        "includes": [
+          "CM200DZ inverter",
+          "HVH250-115 motor core",
+          "integrated oil pump, oil cooler, oil sump and water pump"
+        ],
+        "excludes": [
+          "reduction gearbox (the module has transmission bolt patterns, no gear)",
+          "high-voltage battery",
+          "HV cables and LV connector kit (sold separately)",
+          "coolant and Dexron VI fill"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "axialLengthM": 0.3,
+        "heightM": 0.405,
+        "widthM": null,
+        "published": "Only 300mm in axial length and 405mm in total height; shallow sump depth, 170mm from shaft centerline to bottom",
+        "note": "The data sheet states axial length and total height only; the width is not published (unknown, not assumed).",
+        "source": {
+          "url": "https://www.cascadiamotion.com/_files/ugd/01ef68_ba74c42ff5c6483a9ce65647326adcc1.pdf",
+          "title": "Cascadia Motion, iM-225 (Integrated Module) product data sheet, linked from https://www.cascadiamotion.com/im-225",
+          "retrieved": "2026-10-15",
+          "sha256": "365532302bbaa31e9789aefbd8636a8c3f1c61e6920d0c4c33ae2c72d2451b47"
+        }
+      },
+      "ratings": {
+        "peakPowerW": {
+          "value": 225000,
+          "published": "Peak Power 225 kW"
+        },
+        "peakTorqueNm": {
+          "value": 500,
+          "published": "Peak Torque 500 Nm"
+        },
+        "continuousPowerW": {
+          "value": 110000,
+          "range": [
+            110000,
+            135000
+          ],
+          "published": "Continuous Power 110-135 kW"
+        },
+        "continuousTorqueNm": {
+          "value": 230,
+          "published": "Continuous Torque 230 Nm"
+        },
+        "maxSpeedRpm": {
+          "value": 12000,
+          "published": "Maximum Speed 12000 rpm"
+        },
+        "maxDcVoltageV": {
+          "value": 840,
+          "published": "480Vdc maximum voltage (with CM200DX inverter); 840V maximum voltage (with CM200DZ inverter)"
+        },
+        "combinedEfficiency": {
+          "value": 0.95,
+          "published": "Combined Efficiency 95% peak (@200Nm, 5500rpm)",
+          "note": "a peak (best-point) efficiency, not an average"
+        },
+        "reductionRatio": {
+          "value": null,
+          "note": "no reduction: drives through an external gear set (here the differential's final drive)"
+        },
+        "coolant": {
+          "motor": "Dexron VI",
+          "inverter": "50% E.G. / 50% water",
+          "maxWaterTempC": 80,
+          "published": "Maximum Water Temperature 80°C (peak performance below 60°C for iM-225 / 45°C for iM-375, mild derate 60-80°C, no torque at 100°C)"
+        }
+      },
+      "applicability": {
+        "fuelType": [
+          "electric"
+        ],
+        "requires": [
+          "high-voltage battery",
+          "gear reduction to the wheels (a final drive)",
+          "coolant loop (water-glycol) for the inverter"
+        ],
+        "notes": [
+          "Integrated motor + inverter: the traction inverter is inside the module, so no separate inverter part is needed.",
+          "Transmission connection patterns: 6-bolt Cascadia, 16-bolt Remy, 4-bolt Porsche G50."
+        ]
+      }
+    },
+    {
+      "id": "motor.cascadia.im-375-dz",
+      "category": "engine_or_motor",
+      "manufacturer": "Cascadia Motion (BorgWarner)",
+      "model": "iM-375 integrated motor module",
+      "variant": "iM-375 with CM350DZ inverter (850 V)",
+      "mass": {
+        "kg": 73,
+        "published": "Weight 73 kg",
+        "massState": {
+          "state": "sourced",
+          "variant": "iM-375 with CM350DZ inverter (850 V)",
+          "source": {
+            "url": "https://www.cascadiamotion.com/_files/ugd/01ef68_55b90c05a0ed478aa66c54a841bfa34e.pdf",
+            "title": "Cascadia Motion, iM-375 (Integrated Module) product data sheet, linked from https://www.cascadiamotion.com/im-375",
+            "retrieved": "2026-10-15",
+            "sha256": "64934a5065f51abff65a4797c797c40a2382ddeea3ac7114451e393abfac8f6b",
+            "excerpt": "Peak Torque 580 Nm; Peak Power 400 kW; Continuous Torque 300 Nm; Continuous Power 175 kW; Maximum Speed 12000 rpm; Weight 73 kg; Only 300mm in axial length and 424mm in total height; 850Vdc maximum voltage (with CM350DZ inverter)"
+          }
+        },
+        "includes": [
+          "CM350DZ inverter",
+          "HVH250-115 motor core",
+          "integrated oil pump, oil cooler, oil sump and water pump"
+        ],
+        "excludes": [
+          "reduction gearbox (the module has transmission bolt patterns, no gear)",
+          "high-voltage battery",
+          "HV cables and LV connector kit (sold separately)",
+          "coolant and Dexron VI fill"
+        ]
+      },
+      "dimensions": {
+        "state": "sourced",
+        "axialLengthM": 0.3,
+        "heightM": 0.424,
+        "widthM": null,
+        "published": "Only 300mm in axial length and 424mm in total height; shallow sump depth, 170mm from shaft centerline to bottom",
+        "note": "The data sheet states axial length and total height only; the width is not published (unknown, not assumed).",
+        "source": {
+          "url": "https://www.cascadiamotion.com/_files/ugd/01ef68_55b90c05a0ed478aa66c54a841bfa34e.pdf",
+          "title": "Cascadia Motion, iM-375 (Integrated Module) product data sheet, linked from https://www.cascadiamotion.com/im-375",
+          "retrieved": "2026-10-15",
+          "sha256": "64934a5065f51abff65a4797c797c40a2382ddeea3ac7114451e393abfac8f6b"
+        }
+      },
+      "ratings": {
+        "peakPowerW": {
+          "value": 400000,
+          "published": "Peak Power 400 kW"
+        },
+        "peakTorqueNm": {
+          "value": 580,
+          "published": "Peak Torque 580 Nm"
+        },
+        "continuousPowerW": {
+          "value": 175000,
+          "published": "Continuous Power 175 kW"
+        },
+        "continuousTorqueNm": {
+          "value": 300,
+          "published": "Continuous Torque 300 Nm"
+        },
+        "maxSpeedRpm": {
+          "value": 12000,
+          "published": "Maximum Speed 12000 rpm"
+        },
+        "maxDcVoltageV": {
+          "value": 850,
+          "published": "850Vdc maximum voltage (with CM350DZ inverter); peak power of 400kW (537hp) at 700Vdc"
+        },
+        "combinedEfficiency": {
+          "value": 0.95,
+          "published": "Combined Efficiency 95% peak (@200Nm, 5500rpm)",
+          "note": "a peak (best-point) efficiency, not an average"
+        },
+        "reductionRatio": {
+          "value": null,
+          "note": "no reduction: drives through an external gear set (here the differential's final drive)"
+        },
+        "coolant": {
+          "motor": "Dexron VI",
+          "inverter": "50% E.G. / 50% water",
+          "maxWaterTempC": 80,
+          "published": "Maximum Water Temperature 80°C (peak performance below 60°C for iM-225 / 45°C for iM-375, mild derate 60-80°C, no torque at 100°C)"
+        }
+      },
+      "applicability": {
+        "fuelType": [
+          "electric"
+        ],
+        "requires": [
+          "high-voltage battery",
+          "gear reduction to the wheels (a final drive)",
+          "coolant loop (water-glycol) for the inverter"
+        ],
+        "notes": [
+          "Integrated motor + inverter: the traction inverter is inside the module, so no separate inverter part is needed.",
+          "Transmission connection patterns: 6-bolt Cascadia, 16-bolt Remy, 4-bolt Porsche G50."
         ]
       }
     },
