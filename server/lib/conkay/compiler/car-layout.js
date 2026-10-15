@@ -301,7 +301,7 @@ export const EV_LAYOUT_CHOICES = Object.freeze({
  * occupant's feet (every checked percentile, both seats, on the seat track) are sweepClearanceM clear of
  * the front tyres' steering sweep; the firewall is footwellDepthM ahead of it. Returns { ahpX, firewallX, method }.
  */
-export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg }) {
+export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg, body = null }) {
   const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
   const J = PACKAGING_REFERENCES.saeJ1100.definitions;
   const r = tyre.diameterM / 2, hw = tyre.widthM / 2;
@@ -316,13 +316,27 @@ export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg 
     const mid = hx("M50"), lo = mid - c.seatTrackTravel / 2, hi = mid + c.seatTrackTravel / 2;
     return keys.flatMap((k) => [-1, 1].flatMap((sg) => seatOccupant(k, { id: sg < 0 ? "SEAT_1" : "SEAT_2", hPoint: { x: Math.min(Math.max(hx(k), lo), hi), y: sg * c.frontSeatY, z: c.floorZ + c.h30 }, torsoDeg: c.torsoDeg, posture: "front", heel: { x: ahpX, z: c.floorZ }, footAngleDeg: c.footAngleDeg }).boxes.filter((b) => /foot/i.test(b.id))));
   };
-  const gap = (ahpX) => Math.min(...feet(ahpX).flatMap((f) => sweeps.map((s) => separation(f, s).separation))) - c.sweepClearanceM;
+  // the CAD body's front wheel wells (cad/conkay_body_occ.py wheel_geometry: a cylinder of the steered tyre's
+  // swept radius + archClearance, inner wall at its lateral reach over the lock + archClearance), bounded by a
+  // box (a lower bound on the gap to the cylinder): the feet must stay the body's skin offset inside the skin
+  const wells = body ? (() => {
+    const crit = Math.atan2(r, hw), swept = Math.hypot(r, hw);
+    const lat = th <= crit ? r * Math.sin(th) + hw * Math.cos(th) : swept;
+    const R = swept + body.archClearanceM, yIn = track / 2 - (lat + body.archClearanceM);
+    return [-1, 1].map((sg) => aabb({ id: `well${sg}`, min: [frontAxleX - R, sg > 0 ? yIn : -yIn - 1, r - R], max: [frontAxleX + R, sg > 0 ? yIn + 1 : -yIn, r + R] }));
+  })() : [];
+  const gap = (ahpX) => {
+    const fs = feet(ahpX);
+    const toSweep = Math.min(...fs.flatMap((f) => sweeps.map((s) => separation(f, s).separation))) - c.sweepClearanceM;
+    const toWell = wells.length ? Math.min(...fs.flatMap((f) => wells.map((w) => separation(f, w).separation))) - body.skinOffsetM : Infinity;
+    return Math.min(toSweep, toWell);
+  };
   const ahpX = smallestX(gap, frontAxleX, frontAxleX + 2);
   if (ahpX == null) return { error: "no heel point within 2 m of the front axle clears the steering sweep" };
   const a = mmUp(ahpX);
   return {
     ahpX: a, firewallX: r4(a - c.footwellDepthM),
-    method: `ahpX = the smallest accelerator heel point (bisection, rounded up to 1 mm) at which every front occupant's foot boxes (${keys.join(", ")}, both seats, on the seat track) are ${c.sweepClearanceM} m clear of the front tyres' steering sweep (±${r4(lockDeg)}° inner lock, box ±${r4(ext)} m fore-aft, ±${r4(latExt)} m across the tyre centre); firewall = ahpX - footwellDepthM ${c.footwellDepthM} m`,
+    method: `ahpX = the smallest accelerator heel point (bisection, rounded up to 1 mm) at which every front occupant's foot boxes (${keys.join(", ")}, both seats, on the seat track) are ${c.sweepClearanceM} m clear of the front tyres' steering sweep (±${r4(lockDeg)}° inner lock, box ±${r4(ext)} m fore-aft, ±${r4(latExt)} m across the tyre centre)${body ? ` and the body's skin offset ${body.skinOffsetM} m clear of a box bounding the CAD body's front wheel wells (swept radius + ${body.archClearanceM} m arch clearance)` : ""}; firewall = ahpX - footwellDepthM ${c.footwellDepthM} m`,
   };
 }
 

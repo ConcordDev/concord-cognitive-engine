@@ -550,7 +550,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     const motorE = electric ? entry("engine_or_motor") : null;
     if (electric && tyreE?.dimensions?.overallDiameterM) {
       base = { ...base, ...EV_LAYOUT_CHOICES };
-      evFront = deriveEvFront({ choices: base, keys: [...new Set([...occupantKeys, "M95"])], frontAxleX, track, tyre: { diameterM: tyreE.dimensions.overallDiameterM, widthM: tyreE.dimensions.sectionWidthM }, lockDeg: steeringLockDeg(PACKAGING_REFERENCES.referenceVehicle).innerDeg });
+      evFront = deriveEvFront({ choices: base, keys: [...new Set([...occupantKeys, "M95"])], frontAxleX, track, tyre: { diameterM: tyreE.dimensions.overallDiameterM, widthM: tyreE.dimensions.sectionWidthM }, lockDeg: steeringLockDeg(PACKAGING_REFERENCES.referenceVehicle).innerDeg, body: body ? { archClearanceM: body.archClearanceM, skinOffsetM: body.skinOffsetM } : null });
       if (!evFront.error) base = { ...base, ahpX: { value: evFront.ahpX, basis: `derived: ${evFront.method}` } };
     }
     const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
