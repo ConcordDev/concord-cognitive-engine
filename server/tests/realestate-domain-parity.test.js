@@ -30,12 +30,12 @@ describe("realestate — mortgage", () => {
   });
 
   it("adds PMI when LTV > 80%", () => {
-    const r = call("calc-mortgage", ctxA, { price: 500_000, downPercent: 10 });
+    const r = call("calc-mortgage", ctxA, { price: 500_000, downPercent: 10, rate: 7, taxRate: 1.1, insurance: 1200 });
     assert.ok(r.result.monthly.pmi > 0);
   });
 
   it("rejects invalid rate", () => {
-    const r = call("calc-mortgage", ctxA, { price: 500_000, rate: 50 });
+    const r = call("calc-mortgage", ctxA, { price: 500_000, rate: 50, taxRate: 1.1, insurance: 1200 });
     assert.equal(r.ok, false);
   });
 });
