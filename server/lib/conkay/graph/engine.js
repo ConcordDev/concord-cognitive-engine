@@ -72,6 +72,27 @@ export class DesignEngine {
         read(`result:${id}`);
         return this.ensure(id);
       },
+      // Aggregator hooks: a solver that aggregates over the design's
+      // existing envelopes (rather than computing one of its own) reads
+      // these instead of re-running anything.
+      envelopes: () => {
+        read("envelopes");
+        return [...this.runs.values()].map((r) => r.envelope).filter(Boolean);
+      },
+      solverDomains: () => {
+        read("solverDomains");
+        const set = new Set();
+        for (const r of this.runs.values()) {
+          if (!r.envelope) continue;
+          const ds = r.envelope?.solver?.domains || [r.envelope?.solver?.domain];
+          for (const d of ds) if (d) set.add(d);
+        }
+        return set;
+      },
+      loadCases: () => {
+        read("loadCases");
+        return this.graph.loadCases || [];
+      },
     };
   }
 

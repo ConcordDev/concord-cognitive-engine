@@ -1,0 +1,366 @@
+{
+  "$schema": "https://concord-os.org/schemas/conkay-bolt-joint-inputs.v1.json",
+  "$id": "https://concord-os.org/schemas/conkay-bolt-joint-inputs.v1.json",
+  "title": "ConKay bolt-joint input contract",
+  "description": "Every Bolt, Plate, Joint, and LoadCase field consumed by any current or planned bolted-joint limit state solver. The compiler enforces unit conversion for length/force/stress/area fields and validates constraints. The verdict guard reads this to surface missing/blocked checks.",
+  "version": "1.0.0",
+  "kind_scope": [
+    "Bolt",
+    "Plate",
+    "Joint",
+    "Assembly",
+    "LoadCase"
+  ],
+  "design_codes_supported": [
+    "AISC 360-16 (LRFD)"
+  ],
+  "design_codes_planned": [
+    "Eurocode 3 Part 1-8",
+    "BS 5950"
+  ],
+  "fields": {
+    "Joint.props.kind": {
+      "type": "enum",
+      "values": [
+        "bearing",
+        "slip-critical",
+        "friction-grip",
+        "preloaded-tension",
+        "tension-control"
+      ],
+      "default": "bearing",
+      "applies_to": "every Joint",
+      "description": "Joint design kind. Determines the required limit-state set per AISC 360-16 scope.",
+      "status": "added (this pass)"
+    },
+    "Joint.props.shearPlanes": {
+      "type": "integer",
+      "constraint": "1 | 2",
+      "default": 1,
+      "applies_to": "every Joint",
+      "description": "Number of shear planes per bolt (1 = single shear, 2 = double shear).",
+      "status": "existing"
+    },
+    "Joint.props.threadsExcluded": {
+      "type": "boolean",
+      "default": false,
+      "applies_to": "every Joint",
+      "description": "Whether the threads are excluded from the shear plane (X vs N in AISC Table J3.2). Affects Fnv ratio (0.563 vs 0.450).",
+      "status": "existing"
+    },
+    "Joint.props.edgeDistance": {
+      "type": "length",
+      "si_unit": "m",
+      "constraint": "> Joint.props.holeDiameter / 2 (when both are set)",
+      "applies_to": "bearing joints (required for J3-6c tear-out)",
+      "description": "Distance from the hole center to the plate edge, parallel to the applied load (AISC §J3.10c, L_e).",
+      "status": "added (this PR)"
+    },
+    "Joint.props.holePattern": {
+      "type": "array<{x, y}>",
+      "si_unit": "m (per element)",
+      "applies_to": "bearing joints with multiple bolts (required for J4-3 block-shear, §D2 net-section, bolt-group distribution)",
+      "description": "Per-bolt (per-hole) coordinates in the joint's local frame. The x axis is parallel to the applied load; y is perpendicular. Each entry is a positive length pair. The array length is the solver's responsibility to match against the Bolt children.",
+      "status": "added (this PR)"
+    },
+    "Joint.props.holeDiameter": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "bearing joints (required for J3-6c tear-out)",
+      "description": "Nominal hole diameter. Per AISC \u00a7J3.3: standard = d_bolt + 1/16\" (1.6 mm), oversized = d_bolt + 1/8\" (3.2 mm), slotted = slot width.",
+      "status": "added (this PR)"
+    },
+    "Joint.props.edgeDistancePerpendicular": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "block-shear (AISC \u00a7J4-3)",
+      "description": "Distance from the hole center to the plate edge, perpendicular to the applied load. Required for the L_e component of block-shear rupture paths.",
+      "status": "planned"
+    },
+    "Joint.props.spacing": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "block-shear, net-section",
+      "description": "Center-to-center spacing between adjacent bolts in the load direction. Required for block-shear path geometry and net-section deductions.",
+      "status": "planned"
+    },
+    "Joint.props.holeCountLoadDirection": {
+      "type": "integer",
+      "applies_to": "block-shear, net-section",
+      "description": "Number of bolt holes in the failure path in the load direction (block-shear) or the cross-section (net-section).",
+      "status": "planned"
+    },
+    "Joint.props.fayingSurface": {
+      "type": "enum",
+      "values": [
+        "A",
+        "B",
+        "C"
+      ],
+      "applies_to": "slip-critical joints",
+      "description": "Faying-surface class per AISC SC connections. Class A = \u03bc=0.30, B = \u03bc=0.50, C = \u03bc=0.35. Affects slip resistance.",
+      "status": "planned"
+    },
+    "Joint.props.holeType": {
+      "type": "enum",
+      "values": [
+        "standard",
+        "oversized",
+        "short-slotted",
+        "long-slotted",
+        "parallel-to-load",
+        "perpendicular-to-load"
+      ],
+      "applies_to": "slip-critical joints",
+      "description": "Hole type per AISC \u00a7J3.3. Affects slip resistance (long-slotted reduces capacity).",
+      "status": "planned"
+    },
+    "Joint.props.boltPretension": {
+      "type": "force",
+      "si_unit": "N",
+      "applies_to": "slip-critical, preloaded-tension, prying",
+      "description": "Minimum specified bolt pretension per AISC \u00a7J3.8 (slip-critical) or as-applied (tension/prying). Defaults to 0.70\u00b7Fu\u00b7Ab for A325/A490.",
+      "status": "planned"
+    },
+    "Joint.props.boltCoordinates": {
+      "type": "array<{x, y}>",
+      "si_unit": "m",
+      "applies_to": "bolt-group-distribution",
+      "description": "Per-bolt coordinates in the joint's local frame, relative to the centroid. Required when the load is eccentric and equal-share is wrong.",
+      "status": "planned"
+    },
+    "Joint.props.loadVector": {
+      "type": "{x, y, z}",
+      "si_unit": "N",
+      "applies_to": "bolt-group-distribution",
+      "description": "Applied load vector in the joint's local frame. Required for elastic bolt-group distribution (e.g. instant center method for in-plane shear).",
+      "status": "planned"
+    },
+    "Joint.props.eccentricity": {
+      "type": "{x, y}",
+      "si_unit": "m",
+      "applies_to": "bolt-group-distribution",
+      "description": "Eccentricity of the applied load from the bolt group centroid. For in-plane shear and torsion, this is what generates the moment that the bolt group resists.",
+      "status": "planned"
+    },
+    "Joint.props.flangeThickness": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "prying action",
+      "description": "T-stub flange thickness (one of two plies on either side of the bolt). Required for AISC \u00a79 prying-action calculation (T-stub model).",
+      "status": "planned"
+    },
+    "Joint.props.plateGrossWidth": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "net-section, gross-section",
+      "description": "Plate gross width. For net-section: Ag = width \u00d7 t. For gross-section: An = Ag - \u03a3(d_h \u00d7 t) \u00d7 U (shear lag factor).",
+      "status": "planned"
+    },
+    "Joint.props.shearLagFactor": {
+      "type": "number (dimensionless)",
+      "constraint": "0 < U \u2264 1.0",
+      "applies_to": "net-section (AISC \u00a7D2-2)",
+      "description": "Shear lag factor U from AISC Table D3.1 Case 2 (default 0.85 for flat plates with bolted connection at end). Depends on connection geometry.",
+      "status": "planned"
+    },
+    "Joint.props.environment": {
+      "type": "enum",
+      "values": [
+        "indoor-dry",
+        "outdoor-urban",
+        "outdoor-rural",
+        "marine-atmospheric",
+        "marine-submerged",
+        "chemical"
+      ],
+      "applies_to": "corrosion.galvanic, fatigue",
+      "description": "Service environment. Affects corrosion loss rate and atmospheric fatigue category per AISC Appendix 3.",
+      "status": "planned"
+    },
+    "Joint.props.fatigueCategory": {
+      "type": "enum",
+      "values": [
+        "A",
+        "B",
+        "B'",
+        "C",
+        "C'",
+        "D",
+        "E",
+        "E'"
+      ],
+      "applies_to": "fatigue",
+      "description": "AISC fatigue category for the detail. Determines the S-N curve (allowable stress range vs cycles). Per AISC Appendix 3 Table A-3.1.",
+      "status": "planned"
+    },
+    "Joint.props.fatigueCycles": {
+      "type": "number",
+      "constraint": "> 0",
+      "applies_to": "fatigue",
+      "description": "Design number of stress-range cycles (e.g. 2,000,000 for bridges, 500,000 to 2,000,000 for cranes).",
+      "status": "planned"
+    },
+    "Joint.props.fatigueStressRange": {
+      "type": "stress",
+      "si_unit": "Pa",
+      "applies_to": "fatigue",
+      "description": "Effective stress range (\u0394F). For tension-only or reversal, may need separate ranges. The fatigue check is \u0394F \u2264 FSR\u00b7(allowable range at N cycles).",
+      "status": "planned"
+    },
+    "Bolt.props.grade": {
+      "type": "enum",
+      "values": [
+        "astm-a307",
+        "astm-a325",
+        "astm-a490",
+        "astm-f1852",
+        "astm-f2280",
+        "iso-3506-a2-70",
+        "iso-3506-a2-80"
+      ],
+      "applies_to": "bolt-shear (existing), bolt-tension (planned)",
+      "description": "Bolt material grade. Currently derived from the Bolt.material; the grade enum is implicit. A separate field is planned for clarity.",
+      "status": "derived (existing)"
+    },
+    "Bolt.geometry.diameter": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "every bolt-using solver",
+      "description": "Nominal bolt diameter.",
+      "status": "existing"
+    },
+    "Bolt.geometry.stressArea": {
+      "type": "area",
+      "si_unit": "m^2",
+      "applies_to": "bolt-tension (planned)",
+      "description": "Tensile stress area of the bolt (smaller than the nominal shank area; accounts for threads). Defaults to the value from the Bolt's grade table if not provided.",
+      "status": "planned"
+    },
+    "Bolt.geometry.length": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "bolt mass, BOM",
+      "description": "Bolt length (grip + head + nut + washer stack).",
+      "status": "existing"
+    },
+    "Bolt.props.qty": {
+      "type": "integer",
+      "applies_to": "every limit state",
+      "description": "Number of bolts at this position. Demand is divided by qty for per-bolt checks. Mass/cost solvers use qty directly.",
+      "status": "existing (irregular; sometimes implied by edge count)"
+    },
+    "Plate.geometry.thickness": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "bearing, tear-out, net-section, block-shear",
+      "description": "Plate thickness.",
+      "status": "existing"
+    },
+    "Plate.geometry.length": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "block-shear, mass",
+      "description": "Plate length (parallel to load). For block-shear rupture path geometry.",
+      "status": "existing"
+    },
+    "Plate.geometry.width": {
+      "type": "length",
+      "si_unit": "m",
+      "applies_to": "block-shear, net-section",
+      "description": "Plate width (perpendicular to load). For net-section rupture: An = (width \u2212 \u03a3d_h) \u00d7 t \u00d7 U.",
+      "status": "existing"
+    },
+    "Plate.material.ultimatePa": {
+      "type": "stress",
+      "si_unit": "Pa",
+      "applies_to": "every plate-using limit state",
+      "description": "Plate ultimate tensile strength Fu (used in J3-6a, J3-6c, \u00a7D2, etc.).",
+      "status": "existing (via material library)"
+    },
+    "Plate.material.yieldPa": {
+      "type": "stress",
+      "si_unit": "Pa",
+      "applies_to": "gross-section yielding, prying",
+      "description": "Plate yield strength Fy (used in \u00a7D2-1 gross-section yielding, prying T-stub model).",
+      "status": "existing (via material library)"
+    },
+    "LoadCase.loads[].target": {
+      "type": "node-id",
+      "applies_to": "every limit state",
+      "description": "The node the load is applied to (typically a Joint id).",
+      "status": "existing"
+    },
+    "LoadCase.loads[].shear": {
+      "type": "force",
+      "si_unit": "N",
+      "applies_to": "shear, bearing, tear-out, block-shear",
+      "description": "Factored shear load on the joint.",
+      "status": "existing"
+    },
+    "LoadCase.loads[].tension": {
+      "type": "force",
+      "si_unit": "N",
+      "applies_to": "tension, combined, prying",
+      "description": "Factured tension load on the joint.",
+      "status": "existing"
+    },
+    "LoadCase.loads[].axial": {
+      "type": "force",
+      "si_unit": "N",
+      "applies_to": "tension, combined, prying (alias)",
+      "description": "Alias for tension. Treated as tension by the verdict guard when present.",
+      "status": "existing (alias)"
+    },
+    "LoadCase.loads[].moment": {
+      "type": "moment",
+      "si_unit": "N\u00b7m",
+      "applies_to": "bolt-group-distribution",
+      "description": "Factored moment on the joint. For in-plane shear + torsion, the moment drives the elastic bolt distribution.",
+      "status": "existing"
+    }
+  },
+  "applicability_rules": {
+    "bearing": [
+      "bolt-shear",
+      "bolt-bearing",
+      "bolt-tearout",
+      "bolt-net-section",
+      "bolt-gross-section"
+    ],
+    "slip-critical": [
+      "bolt-shear",
+      "bolt-bearing",
+      "bolt-tearout",
+      "bolt-slip"
+    ],
+    "friction-grip": [
+      "bolt-shear",
+      "bolt-bearing",
+      "bolt-tearout",
+      "bolt-slip"
+    ],
+    "preloaded-tension": [
+      "bolt-tension",
+      "prying"
+    ],
+    "tension-control": [
+      "bolt-tension",
+      "bolt-shear",
+      "combined"
+    ]
+  },
+  "validation_error_codes": {
+    "IRR_MISSING": "Required field is absent; solver returns notComputed.",
+    "IRR_OUT_OF_RANGE": "Value is below or above the allowed range.",
+    "IRR_GEOMETRY": "Two fields together violate a geometric constraint (e.g. edgeDistance <= holeDiameter/2).",
+    "IRR_UNIT": "Unit string is unrecognized or conflicts with the field's dimension.",
+    "IRR_TYPE": "Value is the wrong type (e.g. string where number expected)."
+  },
+  "migration": {
+    "from_versions": {
+      "v0": "All pre-tearout designs. Joint.props.edgeDistance, Joint.props.holeDiameter, and Joint.props.kind are absent. Joint defaults to kind=bearing. Tear-out solver returns notComputed; verdict guard reports joint INCOMPLETE."
+    },
+    "to_v1": "Add Joint.props.edgeDistance, Joint.props.holeDiameter, and (optionally) Joint.props.kind = 'bearing'. Existing fields unchanged. No automatic migration is attempted; absent fields stay absent."
+  }
+}

@@ -14,6 +14,7 @@ import { hasPendingKernels, settleKernels, KERNEL_PENDING } from "./cad/kernel-q
 import { listSolvers } from "./physics/registry.js";
 import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/bolted-joint.js";
+import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
 import "./physics/solvers/structural-members.js";
 import "./physics/solvers/frame-structure.js";
