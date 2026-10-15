@@ -83,6 +83,14 @@ describe('AssemblyViewer', () => {
     expect(screen.queryByTestId('studio-preview-badge')).toBeNull();
   });
 
+  it('labels the drawn body as the analysed solid when the surface is cad.body', () => {
+    const cad = { ...assembly, surface: { ...assembly.surface, source: 'cad.body' as const } };
+    render(<AssemblyViewer assembly={cad} />);
+    const badge = screen.getByTestId('studio-preview-badge').textContent || '';
+    expect(badge).toMatch(/analysed body \(cad\.body solid\)/);
+    expect(badge).not.toMatch(/styling preview/);
+  });
+
   it('stays view-only when asked, and still mounts the canvas', () => {
     render(<AssemblyViewer assembly={assembly} viewOnly />);
     expect(screen.queryByTestId('explode')).toBeNull();

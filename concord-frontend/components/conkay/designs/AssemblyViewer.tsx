@@ -37,7 +37,7 @@ export interface VehicleAssembly {
     relationships?: { kind: string; target: string; note?: string }[];
   })[];
   checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[] }[];
-  surface: { mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
+  surface: { source?: 'cad.body' | 'styling'; mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
   wheel: { tire: AssemblyMesh; rim: AssemblyMesh; disc: AssemblyMesh; caliper: AssemblyMesh; spec?: { spokes?: number } };
   detail?: { lamp?: AssemblyMesh; grille?: AssemblyMesh };
 }
@@ -325,7 +325,9 @@ export function AssemblyViewer({ assembly, viewOnly = false }: { assembly: Vehic
               data-testid="studio-preview-badge"
               className="pointer-events-none absolute left-2 top-2 z-10 rounded-md border border-amber-300/60 bg-slate-900/80 px-2 py-1 text-[11px] font-medium text-amber-200 shadow"
             >
-              Studio · styling preview — engineering geometry is authoritative
+              {assembly.surface.source === 'cad.body'
+                ? 'Studio · analysed body (cad.body solid)'
+                : 'Studio · styling preview — engineering geometry is authoritative'}
             </div>
           )}
           <Canvas
