@@ -1,10 +1,10 @@
 # UX Polish Audit — HONEST mode
 
-Generated: 2026-10-06T01:00:31.629Z
+Generated: 2026-10-14T01:00:59.564Z
 
 Mode: **honest**
 
-Lenses scanned: 266
+Lenses scanned: 267
 
 
 > Honest mode demotes lenses that are still the generated scaffold
@@ -19,26 +19,26 @@ Lenses scanned: 266
 
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
-| raw | 1 | 0.4% | 0.2 |
+| raw | 0 | 0.0% | 0.2 |
 | functional | 3 | 1.1% | 0.6 |
-| polished | 262 | 98.5% | 1 |
+| polished | 264 | 98.9% | 1 |
 
-**Weighted UX polish score: 0.992** (1.0 = all polished)
+**Weighted UX polish score: 0.996** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 265 | 99.6% |
-| emptyState | 265 | 99.6% |
-| errorUI | 264 | 99.2% |
-| aria | 263 | 98.9% |
-| keyboardHandlers | 171 | 64.3% |
-| nativeButtons | 266 | 100.0% |
-| responsive | 263 | 98.9% |
-| animation | 266 | 100.0% |
-| toasts | 54 | 20.3% |
-| altOnImages | 266 | 100.0% |
+| loading | 267 | 100.0% |
+| emptyState | 266 | 99.6% |
+| errorUI | 266 | 99.6% |
+| aria | 266 | 99.6% |
+| keyboardHandlers | 175 | 65.5% |
+| nativeButtons | 266 | 99.6% |
+| responsive | 261 | 97.8% |
+| animation | 267 | 100.0% |
+| toasts | 65 | 24.3% |
+| altOnImages | 266 | 99.6% |
 
 ## Anti-patterns
 
@@ -51,9 +51,7 @@ _None._
 
 ## Raw-tier lenses (need work)
 
-| Lens | Pillars | Missing | Files |
-|---|---:|---|---:|
-| `strategic-adds` | 1/5 | loading, empty, error, responsive | 1 |
+_None — every lens has at least 3 of 5 structural pillars._
 
 ## Functional-tier lenses (one pillar away from polished)
 
@@ -61,9 +59,9 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 
 | Lens | Pillars | Missing | Anti-patterns |
 |---|---:|---|---:|
-| `aviation` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
-| `chat` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `world` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
+| `conkay` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
+| `government` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
+| `projects` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
 
 ## What this audit does NOT measure
 
