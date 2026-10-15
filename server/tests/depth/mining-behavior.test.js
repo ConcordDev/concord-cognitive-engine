@@ -37,8 +37,15 @@ describe("mining — pure-compute calc contracts (exact computed values)", () =>
     assert.ok(r.result.message.includes("ore samples"));
   });
 
-  it("blastDesign: default geometry → volume/tonnage/explosive and fragmentation", async () => {
-    const r = await lensRun("mining", "blastDesign", { data: {} });
+  it("blastDesign: empty data is NOT_COMPUTED (no assumed geometry)", async () => {
+    const e = await lensRun("mining", "blastDesign", { data: {} });
+    assert.equal(e.ok, true);
+    assert.equal(e.result.status, "NOT_COMPUTED");
+    assert.ok(e.result.missingInputs.includes("powderFactor"));
+  });
+
+  it("blastDesign: explicit geometry → volume/tonnage/explosive and fragmentation", async () => {
+    const r = await lensRun("mining", "blastDesign", { data: { holeDepthMeters: 10, burdenMeters: 3, spacingMeters: 3.5, rockDensityTonM3: 2.7, powderFactor: 0.4 } });
     assert.equal(r.ok, true);
     assert.equal(r.result.volumePerHole, 105);       // 3 * 3.5 * 10
     assert.equal(r.result.tonsPerHole, 283.5);       // 105 * 2.7
