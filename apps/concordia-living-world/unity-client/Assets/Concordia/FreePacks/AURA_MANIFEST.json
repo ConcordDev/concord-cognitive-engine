@@ -18,11 +18,13 @@
   "packs": {
     "Quaternius": {
       "path": "Assets/Concordia/FreePacks/Quaternius",
-      "file_count": 576,
+      "file_count": 578,
       "files_sample": [
+        "rpg_characters_-_nov_2020.zip.meta",
         "ultimate_animated_character_pack_by_quaternius.zip",
         "rpg_characters_-_nov_2020.meta",
         "Quaternius_Universal_Animation_Library_Standard.meta",
+        "ultimate_animated_character_pack_by_quaternius.zip.meta",
         "ultimate_animated_character_pack_by_quaternius.meta",
         "rpg_characters_-_nov_2020.zip",
         "Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard].meta",
@@ -57,16 +59,17 @@
         "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/Preview.jpg.meta",
         "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Cleric.obj",
         "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Warrior.mtl.meta",
-        "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Only Weapons.meta",
-        "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Wizard.obj.meta",
-        "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Warrior.obj"
+        "rpg_characters_-_nov_2020/RPG Characters - Nov 2020/OBJ/Only Weapons.meta"
       ]
     },
     "KenneyUI": {
       "path": "Assets/Concordia/FreePacks/KenneyUI",
-      "file_count": 7445,
+      "file_count": 7448,
       "files_sample": [
         "kenney_input-prompts.meta",
+        "kenney_ui-pack.zip.meta",
+        "kenney_input-prompts.zip.meta",
+        "kenney_ui-pack-adventure.zip.meta",
         "kenney_ui-pack.zip",
         "kenney_input-prompts.zip",
         "kenney_ui-pack.meta",
@@ -102,19 +105,18 @@
         "kenney_input-prompts/Flairs/Vector.meta",
         "kenney_input-prompts/Flairs/Default.meta",
         "kenney_input-prompts/Flairs/Double.meta",
-        "kenney_input-prompts/Flairs/Default/generic_arrow_1.png.meta",
-        "kenney_input-prompts/Flairs/Default/generic_arrow_0.png.meta",
-        "kenney_input-prompts/Flairs/Default/flair_small_info_outline.png.meta",
-        "kenney_input-prompts/Flairs/Default/flair_small_check.png.meta"
+        "kenney_input-prompts/Flairs/Default/generic_arrow_1.png.meta"
       ]
     },
     "GameIcons": {
       "path": "Assets/Concordia/FreePacks/GameIcons",
-      "file_count": 10808,
+      "file_count": 10810,
       "files_sample": [
         "game-icons.net_svg.meta",
         "game-icons.net_svg.zip",
         "game-icons.net_png.zip",
+        "game-icons.net_svg.zip.meta",
+        "game-icons.net_png.zip.meta",
         "game-icons.net_png.meta",
         "game-icons.net_png/icons.meta",
         "game-icons.net_png/icons/cathelineau.meta",
@@ -149,9 +151,7 @@
         "game-icons.net_png/icons/felbrigg/arrows/png/overhead.png.meta",
         "game-icons.net_png/icons/felbrigg/arrows/png/thrust.png.meta",
         "game-icons.net_png/icons/felbrigg/arrows/png/dodge.png.meta",
-        "game-icons.net_png/icons/felbrigg/arrows/png/underhand.png.meta",
-        "game-icons.net_png/icons/felbrigg/arrows/png/overhead.png",
-        "game-icons.net_png/icons/felbrigg/arrows/png/dodge.png"
+        "game-icons.net_png/icons/felbrigg/arrows/png/underhand.png.meta"
       ]
     },
     "FoozleUI": {
@@ -248,43 +248,50 @@
     },
     "ambientCG": {
       "path": "Assets/Concordia/FreePacks/ambientCG",
-      "file_count": 33,
+      "file_count": 2721,
       "files_sample": [
+        "zips.meta",
         "README.md",
+        "Logs.meta",
+        "extracted.meta",
         "README.md.meta",
         "Logs/pull.log",
+        "Logs/filelist.txt.meta",
+        "Logs/launch.out.meta",
         "Logs/launch.out",
+        "Logs/pull.log.meta",
         "Logs/launch.err",
+        "Logs/launch.err.meta",
         "Logs/filelist.txt",
-        "zips/Bricks007_1K-JPG.zip",
-        "zips/Asphalt025C_1K-JPG.zip",
-        "zips/Bricks043_1K-JPG.zip",
-        "zips/Asphalt032_1K-JPG.zip",
-        "zips/Asphalt019_1K-JPG.zip",
-        "zips/Bricks002_1K-JPG.zip",
-        "zips/Bark014_1K-JPG.zip",
-        "zips/Bricks005_1K-JPG.zip",
-        "zips/Bricks041_1K-JPG.zip",
-        "zips/Bricks044_1K-JPG.zip",
-        "zips/Asphalt030_1K-JPG.zip",
-        "zips/Asphalt020L_1K-JPG.zip",
-        "zips/Bricks037_1K-JPG.zip",
-        "zips/Asphalt026C_1K-JPG.zip",
-        "zips/Bricks039_1K-JPG.zip",
-        "zips/Asphalt033_1K-JPG.zip",
-        "zips/Asphalt029B_1K-JPG.zip",
-        "zips/Asphalt015_1K-JPG.zip",
-        "zips/Bark015_1K-JPG.zip",
-        "zips/Bamboo001C_1K-JPG.zip",
-        "zips/Asphalt010_1K-JPG.zip",
-        "zips/Asphalt023S_1K-JPG.zip",
-        "zips/Bricks042_1K-JPG.zip",
-        "zips/Asphalt027C_1K-JPG.zip",
-        "zips/Asphalt031_1K-JPG.zip",
-        "zips/Bricks040_1K-JPG.zip",
-        "zips/Asphalt024A_1K-JPG.zip"
+        "zips/Ground036_1K-JPG.zip.meta",
+        "zips/Metal048C_1K-JPG.zip",
+        "zips/Planks023A_1K-JPG.zip.meta",
+        "zips/Concrete040_1K-JPG.zip.meta",
+        "zips/Wood052_1K-JPG.zip",
+        "zips/WoodFloor007_1K-JPG.zip.meta",
+        "zips/Ground090_1K-JPG.zip.meta",
+        "zips/Metal053C_1K-JPG.zip.meta",
+        "zips/PavingStones128_1K-JPG.zip",
+        "zips/Fabric081B_1K-JPG.zip",
+        "zips/RoofingTiles001_1K-JPG.zip.meta",
+        "zips/Ground033_1K-JPG.zip",
+        "zips/Wood030_1K-JPG.zip",
+        "zips/Rock020_1K-JPG.zip",
+        "zips/PaintedPlaster009_1K-JPG.zip.meta",
+        "zips/Fabric034_1K-JPG.zip.meta",
+        "zips/Fabric082B_1K-JPG.zip.meta",
+        "zips/Tiles074_1K-JPG.zip",
+        "zips/Road015B_1K-JPG.zip.meta",
+        "zips/Tiles078_1K-JPG.zip.meta",
+        "zips/Snow003_1K-JPG.zip",
+        "zips/Concrete039_1K-JPG.zip",
+        "zips/Ground110_1K-JPG.zip",
+        "zips/Snow009C_1K-JPG.zip.meta",
+        "zips/Concrete007_1K-JPG.zip.meta",
+        "zips/Marble014_1K-JPG.zip.meta",
+        "zips/Metal036_1K-JPG.zip.meta"
       ]
     }
   },
-  "updated": "2026-09-25T11:39:26"
+  "updated": "2026-10-13T16:48:17"
 }
