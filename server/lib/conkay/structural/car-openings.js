@@ -109,9 +109,11 @@ export function openingsLayout(layout, { rearTyreMinX, rearTyreTopZ, choices = O
     const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
     g.areaM2 = r4((d(p[0], p[1]) + d(p[3], p[2])) / 2 * (d(p[1], p[2]) + d(p[0], p[3])) / 2);
   }
+  // an electric car (direct drive) has no gear lever and no clutch: those openings are not cut
+  const electric = !!layout.electric;
   const service = [
-    ...oc.firewallPassThroughs.map((h) => ({ ...h, kind: "service", cuts: `firewall-${h.side}`, shape: "circle" })),
-    { id: "gear-lever", kind: "service", cuts: "tunnel-f (top wall)", shape: "rect", ...oc.gearLeverOpening, why: "gear lever through the tunnel top" },
+    ...oc.firewallPassThroughs.filter((h) => !(electric && h.id === "clutch-pushrod")).map((h) => ({ ...h, kind: "service", cuts: `firewall-${h.side}`, shape: "circle" })),
+    ...(electric ? [] : [{ id: "gear-lever", kind: "service", cuts: "tunnel-f (top wall)", shape: "rect", ...oc.gearLeverOpening, why: "gear lever through the tunnel top" }]),
   ];
   // the firewall sheet's physical extent (between the lower cross and the scuttle, the centre post and the side posts)
   const sheetBounds = { z: [r4(c.bottomZ + 0.28), r4(c.scuttleZ[0])], y: [0.04, r4(c.sillY - 0.04)] };
@@ -147,12 +149,13 @@ export function applyServiceCutouts(layout, openings) {
   if (g && f1 >= 0) {
     const part = layout.parts.find((p) => p.id === layout.members[f1].part);
     const geo = part.geometry;
-    const zT = layout.nodes.find((n) => n.id === "T1.98").z;
+    const seatNode = layout.ids?.tunnelSeat || "T1.98";
+    const zT = layout.nodes.find((n) => n.id === seatNode).z;
     layout.nodes.push({ id: `T${g.x0}`, x: g.x0, y: 0, z: zT });
     // the top wall is left either side of the opening: two lips of (cell width - opening width) / 2
     const open = { shape: "u-channel", width: parseFloat(geo.width), height: parseFloat(geo.height), wall: parseFloat(geo.wall), lip: r4((parseFloat(geo.width) - g.width) / 2) };
     const i0 = layout.members[f1].i;
-    layout.members.splice(f1, 1, { id: "tunnel-f1", i: i0, j: `T${g.x0}`, part: part.id }, { id: "tunnel-f1-open", i: `T${g.x0}`, j: "T1.98", part: part.id, section: open, cutout: "gear-lever" });
+    layout.members.splice(f1, 1, { id: "tunnel-f1", i: i0, j: `T${g.x0}`, part: part.id }, { id: "tunnel-f1-open", i: `T${g.x0}`, j: seatNode, part: part.id, section: open, cutout: "gear-lever" });
     const f2 = layout.members.find((m) => m.id === "tunnel-f2");
     if (f2 && g.x1 >= 2.06) { f2.section = open; f2.cutout = "gear-lever"; }
     notes.push({ member: "tunnel-f1-open, tunnel-f2", from: "rect-tube (closed cell)", to: `lipped open channel over x ${g.x0}-${g.x1} (top wall cut ${mm(g.width)} mm wide, ${mm(open.lip)} mm lips left)` });
@@ -244,7 +247,7 @@ export function checkOpenings(openings, layout, scenarios) {
     const tw = 0.31;
     rows.push({ cutout: "gear-lever", x: [lever.x0, lever.x1], widthM: lever.width, tunnelCellWidthM: tw });
     if (lever.width > tw - 0.02) failures.push("gear-lever opening wider than the tunnel cell's top less its corners");
-    if (!(node("T1.98"))) failures.push("gear-lever opening: tunnel node missing");
+    if (!node(layout.ids?.tunnelSeat || "T1.98") && !layout.nodes.some((n) => /^T\d/.test(n.id))) failures.push("gear-lever opening: tunnel node missing");
   }
   return { rows, failures, warnings, margins };
 }

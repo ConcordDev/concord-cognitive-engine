@@ -17,7 +17,7 @@
 
 import { seatBoxes, umtriHPointX } from "../packaging/checks.js";
 import { seatOccupant, occupantDims, PACKAGING_REFERENCES } from "../packaging/occupant.js";
-import { aabb, separation } from "../packaging/geometry.js";
+import { aabb, separation, bounds } from "../packaging/geometry.js";
 
 const IN = 0.0254;
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -166,7 +166,7 @@ function smallestX(f, lo, hi) {
  *   fuelCellCenter  above the differential (clearance), the smallest x clearing the rear occupants.
  * Returns { rearSgRPX, rearAxleX, fuelCellCenter, method } (m), or { error }.
  */
-export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM, tyreR, rearWell = null }) {
+export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM, tyreR, rearWell = null, driveUnit = null }) {
   const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
   const J = PACKAGING_REFERENCES.saeJ1100.definitions;
   if (!seatDims || !diffDims || !tyreR) return { error: "needs the front seat dimensions, the differential dimensions and the tyre radius" };
@@ -185,10 +185,16 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   const d = diffDims;
   const dz = tyreR + (c.diffRiseM || 0);
   const diffAt = (x) => aabb({ id: "DIFFERENTIAL", min: [x - d.lengthM / 2, -d.widthM / 2, dz - d.heightM / 2], max: [x + d.lengthM / 2, d.widthM / 2, dz + d.heightM / 2] });
+  // an electric car's motor module on the pinion axis ahead of the differential (driveUnit: { axialM, heightM,
+  // widthM, belowShaftM, gapM, shaftDz }): the axle is placed so both clear the rear occupants
+  const unitAt = (x) => {
+    const u = driveUnit, front = x - d.lengthM / 2 - u.gapM, shaft = dz + (u.shaftDz || 0);
+    return aabb({ id: "DRIVE_UNIT", min: [front - u.axialM, -u.widthM / 2, shaft - u.belowShaftM], max: [front, u.widthM / 2, shaft - u.belowShaftM + u.heightM] });
+  };
   const minSepTo = (boxes, b) => Math.min(...boxes.map((o) => separation(o, b).separation));
   const axleFor = (y) => {
     const boxes = rearOccAt(rearSgRPX, y).flatMap((o) => o.boxes);
-    const ax = smallestX((x) => minSepTo(boxes, diffAt(x)) - c.diffClearanceM, rearSgRPX, rearSgRPX + 2);
+    const ax = smallestX((x) => Math.min(minSepTo(boxes, diffAt(x)), driveUnit ? minSepTo(boxes, unitAt(x)) : Infinity) - c.diffClearanceM, rearSgRPX, rearSgRPX + 2);
     return ax == null ? null : mmUp(ax);
   };
   // The rear wheel well (the CAD body's cut: radius = tyre radius + arch clearance, inner wall at
@@ -237,6 +243,7 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   }
   return {
     rearSgRPX, rearAxleX, rearSeatY, fuelCellCenter,
+    ...(driveUnit ? { driveUnitBox: bounds(unitAt(rearAxleX)) } : {}),
     inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys },
     method: [
       `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
@@ -272,6 +279,53 @@ export const GROUND_CLEARANCE_CHOICES = Object.freeze({
  * limit = { maxDeg, jointType, ... } (components/index.js governingCvJointLimit()).
  * Returns { status: "pass" | "fail", angleDeg, limitDeg, marginDeg, travelToLimitM: { droop, bump }, limit, method, notChecked }.
  */
+/**
+ * The electric car's package choices (the canonical ConKay car is an EV, 2026-10-15). With no engine the
+ * firewall is not set by an engine's length: it is derived (deriveEvFront). The motor module sits on the
+ * differential's pinion axis ahead of it (deriveRearPackage's driveUnit).
+ */
+export const EV_LAYOUT_CHOICES = Object.freeze({
+  footwellDepthM: { value: 0.3382, basis: "design choice: firewall to accelerator heel point, kept equal to the front-engine car's (ahpX 1.8 - firewall 1.4618), so the seating geometry is the same, only moved" },
+  sweepClearanceM: { value: 0.025, basis: "design choice: the front occupants' feet to the front tyres' steering sweep (over the inner lock), separating-axis gap" },
+  couplingGapM: { value: 0.02, basis: "design choice: motor module face to the differential's nose (coupling / flange adapter; the adapter is not designed)" },
+  moduleWidthM: { value: 0.424, state: "estimated", range: [0.25, 0.424], basis: "estimated: the module's width is not published; the motor core is 250 mm in diameter (Cascadia manual: 'The base motor is a 250mm diameter by 115mm length single stack motor') and the module's total height is 424 mm; the upper bound 424 mm is used (conservative for packaging)" },
+  shaftZFromDiffCentreM: { value: 0, state: "assumed", basis: "assumed: the module's shaft on the differential's centre height (the Super 8.8 pinion offset below the ring-gear centre is not in the library)" },
+  packFrontGapM: { value: 0.1, basis: "design choice: battery front face behind the firewall plane, past the tub's firewall lower cross (its rear face is ~98 mm behind the firewall)" },
+  packWidthM: { value: 0.29, basis: "design choice: pack width inside the tunnel's 310 mm cell (2 mm walls)" },
+  packBottomZ: { value: 0.145, basis: "design choice: pack bottom above the tub's box bottoms (z 0.14) and the tunnel's bottom wall" },
+  packTopZ: { value: 0.645, basis: "design choice: pack top under the tunnel's top (z 0.65)" },
+});
+
+/**
+ * Derive the electric car's firewall: the smallest accelerator heel point x at which every front
+ * occupant's feet (every checked percentile, both seats, on the seat track) are sweepClearanceM clear of
+ * the front tyres' steering sweep; the firewall is footwellDepthM ahead of it. Returns { ahpX, firewallX, method }.
+ */
+export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg }) {
+  const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
+  const J = PACKAGING_REFERENCES.saeJ1100.definitions;
+  const r = tyre.diameterM / 2, hw = tyre.widthM / 2;
+  const th = (lockDeg * Math.PI) / 180;
+  let ext = 0, latExt = 0;
+  for (let i = 0; i <= 90; i++) { const a = (th * i) / 90; ext = Math.max(ext, r * Math.cos(a) + hw * Math.sin(a)); latExt = Math.max(latExt, r * Math.sin(a) + hw * Math.cos(a)); }
+  const sweeps = [-1, 1].map((sg) => aabb({ id: `sweep${sg}`, min: [frontAxleX - ext, sg * track / 2 - latExt, 0], max: [frontAxleX + ext, sg * track / 2 + latExt, 2 * r] }));
+  const fa = (c.footAngleDeg * Math.PI) / 180;
+  const feet = (ahpX) => {
+    const prpX = ahpX - (J.BOF.valueMm / 1000) * Math.cos(fa);
+    const hx = (k) => prpX + umtriHPointX(occupantDims(k).stature, c.steeringWheelL6, c.h30);
+    const mid = hx("M50"), lo = mid - c.seatTrackTravel / 2, hi = mid + c.seatTrackTravel / 2;
+    return keys.flatMap((k) => [-1, 1].flatMap((sg) => seatOccupant(k, { id: sg < 0 ? "SEAT_1" : "SEAT_2", hPoint: { x: Math.min(Math.max(hx(k), lo), hi), y: sg * c.frontSeatY, z: c.floorZ + c.h30 }, torsoDeg: c.torsoDeg, posture: "front", heel: { x: ahpX, z: c.floorZ }, footAngleDeg: c.footAngleDeg }).boxes.filter((b) => /foot/i.test(b.id))));
+  };
+  const gap = (ahpX) => Math.min(...feet(ahpX).flatMap((f) => sweeps.map((s) => separation(f, s).separation))) - c.sweepClearanceM;
+  const ahpX = smallestX(gap, frontAxleX, frontAxleX + 2);
+  if (ahpX == null) return { error: "no heel point within 2 m of the front axle clears the steering sweep" };
+  const a = mmUp(ahpX);
+  return {
+    ahpX: a, firewallX: r4(a - c.footwellDepthM),
+    method: `ahpX = the smallest accelerator heel point (bisection, rounded up to 1 mm) at which every front occupant's foot boxes (${keys.join(", ")}, both seats, on the seat track) are ${c.sweepClearanceM} m clear of the front tyres' steering sweep (±${r4(lockDeg)}° inner lock, box ±${r4(ext)} m fore-aft, ±${r4(latExt)} m across the tyre centre); firewall = ahpX - footwellDepthM ${c.footwellDepthM} m`,
+  };
+}
+
 export function checkHalfshaftAngle({ riseM, runM, limit }) {
   if (!(runM > 0) || !Number.isFinite(riseM) || !Number.isFinite(limit?.maxDeg)) return { status: "not checked", reason: "needs riseM, runM > 0 and limit.maxDeg" };
   const rad = (d) => (d * Math.PI) / 180;

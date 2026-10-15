@@ -41,6 +41,7 @@
 // the joint offsets between members of different heights (stated).
 
 import { obb, separation } from "../packaging/geometry.js";
+import { packageScene } from "../packaging/checks.js";
 import { openingsLayout, applyServiceCutouts } from "./car-openings.js";
 import { tubJointScenarios, ADHESIVES, EN1993_CLASSIFICATION, RIVET_NOTE, JOINT_CHOICES, JOINT_MODEL_VERSION } from "./joint-stiffness.js";
 
@@ -95,10 +96,50 @@ export const TUB_DESIGN_CHOICES = Object.freeze({
  * walls: optional per-group wall overrides (rail, sill, kick, quarter, post, fwLower, scuttle, cpost,
  * tunnel, cross, bulkhead) for studies. Returns { parts, nodes, members, panels, pickups, choices }.
  */
-export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES, walls = {} }) {
-  const c = Object.fromEntries(Object.entries({ ...TUB_DESIGN_CHOICES, ...choices }).map(([k, v]) => [k, v.value]));
+/**
+ * The package landmarks the tub's fore-aft positions follow (car-tub positions are offsets from these, so
+ * the tub follows the package: the front-engine car reproduces its original layout exactly, the electric
+ * car's moves with its derived cabin and drive unit). Defaults = the front-engine package.
+ */
+export const FRONT_ENGINE_LANDMARKS = Object.freeze({ firewall: 1.4618, radiatorRear: 0.671, frontSeatRear: 3.146, rearAxle: 3.966, diffFront: 3.801, diffRear: 4.131, driveFront: null, electric: false });
+
+/**
+ * Tub fore-aft positions from the landmarks (each an offset that reproduces the front-engine tub), on the
+ * 5 mm grid the tub's design values use (design rule: a derived position is rounded to the nearest 5 mm;
+ * package.tub-fit re-checks every clearance after rounding).
+ */
+export function tubPositions(L) {
+  const r4 = (v) => Math.round(v * 200) / 200;
+  const XF = r4(L.firewall + 0.0282);
+  const heelX = r4(L.frontSeatRear + 0.054);
+  return {
+    firewallX: XF,                                  // firewall plane: 28 mm behind the package firewall
+    frontRailX0: r4(L.radiatorRear + 0.009),        // front rails start behind the radiator
+    seatCrossX: r4(XF + 0.49),                      // seat cross under the front seats' front edge
+    tunnelGapA: r4(XF + 0.57),                      // gearbox cell end (front-engine) / a tunnel node (electric)
+    tunnelGapB: r4(XF + 0.75),                      // driveshaft cell start / a tunnel node
+    heelX,                                          // heel cross behind the front seat envelopes
+    kickStartX: r4(heelX - 0.30),                   // where the sill turns inboard
+    bHoopX: r4(L.frontSeatRear + 0.154),            // B-hoop behind the front seat backs
+    roofHeaderX: r4(XF + 0.86),                     // windscreen header (A-pillar top)
+    quarterStartX: r4(L.rearAxle - 0.346),          // the kick meets the quarter box
+    quarterX0: r4(L.rearAxle - 0.386), quarterX1: r4(L.rearAxle + 0.334),
+    rearBulkheadX: r4((L.driveFront ?? L.diffFront) - 0.036), // ahead of the drive unit (electric) or the differential
+    rearCrossX: r4(L.diffRear + 0.069),             // behind the differential
+  };
+}
+
+export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES, walls = {}, landmarks = null }) {
+  const L = { ...FRONT_ENGINE_LANDMARKS, rearAxle: rearAxleX, ...(landmarks || {}) };
+  const pos = tubPositions(L);
+  // a caller that passes one of these choices explicitly keeps its value; otherwise it follows the package
+  const fromPackage = Object.fromEntries(["firewallX", "frontRailX0", "heelX", "kickStartX", "bHoopX", "rearBulkheadX", "rearCrossX"].filter((k) => !(choices && k in choices && choices !== TUB_DESIGN_CHOICES)).map((k) => [k, { ...TUB_DESIGN_CHOICES[k], value: pos[k], basis: `${TUB_DESIGN_CHOICES[k].basis} [follows the package: ${k} = ${pos[k]} m]` }]));
+  const c = Object.fromEntries(Object.entries({ ...TUB_DESIGN_CHOICES, ...fromPackage, ...(choices === TUB_DESIGN_CHOICES ? {} : choices) }).map(([k, v]) => [k, v.value]));
   const w = (id, d) => walls[id] ?? d;
   const XF = c.firewallX, FD = c.firewallDepth, YR = c.frontRailY, YS = c.sillY, YQ = c.quarterY, KX = c.kickStartX;
+  const SX = r4(XF + 0.49), GA = r4(XF + 0.57), GB = r4(XF + 0.75), Q0X = pos.quarterStartX, QX0 = pos.quarterX0, QX1 = pos.quarterX1;
+  const electric = !!L.electric;
+  const bulkheadOnKick = c.rearBulkheadX < Q0X + 0.02;
   const Z0 = c.bottomZ, ZN = c.nodeZ, [ZU0, ZU1] = c.scuttleZ, ZU = (ZU0 + ZU1) / 2;
   const sill = c.sillSection, rs = c.frontRailSection, qs = c.quarterSection;
   const sillTop = sill.bottomZ + sill.height;
@@ -118,7 +159,7 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
   };
   const along = (axis, min, max) => ({ center: min.map((v, i) => (v + max[i]) / 2), half: min.map((v, i) => (max[i] - v) / 2), axis });
   const mem = (id, i, j, part) => members.push({ id, i, j, part });
-  const sillXs = [XF, 1.98, 2.06, 2.24, KX];
+  const sillXs = [XF, SX, GA, GB, KX];
   const sillIn = YS - sill.width / 2; // sill inner face
   const qIn = YQ - qs.width / 2; // quarter box inner face
 
@@ -132,7 +173,7 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     sillXs.forEach((x) => N(`S${x}.${s}`, x, sg * YS, ZN));
     for (let k = 0; k < sillXs.length - 1; k++) mem(`sill-${s}${k + 1}`, `S${sillXs[k]}.${s}`, `S${sillXs[k + 1]}.${s}`, sl);
     // sill kick: inboard to the quarter box (heel cross node on it)
-    const k0 = [KX, sg * YS], k1 = [3.62, sg * YQ];
+    const k0 = [KX, sg * YS], k1 = [Q0X, sg * YQ];
     const kl = Math.hypot(k1[0] - k0[0], k1[1] - k0[1]);
     const yaw = (Math.atan2(k1[1] - k0[1], k1[0] - k0[0]) * 180) / Math.PI;
     // the kick starts at the sill's height (z 0.18: clear of the skin's lower corner) and reaches the quarter box's top
@@ -140,12 +181,20 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     const kick = tube(`TUB_KICK_${s}`, `Sill kick ${s}`, { width: qs.width, height: kz[1] - kz[0], wall: w("kick", c.kickWall) }, { center: [(k0[0] + k1[0]) / 2, (k0[1] + k1[1]) / 2, (kz[0] + kz[1]) / 2], half: [kl / 2, qs.width / 2, (kz[1] - kz[0]) / 2], yawDeg: yaw }, kl);
     const tH = (c.heelX - k0[0]) / (k1[0] - k0[0]);
     N(`K.${s}`, c.heelX, k0[1] + (k1[1] - k0[1]) * tH, ZN);
-    N(`Q0.${s}`, 3.62, sg * YQ, ZN);
+    N(`Q0.${s}`, Q0X, sg * YQ, ZN);
     mem(`kick-${s}1`, `S${KX}.${s}`, `K.${s}`, kick); mem(`kick-${s}2`, `K.${s}`, `Q0.${s}`, kick);
     // rear quarter box: carries the rear pickup
-    const q = tube(`TUB_QTR_${s}`, `Rear quarter box ${s}`, { ...qs, wall: w("quarter", qs.wall) }, along("x", [3.58, sg * YQ - qs.width / 2, Z0], [4.30, sg * YQ + qs.width / 2, Z0 + qs.height]), 4.30 - 3.58);
-    N(`QB.${s}`, c.rearBulkheadX, sg * YQ, ZN); N(`QA.${s}`, rearAxleX, sg * YQ, ZN); N(`QE.${s}`, c.rearCrossX, sg * YQ, ZN);
-    mem(`qtr-${s}1`, `Q0.${s}`, `QB.${s}`, q); mem(`qtr-${s}2`, `QB.${s}`, `QA.${s}`, q); mem(`qtr-${s}3`, `QA.${s}`, `QE.${s}`, q);
+    const q = tube(`TUB_QTR_${s}`, `Rear quarter box ${s}`, { ...qs, wall: w("quarter", qs.wall) }, along("x", [QX0, sg * YQ - qs.width / 2, Z0], [QX1, sg * YQ + qs.width / 2, Z0 + qs.height]), QX1 - QX0);
+    N(`QA.${s}`, rearAxleX, sg * YQ, ZN); N(`QE.${s}`, c.rearCrossX, sg * YQ, ZN);
+    if (!bulkheadOnKick) {
+      N(`QB.${s}`, c.rearBulkheadX, sg * YQ, ZN);
+      mem(`qtr-${s}1`, `Q0.${s}`, `QB.${s}`, q); mem(`qtr-${s}2`, `QB.${s}`, `QA.${s}`, q); mem(`qtr-${s}3`, `QA.${s}`, `QE.${s}`, q);
+    } else {
+      // electric: the rear bulkhead sits ahead of the drive unit, ahead of the quarter boxes: on the kicks
+      const tB = (c.rearBulkheadX - k0[0]) / (k1[0] - k0[0]);
+      N(`QB.${s}`, c.rearBulkheadX, k0[1] + (k1[1] - k0[1]) * tB, ZN);
+      mem(`qtr-${s}1`, `Q0.${s}`, `QA.${s}`, q); mem(`qtr-${s}2`, `QA.${s}`, `QE.${s}`, q);
+    }
     // firewall posts (sill top to scuttle), 80 (x) × 80 (y)
     const post = tube(`TUB_FW_POST_${s}`, `Firewall post ${s}`, { width: 0.08, height: 0.08, wall: w("post", c.firewallPostWall) }, along("z", [XF - 0.04, sg * YS - 0.04, sillTop], [XF + 0.04, sg * YS + 0.04, ZU0]), ZU0 - sillTop);
     N(`FWU.${s}`, XF, sg * YS, ZU);
@@ -164,23 +213,38 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
   const cpost = tube("TUB_FW_CPOST", "Firewall centre post", { width: 0.08, height: 0.08, wall: w("cpost", 0.003) }, along("z", [XF - 0.04, -0.04, Z0 + 0.28], [XF + 0.04, 0.04, ZU0]), ZU0 - Z0 - 0.28);
   N("FWT", XF, 0, 0.395);
   mem("fw-cpost-1", "FWC", "FWT", cpost); mem("fw-cpost-2", "FWT", "FWUC", cpost);
-  // tunnel, front cell around the gearbox: firewall → 2.06, 310 wide, z bottom → 0.65
-  const tf = tube("TUB_TUNNEL_F", "Tunnel, gearbox cell", { width: 0.31, height: 0.65 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [XF + FD / 2, -0.155, Z0], [2.06, 0.155, 0.65]), 2.06 - XF - FD / 2);
-  N("T1.98", 1.98, 0, 0.395); N("T2.06", 2.06, 0, 0.395);
-  mem("tunnel-f1", "FWT", "T1.98", tf); mem("tunnel-f2", "T1.98", "T2.06", tf);
-  // tunnel, rear cell for the driveshaft: 2.24 → heel cross, 150 wide, z bottom → 0.56
-  const tr = tube("TUB_TUNNEL_R", "Tunnel, driveshaft cell", { width: 0.15, height: 0.56 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [2.24, -0.075, Z0], [c.heelX - 0.04, 0.075, 0.56]), c.heelX - 0.04 - 2.24);
-  N("R2.24", 2.24, 0, 0.35); N(`R${KX}`, KX, 0, 0.35); N("RH", c.heelX, 0, 0.35);
-  mem("tunnel-r1", "R2.24", `R${KX}`, tr); mem("tunnel-r2", `R${KX}`, "RH", tr);
+  // tunnel. Front engine: a gearbox cell (firewall → GA, 310 wide, bottom → 0.65) and a driveshaft cell
+  // (GB → heel cross, 150 wide, bottom → 0.56); the gearbox tail sits between the seat cushions, so the cells
+  // cannot be one box. Electric: no gearbox, no driveshaft: one 310 mm cell from the firewall to the heel
+  // cross, carrying the traction battery.
+  const ZT = 0.395, ZR = 0.35;
+  if (!electric) {
+    const tf = tube("TUB_TUNNEL_F", "Tunnel, gearbox cell", { width: 0.31, height: 0.65 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [XF + FD / 2, -0.155, Z0], [GA, 0.155, 0.65]), GA - XF - FD / 2);
+    N(`T${SX}`, SX, 0, ZT); N(`T${GA}`, GA, 0, ZT);
+    mem("tunnel-f1", "FWT", `T${SX}`, tf); mem("tunnel-f2", `T${SX}`, `T${GA}`, tf);
+    const tr = tube("TUB_TUNNEL_R", "Tunnel, driveshaft cell", { width: 0.15, height: 0.56 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [GB, -0.075, Z0], [c.heelX - 0.04, 0.075, 0.56]), c.heelX - 0.04 - GB);
+    N(`R${GB}`, GB, 0, ZR); N(`R${KX}`, KX, 0, ZR); N("RH", c.heelX, 0, ZR);
+    mem("tunnel-r1", `R${GB}`, `R${KX}`, tr); mem("tunnel-r2", `R${KX}`, "RH", tr);
+  } else {
+    // electric: the same two cells, joined (no gearbox tail between them): a 310 mm front cell to GA (ahead of
+    // the front seat cushions) and a 150 mm cell between the cushions to the heel cross; both carry the battery
+    const tf = tube("TUB_TUNNEL_F", "Tunnel, front battery cell", { width: 0.31, height: 0.65 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [XF + FD / 2, -0.155, Z0], [GA, 0.155, 0.65]), GA - XF - FD / 2);
+    N(`T${SX}`, SX, 0, ZT); N(`T${GA}`, GA, 0, ZT);
+    mem("tunnel-f1", "FWT", `T${SX}`, tf); mem("tunnel-f2", `T${SX}`, `T${GA}`, tf);
+    const tr = tube("TUB_TUNNEL_R", "Tunnel, rear battery cell", { width: 0.15, height: 0.56 - Z0, wall: w("tunnel", c.tunnelWall) }, along("x", [GA, -0.075, Z0], [c.heelX - 0.04, 0.075, 0.56]), c.heelX - 0.04 - GA);
+    N(`R${GB}`, GB, 0, ZR); N(`R${KX}`, KX, 0, ZR); N("RH", c.heelX, 0, ZR);
+    mem("tunnel-f3", `T${GA}`, `R${GB}`, tr); mem("tunnel-r1", `R${GB}`, `R${KX}`, tr); mem("tunnel-r2", `R${KX}`, "RH", tr);
+  }
   // seat cross (x 1.98, under the seats' front edge, behind the feet), 80 × 110
-  const seat = tube("TUB_SEAT_CROSS", "Seat cross", { width: 0.08, height: 0.11, wall: w("cross", 0.003) }, along("y", [1.94, -sillIn, Z0], [2.02, sillIn, Z0 + 0.11]), 2 * sillIn - 0.31);
-  mem("seat-cross-L", "S1.98.L", "T1.98", seat); mem("seat-cross-R", "S1.98.R", "T1.98", seat);
+  const seat = tube("TUB_SEAT_CROSS", "Seat cross", { width: 0.08, height: 0.11, wall: w("cross", 0.003) }, along("y", [SX - 0.04, -sillIn, Z0], [SX + 0.04, sillIn, Z0 + 0.11]), 2 * sillIn - 0.31);
+  mem("seat-cross-L", `S${SX}.L`, `T${SX}`, seat); mem("seat-cross-R", `S${SX}.R`, `T${SX}`, seat);
   // heel cross (behind the front seats, under the rear thighs), 80 × 120
-  const heelHalf = (YS + (YQ - YS) * ((c.heelX - KX) / (3.62 - KX))) - 0.04;
+  const heelHalf = (YS + (YQ - YS) * ((c.heelX - KX) / (Q0X - KX))) - 0.04;
   const heel = tube("TUB_HEEL_CROSS", "Heel cross", { width: 0.08, height: 0.12, wall: w("cross", 0.003) }, along("y", [c.heelX - 0.04, -heelHalf, Z0], [c.heelX + 0.04, heelHalf, Z0 + 0.12]), 2 * heelHalf);
   mem("heel-L", "K.L", "RH", heel); mem("heel-R", "K.R", "RH", heel);
   // rear bulkhead (quarter to quarter, ahead of the differential), 40 (x) deep
-  const rb = tube("TUB_REAR_BULKHEAD", "Rear bulkhead", { width: 0.04, height: 0.48 - Z0, wall: w("bulkhead", 0.0025) }, along("y", [c.rearBulkheadX - 0.02, -qIn, Z0], [c.rearBulkheadX + 0.02, qIn, 0.48]), 2 * qIn);
+  const rbHalf = bulkheadOnKick ? (YS + (YQ - YS) * ((c.rearBulkheadX - KX) / (Q0X - KX))) - qs.width / 2 : qIn;
+  const rb = tube("TUB_REAR_BULKHEAD", "Rear bulkhead", { width: 0.04, height: 0.48 - Z0, wall: w("bulkhead", 0.0025) }, along("y", [c.rearBulkheadX - 0.02, -rbHalf, Z0], [c.rearBulkheadX + 0.02, rbHalf, 0.48]), 2 * rbHalf);
   N("QBC", c.rearBulkheadX, 0, ZN);
   mem("rear-bulkhead-L", "QB.L", "QBC", rb); mem("rear-bulkhead-R", "QB.R", "QBC", rb);
   // rear end cross (behind the differential), 80 × 200
@@ -191,8 +255,8 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
   // pillar ring (roof): A-pillars, roof rails, B-hoop posts and bow, windscreen header
   if (c.roofRing) {
     const rsn = c.roofSection, YRR = c.roofRailY, XB = c.bHoopX;
-    const A0 = [XF, c.aPillarBaseY, ZU], R0 = [2.35, YRR, 1.06], R1 = [XB, YRR, 1.15];
-    const yAtKick = (x) => YS + (YQ - YS) * ((x - KX) / (3.62 - KX));
+    const A0 = [XF, c.aPillarBaseY, ZU], R0 = [pos.roofHeaderX, YRR, 1.06], R1 = [XB, YRR, 1.15];
+    const yAtKick = (x) => YS + (YQ - YS) * ((x - KX) / (Q0X - KX));
     const B0 = [XB, yAtKick(XB), ZN];
     const seg = (id, name, a, b, sg, sec = rsn) => {
       const pa = [a[0], sg * a[1], a[2]], pb = [b[0], sg * b[1], b[2]];
@@ -234,19 +298,31 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     }
   }
 
+  // electric: the rear bulkhead's nodes lie on the kicks: split the kick member that spans them
+  if (bulkheadOnKick) {
+    const xOf = (id) => nodes.find((n) => n.id === id)?.x;
+    for (const s of ["L", "R"]) {
+      const i = members.findIndex((mm) => mm.id.startsWith(`kick-${s}`) && xOf(mm.i) < c.rearBulkheadX && xOf(mm.j) > c.rearBulkheadX);
+      if (i < 0) throw new Error(`tub: no kick member spans the rear bulkhead at x ${c.rearBulkheadX} (${s})`);
+      const mm = members[i];
+      const n = members.filter((x) => x.id.startsWith(`kick-${s}`)).length;
+      members.splice(i, 1, { ...mm, j: `QB.${s}` }, { id: `kick-${s}${n + 1}`, i: `QB.${s}`, j: mm.j, part: mm.part });
+    }
+  }
+
   // sheets in shear: floor (each side), rear floor, firewall
   const t = c.sheet;
   const fz = [c.floorZ, c.floorZ + t];
   for (const [s, sg] of [["L", 1], ["R", -1]]) {
     const fl = plate(`TUB_FLOOR_${s}`, `Floor sheet ${s}`, { length: c.heelX - XF, width: sillIn - 0.075, thickness: t }, along("x", [XF, sg > 0 ? 0.075 : -sillIn, fz[0]], [c.heelX, sg > 0 ? sillIn : -0.075, fz[1]]));
-    const bays = [[`S${XF}.${s}`, `S1.98.${s}`, "T1.98", "FWT"], [`S1.98.${s}`, `S2.06.${s}`, "T2.06", "T1.98"], [`S2.06.${s}`, `S2.24.${s}`, "R2.24", "T2.06"], [`S2.24.${s}`, `S${KX}.${s}`, `R${KX}`, "R2.24"], [`S${KX}.${s}`, `K.${s}`, "RH", `R${KX}`]];
+    const bays = [[`S${XF}.${s}`, `S${SX}.${s}`, `T${SX}`, "FWT"], [`S${SX}.${s}`, `S${GA}.${s}`, `T${GA}`, `T${SX}`], [`S${GA}.${s}`, `S${GB}.${s}`, `R${GB}`, `T${GA}`], [`S${GB}.${s}`, `S${KX}.${s}`, `R${KX}`, `R${GB}`], [`S${KX}.${s}`, `K.${s}`, "RH", `R${KX}`]];
     bays.forEach((b, k) => panels.push({ id: `floor-${s}${k + 1}`, nodes: b, part: fl }));
     const rf = plate(`TUB_REAR_FLOOR_${s}`, `Rear floor sheet ${s}`, { length: c.rearBulkheadX - c.heelX, width: qIn, thickness: t }, along("x", [c.heelX, sg > 0 ? 0 : -qIn, fz[0]], [c.rearBulkheadX, sg > 0 ? qIn : 0, fz[1]]));
     panels.push({ id: `rear-floor-${s}`, nodes: [`K.${s}`, `QB.${s}`, "QBC", "RH"], part: rf });
     const fw = plate(`TUB_FIREWALL_${s}`, `Firewall sheet ${s}`, { length: YS, width: ZU - ZN, thickness: t }, along("y", [XF + FD / 2, sg > 0 ? 0 : -YS, Z0 + 0.28], [XF + FD / 2 + t, sg > 0 ? YS : 0, ZU0]));
     panels.push({ id: `firewall-${s}`, nodes: [`S${XF}.${s}`, "FWC", "FWUC", `FWU.${s}`], part: fw });
   }
-  return { parts, nodes, members, panels, pickups: { front: ["FA.L", "FA.R"], rear: ["QA.L", "QA.R"], frontArm: 2 * YR, rearArm: 2 * YQ }, choices: c };
+  return { parts, nodes, members, panels, pickups: { front: ["FA.L", "FA.R"], rear: ["QA.L", "QA.R"], frontArm: 2 * YR, rearArm: 2 * YQ }, choices: c, landmarks: L, positions: pos, ids: { tunnelSeat: `T${SX}`, tunnelGapA: `T${GA}`, tunnelGapB: `R${GB}` }, electric, bulkheadOnKick };
 }
 
 /** The packaging box of a tub part as an oriented box (its outer envelope). */
@@ -343,13 +419,43 @@ export const TUB_REPLACES = Object.freeze(["RAIL_L", "RAIL_R", "TUB"]);
  * { ir, layout, change }. The IR keeps every other node; the tub's parts go in CHASSIS with
  * positions (so mass.cg places them) and CHASSIS carries the frame model (structure.frame).
  */
+/**
+ * The package landmarks of a car IR (car-from-library + car-layout): the firewall, the radiator's rear face,
+ * the rear of the front seat envelopes (every checked percentile, SgRP), the differential and (electric)
+ * the drive unit's front face. Returns FRONT_ENGINE_LANDMARKS' shape, or null when the IR has no package.
+ */
+export function tubLandmarks(ir) {
+  const veh = ir.nodes.find((n) => n.id === "VEH");
+  const pkg = veh?.props?.vehicle?.packaging;
+  if (!pkg) return null;
+  const pos = (id) => { const n = ir.nodes.find((x) => x.id === id); return n?.position ? { x: num(n.position.x), y: num(n.position.y), z: num(n.position.z) } : null; };
+  const comp = (id) => { const c = pkg.components.find((x) => x.node === id); const p = pos(id); return c && p ? { min: p.x - c.half[0], max: p.x + c.half[0] } : null; };
+  const centers = {};
+  for (const n of [...pkg.components.map((c) => c.node), ...pkg.tyres.map((t) => t.node)]) { const p = pos(n); if (p) centers[n] = p; }
+  const scene = packageScene({ pkg, centers });
+  let frontSeatRear = -Infinity;
+  for (const occ of Object.values(scene.scenarios)) for (const o of occ) if (o.seat === "SEAT_1" || o.seat === "SEAT_2") for (const b of o.seatBoxes || []) frontSeatRear = Math.max(frontSeatRear, ...[-1, 1].map((sg) => b.center[0] + sg * Math.abs(b.half[0] * (b.axes?.[0]?.[0] ?? 1)) + sg * Math.abs(b.half[2] * (b.axes?.[2]?.[0] ?? 0))));
+  const diff = comp("DIFFERENTIAL");
+  const electric = veh.props.vehicle.fuelType === "electric";
+  return {
+    firewall: pkg.firewallX,
+    radiatorRear: comp("RADIATOR")?.max ?? FRONT_ENGINE_LANDMARKS.radiatorRear,
+    frontSeatRear: Number.isFinite(frontSeatRear) ? r4(frontSeatRear) : FRONT_ENGINE_LANDMARKS.frontSeatRear,
+    rearAxle: num(veh.props.vehicle.rearAxleX),
+    diffFront: diff ? r4(diff.min) : FRONT_ENGINE_LANDMARKS.diffFront,
+    diffRear: diff ? r4(diff.max) : FRONT_ENGINE_LANDMARKS.diffRear,
+    driveFront: electric && comp("ENGINE") ? r4(comp("ENGINE").min) : null,
+    electric,
+  };
+}
+
 export function withStructuralTub(ir, { choices, walls, openings: withOpenings = true, openingChoices } = {}) {
   const out = JSON.parse(JSON.stringify(ir));
   const veh = out.nodes.find((n) => n.id === "VEH");
   const chassis = out.nodes.find((n) => n.id === "CHASSIS");
   if (!veh || !chassis) throw new Error("car IR needs VEH and CHASSIS");
   const fx = num(veh.props.vehicle.frontAxleX), rx = num(veh.props.vehicle.rearAxleX);
-  const layout = tubLayout({ frontAxleX: fx, rearAxleX: rx, choices, walls });
+  const layout = tubLayout({ frontAxleX: fx, rearAxleX: rx, choices, walls, landmarks: tubLandmarks(out) });
   // the openings (car-openings.js): door / glazing apertures laid out from the tub, service cut-outs cut into it
   let openings = null, cutoutNotes = [];
   if (withOpenings) {
@@ -395,7 +501,7 @@ export function withStructuralTub(ir, { choices, walls, openings: withOpenings =
       stiffness: [{
         id: "torsional", case: "twist", node: FR, dof: "z", force: lc.twistForceN.value, arm: frontArm, kind: "torsional", jointRange: true,
         target: { value: TORSION_TARGET.value, label: TORSION_TARGET.label, basis: TORSION_TARGET.basis, sources: TORSION_TARGET.sources },
-        profile: [["front-axle", "FA"], ["firewall-rails", "FWR"], ["firewall-sills", `S${layout.choices.firewallX}`], ["sill-2.24", "S2.24"], ["kick-start", `S${layout.choices.kickStartX}`], ["heel", "K"], ["quarter-start", "Q0"], ["rear-bulkhead", "QB"], ["rear-axle", "QA"]]
+        profile: [["front-axle", "FA"], ["firewall-rails", "FWR"], ["firewall-sills", `S${layout.choices.firewallX}`], ["sill-2.24", `S${layout.positions.tunnelGapB}`], ["kick-start", `S${layout.choices.kickStartX}`], ["heel", "K"], ["quarter-start", "Q0"], ["rear-bulkhead", "QB"], ["rear-axle", "QA"]]
           .map(([sid, n]) => ({ id: sid, nodes: [`${n}.L`, `${n}.R`] })),
       }],
       assumptions: [

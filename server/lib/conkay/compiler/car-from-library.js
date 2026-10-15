@@ -21,9 +21,10 @@
 import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent, governingCvJointLimit } from "../components/index.js";
-import { CELL_P45B, PACK_DESIGN_CHOICES, packElectrical, NOT_INCLUDED as EV_PACK_NOT_INCLUDED } from "../powertrain/ev-pack.js";
+import { CELL_P45B, PACK_DESIGN_CHOICES, packElectrical, placePack, NOT_INCLUDED as EV_PACK_NOT_INCLUDED } from "../powertrain/ev-pack.js";
+import { tubLandmarks, tubPositions } from "../structural/car-tub.js";
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
-import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES } from "./car-layout.js";
+import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, deriveEvFront, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES, EV_LAYOUT_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
@@ -303,6 +304,17 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
         battery: { series: S, parallel: Pn, cell: CELL_P45B, choices: PACK_DESIGN_CHOICES, electrical: { ...pe, lossAtW: undefined } },
       },
     });
+    // the enclosure: a 6061 sheet box around the cell block; mass computed from its area (the layout
+    // re-derives the area from where the block is placed)
+    const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
+    const blk = placePack(pe.cells, [{ id: "TUNNEL", center: [0.8, 0, 0.4], size: [1.6, evC.packWidthM, evC.packTopZ - evC.packBottomZ] }]).blocks[0];
+    const [ba, bw, bh] = blk ? blk.size : [0, 0, 0];
+    add("ELECTRICAL", {
+      id: "BATTERY_ENCLOSURE", kind: "Part", name: "Traction battery enclosure (2 mm 6061 sheet box)", material: "aluminum-6061-t6",
+      geometry: { shape: "shell", area: `${r6(2 * (ba * bw + ba * bh + bw * bh))} m2`, thickness: `${PACK_DESIGN_CHOICES.enclosureSheetM.value} m` },
+      position: at(2.4, 0.4),
+      props: { role: "battery enclosure", basis: PACK_DESIGN_CHOICES.enclosureSheetM.basis },
+    });
   }
 
   // Designed geometry: mass computed from geometry × density.
@@ -448,6 +460,63 @@ function diffSensitivity({ choices, targetM, body, tyreR, diffEntry, track, hold
   };
 }
 
+/**
+ * The electric car's own placements, added to a layoutCar() result: the firewall (derived), the motor
+ * module (the ENGINE node, so every solver that reads the drive source finds it) on the differential's
+ * pinion axis, and the traction battery block in the tunnel volume behind the firewall cross
+ * (powertrain/ev-pack.js placePack), plus its computed enclosure.
+ */
+function placeElectric({ lay, byId, evFront, evDrive, motor }) {
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
+  const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
+  if (evFront && !evFront.error) lay.firewallX = evFront.firewallX;
+  if (evDrive && motor) {
+    const c = evDrive.min.map((m, i) => (m + evDrive.max[i]) / 2), half = evDrive.min.map((m, i) => (evDrive.max[i] - m) / 2);
+    lay.positions.ENGINE = { x: r4(c[0]), y: r4(c[1]), z: r4(c[2]) };
+    lay.components.push({ id: "ENGINE", node: "ENGINE", component: motor.id, half: half.map(r4), pitchDeg: 0,
+      dims: { axialLengthM: motor.dimensions.axialLengthM, heightM: motor.dimensions.heightM, widthM: evC.moduleWidthM, state: "sourced (length, height); estimated (width)", source: motor.dimensions.source?.url, widthMethod: EV_LAYOUT_CHOICES.moduleWidthM.basis },
+      placement: "on the differential's pinion axis, couplingGapM ahead of its nose (shaft height assumed at the differential centre); 170 mm sump below the shaft (data sheet)" });
+  }
+}
+
+/**
+ * The traction battery in the tub's tunnel, once the package is laid out: the 310 mm front cell (firewall
+ * cross to the front seat cushions) first, then the 150 mm cell between the cushions (car-tub.js tunnel
+ * positions from the package landmarks). Blocks are packaging components (checked against the occupants
+ * and seats); the enclosure's computed area covers every block. Returns the placement.
+ */
+function placeBattery({ ir, byId, components }) {
+  const cells = byId.get("BATTERY_CELLS");
+  const L = tubLandmarks(ir);
+  if (!cells || !L) return null;
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
+  const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
+  const t = tubPositions(L);
+  const wall = 0.002, inset = 0.005; // tunnel wall, and the gap inside it
+  const fx0 = L.firewall + evC.packFrontGapM, fx1 = t.tunnelGapA - inset;
+  const rx0 = t.tunnelGapA + inset, rx1 = t.heelX - 0.04 - inset;
+  const vols = [
+    { id: "TUNNEL_FRONT", center: [(fx0 + fx1) / 2, 0, (evC.packBottomZ + evC.packTopZ) / 2], size: [fx1 - fx0, evC.packWidthM, evC.packTopZ - evC.packBottomZ] },
+    { id: "TUNNEL_REAR", center: [(rx0 + rx1) / 2, 0, (evC.packBottomZ + 0.56 - wall - inset) / 2], size: [rx1 - rx0, 0.15 - 2 * wall - 2 * inset, 0.56 - wall - inset - evC.packBottomZ] },
+  ];
+  const bat = cells.props.battery;
+  const pl = placePack(bat.series * bat.parallel, vols);
+  bat.placement = { ...pl, volume: "the tub's tunnel: the 310 mm cell ahead of the front seats, then the 150 mm cell between them (no gearbox or driveshaft in the electric car)" };
+  pl.blocks.forEach((b, i) => {
+    const id = i === 0 ? "BATTERY_CELLS" : `BATTERY_CELLS:${b.id}`;
+    components.push({ id, node: "BATTERY_CELLS", offset: i === 0 ? null : [b.center[0] - pl.blocks[0].center[0], 0, b.center[2] - pl.blocks[0].center[2]], component: null, half: b.size.map((v) => r4(v / 2)), pitchDeg: 0, dims: { lengthM: r4(b.size[0]), widthM: r4(b.size[1]), heightM: r4(b.size[2]), cells: b.cells, orientation: b.orientation, grid: b.grid, state: "computed (cell count × square packing in the design volume)" }, placement: `${b.id}: ${b.cells} cells` });
+  });
+  const b0 = pl.blocks[0];
+  if (b0) cells.position = at(r4(b0.center[0]), r4(b0.center[2]), 0);
+  const enc = byId.get("BATTERY_ENCLOSURE");
+  if (enc && b0) {
+    const area = pl.blocks.reduce((a, b) => { const [l, w, h] = b.size; return a + 2 * (l * w + l * h + w * h); }, 0);
+    enc.geometry = { shape: "shell", area: `${r4(area)} m2`, thickness: `${PACK_DESIGN_CHOICES.enclosureSheetM.value} m` };
+    enc.position = cells.position;
+  }
+  return pl;
+}
+
 function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package" }) {
   const entry = (k) => {
     const id = selection[k]?.chosen;
@@ -462,6 +531,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
   if (!Number.isFinite(track)) return;
   let choices = layoutChoices || LAYOUT_DESIGN_CHOICES;
   let revision = null;
+  let evFront = null, evDrive = null;
   if (!layoutChoices && layout === "derived") {
     // Layout revision 2: the rear package derived from the envelopes (car-layout.js deriveRearPackage).
     let base = { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES };
@@ -474,11 +544,23 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
       gc = deriveGroundClearance({ choices: base, targetM, skinOffsetM: body.skinOffsetM, floorCornerAllowanceM: body.floorCornerAllowanceM, tyreR: tyreE.dimensions.overallDiameterM / 2, diffDims: diffE?.dimensions, track, hold: groundClearance.hold || "hPoint", cvJointLimit: governingCvJointLimit() });
       base = { ...base, ...gc.overrides, groundClearanceTargetM: { value: targetM, basis: GROUND_CLEARANCE_CHOICES.groundClearanceTargetM.basis } };
     }
+    // Electric car: no engine sets the firewall. Derive the heel point (and so the firewall) from the feet's
+    // clearance to the front tyres' steering sweep (car-layout.js deriveEvFront).
+    const electric = v.fuelType === "electric";
+    const motorE = electric ? entry("engine_or_motor") : null;
+    if (electric && tyreE?.dimensions?.overallDiameterM) {
+      base = { ...base, ...EV_LAYOUT_CHOICES };
+      evFront = deriveEvFront({ choices: base, keys: [...new Set([...occupantKeys, "M95"])], frontAxleX, track, tyre: { diameterM: tyreE.dimensions.overallDiameterM, widthM: tyreE.dimensions.sectionWidthM }, lockDeg: steeringLockDeg(PACKAGING_REFERENCES.referenceVehicle).innerDeg });
+      if (!evFront.error) base = { ...base, ahpX: { value: evFront.ahpX, basis: `derived: ${evFront.method}` } };
+    }
+    const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
     const der = deriveRearPackage({
       choices: base, keys: [...new Set([...occupantKeys, "M95"])], seatDims: seatF?.dimensions,
-      diffDims: diffE?.dimensions, fuelDimsM: fuelE?.dimensions?.fitsInternalContainerMm?.map((x) => x / 1000), tyreR: tyreE ? tyreE.dimensions.overallDiameterM / 2 : null,
+      diffDims: diffE?.dimensions, fuelDimsM: electric ? null : fuelE?.dimensions?.fitsInternalContainerMm?.map((x) => x / 1000), tyreR: tyreE ? tyreE.dimensions.overallDiameterM / 2 : null,
         rearWell: body && tyreE?.dimensions?.sectionWidthM ? { track, tyreHalfWidthM: tyreE.dimensions.sectionWidthM / 2, archClearanceM: body.archClearanceM, clearanceM: body.skinOffsetM } : null,
+      ...(motorE?.dimensions?.axialLengthM ? { driveUnit: { axialM: motorE.dimensions.axialLengthM, heightM: motorE.dimensions.heightM, widthM: evC.moduleWidthM, belowShaftM: 0.17, gapM: evC.couplingGapM, shaftDz: evC.shaftZFromDiffCentreM } } : {}),
     });
+    if (der.driveUnitBox) evDrive = der.driveUnitBox;
     // (a derivation error leaves the v1 layout in place; the checks then report its failures)
     if (!der.error) {
       const derived = (value, i) => ({ value, basis: `derived: ${der.method[i]}` });
@@ -506,12 +588,19 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
           { parameter: "rearKneeMarginM / diffClearanceM / fuelClearanceM", old: null, new: [base.rearKneeMarginM.value, base.diffClearanceM.value, base.fuelClearanceM.value], unit: "m", reason: "the margins the derivation keeps", basis: "design" },
           ...(gc ? gc.rows.map((row) => ({ ...row, revision: "2.1.0" })) : []),
           { parameter: "frontAxleX, track", old: [frontAxleX, track], new: [frontAxleX, track], unit: "m", reason: "unchanged: the front package (engine bay, footwell, front seats) had no failure tied to them", basis: "design (unchanged)" },
+          ...(evFront && !evFront.error ? [
+            { parameter: "ahpX (electric)", old: LAYOUT_DESIGN_CHOICES.ahpX.value, new: evFront.ahpX, unit: "m", change: r4(evFront.ahpX - LAYOUT_DESIGN_CHOICES.ahpX.value), reason: "no engine in the nose: the heel point moves forward until the feet reach the front tyres' steering sweep (plus clearance); the cabin follows", basis: "derived" },
+            { parameter: "firewallX (electric)", old: "engine rear + firewallGapM", new: evFront.firewallX, unit: "m", reason: "footwellDepthM ahead of the derived heel point (the front-engine car's footwell depth)", basis: "derived" },
+          ] : []),
+          ...(evDrive ? [{ parameter: "drive unit (electric)", old: null, new: { min: evDrive.min.map(r4), max: evDrive.max.map(r4) }, unit: "m", reason: "the motor module on the differential's pinion axis, ahead of it; the rear axle is derived so it and the differential both clear the rear occupants", basis: "derived" }] : []),
           { parameter: "body (overall L/W/H, roof and header height, ground clearance)", old: "ellipsoid 4.4 x 1.9 x 1.2 m centred at z 0.7", new: "the CAD body (cad.body): sections solved around the envelopes + skin offset; see its outputs", reason: "#1039: rear headroom, hip-to-shell and entry-height failures came from the ellipsoid", basis: "computed (kernel)" },
         ],
       };
     }
   }
-  const lay = layoutCar({ entries: { engine: entry("engine_or_motor"), gearbox: entry("transmission"), diff: entry("differential"), cooling: entry("cooling"), fuel: entry("fuel_or_battery"), tyre: entry("tyres") }, frontAxleX, rearAxleX, track, choices });
+  const electricCar = v.fuelType === "electric";
+  const lay = layoutCar({ entries: { engine: electricCar ? null : entry("engine_or_motor"), gearbox: entry("transmission"), diff: entry("differential"), cooling: entry("cooling"), fuel: entry("fuel_or_battery"), tyre: entry("tyres") }, frontAxleX, rearAxleX, track, choices });
+  if (electricCar) placeElectric({ lay, byId, evFront, evDrive, motor: entry("engine_or_motor") });
   for (const [id, p] of Object.entries(lay.positions)) { const n = byId.get(id); if (n) n.position = at(p.x, p.z, p.y); }
   // Seats and occupant payload at the design H-points: front at the 50th male's UMTRI H-point (mid-track),
   // rear at the rear SgRP (payload CG taken at the H-point: an assumption).
@@ -548,7 +637,8 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     steeringLock: { innerDeg: Math.round(lock.innerDeg * 10) / 10, outerDeg: Math.round(lock.outerDeg * 10) / 10, state: "estimated", method: PACKAGING_REFERENCES.steeringLock.method, inputs: PACKAGING_REFERENCES.steeringLock.inputs, source: ref.source.url },
     referenceVehicle: { label: ref.label, source: ref.source.url, inches: ref.inches, feet: ref.feet, use: ref.use },
     notChecked,
-  };
+  };  if (v.fuelType === "electric") placeBattery({ ir, byId, components: v.packaging.components });
+
   sources.packaging = "compiler/car-layout.js: positions from library dimensions and labelled design choices; occupants from ANSUR II";
 }
 
