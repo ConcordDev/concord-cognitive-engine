@@ -112,3 +112,20 @@ test("reasoning argumentMap / fallacyDetect are ADVISORY", () => {
   assert.equal(run("reasoning.fallacyDetect", { text: "Everyone believes it so it must be true." }).result.status, "ADVISORY");
   assert.equal(run("reasoning.argumentMap", { claims: [{ id: "a", text: "x" }] }).result.status, "ADVISORY");
 });
+
+// ── agriculture fabrications (hand review) ────────────────────────────────
+import agriculture from "../domains/agriculture.js";
+agriculture((d, a, fn) => H.set(`${d}.${a}`, fn));
+test("agriculture: no assumed 80 °F / 1 ac / 21 °C / 40 ac", () => {
+  const today = new Date().toISOString().split("T")[0];
+  const art = { data: { fields: [{ fieldId: "f", crop: "corn", soilType: "loam" }], weatherForecast: [{ date: today, highTemp: 90, precipInches: 0 }] } };
+  const w = H.get("agriculture.waterSchedule")(ctx, art, { daysAhead: 2 });
+  const f = w.result?.fields?.[0] ?? w.result?.waterSchedule?.fields?.[0] ?? art.data.waterSchedule.fields[0];
+  assert.equal(f.schedule[0].highTemp, 90);
+  assert.equal(f.schedule[1].status, "NOT_COMPUTED");
+  assert.equal(f.totalGallons, null); assert.deepEqual(f.missingInputs, ["acreage"]);
+  const ts = H.get("agriculture.track-season")(ctx, { data: { plantDate: "2026-05-01", crop: "corn" } }, {});
+  assert.equal(ts.result.status, "NOT_COMPUTED"); assert.deepEqual(ts.result.missingInputs, ["avgTempC"]);
+  const py = H.get("agriculture.predict-yield")(ctx, { data: { crop: "corn" } }, {});
+  assert.equal(py.ok, true); assert.equal(JSON.stringify(py).includes("total not computed"), true);
+});
