@@ -43,7 +43,10 @@ function rerunSet(a, b) {
   return out.sort();
 }
 
-export async function orchestrate({ evaluate, rules, initialState, budget = {}, pick = null, now = () => Date.now() }) {
+export async function orchestrate({ evaluate, rules, initialState, budget = {}, pick = null, now = () => Date.now(), onEvent = null }) {
+  // progress events for the live view (item 3): pure data, no clock, so a replay is the run
+  const emit = (e) => { try { onEvent?.(e); } catch { /* a viewer never breaks the run */ } };
+  emit({ type: "start", initialState: { ...initialState } });
   const B = { ...DEFAULT_BUDGET, ...budget };
   const t0 = now();
   let state = { ...initialState };
@@ -56,9 +59,12 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
     if (e?.code !== "build-infeasible") throw e;
     const outcome = { kind: "proven-infeasible", stage: "build", failing: [], binding: [{ rule: "component-selection", variable: e.variable || null, why: e.message }], requirementOptions: e.requirementOptions || [] };
     const body = { orchestratorVersion: ORCHESTRATOR_VERSION, initialState, finalState: state, outcome, log: [], finalDesignHash: null, requirementsHash: null };
-    return { ...body, receiptSha256: sha256(body), final: null, state };
+    const receiptSha256 = sha256(body);
+    emit({ type: "done", outcome, finalState: state, receiptSha256, snapshot: null, envelopes: {} });
+    return { ...body, receiptSha256, final: null, state };
   }
   const reqHash0 = cur.requirementsHash;
+  emit({ type: "evaluated", label: "initial design", failingChecks: failingIds(cur.envelopes), envelopes: counts(cur.envelopes), designHash: cur.designHash, snapshot: cur.snapshot || null });
   const log = [];
   let outcome = null;
   for (let iteration = 1; ; iteration++) {
@@ -114,6 +120,12 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
       designHash: (chosen?._res || cur).designHash,
     };
     log.push(entry);
+    emit({
+      type: "iteration", iteration, failingChecks: fails,
+      candidates: entry.candidates.map((c) => ({ rule: c.rule, variable: c.variable, value: c.value, label: c.label, gain: c.gain, dMassKg: c.dMassKg, perKg: c.perKg, fixes: c.fixes, regressions: c.regressions })),
+      change: entry.chosen, rerunNodes: entry.rerun, envelopes: entry.envelopes, designHash: entry.designHash, binding: chosen ? [] : binding,
+      snapshot: (chosen?._res || cur).snapshot || null,
+    });
     if (!chosen) {
       outcome = {
         kind: "proven-infeasible", failing: fails,
@@ -127,7 +139,9 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
   }
   const strippedLog = log;
   const body = { orchestratorVersion: ORCHESTRATOR_VERSION, initialState, finalState: state, outcome, log: strippedLog, finalDesignHash: cur.designHash, requirementsHash: reqHash0 };
-  return { ...body, receiptSha256: sha256(body), final: cur, state };
+  const receiptSha256 = sha256(body);
+  emit({ type: "done", outcome, finalState: state, receiptSha256, snapshot: cur.snapshot || null, envelopes: counts(cur.envelopes) });
+  return { ...body, receiptSha256, final: cur, state };
 }
 
 // ---- the car adapter ----------------------------------------------------------------------------------------------
@@ -155,7 +169,9 @@ export function carEvaluator({ carAcceptanceAsync }) {
     const s = r.session;
     const envelopes = new Map(s.results().filter(Boolean).map((e) => [e.runId, e]));
     const graph = s.engine.graph;
+    const stl = envelopes.get("cad.body@BODY_SHELL")?.outputs?.files?.value?.stl;
     return {
+      snapshot: stl?.path ? { kind: "stl", path: stl.path, sha256: stl.sha256 || null, triangles: stl.triangles ?? null } : null,
       envelopes, report: r.report, massKg: r.report.massBreakdown?.totalKg ?? null,
       requirementsHash: sha256(graph.requirements),
       designHash: sha256([...graph.nodes.values()].map((n) => ({ id: n.id, geometry: n.geometry, position: n.position, material: n.material })).sort((a, b) => a.id.localeCompare(b.id))),
