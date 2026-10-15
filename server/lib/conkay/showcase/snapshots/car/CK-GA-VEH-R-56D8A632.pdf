@@ -7,7 +7,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
 endobj
 3 0 obj
-<< /Length 321730 >>
+<< /Length 324736 >>
 stream
 1 J 1 j
 1.98 w [] 0 d 28.35 28.35 1133.86 785.2 re S
@@ -1529,12 +1529,62 @@ BT /F1 6.52 Tf 651.97 306.14 Td (Dimensions in mm. C = computed from the CAD bod
 BT /F1 6.52 Tf 651.97 294.24 Td (choice or derivation, S = sourced \(cited\). Values and bases: sheet 2.) Tj ET
 BT /F1 6.52 Tf 651.97 282.33 Td (Hidden-line projection of the B-rep body \(OpenCascade polygonal HLR\); edges within the) Tj ET
 BT /F1 6.52 Tf 651.97 270.43 Td (tessellation deflection \(2 mm\). Tyres and axles: phantom / centre lines.) Tj ET
-BT /F1 6.52 Tf 651.97 258.52 Td (Outer skin only: no doors, glazing openings, closures or structure. Front view: hidden lines omitted.) Tj ET
+BT /F1 6.52 Tf 651.97 258.52 Td (Cutaway lines \(thin\) are the assembly projection: occupants, openings, controls and powertrain envelopes.) Tj ET
 BT /F1 6.52 Tf 651.97 246.61 Td (Revision = hash of the model this sheet was generated from. Any change to the body,) Tj ET
 BT /F1 6.52 Tf 651.97 234.71 Td (layout or BOM gives a new revision; a sheet whose revision differs from the model's) Tj ET
 BT /F1 6.52 Tf 651.97 222.8 Td (current one is superseded.) Tj ET
 BT /F1 6.52 Tf 651.97 210.9 Td (SCREENING DRAWING: generated from a software model; not checked, not approved, not for manufacture.) Tj ET
 BT /F1 6.52 Tf 651.97 198.99 Td (All masses are mass.part results \(state: sourced / estimated / computed / placeholder\); occupants \(payload\) are not parts and are not lis...) Tj ET
+0.71 w [] 0 d
+85.04 637.23 m 117.45 655.28 l 147.9 669.8 l 163.87 675.25 l 183.45 679.49 l 187.09 679.95 l 204.72 681.28 l 222.87 681.98 l 252.03 684.28 l 264.19 686.53 l 306.13 710.67 l 354.52 738.69 l 442.2 737.01 l 517.72 732.08 l 523.39 727.82 l 594.14 671.47 l 594.14 612.33 l 523.39 612.33 l 517.72 612.33 l 442.2 612.33 l 354.52 612.33 l 306.13 612.33 l 264.19 612.33 l 252.03 612.33 l 222.87 612.33 l 204.72 612.33 l 187.09 612.33 l 183.45 612.33 l 163.87 612.33 l 147.9 612.33 l 117.45 612.33 l 85.04 612.33 l 85.04 637.23 l S
+0.71 w [] 0 d
+85.04 634.96 m 117.45 662.79 l 147.9 678.44 l 163.87 678.92 l 183.45 679.05 l 187.09 679.05 l 204.72 679.83 l 222.87 679.51 l 252.03 683.15 l 264.19 685.39 l 306.13 691.4 l 354.52 696.79 l 442.2 699.28 l 517.72 700.34 l 523.39 700.42 l 594.14 653.19 l S
+0.71 w [] 0 d
+154.77 612.33 m 219.4 612.33 l 219.4 654.28 l 154.77 654.28 l 154.77 612.33 l S
+0.71 w [] 0 d
+504.68 612.33 m 569.31 612.33 l 569.31 654.28 l 504.68 654.28 l 504.68 612.33 l S
+0.71 w [] 0 d
+196.36 612.33 m 237.18 612.33 l 237.18 624.8 l 196.36 624.8 l 196.36 612.33 l S
+0.71 w [] 0 d
+109.98 621.35 m 114.52 621.35 l 114.52 639.5 l 109.98 639.5 l 109.98 621.35 l S
+0.71 w [] 0 d
+225.07 612.33 m 499.01 612.33 l 499.01 618.52 l 225.07 618.52 l 225.07 612.33 l S
+0.71 w [] 0 d
+342.46 588.47 m 399.15 588.47 l 399.15 690.52 l 342.46 690.52 l 342.46 588.47 l S
+0.71 w [] 0 d
+342.46 588.47 m 399.15 588.47 l 399.15 690.52 l 342.46 690.52 l 342.46 588.47 l S
+0.71 w [] 0 d
+440.05 586.2 m 496.74 586.2 l 496.74 688.25 l 440.05 688.25 l 440.05 586.2 l S
+0.71 w [] 0 d
+440.05 586.2 m 496.74 586.2 l 496.74 688.25 l 440.05 688.25 l 440.05 586.2 l S
+0.71 w [] 0 d
+325.52 588.47 m 382.21 588.47 l 382.21 690.52 l 325.52 690.52 l 325.52 588.47 l S
+0.71 w [] 0 d
+440.05 586.2 m 496.74 586.2 l 496.74 688.25 l 440.05 688.25 l 440.05 586.2 l S
+0.71 w [] 0 d
+339.06 618.52 m 402.55 618.52 l 402.55 639.5 l 339.06 639.5 l 339.06 618.52 l S
+0.71 w [] 0 d
+339.06 618.52 m 402.55 618.52 l 402.55 639.5 l 339.06 639.5 l 339.06 618.52 l S
+0.71 w [] 0 d
+436.65 618.52 m 500.14 618.52 l 500.14 637.23 l 436.65 637.23 l 436.65 618.52 l S
+0.71 w [] 0 d
+436.65 618.52 m 500.14 618.52 l 500.14 637.23 l 436.65 637.23 l 436.65 618.52 l S
+0.71 w [] 0 d
+319.12 667.28 m 325.93 667.28 l 325.93 706.96 l 319.12 706.96 l 319.12 667.28 l S
+0.71 w [] 0 d
+237 670.39 m 324.96 670.39 l 324.96 674.93 l 237 674.93 l 237 670.39 l S
+0.71 w [] 0 d
+257.9 628.78 m 262.43 628.78 l 262.43 637.85 l 257.9 637.85 l 257.9 628.78 l S
+0.71 w [] 0 d
+257.9 628.78 m 262.43 628.78 l 262.43 637.85 l 257.9 637.85 l 257.9 628.78 l S
+0.71 w [] 0 d
+247.18 653.1 m 442.2 653.1 l 442.2 726.84 l 340.16 717.17 l 247.18 676.81 l S
+0.71 w [] 0 d
+453.54 636.66 m 482.98 636.66 l 482.98 678.36 l 517.72 678.36 l 517.72 717.94 l 453.54 726.6 l S
+0.71 w [] 0 d
+247.18 653.1 m 442.2 653.1 l 442.2 726.84 l 340.16 717.17 l 247.18 676.81 l S
+0.71 w [] 0 d
+453.54 636.66 m 482.98 636.66 l 482.98 678.36 l 517.72 678.36 l 517.72 717.94 l 453.54 726.6 l S
 1.42 w [] 0 d 651.97 28.35 510.24 130.39 re S
 0.71 w [] 0 d
 651.97 124.72 m 1162.2 124.72 l S
@@ -1547,15 +1597,15 @@ BT /F1 6.52 Tf 651.97 198.99 Td (All masses are mass.part results \(state: sourc
 0.71 w [] 0 d
 963.78 28.35 m 963.78 124.72 l S
 BT /F2 11.34 Tf 657.64 140.31 Td (GENERAL ARRANGEMENT - VEH \(ConKay library car\)) Tj ET
-BT /F1 7.94 Tf 657.64 113.39 Td (Drawing no. CK-GA-VEH   Sheet 1 of 2) Tj ET
+BT /F1 7.94 Tf 657.64 113.39 Td (Drawing no. CK-GA-VEH   Sheet 1 of 3) Tj ET
 BT /F1 7.94 Tf 657.64 90.71 Td (Scale 1:25 \(A3\)   Units mm   First-angle projection) Tj ET
 BT /F1 6.24 Tf 657.64 68.03 Td (Model: BODY_SHELL + VEH layout + BOM \(56 items\)) Tj ET
 BT /F2 6.24 Tf 657.64 45.35 Td (SCREENING - NOT FOR MANUFACTURE) Tj ET
 BT /F1 5.1 Tf 657.64 32.88 Td (Generated by ConKay drawing.ga 1.0.0 from cad.body \(OCCT 7.7.2.0\); revision = model hash) Tj ET
 BT /F1 6.24 Tf 969.45 113.39 Td (Revision) Tj ET
-BT /F2 14.17 Tf 969.45 87.87 Td (R-3DB38354) Tj ET
-BT /F1 5.1 Tf 969.45 68.03 Td (model hash 3db38354614512c6128bc5de3698a8e8) Tj ET
-BT /F1 5.1 Tf 969.45 49.61 Td (80b3fd5d4809f5eaa279a6872a69b6a2) Tj ET
+BT /F2 14.17 Tf 969.45 87.87 Td (R-56D8A632) Tj ET
+BT /F1 5.1 Tf 969.45 68.03 Td (model hash 56d8a632fd987325b5afadf6929c7d0c) Tj ET
+BT /F1 5.1 Tf 969.45 49.61 Td (f5c6191ef983a1e7a24db19df95f6c84) Tj ET
 0.71 w [] 0 d
 1077.17 97.8 m 1099.84 93.54 l 1099.84 110.55 l 1077.17 106.3 l 1077.17 97.8 l S
 0.51 w [17.01 2.83 2.83 2.83] 0 d
@@ -1569,7 +1619,7 @@ BT /F1 5.1 Tf 969.45 49.61 Td (80b3fd5d4809f5eaa279a6872a69b6a2) Tj ET
 endstream
 endobj
 4 0 obj
-<< /Type /Page /Parent 7 0 R /MediaBox [0 0 1190.55 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 1190.55 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
 endobj
 5 0 obj
 << /Length 35096 >>
@@ -2203,15 +2253,15 @@ BT /F1 6.24 Tf 42.52 -228.19 Td (SCREENING DRAWING: generated from a software mo
 0.71 w [] 0 d
 963.78 28.35 m 963.78 124.72 l S
 BT /F2 11.34 Tf 657.64 140.31 Td (GENERAL ARRANGEMENT - VEH \(ConKay library car\)) Tj ET
-BT /F1 7.94 Tf 657.64 113.39 Td (Drawing no. CK-GA-VEH   Sheet 2 of 2) Tj ET
+BT /F1 7.94 Tf 657.64 113.39 Td (Drawing no. CK-GA-VEH   Sheet 2 of 3) Tj ET
 BT /F1 7.94 Tf 657.64 90.71 Td (Scale 1:25 \(A3\)   Units mm   First-angle projection) Tj ET
 BT /F1 6.24 Tf 657.64 68.03 Td (Model: BODY_SHELL + VEH layout + BOM \(56 items\)) Tj ET
 BT /F2 6.24 Tf 657.64 45.35 Td (SCREENING - NOT FOR MANUFACTURE) Tj ET
 BT /F1 5.1 Tf 657.64 32.88 Td (Generated by ConKay drawing.ga 1.0.0 from cad.body \(OCCT 7.7.2.0\); revision = model hash) Tj ET
 BT /F1 6.24 Tf 969.45 113.39 Td (Revision) Tj ET
-BT /F2 14.17 Tf 969.45 87.87 Td (R-3DB38354) Tj ET
-BT /F1 5.1 Tf 969.45 68.03 Td (model hash 3db38354614512c6128bc5de3698a8e8) Tj ET
-BT /F1 5.1 Tf 969.45 49.61 Td (80b3fd5d4809f5eaa279a6872a69b6a2) Tj ET
+BT /F2 14.17 Tf 969.45 87.87 Td (R-56D8A632) Tj ET
+BT /F1 5.1 Tf 969.45 68.03 Td (model hash 56d8a632fd987325b5afadf6929c7d0c) Tj ET
+BT /F1 5.1 Tf 969.45 49.61 Td (f5c6191ef983a1e7a24db19df95f6c84) Tj ET
 0.71 w [] 0 d
 1077.17 97.8 m 1099.84 93.54 l 1099.84 110.55 l 1077.17 106.3 l 1077.17 97.8 l S
 0.51 w [17.01 2.83 2.83 2.83] 0 d
@@ -2225,31 +2275,201 @@ BT /F1 5.1 Tf 969.45 49.61 Td (80b3fd5d4809f5eaa279a6872a69b6a2) Tj ET
 endstream
 endobj
 6 0 obj
-<< /Type /Page /Parent 7 0 R /MediaBox [0 0 1190.55 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 1190.55 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
 endobj
 7 0 obj
-<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+<< /Length 11197 >>
+stream
+1 J 1 j
+1.98 w [] 0 d 28.35 28.35 1133.86 785.2 re S
+1.42 w [] 0 d
+87.64 512.5 m 120.04 530.55 l 150.5 545.08 l 166.46 550.52 l 186.04 554.76 l 189.68 555.23 l 207.32 556.55 l 225.47 557.26 l 254.63 559.56 l 266.79 561.8 l 308.73 585.94 l 357.12 613.96 l 444.8 612.28 l 520.32 607.35 l 525.99 603.1 l 596.74 546.75 l 596.74 487.6 l 525.99 487.6 l 520.32 487.6 l 444.8 487.6 l 357.12 487.6 l 308.73 487.6 l 266.79 487.6 l 254.63 487.6 l 225.47 487.6 l 207.32 487.6 l 189.68 487.6 l 186.04 487.6 l 166.46 487.6 l 150.5 487.6 l 120.04 487.6 l 87.64 487.6 l 87.64 512.5 l S
+0.71 w [] 0 d
+87.64 510.24 m 120.04 538.06 l 150.5 553.72 l 166.46 554.2 l 186.04 554.32 l 189.68 554.32 l 207.32 555.1 l 225.47 554.79 l 254.63 558.43 l 266.79 560.67 l 308.73 566.68 l 357.12 572.07 l 444.8 574.56 l 520.32 575.61 l 525.99 575.69 l 596.74 528.47 l S
+BT /F2 7.94 Tf 79.37 640.39 Td (SIDE CUTAWAY \(assembly projection, left side\)) Tj ET
+0.71 w [] 0 d
+157.37 487.6 m 222 487.6 l 222 529.56 l 157.37 529.56 l 157.37 487.6 l S
+0.71 w [] 0 d
+507.28 487.6 m 571.91 487.6 l 571.91 529.56 l 507.28 529.56 l 507.28 487.6 l S
+0.71 w [] 0 d
+198.96 487.6 m 239.78 487.6 l 239.78 500.08 l 198.96 500.08 l 198.96 487.6 l S
+0.71 w [] 0 d
+112.58 496.63 m 117.12 496.63 l 117.12 514.77 l 112.58 514.77 l 112.58 496.63 l S
+0.71 w [] 0 d
+227.67 487.6 m 501.61 487.6 l 501.61 493.8 l 227.67 493.8 l 227.67 487.6 l S
+0.71 w [] 0 d
+345.06 463.75 m 401.75 463.75 l 401.75 565.8 l 345.06 565.8 l 345.06 463.75 l S
+0.71 w [] 0 d
+345.06 463.75 m 401.75 463.75 l 401.75 565.8 l 345.06 565.8 l 345.06 463.75 l S
+0.71 w [] 0 d
+442.65 461.48 m 499.34 461.48 l 499.34 563.53 l 442.65 563.53 l 442.65 461.48 l S
+0.71 w [] 0 d
+442.65 461.48 m 499.34 461.48 l 499.34 563.53 l 442.65 563.53 l 442.65 461.48 l S
+0.71 w [] 0 d
+328.12 463.75 m 384.81 463.75 l 384.81 565.8 l 328.12 565.8 l 328.12 463.75 l S
+0.71 w [] 0 d
+442.65 461.48 m 499.34 461.48 l 499.34 563.53 l 442.65 563.53 l 442.65 461.48 l S
+0.71 w [] 0 d
+341.66 493.8 m 405.15 493.8 l 405.15 514.77 l 341.66 514.77 l 341.66 493.8 l S
+0.71 w [] 0 d
+341.66 493.8 m 405.15 493.8 l 405.15 514.77 l 341.66 514.77 l 341.66 493.8 l S
+0.71 w [] 0 d
+439.25 493.8 m 502.74 493.8 l 502.74 512.5 l 439.25 512.5 l 439.25 493.8 l S
+0.71 w [] 0 d
+439.25 493.8 m 502.74 493.8 l 502.74 512.5 l 439.25 512.5 l 439.25 493.8 l S
+0.71 w [] 0 d
+321.72 542.55 m 328.53 542.55 l 328.53 582.24 l 321.72 582.24 l 321.72 542.55 l S
+0.71 w [] 0 d
+239.6 545.67 m 327.56 545.67 l 327.56 550.2 l 239.6 550.2 l 239.6 545.67 l S
+0.71 w [] 0 d
+260.49 504.06 m 265.03 504.06 l 265.03 513.13 l 260.49 513.13 l 260.49 504.06 l S
+0.71 w [] 0 d
+260.49 504.06 m 265.03 504.06 l 265.03 513.13 l 260.49 513.13 l 260.49 504.06 l S
+0.71 w [] 0 d
+357.85 581.82 m 381.25 581.82 l 381.25 592.41 l 357.85 592.41 l 357.85 581.82 l S
+0.71 w [] 0 d
+249.78 528.38 m 444.8 528.38 l 444.8 602.11 l 342.76 592.44 l 249.78 552.09 l S
+0.71 w [] 0 d
+456.14 511.94 m 485.58 511.94 l 485.58 553.64 l 520.32 553.64 l 520.32 593.21 l 456.14 601.87 l S
+0.71 w [] 0 d
+249.78 528.38 m 444.8 528.38 l 444.8 602.11 l 342.76 592.44 l 249.78 552.09 l S
+0.71 w [] 0 d
+456.14 511.94 m 485.58 511.94 l 485.58 553.64 l 520.32 553.64 l 520.32 593.21 l 456.14 601.87 l S
+0.71 w [] 0 d
+503.88 489.87 m 587.67 489.87 l 587.67 549.97 l 503.88 549.97 l 503.88 489.87 l S
+0.71 w [] 0 d
+101.24 489.87 m 110.31 489.87 l 110.31 526.16 l 101.24 526.16 l 101.24 489.87 l S
+0.71 w [] 0 d
+189.68 473.39 m 189.68 443.62 l S
+0.71 w [] 0 d
+525.99 473.39 m 525.99 443.62 l S
+0.71 w [] 0 d
+189.68 447.87 m 525.99 447.87 l S
+189.68 447.87 m 196.77 446.17 l 196.77 449.57 l h f
+525.99 447.87 m 518.9 449.57 l 518.9 446.17 l h f
+BT /F1 7.09 Tf 346.14 450.14 Td (2966 D) Tj ET
+BT /F2 7.94 Tf 79.37 300.47 Td (PLAN - SEAT H-POINTS \(assembly\)) Tj ET
+0.51 w [17.01 2.83 2.83 2.83] 0 d
+79.37 221.1 m 598.41 221.1 l S
+0.71 w [] 0 d
+377.94 179.15 m 377.94 181.65 375.91 183.69 373.4 183.69 c 370.9 183.69 368.87 181.65 368.87 179.15 c 368.87 176.64 370.9 174.61 373.4 174.61 c 375.91 174.61 377.94 176.64 377.94 179.15 c S
+BT /F1 5.1 Tf 379.07 181.98 Td (OCC_SEAT_1_M95) Tj ET
+0.71 w [] 0 d
+377.94 263.06 m 377.94 265.56 375.91 267.59 373.4 267.59 c 370.9 267.59 368.87 265.56 368.87 263.06 c 368.87 260.55 370.9 258.52 373.4 258.52 c 375.91 258.52 377.94 260.55 377.94 263.06 c S
+BT /F1 5.1 Tf 379.07 265.89 Td (OCC_SEAT_2_M95) Tj ET
+0.71 w [] 0 d
+475.53 185.73 m 475.53 188.23 473.5 190.26 470.99 190.26 c 468.49 190.26 466.46 188.23 466.46 185.73 c 466.46 183.22 468.49 181.19 470.99 181.19 c 473.5 181.19 475.53 183.22 475.53 185.73 c S
+BT /F1 5.1 Tf 476.66 188.56 Td (OCC_SEAT_3_M95) Tj ET
+0.71 w [] 0 d
+475.53 256.48 m 475.53 258.98 473.5 261.01 470.99 261.01 c 468.49 261.01 466.46 258.98 466.46 256.48 c 466.46 253.97 468.49 251.94 470.99 251.94 c 473.5 251.94 475.53 253.97 475.53 256.48 c S
+BT /F1 5.1 Tf 476.66 259.31 Td (OCC_SEAT_4_M95) Tj ET
+0.71 w [] 0 d
+361 179.15 m 361 181.65 358.97 183.69 356.46 183.69 c 353.96 183.69 351.93 181.65 351.93 179.15 c 351.93 176.64 353.96 174.61 356.46 174.61 c 358.97 174.61 361 176.64 361 179.15 c S
+BT /F1 5.1 Tf 362.13 181.98 Td (OCC_SEAT_1_F5) Tj ET
+0.71 w [] 0 d
+475.53 185.73 m 475.53 188.23 473.5 190.26 470.99 190.26 c 468.49 190.26 466.46 188.23 466.46 185.73 c 466.46 183.22 468.49 181.19 470.99 181.19 c 473.5 181.19 475.53 183.22 475.53 185.73 c S
+BT /F1 5.1 Tf 476.66 188.56 Td (OCC_SEAT_3_F5) Tj ET
+0.71 w [] 0 d
+380.21 179.15 m 380.21 182.91 377.16 185.95 373.4 185.95 c 369.65 185.95 366.6 182.91 366.6 179.15 c 366.6 175.39 369.65 172.35 373.4 172.35 c 377.16 172.35 380.21 175.39 380.21 179.15 c S
+BT /F1 5.1 Tf 379.07 181.98 Td (SEAT_1) Tj ET
+0.71 w [] 0 d
+380.21 263.06 m 380.21 266.81 377.16 269.86 373.4 269.86 c 369.65 269.86 366.6 266.81 366.6 263.06 c 366.6 259.3 369.65 256.25 373.4 256.25 c 377.16 256.25 380.21 259.3 380.21 263.06 c S
+BT /F1 5.1 Tf 379.07 265.89 Td (SEAT_2) Tj ET
+0.71 w [] 0 d
+477.8 185.73 m 477.8 189.48 474.75 192.53 470.99 192.53 c 467.24 192.53 464.19 189.48 464.19 185.73 c 464.19 181.97 467.24 178.92 470.99 178.92 c 474.75 178.92 477.8 181.97 477.8 185.73 c S
+BT /F1 5.1 Tf 476.66 188.56 Td (SEAT_3) Tj ET
+0.71 w [] 0 d
+477.8 256.48 m 477.8 260.24 474.75 263.28 470.99 263.28 c 467.24 263.28 464.19 260.24 464.19 256.48 c 464.19 252.72 467.24 249.68 470.99 249.68 c 474.75 249.68 477.8 252.72 477.8 256.48 c S
+BT /F1 5.1 Tf 476.66 259.31 Td (SEAT_4) Tj ET
+BT /F2 8.5 Tf 708.66 790.87 Td (PACKAGING DIMENSIONS AND FIT) Tj ET
+BT /F1 5.67 Tf 708.66 776.69 Td (H30  185 mm  assumed  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 766.49 Td (L53  820 mm  calculated  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 756.28 Td (L40  25 deg  assumed  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 746.08 Td (H61-roof  928 mm  calculated  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 735.87 Td (BOF  203 mm  sourced  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 725.67 Td (W9  350 mm  assumed  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 715.46 Td (H17  605 mm  assumed  SAE J1100 \(2001\)) Tj ET
+BT /F1 5.67 Tf 708.66 705.26 Td (eyellipse-X  206.4 mm  sourced  SAE J941 \(2010\) Table 2) Tj ET
+BT /F1 5.67 Tf 708.66 695.06 Td (eyellipse-centroid-z  978 mm  sourced  SAE J941 \(2010\) Eq. 4) Tj ET
+BT /F1 5.67 Tf 708.66 684.85 Td (belt  845 mm  calculated  ANSUR II acromion, sitting) Tj ET
+BT /F2 7.94 Tf 708.66 668.98 Td (FIT CHECKS) Tj ET
+BT /F1 5.39 Tf 708.66 656.22 Td (PASS  head-M95  M95 head top at 1139 mm \(x 2993 mm\), roof at that station 1219 mm, inner gap 76 mm) Tj ET
+BT /F1 5.39 Tf 708.66 646.58 Td (PASS  head-F5  F5 head top at 997 mm \(x 2777 mm\), roof at that station 1238 mm, inner gap 237 mm) Tj ET
+BT /F1 5.39 Tf 708.66 636.94 Td (PASS  head-M95-rear  rear M95 head top at 1119 mm \(x 3854 mm\), roof at that station 1174 mm, inner gap 51 mm) Tj ET
+BT /F1 5.39 Tf 708.66 627.31 Td (PASS  heel-floor  driver heel z 155 mm, floor 155 mm) Tj ET
+BT /F1 5.39 Tf 708.66 617.67 Td (PASS  rear-leg  M95 rear occupant reaches the floor in the vertical-shin posture) Tj ET
+BT /F1 5.39 Tf 708.66 608.03 Td (PASS  four-seats  4 seat positions placed) Tj ET
+BT /F1 5.39 Tf 708.66 598.39 Td (PASS  powertrain-cabin  MOTOR_FRONT and MOTOR_REAR clear the firewall at 1462 mm) Tj ET
+BT /F1 5.39 Tf 708.66 588.76 Td (PASS  powertrain-layout  This design is the light four-seat futuristic car. That shape is a floor battery and compact motors, not a tall front en...) Tj ET
+BT /F1 5.39 Tf 708.66 579.12 Td (PASS  wheel-footwell  front tyre swept +/-39.8 deg vs the driver foot, gap 278 mm \(separating-axis lower bound\)) Tj ET
+BT /F1 5.39 Tf 708.66 569.48 Td (PASS  ingress  skin door aperture \(roof rail\) 1246 mm, M95 head top 1139 mm, gap 107 mm. Tub outline top is 1110 mm; the skin cut is the roof rai...) Tj ET
+BT /F1 5.39 Tf 708.66 559.84 Td (PASS  containment  every non-exterior bounding box is inside the body envelope) Tj ET
+BT /F1 5.39 Tf 708.66 550.2 Td (PASS  b-pillar  B-pillar station 3250 mm, front H 2620 mm, rear H 3481 mm) Tj ET
+BT /F1 5.39 Tf 708.66 540.57 Td (WARN  cooling-power  Cooling core is an assumed EV heat exchanger, not the library gasoline radiator and not a heat-rejection solve. Installed mo...) Tj ET
+BT /F1 5.39 Tf 708.66 530.93 Td (WARN  spare  no spare tire is specified, so none is placed) Tj ET
+BT /F1 5.39 Tf 708.66 521.29 Td (INFO  design-quality  33 styling controls. dash-to-axle 23% of the wheelbase, hood 12 mm vs the arch top, rake 60.0 deg, greenhouse/body 0.50, tu...) Tj ET
+BT /F1 5.1 Tf 708.66 170.08 Td (Projected from the assembly. Envelopes are not kernel solids.) Tj ET
+1.42 w [] 0 d 651.97 28.35 510.24 130.39 re S
+0.71 w [] 0 d
+651.97 124.72 m 1162.2 124.72 l S
+0.71 w [] 0 d
+651.97 102.05 m 1162.2 102.05 l S
+0.71 w [] 0 d
+651.97 79.37 m 1162.2 79.37 l S
+0.71 w [] 0 d
+651.97 56.69 m 1162.2 56.69 l S
+0.71 w [] 0 d
+963.78 28.35 m 963.78 124.72 l S
+BT /F2 11.34 Tf 657.64 140.31 Td (Packaging and occupant layout) Tj ET
+BT /F1 7.94 Tf 657.64 113.39 Td (Drawing no. CK-GA-VEH   Sheet 3 of 3) Tj ET
+BT /F1 7.94 Tf 657.64 90.71 Td (Scale 1:25 \(A3\)   Units mm   First-angle projection) Tj ET
+BT /F1 6.24 Tf 657.64 68.03 Td (Model: VEH assembly) Tj ET
+BT /F2 6.24 Tf 657.64 45.35 Td (SCREENING - NOT FOR MANUFACTURE) Tj ET
+BT /F1 5.1 Tf 657.64 32.88 Td (Projected from assembly.vehicle; revision = model hash) Tj ET
+BT /F1 6.24 Tf 969.45 113.39 Td (Revision) Tj ET
+BT /F2 14.17 Tf 969.45 87.87 Td (R-56D8A632) Tj ET
+BT /F1 5.1 Tf 969.45 68.03 Td (model hash 56d8a632fd987325b5afadf6929c7d0c) Tj ET
+BT /F1 5.1 Tf 969.45 49.61 Td (f5c6191ef983a1e7a24db19df95f6c84) Tj ET
+0.71 w [] 0 d
+1077.17 97.8 m 1099.84 93.54 l 1099.84 110.55 l 1077.17 106.3 l 1077.17 97.8 l S
+0.51 w [17.01 2.83 2.83 2.83] 0 d
+1074.33 102.05 m 1102.68 102.05 l S
+0.71 w [] 0 d
+1125.35 102.05 m 1125.35 106.74 1121.55 110.55 1116.85 110.55 c 1112.15 110.55 1108.35 106.74 1108.35 102.05 c 1108.35 97.35 1112.15 93.54 1116.85 93.54 c 1121.55 93.54 1125.35 97.35 1125.35 102.05 c S
+0.71 w [] 0 d
+1121.1 102.05 m 1121.1 104.4 1119.2 106.3 1116.85 106.3 c 1114.5 106.3 1112.6 104.4 1112.6 102.05 c 1112.6 99.7 1114.5 97.8 1116.85 97.8 c 1119.2 97.8 1121.1 99.7 1121.1 102.05 c S
+0.51 w [17.01 2.83 2.83 2.83] 0 d
+1105.51 102.05 m 1128.19 102.05 l S
+endstream
 endobj
 8 0 obj
-<< /Title (CK-GA-VEH R-3DB38354) /Producer (ConKay drawing.ga 1.0.0) /Keywords ({"drawing":"CK-GA-VEH","revision":"R-3DB38354","modelHash":"3db38354614512c6128bc5de3698a8e880b3fd5d4809f5eaa279a6872a69b6a2","solver":"drawing.ga@1.0.0","body":{"requestHash":"f0bd2e00aa69bd7b993c17c3","stl":"2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795","glb":"477a0793166b7bc5380e636dd7e83f42b315bdf4ead973ed8589213098acd1a7"},"title":"CK-GA-VEH R-3DB38354","producer":"ConKay drawing.ga 1.0.0"}) >>
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 1190.55 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
 endobj
 9 0 obj
-<< /Type /Catalog /Pages 7 0 R >>
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
+endobj
+10 0 obj
+<< /Title (CK-GA-VEH R-56D8A632) /Producer (ConKay drawing.ga 1.0.0) /Keywords ({"drawing":"CK-GA-VEH","revision":"R-56D8A632","modelHash":"56d8a632fd987325b5afadf6929c7d0cf5c6191ef983a1e7a24db19df95f6c84","solver":"drawing.ga@1.0.0","body":{"requestHash":"f0bd2e00aa69bd7b993c17c3","stl":"2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795","glb":"477a0793166b7bc5380e636dd7e83f42b315bdf4ead973ed8589213098acd1a7"},"title":"CK-GA-VEH R-56D8A632","producer":"ConKay drawing.ga 1.0.0"}) >>
+endobj
+11 0 obj
+<< /Type /Catalog /Pages 9 0 R >>
 endobj
 xref
-0 10
+0 12
 0000000000 65535 f 
 0000000015 00000 n 
 0000000112 00000 n 
 0000000214 00000 n 
-0000321998 00000 n 
-0000322141 00000 n 
-0000357290 00000 n 
-0000357433 00000 n 
-0000357496 00000 n 
-0000358014 00000 n 
+0000325004 00000 n 
+0000325147 00000 n 
+0000360296 00000 n 
+0000360439 00000 n 
+0000371689 00000 n 
+0000371832 00000 n 
+0000371901 00000 n 
+0000372420 00000 n 
 trailer
-<< /Size 10 /Root 9 0 R /Info 8 0 R >>
+<< /Size 12 /Root 11 0 R /Info 10 0 R >>
 startxref
-358063
+372470
 %%EOF
