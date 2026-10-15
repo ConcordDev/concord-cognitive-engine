@@ -56,6 +56,14 @@ export const CRITICAL_VEHICLE_COMPONENTS = [
 
 // Categories whose parts may cover one axle only (props.axle: front | rear | both).
 const AXLE_CATEGORIES = new Set(["brakes"]);
+/** Solvers whose FAIL makes the car not credible (each a physical check, not a requirement). */
+export const CREDIBILITY_CHECKS = Object.freeze([
+  ["structure.frame", "structural frame"],
+  ["structure.crush-paths", "crush paths"],
+  ["package.tub-fit", "structural tub fit"],
+  ["assembly.vehicle", "assembly"],
+  ["vehicle.traction-battery", "traction battery"],
+]);
 
 const vehicles = (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id);
 
@@ -251,6 +259,16 @@ export const vehicleAcceptance = registerSolver({
       if (body.status === "NOT_COMPUTED") failures.push(`CAD body not computed: ${body.reason}`);
       else if (body.status === "ERROR") failures.push(`CAD body errored: ${body.error}`);
       else if (body.status === "FAIL") failures.push(`CAD body fails: ${(body.failures || []).join("; ")}`);
+    }
+    // A FAIL in the structure, the tub's fit, the assembly or the traction battery is a failed physical check: the
+    // car is not credible while one stands, whatever its requirements show.
+    for (const [sid, label] of CREDIBILITY_CHECKS) {
+      for (const t of [id, ...nodes.map((n) => n.id)]) {
+        const e = ctx.result(sid, t);
+        if (e?.status !== "FAIL") continue;
+        const items = [...(e.failures || []), ...(e.margins || []).filter((m) => !(m.utilization <= 1)).map((m) => `${m.check} (demand ${+Number(m.demand).toPrecision(4)} vs capacity ${+Number(m.capacity).toPrecision(4)}${m.unit ? ` ${m.unit}` : ""})`)];
+        failures.push(`${label} fails (${e.runId}): ${items.length ? items.join("; ") : "see its envelope"}`);
+      }
     }
     const packaging = fit || itf ? {
       ...(body ? { body: { status: body.status, ...(body.outputs?.dimensions ? { dimensions: body.outputs.dimensions.value, frontalAreaM2: body.outputs.frontalArea.value, surfaceAreaM2: body.outputs.surfaceArea.value, volumeM3: body.outputs.volume.value, minClearance: body.outputs.minClearance.value } : {}), source: body.runId } } : {}),

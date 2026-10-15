@@ -520,7 +520,7 @@ def solve_sections(req, extra, adj=None):
     for x in xs:
         polys = []  # convex (y, z) polygons: each box's slab, grown by its offset; points as 1-gons
         for b, c in zip(boxes, allc):
-            oo = o + extra.get(b["id"], 0.0)
+            oo = b.get("offsetM", o) + extra.get(b["id"], 0.0)  # an envelope may set its own clearance (structure: the skin thickness)
             v = slab_vertices(c, x - dx / 2 - oo, x + dx / 2 + oo)
             if v:
                 polys.append(hull([(y + sy * oo, z + sz * oo) for (y, z) in v for sy in (-1, 1) for sz in (-1, 1)]))
@@ -1734,15 +1734,15 @@ def build(req):
         enc = [b for b in req["envelopes"] if b.get("enclose", True)]
         if not last:
             for b, (c, _) in zip(enc, clearances_for("fast", enc, solid, shell, surf)):
-                if c < o - TOL:
-                    short[b["id"]] = (o - c) + 0.002
+                if c < b.get("offsetM", o) - TOL:
+                    short[b["id"]] = (b.get("offsetM", o) - c) + 0.002
             tick(f"screening clearances ({len(short)} short)")
         cl = []
         if not short:
             for b, (c, ins) in zip(req["envelopes"], clearances_for("exact", req["envelopes"], solid, shell, surf)):
                 cl.append({"id": b["id"], "kind": b.get("kind"), "enclose": b.get("enclose", True), "clearanceM": r6(c), "inside": ins})
-                if b.get("enclose", True) and c < o - TOL:
-                    short[b["id"]] = (o - c) + 0.002
+                if b.get("enclose", True) and c < b.get("offsetM", o) - TOL:
+                    short[b["id"]] = (b.get("offsetM", o) - c) + 0.002
             # required points (the entry header lines) must lie inside the body
             for p in req.get("points", []):
                 if not inside(solid, p["p"]):

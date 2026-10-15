@@ -22,12 +22,12 @@ import { compileBrief } from "./architectures.js";
 import { openDesign } from "../index.js";
 import { selectComponent, massStateOf, checkApplicability, getComponent, governingCvJointLimit } from "../components/index.js";
 import { CELL_P45B, PACK_DESIGN_CHOICES, packElectrical, placePack, NOT_INCLUDED as EV_PACK_NOT_INCLUDED } from "../powertrain/ev-pack.js";
-import { tubLandmarks, tubPositions } from "../structural/car-tub.js";
+import { tubLandmarks, tubPositions, tubEnvelopeFit, TUB_FIREWALL_OFFSET_M, TUB_GRID_M, TUB_DESIGN_CHOICES } from "../structural/car-tub.js";
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
 import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, deriveEvFront, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES, EV_LAYOUT_CHOICES } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
-import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, cadBodyGeometry } from "../cad/body-params.js";
+import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, ELECTRIC_BODY_CHOICES, cadBodyGeometry } from "../cad/body-params.js";
 import { withStructuralTub } from "../structural/car-tub.js";
 import { carChatSummary } from "../assembly/summary.js";
 
@@ -164,7 +164,35 @@ function libraryNode(entry, { id, kind, critical, config, position, share = 1, p
  * Compile the brief, pick library components and return { ir, configuration,
  * selection } or { error }.
  */
-export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis: chassisOpt, tub = {} } = {}) {
+/**
+ * Build the car; where the tub's B-posts (laid out from the package) cut into a rear occupant, move the rear
+ * seats inboard by the overlap + 1 mm (a design-parameter repair, recorded) and build again, up to 4 times.
+ */
+export function buildCarFromLibrary(brief, opts = {}) {
+  let r = buildCarOnce(brief, opts);
+  const repairs = [];
+  for (let pass = 0; pass < 4 && r?.ir && (opts.chassis ?? (opts.packaging === false ? "ladder" : "tub")) === "tub"; pass++) {
+    const hits = tubEnvelopeFit(r.ir).filter((x) => /^TUB_B_POST_/.test(x.part) && /^SEAT_[34]:/.test(x.against || "") && x.minClearanceM < 0);
+    if (!hits.length) break;
+    const worst = hits.reduce((a, b) => (b.minClearanceM < a.minClearanceM ? b : a));
+    const seat = r.ir.nodes.find((n) => n.id === "SEAT_3");
+    const y = Math.abs(parseFloat(seat.position.y));
+    const next = Math.floor((y + worst.minClearanceM - 0.001) * 1000 + 1e-9) / 1000;
+    const reason = `${worst.part} cuts ${(-worst.minClearanceM * 1000).toFixed(1)} mm into ${worst.against}: the rear seats move inboard from |y| ${y} m to ${next} m (the overlap + 1 mm)`;
+    repairs.push({ variable: "rearSeatY", before: y, after: next, reason });
+    r = buildCarOnce(brief, { ...opts, rearSeatRepair: { value: next, basis: `repaired: ${reason}` } });
+  }
+  if (repairs.length && r?.ir) r.layoutRepairs = repairs;
+  return r;
+}
+
+/** The CAD body's parameters: the defaults, the electric car's choices (cad/body-params.js), then the caller's. */
+function bodyParamsFor(config, bodyParams) {
+  const ev = config?.fuelType === "electric" ? Object.fromEntries(Object.entries(ELECTRIC_BODY_CHOICES).map(([k, v]) => [k, v.value])) : {};
+  return { ...CAD_BODY_DEFAULTS, ...ev, ...(bodyParams || {}) };
+}
+
+function buildCarOnce(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis: chassisOpt, tub = {}, rearSeatRepair = null } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -322,7 +350,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
   const shell = (area, thickness) => ({ shape: "shell", area, thickness });
   if (packaging && cadBody) {
     // The CAD body (cad.body): a lofted B-spline skin around the occupant and component envelopes.
-    const bp = { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) };
+    const bp = bodyParamsFor(config, bodyParams);
     add("BODY", { ...part("BODY_SHELL", CAD_BODY_MATERIAL, cadBodyGeometry(bp), 2.3, 0.7), props: { body: { vehicle: "VEH", plies: bp.plies, basis: CAD_BODY_BASIS } } });
   } else {
     add("BODY", part("BODY_SHELL", "cfrp-quasi-iso", { shape: "ellipsoid-shell", length: "4.4 m", width: "1.9 m", height: "1.2 m", thickness: "3 mm" }, 2.3, 0.7));
@@ -393,7 +421,7 @@ export function buildCarFromLibrary(brief, { config: overrides, speedLimiter = t
     },
   };
   // Package layout: component positions from library dimensions and the seating design (car-layout.js).
-  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: { ...CAD_BODY_DEFAULTS, ...(bodyParams || {}) }, groundClearance, diffEnvelope });
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: bodyParamsFor(config, bodyParams), groundClearance, diffEnvelope, rearSeatRepair });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -493,7 +521,10 @@ function placeBattery({ ir, byId, components }) {
   const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
   const t = tubPositions(L);
   const wall = 0.002, inset = 0.005; // tunnel wall, and the gap inside it
-  const fx0 = L.firewall + evC.packFrontGapM, fx1 = t.tunnelGapA - inset;
+  // the front cell starts behind the tub's firewall sheet (car-tub.js: at the firewall plane + half the firewall
+  // cross box, one sheet thick), and no nearer the package firewall than packFrontGapM
+  const fwSheetRear = t.firewallX + TUB_DESIGN_CHOICES.firewallDepth.value / 2 + TUB_DESIGN_CHOICES.sheet.value;
+  const fx0 = Math.max(L.firewall + evC.packFrontGapM, fwSheetRear + inset), fx1 = t.tunnelGapA - inset;
   const rx0 = t.tunnelGapA + inset, rx1 = t.heelX - 0.04 - inset;
   const vols = [
     { id: "TUNNEL_FRONT", center: [(fx0 + fx1) / 2, 0, (evC.packBottomZ + evC.packTopZ) / 2], size: [fx1 - fx0, evC.packWidthM, evC.packTopZ - evC.packBottomZ] },
@@ -517,7 +548,7 @@ function placeBattery({ ir, byId, components }) {
   return pl;
 }
 
-function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package" }) {
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package", rearSeatRepair = null }) {
   const entry = (k) => {
     const id = selection[k]?.chosen;
     if (!id) return null;
@@ -535,6 +566,8 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
   if (!layoutChoices && layout === "derived") {
     // Layout revision 2: the rear package derived from the envelopes (car-layout.js deriveRearPackage).
     let base = { ...LAYOUT_DESIGN_CHOICES, ...LAYOUT_REVISION_CHOICES };
+    // a repaired rear seat spacing (buildCarFromLibrary's B-post repair): the derivation keeps it as its upper bound
+    if (rearSeatRepair && rearSeatRepair.value < base.rearSeatY.value) base = { ...base, rearSeatY: { value: rearSeatRepair.value, basis: rearSeatRepair.basis } };
     const tyreE = entry("tyres"), diffE = entry("differential"), fuelE = entry("fuel_or_battery");
     // Layout revision 2.1: ground clearance (car-layout.js deriveGroundClearance), before the rear package
     // is derived (the rear H-point height and the differential height feed it).
@@ -550,7 +583,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     const motorE = electric ? entry("engine_or_motor") : null;
     if (electric && tyreE?.dimensions?.overallDiameterM) {
       base = { ...base, ...EV_LAYOUT_CHOICES };
-      evFront = deriveEvFront({ choices: base, keys: [...new Set([...occupantKeys, "M95"])], frontAxleX, track, tyre: { diameterM: tyreE.dimensions.overallDiameterM, widthM: tyreE.dimensions.sectionWidthM }, lockDeg: steeringLockDeg(PACKAGING_REFERENCES.referenceVehicle).innerDeg, body: body ? { archClearanceM: body.archClearanceM, skinOffsetM: body.skinOffsetM } : null });
+      evFront = deriveEvFront({ choices: base, keys: [...new Set([...occupantKeys, "M95"])], frontAxleX, track, tyre: { diameterM: tyreE.dimensions.overallDiameterM, widthM: tyreE.dimensions.sectionWidthM }, lockDeg: steeringLockDeg(PACKAGING_REFERENCES.referenceVehicle).innerDeg, body: body ? { archClearanceM: body.archClearanceM, skinOffsetM: body.skinOffsetM, skinThicknessM: parseFloat(cadBodyGeometry(body).thickness) / 1000 } : null, structure: { sillFrontFromFirewallM: TUB_FIREWALL_OFFSET_M - TUB_DESIGN_CHOICES.firewallDepth.value / 2, sillYM: [TUB_DESIGN_CHOICES.sillY.value - TUB_DESIGN_CHOICES.sillSection.value.width / 2, TUB_DESIGN_CHOICES.sillY.value + TUB_DESIGN_CHOICES.sillSection.value.width / 2], gridM: TUB_GRID_M } });
       if (!evFront.error) base = { ...base, ahpX: { value: evFront.ahpX, basis: `derived: ${evFront.method}` } };
     }
     const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));

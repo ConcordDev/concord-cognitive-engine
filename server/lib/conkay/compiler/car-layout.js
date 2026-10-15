@@ -301,7 +301,7 @@ export const EV_LAYOUT_CHOICES = Object.freeze({
  * occupant's feet (every checked percentile, both seats, on the seat track) are sweepClearanceM clear of
  * the front tyres' steering sweep; the firewall is footwellDepthM ahead of it. Returns { ahpX, firewallX, method }.
  */
-export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg, body = null }) {
+export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg, body = null, structure = null }) {
   const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
   const J = PACKAGING_REFERENCES.saeJ1100.definitions;
   const r = tyre.diameterM / 2, hw = tyre.widthM / 2;
@@ -333,10 +333,27 @@ export function deriveEvFront({ choices, keys, frontAxleX, track, tyre, lockDeg,
   };
   const ahpX = smallestX(gap, frontAxleX, frontAxleX + 2);
   if (ahpX == null) return { error: "no heel point within 2 m of the front axle clears the steering sweep" };
-  const a = mmUp(ahpX);
+  let a = mmUp(ahpX);
+  // the tub's sill starts structure.sillFrontFromFirewallM from the firewall (car-tub.js: the firewall plane less half
+  // the firewall cross box, the plane rounded to a 5 mm grid); where the sill's span across the car overlaps the
+  // steering sweep, the sill's front must also be sweepClearanceM behind the sweep
+  let sill = null;
+  if (structure) {
+    const [y0, y1] = structure.sillYM;
+    if (y1 > track / 2 - latExt && y0 < track / 2 + latExt) {
+      // and, with a CAD body, out of its front wheel well (a cylinder of the swept radius + arch clearance about the
+      // axle) by the skin's thickness: at the axle's height the well reaches that radius fore and aft
+      const sweepEnd = frontAxleX + ext + c.sweepClearanceM;
+      const wellEnd = body ? frontAxleX + Math.hypot(r, hw) + body.archClearanceM + (body.skinThicknessM ?? 0) : -Infinity;
+      const fwMin = Math.max(sweepEnd, wellEnd) - structure.sillFrontFromFirewallM + structure.gridM;
+      const aMin = mmUp(fwMin + c.footwellDepthM);
+      sill = { firewallMinX: r4(fwMin), binding: aMin > a, by: wellEnd > sweepEnd ? "wheel well" : "steering sweep" };
+      if (aMin > a) a = aMin;
+    }
+  }
   return {
-    ahpX: a, firewallX: r4(a - c.footwellDepthM),
-    method: `ahpX = the smallest accelerator heel point (bisection, rounded up to 1 mm) at which every front occupant's foot boxes (${keys.join(", ")}, both seats, on the seat track) are ${c.sweepClearanceM} m clear of the front tyres' steering sweep (±${r4(lockDeg)}° inner lock, box ±${r4(ext)} m fore-aft, ±${r4(latExt)} m across the tyre centre)${body ? ` and the body's skin offset ${body.skinOffsetM} m clear of a box bounding the CAD body's front wheel wells (swept radius + ${body.archClearanceM} m arch clearance)` : ""}; firewall = ahpX - footwellDepthM ${c.footwellDepthM} m`,
+    ahpX: a, firewallX: r4(a - c.footwellDepthM), sill,
+    method: `ahpX = the smallest accelerator heel point (bisection, rounded up to 1 mm) at which every front occupant's foot boxes (${keys.join(", ")}, both seats, on the seat track) are ${c.sweepClearanceM} m clear of the front tyres' steering sweep (±${r4(lockDeg)}° inner lock, box ±${r4(ext)} m fore-aft, ±${r4(latExt)} m across the tyre centre)${body ? ` and the body's skin offset ${body.skinOffsetM} m clear of a box bounding the CAD body's front wheel wells (swept radius + ${body.archClearanceM} m arch clearance)` : ""}; firewall = ahpX - footwellDepthM ${c.footwellDepthM} m${sill ? `; the tub's sill front (firewall ${structure.sillFrontFromFirewallM >= 0 ? "+" : "-"} ${Math.abs(r4(structure.sillFrontFromFirewallM))} m) ${c.sweepClearanceM} m behind the sweep${body ? ` and the skin's thickness behind the front wheel well` : ""} (governed by the ${sill.by}) needs firewall >= ${sill.firewallMinX} m (+${structure.gridM} m grid)${sill.binding ? ", binding" : ", not binding"}` : ""}`,
   };
 }
 

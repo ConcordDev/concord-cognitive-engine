@@ -15,6 +15,7 @@
 import { registerSolver } from "../registry.js";
 import { packageScene, packageEnvelopes, packageRays } from "../../packaging/checks.js";
 import { runBodyKernel } from "../../cad/body-kernel.js";
+import { tubPartBox } from "../../structural/car-tub.js";
 import { CAD_BODY_BASIS, CAD_BODY_OPTIONAL } from "../../cad/body-params.js";
 
 const bodies = (g) => [...g.nodes.values()].filter((n) => n.geometry?.shape === "cad-body").map((n) => n.id);
@@ -39,6 +40,19 @@ export function cadBodyRequest(ctx, id) {
   if (rad && g.inletAllowance > 0) {
     const d = g.inletAllowance / 2;
     envelopes.push({ ...rad, id: "INLET_ALLOWANCE", kind: "allowance", center: [rad.center[0] - rad.half[0] - d, rad.center[1], rad.center[2]], half: [d, rad.half[1], rad.half[2]] });
+  }
+  // the structural tub: the body encloses each part (its outer box) by the skin's thickness, not the skin offset
+  // the occupants and components get (the tub is the structure the skin is bonded over; package.tub-fit checks
+  // the same clearance). A sheet that conforms to the skin has no box and is not an envelope.
+  // (the electric package only, for now: the front-engine tub was laid out to fit its body and does, and wrapping
+  // every car's body around its structure is a separate change)
+  const encloseStructure = ctx.get(veh, "props.vehicle.fuelType") === "electric";
+  for (const n of encloseStructure && ctx.graph ? [...ctx.graph.nodes.values()] : []) {
+    if (n.props?.role !== "tub") continue;
+    const box = ctx.get(n.id, "props.tubBox");
+    if (!box || box.conformsToSkin) continue;
+    const b = tubPartBox({ id: n.id, box });
+    envelopes.push({ id: n.id, kind: "structure", center: b.center.map(Number), half: b.half.map(Number), axes: b.axes, offsetM: g.thickness });
   }
   const points = [];
   for (const [key, occ] of Object.entries(scene.scenarios)) {
@@ -73,13 +87,21 @@ export const cadBody = registerSolver({
     if (!r.solid.closed) failures.push(`the body is not one closed solid (${r.solid.solids} solids, ${r.solid.freeEdges} free edges)`);
     if (g.maxWidth != null && r.metrics.widthM > g.maxWidth + 1e-6) failures.push(`overall width ${mm(r.metrics.widthM)} mm exceeds the ${mm(g.maxWidth)} mm bound (design choice): the tyres and envelopes need it at this track${r.fairing?.adjustments?.length ? " (the fairing's width cap was tightened as far as the requirements allow)" : ""}`);
     const enc = r.clearances.filter((c) => c.enclose);
-    const short = enc.filter((c) => c.clearanceM < skin - 1e-5);
-    for (const c of short) failures.push(`${c.id}: ${mm(c.clearanceM)} mm to the outer surface vs >= ${mm(skin)} mm skin offset (design choice)${c.inside ? "" : " — outside the body"}`);
+    // each envelope's own clearance target: the skin offset, or (structure) the skin's thickness
+    const need = Object.fromEntries(q.request.envelopes.map((e) => [e.id, e.offsetM ?? skin]));
+    const short = enc.filter((c) => c.clearanceM < (need[c.id] ?? skin) - 1e-5);
+    for (const c of short) {
+      const n = need[c.id] ?? skin;
+      failures.push(`${c.id}: ${mm(c.clearanceM)} mm to the outer surface vs >= ${mm(n)} mm ${n === skin ? "skin offset (design choice)" : "skin thickness (structure under the skin)"}${c.inside ? "" : " — outside the body"}`);
+    }
     for (const w of r.wheels) {
       if (w.minClearanceM < 0) failures.push(`${w.id}: the tyre${w.steerDeg ? ` (over +/-${w.steerDeg} deg of steer)` : ""} intersects the body (${mm(w.minClearanceM)} mm)`);
       else if (w.minClearanceM < g.archClearance - 5e-4) warnings.push(`${w.id}: ${mm(w.minClearanceM)} mm from the tyre to the body, under the ${mm(g.archClearance)} mm arch clearance`);
     }
-    const worst = enc.reduce((a, c) => (a == null || c.clearanceM < a.clearanceM ? c : a), null);
+    // the skin-offset envelopes' worst (as before); the structure under the skin is reported apart
+    const lowest = (xs) => xs.reduce((a, c) => (a == null || c.clearanceM < a.clearanceM ? c : a), null);
+    const worst = lowest(enc.filter((c) => (need[c.id] ?? skin) === skin));
+    const worstStructure = lowest(enc.filter((c) => (need[c.id] ?? skin) !== skin));
     const m = r.metrics;
     const rays = Object.fromEntries(r.rays.map((x) => [x.id, x.distanceM]));
     return {
@@ -99,6 +121,7 @@ export const cadBody = registerSolver({
         sections: { value: r.sections, note: "per station x: floor zb, belt (greenhouse base) deck, lower-body half width W and top lowerTop, greenhouse half width Wg and roof zt, and each fender pod's blend t, crown height and outer half width uOut (m); nose and tail sections carry their scale factors" },
         clearances: { value: Object.fromEntries(r.clearances.map((c) => [c.id, c.clearanceM])), unit: "m" },
         minClearance: { value: worst ? { id: worst.id, m: worst.clearanceM } : null },
+        ...(worstStructure ? { minStructureClearance: { value: { id: worstStructure.id, m: worstStructure.clearanceM }, note: "the structural tub's closest part to the outer surface; it needs the skin's thickness" } } : {}),
         wheels: { value: r.wheels },
         rays: { value: rays, unit: "m", note: "distance from each J1100 ray origin to the outer surface" },
         thickness: { value: g.thickness, unit: "m" },

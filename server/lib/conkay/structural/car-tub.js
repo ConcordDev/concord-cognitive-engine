@@ -108,9 +108,13 @@ export const FRONT_ENGINE_LANDMARKS = Object.freeze({ firewall: 1.4618, radiator
  * 5 mm grid the tub's design values use (design rule: a derived position is rounded to the nearest 5 mm;
  * package.tub-fit re-checks every clearance after rounding).
  */
+/** The tub's firewall plane sits this far behind the package firewall (rounded to TUB_GRID_M). */
+export const TUB_FIREWALL_OFFSET_M = 0.0282;
+export const TUB_GRID_M = 0.005;
+
 export function tubPositions(L) {
   const r4 = (v) => Math.round(v * 200) / 200;
-  const XF = r4(L.firewall + 0.0282);
+  const XF = r4(L.firewall + TUB_FIREWALL_OFFSET_M);
   const heelX = r4(L.frontSeatRear + 0.054);
   return {
     firewallX: XF,                                  // firewall plane: 28 mm behind the package firewall
@@ -236,8 +240,17 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     mem("tunnel-f3", `T${GA}`, `R${GB}`, tr); mem("tunnel-r1", `R${GB}`, `R${KX}`, tr); mem("tunnel-r2", `R${KX}`, "RH", tr);
   }
   // seat cross (x 1.98, under the seats' front edge, behind the feet), 80 × 110
-  const seat = tube("TUB_SEAT_CROSS", "Seat cross", { width: 0.08, height: 0.11, wall: w("cross", 0.003) }, along("y", [SX - 0.04, -sillIn, Z0], [SX + 0.04, sillIn, Z0 + 0.11]), 2 * sillIn - 0.31);
-  mem("seat-cross-L", `S${SX}.L`, `T${SX}`, seat); mem("seat-cross-R", `S${SX}.R`, `T${SX}`, seat);
+  if (!electric) {
+    const seat = tube("TUB_SEAT_CROSS", "Seat cross", { width: 0.08, height: 0.11, wall: w("cross", 0.003) }, along("y", [SX - 0.04, -sillIn, Z0], [SX + 0.04, sillIn, Z0 + 0.11]), 2 * sillIn - 0.31);
+    mem("seat-cross-L", `S${SX}.L`, `T${SX}`, seat); mem("seat-cross-R", `S${SX}.R`, `T${SX}`, seat);
+  } else {
+    // electric: the battery fills the tunnel, so the seat cross is two halves, sill to tunnel wall (the same
+    // members and length as one cross interrupted by the tunnel)
+    for (const [s, sg] of [["L", 1], ["R", -1]]) {
+      const half = tube(`TUB_SEAT_CROSS_${s}`, `Seat cross ${s}`, { width: 0.08, height: 0.11, wall: w("cross", 0.003) }, along("y", [SX - 0.04, sg > 0 ? 0.155 : -sillIn, Z0], [SX + 0.04, sg > 0 ? sillIn : -0.155, Z0 + 0.11]), sillIn - 0.155);
+      mem(`seat-cross-${s}`, `S${SX}.${s}`, `T${SX}`, half);
+    }
+  }
   // heel cross (behind the front seats, under the rear thighs), 80 × 120
   const heelHalf = (YS + (YQ - YS) * ((c.heelX - KX) / (Q0X - KX))) - 0.04;
   const heel = tube("TUB_HEEL_CROSS", "Heel cross", { width: 0.08, height: 0.12, wall: w("cross", 0.003) }, along("y", [c.heelX - 0.04, -heelHalf, Z0], [c.heelX + 0.04, heelHalf, Z0 + 0.12]), 2 * heelHalf);
@@ -424,6 +437,21 @@ export const TUB_REPLACES = Object.freeze(["RAIL_L", "RAIL_R", "TUB"]);
  * the rear of the front seat envelopes (every checked percentile, SgRP), the differential and (electric)
  * the drive unit's front face. Returns FRONT_ENGINE_LANDMARKS' shape, or null when the IR has no package.
  */
+/**
+ * The tub's parts (from the built IR) against the packaging envelopes and egress lines, geometry only (no CAD
+ * body): tubPackagingFit on the same package scene tubLandmarks reads. Rows { part, minClearanceM, against }.
+ */
+export function tubEnvelopeFit(ir) {
+  const veh = ir.nodes.find((n) => n.id === "VEH");
+  const pkg = veh?.props?.vehicle?.packaging;
+  if (!pkg) return [];
+  const pos = (id) => { const n = ir.nodes.find((x) => x.id === id); return n?.position ? { x: num(n.position.x), y: num(n.position.y), z: num(n.position.z) } : null; };
+  const centers = {};
+  for (const n of [...pkg.components.map((c) => c.node), ...pkg.tyres.map((t) => t.node)]) { const p = pos(n); if (p) centers[n] = p; }
+  const parts = ir.nodes.filter((n) => n.props?.role === "tub" && n.props?.tubBox).map((n) => ({ id: n.id, geometry: n.geometry, box: n.props.tubBox }));
+  return tubPackagingFit(packageScene({ pkg, centers }), parts);
+}
+
 export function tubLandmarks(ir) {
   const veh = ir.nodes.find((n) => n.id === "VEH");
   const pkg = veh?.props?.vehicle?.packaging;
