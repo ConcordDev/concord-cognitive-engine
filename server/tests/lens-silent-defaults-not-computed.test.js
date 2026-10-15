@@ -105,3 +105,35 @@ test("veterinary / mental-health / pharmacy: no assumed values", () => {
   const p = run("pharmacy.inventoryAlert", { inventory: [{ name: "a", quantity: 5 }, { name: "b", quantity: 20, reorderPoint: 10 }] }).result;
   assert.equal(p.notComputed, 1); assert.equal(p.allClear, false); assert.equal(p.lowStock, 0);
 });
+
+// ── batch 2: finance silent defaults + ADVISORY labels ─────────────────────
+import finance from "../domains/finance.js";
+import philosophy from "../domains/philosophy.js";
+import { advisory } from "../lib/lens-inputs.js";
+for (const reg of [finance, philosophy]) reg((d, a, fn) => H.set(`${d}.${a}`, fn));
+
+test("finance.compoundInterest: no assumed 7% / 10 years; same maths when given", () => {
+  const nc = run("finance.compoundInterest", { principal: 1000 });
+  assert.equal(nc.result.status, "NOT_COMPUTED");
+  assert.deepEqual(nc.result.missingInputs, ["annualRate", "years"]);
+  const r = run("finance.compoundInterest", { principal: 1000, annualRate: 0.12, years: 1 }).result;
+  assert.equal(r.finalBalance, 1126.83); // 1000·(1.01)^12
+});
+
+test("finance.debtPayoff: per-debt NOT_COMPUTED instead of 18% APR / 2% minimum", () => {
+  const r = run("finance.debtPayoff", { debts: [{ name: "card", balance: 1000 }, { name: "loan", balance: 1000, rate: 0.12, minimumPayment: 100 }] }).result;
+  assert.equal(r.notComputed, 1); assert.equal(r.totalDebt, null); assert.equal(r.monthsToDebtFree, null);
+  assert.equal(r.debts.find(d => d.name === "card").status, "NOT_COMPUTED");
+  assert.equal(r.firstTarget, "loan");
+});
+
+test("advisory(): labels result ADVISORY, keeps sync handlers sync, passes NOT_COMPUTED/errors through", async () => {
+  const h = advisory("basis", () => ({ ok: true, result: { x: 1 } }));
+  assert.equal(h().result.status, "ADVISORY"); assert.equal(h().result.advisoryBasis, "basis");
+  assert.equal(advisory("b", () => ({ ok: false, error: "e" }))().ok, false);
+  assert.equal(advisory("b", () => notComputed(["k"]))().result.status, "NOT_COMPUTED");
+  assert.equal((await advisory("b", async () => ({ ok: true, result: {} }))()).result.status, "ADVISORY");
+  const z = run("veterinary.vaccineSchedule", { species: "dog", age: 1 });
+  assert.equal(z.result.status, "ADVISORY");
+  assert.equal(run("philosophy.thoughtExperiment", { scenario: "x" }).result.status, "ADVISORY");
+});

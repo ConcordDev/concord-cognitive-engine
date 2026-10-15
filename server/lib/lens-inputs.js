@@ -49,3 +49,21 @@ export function notComputed(missingInputs, message, extra = {}) {
     },
   };
 }
+
+/**
+ * Wrap a rule-of-thumb / lookup-table / text-heuristic lens handler so its
+ * output is labelled ADVISORY (never a computed or verified verdict).
+ * Leaves error and NOT_COMPUTED replies untouched.
+ */
+export function advisory(basis, fn) {
+  const label = (r) => {
+    if (!r || r.ok !== true || !r.result || typeof r.result !== "object" || Array.isArray(r.result)) return r;
+    if (r.result.status === "NOT_COMPUTED") return r;
+    return { ...r, result: { ...r.result, status: "ADVISORY", verdict: null, advisoryBasis: basis } };
+  };
+  // Stays synchronous for synchronous handlers (callers/tests read .result directly).
+  return function advisoryLensHandler(...args) {
+    const r = fn(...args);
+    return r && typeof r.then === "function" ? r.then(label) : label(r);
+  };
+}
