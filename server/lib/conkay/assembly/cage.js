@@ -219,7 +219,7 @@ function inArch(corners, spec) {
   if (c.y < 0.74) return false;
   const R = spec.tyreRadius + spec.archGap;
   for (const ax of [spec.frontAxleX, spec.rearAxleX]) {
-    if (Math.hypot(c.x - ax, c.z - spec.tyreCenterZ) < R * 0.7) return true;
+    if (Math.hypot(c.x - ax, c.z - spec.tyreCenterZ) < R * (spec.archQuadFactor ?? 0.7)) return true;
   }
   return false;
 }
@@ -274,7 +274,7 @@ function classify(grid, spec) {
   return { keep, glass, intake, arch };
 }
 
-function snapArches(grid, keep, spec) {
+function snapArches(grid, keep, spec, margin = 0.01) {
   const used = new Set();
   for (const q of keep) for (const [s, r] of q) used.add(s * ROWS + r);
   const R = spec.tyreRadius + spec.archGap;
@@ -288,7 +288,7 @@ function snapArches(grid, keep, spec) {
         const dz = p.z - spec.tyreCenterZ;
         const d = Math.hypot(dx, dz);
         if (d > 1e-4 && d < R - 0.004) {
-          const t = (R + 0.01) / d;
+          const t = (R + margin) / d;
           p.x = ax + dx * t;
           p.z = spec.tyreCenterZ + dz * t;
         }
@@ -866,12 +866,25 @@ export function buildCageBody(spec, profileAt) {
   const grid = makeGrid(spec, profileAt);
   let built = subdivideParts(spec, grid);
   const notes = [];
-  for (let iter = 0; iter < 2 && (limitMisses(built.samples, spec).length || built.archCount); iter++) {
+  // Catmull-Clark pulls the limit surface inside its control points where the skin turns sharply (a raised
+  // fender over the arch), so a snapped cage can still leave skin inside the opening: each pass pushes the arch
+  // control points further out (10 mm, then 25, 40, 55 mm past the arch radius)
+  // Where skin is still inside an opening after a pass, the cage quads around the arch are the cause (a wide fender
+  // shoulder over a side that tucks in below it: the limit surface between them dips into the opening), so the
+  // arch-quad radius widens a step (0.7 R by default, up to 0.9 R) and the arch is snapped again. A body with
+  // no arch violation never enters this and keeps 0.7 R.
+  for (let iter = 0; iter < 6 && (limitMisses(built.samples, spec).length || built.archCount); iter++) {
     const miss = limitMisses(built.samples, spec);
-    if (miss.length) notes.push(...applyMisses(grid, miss));
-    if (built.archCount) snapArches(grid, classify(grid, spec).keep, spec);
+    if (miss.length && iter < 2) notes.push(...applyMisses(grid, miss));
+    if (built.archCount) {
+      if (iter > 0) spec.archQuadFactor = Math.min(0.9, (spec.archQuadFactor ?? 0.7) + 0.05);
+      snapArches(grid, classify(grid, spec).keep, spec);
+    }
     built = subdivideParts(spec, grid);
   }
+  if (built.archCount) notes.push(`cage arches: ${built.archCount} skin vertices still inside a wheel opening after snapping`);
+  else if (spec.archQuadFactor) notes.push(`cage arches: the opening's cage quads widened to ${spec.archQuadFactor} of the arch radius to clear the skin`);
+  if (built.archCount) notes.push(`cage arches: ${built.archCount} skin vertices still inside a wheel opening after snapping`);
   const fresh = (spec.pushes || []).filter((p) => !String(p).startsWith("cage "));
   spec.pushes = fresh.concat(notes);
   spec.limitCrown = built.samples.crown;

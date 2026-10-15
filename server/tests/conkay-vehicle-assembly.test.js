@@ -201,56 +201,77 @@ describe("assembly of the library car", () => {
     assert.ok(sheet.items.some((it) => it.t === "line" && it.pts.length > 4), "side cutaway has a profile");
   });
 
-  it("styles an EV skateboard first and keeps the hood low", () => {
+  it("draws the design's own powertrain: the gasoline car's front engine, never an invented one", () => {
     const layout = doc.checks.find((c) => c.id === "powertrain-layout");
     assert.equal(layout.status, "pass");
-    assert.equal(doc.surface.spec.layout, "ev_skateboard");
-    assert.match(layout.detail, /ev skateboard|floor battery/i);
-    assert.match(layout.detail, /range was not specified|Range was not specified/);
-    assert.match(layout.detail, /400 km/);
-    assert.match(layout.detail, /gasoline/);
-    for (const id of ["BATTERY", "MOTOR_FRONT", "MOTOR_REAR", "INVERTER", "COOLING"]) {
-      assert.ok(doc.components.some((c) => c.id === id), id);
-    }
-    for (const id of ["ENGINE", "RADIATOR", "TRANSMISSION", "FUEL_CELL"]) {
-      assert.equal(doc.components.some((c) => c.id === id), false, id);
-    }
-    const quality = doc.checks.find((c) => c.id === "design-quality");
-    assert.ok(quality);
-    assert.ok(quality.status === "info" || quality.status === "warn");
-    assert.equal(quality.status, "info");
-    assert.ok(quality.maxTurnDeg < 25, `turn ${quality.maxTurnDeg}`);
-    assert.ok(quality.ratios.hoodAtAxleM < 0.78, `hood ${quality.ratios.hoodAtAxleM}`);
-    assert.ok(quality.ratios.peakM > quality.ratios.hoodAtAxleM + 0.4, "the roof peaks above the hood");
-    const controls = Number(quality.detail.match(/^(\d+) styling controls/)?.[1]);
-    assert.ok(controls >= 20 && controls <= 40, quality.detail.slice(0, 40));
-    assert.ok(doc.surface.spec.cagePoints >= 300 && doc.surface.spec.cagePoints <= 800, `cage ${doc.surface.spec.cagePoints}`);
-    assert.equal(doc.surface.spec.cageLevels, 3);
-    assert.ok(quality.panelHighlightMaxDeg <= 8, `panel highlight ${quality.panelHighlightMaxDeg}° ${quality.detail}`);
-    assert.ok(quality.highlightMaxDeg <= 16, `fillet highlight ${quality.highlightMaxDeg}° ${quality.detail}`);
-    assert.deepEqual(doc.surface.spec.pushes, []);
+    assert.equal(doc.surface.spec.layout, "front_engine");
+    assert.match(layout.detail, /design's own package/);
+    for (const id of ["ENGINE", "RADIATOR", "TRANSMISSION", "FUEL_CELL"]) assert.ok(doc.components.some((c) => c.id === id), id);
+    for (const id of ["BATTERY", "MOTOR_FRONT", "MOTOR_REAR", "INVERTER", "COOLING"]) assert.equal(doc.components.some((c) => c.id === id), false, id);
+    assert.ok(doc.components.some((c) => c.id === "PEDAL_CLUTCH") && doc.components.some((c) => c.id === "GEAR_SELECTOR"), "the manual gearbox's controls");
+    const contain = doc.checks.find((c) => c.id === "containment");
+    assert.equal(contain.status, "pass", contain.detail);
     assert.ok(doc.components.some((c) => c.id === "SEAT_1" && c.role === "seat"));
     assert.ok(doc.components.some((c) => c.id === "OCC_SEAT_1_M95" && c.role === "occupant"));
   });
 
-  it("raises the hood when the caller asks for the library front engine", () => {
-    const b = buildCarFromLibrary(BRIEF);
-    const fe = assemblyFromIr(b.ir, { layout: "front_engine", brief: BRIEF });
-    assert.equal(validateAssembly(fe).ok, true, (fe.validationErrors || []).join("; "));
-    const contain = fe.checks.find((c) => c.id === "containment");
-    assert.equal(contain.status, "pass", contain.detail);
-    const layout = fe.checks.find((c) => c.id === "powertrain-layout");
-    assert.match(layout.detail, /hood raised/);
-    assert.match(layout.detail, /engine/);
-    assert.match(layout.detail, /radiator/);
-    const quality = fe.checks.find((c) => c.id === "design-quality");
+  it("draws the electric design as a skateboard with its drive unit and traction battery; its radiator still raises the hood", () => {
+    const ev = assemblyFromIr(buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } }).ir);
+    assert.equal(validateAssembly(ev).ok, true, (ev.validationErrors || []).join("; "));
+    assert.equal(ev.surface.spec.layout, "ev_skateboard");
+    const layout = ev.checks.find((c) => c.id === "powertrain-layout");
+    assert.match(layout.detail, /The design is electric/);
+    for (const id of ["ENGINE", "DIFFERENTIAL", "BATTERY_CELLS", "BATTERY_CELLS:TUNNEL_REAR", "RADIATOR"]) assert.ok(ev.components.some((c) => c.id === id), id);
+    for (const id of ["TRANSMISSION", "FUEL_CELL", "MOTOR_FRONT", "MOTOR_REAR", "INVERTER", "PEDAL_CLUTCH", "GEAR_SELECTOR"]) assert.equal(ev.components.some((c) => c.id === id), false, id);
+    // the second battery block sits at its node plus its package offset, not on top of the first
+    const b0 = ev.components.find((c) => c.id === "BATTERY_CELLS"), b1 = ev.components.find((c) => c.id === "BATTERY_CELLS:TUNNEL_REAR");
+    assert.ok(b1.placement.x > b0.placement.x + b0.half[0], `${b1.placement.x} vs ${b0.placement.x}`);
+    const cabin = ev.checks.find((c) => c.id === "powertrain-cabin");
+    assert.equal(cabin.status, "pass", cabin.detail);
+    assert.match(cabin.detail, /drive unit to the nearest rear occupant box/);
+    // The electric design still carries the library gasoline radiator as its cooling core, at the nose: it raises the
+    // hood, and the styling bands report the turn that makes (a design finding, not hidden by an invented low hood;
+    // sizing the electric car's cooling is separate work)
+    const quality = ev.checks.find((c) => c.id === "design-quality");
+    assert.ok(ev.surface.spec.pushes.some((p) => /hood raised \d+ mm for the library radiator/.test(p)), JSON.stringify(ev.surface.spec.pushes));
     assert.equal(quality.status, "warn");
-    assert.ok(quality.ratios.hoodAtAxleM > doc.checks.find((c) => c.id === "design-quality").ratios.hoodAtAxleM);
-    assert.ok(fe.components.some((c) => c.id === "ENGINE"));
-    assert.ok(fe.components.some((c) => c.id === "RADIATOR"));
-    assert.equal(fe.components.some((c) => c.id === "BATTERY"), false);
-    const low = fe.checks.find((c) => c.id === "head-M95");
-    assert.equal(low.status, "pass");
+    assert.match(quality.detail, /Outside the styling bands: silhouette turn/);
+    assert.ok(quality.ratios.peakM > quality.ratios.hoodAtAxleM + 0.3, "the roof peaks above the hood");
+    assert.ok(ev.surface.spec.cagePoints >= 300 && ev.surface.spec.cagePoints <= 800, `cage ${ev.surface.spec.cagePoints}`);
+    assert.equal(ev.surface.spec.cageLevels, 3);
+    assert.ok(quality.panelHighlightMaxDeg <= 8, `panel highlight ${quality.panelHighlightMaxDeg}°`);
+    assert.ok(quality.highlightMaxDeg <= 16, `fillet highlight ${quality.highlightMaxDeg}°`);
+  });
+
+  it("a layout the design does not have is a styling study, labelled, with its sized parts", () => {
+    const study = assemblyFromIr(buildCarFromLibrary(BRIEF).ir, { layout: "ev_skateboard", brief: BRIEF });
+    assert.equal(validateAssembly(study).ok, true, (study.validationErrors || []).join("; "));
+    const layout = study.checks.find((c) => c.id === "powertrain-layout");
+    assert.match(layout.detail, /Styling study: this layout is not the design's/);
+    for (const id of ["BATTERY", "MOTOR_FRONT", "MOTOR_REAR"]) assert.ok(study.components.some((c) => c.id === id), id);
+    assert.equal(study.components.some((c) => c.id === "ENGINE"), false);
+    // the front engine raises the hood over the skateboard study
+    const q = (d) => d.checks.find((c) => c.id === "design-quality").ratios.hoodAtAxleM;
+    assert.ok(q(doc) > q(study), `${q(doc)} vs ${q(study)}`);
+  });
+
+  it("containment: a part outside Studio's styled surface but verified inside the CAD body is a drawn preview gap", () => {
+    const b = buildCarFromLibrary(BRIEF);
+    const tight = { min: [0.2, -0.9, 0.1], max: [4.6, 0.9, 1.3] };
+    const plain = assemblyFromIr(b.ir, { bodyBBox: tight });
+    const out = plain.checks.find((c) => c.id === "containment");
+    if (out.status !== "fail") return; // nothing outside at this box: nothing to verify
+    const ids = out.outside;
+    const verified = assemblyFromIr(b.ir, { bodyBBox: tight, verifiedInside: new Set(ids) });
+    const c = verified.checks.find((x) => x.id === "containment");
+    assert.equal(c.status, "warn");
+    assert.deepEqual(c.outside, []);
+    assert.deepEqual(c.previewOnly, ids);
+    // only the verified ones move: one left unverified still fails
+    const partial = assemblyFromIr(b.ir, { bodyBBox: tight, verifiedInside: new Set(ids.slice(1)) });
+    const p = partial.checks.find((x) => x.id === "containment");
+    assert.equal(p.status, "fail");
+    assert.deepEqual(p.outside, [ids[0]]);
   });
 });
 
