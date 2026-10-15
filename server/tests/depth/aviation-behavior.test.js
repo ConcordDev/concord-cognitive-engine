@@ -27,8 +27,8 @@ describe("aviation — performance & W&B calcs (exact computed values)", () => {
   });
 
   it("perf-takeoff: a 10kt headwind shortens the ground roll by exactly 10%", async () => {
-    const calm = await lensRun("aviation", "perf-takeoff", { params: { weight: 2200, headwind: 0 } });
-    const wind = await lensRun("aviation", "perf-takeoff", { params: { weight: 2200, headwind: 10 } });
+    const calm = await lensRun("aviation", "perf-takeoff", { params: { pressureAlt: 0, oat: 15, weight: 2200, headwind: 0 } });
+    const wind = await lensRun("aviation", "perf-takeoff", { params: { pressureAlt: 0, oat: 15, weight: 2200, headwind: 10 } });
     assert.equal(calm.ok, true);
     assert.equal(wind.ok, true);
     // weight 2200 → weightFactor 1, base 860; headwind 10 → windFactor 0.9
@@ -37,7 +37,7 @@ describe("aviation — performance & W&B calcs (exact computed values)", () => {
   });
 
   it("perf-takeoff: out-of-range weight is rejected with a bound message", async () => {
-    const r = await lensRun("aviation", "perf-takeoff", { params: { weight: 3000 } });
+    const r = await lensRun("aviation", "perf-takeoff", { params: { pressureAlt: 0, oat: 15, weight: 3000 } });
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /weight 1500-2550/);
   });

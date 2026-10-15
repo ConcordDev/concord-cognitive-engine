@@ -1,3 +1,5 @@
+import { needNums, notComputed } from "../lib/lens-inputs.js";
+
 export default function registerAviationActions(registerLensAction) {
   // ── Weight & Balance shape normalizer ────────────────────────────
   //
@@ -664,7 +666,49 @@ export default function registerAviationActions(registerLensAction) {
   // Seed table for Cessna 172 (representative single-engine GA). User can
   // override altitude/temp/weight/headwind/slope.
 
-  registerLensAction("aviation", "perf-takeoff", (_ctx, _artifact, params = {}) => {
+
+  // METAR-sourced perf inputs: with params.station (ICAO), pressure altitude
+  // and OAT come from the latest aviationweather.gov METAR (field elevation +
+  // altimeter setting), headwind from wind vs params.runwayHeading. Explicit
+  // params always win. Failure → NOT_COMPUTED, never a guessed value.
+  async function metarPerfInputs(station) {
+    const url = `https://aviationweather.gov/api/data/metar?ids=${encodeURIComponent(station)}&format=json&taf=false`;
+    const r = await globalThis.fetch(url);
+    if (!r.ok) throw new Error(`aviationweather.gov ${r.status}`);
+    const m = (await r.json() || [])[0];
+    if (!m) throw new Error(`no METAR for ${station}`);
+    return { m, url };
+  }
+  function withMetarPerf(core, ctx, a, params) {
+    const station = String(params.station || "").trim().toUpperCase();
+    if (!station) return core(ctx, a, params);
+    return (async () => {
+      let got;
+      try { got = await metarPerfInputs(station); } catch (e) {
+        return notComputed([], `METAR unavailable for ${station}: ${e instanceof Error ? e.message : String(e)}`, { station, source: "aviationweather.gov" });
+      }
+      const { m, url } = got;
+      const p = { ...params };
+      const derived = {};
+      if (p.oat == null && Number.isFinite(m.temp)) { p.oat = m.temp; derived.oat = "METAR temp"; }
+      if (p.pressureAlt == null && Number.isFinite(m.elev) && Number.isFinite(m.altim)) {
+        const inHg = m.altim * 0.0295300; // altim is hPa
+        p.pressureAlt = Math.round(m.elev * 3.28084 + (29.92 - inHg) * 1000);
+        derived.pressureAlt = "field elevation + (29.92 − altimeter inHg)·1000 ft (FAA-H-8083-25)";
+      }
+      if (p.headwind == null && Number.isFinite(Number(params.runwayHeading)) && Number.isFinite(m.wdir) && Number.isFinite(m.wspd)) {
+        p.headwind = Math.round(m.wspd * Math.cos((m.wdir - Number(params.runwayHeading)) * Math.PI / 180));
+        derived.headwind = "METAR wind component on runwayHeading";
+      }
+      const r = core(ctx, a, p);
+      if (!r?.ok || r.result?.status === "NOT_COMPUTED") return r;
+      return { ...r, result: { ...r.result, provenance: { source: "aviationweather.gov METAR", url, station: m.icaoId || station, observed: m.reportTime || null, raw: m.rawOb || null, derived } } };
+    })();
+  }
+
+  const perfTakeoffCore = (_ctx, _artifact, params = {}) => {
+    const _req = needNums(params, ["pressureAlt", "oat", "weight>0"]);
+    if (_req.missing.length) return notComputed(_req.missing, "Performance needs pressure altitude (ft), OAT (°C) and weight (lb) — or pass station (ICAO) to take pressure altitude and OAT from the current METAR. Nothing is assumed (previously 0 ft / 15 °C / 2400 lb).");
     const pressureAlt = Number(params.pressureAlt) || 0;
     const oat = Number(params.oat) || 15; // °C
     const weight = Number(params.weight) || 2400; // lb (max C172)
@@ -694,12 +738,18 @@ export default function registerAviationActions(registerLensAction) {
         groundRoll_ft: groundRoll,
         over50ft_ft: over50ft,
         inputs: { pressureAlt, oat, weight, headwind, slope, isaTemp: Math.round(isaTemp) },
+        densityAltitude_ft: Math.round(pressureAlt + 118.8 * (oat - isaTemp)),
+        densityAltitudeMethod: "DA ≈ PA + 118.8·(OAT − ISA) (FAA-H-8083-25 approximation)",
+        assumptions: [...(params.headwind == null ? ["headwind 0 kt (none supplied)"] : []), ...(params.slope == null ? ["runway slope 0 %"] : [])],
         notes: "Simplified C172 perf model. Always consult POH for actual operations.",
       },
     };
-  });
+  };
+  registerLensAction("aviation", "perf-takeoff", (ctx, a, params = {}) => withMetarPerf(perfTakeoffCore, ctx, a, params));
 
-  registerLensAction("aviation", "perf-landing", (_ctx, _artifact, params = {}) => {
+  const perfLandingCore = (_ctx, _artifact, params = {}) => {
+    const _req = needNums(params, ["pressureAlt", "oat", "weight>0"]);
+    if (_req.missing.length) return notComputed(_req.missing, "Performance needs pressure altitude (ft), OAT (°C) and weight (lb) — or pass station (ICAO) to take pressure altitude and OAT from the current METAR. Nothing is assumed (previously 0 ft / 15 °C / 2400 lb).");
     const pressureAlt = Number(params.pressureAlt) || 0;
     const oat = Number(params.oat) || 15;
     const weight = Number(params.weight) || 2400;
@@ -722,10 +772,14 @@ export default function registerAviationActions(registerLensAction) {
         groundRoll_ft: groundRoll,
         over50ft_ft: over50ft,
         inputs: { pressureAlt, oat, weight, headwind, isaTemp: Math.round(isaTemp) },
+        densityAltitude_ft: Math.round(pressureAlt + 118.8 * (oat - isaTemp)),
+        densityAltitudeMethod: "DA ≈ PA + 118.8·(OAT − ISA) (FAA-H-8083-25 approximation)",
+        assumptions: [...(params.headwind == null ? ["headwind 0 kt (none supplied)"] : [])],
         notes: "Simplified C172 perf model. Always consult POH.",
       },
     };
-  });
+  };
+  registerLensAction("aviation", "perf-landing", (ctx, a, params = {}) => withMetarPerf(perfLandingCore, ctx, a, params));
 
   // ── Flight plan composer ──
 

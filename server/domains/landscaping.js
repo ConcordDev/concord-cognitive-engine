@@ -50,7 +50,17 @@ export default function registerLandscapingActions(registerLensAction) {
     const _z = needNums(artifact?.data, ["hardnessZone>0"]); if (_z.missing.length) return notComputed(_z.missing, "Seasonal plan needs your USDA hardiness zone (1–13).");
     const zone = Math.trunc(_z.values.hardnessZone);
     const seasons = { spring: ["Fertilize lawn", "Prune winter damage", "Plant annuals", "Mulch beds", "Edge beds"], summer: ["Deep water weekly", "Mow at 3-4 inches", "Deadhead flowers", "Watch for pests", "Prune after bloom"], fall: ["Aerate lawn", "Overseed thin spots", "Plant bulbs", "Final fertilizer", "Clean up leaves"], winter: ["Plan spring design", "Order seeds", "Maintain tools", "Protect tender plants", "Prune dormant trees"] };
-    return { ok: true, result: { zone, plan: seasons, currentSeason: ["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()], immediateActions: seasons[["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()]] } };
+    const species = String(artifact?.data?.species || _params?.species || "").trim();
+    const base = { zone, plan: seasons, currentSeason: ["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()], immediateActions: seasons[["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()]]};
+    if (!species) return { ok: true, result: base };
+    // Species-specific data from Trefle (TREFLE_API_KEY): bloom/fruit months, light, min temp.
+    return (async () => {
+      const sr = await trefleSearch(ctx, artifact, { query: species });
+      const hit = sr?.ok ? sr.result.plants?.[0] : null;
+      const pr = hit ? await treflePlant(ctx, artifact, { id: hit.id }) : null;
+      if (!pr?.ok) return { ok: true, result: { ...base, speciesData: { status: "NOT_COMPUTED", species, reason: (pr || sr)?.error || `no Trefle match for ${species}` } } };
+      return { ok: true, result: { ...base, speciesData: { ...pr.result, provenance: { source: "Trefle API", url: "https://trefle.io/api/v1/plants/" + hit.id, query: species } } } };
+    })();
   }));
   registerLensAction("landscaping", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -109,7 +119,7 @@ export default function registerLandscapingActions(registerLensAction) {
    *
    * params: { query: string, page?: 1+ }
    */
-  registerLensAction("landscaping", "trefle-search", async (_ctx, _artifact, params = {}) => {
+  const trefleSearch = async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.TREFLE_API_KEY;
     if (!apiKey) return { ok: false, error: "TREFLE_API_KEY env required (free at trefle.io/users/sign_up)" };
     const query = String(params.query || "").trim();
@@ -143,14 +153,15 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `trefle unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("landscaping", "trefle-search", trefleSearch);
 
   /**
    * trefle-plant — Full details for a Trefle plant by ID (returned
    * from trefle-search). Includes growth requirements, soil pH range,
    * hardiness zones, edible parts, and toxicity info.
    */
-  registerLensAction("landscaping", "trefle-plant", async (_ctx, _artifact, params = {}) => {
+  const treflePlant = async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.TREFLE_API_KEY;
     if (!apiKey) return { ok: false, error: "TREFLE_API_KEY env required" };
     const id = Number(params.id);
@@ -195,7 +206,8 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `trefle unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
-  });
+  };
+  registerLensAction("landscaping", "trefle-plant", treflePlant);
 
   // ─── Garden / bed management substrate (per-user, STATE-backed) ─────
   function getLandState() {

@@ -56,7 +56,7 @@ describe("mining — pure-compute calc contracts (exact computed values)", () =>
 
   it("safetyMetrics: TRIR/LTIR per 200k hours + safety rating", async () => {
     const r = await lensRun("mining", "safetyMetrics", {
-      data: { hoursWorked: 1000000, incidents: 5, lostTimeIncidents: 2 },
+      data: { hoursWorked: 1000000, incidents: 5, lostTimeIncidents: 2, industryTRIR: 2.5 },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.trir, 1);                  // 5 * 200000 / 1e6
@@ -65,10 +65,10 @@ describe("mining — pure-compute calc contracts (exact computed values)", () =>
     assert.equal(r.result.safetyRating, "good");    // not < 1, but < 2.5
   });
 
-  it("safetyMetrics: zero hours worked → TRIR/LTIR are 0 (no divide-by-zero)", async () => {
+  it("safetyMetrics: zero hours worked → NOT_COMPUTED (no divide-by-zero, no fake 0 rate)", async () => {
     const r = await lensRun("mining", "safetyMetrics", { data: { hoursWorked: 0, incidents: 3 } });
-    assert.equal(r.result.trir, 0);
-    assert.equal(r.result.ltir, 0);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.ok(r.result.missingInputs.includes("hoursWorked"));
   });
 
   it("resourceEstimate: tonnage/contained/recoverable metal + gross value + category", async () => {
