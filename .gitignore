@@ -428,3 +428,6 @@ tmp/
 
 # ConKay OCC B-rep STEP files (local Mac kitchen / server data)
 server/data/conkay-brep/
+
+# Downloaded ambientCG source packs (raw archives; extracted textures are the working assets)
+apps/concordia-living-world/unity-client/Assets/Concordia/FreePacks/ambientCG/zips/
