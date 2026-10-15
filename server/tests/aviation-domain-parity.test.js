@@ -202,7 +202,7 @@ describe("aviation — flight plans", () => {
 
   it("computes fuel burn estimate when ETE known", async () => {
     mockAirports();
-    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110 });
+    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110, fuelBurnGph: 8.5 });
     assert.ok(r.result.plan.estFuelBurn_gal > 0);
   });
 
