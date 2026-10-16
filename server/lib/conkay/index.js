@@ -31,6 +31,7 @@ import "./physics/solvers/tube-actuation.js";
 import "./physics/solvers/electrical.js";
 import "./physics/solvers/energy-balance.js";
 import "./physics/solvers/powertrain.js";
+import "./physics/solvers/traction-battery.js";
 import "./physics/solvers/package.js";
 import "./physics/solvers/cad-body.js";
 import "./physics/solvers/design-surface.js";

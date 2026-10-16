@@ -27,6 +27,7 @@
 // "screening_pass_claims_unvalidated" only when there is no caveat at all.
 
 import { registerSolver } from "../registry.js";
+import { getComponent } from "../../components/index.js";
 import { LOGICAL_KINDS } from "../../compiler/design-ir.js";
 import { summarizeMassStates } from "../../verification/mass-state.js";
 import { TOP_SPEED_CLAIM_STATUS, TOP_SPEED_UNVERIFIED_DEPENDENCIES, SPEED_LIMITER_DEPENDENCY } from "./vehicle.js";
@@ -55,6 +56,14 @@ export const CRITICAL_VEHICLE_COMPONENTS = [
 
 // Categories whose parts may cover one axle only (props.axle: front | rear | both).
 const AXLE_CATEGORIES = new Set(["brakes"]);
+/** Solvers whose FAIL makes the car not credible (each a physical check, not a requirement). */
+export const CREDIBILITY_CHECKS = Object.freeze([
+  ["structure.frame", "structural frame"],
+  ["structure.crush-paths", "crush paths"],
+  ["package.tub-fit", "structural tub fit"],
+  ["assembly.vehicle", "assembly"],
+  ["vehicle.traction-battery", "traction battery"],
+]);
 
 const vehicles = (g) => g.nodesOfKind("Assembly").filter((n) => n.props?.vehicle).map((n) => n.id);
 
@@ -164,6 +173,17 @@ export const vehicleAcceptance = registerSolver({
     const critical = [];
     for (const cat of CRITICAL_VEHICLE_COMPONENTS) {
       if (cat.id === "exhaust" && fuelType === "electric") { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: "electric: no exhaust" }); continue; }
+      if (fuelType === "electric" && cat.id === "transmission") {
+        const ratios = ctx.get(id, "props.vehicle.gearRatios");
+        const direct = Array.isArray(ratios) && ratios.length === 1 && ratios[0] === 1 && !nodes.some((n) => criticalOf(ctx, n).includes("transmission"));
+        if (direct) { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: `electric, direct drive: ${ctx.get(id, "props.vehicle.gearRatiosSource") || "no gearbox"}` }); continue; }
+      }
+      if (fuelType === "electric" && cat.id === "wiring") {
+        const motor = nodes.find((n) => criticalOf(ctx, n).includes("engine_or_motor"));
+        const entry = motor ? getComponent(ctx.get(motor.id, "props.component") || "") : null;
+        const integrated = (entry?.mass?.includes || []).find((x) => /inverter/i.test(x));
+        if (integrated) { critical.push({ category: cat.id, label: cat.label, status: "not_applicable", reason: `electric: the motor module integrates its control electronics (${integrated}); its excluded HV cables and LV connector kit are listed as not included`, parts: [motor.id] }); continue; }
+      }
       const tagged = nodes.filter((n) => criticalOf(ctx, n).includes(cat.id));
       if (!tagged.length) { critical.push({ category: cat.id, label: cat.label, status: "missing", reason: "not in the design yet (placeholder)", parts: [] }); continue; }
       const parts = [];
@@ -239,6 +259,16 @@ export const vehicleAcceptance = registerSolver({
       if (body.status === "NOT_COMPUTED") failures.push(`CAD body not computed: ${body.reason}`);
       else if (body.status === "ERROR") failures.push(`CAD body errored: ${body.error}`);
       else if (body.status === "FAIL") failures.push(`CAD body fails: ${(body.failures || []).join("; ")}`);
+    }
+    // A FAIL in the structure, the tub's fit, the assembly or the traction battery is a failed physical check: the
+    // car is not credible while one stands, whatever its requirements show.
+    for (const [sid, label] of CREDIBILITY_CHECKS) {
+      for (const t of [id, ...nodes.map((n) => n.id)]) {
+        const e = ctx.result(sid, t);
+        if (e?.status !== "FAIL") continue;
+        const items = [...(e.failures || []), ...(e.margins || []).filter((m) => !(m.utilization <= 1)).map((m) => `${m.check} (demand ${+Number(m.demand).toPrecision(4)} vs capacity ${+Number(m.capacity).toPrecision(4)}${m.unit ? ` ${m.unit}` : ""})`)];
+        failures.push(`${label} fails (${e.runId}): ${items.length ? items.join("; ") : "see its envelope"}`);
+      }
     }
     const packaging = fit || itf ? {
       ...(body ? { body: { status: body.status, ...(body.outputs?.dimensions ? { dimensions: body.outputs.dimensions.value, frontalAreaM2: body.outputs.frontalArea.value, surfaceAreaM2: body.outputs.surfaceArea.value, volumeM3: body.outputs.volume.value, minClearance: body.outputs.minClearance.value } : {}), source: body.runId } } : {}),

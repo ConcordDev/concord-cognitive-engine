@@ -49,6 +49,15 @@ export const CAD_BODY_DEFAULTS = Object.freeze({
   maxWidthM: 1.95,
 });
 
+/**
+ * Body choices of the electric car that differ from the defaults, each with its evidence. The electric package
+ * puts the drive unit behind the rear seats, so the roof's last high point sits further aft than in the
+ * front-engine car and the default tail falls more steeply.
+ */
+export const ELECTRIC_BODY_CHOICES = Object.freeze({
+  tailExtensionM: { value: 0.6, basis: "design choice (measured 2026-10-15, cad.body + aero.drag-buildup on the electric package): with the default 0.22 m tail the measured rear slant was 13.2 deg on an earlier revision of this package (firewall 1.42 m), past Ahmed's 12.5 deg onset, so the build-up adds its slant bound (Cd centre 0.205). With 0.6 m on the current package (firewall 1.44 m, body enclosing the tub) it measures 10.8 deg, Cd 0.101..0.148..0.216, no slant term; the body is 5.16 m long. Not a wind-tunnel result: the slant onset is Ahmed's, transferred to this shape" },
+});
+
 export const CAD_BODY_BASIS = Object.freeze({
   plies: "design choice: skin laminate of 15 plies of HexPly 8552/AGP193-PW at the published 0.195 mm cured ply thickness = 2.925 mm (closest to the earlier 3 mm skin; no panel stiffness or crash analysis behind it)",
   skinOffset: "design choice (25-50 mm band): minimum distance from every enclosed envelope to the outer surface, for skin, structure and trim",

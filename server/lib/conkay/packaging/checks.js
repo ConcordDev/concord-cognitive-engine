@@ -105,7 +105,9 @@ export function packageScene({ pkg, centers }) {
   for (const c of pkg.components) {
     const p = centers[c.node];
     if (!p) { notes.push(`${c.node}: no position, not placed`); continue; }
-    compBoxes.push(obb({ id: c.id, part: "component", center: [p.x, p.y, p.z], half: c.half, pitchDeg: c.pitchDeg || 0, transmission: c.node === "TRANSMISSION" }));
+    // a component may be one of several blocks of one node (an electric car's battery): offset from the node
+    const o = c.offset || [0, 0, 0];
+    compBoxes.push(obb({ id: c.id, part: "component", center: [p.x + o[0], p.y + o[1], p.z + o[2]], half: c.half, pitchDeg: c.pitchDeg || 0, transmission: c.node === "TRANSMISSION" }));
   }
   const lock = pkg.steeringLock;
   const wheels = [];
