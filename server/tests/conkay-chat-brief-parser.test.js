@@ -84,7 +84,8 @@ describe("brackets", () => {
     assert.equal(r.domain, "bracket");
     assert.equal(C(r, "load").value, 500);
     assert.equal(C(r, "load").status, STATUS.INPUT);
-    assert.deepEqual(Q(r), ["length"]);
+    // the arm length and the plate width define the section to size (item 6); both are asked
+    assert.deepEqual(Q(r), ["length", "width"]);
     assert.equal(r.ir.lengthM, null);
     assert.equal(r.ir.loadAt, "tip");
     assert.match(C(r, "load").note, /checked at the tip/);
@@ -99,7 +100,7 @@ describe("brackets", () => {
     assert.match(C(r, "material").source, /material library/);
     assert.equal(C(r, "safetyFactor").value, 1.67);
     assert.match(C(r, "safetyFactor").source, /AISC 360-16/);
-    assert.deepEqual(Q(r), []);
+    assert.deepEqual(Q(r), ["width"]);
   });
   it("a named grade is a design input; no safety-factor default without a cited one (aluminium)", () => {
     const r = parseChatBrief("6061-T6 aluminium bracket, 200 mm arm, 1 kN at the end");

@@ -51,6 +51,7 @@ export const FIELDS = Object.freeze({
   bracket: [
     { field: "load", label: "load", ask: "safety load", question: "What load does the bracket carry, and where? (for example 500 N at the tip)", blocks: ["beam.bending-stress", "beam.tip-deflection", "fea.utilization"] },
     { field: "length", label: "arm length", ask: "defines the structure", question: "How long is the arm, from the wall to the load?", blocks: ["beam.bending-stress", "beam.tip-deflection", "fea.utilization", "part.mesh"] },
+    { field: "width", label: "plate width", ask: "defines the structure", question: "How wide is the plate? (its depth is then sized to the load)", blocks: ["beam.bending-stress", "beam.tip-deflection", "section.sizing"] },
     { field: "material", label: "material", ask: null, blocks: ["beam.allowable-stress", "beam.tip-deflection"] },
     { field: "safetyFactor", label: "safety factor", ask: null, blocks: ["beam.utilization-verdict"] },
     { field: "support", label: "support", ask: null, blocks: [] },
