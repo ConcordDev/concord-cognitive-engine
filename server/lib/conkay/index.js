@@ -45,6 +45,7 @@ import "./physics/solvers/assembly-ga-drawing.js";
 import "./physics/solvers/packaging.js";
 import "./physics/solvers/vehicle-acceptance.js";
 import "./physics/solvers/material.js";
+import "./physics/solvers/material-stiffness.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
