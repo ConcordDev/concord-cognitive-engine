@@ -6,6 +6,7 @@ import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 import { optNum, notComputed } from "../lib/lens-inputs.js";
 
+import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 export default function registerAgricultureActions(registerLensAction) {
   /**
    * rotationPlan
@@ -252,7 +253,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * artifact.data.weatherForecast: [{ date, highTemp, lowTemp, precipInches, humidity }] (optional)
    * params.daysAhead (default 7)
    */
-  registerLensAction("agriculture", "waterSchedule", (ctx, artifact, params) => {
+  const waterScheduleSync = (ctx, artifact, params) => {
   try {
     const fields = artifact.data.fields || [];
     const forecast = artifact.data.weatherForecast || [];
@@ -351,7 +352,24 @@ export default function registerAgricultureActions(registerLensAction) {
 
     return { ok: true, result: report };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  };
+  // fetchForecast:true + lat/lng → Open-Meteo daily forecast (high °F, precip in)
+  // fills every day the caller didn't supply (backend side of the 7-day gap).
+  registerLensAction("agriculture", "waterSchedule", (ctx, artifact, params = {}) => {
+    const d = artifact?.data || {};
+    const want = params?.fetchForecast === true || d.fetchForecast === true;
+    if (!want) return waterScheduleSync(ctx, artifact, params);
+    const lat = d.lat ?? params.lat ?? d.fields?.[0]?.lat, lng = d.lng ?? params.lng ?? d.fields?.[0]?.lng;
+    return (async () => {
+      const src = await openMeteoDailyForecast(lat, lng, Number(params.daysAhead) || 7);
+      if (!src.ok) { const r = waterScheduleSync(ctx, artifact, params); return r?.ok ? { ...r, result: { ...r.result, forecastSource: { status: "NOT_COMPUTED", reason: src.reason } } } : r; }
+      const given = Array.isArray(d.weatherForecast) ? d.weatherForecast : [];
+      const merged = [...given, ...src.value.filter((x) => !given.some((g) => g.date === x.date))];
+      artifact.data = { ...d, weatherForecast: merged };
+      const r = waterScheduleSync(ctx, artifact, params);
+      return r?.ok ? { ...r, result: { ...r.result, forecastProvenance: src.provenance } } : r;
+    })();
+  });
 
   /**
    * plan-crop

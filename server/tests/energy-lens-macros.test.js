@@ -100,7 +100,8 @@ describe("energy — pure-compute calculators (exact values)", () => {
   it("consumptionAnalysis: peak>2*avg flags savings opportunity", () => {
     const r = call("consumptionAnalysis", ctxA, { readings: [{ kWh: 1 }, { kWh: 1 }, { kWh: 10 }] });
     assert.equal(r.result.savingsOpportunity, "Significant peak reduction possible");
-    assert.equal(r.result.costPerKWh, 0.12); // default fallback
+    assert.equal(r.result.costPerKWh, null); // no silent $0.12 — cost needs costPerKWh or state (EIA)
+    assert.equal(r.result.estimatedCost, null);
   });
 
   it("consumptionAnalysis: empty readings → guidance, never NaN", () => {

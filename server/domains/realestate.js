@@ -1,3 +1,5 @@
+import { fredLatest } from "../lib/sourced-inputs.js";
+import { notComputed } from "../lib/lens-inputs.js";
 export default function registerRealEstateActions(registerLensAction) {
   registerLensAction("realestate", "capRate", (ctx, artifact, params) => {
     const noi = artifact.data?.netOperatingIncome || params.noi || 0;
@@ -130,7 +132,7 @@ export default function registerRealEstateActions(registerLensAction) {
 
   // ── Mortgage PITI calculator ──
 
-  registerLensAction("realestate", "calc-mortgage", (_ctx, _artifact, params = {}) => {
+  const calcMortgageSync = (_ctx, _artifact, params = {}) => {
   try {
     const price = Number(params.price);
     const downPercent = Number(params.downPercent ?? 20);
@@ -154,7 +156,7 @@ export default function registerRealEstateActions(registerLensAction) {
     const monthlyTax = (price * taxRate / 100) / 12;
     const monthlyInsurance = insurance / 12;
     const ltv = (loanAmount / price) * 100;
-    const monthlyPMI = ltv > 80 ? (loanAmount * 0.005) / 12 : 0; // 0.5%/yr PMI
+    const pmiRatePct = Number(params.pmiRatePct ?? 0.5); const monthlyPMI = ltv > 80 ? (loanAmount * pmiRatePct / 100) / 12 : 0; // PMI %/yr, declared below
     const monthlyTotal = principalAndInterest + monthlyTax + monthlyInsurance + monthlyPMI + hoa;
     return {
       ok: true,
@@ -171,10 +173,26 @@ export default function registerRealEstateActions(registerLensAction) {
         totalCostOverTerm: Math.round(monthlyTotal * n * 100) / 100,
         totalInterest: Math.round((principalAndInterest * n - loanAmount) * 100) / 100,
         formula: "M = P × r(1+r)^n / ((1+r)^n − 1) ; PITI + PMI + HOA",
+        assumptions: ltv > 80 && params.pmiRatePct == null ? ["PMI 0.5 %/yr of loan (typical; override with pmiRatePct)"] : [],
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  };
+  // rate / taxRate / insurance used to default to 7 % / 1.1 % / $1,200.
+  // Now required; opt in with rateSource:"fred" to use the latest Freddie Mac
+  // PMMS 30-yr (MORTGAGE30US) or 15-yr (MORTGAGE15US) average via FRED.
+  registerLensAction("realestate", "calc-mortgage", (ctx, a, params = {}) => {
+    const miss = ["taxRate", "insurance", ...(params.rateSource === "fred" ? [] : ["rate"])].filter((k) => params[k] == null || params[k] === "");
+    if (miss.length) return notComputed(miss, "Mortgage payment needs the interest rate (or rateSource:\"fred\"), property-tax rate (%/yr) and annual insurance ($) — none are assumed (previously 7 % / 1.1 % / $1,200).");
+    if (params.rateSource !== "fred" || params.rate != null) return calcMortgageSync(ctx, a, params);
+    return (async () => {
+      const series = Number(params.termYears ?? 30) <= 15 ? "MORTGAGE15US" : "MORTGAGE30US";
+      const src = await fredLatest(series);
+      if (!src.ok) return notComputed(["rate"], src.reason, { source: "FRED" });
+      const r = calcMortgageSync(ctx, a, { ...params, rate: src.value });
+      return r?.ok ? { ...r, result: { ...r.result, rateProvenance: { ...src.provenance, note: "Freddie Mac PMMS national average; your quoted rate will differ" } } } : r;
+    })();
+  });
 
   // ── Affordability (28/36 DTI rule) ──
 

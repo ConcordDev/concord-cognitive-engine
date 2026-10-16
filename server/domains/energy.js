@@ -22,8 +22,9 @@ function finiteNum(v, fallback = 0, min, max) {
   return out;
 }
 
+import { eiaRetailPrice } from "../lib/sourced-inputs.js";
 export default function registerEnergyActions(registerLensAction) {
-  registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, _params) => {
+  const consumptionAnalysisSync = (ctx, artifact, _params) => {
     const readings = Array.isArray(artifact.data?.readings) ? artifact.data.readings : [];
     if (readings.length === 0) return { ok: true, result: { message: "Add energy readings (kWh) to analyze consumption." } };
     // Clamp each reading to a finite, non-negative kWh. Poisoned entries
@@ -35,6 +36,23 @@ export default function registerEnergyActions(registerLensAction) {
     const costPerKWh = finiteNum(artifact.data?.costPerKWh, 0.12, 0);
     const peakToAvgRatio = avg > 0 ? Math.round((peak / avg) * 100) / 100 : 0;
     return { ok: true, result: { totalKWh: Math.round(total * 10) / 10, avgKWh: Math.round(avg * 10) / 10, peakKWh: Math.round(peak * 10) / 10, readingCount: values.length, estimatedCost: Math.round(total * costPerKWh * 100) / 100, costPerKWh, peakToAvgRatio, savingsOpportunity: peak > avg * 2 ? "Significant peak reduction possible" : "Consumption is relatively stable" } };
+  };
+  // costPerKWh used to default to $0.12 silently. Now: caller's rate, else
+  // opt-in EIA state average (params.state / data.state), else cost NOT_COMPUTED.
+  registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, params = {}) => {
+    const d = artifact?.data || {};
+    const state = d.state || params.state;
+    if (d.costPerKWh != null || !state) {
+      const r = consumptionAnalysisSync(ctx, artifact, params);
+      if (d.costPerKWh == null && r?.ok && r.result && "estimatedCost" in r.result) return { ...r, result: { ...r.result, estimatedCost: null, costPerKWh: null, missingInputs: ["costPerKWh"], costNote: "Pass costPerKWh, or state (2-letter) to use the EIA average retail price." } };
+      return r;
+    }
+    return (async () => {
+      const src = await eiaRetailPrice(state, d.sector || params.sector || "RES");
+      if (!src.ok) { const r = consumptionAnalysisSync(ctx, artifact, params); return r?.ok && r.result && "estimatedCost" in r.result ? { ...r, result: { ...r.result, estimatedCost: null, costPerKWh: null, missingInputs: ["costPerKWh"], costNote: src.reason } } : r; }
+      const r = consumptionAnalysisSync(ctx, { ...artifact, data: { ...d, costPerKWh: src.value } }, params);
+      return r?.ok ? { ...r, result: { ...r.result, costProvenance: src.provenance } } : r;
+    })();
   });
   registerLensAction("energy", "solarEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
