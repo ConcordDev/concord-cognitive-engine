@@ -9,9 +9,58 @@ import { cachedFetchJson } from "../lib/external-fetch.js";
 const POETRYDB_BASE = "https://poetrydb.org";
 const DATAMUSE_BASE = "https://api.datamuse.com";
 
+import { notComputed, advisory } from "../lib/lens-inputs.js";
+
 export default function registerPoetryActions(registerLensAction) {
-  registerLensAction("poetry", "meterAnalysis", (ctx, artifact, _params) => { const text = artifact.data?.text || artifact.data?.poem || ""; if (!text) return { ok: true, result: { message: "Add poem text to analyze meter." } }; const lines = text.split("\n").filter(l => l.trim()); const syllableCounts = lines.map(l => { const words = l.trim().split(/\s+/); return words.reduce((s, w) => s + Math.max(1, (w.match(/[aeiouy]+/gi) || []).length), 0); }); const avgSyllables = syllableCounts.length > 0 ? Math.round(syllableCounts.reduce((s,v)=>s+v,0)/syllableCounts.length * 10) / 10 : 0; const consistent = syllableCounts.length > 1 && Math.max(...syllableCounts) - Math.min(...syllableCounts) <= 2; return { ok: true, result: { lines: lines.length, syllablesPerLine: syllableCounts, avgSyllables, meterConsistency: consistent ? "regular" : "irregular", possibleForm: syllableCounts.length === 14 ? "sonnet" : syllableCounts.join(",").includes("5,7,5") ? "haiku" : lines.length === 3 && syllableCounts[0] === syllableCounts[2] ? "tercet" : "free-verse" } }; });
-  registerLensAction("poetry", "rhymeScheme", (ctx, artifact, _params) => { const text = artifact.data?.text || artifact.data?.poem || ""; if (!text) return { ok: true, result: { message: "Add poem text to detect rhyme scheme." } }; const lines = text.split("\n").filter(l => l.trim()); const endWords = lines.map(l => { const words = l.trim().split(/\s+/); return (words[words.length - 1] || "").toLowerCase().replace(/[^a-z]/g, ""); }); const getEnding = w => w.length > 2 ? w.slice(-2) : w; const scheme = []; const rhymeMap = {}; let letter = 65; for (const word of endWords) { const ending = getEnding(word); if (rhymeMap[ending]) { scheme.push(rhymeMap[ending]); } else { rhymeMap[ending] = String.fromCharCode(letter); scheme.push(rhymeMap[ending]); letter++; } } return { ok: true, result: { lines: lines.length, scheme: scheme.join(""), endWords, form: scheme.join("") === "ABAB" ? "alternate-rhyme" : scheme.join("") === "AABB" ? "couplets" : scheme.join("") === "ABBA" ? "enclosed-rhyme" : "other", rhyming: new Set(scheme).size < scheme.length } }; });
+  const meterAnalysisHeuristic = (ctx, artifact, _params) => { const text = artifact.data?.text || artifact.data?.poem || ""; if (!text) return { ok: true, result: { message: "Add poem text to analyze meter." } }; const lines = text.split("\n").filter(l => l.trim()); const syllableCounts = lines.map(l => { const words = l.trim().split(/\s+/); return words.reduce((s, w) => s + Math.max(1, (w.match(/[aeiouy]+/gi) || []).length), 0); }); const avgSyllables = syllableCounts.length > 0 ? Math.round(syllableCounts.reduce((s,v)=>s+v,0)/syllableCounts.length * 10) / 10 : 0; const consistent = syllableCounts.length > 1 && Math.max(...syllableCounts) - Math.min(...syllableCounts) <= 2; return { ok: true, result: { lines: lines.length, syllablesPerLine: syllableCounts, avgSyllables, meterConsistency: consistent ? "regular" : "irregular", possibleForm: syllableCounts.length === 14 ? "sonnet" : syllableCounts.join(",").includes("5,7,5") ? "haiku" : lines.length === 3 && syllableCounts[0] === syllableCounts[2] ? "tercet" : "free-verse" } }; };
+  // Datamuse (api.datamuse.com, keyless): rel_rhy for perfect rhymes, md=s
+  // for dictionary syllable counts. Opt in with datamuse:true; otherwise the
+  // orthographic heuristic runs and is labelled ADVISORY.
+  const DATAMUSE_WORDS = "https://api.datamuse.com/words";
+  const poemLines = (artifact) => String(artifact?.data?.text || artifact?.data?.poem || "").split("\n").filter(l => l.trim());
+  const lastWord = (l) => { const w = l.trim().split(/\s+/); return (w[w.length - 1] || "").toLowerCase().replace(/[^a-z']/g, ""); };
+  async function datamuseRhymeScheme(artifact) {
+    const lines = poemLines(artifact); const endWords = lines.map(lastWord);
+    const uniq = [...new Set(endWords.filter(Boolean))].slice(0, 40);
+    const rhymes = new Map();
+    for (const w of uniq) {
+      const list = await cachedFetchJson(`${DATAMUSE_WORDS}?rel_rhy=${encodeURIComponent(w)}&max=1000`, { ttlMs: 24 * 3600 * 1000 });
+      rhymes.set(w, new Set((Array.isArray(list) ? list : []).map(x => String(x.word).toLowerCase())));
+    }
+    const groups = []; const scheme = [];
+    for (const w of endWords) {
+      let gi = groups.findIndex(g => g.some(x => x === w || rhymes.get(x)?.has(w) || rhymes.get(w)?.has(x)));
+      if (gi < 0) { groups.push([w]); gi = groups.length - 1; } else groups[gi].push(w);
+      scheme.push(String.fromCharCode(65 + (gi % 26)));
+    }
+    const sc = scheme.join("");
+    return { ok: true, result: { lines: lines.length, scheme: sc, endWords, form: sc === "ABAB" ? "alternate-rhyme" : sc === "AABB" ? "couplets" : sc === "ABBA" ? "enclosed-rhyme" : "other", rhyming: new Set(scheme).size < scheme.length, method: "Datamuse rel_rhy perfect-rhyme lookup", provenance: { source: "Datamuse API", url: DATAMUSE_WORDS, queried: uniq.length } } };
+  }
+  async function datamuseMeter(artifact) {
+    const lines = poemLines(artifact); const counts = []; const unknown = new Set();
+    const cache = new Map();
+    for (const l of lines) {
+      let n = 0;
+      for (const raw of l.trim().split(/\s+/)) {
+        const w = raw.toLowerCase().replace(/[^a-z']/g, ""); if (!w) continue;
+        if (!cache.has(w)) { const r = await cachedFetchJson(`${DATAMUSE_WORDS}?sp=${encodeURIComponent(w)}&md=s&max=1`, { ttlMs: 24 * 3600 * 1000 }); const hit = Array.isArray(r) && r[0] && String(r[0].word).toLowerCase() === w ? r[0].numSyllables : null; cache.set(w, Number.isFinite(hit) ? hit : null); }
+        const c = cache.get(w); if (c === null) unknown.add(w); else n += c;
+      }
+      counts.push(n);
+    }
+    if (unknown.size) return notComputed([], `Datamuse has no syllable count for: ${[...unknown].slice(0, 10).join(", ")}`, { unknownWords: [...unknown], source: "datamuse" });
+    const avg = counts.length ? Math.round(counts.reduce((s, v) => s + v, 0) / counts.length * 10) / 10 : 0;
+    const consistent = counts.length > 1 && Math.max(...counts) - Math.min(...counts) <= 2;
+    return { ok: true, result: { lines: lines.length, syllablesPerLine: counts, avgSyllables: avg, meterConsistency: consistent ? "regular" : "irregular", possibleForm: counts.length === 14 ? "sonnet" : counts.join(",").includes("5,7,5") ? "haiku" : "free-verse", method: "Datamuse md=s dictionary syllable counts", provenance: { source: "Datamuse API", url: DATAMUSE_WORDS } } };
+  }
+  const viaDatamuse = (fn, heuristic, basis) => advisory(basis, (ctx, artifact, params = {}) => {
+    const want = params?.datamuse === true || artifact?.data?.datamuse === true;
+    if (!want || !poemLines(artifact).length) return heuristic(ctx, artifact, params);
+    return fn(artifact).catch((e) => notComputed([], `Datamuse unavailable: ${e instanceof Error ? e.message : String(e)}`, { source: "datamuse" }));
+  });
+  const rhymeSchemeHeuristic = (ctx, artifact, _params) => { const text = artifact.data?.text || artifact.data?.poem || ""; if (!text) return { ok: true, result: { message: "Add poem text to detect rhyme scheme." } }; const lines = text.split("\n").filter(l => l.trim()); const endWords = lines.map(l => { const words = l.trim().split(/\s+/); return (words[words.length - 1] || "").toLowerCase().replace(/[^a-z]/g, ""); }); const getEnding = w => w.length > 2 ? w.slice(-2) : w; const scheme = []; const rhymeMap = {}; let letter = 65; for (const word of endWords) { const ending = getEnding(word); if (rhymeMap[ending]) { scheme.push(rhymeMap[ending]); } else { rhymeMap[ending] = String.fromCharCode(letter); scheme.push(rhymeMap[ending]); letter++; } } return { ok: true, result: { lines: lines.length, scheme: scheme.join(""), endWords, form: scheme.join("") === "ABAB" ? "alternate-rhyme" : scheme.join("") === "AABB" ? "couplets" : scheme.join("") === "ABBA" ? "enclosed-rhyme" : "other", rhyming: new Set(scheme).size < scheme.length } }; };
+  registerLensAction("poetry", "meterAnalysis", (ctx, artifact, params) => { const h = viaDatamuse(datamuseMeter, meterAnalysisHeuristic, "vowel-group syllable heuristic; pass datamuse:true for dictionary counts"); const r = h(ctx, artifact, params); return r; });
+  registerLensAction("poetry", "rhymeScheme", (ctx, artifact, params) => viaDatamuse(datamuseRhymeScheme, rhymeSchemeHeuristic, "last-two-letters spelling heuristic; pass datamuse:true for real rhyme lookup")(ctx, artifact, params));
   registerLensAction("poetry", "formGuide", (ctx, artifact, _params) => { const form = (artifact.data?.form || "sonnet").toLowerCase(); const forms = { sonnet: { lines: 14, meter: "iambic pentameter", rhyme: "ABAB CDCD EFEF GG (Shakespearean) or ABBAABBA CDECDE (Petrarchan)", structure: "3 quatrains + couplet or octave + sestet" }, haiku: { lines: 3, meter: "5-7-5 syllables", rhyme: "none", structure: "Nature image → deeper meaning" }, limerick: { lines: 5, meter: "AABBA", rhyme: "AABBA", structure: "Setup (AA) → twist (BB) → punchline (A)" }, villanelle: { lines: 19, meter: "iambic pentameter", rhyme: "ABA pattern with refrains", structure: "5 tercets + quatrain, 2 refrains" }, "free-verse": { lines: "any", meter: "none required", rhyme: "none required", structure: "Let meaning dictate form" } }; const guide = forms[form] || forms["free-verse"]; return { ok: true, result: { form, ...guide, tip: "Start with the feeling, then fit it to the form" } }; });
   registerLensAction("poetry", "wordFrequency", (ctx, artifact, _params) => { const text = artifact.data?.text || ""; if (!text) return { ok: true, result: { message: "Add poem text to analyze word frequency." } }; const words = text.toLowerCase().replace(/[^a-z\s]/g,"").split(/\s+/).filter(Boolean); const freq = {}; const stopWords = new Set(["the","a","an","and","or","but","in","on","at","to","for","of","with","by","from","is","are","was","were","be","been","have","has","had","it","its","i","my","me","we","our","you","your","he","she","they","them","this","that","not","no"]); for (const w of words) { if (!stopWords.has(w)) freq[w] = (freq[w] || 0) + 1; } const ranked = Object.entries(freq).sort((a,b) => b[1] - a[1]); return { ok: true, result: { totalWords: words.length, uniqueWords: Object.keys(freq).length, topWords: ranked.slice(0,10).map(([w,c]) => ({ word: w, count: c })), keyImages: ranked.slice(0,5).map(([w]) => w), lexicalDensity: Math.round((Object.keys(freq).length / words.length) * 100) } }; });
 

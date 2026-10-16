@@ -138,7 +138,28 @@ export default function registerPharmacyActions(registerLensAction) {
     const dailyDose = singleDose * frequency;
     const capped = Math.min(dailyDose, maxDaily);
     return { ok: true, result: { weightKg: weight, dosePerKg, singleDose: `${singleDose} mg`, frequency: `${frequency}x daily`, dailyDose: `${Math.round(capped)} mg`, maxDailyDose: isFinite(maxDaily) ? `${maxDaily} mg` : "not specified", capped: dailyDose > maxDaily, disclaimer: "Verify all dosages with prescriber" } }; });
-  registerLensAction("pharmacy", "inventoryAlert", (ctx, artifact, _params) => { const items = artifact.data?.inventory || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to monitor." } }; const alerts = items.map(i => { const _q = optNum(i?.quantity); const _rp = optNum(i?.reorderPoint); const missingInputs = [...(_q === null ? ["quantity"] : []), ...(_rp === null ? ["reorderPoint"] : [])]; const qty = _q === null ? null : Math.trunc(_q); const reorder = _rp === null ? null : Math.trunc(_rp); const expiry = i.expiryDate ? new Date(i.expiryDate) : null; const daysToExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / 86400000) : null; return { name: i.name, quantity: qty, reorderPoint: reorder, lowStock: missingInputs.length ? null : qty <= reorder, missingInputs, expired: daysToExpiry !== null && daysToExpiry <= 0, nearExpiry: daysToExpiry !== null && daysToExpiry > 0 && daysToExpiry <= 30, daysToExpiry }; }); return { ok: true, result: { totalItems: items.length, lowStock: alerts.filter(a => a.lowStock).length, expired: alerts.filter(a => a.expired).length, nearExpiry: alerts.filter(a => a.nearExpiry).length, alerts: alerts.filter(a => a.lowStock || a.expired || a.nearExpiry), notComputed: alerts.filter(a => a.missingInputs.length).length, allClear: alerts.every(a => !a.missingInputs.length && !a.lowStock && !a.expired && !a.nearExpiry) } }; });
+  const inventoryAlertSync = (ctx, artifact, _params) => { const items = artifact.data?.inventory || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to monitor." } }; const alerts = items.map(i => { const _q = optNum(i?.quantity); const _rp = optNum(i?.reorderPoint); const missingInputs = [...(_q === null ? ["quantity"] : []), ...(_rp === null ? ["reorderPoint"] : [])]; const qty = _q === null ? null : Math.trunc(_q); const reorder = _rp === null ? null : Math.trunc(_rp); const expiry = i.expiryDate ? new Date(i.expiryDate) : null; const daysToExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / 86400000) : null; return { name: i.name, quantity: qty, reorderPoint: reorder, lowStock: missingInputs.length ? null : qty <= reorder, missingInputs, expired: daysToExpiry !== null && daysToExpiry <= 0, nearExpiry: daysToExpiry !== null && daysToExpiry > 0 && daysToExpiry <= 30, daysToExpiry }; }); return { ok: true, result: { totalItems: items.length, lowStock: alerts.filter(a => a.lowStock).length, expired: alerts.filter(a => a.expired).length, nearExpiry: alerts.filter(a => a.nearExpiry).length, alerts: alerts.filter(a => a.lowStock || a.expired || a.nearExpiry), notComputed: alerts.filter(a => a.missingInputs.length).length, allClear: alerts.every(a => !a.missingInputs.length && !a.lowStock && !a.expired && !a.nearExpiry) } }; };
+  // checkRecalls:true → each item name is checked against openFDA drug
+  // enforcement reports (ongoing recalls). Failures stay per-item NOT_COMPUTED.
+  registerLensAction("pharmacy", "inventoryAlert", (ctx, artifact, params = {}) => {
+    const r = inventoryAlertSync(ctx, artifact, params);
+    if (!(params?.checkRecalls === true || artifact?.data?.checkRecalls === true) || !r.ok || !Array.isArray(artifact?.data?.inventory)) return r;
+    return (async () => {
+      const names = [...new Set(artifact.data.inventory.map(i => String(i?.name || "").trim()).filter(Boolean))].slice(0, 10);
+      const recalls = [];
+      for (const name of names) {
+        const url = `${OPENFDA_BASE}/enforcement.json?search=${encodeURIComponent(`product_description:"${name}" AND status:"Ongoing"`)}&limit=5`;
+        try {
+          const res = await globalThis.fetch(url);
+          if (res.status === 404) { recalls.push({ name, recalls: [], status: "COMPUTED" }); continue; }
+          if (!res.ok) throw new Error(`openFDA ${res.status}`);
+          const data = await res.json();
+          recalls.push({ name, status: "COMPUTED", recalls: (data.results || []).map(x => ({ recallNumber: x.recall_number, classification: x.classification, reason: x.reason_for_recall, initiated: x.recall_initiation_date, firm: x.recalling_firm })) });
+        } catch (e) { recalls.push({ name, status: "NOT_COMPUTED", reason: e instanceof Error ? e.message : String(e) }); }
+      }
+      return { ...r, result: { ...r.result, recallCheck: recalls, activeRecalls: recalls.filter(x => x.recalls?.length).length, recallProvenance: { source: "openFDA drug enforcement API", url: `${OPENFDA_BASE}/enforcement.json` } } };
+    })();
+  });
   registerLensAction("pharmacy", "formularySearch", (ctx, artifact, _params) => { const query = (artifact.data?.query || artifact.data?.drugName || "").toLowerCase(); const formulary = artifact.data?.formulary || []; if (!query) return { ok: true, result: { message: "Provide a drug name to search." } }; const matches = formulary.filter(f => (f.name || f.genericName || "").toLowerCase().includes(query) || (f.brandName || "").toLowerCase().includes(query)); return { ok: true, result: { query, matches: matches.map(m => ({ generic: m.genericName || m.name, brand: m.brandName || "", tier: m.tier || "unknown", covered: m.covered !== false, priorAuth: m.priorAuth || false })), found: matches.length, formularySize: formulary.length } }; });
 
   /**

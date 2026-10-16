@@ -58,7 +58,7 @@ export function notComputed(missingInputs, message, extra = {}) {
 export function advisory(basis, fn) {
   const label = (r) => {
     if (!r || r.ok !== true || !r.result || typeof r.result !== "object" || Array.isArray(r.result)) return r;
-    if (r.result.status === "NOT_COMPUTED") return r;
+    if (r.result.status === "NOT_COMPUTED" || r.result.provenance) return r; // sourced results are not advisory
     return { ...r, result: { ...r.result, status: "ADVISORY", verdict: null, advisoryBasis: basis } };
   };
   // Stays synchronous for synchronous handlers (callers/tests read .result directly).

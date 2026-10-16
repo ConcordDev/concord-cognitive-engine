@@ -21,7 +21,30 @@ const NDBC_REALTIME = "https://www.ndbc.noaa.gov/data/realtime2";
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 
 export default function registerOceanActions(registerLensAction) {
-  registerLensAction("ocean", "waveAnalysis", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["waveHeightMeters>0", "wavePeriodSeconds>0"]); if (_req.missing.length) return notComputed(_req.missing, "Wave analysis needs significant wave height (m) and period (s). For live values use ocean.marine-forecast (Open-Meteo Marine)."); const height = _req.values.waveHeightMeters; const period = _req.values.wavePeriodSeconds; const windSpeed = optNum(data.windSpeedKnots); const wavelength = 1.56 * period * period; const deepWaterSpeed = 1.56 * period; const energy = 0.5 * 1025 * 9.81 * height * height; const beaufort = windSpeed === null ? null : windSpeed < 1 ? 0 : windSpeed < 4 ? 1 : windSpeed < 7 ? 2 : windSpeed < 11 ? 3 : windSpeed < 17 ? 4 : windSpeed < 22 ? 5 : windSpeed < 28 ? 6 : windSpeed < 34 ? 7 : 8; return { ok: true, result: { significantWaveHeight: `${height}m`, period: `${period}s`, wavelength: `${Math.round(wavelength)}m`, speed: `${Math.round(deepWaterSpeed*10)/10} m/s`, energyDensity: `${Math.round(energy)} J/m²`, beaufortScale: beaufort, seaState: height < 0.5 ? "calm" : height < 1.25 ? "slight" : height < 2.5 ? "moderate" : height < 4 ? "rough" : "very-rough", navigationAdvisory: height > 3 ? "Small craft advisory" : "Safe for navigation" } }; });
+  const waveAnalysisSync = (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["waveHeightMeters>0", "wavePeriodSeconds>0"]); if (_req.missing.length) return notComputed(_req.missing, "Wave analysis needs significant wave height (m) and period (s). For live values use ocean.marine-forecast (Open-Meteo Marine)."); const height = _req.values.waveHeightMeters; const period = _req.values.wavePeriodSeconds; const windSpeed = optNum(data.windSpeedKnots); const wavelength = 1.56 * period * period; const deepWaterSpeed = 1.56 * period; const energy = 0.5 * 1025 * 9.81 * height * height; const beaufort = windSpeed === null ? null : windSpeed < 1 ? 0 : windSpeed < 4 ? 1 : windSpeed < 7 ? 2 : windSpeed < 11 ? 3 : windSpeed < 17 ? 4 : windSpeed < 22 ? 5 : windSpeed < 28 ? 6 : windSpeed < 34 ? 7 : 8; return { ok: true, result: { significantWaveHeight: `${height}m`, period: `${period}s`, wavelength: `${Math.round(wavelength)}m`, speed: `${Math.round(deepWaterSpeed*10)/10} m/s`, energyDensity: `${Math.round(energy)} J/m²`, beaufortScale: beaufort, seaState: height < 0.5 ? "calm" : height < 1.25 ? "slight" : height < 2.5 ? "moderate" : height < 4 ? "rough" : "very-rough", navigationAdvisory: height > 3 ? "Small craft advisory" : "Safe for navigation" } }; };
+  // With lat/lon and no explicit height/period, take the current-hour
+  // significant wave height + period from Open-Meteo Marine (keyless).
+  registerLensAction("ocean", "waveAnalysis", (ctx, artifact, params = {}) => {
+    const d = artifact?.data || {};
+    const lat = Number(d.lat ?? params.lat), lon = Number(d.lon ?? params.lon);
+    const have = needNums(d, ["waveHeightMeters>0", "wavePeriodSeconds>0"]);
+    if (!have.missing.length || !(Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lon) && Math.abs(lon) <= 180)) return waveAnalysisSync(ctx, artifact, params);
+    return (async () => {
+      const url = `${OPEN_METEO_MARINE}?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period&timezone=GMT`;
+      try {
+        const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+        const c = data?.current || {};
+        const filled = { ...d };
+        if (have.missing.includes("waveHeightMeters") && Number.isFinite(c.wave_height)) filled.waveHeightMeters = c.wave_height;
+        if (have.missing.includes("wavePeriodSeconds") && Number.isFinite(c.wave_period)) filled.wavePeriodSeconds = c.wave_period;
+        const r = waveAnalysisSync(ctx, { ...artifact, data: filled }, params);
+        if (r.result?.status === "NOT_COMPUTED") return r;
+        return { ...r, result: { ...r.result, provenance: { source: "Open-Meteo Marine API", url, observed: c.time || null, lat, lon } } };
+      } catch (e) {
+        return notComputed(have.missing, `Open-Meteo Marine unavailable: ${e instanceof Error ? e.message : String(e)}`, { source: "open-meteo-marine" });
+      }
+    })();
+  });
   // tidalPrediction used to return a lunar-phase sine guess ("nextHigh: ~6 hours")
   // that was not a tide prediction. It now delegates to the real NOAA CO-OPS
   // harmonic predictions (noaa-tide-prediction below) and returns NOT_COMPUTED
