@@ -649,14 +649,23 @@ export default function registerInferenceActions(registerLensAction) {
         }
       }
       saveInfState();
-      return {
-        ok: errors.length === 0 || added.length > 0,
+      // ok only when something was actually added; when nothing was,
+      // surface WHY via a top-level error — without it the lens runner
+      // fabricates an opaque "lens_failed" for the client.
+      const out = {
+        ok: added.length > 0,
         result: {
           added, errors,
           addedCount: added.length, errorCount: errors.length,
           factCount: kb.facts.length, ruleCount: kb.rules.length,
         },
       };
+      if (!out.ok) {
+        out.error = errors.length > 0
+          ? `could not parse rule: ${errors.map((e) => e.error).join("; ")}`
+          : "no facts or rules added";
+      }
+      return out;
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
