@@ -1,0 +1,28 @@
+{
+  "note": "Hand-judged random sample (seed 2026) of the 'pure-compute' promotion signal, after the name exclusions. Judged by reading each handler's source on 2026-10-15. 'solver' = a deterministic computation from its inputs (business analytics count: the Silver contract is not physics-only). Re-sample when the signal changes.",
+  "judgedAt": "2026-10-15",
+  "judgedBy": "Claude (handler source read for each id)",
+  "signal": "pure-compute",
+  "rows": [
+    { "id": "crossworld.propose", "solver": false, "why": "writes through ctx.db (the macro-depth state check does not see ctx.db)" },
+    { "id": "metalearning.strategySelection", "solver": true, "why": "computes a strategy ranking from task features" },
+    { "id": "tournaments.reportMatch", "solver": false, "why": "mutates a module-level tournament store" },
+    { "id": "travel.weather-forecast", "solver": false, "why": "fetches Open-Meteo (external I/O the grader missed)" },
+    { "id": "cortex.privacy.verify", "solver": null, "why": "handler not located by a literal search (generated registration)" },
+    { "id": "healthcare.protocolMatch", "solver": true, "why": "matches conditions to protocols deterministically" },
+    { "id": "reflection.prompt-library", "solver": false, "why": "returns a static catalogue" },
+    { "id": "telecommunications.propagationModel", "solver": true, "why": "computes a propagation model (reads saved towers when none are passed)" },
+    { "id": "schema.schemaEvolution", "solver": true, "why": "diffs schema versions" },
+    { "id": "inference.forwardChain", "solver": true, "why": "forward-chaining over facts and rules" },
+    { "id": "accounting.rentRoll", "solver": true, "why": "rent roll from properties as of a month" },
+    { "id": "code-quality.decoratePR", "solver": true, "why": "computes PR decorations from base/head file lists" },
+    { "id": "creative.project_summary", "solver": false, "why": "counts arrays and reports status: a summary, not a computation" },
+    { "id": "logistics.inventoryAudit", "solver": true, "why": "discrepancies against a tolerance" },
+    { "id": "consulting.engagementScope", "solver": true, "why": "hours and fee from deliverables (has a 200/h default rate)" },
+    { "id": "services.clientRetentionReport", "solver": true, "why": "retention metrics from visits" },
+    { "id": "agriculture.yieldAnalysis", "solver": true, "why": "actual vs expected yield by field" },
+    { "id": "telecommunications.outageResolve", "solver": false, "why": "mutates an outage record" },
+    { "id": "meta.classify", "solver": true, "why": "keyword-signal classification of text" },
+    { "id": "government.milestone_update", "solver": false, "why": "advances a milestone counter: status, not a computation" }
+  ]
+}

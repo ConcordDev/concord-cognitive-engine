@@ -169,11 +169,12 @@ describe("urban-planning — densityCalc (classification thresholds, reads artif
     assert.equal(r.result.transitViability, "car-dependent");
   });
 
-  it("avoids divide-by-zero — empty input defaults area to 1 sq mi", () => {
+  it("avoids divide-by-zero — empty input is NOT_COMPUTED (no assumed 1 sq mi)", () => {
     const r = call("densityCalc", ctxA, {});
     assert.equal(r.ok, true);
-    assert.equal(r.result.populationDensity, "0/sq mi");
-    assert.ok(Number.isFinite(parseInt(r.result.populationDensity)));
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["population", "areaSqMiles"]);
+    assert.equal(call("densityCalc", ctxA, { population: 10, areaSqMiles: 0 }).result.status, "NOT_COMPUTED");
   });
 });
 

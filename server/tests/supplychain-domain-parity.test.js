@@ -46,10 +46,14 @@ describe("supplychain pure-compute analytics", () => {
 
   it("inventoryOptimize returns EOQ + reorder point + needsReorder", () => {
     const r = call("inventoryOptimize", ctxA, {
-      data: { items: [{ name: "Widget", dailyDemand: 10, leadTimeDays: 7, currentStock: 5 }] },
+      data: { items: [{ name: "Widget", dailyDemand: 10, leadTimeDays: 7, currentStock: 5, orderCost: 50, holdingCost: 5 }] },
     }, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.items[0].needsReorder, true);
+    // Order / holding cost are no longer silently assumed ($50 / $5).
+    const nc = call("inventoryOptimize", ctxA, { data: { items: [{ name: "W", dailyDemand: 10, leadTimeDays: 7, currentStock: 5 }] } }, {});
+    assert.equal(nc.result.items[0].status, "NOT_COMPUTED");
+    assert.deepEqual(nc.result.items[0].missingInputs, ["orderCost", "holdingCost"]);
     assert.ok(r.result.items[0].eoq > 0);
   });
 
