@@ -108,6 +108,108 @@ export const DOCUMENTS = {
     excerpt: "HDPE: Pe 5.88 × 10−14 cm3·cm/(cm2·s·Pa), D 9.73 × 10−7 cm2/s (PA6: 1.72 × 10−14; PA11: 1.87 × 10−14)",
     license: "CC BY 4.0",
   },
+  // ---- Blend D brief item 2 (constituent property tables), read 2026-10-16 ----
+  "exxonmobil-hma016-molded": {
+    kind: "document", sourceId: "manufacturer_datasheet", title: "ExxonMobil HDPE HMA 016 product datasheet (revision 01/01/2017)",
+    url: "https://stavianchem.com/sites/default/files/product-specs/HMA016.pdf", retrieved: "2026-10-16",
+    locator: "p.1 Molded Properties / Thermal tables (4 mm injection-moulded specimens, ISO 294-1)",
+    excerpt: "Tensile Stress at Yield 23 MPa (ISO 527-2/1A/50); Tensile Strain at Yield 10 %; Flexural Modulus 970 MPa (ISO 178); Heat Deflection Temperature (0.45 MPa) 64 °C (ISO 75-2/B); Peak Melting Temperature 133 °C (ASTM D3418)",
+    sha256: "11e44e284e1ebdfeb85e7239f93537aaa2d2e42a895fad522c1cdb96886e250d", license: "manufacturer copyright; excerpt only",
+  },
+  "ineos-rigid-packaging-2022": {
+    kind: "document", sourceId: "manufacturer_datasheet", title: "INEOS Olefins & Polymers Europe, Rigid Packaging Solutions (K 2022) — injection moulding range",
+    url: "https://www.ineos.com/globalassets/ineos-group/businesses/ineos-olefins-and-polymers-europe/k2022/ineos-op---rigid-packaging-solutions---2022.pdf", retrieved: "2026-10-16",
+    locator: "p.4 'Injection moulding range' table (MFR ISO 1133; density ISO 1183-1; tensile modulus 23 °C ISO 527-2; Charpy notched 23 °C ISO 179-1)",
+    excerpt: "RIGIDEX® HD5218EA | 18 | 952 | 1200 | 3 | For fast cycling thin wall applications, caps & closures, pails, houseware",
+    sha256: "b767047685ea9d09f6a87acd5f908642f63c512576096289d779cd48633a728d", license: "manufacturer copyright; excerpt only",
+  },
+  "lyondellbasell-alathon-h6011": {
+    kind: "url", sourceId: "manufacturer_datasheet", title: "LyondellBasell Alathon H6011 HDPE (injection moulding) product page",
+    url: "https://lyondellbasell.com/en/polymers/p/Alathon H6011/b2dd6ef8-82f3-429e-8f06-afaeafe5177c", retrieved: "2026-10-16",
+    locator: "Technical properties table (test methods not shown on the page)",
+    excerpt: "Density 0.960 g/cm³; Flexural Modulus (1% Secant) 1410 MPa; Tensile Stress at Yield (23 °C) 29.1 MPa; Tensile Elongation at Yield 10 %; Vicat Softening Temperature 127 °C; Deflection Temperature Under Load (66 psi) 75 °C",
+    license: "manufacturer copyright; excerpt only",
+  },
+  "sahu-2023-heliyon-rhdpe": {
+    kind: "document", sourceId: "paper", title: "Sahu S.K., Sreekanth P.S.R. Evaluation of tensile properties of spherical shaped SiC inclusions inside recycled HDPE matrix using FEM based representative volume element approach. Heliyon 2023, 9, e14034 (doi:10.1016/j.heliyon.2023.e14034)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10011209/", retrieved: "2026-10-16", date: "2023",
+    locator: "§2.1 Materials", excerpt: "[recycled HDPE] density is 0.956 g/cm3; Poison's ratio is 0.41, Young's modulus is 1080 MPa", license: "CC BY 4.0",
+  },
+  "gao-2024-polymers-bn-hdpe": {
+    kind: "document", sourceId: "paper", title: "Gao Z., Wang Y., Zhang B., et al. Enhanced Thermal Conductivity of High-Density Polyethylene Composites with Hybrid Fillers of Flaky and Spherical Boron Nitride Particles. Polymers 2024, 16(2), 268 (doi:10.3390/polym16020268)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10819010/", retrieved: "2026-10-16", date: "2024",
+    locator: "§2.1 Materials (HDPE 2911, 0.960 g/cm3, Fushun Petrochemical); §3 Results and Discussion (thermal conductivity); Table 2 (T_M of HDPE by DSC)",
+    excerpt: "282.27% higher than that of pure HDPE (0.431 Wm−1 K−1); Table 2: HDPE T_M 134.73 °C", license: "CC BY 4.0",
+  },
+  "travas-2023-polymers-eg-bn-hdpe": {
+    kind: "document", sourceId: "paper", title: "Travaš L., Rujnić Havstad M., Pilipović A., et al. Optimization of Thermal Conductivity and Tensile Properties of High-Density Polyethylene by Addition of Expanded Graphite and Boron Nitride. Polymers 2023, 15(17), 3645 (doi:10.3390/polym15173645)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10489680/", retrieved: "2026-10-16", date: "2023",
+    locator: "§2.1 Materials (HDPE 6060R, SABIC, PE-100, granulate density 0.959 g/cm3); §3.1 Thermal Properties",
+    excerpt: "From a starting value of 0.37 W/mK for pure HDPE, the thermal conductivity increased up to 3.00 W/mK", license: "CC BY 4.0",
+  },
+  "khina-2025-polymers-clte-review": {
+    kind: "document", sourceId: "paper", title: "Khina A.G., Bulkatov D.P., Storozhuk I.P., et al. Coefficient of Linear Thermal Expansion of Polymers and Polymer Composites: A Comprehensive Review. Polymers 2025, 17(23), 3097 (doi:10.3390/polym17233097)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12693757/", retrieved: "2026-10-16", date: "2025",
+    locator: "Table 3 'CLTE of thermoplastics' (α2 above Tg), row High-density polyethylene (HDPE), source [92]",
+    excerpt: "High-density polyethylene (HDPE) | ΔT2 −30–60 °C | α2 ~180 ppm/°C", license: "CC BY 4.0",
+  },
+  "das-2026-acsaem-hdpe-tpe-gnp": {
+    kind: "document", sourceId: "paper", title: "Das B., Ip G., Porwal H., et al. Tunable Pyroresistive Behavior in Conductive Polymer Composites with a Secondary Elastomer Phase. ACS Applied Engineering Materials 2026, 4(7), 3644 (doi:10.1021/acsaenm.6c00343)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC13411071/", retrieved: "2026-10-16", date: "2026",
+    locator: "Table 1 'Materials Used with Relevant Datasheet Information'",
+    excerpt: "INEOS Rigidex HD5218EA: density (kg·m–3) 952, melt temp (°C) 130, modulus (MPa) 1200, CTE (E-4/°C) 2.2, crystallinity 58.9; XG Science M-25 GNP: density (kg·m–3) 2200, avg. lateral size 25 μm, avg. thickness 6–8 nm",
+    license: "CC BY 4.0",
+  },
+  "badawi-2026-scirep-hdpe-tg": {
+    kind: "document", sourceId: "paper", title: "Badawi M.S., Habanjar K., Shaib M.A., et al. Tailoring mechanical and thermal behavior of HDPE via Ba–Sr–Ca hexaferrite incorporation. Scientific Reports 2026, 16 (doi:10.1038/s41598-026-57097-x)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC13276080/", retrieved: "2026-10-16", date: "2026",
+    locator: "§ Thermal properties using Differential Scanning Calorimetry (DSC)",
+    excerpt: "the glass transition temperature of HDPE is between − 130 °C and − 100 °C … according to Greene et al; … thermal studies frequently fail to identify it", license: "CC BY 4.0",
+  },
+  "liang-2025-polymers-basalt": {
+    kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",
+    locator: "Table 2 'Properties of basalt fibre'", excerpt: "Diameter 7–15 μm | Density 2.63–2.65 | Elastic Modulus 91–110 GPa | Tensile Strength 3000–4800 MPa | Elongation at Break 3.1 %", license: "CC BY 4.0",
+  },
+  "jiang-2025-materials-basalt": {
+    kind: "document", sourceId: "paper", title: "Jiang H., Luo L., Hou Y., et al. Mechanical and Microstructural Performance of UHPC with Recycled Aggregates Modified by Basalt Fiber and Nanoalumina at High Temperatures. Materials 2025, 18(5), 1072 (doi:10.3390/ma18051072)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11901275/", retrieved: "2026-10-16", date: "2025",
+    locator: "Table 3 'Physical properties of the basalt fibre (BF)'", excerpt: "Length 12 mm | Diameter 16 μm | Density 2700 kg/m3 | Modulus of Elasticity 85–110 GPa | Tensile Strength (25 °C) 3000–4800 MPa", license: "CC BY 4.0",
+  },
+  "zhang-2024-heliyon-basalt": {
+    kind: "document", sourceId: "paper", title: "Zhang X., Wang J., Lou C. Experimental study on axial tensile properties of basalt fibre reinforced recycled aggregate concrete. Heliyon 2024, 10(13), e34208 (doi:10.1016/j.heliyon.2024.e34208)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11292499/", retrieved: "2026-10-16", date: "2024",
+    locator: "Table 3 'Physical and mechanical properties of basalt fibers'", excerpt: "Length 9 mm | Monofilament diameter 17.4 μm | Density 2650 kg/m3 | Elastic modulus 88 GPa | Tensile strength 2950 MPa | Fracture elongation 2.8 %", license: "CC BY 4.0",
+  },
+  "gaska-2017-polymers-xgnp-m5": {
+    kind: "document", sourceId: "paper", title: "Gaska K., Kádár R., Rybak A., et al. Gas Barrier, Thermal, Mechanical and Rheological Properties of Highly Aligned Graphene-LDPE Nanocomposites. Polymers 2017, 9(7), 294 (doi:10.3390/polym9070294)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6432036/", retrieved: "2026-10-16", date: "2017",
+    locator: "Table 1 'Basic characteristics of the LDPE and graphene nanoplatelets' (* parameters from the producer data sheet)",
+    excerpt: "xGnP M5*: SA 120–160 m2/g; d_ave 5 µm; thickness 6–8 nm; ρ 2.2 g cm−3; thermal conductivity through plane 6, in-plane 3000 W/mK; electrical conductivity 10^2 / 10^7 S/m", license: "CC BY 4.0",
+  },
+  "watts-2021-acsomega-gnp": {
+    kind: "document", sourceId: "paper", title: "Watts T.A., Gavvalapalli N. Role of Aryl Amphiphile Hydrophobe Size on the Concentration and Stability of Graphene Nanoplatelet Dispersions. ACS Omega 2021, 6(30), 20068 (doi:10.1021/acsomega.1c03126)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8340392/", retrieved: "2026-10-16", date: "2021",
+    locator: "Table 2 'Physical Properties of GNPs'", excerpt: "Strem 06-0215 | particle diameter 15 μm | thickness 6–8 nm | thermal conductivity 3000 W/m K | electrical conductivity 10^7 S/m | tensile modulus 1000 GPa | tensile strength 5 GPa", license: "CC BY 4.0",
+  },
+  "cilento-2022-nanomaterials-2d": {
+    kind: "document", sourceId: "paper", title: "Cilento F., Martone A., Giordano M., et al. Insights on Shear Transfer Efficiency in “Brick-and-Mortar” Composites Made of 2D Carbon Nanoparticles. Nanomaterials 2022, 12(8), 1359 (doi:10.3390/nano12081359)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9027589/", retrieved: "2026-10-16", date: "2022",
+    locator: "Table 2 'Comparison between 2D nanoplatelets employed as reinforcement in B&M composites', row GNP (refs [15], [8])",
+    excerpt: "GNP | >10 layer | BET 30 m2/g | Elastic Modulus 25–40 GPa [15] | In Plane—Therm. Cond. 300–470 W/mK [8] | 2 × 10^6 S/m", license: "CC BY 4.0",
+  },
+  "pubchem-cid-10112-melting": {
+    kind: "url", sourceId: "pubchem", title: "PubChem CID 10112 Calcium Carbonate — Experimental Properties: Melting Point",
+    url: "https://pubchem.ncbi.nlm.nih.gov/compound/10112#section=Melting-Point", retrieved: "2026-10-16",
+    locator: "PUG View CID 10112 > \"Melting Point\" > Information 1–3 (CAMEO; OSHA; NIOSH) — replayed from fixtures/connector-recordings.json",
+    excerpt: "1517 to 2442 °F (Decomposes) (NIOSH, 2024)", license: "NIOSH: US government",
+  },
+  "pubchem-cid-24261-melting": {
+    kind: "url", sourceId: "pubchem", title: "PubChem CID 24261 Silica — Experimental Properties: Melting Point",
+    url: "https://pubchem.ncbi.nlm.nih.gov/compound/24261#section=Melting-Point", retrieved: "2026-10-16",
+    locator: "PUG View CID 24261 > \"Melting Point\" > Information 1–7 (CAMEO; HSDB; HMDB; ILO-WHO ICSC; DOE PAC; NIOSH) — replayed from fixtures/connector-recordings.json",
+    excerpt: "3110 °F; 1710 °C; 1716 - 1736 °C; 1713 °C; 1722 °C", license: "NIOSH/HSDB: US government; ICSC: CC BY 4.0",
+  },
 };
 
 /** An evidence ref (schema EvidenceRef) for a registered document. */

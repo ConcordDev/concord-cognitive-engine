@@ -17,12 +17,15 @@
 import crypto from "node:crypto";
 import { sourceFormulation, proposeVersion, constituentClassOf, checkComposition } from "./formulation.js";
 import { constituentDensity } from "./constituents.js";
+import { CONSTITUENT_PROPERTIES as TABLES, UNKNOWN_PROPERTIES } from "./constituent-properties.js";
 import { ruleOfMixturesDensity } from "./rule-of-mixtures.js";
 
 export const MATERIAL_IR_SCHEMA = "conkay.material-ir/1";
 export const BASES = Object.freeze(["mass", "volume", "unknown"]);
-/** Properties a constituent can carry; item 2 fills the rest from sourced tables. */
-export const CONSTITUENT_PROPERTIES = Object.freeze(["density", "youngsModulus", "poisson", "conductivity", "cte", "meltTemperature"]);
+/** Every property a constituent can carry (null when no source has been read for that class). */
+export const PROPERTY_KEYS = Object.freeze(["density", ...new Set(Object.values(TABLES).flatMap((t) => Object.keys(t)))]);
+
+const summary = (c) => ({ lo: c.range ? c.range.min : c.value, hi: c.range ? c.range.max : c.value, unit: c.unit, claimRef: c.id, ...(c.flags?.length ? { flags: [...c.flags] } : {}) });
 
 const PCT_EPS = 1e-9;
 
@@ -49,10 +52,16 @@ export function materialIrFromText(text, meta = {}) {
         classId: classId || null,
         fraction: { min: x.amount.min, max: x.amount.max },
         properties: {
+          ...Object.fromEntries(PROPERTY_KEYS.map((k) => [k, null])),
+          ...Object.fromEntries(Object.entries((classId && TABLES[classId]) || {}).map(([k, c]) => [k, summary(c)])),
           density: dc && dc.range ? { lo: dc.range.min, hi: dc.range.max, unit: "kg/m3", claimRef: dc.id } : null,
-          youngsModulus: null, poisson: null, conductivity: null, cte: null, meltTemperature: null,
         },
-        ...(dc && !dc.range ? { unknown: { density: `no cited density (${dc.id})` } } : {}),
+        ...((dc && !dc.range) || (classId && UNKNOWN_PROPERTIES[classId]) ? {
+          unknown: {
+            ...(dc && !dc.range ? { density: `no cited density (${dc.id})` } : {}),
+            ...(classId && UNKNOWN_PROPERTIES[classId] ? { other: UNKNOWN_PROPERTIES[classId] } : {}),
+          },
+        } : {}),
       };
     }),
   };
