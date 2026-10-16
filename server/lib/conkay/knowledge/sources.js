@@ -333,8 +333,8 @@ export const DOCUMENTS = {
   "yun-2023-polymers-basalt-particulate": {
     kind: "document", sourceId: "paper", title: "Yun J.-H., Jeon Y.-J., Kang M.-S., et al. Effective Properties for the Design of Basalt Particulate–Polymer Composites. Polymers 2023, 15(20), 4125 (doi:10.3390/polym15204125)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10610629/", retrieved: "2026-10-16", date: "2023",
-    locator: "Table 1 'Properties of materials' (compiled from refs 29–34), column Basalt",
-    excerpt: "Basalt: Density 2.75 g/cm3; Thermal expansion coefficient 8 × 10−6 1/K; Elastic modulus 89,000 MPa; Poisson's ratio 0.20; Shear modulus 37,083.33 MPa; Thermal conductivity 0.035 W/mK",
+    locator: "Table 1 'Properties of materials' (compiled from refs 29–34), columns PP and Basalt; Table 2 'Predicting the effective properties of composites with FEA', row PP(35)Basalt",
+    excerpt: "Basalt: Density 2.75 g/cm3; Thermal expansion coefficient 8 × 10−6 1/K; Elastic modulus 89,000 MPa; Poisson's ratio 0.20; Shear modulus 37,083.33 MPa; Thermal conductivity 0.035 W/mK. PP: Density 0.90 g/cm3; Thermal expansion coefficient 104 × 10−6 1/K; Elastic modulus 1660 MPa; Poisson's ratio 0.35; Shear modulus 614.81 MPa; Thermal conductivity 0.17 W/mK. Table 2: PP(35)Basalt | 3600.0 | 1379.5 | 62.91 × 10−6 | 0.115 (E MPa, G MPa, CTE 1/K, k W/mk)",
     license: "CC BY 4.0",
   },
   "khina-2025-polymers-clte-fillers": {
@@ -357,6 +357,20 @@ export const DOCUMENTS = {
     locator: "Appendix A, eqs. (A.1a)–(A.1c) geometrical factors and (A.2)–(A.3) Eshelby tensor of a spheroid",
     excerpt: "(A.1a) prolate: H3 = 1 − ω3/(ω3²−1)^(3/2) {ω3(ω3²−1)^(1/2) − cosh⁻¹ω3}, H31 = (1 − 3H3)/(2(ω3²−1)); (A.1b) sphere: H3 = 1/3, H31 = 1/5; (A.1c) oblate: H3 = 1 − ω3/(1−ω3²)^(3/2) {cos⁻¹ω3 − ω3(1−ω3²)^(1/2)}; (A.2) S1111 = S2222 = (5−4ν)/(8(1−ν))(1−H3) + 3(H3−H31)/(8(1−ν)), S3333 = H3 + (H3−H31)/(1−ν), S1122 = S2211 = −(1−4ν)/(8(1−ν))(1−H3) + (H3−H31)/(8(1−ν)); (A.3) S2233 = S1133 = ν/(2(1−ν))(1−H3) − (H3−H31)/(2(1−ν)), S3311 = S3322 = ν/(1−ν)H3 − (H3−H31)/(2(1−ν)), S2323 = S3131 = (1/4)(1+H3) − (H3−H31)/(2(1−ν)), S1212 = (S1111 − S1122)/2",
     license: "CC BY (Heliyon open access)",
+  },
+  "akhtar-2021-polymers-tim-nan": {
+    kind: "document", sourceId: "paper", title: "Akhtar S.S., Gloria A., De Santis R., et al. An Integrated Approach to Design and Develop High-Performance Polymer-Composite Thermal Interface Material. Polymers 2021, 13(5), 807 (doi:10.3390/polym13050807)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7962025/", retrieved: "2026-10-16", date: "2021",
+    locator: "§2 eqs. (2), (8)–(11): Nan's effective-medium model",
+    excerpt: "(2) λ eff,11 = λ m (1 + Σ φ i /2 [β 11 i (1 + 〈cos²θ〉 i) + β 33 i (1 − 〈cos²θ〉 i)]); (8) β kk i = (λ e,kk i − λ m)/(λ m + L kk i (λ e,kk i − λ m)); (9) λ e,11 i = λ p i/(1 + γ 11 i L 33 i λ p i/λ m) for platelet inclusions, λ p i/(1 + γ 11 i L 11 i λ p i/λ m) for other shapes; λ e,33 i = λ p i/(1 + γ 33 i L 11 i λ p i/λ m) for cylindrical inclusions, λ p i/(1 + γ 33 i L 33 i λ p i/λ m) for other shapes; (10) L 11 = L 22 = ξ²/(2(ξ²−1)) − ξ/(2(ξ²−1)^(3/2)) cosh⁻¹ξ for ξ ≥ 1, ξ²/(2(ξ²−1)) + ξ/(2(1−ξ²)^(3/2)) cos⁻¹ξ for ξ < 1; (11) γ kk = (2 + 1/ξ) α k for ξ ≥ 1, (1 + 2ξ) α k for ξ < 1; α k = (λ m R int)/a k",
+    license: "CC BY 4.0",
+  },
+  "chaudhry-2020-stam-polyolefin-thermal": {
+    kind: "document", sourceId: "paper", title: "Chaudhry A.U., Mabrouk A.N., Abdala A. Thermally enhanced polyolefin composites: fundamentals, progress, challenges, and prospects. Sci. Technol. Adv. Mater. 2020, 21(1), 737 (doi:10.1080/14686996.2020.1820306)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7605320/", retrieved: "2026-10-16", date: "2020",
+    locator: "§ models, eqs. (7)–(9)",
+    excerpt: "upper bound (parallel model, linear mixing rule) and the lower bound (series model, inverse mixing rule) … (9) κ eff = κ m [1 + 3Φ f / ((κ f + 2κ m)/(κ f − κ m) − Φ f)] (Maxwell, spherical non-interacting particles)",
+    license: "CC BY 4.0",
   },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
