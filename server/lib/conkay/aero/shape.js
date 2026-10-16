@@ -29,6 +29,11 @@ export function hoernerBase(fore, frontalA, baseA, K) {
  * Cache ~/.cache/conkay-cad-body/b1d9ec5642008c8708fe9d79 (height 1.282024 m).
  * Cd is dragBuildup at ISA sea level and 80.4672 m/s (180 mph), the same
  * centre the v1 solver reported for that solid: 0.19006044550065382.
+ * Its rearSlantDeg (11.03) was measured from the roof's highest point. That roof has two humps (front and rear
+ * heads) and the front one is the higher, so the chord ran through the rear hump. The slant is now measured from
+ * the top of the roof's final descent (drag-buildup.js rearSlantDeg, 2026-10-15): the front-engine body then
+ * measures about 24.8 deg, inside Ahmed's band, so the slant term is not zero and aero.shape no longer counts the
+ * 0.45 cut as a reduction. The record below is kept as measured.
  */
 export const KAMM50_BASELINE = Object.freeze({
   kammAreaRatio: 0.5,

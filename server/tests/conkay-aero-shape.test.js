@@ -1,7 +1,9 @@
 // tests/conkay-aero-shape.test.js
 //
 // Roadmap 5 item 5. The tail face is 0.45 of the largest section so the
-// v1 base term falls. The Ahmed slant term stays 0. The styling image
+// v1 base term falls. The Ahmed slant term was taken to stay 0; measured from
+// the top of the roof's final descent (2026-10-15) the backlight is in the slant
+// band, so the cut is not counted as a reduction. The styling image
 // is not copied. Drag v2 is not used. The kernel case is the new solid.
 
 import { describe, it, before } from "node:test";
@@ -98,7 +100,7 @@ describe("the smaller tail face on the CAD solid", { skip: !HAVE_KERNEL && "no P
     session = r.session;
   });
 
-  it("lowers the v1 range without entering the slant band, and does not invent a lift coefficient", () => {
+  it("lowers the base term, but the backlight is in the slant band, so the cut is not counted; no lift coefficient is invented", () => {
     const shape = session.result("aero.shape@VEH");
     const aero = session.result("aero.drag-buildup@VEH");
     const cad = session.result("cad.body@BODY_SHELL");
@@ -132,13 +134,18 @@ describe("the smaller tail face on the CAD solid", { skip: !HAVE_KERNEL && "no P
       headroom: fitRows(session),
     };
     console.log(JSON.stringify(report));
-    assert.equal(v.supported, true, JSON.stringify({ v, report }));
-    assert.ok(aero.inputs.rearSlantDeg.value <= 12.5);
+    // The rear slant is measured from the top of the roof's final descent (drag-buildup.js rearSlantDeg). This
+    // roof has two humps; the earlier highest-point chord ran from the front one through the rear one and read
+    // 12.2 deg. The backlight is in Ahmed's 12.5..25 deg band: the slant term is not zero and the study's verdict
+    // is not supported, though the smaller tail face still lowers the base term.
+    assert.ok(aero.inputs.rearSlantDeg.value > 12.5 && aero.inputs.rearSlantDeg.value <= 25, `${aero.inputs.rearSlantDeg.value}`);
+    assert.equal(v.slantOk, false);
+    assert.equal(v.supported, false, JSON.stringify({ v, report }));
+    assert.ok(shape.warnings.some((w) => /slant .* past 12\.5 deg/.test(w)), JSON.stringify(shape.warnings));
     assert.ok(aero.inputs.baseAreaM2.value < KAMM50_BASELINE.baseAreaM2);
-    const cd = m.cd;
-    assert.ok(cd.low < KAMM50_BASELINE.cd.low && cd.centre < KAMM50_BASELINE.cd.centre && cd.high < KAMM50_BASELINE.cd.high);
-    assert.equal(m.terms.high.slant, 0);
-    assert.equal(aero.outputs.terms.value.high.slant, 0);
+    assert.ok(m.terms.high.base < KAMM50_BASELINE.baseTerm.high && m.terms.low.base < KAMM50_BASELINE.baseTerm.low);
+    assert.ok(m.terms.high.slant > 0);
+    assert.ok(aero.outputs.terms.value.high.slant > 0);
     assert.ok(["lift", "downforce", "indeterminate"].includes(aero.outputs.sectionLift.value.sign));
     assert.equal(shape.outputs.sectionLift.value.sign, aero.outputs.sectionLift.value.sign);
     assert.equal(v.liftDetermined, aero.outputs.sectionLift.value.sign !== "indeterminate");

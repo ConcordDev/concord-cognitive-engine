@@ -88,6 +88,7 @@ async function mbFetch(path) {
   return r.json();
 }
 
+import { optNum, notComputed } from "../lib/lens-inputs.js";
 export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "bpmAnalyze", (ctx, artifact, _params) => {
     const beats = artifact.data?.beats || artifact.data?.timestamps || [];
@@ -161,8 +162,11 @@ export default function registerMusicActions(registerLensAction) {
     const tracks = artifact.data?.tracks || artifact.data?.songs || [];
     if (tracks.length < 2) return { ok: true, result: { message: "Provide 2+ tracks with bpm/energy/key to plan a setlist." } };
     const processed = tracks.map((t, i) => ({
-      index: i, title: t.title || t.name || `Track ${i + 1}`, bpm: parseFloat(t.bpm) || 120, energy: parseFloat(t.energy) || 5, key: t.key || "C", duration: parseFloat(t.duration) || 240,
+      index: i, title: t.title || t.name || `Track ${i + 1}`, bpm: optNum(t.bpm), energy: optNum(t.energy), key: t.key || null, duration: optNum(t.duration),
     }));
+    // Energy drives the ordering; it used to default to 5 (and bpm 120, 4:00, key C) per track.
+    const noEnergy = processed.filter((t) => t.energy === null).map((t) => t.title);
+    if (noEnergy.length) return notComputed(["tracks[].energy"], `Setlist ordering needs an energy rating for every track; missing for: ${noEnergy.slice(0, 10).join(", ")}`, { tracksMissingEnergy: noEnergy });
     // Sort by energy curve: start medium, build to peak, wind down
     const sorted = [...processed].sort((a, b) => a.energy - b.energy);
     const n = sorted.length;
@@ -175,9 +179,10 @@ export default function registerMusicActions(registerLensAction) {
       const bPeakDist = Math.abs(processed.indexOf(b) / n - 0.66);
       return (a.energy * (1 - aPeakDist)) - (b.energy * (1 - bPeakDist));
     });
-    const totalDuration = processed.reduce((s, t) => s + t.duration, 0);
-    const avgBpm = Math.round(processed.reduce((s, t) => s + t.bpm, 0) / n);
-    return { ok: true, result: { suggestedOrder: setlist.map(t => t.title), totalDuration: Math.round(totalDuration), totalMinutes: Math.round(totalDuration / 60), trackCount: n, avgBpm, energyCurve: setlist.map(t => ({ title: t.title, energy: t.energy, bpm: t.bpm })), peakMoment: peak.title, opener: opener.title, closer: closer.title } };
+    const totalDuration = processed.some((t) => t.duration === null) ? null : processed.reduce((s, t) => s + t.duration, 0);
+    const withBpm = processed.filter((t) => t.bpm !== null);
+    const avgBpm = withBpm.length ? Math.round(withBpm.reduce((s, t) => s + t.bpm, 0) / withBpm.length) : null;
+    return { ok: true, result: { suggestedOrder: setlist.map(t => t.title), totalDuration: totalDuration === null ? null : Math.round(totalDuration), totalMinutes: totalDuration === null ? null : Math.round(totalDuration / 60), trackCount: n, avgBpm, energyCurve: setlist.map(t => ({ title: t.title, energy: t.energy, bpm: t.bpm })), peakMoment: peak.title, opener: opener.title, closer: closer.title } };
   });
 
   // ── MusicBrainz (real metadata) ──
