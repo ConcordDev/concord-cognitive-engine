@@ -56,6 +56,11 @@ export const PREDICTION_TESTS = Object.freeze({
     tests: [{ designations: ["ISO 22007-2", "ASTM E1530"], what: "thermal conductivity, through-thickness and in-plane recorded separately" }, { designations: ["ASTM E1461"], what: "diffusivity with measured density and specific heat" }],
     criterion: NOT_SET("the claim 'graphene provides thermal conductivity for heat dissipation' states no conductivity"),
   },
+  "material.cte-multiphase": {
+    predicts: "Turner and thermoelastic Mori–Tanaka estimates of the compound's CTE",
+    tests: [{ designations: ["ASTM E831"], what: "linear thermal expansion by TMA over a stated range below the HDPE melting range, flow and cross-flow directions" }],
+    criterion: NOT_SET(BLEND_D_NO_LIMIT),
+  },
   "material.modulus-bounds": {
     predicts: "Voigt/Reuss bounds on Young's modulus",
     tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D790"], what: "flexural modulus (a different test from tensile: report both, never interchange them)" }],

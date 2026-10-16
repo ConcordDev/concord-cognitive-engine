@@ -145,6 +145,30 @@ export function isotropicPart(T) {
 }
 
 /**
+ * Thermoelastic Mori–Tanaka (Benveniste–Dvorak, random orientation, isotropic phase expansions):
+ *   α* = Σ φ_r K_r a_r α_r / Σ φ_r K_r a_r   (matrix a = 1)
+ * where a_r is the bulk part of the inclusion's dilute strain concentration. With every a = 1 this is Turner's
+ * formula; for two phases it satisfies Levin's exact relation with the Mori–Tanaka bulk modulus (tests).
+ * phases: matrix { K, G, alpha }, inclusions [{ phi, K, G, aspect, alpha }].
+ */
+export function moriTanakaRandomCte(matrix, inclusions) {
+  const fm = 1 - inclusions.reduce((a, p) => a + p.phi, 0);
+  if (!(fm > 0)) throw new RangeError("inclusion fractions must sum below 1");
+  const nu0 = (3 * matrix.K - 2 * matrix.G) / (2 * (3 * matrix.K + matrix.G));
+  const C0 = isoMandel(matrix.K, matrix.G), C0inv = inv6(C0);
+  let num = fm * matrix.K * matrix.alpha, den = fm * matrix.K;
+  for (const p of inclusions) {
+    const T = inv6(add(ID6(), mul(mul(eshelbyMandel(p.aspect, nu0), C0inv), sub(isoMandel(p.K, p.G), C0))));
+    const { a } = isotropicPart(T);
+    num += p.phi * p.K * a * p.alpha; den += p.phi * p.K * a;
+  }
+  return num / den;
+}
+
+/** Turner (uniform strain): α = Σ φ_i K_i α_i / Σ φ_i K_i. */
+export const turnerCte = (phases) => phases.reduce((a, p) => a + p.phi * p.K * p.alpha, 0) / phases.reduce((a, p) => a + p.phi * p.K, 0);
+
+/**
  * Mori–Tanaka, random 3-D orientation. matrix: { K, G }; inclusions: [{ phi, K, G, aspect }] (point values);
  * matrix fraction = 1 − Σφ_r.
  */
