@@ -20,6 +20,7 @@ import { sourceFormulation, proposeVersion, processVersion, checkComposition, co
 import { analyzeStatements } from "./claim-analyzer.js";
 import { makeClaim } from "./claims.js";
 import { constituentDensity, CONSTITUENTS } from "./constituents.js";
+import { STRICT_DENSITY_ASSUMPTIONS, conditionalDensity } from "./material-ir.js";
 import { ruleOfMixturesDensity } from "./rule-of-mixtures.js";
 import { evidenceRef } from "./sources.js";
 import { buildTestPlan } from "./test-plan.js";
@@ -34,7 +35,6 @@ const g = (kgm3) => Math.round(fromKgM3(kgm3, "g/cm3") * 1000) / 1000;
 // Conditional assumption for an unidentified polyethylene-family copolymer:
 // the whole polyethylene density span MOL gives. Used ONLY in the
 // conditional estimate, never as the copolymer's density.
-const PE_FAMILY_SPAN = { lo: 910, hi: 970, doc: "mol-hdpe-catalogue-2023" };
 
 const SPEC_NOTES = {
   graphene: "Graphene grade is unspecified: graphene nanoplatelets (multi-layer stacks, µm lateral size) and few-layer/monolayer graphene differ widely in thickness, surface area and dispersion, so claims attributed to 'graphene' are underspecified; the density used assumes nanoplatelets.",
@@ -102,7 +102,7 @@ export function buildFormulationReport(text, meta = {}) {
   const pointPct = version.ok ? ings.map((x) => version.fractions.find((f) => f.id === x.id).pct) : null;
   const strict = ruleOfMixturesDensity({
     inputs: densityInputs, basis: "mass", pointFractions: pointPct,
-    assumptions: ["mass-fraction basis (the source does not say wt% or vol%)", "additive volumes, no voids", "constituent densities are class-level intervals from the cited sources"],
+    assumptions: [...STRICT_DENSITY_ASSUMPTIONS],
     label: "strict",
   });
   const receipts = [checkReceipt, strict.receipt];
@@ -123,15 +123,7 @@ export function buildFormulationReport(text, meta = {}) {
 
   let conditional = null;
   if (!strict.ok) {
-    const assumed = densityInputs.map((x) => (x.density ? x : { ...x, density: { lo: PE_FAMILY_SPAN.lo, hi: PE_FAMILY_SPAN.hi }, claimRef: `ASSUMPTION A1 (${PE_FAMILY_SPAN.doc})` }));
-    const assumptions = [
-      `A1: every ingredient without a cited density (${strict.missing.join(", ")}) is assumed to be a polyethylene-family polymer with density 0.910–0.970 g/cm³ (MOL HDPE catalogue p.4, 'Polyethylene density (0.910–0.970 g/cm³)'). NOT established for the actual copolymer.`,
-      "A2: mass-fraction basis (the source does not say wt% or vol%)",
-      "A3: 'graphene' is graphene nanoplatelets (xGnP-class true density 2.0–2.25 g/cm³)",
-      "A4: additive volumes, no voids (real moulded parts usually have some porosity, which lowers density)",
-    ];
-    const cond = ruleOfMixturesDensity({ inputs: assumed, basis: "mass", pointFractions: pointPct, assumptions, label: "conditional" });
-    const vol = ruleOfMixturesDensity({ inputs: assumed, basis: "volume", pointFractions: pointPct, assumptions: [...assumptions.slice(0, 1), "volume-fraction basis (alternative reading of the unstated basis)", ...assumptions.slice(2)], label: "conditional-volume-basis" });
+    const { assumptions, mass: cond, volume: vol } = conditionalDensity({ inputs: densityInputs, missing: strict.missing, pointPct });
     receipts.push(cond.receipt, vol.receipt);
     conditional = { mass: cond, volume: vol };
     computed.push(makeClaim({

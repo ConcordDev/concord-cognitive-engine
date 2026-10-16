@@ -77,7 +77,7 @@ export const massPart = registerSolver({
     const mat = ctx.material(id);
     if (!mat) return { notComputed: "no material assigned" };
     const rho = mat.densityKgM3;
-    if (rho == null) return { notComputed: `${mat.label} has no density` };
+    if (rho == null) return { notComputed: mat.unknown?.densityKgM3 ? `${mat.label}: ${mat.unknown.densityKgM3}` : `${mat.label} has no density` };
     let V = volumeM3(geometry);
     let body = null;
     if (geometry?.shape === "cad-body") {

@@ -140,12 +140,33 @@ const DATASHEET = {
   },
 };
 
+// Formulated materials (knowledge/material-ir.js): every property is a claim reference or null, with the
+// reason it is null. Nothing is filled in to make a solver run; mass.part reports the reason instead.
+const FORMULATED = {
+  "usb-blend-d": {
+    label: "USB Blend D (HDPE compound, formulation as stated 2026-09-05)", category: "formulated polymer compound",
+    densityKgM3: null, youngsModulusPa: null, poisson: null, yieldPa: null, ultimatePa: null, costPerKgUsd: null,
+    formulation: "formulation:usb-blend-d",
+    claimRefs: { densityKgM3: "claim:usb-blend-d:density-strict" },
+    unknown: {
+      densityKgM3: "density unknown: the HDPE/HC co-polymer has no cited density, so the strict rule-of-mixtures density is not computed (material.density-rom; the conditional 1.028–1.100 g/cm³ is screening only, not a property of record)",
+      youngsModulusPa: "not computed: no stiffness model has the constituents' moduli and the fibre/platelet aspect ratios (Blend D brief item 3)",
+      yieldPa: "not computed: needs tests (ASTM D638) or a strength model with interfacial shear strength (Blend D brief items 3, 10)",
+      ultimatePa: "not computed: needs tests (ASTM D638) or a strength model with interfacial shear strength (Blend D brief items 3, 10)",
+      poisson: "not computed",
+      costPerKgUsd: "not stated",
+    },
+    source: "formulation fixture usb-blend-d (knowledge layer); constituent claims in knowledge/constituents.js",
+  },
+};
+
 export const MATERIALS = Object.freeze({
   ...Object.fromEntries(Object.entries(GENERAL).map(([id, m]) => [id, Object.freeze(fromGeneral(id, m))])),
   ...Object.fromEntries(Object.entries(FASTENERS).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
   ...Object.fromEntries(Object.entries(SPECIFIED).map(([id, m]) => [id, Object.freeze({ id, basis: "specified minimum", ...m })])),
   ...Object.fromEntries(Object.entries(TYPICAL).map(([id, m]) => [id, Object.freeze({ id, basis: "typical", ...m })])),
   ...Object.fromEntries(Object.entries(DATASHEET).map(([id, m]) => [id, Object.freeze({ id, basis: "datasheet (nominal)", ...m })])),
+  ...Object.fromEntries(Object.entries(FORMULATED).map(([id, m]) => [id, Object.freeze({ id, basis: "formulation (claim refs)", ...m })])),
 });
 
 // Plain-language names. "stainless" is ambiguous on its own; it resolves by
@@ -160,6 +181,7 @@ const ALIASES = {
   "cfrp": "cfrp-quasi-iso", "hexply 8552": "cfrp-hexply-8552-agp193pw", "8552": "cfrp-hexply-8552-agp193pw", "carbon fibre": "cfrp-quasi-iso", "carbon fiber": "cfrp-quasi-iso", "carbon": "cfrp-quasi-iso",
   "gfrp": "gfrp-quasi-iso", "fiberglass": "gfrp-quasi-iso", "fibreglass": "gfrp-quasi-iso",
   "rubber": "rubber-natural", "glass": "glass-soda-lime", "pc": "polycarbonate", "polycarbonate": "polycarbonate",
+  "blend d": "usb-blend-d", "usb blend d": "usb-blend-d",
   "foam": "foam-eps-30", "eps": "foam-eps-30", "8620": "steel-8620", "cast iron": "cast-iron-gray-30", "copper": "copper-c11000",
 };
 
