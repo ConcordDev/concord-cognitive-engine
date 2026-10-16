@@ -22,8 +22,10 @@ function finiteNum(v, fallback = 0, min, max) {
   return out;
 }
 
+import { eiaRetailPrice } from "../lib/sourced-inputs.js";
+import { notComputed } from "../lib/lens-inputs.js";
 export default function registerEnergyActions(registerLensAction) {
-  registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, _params) => {
+  const consumptionAnalysisSync = (ctx, artifact, _params) => {
     const readings = Array.isArray(artifact.data?.readings) ? artifact.data.readings : [];
     if (readings.length === 0) return { ok: true, result: { message: "Add energy readings (kWh) to analyze consumption." } };
     // Clamp each reading to a finite, non-negative kWh. Poisoned entries
@@ -35,6 +37,23 @@ export default function registerEnergyActions(registerLensAction) {
     const costPerKWh = finiteNum(artifact.data?.costPerKWh, 0.12, 0);
     const peakToAvgRatio = avg > 0 ? Math.round((peak / avg) * 100) / 100 : 0;
     return { ok: true, result: { totalKWh: Math.round(total * 10) / 10, avgKWh: Math.round(avg * 10) / 10, peakKWh: Math.round(peak * 10) / 10, readingCount: values.length, estimatedCost: Math.round(total * costPerKWh * 100) / 100, costPerKWh, peakToAvgRatio, savingsOpportunity: peak > avg * 2 ? "Significant peak reduction possible" : "Consumption is relatively stable" } };
+  };
+  // costPerKWh used to default to $0.12 silently. Now: caller's rate, else
+  // opt-in EIA state average (params.state / data.state), else cost NOT_COMPUTED.
+  registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, params = {}) => {
+    const d = artifact?.data || {};
+    const state = d.state || params.state;
+    if (d.costPerKWh != null || !state) {
+      const r = consumptionAnalysisSync(ctx, artifact, params);
+      if (d.costPerKWh == null && r?.ok && r.result && "estimatedCost" in r.result) return { ...r, result: { ...r.result, estimatedCost: null, costPerKWh: null, missingInputs: ["costPerKWh"], costNote: "Pass costPerKWh, or state (2-letter) to use the EIA average retail price." } };
+      return r;
+    }
+    return (async () => {
+      const src = await eiaRetailPrice(state, d.sector || params.sector || "RES");
+      if (!src.ok) { const r = consumptionAnalysisSync(ctx, artifact, params); return r?.ok && r.result && "estimatedCost" in r.result ? { ...r, result: { ...r.result, estimatedCost: null, costPerKWh: null, missingInputs: ["costPerKWh"], costNote: src.reason } } : r; }
+      const r = consumptionAnalysisSync(ctx, { ...artifact, data: { ...d, costPerKWh: src.value } }, params);
+      return r?.ok ? { ...r, result: { ...r.result, costProvenance: src.provenance } } : r;
+    })();
   });
   registerLensAction("energy", "solarEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -229,13 +248,18 @@ export default function registerEnergyActions(registerLensAction) {
   const enDay = (v) => enClean(v, 10).slice(0, 10);
   const findDevice = (s, userId, id) => (s.devices.get(userId) || []).find((d) => d.id === id) || null;
   const EN_DAY = 86400000;
-  const DEFAULT_RATE = 0.17; // $/kWh fallback when no utility rate is set
+  // No silent $/kWh fallback (was 0.17). The rate comes from rate-set: either the
+  // caller's utility rate, or (opt-in, fetchEia + state) the EIA state average
+  // retail price, stored with provenance. Without one, money fields are null.
+  const RATE_NOTE = "No utility rate on file: call rate-set with ratePerKwh, or with fetchEia:true and state (2-letter) for the EIA average retail price.";
+  const enCost = (kwh, rate) => (rate == null ? null : Math.round(kwh * rate * 100) / 100);
+  const rateMissing = (rate) => (rate == null ? { missingInputs: ["ratePerKwh"], rateNote: RATE_NOTE } : {});
 
   const DEVICE_CATEGORIES = ["meter", "hvac", "appliance", "lighting", "electronics", "ev_charger", "water_heater", "kitchen", "laundry", "other"];
 
   function userRate(s, userId) {
     const r = s.rates.get(userId);
-    return r && r.ratePerKwh > 0 ? r.ratePerKwh : DEFAULT_RATE;
+    return r && r.ratePerKwh > 0 ? r.ratePerKwh : null;
   }
 
   // ── Devices ─────────────────────────────────────────────────────────
@@ -319,7 +343,7 @@ export default function registerEnergyActions(registerLensAction) {
       kwh: Math.round(kwh * 1000) / 1000,
       date: enDay(params.date) || enDay(enNow()),
       hour,
-      cost: Math.round(kwh * userRate(s, userId) * 100) / 100,
+      cost: enCost(kwh, userRate(s, userId)),
       createdAt: enNow(),
     };
     enListB(s.readings, userId).push(reading);
@@ -362,7 +386,7 @@ export default function registerEnergyActions(registerLensAction) {
     const entry = {
       id: enId("sol"), kwh: Math.round(kwh * 1000) / 1000,
       date: enDay(params.date) || enDay(enNow()),
-      value: Math.round(kwh * userRate(s, userId) * 100) / 100,
+      value: enCost(kwh, userRate(s, userId)),
       createdAt: enNow(),
     };
     enListB(s.solar, userId).push(entry);
@@ -396,6 +420,17 @@ export default function registerEnergyActions(registerLensAction) {
   // ── Utility rate ────────────────────────────────────────────────────
   registerLensAction("energy", "rate-set", (ctx, _a, params = {}) => {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (params.fetchEia && params.ratePerKwh == null) {
+      const st = enClean(params.state, 2).toUpperCase();
+      if (!/^[A-Z]{2}$/.test(st)) return notComputed(["state"], "fetchEia needs a 2-letter state code.");
+      return (async () => {
+        const src = await eiaRetailPrice(st, params.sector || "RES");
+        if (!src.ok) return notComputed(["ratePerKwh"], `EIA retail price unavailable (${src.reason}); pass ratePerKwh.`);
+        const rate = { ratePerKwh: Math.round(src.value * 10000) / 10000, utility: null, plan: `EIA ${st} average retail`, provenance: src.provenance, updatedAt: enNow() };
+        s.rates.set(enAid(ctx), rate); saveEnergyState();
+        return { ok: true, result: { rate } };
+      })();
+    }
     const ratePerKwh = enNum(params.ratePerKwh);
     if (ratePerKwh <= 0) return { ok: false, error: "ratePerKwh must be > 0" };
     const rate = {
@@ -415,7 +450,8 @@ export default function registerEnergyActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        rate: rate || { ratePerKwh: DEFAULT_RATE, utility: null, plan: null },
+        rate: rate || { ratePerKwh: null, utility: null, plan: null },
+        ...(rate ? {} : { missingInputs: ["ratePerKwh"], rateNote: RATE_NOTE }),
         isDefault: !rate,
       },
     };
@@ -440,9 +476,10 @@ export default function registerEnergyActions(registerLensAction) {
         solarKwh: Math.round(solarKwh * 100) / 100,
         netKwh: Math.round(netKwh * 100) / 100,
         ratePerKwh: rate,
-        estimatedBill: Math.round(netKwh * rate * 100) / 100,
-        grossBill: Math.round(consumedKwh * rate * 100) / 100,
-        solarSavings: Math.round(Math.min(consumedKwh, solarKwh) * rate * 100) / 100,
+        ...rateMissing(rate),
+        estimatedBill: enCost(netKwh, rate),
+        grossBill: enCost(consumedKwh, rate),
+        solarSavings: enCost(Math.min(consumedKwh, solarKwh), rate),
       },
     };
   });
@@ -560,10 +597,11 @@ export default function registerEnergyActions(registerLensAction) {
       result: {
         devices: (s.devices.get(userId) || []).length,
         monthKwh: Math.round(consumedKwh * 100) / 100,
-        monthCost: Math.round(Math.max(0, consumedKwh - solarKwh) * rate * 100) / 100,
+        monthCost: enCost(Math.max(0, consumedKwh - solarKwh), rate),
         solarKwh: Math.round(solarKwh * 100) / 100,
         solarOffsetPct: consumedKwh > 0 ? Math.round((solarKwh / consumedKwh) * 100) : 0,
         ratePerKwh: rate,
+        ...rateMissing(rate),
         goals: (s.goals.get(userId) || []).length,
       },
     };
@@ -742,8 +780,9 @@ export default function registerEnergyActions(registerLensAction) {
         projectedSolarKwh: projectedSolar,
         projectedNetKwh: Math.round(projectedNet * 100) / 100,
         ratePerKwh: rate,
-        billSoFar: Math.round(Math.max(0, consumed - solarKwh) * rate * 100) / 100,
-        projectedBill: Math.round(projectedNet * rate * 100) / 100,
+        ...rateMissing(rate),
+        billSoFar: enCost(Math.max(0, consumed - solarKwh), rate),
+        projectedBill: enCost(projectedNet, rate),
         confidence: distinctDays >= 7 ? "high" : distinctDays >= 3 ? "medium" : "low",
       },
     };
@@ -816,14 +855,14 @@ export default function registerEnergyActions(registerLensAction) {
       else offPeakKwh += r.kwh;
     }
     const round = (v) => Math.round(v * 1000) / 1000;
-    const cost = (kwh, rate) => Math.round(kwh * rate * 100) / 100;
+    const cost = (kwh, rate) => enCost(kwh, rate);
     const peakCost = cost(peakKwh, plan.peakRate);
     const offPeakCost = cost(offPeakKwh, plan.offPeakRate);
     const shoulderCost = plan.shoulderRate != null ? cost(shoulderKwh, plan.shoulderRate) : 0;
     const untimedCost = cost(untimedKwh, plan.offPeakRate);
     const flatRate = userRate(s, userId);
     const totalKwh = peakKwh + offPeakKwh + shoulderKwh + untimedKwh;
-    const flatCost = Math.round(totalKwh * flatRate * 100) / 100;
+    const flatCost = enCost(totalKwh, flatRate);
     const touCost = peakCost + offPeakCost + shoulderCost + untimedCost;
     return {
       ok: true,
@@ -837,7 +876,8 @@ export default function registerEnergyActions(registerLensAction) {
         totalKwh: round(totalKwh),
         touCost: Math.round(touCost * 100) / 100,
         flatRateCost: flatCost,
-        savingsVsFlat: Math.round((flatCost - touCost) * 100) / 100,
+        savingsVsFlat: flatCost === null ? null : Math.round((flatCost - touCost) * 100) / 100,
+        ...rateMissing(flatRate),
         peakSharePct: totalKwh > 0 ? Math.round((peakKwh / totalKwh) * 1000) / 10 : 0,
       },
     };
@@ -1052,8 +1092,8 @@ export default function registerEnergyActions(registerLensAction) {
       });
     }
     series.sort((a, b) => a.date.localeCompare(b.date));
-    const selfSavings = Math.round(totalSelf * rate * 100) / 100;
-    const exportCredit = Math.round(totalExport * exportRate * 100) / 100;
+    const selfSavings = enCost(totalSelf, rate);
+    const exportCredit = enCost(totalExport, exportRate);
     return {
       ok: true,
       result: {
@@ -1063,10 +1103,11 @@ export default function registerEnergyActions(registerLensAction) {
         exportedKwh: Math.round(totalExport * 1000) / 1000,
         selfConsumptionPct: totalProduced > 0 ? Math.round((totalSelf / totalProduced) * 1000) / 10 : 0,
         ratePerKwh: rate,
+        ...rateMissing(rate),
         exportRate,
         selfConsumptionSavings: selfSavings,
         exportCredit,
-        totalSolarValue: Math.round((selfSavings + exportCredit) * 100) / 100,
+        totalSolarValue: selfSavings === null || exportCredit === null ? null : Math.round((selfSavings + exportCredit) * 100) / 100,
         series,
       },
     };
@@ -1170,7 +1211,7 @@ export default function registerEnergyActions(registerLensAction) {
         consumedKwh: Math.round(consumed * 100) / 100,
         solarKwh: Math.round(solarKwh * 100) / 100,
         netKwh: Math.round(Math.max(0, consumed - solarKwh) * 100) / 100,
-        cost: Math.round(Math.max(0, consumed - solarKwh) * rate * 100) / 100,
+        cost: enCost(Math.max(0, consumed - solarKwh), rate),
         readingDays: days,
         dailyAvgKwh: days > 0 ? Math.round((consumed / days) * 100) / 100 : 0,
         dailySeries: Object.entries(byDay).map(([date, kwh]) => ({ date, kwh: Math.round(kwh * 1000) / 1000 }))
