@@ -4,7 +4,9 @@ import { Suspense, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { CoreLensNav } from '@/components/common/CoreLensNav';
 import { DestinationNav } from '@/components/common/DestinationNav';
+import { HostLensNav } from '@/components/common/HostLensNav';
 import { getDestinationForLens } from '@/lib/destinations';
+import { getHostChildren, getHostForLens } from '@/lib/lens-hosts';
 import { ConKayOverlay } from '@/components/conkay/ConKayOverlay';
 import { GlobalPanelHost } from '@/components/panels/GlobalPanelHost';
 import { CrossMountedPanels } from '@/components/panels/CrossMountedPanels';
@@ -45,6 +47,17 @@ function CoreLensNavWrapper() {
   const parentId = getParentCoreLens(slug);
   if (parentId) {
     return <CoreLensNav coreLensId={parentId} />;
+  }
+
+  // Host lenses (lib/lens-hosts) get the same integrated workspace tab bar:
+  // the host + its grouped lenses as tabs, shown on the host and any of its
+  // children. A host with no member-facing children shows no bar.
+  if (getHostChildren(slug).length > 0) {
+    return <HostLensNav hostId={slug} />;
+  }
+  const hostId = getHostForLens(slug);
+  if (hostId) {
+    return <HostLensNav hostId={hostId} />;
   }
 
   // Destinations get the same integrated workspace tab bar: the destination +

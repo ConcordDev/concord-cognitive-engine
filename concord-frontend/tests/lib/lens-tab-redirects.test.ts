@@ -14,6 +14,7 @@ describe('lens tabLabel redirects', () => {
       { source: '/lenses/threads', destination: '/lenses/thread' },
       { source: '/lenses/visuals', destination: '/lenses/fractal' },
       { source: '/lenses/next-bets', destination: '/lenses/strategic-adds' },
+      { source: '/lenses/quality', destination: '/lenses/code-quality' },
     ]));
     expect(TAB_LABEL_REDIRECTS).toEqual(redirects);
   });

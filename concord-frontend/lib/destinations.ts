@@ -52,22 +52,23 @@ export const DESTINATIONS: DestinationDef[] = [
   { id: 'projects', name: 'Projects', icon: FolderKanban, group: 'work',
     absorbs: ['consulting', 'careers', 'hr', 'services', 'supplychain', 'manufacturing', 'ops'] },
   { id: 'analytics', name: 'Analytics', icon: BarChart3, group: 'work',
-    absorbs: ['forecast', 'inference', 'ml', 'hypothesis', 'attention'] },
+    // attention folded under the reflection host (lib/lens-hosts) — one home.
+    absorbs: ['forecast', 'inference', 'ml', 'hypothesis', 'neuro'] },
   { id: 'marketplace', name: 'Marketplace', icon: ShoppingBag, group: 'work',
-    absorbs: ['auction', 'retail', 'black-market', 'sponsorship', 'marketing', 'realestate', 'housing'] },
+    absorbs: ['auction', 'retail', 'black-market', 'sponsorship', 'marketing', 'realestate', 'housing', 'questmarket'] },
   { id: 'trades', name: 'Trades', icon: Hammer, group: 'work',
-    absorbs: ['carpentry', 'plumbing', 'electrical', 'hvac', 'welding', 'masonry', 'construction'] },
+    absorbs: ['carpentry', 'plumbing', 'electrical', 'hvac', 'welding', 'masonry', 'construction', 'home-improvement', 'diy'] },
   // Create
   { id: 'music', name: 'Music', icon: Music, group: 'create' },
   { id: 'whiteboard', name: 'Whiteboard', icon: PenSquare, group: 'create' },
   { id: 'creator', name: 'Creator', icon: Megaphone, group: 'create',
-    absorbs: ['fashion', 'photography', 'gallery', 'photos'] },
+    absorbs: ['fashion', 'photography', 'gallery', 'photos', 'maker'] },
   { id: 'crypto', name: 'Crypto', icon: Coins, group: 'create' },
   // Knowledge
   { id: 'research', name: 'Research', icon: BookOpen, group: 'knowledge',
     absorbs: ['paper', 'science', 'philosophy', 'linguistics', 'history', 'mentorship', 'debate', 'answers', 'reasoning', 'grounding', 'translation'] },
   { id: 'lab', name: 'Lab', icon: FlaskConical, group: 'knowledge',
-    absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping', 'desert'] },
+    absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping', 'desert', 'telecommunications'] },
   // Frontier's ten engines (lib/frontier-engines.ts) are workspace TABS
   // switched in-place inside the destination page (FrontierEngineTabs),
   // not separate lens routes — so, unlike every other destination here,
