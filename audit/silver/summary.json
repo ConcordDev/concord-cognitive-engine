@@ -1,0 +1,1157 @@
+{
+ "generatedAt": "2026-10-15T11:20:30.483Z",
+ "head": "7b451e230",
+ "contractVersion": "0.1.0",
+ "summary": {
+  "total": 12046,
+  "domains": 598,
+  "bySource": {
+   "conkay-solver": {
+    "count": 57,
+    "fields": {
+     "identity": {
+      "declared": 57
+     },
+     "domain": {
+      "declared": 57
+     },
+     "fidelity": {
+      "declared": 57
+     },
+     "inputs": {
+      "runtime": 57
+     },
+     "outputs": {
+      "runtime": 57
+     },
+     "units": {
+      "missing": 40,
+      "declared": 17
+     },
+     "frame": {
+      "missing": 57
+     },
+     "assumptions": {
+      "runtime": 57
+     },
+     "limits": {
+      "missing": 39,
+      "declared": 18
+     },
+     "method": {
+      "declared": 57
+     },
+     "provenance": {
+      "declared": 57
+     },
+     "risk": {
+      "inferred": 57
+     }
+    },
+    "validation": {
+     "uncertified": 57
+    }
+   },
+   "macro": {
+    "count": 11962,
+    "fields": {
+     "identity": {
+      "inferred": 11903,
+      "declared": 59
+     },
+     "domain": {
+      "declared": 11962
+     },
+     "fidelity": {
+      "missing": 11962
+     },
+     "inputs": {
+      "missing": 11793,
+      "hint": 169
+     },
+     "outputs": {
+      "missing": 11962
+     },
+     "units": {
+      "missing": 11962
+     },
+     "frame": {
+      "missing": 11962
+     },
+     "assumptions": {
+      "missing": 11962
+     },
+     "limits": {
+      "missing": 11962
+     },
+     "method": {
+      "missing": 11903,
+      "declared": 59
+     },
+     "provenance": {
+      "missing": 11962
+     },
+     "risk": {
+      "inferred": 11903,
+      "declared": 59
+     }
+    },
+    "validation": {
+     "uncertified": 11962
+    }
+   },
+   "runtime-capability": {
+    "count": 27,
+    "fields": {
+     "identity": {
+      "declared": 27
+     },
+     "domain": {
+      "declared": 27
+     },
+     "fidelity": {
+      "missing": 27
+     },
+     "inputs": {
+      "missing": 23,
+      "declared": 4
+     },
+     "outputs": {
+      "missing": 23,
+      "declared": 4
+     },
+     "units": {
+      "missing": 27
+     },
+     "frame": {
+      "missing": 27
+     },
+     "assumptions": {
+      "missing": 27
+     },
+     "limits": {
+      "missing": 27
+     },
+     "method": {
+      "declared": 27
+     },
+     "provenance": {
+      "missing": 27
+     },
+     "risk": {
+      "declared": 27
+     }
+    },
+    "validation": {
+     "uncertified": 27
+    }
+   }
+  },
+  "validation": {
+   "uncertified": 12046,
+   "benchmarked": 0,
+   "accepted": 0
+  },
+  "fullyDeclared": 0,
+  "macroClasses": {
+   "B": 10078,
+   "A": 1514,
+   "C": 320,
+   "E": 25,
+   "D": 25
+  },
+  "macrosWithBehavioralTest": 5618,
+  "macrosInOracleCases": 10,
+  "macrosWithInputHint": 169,
+  "macrosInBothRegistries": 374,
+  "capabilitiesOutsideMacroMaps": 27,
+  "capabilitiesByImplementation": {
+   "mcp": 23,
+   "mcp_builtin": 4
+  },
+  "capabilitiesUnregisteredMacro": 0,
+  "promotionCandidates": 1188,
+  "promotionCandidatesBy": {
+   "classifier": 96,
+   "pureCompute": 1092
+  },
+  "macrosPureCompute": 2525,
+  "promotionCandidateDomains": [
+   [
+    "plumbing",
+    37
+   ],
+   [
+    "chem",
+    21
+   ],
+   [
+    "bio",
+    20
+   ],
+   [
+    "telecommunications",
+    18
+   ],
+   [
+    "accounting",
+    17
+   ],
+   [
+    "engineering",
+    17
+   ],
+   [
+    "government",
+    15
+   ],
+   [
+    "society",
+    15
+   ],
+   [
+    "agriculture",
+    14
+   ],
+   [
+    "commonsense",
+    13
+   ],
+   [
+    "hypothesis",
+    13
+   ],
+   [
+    "intel",
+    13
+   ],
+   [
+    "atlas",
+    12
+   ],
+   [
+    "aviation",
+    12
+   ],
+   [
+    "legal",
+    12
+   ],
+   [
+    "math",
+    12
+   ],
+   [
+    "neuro",
+    12
+   ],
+   [
+    "physics",
+    12
+   ],
+   [
+    "astronomy",
+    10
+   ],
+   [
+    "food",
+    10
+   ],
+   [
+    "mesh",
+    10
+   ],
+   [
+    "quantum",
+    10
+   ],
+   [
+    "realestate",
+    10
+   ],
+   [
+    "sim",
+    10
+   ],
+   [
+    "code",
+    9
+   ],
+   [
+    "experience",
+    9
+   ],
+   [
+    "fitness",
+    9
+   ],
+   [
+    "inheritance",
+    9
+   ],
+   [
+    "integrations",
+    9
+   ],
+   [
+    "sports",
+    9
+   ],
+   [
+    "art",
+    8
+   ],
+   [
+    "calendar",
+    8
+   ],
+   [
+    "code-quality",
+    8
+   ],
+   [
+    "cortex",
+    8
+   ],
+   [
+    "electrical",
+    8
+   ],
+   [
+    "environment",
+    8
+   ],
+   [
+    "foundry",
+    8
+   ],
+   [
+    "global",
+    8
+   ],
+   [
+    "legacy",
+    8
+   ],
+   [
+    "logistics",
+    8
+   ],
+   [
+    "manufacturing",
+    8
+   ],
+   [
+    "nonprofit",
+    8
+   ],
+   [
+    "poetry",
+    8
+   ],
+   [
+    "religion",
+    8
+   ],
+   [
+    "romance",
+    8
+   ],
+   [
+    "science",
+    8
+   ],
+   [
+    "temporal",
+    8
+   ],
+   [
+    "trades",
+    8
+   ],
+   [
+    "travel",
+    8
+   ],
+   [
+    "crisis",
+    7
+   ],
+   [
+    "desert",
+    7
+   ],
+   [
+    "dila",
+    7
+   ],
+   [
+    "events",
+    7
+   ],
+   [
+    "grounding",
+    7
+   ],
+   [
+    "healthcare",
+    7
+   ],
+   [
+    "law",
+    7
+   ],
+   [
+    "materials",
+    7
+   ],
+   [
+    "security",
+    7
+   ],
+   [
+    "services",
+    7
+   ],
+   [
+    "sync",
+    7
+   ],
+   [
+    "wallet",
+    7
+   ],
+   [
+    "admin",
+    6
+   ],
+   [
+    "agents",
+    6
+   ],
+   [
+    "animation",
+    6
+   ],
+   [
+    "ar",
+    6
+   ],
+   [
+    "carpentry",
+    6
+   ],
+   [
+    "creative",
+    6
+   ],
+   [
+    "finance",
+    6
+   ],
+   [
+    "graph",
+    6
+   ],
+   [
+    "insurance",
+    6
+   ],
+   [
+    "lab",
+    6
+   ],
+   [
+    "marketplace",
+    6
+   ],
+   [
+    "masonry",
+    6
+   ],
+   [
+    "mounts",
+    6
+   ],
+   [
+    "ocean",
+    6
+   ],
+   [
+    "pets",
+    6
+   ],
+   [
+    "photography",
+    6
+   ],
+   [
+    "reflection",
+    6
+   ],
+   [
+    "space",
+    6
+   ],
+   [
+    "tournaments",
+    6
+   ],
+   [
+    "wellness",
+    6
+   ],
+   [
+    "audit",
+    5
+   ],
+   [
+    "city",
+    5
+   ],
+   [
+    "council",
+    5
+   ],
+   [
+    "diy",
+    5
+   ],
+   [
+    "education",
+    5
+   ],
+   [
+    "invariant",
+    5
+   ],
+   [
+    "linguistics",
+    5
+   ],
+   [
+    "meta",
+    5
+   ],
+   [
+    "metacognition",
+    5
+   ],
+   [
+    "music",
+    5
+   ],
+   [
+    "news",
+    5
+   ],
+   [
+    "paper",
+    5
+   ],
+   [
+    "parenting",
+    5
+   ],
+   [
+    "privacy",
+    5
+   ],
+   [
+    "questmarket",
+    5
+   ],
+   [
+    "research",
+    5
+   ],
+   [
+    "retail",
+    5
+   ],
+   [
+    "schema",
+    5
+   ],
+   [
+    "supplychain",
+    5
+   ],
+   [
+    "whiteboard",
+    5
+   ],
+   [
+    "automotive",
+    4
+   ],
+   [
+    "bridge",
+    4
+   ],
+   [
+    "chat",
+    4
+   ],
+   [
+    "collab",
+    4
+   ],
+   [
+    "consulting",
+    4
+   ],
+   [
+    "cooking",
+    4
+   ],
+   [
+    "crime",
+    4
+   ],
+   [
+    "crypto",
+    4
+   ],
+   [
+    "custom",
+    4
+   ],
+   [
+    "daily",
+    4
+   ],
+   [
+    "database",
+    4
+   ],
+   [
+    "defense",
+    4
+   ],
+   [
+    "disputes",
+    4
+   ],
+   [
+    "eco",
+    4
+   ],
+   [
+    "energy",
+    4
+   ],
+   [
+    "feed",
+    4
+   ],
+   [
+    "forestry",
+    4
+   ],
+   [
+    "forum",
+    4
+   ],
+   [
+    "game",
+    4
+   ],
+   [
+    "geology",
+    4
+   ],
+   [
+    "history",
+    4
+   ],
+   [
+    "household",
+    4
+   ],
+   [
+    "inference",
+    4
+   ],
+   [
+    "landscaping",
+    4
+   ],
+   [
+    "mining",
+    4
+   ],
+   [
+    "observe",
+    4
+   ],
+   [
+    "ops",
+    4
+   ],
+   [
+    "pentester",
+    4
+   ],
+   [
+    "planner",
+    4
+   ],
+   [
+    "platform",
+    4
+   ],
+   [
+    "podcast",
+    4
+   ],
+   [
+    "politics",
+    4
+   ],
+   [
+    "projects",
+    4
+   ],
+   [
+    "reasoning",
+    4
+   ],
+   [
+    "sovereign_spells",
+    4
+   ],
+   [
+    "timeline",
+    4
+   ],
+   [
+    "transfer",
+    4
+   ],
+   [
+    "welding",
+    4
+   ],
+   [
+    "world",
+    4
+   ],
+   [
+    "alliance",
+    3
+   ],
+   [
+    "attention",
+    3
+   ],
+   [
+    "billing",
+    3
+   ],
+   [
+    "board",
+    3
+   ],
+   [
+    "cri",
+    3
+   ],
+   [
+    "crucible",
+    3
+   ],
+   [
+    "dtu_portability",
+    3
+   ],
+   [
+    "entity",
+    3
+   ],
+   [
+    "federation",
+    3
+   ],
+   [
+    "fork",
+    3
+   ],
+   [
+    "hr",
+    3
+   ],
+   [
+    "hvac",
+    3
+   ],
+   [
+    "land_claims",
+    3
+   ],
+   [
+    "metalearning",
+    3
+   ],
+   [
+    "mission",
+    3
+   ],
+   [
+    "organ",
+    3
+   ],
+   [
+    "pharmacy",
+    3
+   ],
+   [
+    "queue",
+    3
+   ],
+   [
+    "reason",
+    3
+   ],
+   [
+    "repos",
+    3
+   ],
+   [
+    "resonance",
+    3
+   ],
+   [
+    "rnd",
+    3
+   ],
+   [
+    "studio",
+    3
+   ],
+   [
+    "trading",
+    3
+   ],
+   [
+    "combat_polish",
+    2
+   ],
+   [
+    "command-center",
+    2
+   ],
+   [
+    "conkay_design",
+    2
+   ],
+   [
+    "courtship",
+    2
+   ],
+   [
+    "decomp",
+    2
+   ],
+   [
+    "fedmesh",
+    2
+   ],
+   [
+    "gallery",
+    2
+   ],
+   [
+    "governance",
+    2
+   ],
+   [
+    "housing",
+    2
+   ],
+   [
+    "immersive_sim",
+    2
+   ],
+   [
+    "ingest",
+    2
+   ],
+   [
+    "knowledge_trade",
+    2
+   ],
+   [
+    "ledger",
+    2
+   ],
+   [
+    "licensing",
+    2
+   ],
+   [
+    "message",
+    2
+   ],
+   [
+    "musicres",
+    2
+   ],
+   [
+    "orchestrate",
+    2
+   ],
+   [
+    "real_estate",
+    2
+   ],
+   [
+    "sports_careers",
+    2
+   ],
+   [
+    "staking",
+    2
+   ],
+   [
+    "system",
+    2
+   ],
+   [
+    "underwater",
+    2
+   ],
+   [
+    "ux-suite",
+    2
+   ],
+   [
+    "vehicles",
+    2
+   ],
+   [
+    "voice-tts",
+    2
+   ],
+   [
+    "voice",
+    2
+   ],
+   [
+    "world-creator",
+    2
+   ],
+   [
+    "agent_marathon",
+    1
+   ],
+   [
+    "agent_projects",
+    1
+   ],
+   [
+    "announcements",
+    1
+   ],
+   [
+    "anon",
+    1
+   ],
+   [
+    "black-market",
+    1
+   ],
+   [
+    "byo_keys",
+    1
+   ],
+   [
+    "chronicle",
+    1
+   ],
+   [
+    "completion",
+    1
+   ],
+   [
+    "craft_chains",
+    1
+   ],
+   [
+    "crafting",
+    1
+   ],
+   [
+    "crossworld",
+    1
+   ],
+   [
+    "district",
+    1
+   ],
+   [
+    "dtu_props",
+    1
+   ],
+   [
+    "dungeon",
+    1
+   ],
+   [
+    "dx-platform",
+    1
+   ],
+   [
+    "dynasty",
+    1
+   ],
+   [
+    "enchantment",
+    1
+   ],
+   [
+    "fishing",
+    1
+   ],
+   [
+    "foundation",
+    1
+   ],
+   [
+    "garage",
+    1
+   ],
+   [
+    "glyph_spells",
+    1
+   ],
+   [
+    "handshake",
+    1
+   ],
+   [
+    "invgeo",
+    1
+   ],
+   [
+    "jobs",
+    1
+   ],
+   [
+    "karaoke",
+    1
+   ],
+   [
+    "lens",
+    1
+   ],
+   [
+    "lfg",
+    1
+   ],
+   [
+    "mahjong",
+    1
+   ],
+   [
+    "markets",
+    1
+   ],
+   [
+    "metacog",
+    1
+   ],
+   [
+    "notebook",
+    1
+   ],
+   [
+    "npc_legacy",
+    1
+   ],
+   [
+    "occupation",
+    1
+   ],
+   [
+    "power-clusters",
+    1
+   ],
+   [
+    "predict",
+    1
+   ],
+   [
+    "realm_access",
+    1
+   ],
+   [
+    "robolab",
+    1
+   ],
+   [
+    "root",
+    1
+   ],
+   [
+    "scenebridge",
+    1
+   ],
+   [
+    "shield",
+    1
+   ],
+   [
+    "skill_tree",
+    1
+   ],
+   [
+    "styletx",
+    1
+   ],
+   [
+    "survival",
+    1
+   ],
+   [
+    "tomography",
+    1
+   ],
+   [
+    "video_gen",
+    1
+   ],
+   [
+    "war",
+    1
+   ],
+   [
+    "weather",
+    1
+   ],
+   [
+    "workspace",
+    1
+   ],
+   [
+    "worldmodel",
+    1
+   ],
+   [
+    "zones",
+    1
+   ],
+   [
+    "zuko",
+    1
+   ]
+  ],
+  "conkaySolversWithReferencedTests": 3,
+  "registryKeys": {
+   "raw": 34007,
+   "subLensDelegatesFolded": 18532,
+   "sharedHandlerKeysFolded": 3513,
+   "distinctMacroEntries": 11962
+  }
+ }
+}

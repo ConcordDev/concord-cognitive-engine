@@ -14,6 +14,8 @@
 import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
+import { needNums, notComputed } from "../lib/lens-inputs.js";
+
 export default function registerFinanceActions(registerLensAction) {
   // ─── Pre-existing analytical macros ─────────────────────────────────
 
@@ -39,9 +41,11 @@ export default function registerFinanceActions(registerLensAction) {
   });
 
   registerLensAction("finance", "compoundInterest", (ctx, artifact, _params) => {
-    const principal = parseFloat(artifact.data?.principal) || 0;
-    const rate = parseFloat(artifact.data?.annualRate) || 0.07;
-    const years = parseInt(artifact.data?.years) || 10;
+    const _req = needNums(artifact?.data, ["principal>=0", "annualRate", "years>0"]);
+    if (_req.missing.length) return notComputed(_req.missing, "Compound interest needs principal, an annual rate (decimal, e.g. 0.05) and years — no return rate is assumed.", { formula: "B_m = B_{m-1}·(1 + r/12) + PMT, monthly compounding" });
+    const principal = _req.values.principal;
+    const rate = _req.values.annualRate;
+    const years = Math.trunc(_req.values.years);
     const monthly = parseFloat(artifact.data?.monthlyContribution) || 0;
     const periods = years * 12;
     const monthlyRate = rate / 12;
@@ -59,10 +63,12 @@ export default function registerFinanceActions(registerLensAction) {
   registerLensAction("finance", "debtPayoff", (ctx, artifact, _params) => {
     const debts = artifact.data?.debts || [];
     if (debts.length === 0) return { ok: true, result: { message: "Add debts with balance, rate, and minimum payment." } };
-    const analyzed = debts.map(d => { const bal = parseFloat(d.balance) || 0; const rate = parseFloat(d.rate) || 0.18; const minPay = parseFloat(d.minimumPayment) || bal * 0.02; const monthsToPayoff = minPay > 0 ? Math.ceil(Math.log(1 / (1 - bal * (rate / 12) / minPay)) / Math.log(1 + rate / 12)) : Infinity; const totalInterest = (monthsToPayoff * minPay) - bal; return { name: d.name, balance: bal, rate: `${(rate * 100).toFixed(1)}%`, minimumPayment: minPay, monthsToPayoff: isFinite(monthsToPayoff) ? monthsToPayoff : 999, totalInterest: Math.round(totalInterest * 100) / 100 }; }).sort((a, b) => parseFloat(b.rate) - parseFloat(a.rate));
-    const totalDebt = analyzed.reduce((s, d) => s + d.balance, 0);
-    const totalInterest = analyzed.reduce((s, d) => s + d.totalInterest, 0);
-    return { ok: true, result: { debts: analyzed, totalDebt: Math.round(totalDebt * 100) / 100, totalInterest: Math.round(totalInterest * 100) / 100, strategy: "Avalanche method — pay highest rate first", firstTarget: analyzed[0]?.name, monthsToDebtFree: Math.max(...analyzed.map(d => d.monthsToPayoff)) } };
+    const analyzed = debts.map(d => { const _r = needNums(d, ["balance>=0", "rate>=0", "minimumPayment>0"]); if (_r.missing.length) return { name: d?.name, status: "NOT_COMPUTED", missingInputs: _r.missing, rate: null }; const bal = _r.values.balance; const rate = _r.values.rate; const minPay = _r.values.minimumPayment; const monthsToPayoff = minPay > 0 ? Math.ceil(Math.log(1 / (1 - bal * (rate / 12) / minPay)) / Math.log(1 + rate / 12)) : Infinity; const totalInterest = (monthsToPayoff * minPay) - bal; return { name: d.name, balance: bal, rate: `${(rate * 100).toFixed(1)}%`, minimumPayment: minPay, monthsToPayoff: isFinite(monthsToPayoff) ? monthsToPayoff : 999, totalInterest: Math.round(totalInterest * 100) / 100 }; }).sort((a, b) => (parseFloat(b.rate) || -1) - (parseFloat(a.rate) || -1));
+    const computed = analyzed.filter(d => d.status !== "NOT_COMPUTED");
+    const notComputedCount = analyzed.length - computed.length;
+    const totalDebt = computed.reduce((s, d) => s + d.balance, 0);
+    const totalInterest = computed.reduce((s, d) => s + d.totalInterest, 0);
+    return { ok: true, result: { debts: analyzed, notComputed: notComputedCount, totalDebt: notComputedCount ? null : Math.round(totalDebt * 100) / 100, totalInterest: notComputedCount ? null : Math.round(totalInterest * 100) / 100, strategy: "Avalanche method — pay highest rate first", firstTarget: computed[0]?.name, monthsToDebtFree: notComputedCount || !computed.length ? null : Math.max(...computed.map(d => d.monthsToPayoff)) } };
   });
 
   // ─── Parity-sprint: personal-finance OS ─────────────────────────────
@@ -415,6 +421,8 @@ export default function registerFinanceActions(registerLensAction) {
    */
   registerLensAction("finance", "retirement-monte-carlo", (_ctx, _artifact, params = {}) => {
   try {
+    const _req = needNums(params, ["currentAge>0", "retireAge>0", "expectedReturn", "volatility", "annualSpendInRetirement"]);
+    if (_req.missing.length) return notComputed(_req.missing, "Retirement simulation needs ages, expected annual return, volatility and retirement spending — none are assumed (previously 35/67/7%/15%/$60k).");
     const currentAge = Math.max(18, Math.min(90, Number(params.currentAge) || 35));
     const retireAge = Math.max(currentAge + 1, Math.min(100, Number(params.retireAge) || 67));
     const currentSavings = Math.max(0, Number(params.currentSavings) || 0);
@@ -506,6 +514,8 @@ export default function registerFinanceActions(registerLensAction) {
     if (!pythonExecEnabled()) {
       return { ok: false, error: "python_exec_disabled", message: "Live Python execution is disabled in this environment. Enable with CONCORD_PYTHON_EXEC_ENABLED=1." };
     }
+    const _req = needNums(params, ["months>0", "annualReturnRate"]);
+    if (_req.missing.length) return notComputed(_req.missing, "Cash-flow projection needs a horizon in months and an annual return rate — none are assumed.");
     const startingBalance = Number(params.startingBalance) || 0;
     const months = Math.max(1, Math.min(600, Math.round(Number(params.months) || 120)));
     const monthlyContribution = Number(params.monthlyContribution) || 0;

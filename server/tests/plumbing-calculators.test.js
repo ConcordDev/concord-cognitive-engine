@@ -31,8 +31,9 @@ test("pipeSize: diameter from GPM = 2.448·d²·v (not the circle-area inversion
   assert.equal(numIn(r.recommendedSize), 1, `expected 1" nominal, got ${r.recommendedSize}`);
 });
 
-test("pipeSize: default (5 GPM @ 5 ft/s) → d = √(5/12.24) = 0.639\"", () => {
-  const r = call("pipeSize").result;
+test("pipeSize: no inputs → NOT_COMPUTED; explicit 5 GPM @ 5 ft/s → d = √(5/12.24) = 0.639\"", () => {
+  assert.equal(call("pipeSize").result.status, "NOT_COMPUTED");
+  const r = call("pipeSize", { flowGPM: 5, velocityFPS: 5 }).result;
   assert.ok(Math.abs(numIn(r.calculatedDiameter) - 0.639) < 0.02, `got ${r.calculatedDiameter}`);
   assert.equal(numIn(r.recommendedSize), 0.75); // first ≥0.639
 });

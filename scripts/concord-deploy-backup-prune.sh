@@ -3,63 +3,87 @@
 #
 # Prune old deploy DB snapshots in /Users/dutch/concord/backups/.
 #
-# Each Concord deploy creates a timestamped snapshot there:
+# Each Concord deploy creates a timestamped snapshot there, e.g.:
 #   /Users/dutch/concord/backups/YYYYMMDD-HHMM-deploy-<name>/
+#   /Users/dutch/concord/backups/YYYYMMDD-deploy/
 # Each contains a full copy of the live DB (9 GB+) plus plist + git refs.
-# Without pruning, this dir grows ~9 GB per deploy. With ~16 deploys/day
-# that's ~144 GB within two days.
+# Without pruning, this dir grows ~9 GB per deploy.
 #
-# Policy: keep the 2 most recent deploy backups. Delete the rest.
-# This is a one-way delete; the deploy snapshot is the only place we
-# have the data at that specific point in time, so do NOT run this if
-# the offsite backup is broken (see /Users/dutch/.local/bin/
-# concord-offsite-backup.sh — last successful run logged in
-# /Users/dutch/.zuko/logs/offsite-backup.log).
+# Policy: keep the KEEP_N (default 2) most recent *-deploy* dirs. Delete older
+# matching deploy snapshots only. Never touch non-deploy dirs.
 #
-# 2 vs 3 was a user decision 2026-10-13 (telegram "have a prune process
-# setup in concord to only keep the most recent 2 db backups"). The
-# 2-backup retention gives ~hours of rollback window in a normal
-# deploy cadence; extend to 3-5 if the offsite backup is broken or
-# cadence slows to a few deploys/day.
+# macOS /bin/bash is 3.2. This script must stay 3.2-safe under `set -u`
+# (empty arrays + "${arr[@]}" used to unbound-variable-spam after the dir
+# was emptied by disk-space-reclaim.sh on 2026-10-14).
 #
 # Install:
-#   - This file lives at /Users/dutch/.local/bin/concord-deploy-backup-prune.sh
-#   - Wired into launchd via:
-#     cp /Users/dutch/concord-cognitive-engine/launchd/com.concord.deploy-backup-prune.plist \
-#        /Users/dutch/Library/LaunchAgents/
-#     launchctl load /Users/dutch/Library/LaunchAgents/com.concord.deploy-backup-prune.plist
-#   - Runs every 30 min (StartInterval: 1800)
+#   cp scripts/concord-deploy-backup-prune.sh /Users/dutch/.local/bin/
+#   cp launchd/com.concord.deploy-backup-prune.plist ~/Library/LaunchAgents/
+#   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.concord.deploy-backup-prune.plist
 #
-# Why a separate cron job (not part of the deploy script):
-#   - The deploy script runs on a remote agent. Pruning is local Mac work.
-#   - A missed run (deploy agent offline, laptop asleep) self-heals on
-#     the next 30-min tick.
-#   - 30-min cadence is fine-grained enough that a botched deploy
-#     doesn't pile up before the prune catches it.
+# DRY_RUN=1 skips deletes (for tests). BACKUP_DIR / KEEP_N overridable for tests.
 
 set -u
 
-BACKUP_DIR="/Users/dutch/concord/backups"
-KEEP_N=2
+BACKUP_DIR="${BACKUP_DIR:-/Users/dutch/concord/backups}"
+KEEP_N="${KEEP_N:-2}"
+DRY_RUN="${DRY_RUN:-0}"
 LOG_PREFIX="[concord-deploy-backup-prune]"
+# Default log path; override in tests so we do not spam the real log.
+PRUNE_LOG="${PRUNE_LOG:-/Users/dutch/.zuko/logs/deploy-backup-prune.log}"
 
 log() {
-  # Log to both stdout and a local file (so we can see runs even when
-  # launchd is silent)
-  echo "$(date '+%Y-%m-%dT%H:%M:%S%z') $LOG_PREFIX $*" >> /Users/dutch/.zuko/logs/deploy-backup-prune.log
+  # Best-effort file log (dir may be missing in tests)
+  if [ -n "${PRUNE_LOG}" ]; then
+    mkdir -p "$(dirname "$PRUNE_LOG")" 2>/dev/null || true
+    echo "$(date '+%Y-%m-%dT%H:%M:%S%z') $LOG_PREFIX $*" >> "$PRUNE_LOG" 2>/dev/null || true
+  fi
   echo "$LOG_PREFIX $*"
 }
 
+
+# Deploy snapshot names only:
+#   YYYYMMDD-HHMM-deploy-<name>  (classic)
+#   YYYYMMDD-deploy              (short, e.g. 20261015-deploy)
+# Reject other *-deploy* names (e.g. pre-sweep-deploy-*.next).
+is_deploy_snap_name() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-deploy) return 0 ;;
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy) return 0 ;;
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy-*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Refuse nonsensical retention (never delete everything by accident).
+case "$KEEP_N" in
+  ''|*[!0-9]*)
+    log "FAIL: KEEP_N must be a non-negative integer (got: $KEEP_N)"
+    exit 1
+    ;;
+esac
+if [ "$KEEP_N" -lt 1 ]; then
+  log "FAIL: KEEP_N must be >= 1 (got: $KEEP_N); refusing to run"
+  exit 1
+fi
+
 # --- Safety: don't run if offsite backup is broken -------------------------
-# If offsite backup is failing, the local deploy snapshots are the only
-# recent copy of the data. Skipping the prune keeps rollback options open.
-# If we kept ALL backups when offsite is broken, we eventually run out of
-# disk; the 30-min cadence keeps the failure visible (you'll see "skipped"
-# in the log, then act) without making the disk full. Threshold: 2
-# consecutive offsite failures in the last 8 hours = broken.
-OFFSITE_LOG="/Users/dutch/.zuko/logs/offsite-backup.log"
-if [ -f "$OFFSITE_LOG" ]; then
-  recent_fails=$(awk '/^[^[]/{next} {ts=$1" "$2; if (ts > since) print}' since="$(date -v-8H '+%Y-%m-%d %H:%M:%S')" "$OFFSITE_LOG" 2>/dev/null | grep -c "FAIL: " || true)
+# Empty OFFSITE_LOG disables the check (tests).
+OFFSITE_LOG="${OFFSITE_LOG-/Users/dutch/.zuko/logs/offsite-backup.log}"
+if [ -n "$OFFSITE_LOG" ] && [ -f "$OFFSITE_LOG" ]; then
+  # Count FAIL lines in the last 8 hours. Prefer GNU/BSD date -v; fall back open.
+  since="$(date -v-8H '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -d '8 hours ago' '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+  recent_fails=0
+  if [ -n "$since" ]; then
+    recent_fails=$(awk -v since="$since" '
+      /FAIL: / {
+        # log lines look like: 2026-10-14 20:53:35 EDT [offsite ...] FAIL: ...
+        ts = $1 " " $2
+        if (ts >= since) c++
+      }
+      END { print c+0 }
+    ' "$OFFSITE_LOG" 2>/dev/null || echo 0)
+  fi
   if [ "${recent_fails:-0}" -ge 2 ]; then
     log "SKIP: offsite backup has $recent_fails failures in last 8h; preserving local deploy snapshots"
     exit 0
@@ -72,46 +96,107 @@ if [ ! -d "$BACKUP_DIR" ]; then
   exit 0
 fi
 
-# --- Build the deletion list ------------------------------------------------
-# Snapshot dirs are named YYYYMMDD-HHMM-deploy-<name>; sort by the
-# timestamp prefix descending and keep the top KEEP_N.
-shopt -s nullglob
-all_snaps=( "$BACKUP_DIR"/*/ )
-shopt -u nullglob
-
-# Filter to only deploy snapshots (timestamp-deploy-* pattern)
-deploy_snaps=()
-for d in "${all_snaps[@]}"; do
+# --- Collect deploy snapshot dirs only ------------------------------------
+# Match names containing "-deploy" (e.g. 20261012-1404-deploy-pr1200,
+# 20261015-deploy). Do NOT use nullglob + empty "${arr[@]}" under bash 3.2
+# set -u (that was the unbound-variable spam).
+# Bash 3.2: a non-matching glob stays literal; [ -d ] then fails and we skip.
+deploy_snaps=""
+deploy_count=0
+for d in "$BACKUP_DIR"/*; do
+  # Literal unmatched glob, or non-directory
   [ -d "$d" ] || continue
   name=$(basename "$d")
-  if [[ "$name" =~ ^[0-9]{8}-[0-9]{4}-deploy- ]]; then
-    deploy_snaps+=( "$d" )
+  if ! is_deploy_snap_name "$name"; then
+    continue
   fi
+  # Newline-separated list (paths have no newlines)
+  if [ -z "$deploy_snaps" ]; then
+    deploy_snaps="$d"
+  else
+    deploy_snaps="$deploy_snaps
+$d"
+  fi
+  deploy_count=$((deploy_count + 1))
 done
 
-if [ "${#deploy_snaps[@]}" -le "$KEEP_N" ]; then
-  log "OK: ${#deploy_snaps[@]} deploy snapshots present (<= $KEEP_N, nothing to prune)"
+# HARD SAFETY: never delete when count <= KEEP_N
+if [ "$deploy_count" -le "$KEEP_N" ]; then
+  log "OK: $deploy_count deploy snapshots present (<= $KEEP_N, nothing to prune)"
   exit 0
 fi
 
-# Sort descending (newest first). The timestamp prefix sorts correctly
-# because the names are zero-padded.
-IFS=$'\n' sorted=($(printf '%s\n' "${deploy_snaps[@]}" | sort -r))
-unset IFS
+# Sort descending (newest first). Timestamp prefixes sort correctly when
+# zero-padded / ISO-like.
+sorted=$(printf '%s\n' "$deploy_snaps" | sort -r)
 
-# Skip the first KEEP_N (those are the ones we keep); delete the rest.
-to_delete=( "${sorted[@]:$KEEP_N}" )
-
-log "PRUNE: ${#deploy_snaps[@]} snapshots present, keeping $KEEP_N, deleting ${#to_delete[@]}"
+# Skip the first KEEP_N; delete the rest. Re-check count before each rm.
+to_delete_count=$((deploy_count - KEEP_N))
+log "PRUNE: $deploy_count snapshots present, keeping $KEEP_N, deleting $to_delete_count"
 
 deleted=0
-for d in "${to_delete[@]}"; do
-  if rm -rf "$d" 2>/dev/null; then
-    log "  deleted: $(basename "$d")"
+idx=0
+# Use a temp file so the loop is not a pipeline subshell (bash 3.2).
+tmp_sorted=$(mktemp "${TMPDIR:-/tmp}/concord-prune-sorted.XXXXXX") || {
+  log "FAIL: mktemp"
+  exit 1
+}
+printf '%s\n' "$sorted" > "$tmp_sorted"
+
+while IFS= read -r d || [ -n "$d" ]; do
+  [ -n "$d" ] || continue
+  idx=$((idx + 1))
+  if [ "$idx" -le "$KEEP_N" ]; then
+    continue
+  fi
+
+  # Re-validate target immediately before delete
+  name=$(basename "$d")
+  if ! is_deploy_snap_name "$name"; then
+    log "  SKIP non-deploy path: $name"
+    continue
+  fi
+  if [ ! -d "$d" ]; then
+    log "  SKIP missing: $name"
+    continue
+  fi
+  # Path must remain under BACKUP_DIR
+  case "$d" in
+    "$BACKUP_DIR"/*)
+      ;;
+    *)
+      log "  SKIP outside BACKUP_DIR: $d"
+      continue
+      ;;
+  esac
+
+  # Recount live deploy dirs; abort if at/under KEEP_N (race / prior delete)
+  live=0
+  for live_d in "$BACKUP_DIR"/*; do
+    [ -d "$live_d" ] || continue
+    live_name=$(basename "$live_d")
+    if is_deploy_snap_name "$live_name"; then
+      live=$((live + 1))
+    fi
+  done
+  if [ "$live" -le "$KEEP_N" ]; then
+    log "  STOP: live count $live <= KEEP_N $KEEP_N; refusing further deletes"
+    break
+  fi
+
+  if [ "$DRY_RUN" = "1" ]; then
+    log "  DRY_RUN would delete: $name"
     deleted=$((deleted + 1))
   else
-    log "  FAILED to delete: $(basename "$d")"
+    if rm -rf "$d" 2>/dev/null; then
+      log "  deleted: $name"
+      deleted=$((deleted + 1))
+    else
+      log "  FAILED to delete: $name"
+    fi
   fi
-done
+done < "$tmp_sorted"
 
-log "DONE: deleted $deleted of ${#to_delete[@]} candidates"
+rm -f "$tmp_sorted"
+
+log "DONE: deleted $deleted of $to_delete_count candidates (DRY_RUN=$DRY_RUN)"
