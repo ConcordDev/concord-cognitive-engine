@@ -6,6 +6,7 @@
 
 import { registerSolver } from "../registry.js";
 import { assemblyFromIr, fitStatus, fitText } from "../../assembly/build.js";
+import { readStlFile, cadSkinMesh, cadSkinSolid } from "../../assembly/cad-skin.js";
 import { buildPackagingSheet } from "../../drawings/ga-drawing.js";
 import { toSvg } from "../../drawings/sheet.js";
 import { keepContent } from "./ga-drawing.js";
@@ -43,7 +44,18 @@ export const vehicleAssembly = registerSolver({
     // surface is a preview, so missing it is a display gap for these, not a packaging failure
     const tf = bbox ? ctx.result("package.tub-fit", veh) : null;
     const verifiedInside = new Set((tf?.outputs?.skin?.value || []).filter((r) => r.inside && r.clearanceM >= 0).map((r) => r.id));
-    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW, verifiedInside });
+    // One body: when the kernel wrote its solid, Studio draws that solid (assembly/cad-skin.js)
+    let cadSkin = null;
+    const stl = bbox ? body.outputs?.files?.value?.stl : null;
+    if (stl?.path) {
+      try {
+        const tris = readStlFile(stl.path);
+        cadSkin = { mesh: cadSkinMesh(tris), solid: cadSkinSolid(tris), sha256: stl.sha256 || null, clearances: body.outputs?.clearances?.value || {}, skinOffset: ctx.get(bodyId, "geometry.skinOffset") };
+      } catch (e) {
+        cadSkin = null; // unreadable STL: the styled loft is drawn and labelled as such (surface.source "styling")
+      }
+    }
+    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW, verifiedInside, cadSkin });
     if (doc.error) return { notComputed: doc.error };
     const sheet = buildPackagingSheet(doc, {
       scale: 25,
@@ -74,7 +86,7 @@ export const vehicleAssembly = registerSolver({
       covers: [veh],
       assumptions: [
         doc.verification.statement,
-        "The viewing loft is not the OpenCascade solid. Spoke count, lamp lenses, pedal pads and the caliper are geometric.",
+        doc.surface.source === "cad.body" ? "The drawn body is the OpenCascade solid (cad.body). Spoke count, lamp lenses, pedal pads and the caliper are geometric." : "The viewing loft is not the OpenCascade solid. Spoke count, lamp lenses, pedal pads and the caliper are geometric.",
         "SAE J287 hand-reach envelopes are not licensed and are not claimed.",
       ],
     };

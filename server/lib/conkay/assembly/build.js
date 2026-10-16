@@ -9,6 +9,8 @@ import { getComponent } from "../components/index.js";
 import { packageScene } from "../packaging/checks.js";
 import { obb, aabb, separation } from "../packaging/geometry.js";
 import { j941Envelope, J941_SOURCE } from "./j941.js";
+import { cadStations, boxInSolid, cadSkinMesh } from "./cad-skin.js";
+import { tubPartBox } from "../structural/car-tub.js";
 import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, partInsideEnvelope, sectionHalfWidth, resolveSpec } from "./surface.js";
 import { chooseLayout, styleControls, pushControls, powertrainForLayout, designQualityCheck } from "./style.js";
 import { ASSEMBLY_SCHEMA, COORDINATE_SYSTEM, validateAssembly } from "./schema.js";
@@ -51,7 +53,7 @@ function boxOf(c) {
  * bodyBBox: optional { min:[x,y,z], max } from cad.body
  * powerW: optional solved required power
  */
-export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null, verifiedInside = null } = {}) {
+export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null, verifiedInside = null, cadSkin = null } = {}) {
   const nodes = new Map(ir.nodes.map((n) => [n.id, n]));
   const veh = nodes.get("VEH");
   const pkg = veh?.props?.vehicle?.packaging;
@@ -486,33 +488,61 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
 
   // Luggage and spare.
   const rearBack = rearM ? (rearM.landmarks.hPoint[0] + 0.25) : scene.sgRPRear.x + 0.3;
-  const trunk = fitTrunk(loft.spec, rearBack, tailX - 0.08, spec.floorZ);
+  // With the analysed solid drawn, a storage box must sit inside that solid and clear the powertrain boxes by 10 mm
+  // (the styled loft is not the body); without it, the styled loft's boxInsideEnvelope as before.
+  // obstacles: the powertrain boxes and the structural tub's parts (oriented as placed)
+  const ptBoxes = [
+    ...components.filter((c) => c.group === "powertrain" && c.half && c.half.some((h) => h > 0)).map((c) => obb({ id: c.id, center: [c.placement.x, c.placement.y, c.placement.z], half: c.half, yawDeg: c.placement.yawDeg || 0, pitchDeg: c.placement.pitchDeg || 0 })),
+    // the tub's parts straight from the design (they are added to the Studio components further down)
+    ...ir.nodes.filter((n) => n.props?.role === "tub" && n.props?.tubBox && !n.props.tubBox.conformsToSkin).map((n) => tubPartBox({ id: n.id, box: n.props.tubBox })),
+  ];
+  const fitsSolid = cadSkin ? (pl, h) => {
+    const b = aabb({ id: "store", min: [pl.x - h[0], pl.y - h[1], pl.z - h[2]], max: [pl.x + h[0], pl.y + h[1], pl.z + h[2]] });
+    return ptBoxes.every((q) => separation(b, q).separation >= 0.01) && boxInSolid(cadSkin.solid, pl, h);
+  } : null;
+  const storageBasis = cadSkin ? "boxInSolid (the cad.body solid) and 10 mm clear of the powertrain boxes and the tub's parts" : "boxInsideEnvelope (the styled loft)";
+  // on the analysed solid, search from the floor and from the top of each powertrain box under the region (the
+  // differential, fuel cell or drive unit fill the floor behind the rear seats), keep the largest that fits
+  const vol = (b) => (b ? b.half[0] * b.half[1] * b.half[2] : 0);
+  const anchors = (x0, x1) => [spec.floorZ, ...ptBoxes.filter((q) => !/^TUB_/.test(q.id) && q.center[0] + q.half[0] > x0 && q.center[0] - q.half[0] < x1).map((q) => q.center[2] + q.half[2] + 0.01 - 0.02)];
+  const best = (tries) => tries.reduce((a, b) => (vol(b) > vol(a) ? b : a), null);
+  const fitted = cadSkin
+    ? best(anchors(rearBack, tailX).map((z) => fitTrunk(loft.spec, rearBack, tailX - 0.08, z, fitsSolid)))
+    : fitTrunk(loft.spec, rearBack, tailX - 0.08, spec.floorZ, null);
+  const trunk = fitted || { placement: { x: rearBack, y: 0, z: spec.floorZ }, half: [0, 0, 0] };
   const trunkVol = 8 * trunk.half[0] * trunk.half[1] * trunk.half[2];
   components.push(part({
     id: "TRUNK", name: "Trunk volume", group: "storage", role: "volume",
     placement: trunk.placement,
     half: trunk.half,
-    geometry: envelope("box behind the rear seat back, shrunk until it sits under the fastback. Not an SAE J1100 luggage-block volume."),
-    parameters: [param("volume", "Volume", trunkVol * 1000, "L", prov("calculated", "largest box behind the rear back that boxInsideEnvelope accepts"))],
+    geometry: envelope(fitted ? "box behind the rear seat back, shrunk until it fits. Not an SAE J1100 luggage-block volume." : "no box behind the rear seat back fits the analysed body clear of the powertrain: no trunk volume is claimed"),
+    parameters: [param("volume", "Volume", trunkVol * 1000, "L", prov("calculated", `largest box behind the rear back that ${storageBasis} accepts`))],
     relationships: [{ kind: "clears", target: "SEAT_3", note: "starts behind the rear seat back" }],
     explode: { axis: "x", sign: 1, rank: 3 },
   }));
   const firewall = pkg.firewallX || cowlX;
   const cool = components.find((c) => c.id === "COOLING" || c.id === "RADIATOR");
   const noseUnit = components.find((c) => c.id === "MOTOR_FRONT" || c.id === "ENGINE");
+  const ctx_electric = veh.props?.vehicle?.fuelType === "electric";
   const limitX = Math.min(
     firewall,
     cool ? cool.placement.x - cool.half[0] : firewall,
     noseUnit ? noseUnit.placement.x - noseUnit.half[0] : firewall,
   );
-  const frunk = fitFrunk(loft.spec, noseX, limitX, spec.floorZ);
+  // the electric car's nose bay behind the radiator (no engine there) is searched too, from the radiator's rear face
+  const bays = [[noseX, limitX]];
+  if (cadSkin && ctx_electric && cool) bays.push([cool.placement.x + cool.half[0] - 0.12, firewall]);
+  const frunkFit = cadSkin
+    ? best(bays.flatMap(([a, b]) => anchors(a, b).map((z) => fitFrunk(loft.spec, a, b, z, fitsSolid))))
+    : fitFrunk(loft.spec, noseX, limitX, spec.floorZ, null);
+  const frunk = frunkFit || { placement: { x: noseX, y: 0, z: spec.floorZ }, half: [0, 0, 0] };
   const frunkVol = 8 * frunk.half[0] * frunk.half[1] * frunk.half[2];
   components.push(part({
     id: "FRUNK", name: "Frunk volume", group: "storage", role: "volume",
     placement: frunk.placement,
     half: frunk.half,
-    geometry: envelope("box shrunk to the loft ahead of the radiator and the engine. Not an SAE J1100 luggage-block volume. Zero-ish when the powertrain fills the nose."),
-    parameters: [param("volume", "Volume", Math.max(0, frunkVol) * 1000, "L", prov("calculated", "largest box ahead of the powertrain that boxInsideEnvelope accepts"))],
+    geometry: envelope(cadSkin ? "largest box a shrink search from a few anchors finds inside the analysed body and clear of the powertrain, in the nose (and, electric, the bay behind the radiator): a lower bound, not an SAE J1100 luggage-block volume" : "box shrunk to the loft ahead of the radiator and the engine. Not an SAE J1100 luggage-block volume. Zero-ish when the powertrain fills the nose."),
+    parameters: [param("volume", "Volume", Math.max(0, frunkVol) * 1000, "L", prov("calculated", `largest box ahead of the powertrain that ${storageBasis} accepts${frunkFit ? "" : "; none fits, so no frunk volume is claimed"}`))],
     relationships: [{ kind: "clears", target: noseUnit?.id || cool?.id || "BODY_SHELL", note: "ahead of the nose powertrain" }],
     explode: { axis: "x", sign: -1, rank: 3 },
   }));
@@ -581,7 +611,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
 
   const checks = fitChecks({
     spec: loft.spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX,
-    tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack, designParts, verifiedInside, electric: veh.props?.vehicle?.fuelType === "electric",
+    tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack, designParts, verifiedInside, cadSkin, electric: veh.props?.vehicle?.fuelType === "electric",
   });
   const standards = standardsTable({ scene, dc, eye, roofZ, spec });
 
@@ -589,13 +619,27 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     schema: ASSEMBLY_SCHEMA,
     coordinateSystem: { ...COORDINATE_SYSTEM, frontAxleX: r4(frontAxleX) },
     verification: {
-      statement: measuredRoof
+      statement: cadSkin
+        ? "Geometric assembly. A shape that looks finished has not been manufactured or tested. The body drawn is the OpenCascade solid that cad.body solved around the package and checked (envelopes by the skin offset, the tub by the skin thickness); the styled loft is a styling reference only. Every other part is a dimensioned envelope. Each check is pass, warn, fail, or info."
+        : measuredRoof
         ? "Geometric assembly. A shape that looks finished has not been manufactured or tested. Kernel solids are marked solid; every other part is a dimensioned envelope. The loft is fitted to the kernel bounding box and is not that solid. Each check is pass, warn, fail, or info."
         : "Geometric assembly. A shape that looks finished has not been manufactured or tested. The loft's length, width and height come from the styling skeleton pinned to the package hard points, not a kernel solid. Each check is pass, warn, fail, or info.",
       verified: ["library component boxes", "J1100 dimensions from the H-points", "J941 eyellipse centroid", "fit checks listed here"],
-      geometricOnly: ["viewer body loft", "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
+      geometricOnly: [...(cadSkin ? [] : ["viewer body loft"]), "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
     },
-    surface: { spec: loft.spec, mesh: (({ details: _d, spec: _s, ...mesh }) => mesh)(loft) },
+    surface: (() => {
+      const loftMesh = (({ details: _d, spec: _s, ...mesh }) => mesh)(loft);
+      if (!cadSkin) return { spec: loft.spec, source: "styling", mesh: loftMesh };
+      // One body: the drawn skin is the OpenCascade solid cad.body solved and checked. The styled loft stays as the
+      // styling reference (its spec drives the styling checks), not drawn.
+      return {
+        spec: loft.spec,
+        source: "cad.body",
+        cad: { sha256: cadSkin.sha256 || null, triangles: cadSkin.mesh.triangles },
+        mesh: { ...cadSkin.mesh, stations: cadStations(cadSkin.solid, (loftMesh.stations || []).map(({ role, x }) => ({ role, x }))) },
+        styling: { note: "the styled loft (Studio's skeleton) is a styling reference: not drawn, not analysed", bounds: loftMesh.bounds, stations: loftMesh.stations, arches: loftMesh.arches, windshield: loftMesh.windshield },
+      };
+    })(),
     wheel,
     components,
     checks,
@@ -760,16 +804,30 @@ function fitChecks(ctx) {
     const tubNote = tub == null ? "" : ` Tub outline top is ${mm(tub)} mm; the skin cut is the roof rail, not that outline.`;
     const conflict = gap < 0 ? " The roof rail is below the head, so this is a packaging conflict at this height." : "";
     add("ingress", gap >= 0 ? "pass" : "fail",
-      `skin door aperture (roof rail) ${mm(top)} mm, M95 head top ${mm(need)} mm, gap ${mm(gap)} mm.${tubNote}${conflict} J1100 H11 is this class of dimension; no minimum entrance height is published, so the threshold is the head itself.`,
+      `${ctx.cadSkin ? "styling reference (the styled loft's roof rail; the analysed body's door egress is package.tub-fit's opening check): " : ""}skin door aperture (roof rail) ${mm(top)} mm, M95 head top ${mm(need)} mm, gap ${mm(gap)} mm.${tubNote}${conflict} J1100 H11 is this class of dimension; no minimum entrance height is published, so the threshold is the head itself.`,
       { valueM: r4(gap), minimumApertureTopM: r4(need) });
   }
 
   const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle"]);
   const outside = [];
   const previewOnly = [];
+  const proof = { kernel: 0, tubFit: 0, solid: 0 };
   for (const c of ctx.components) {
     if (EXTERIOR.has(c.role) || c.id === "SPARE") continue;
     if (!c.half || c.half.every((h) => h === 0)) continue;
+    if (ctx.cadSkin) {
+      // the drawn body is the analysed solid: a part is inside when the kernel enclosed it (cad.body), tub-fit
+      // verified it, or (parts Studio adds that no kernel check covered) its box is inside the solid
+      // tub parts first: tub-fit checks them at the skin's thickness (the kernel's own rows for them, when the
+      // body encloses the structure, are at that thickness too, not the skin offset)
+      if (ctx.verifiedInside?.has(c.id)) { proof.tubFit++; continue; }
+      const k = /^TUB_/.test(c.id) ? null : kernelEnclosed(ctx.cadSkin, c);
+      if (k === true) { proof.kernel++; continue; }
+      if (k === false) { outside.push(c.id); continue; }
+      if (boxInSolid(ctx.cadSkin.solid, c.placement, c.half)) { proof.solid++; continue; }
+      outside.push(c.id);
+      continue;
+    }
     if (partInsideEnvelope(ctx.spec, c, 0.05)) continue;
     // inside the analysed CAD solid by the skin's thickness (package.tub-fit): a gap in the styled preview only
     if (ctx.verifiedInside?.has(c.id)) previewOnly.push(c.id);
@@ -780,6 +838,7 @@ function fitChecks(ctx) {
   else if (outside.length) {add("containment", "fail",
     `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.${previewNote}`,
     { outside, previewOnly });}
+  else if (ctx.cadSkin) add("containment", "pass", `every non-exterior part is inside the analysed body (cad.body solid): ${proof.kernel} enclosed by the kernel's solve, ${proof.tubFit} verified by package.tub-fit, ${proof.solid} by a point-in-solid test of their boxes`, { outside: [], proof });
   else if (previewOnly.length) add("containment", "warn", `every non-exterior part is inside the analysed body.${previewNote}`, { outside: [], previewOnly });
   else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
 
@@ -810,6 +869,22 @@ function fitChecks(ctx) {
   return checks;
 }
 
+/**
+ * Did cad.body's solve enclose this Studio part? true / false from its own clearance rows (a package component or the
+ * steering wheel by id; an occupant by every SEAT_n:KEY:* box; a seat by its cushion and back boxes), null when the
+ * kernel has no envelope for it.
+ */
+function kernelEnclosed(cadSkin, c) {
+  const cl = cadSkin.clearances || {};
+  const need = cadSkin.skinOffset ?? 0.04;
+  const ok = (keys) => (keys.length ? keys.every((k) => cl[k] >= need - 1e-5) : null);
+  if (Number.isFinite(cl[c.id])) return cl[c.id] >= need - 1e-5;
+  const occ = /^OCC_(SEAT_\d)_(\w+)$/.exec(c.id);
+  if (occ) return ok(Object.keys(cl).filter((k) => k.startsWith(`${occ[1]}:${occ[2]}:`)));
+  if (/^SEAT_\d$/.test(c.id)) return ok(Object.keys(cl).filter((k) => k.startsWith(`${c.id}:cushion@`) || k.startsWith(`${c.id}:back@`)));
+  return null;
+}
+
 export function fitStatus(checks) {
   if (!checks?.length) return "warn";
   if (checks.some((c) => c.status === "fail")) return "fail";
@@ -823,7 +898,7 @@ export function fitText(checks) {
   return `Packaging fit: ${status}. ${bits.join("; ")}.`;
 }
 
-function fitTrunk(spec, rearBack, tailX, floorZ) {
+function fitTrunk(spec, rearBack, tailX, floorZ, fits = null) {
   let x0 = rearBack + 0.04;
   let x1 = Math.max(x0 + 0.08, tailX);
   let z1 = floorZ + 0.55;
@@ -832,7 +907,7 @@ function fitTrunk(spec, rearBack, tailX, floorZ) {
     const z0 = floorZ + 0.02;
     const placement = { x: (x0 + x1) / 2, y: 0, z: (z0 + z1) / 2 };
     const half = [(x1 - x0) / 2, yHalf, (z1 - z0) / 2];
-    if (half[0] > 0.03 && half[1] > 0.02 && half[2] > 0.02 && boxInsideEnvelope(spec, placement, half, 0.04)) {
+    if (half[0] > 0.03 && half[1] > 0.02 && half[2] > 0.02 && (fits ? fits(placement, half) : boxInsideEnvelope(spec, placement, half, 0.04))) {
       return { placement, half };
     }
     z1 -= 0.015;
@@ -842,13 +917,14 @@ function fitTrunk(spec, rearBack, tailX, floorZ) {
       z1 = floorZ + 0.28;
     }
   }
+  if (fits) return null; // checked against the analysed solid: no box fits, so no volume is claimed
   const x = Math.min(tailX - 0.12, rearBack + 0.2);
   const z = floorZ + 0.08;
   const y = Math.max(0.04, Math.min(0.12, sectionHalfWidth(spec, x, z) - 0.04));
   return { placement: { x, y: 0, z }, half: [0.06, y, 0.04] };
 }
 
-function fitFrunk(spec, noseX, limitX, floorZ) {
+function fitFrunk(spec, noseX, limitX, floorZ, fits = null) {
   let x0 = noseX + 0.12;
   let x1 = Math.max(x0 + 0.06, Math.min(limitX - 0.02, noseX + 0.9));
   let z1 = floorZ + 0.34;
@@ -857,7 +933,7 @@ function fitFrunk(spec, noseX, limitX, floorZ) {
     const z0 = floorZ + 0.02;
     const placement = { x: (x0 + x1) / 2, y: 0, z: (z0 + z1) / 2 };
     const half = [(x1 - x0) / 2, yHalf, (z1 - z0) / 2];
-    if (half[0] > 0.025 && half[1] > 0.02 && half[2] > 0.015 && boxInsideEnvelope(spec, placement, half, 0.05)) {
+    if (half[0] > 0.025 && half[1] > 0.02 && half[2] > 0.015 && (fits ? fits(placement, half) : boxInsideEnvelope(spec, placement, half, 0.05))) {
       return { placement, half };
     }
     z1 -= 0.01;
@@ -867,6 +943,7 @@ function fitFrunk(spec, noseX, limitX, floorZ) {
       z1 = floorZ + 0.18;
     }
   }
+  if (fits) return null;
   const x = noseX + 0.2;
   const z = floorZ + 0.05;
   const y = Math.max(0.03, Math.min(0.08, sectionHalfWidth(spec, x, z) - 0.04));
@@ -998,6 +1075,15 @@ export function compactAssembly(doc) {
     void mesh;
     return rest;
   });
+  if (doc.surface.source === "cad.body") {
+    // the drawn body is the kernel's solid: keep its reference, never let hydrate swap in the styled loft
+    return {
+      ...doc,
+      surface: { spec: doc.surface.spec, source: "cad.body", cad: doc.surface.cad, styling: doc.surface.styling, mesh: { bounds: mesh.bounds, stations: mesh.stations, generated: "cad.body stl" } },
+      wheel: doc.wheel?.spec ? { spec: doc.wheel.spec } : doc.wheel,
+      components,
+    };
+  }
   return {
     ...doc,
     surface: {
@@ -1013,10 +1099,22 @@ export function compactAssembly(doc) {
 }
 
 /** Rebuild meshes from surface.spec. Does not mutate the snapshot object. */
-export function hydrateAssembly(doc) {
+export function hydrateAssembly(doc, { readStl = null } = {}) {
   if (!doc?.surface?.spec || doc.surface.mesh?.positions?.length) return doc;
-  const built = loftBody(doc.surface.spec);
-  const { details, spec, ...mesh } = built;
+  let built, details, spec, mesh;
+  if (doc.surface.source === "cad.body") {
+    // the kernel's solid: rebuilt only from its own STL (readStl(sha256) -> triangles). Without it the body stays
+    // undrawn rather than replaced by the styled loft.
+    const tris = readStl ? readStl(doc.surface.cad?.sha256) : null;
+    if (!tris) return { ...doc, surface: { ...doc.surface, mesh: { ...doc.surface.mesh, generated: "cad.body stl not available: not drawn" } } };
+    built = loftBody(doc.surface.spec);
+    details = built.details;
+    spec = doc.surface.spec;
+    mesh = { ...cadSkinMesh(tris), stations: doc.surface.mesh.stations };
+  } else {
+    built = loftBody(doc.surface.spec);
+    ({ details, spec, ...mesh } = built);
+  }
   const byId = new Map((details || []).map((d) => [d.id, d]));
   const wheel = doc.wheel?.spec ? wheelMesh({
     overallDiameterM: doc.wheel.spec.overallDiameterM,
@@ -1027,7 +1125,7 @@ export function hydrateAssembly(doc) {
   }) : doc.wheel;
   return {
     ...doc,
-    surface: { spec, mesh },
+    surface: { ...doc.surface, spec, mesh },
     wheel,
     components: (doc.components || []).map((c) => {
       const d = byId.get(c.id);
