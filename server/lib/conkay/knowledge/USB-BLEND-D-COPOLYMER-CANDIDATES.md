@@ -18,6 +18,8 @@ Feedstock: tubs, caps, bins, crates, bumpers (Dutch, 2026-10-16).
 | yieldStrength | 19.0–22.2 MPa | vinmar-vinpol-rrpi50y, mba-pp2143-tds, takayama-2025-polymers-pp-reuse | 19 MPa (VINPOL RRPI50Y, ASTM D-638); 20 MPa (MBA PP 2143, ISO 527); 22.2 → 20.3 MPa over 0 → 5 extrusion cycles (Takayama 2025 Table 7). VERDANT's 25–26 MPa is labelled 'Tensile Strength' without 'at yield' and is not included. |
 | conductivity | 0.17–0.17 | yun-2023-polymers-basalt-particulate | PP 0.17 W/mK, compiled in Yun 2023 Table 1 (refs 29–34): a generic PP, not a recycled impact copolymer. Flags: single-source, virgin-pp, compiled. |
 | cte | 0.000104–0.000104 | yun-2023-polymers-basalt-particulate | PP 104 × 10⁻⁶ 1/K, compiled in Yun 2023 Table 1: a generic PP, not a recycled impact copolymer. Flags: single-source, virgin-pp, compiled. |
+| degradationOnset | 344.2–344.2 °C | zhiltsova-2025-polymers-rpp | Post-consumer recycled PP T_on 344.2 °C under nitrogen (Zhiltsova 2025 Table 6); virgin PP 325.5 °C. Inert-atmosphere onset: not the oxidative limit of a melt in air. Flags: single-source, nitrogen. |
+| oitAt200C | 42.5–59.099999999999994 | zhiltsova-2025-polymers-rpp | Post-consumer recycled PP 50.8 ± 8.3 s vs virgin 277.6 ± 55.3 s at 200 °C (Table 5): an 82 % drop — its stabiliser is largely spent. Flags: single-source. |
 | meltTemperature | 165.0–165.8 °C | takayama-2025-polymers-pp-reuse | Block-PP DSC peak 165.0–165.8 °C over 0–5 extrusion cycles (Takayama 2025 Table 9); a virgin block copolymer reprocessed in the lab, not a post-consumer stream. Flags: single-source. |
 
 Unknown (checks that need these are NOT_COMPUTED): a recycled-grade thermal conductivity and CTE (the values carried are a generic PP's), crystallization temperature, hydrogen permeability, relaxation spectrum.
@@ -34,6 +36,7 @@ Feedstock: shoe and mat foam (Dutch, 2026-10-16).
 | youngsModulus | 20.1–60.0 MPa | vinmar-vinpol-ev0218, vinmar-vinpol-ev0627, rondon-2026-edt-eva-mouthguard | 60 MPa flexural (EV0218, ASTM D-790); 23 MPa 1 % secant flexural (EV0627); 20.1–36.8 MPa tensile on three EVA sheets (Rondon 2026 Table 3). Falls as VA content rises. Flags: mixed-test-methods. |
 | poisson | 0.24–0.34 | rondon-2026-edt-eva-mouthguard | Rondon 2026 Table 3 prints 0.29 ± 0.05 for all three EVA sheets (DIC, ASTM D638, small strain); the span is mean ± 1 SD. The identical value for three different sheets is as printed and has not been checked against the paper's raw data. Flags: single-source, identical-across-materials. |
 | yieldStrength | 5.2–5.2 MPa | vinmar-vinpol-ev0218 | 5.2 MPa at 18 wt % VA (EV0218, ASTM D-638). Flags: single-source. |
+| degradationOnset | 305.0–331.6 °C | rajabifar-2026-acsami-eva-foam, slonov-2023-polymers-pe-eva | Deacetylation (acetic acid release) begins 305 °C under nitrogen (Rajabifar 2026); T5% 331.6 °C in air at 5 °C/min for a 12 % VA EVA (Slonov 2023 Table 5). The feedstock's VA content is unknown. Flags: mixed-atmosphere. |
 | meltTemperature | 72.0–87.0 °C | vinmar-vinpol-ev0218, vinmar-vinpol-ev0627 | 87 °C at 18 % VA (EV0218, ASTM D-3418); 72 °C peak at 26.7 % VA (EV0627, supplier method). |
 
 Unknown (checks that need these are NOT_COMPUTED): thermal conductivity, CTE, crystallization temperature, hydrogen permeability, relaxation spectrum, and any recycled-EVA grade: only virgin resin datasheets were read.
@@ -109,10 +112,10 @@ Deciding measurements (recycled impact PP case; the EVA case is within a few kg/
 
 ## Candidate melting against the stated 200 °C
 
-process.window checks the HDPE matrix only. This screen adds the candidate's own melting point; it does not check thermal degradation.
+process.window checks the HDPE matrix only. This screen adds the candidate's own melting point and its sourced degradation onset.
 
-- recycled-impact-pp: melting 165–165.8 °C (material:recycled-impact-pp.melting_temperature) → molten at 200 °C. Processing window: inside — MBA Polymers PP 2143 TDS p.2: 'Melt Temperature Range 190-220 °C', 'Recommended Melt Temperature 200 °C'. thermal stability at 200 °C is not computed: no TGA / OIT read for this candidate.
-- eva: melting 72–87 °C (material:eva.melting_temperature) → molten at 200 °C. Processing window: no processing window read for this candidate (not computed). thermal stability at 200 °C is not computed: no TGA / OIT read for this candidate.
+- recycled-impact-pp: melting 165–165.8 °C (material:recycled-impact-pp.melting_temperature) → molten at 200 °C. Processing window: inside — MBA Polymers PP 2143 TDS p.2: 'Melt Temperature Range 190-220 °C', 'Recommended Melt Temperature 200 °C'. Stability: degradation onset 344.2 °C (material:recycled-impact-pp.degradation_onset_inert): 144.2 K above 200 °C at the low end; but its OIT at 200 °C is only 42.5–59.1 s (ASTM D3895, material:recycled-impact-pp.oxidation_induction_time_200C): the source reads this as oxidative degradation during prior use and recycling; whether the compound needs restabilising before 200 °C is a test (OIT of the compound, ASTM D3895), and the oxidative life of the melt in air is not computed.
+- eva: melting 72–87 °C (material:eva.melting_temperature) → molten at 200 °C. Processing window: no processing window read for this candidate (not computed). Stability: degradation onset 305.0 °C–331.6 °C (material:eva.degradation_onset): 105.0 K above 200 °C at the low end; EVA releases acetic acid on deacetylation; residence time at 200 °C is not computed.
 
 ## What changed and what did not
 

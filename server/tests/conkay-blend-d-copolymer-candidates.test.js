@@ -124,13 +124,16 @@ describe("every Blend D check rerun", () => {
       assert.ok(run.runs[id].results["material.chemical-compatibility"].status !== "PASS");
     }
   });
-  it("candidate melting against 200 °C: both melt; the PP window is MBA's 190–220 °C; EVA's window and both candidates' degradation are not computed", () => {
+  it("candidate melting and stability against 200 °C: both melt; PP window MBA 190–220 °C; sourced onsets ≥ 105 K above; PP's spent stabiliser flagged; melt life not computed", () => {
     const pp = run.runs["recycled-impact-pp"].melt, eva = run.runs.eva.melt;
     assert.deepEqual(pp.meltC, [165, 165.8]);
     assert.equal(pp.melts, true);
     assert.equal(pp.window.inside, true);
     assert.deepEqual(eva.meltC, [72, 87]);
     assert.equal(eva.window.inside, null);
+    assert.match(pp.degradation, /onset 344\.2 °C.*144\.2 K above 200 °C/);
+    assert.match(pp.degradation, /OIT at 200 °C is only 42\.5–59\.1 s/);
+    assert.match(eva.degradation, /onset 305\.0 °C–331\.6 °C.*105\.0 K above/);
     for (const m of [pp, eva]) assert.match(m.degradation, /not computed/);
   });
   it("the committed report is the rendered one", () => {
