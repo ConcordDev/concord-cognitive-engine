@@ -229,6 +229,14 @@ export const DOCUMENTS = {
     excerpt: "'TGA was carried out at a heating rate of 10 °C/min from room temperature to 700 °C under a nitrogen atmosphere'; Table 3, HDPE (0 vol %): T5% 440.77 °C, T50% 474.44 °C; 'T 5% (5% sample weight loss) was defined as the onset degradation temperature'",
     license: "CC BY 4.0",
   },
+  // ---- Blend D brief item 9 (chamber checks), read 2026-10-16 ----
+  "un-r134-02-amend3-burst": {
+    kind: "document", sourceId: "standard", title: "UN Regulation No. 134 (hydrogen and fuel cell vehicles), 02 series of amendments, Amendment 3 (E/ECE/324/Rev.2/Add.133/Rev.1/Amend.3, 27 September 2024)",
+    url: "https://documents.un.org/doc/undoc/gen/g24/178/89/pdf/g2417889.pdf", retrieved: "2026-10-16", date: "2024",
+    locator: "§5.1.1 (baseline initial burst pressure)",
+    excerpt: "'burst pressure within ±10 per cent of BPO and greater than or equal to a minimum BPmin of 200 per cent NWP. Containers having glass-fibre composite as a primary constituent shall have a minimum burst pressure greater than 350 per cent NWP.'",
+    sha256: "f4ac7afce9dca960dfe9541e394438c3f580c2ac2c9e39a79947cc41c6615b9c", license: "UN/ECE official document, publicly available; excerpt with locator",
+  },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",
