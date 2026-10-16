@@ -36,6 +36,11 @@ export const PREDICTION_TESTS = Object.freeze({
     tests: [{ designations: ["ASTM D5630", "ASTM E1131"], what: "ash / inorganic residue of a moulded batch: the band it falls in names the basis, independent of voids" }, { designations: ["ASTM D792"], what: "density of the same batch: decides only together with a void estimate" }],
     criterion: { state: "computed decision rule", text: "the reading whose predicted band contains the measured residue; a value in neither band means the batch or the recipe differs from the stated ranges", source: "material.basis-discriminator receipt (exact bands over the stated ranges; CaCO3 → CaO factor from CIAAW atomic weights, sources.js ciaaw-abridged-atomic-weights)" },
   },
+  "material.crystal-aggregate": {
+    predicts: "isotropic modulus, Poisson's ratio, conductivity and expansion of a mineral powder from its single-crystal data",
+    tests: [{ designations: ["ASTM E1461"], what: "diffusivity of a dense pressed compact of the powder, with measured density and specific heat" }],
+    criterion: NOT_SET("a filler property: no recipe sets a limit; the composite tests replace it"),
+  },
   "material.modulus-bounds": {
     predicts: "Voigt/Reuss bounds on Young's modulus",
     tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D790"], what: "flexural modulus (a different test from tensile: report both, never interchange them)" }],

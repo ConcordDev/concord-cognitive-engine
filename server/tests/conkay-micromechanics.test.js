@@ -184,7 +184,7 @@ describe("material.* stiffness and strength solvers", () => {
     const b = s.result("material.modulus-bounds@B");
     assert.equal(b.status, "NOT_COMPUTED");
     assert.match(b.reason, /no cited density for hdpe-hc-co-polymer/);
-    assert.match(b.reason, /no cited Young's modulus for: hdpe-hc-co-polymer, caco3, silica/);
+    assert.match(b.reason, /no cited Young's modulus for: hdpe-hc-co-polymer$/);
     const ht = s.result("material.modulus-halpin-tsai@B");
     assert.match(ht.reason, /two-phase/);
     assert.match(ht.reason, /no aspect ratio for basalt-fiber/);
