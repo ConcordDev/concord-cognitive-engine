@@ -61,6 +61,11 @@ export const PREDICTION_TESTS = Object.freeze({
     tests: [{ designations: ["ASTM E831"], what: "linear thermal expansion by TMA over a stated range below the HDPE melting range, flow and cross-flow directions" }],
     criterion: NOT_SET(BLEND_D_NO_LIMIT),
   },
+  "material.viscoelastic-composite": {
+    predicts: "the compound's E′, E″ and tan δ at a load frequency (correspondence principle)",
+    tests: [{ designations: ["ASTM D4065", "ASTM D5026"], what: "DMA frequency sweep of the compound at the service temperature" }],
+    criterion: NOT_SET("'viscoelastic … springs back' states no modulus, loss factor or frequency"),
+  },
   "material.modulus-bounds": {
     predicts: "Voigt/Reuss bounds on Young's modulus",
     tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D790"], what: "flexural modulus (a different test from tensile: report both, never interchange them)" }],
