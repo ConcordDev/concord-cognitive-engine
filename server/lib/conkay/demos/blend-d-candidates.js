@@ -71,6 +71,9 @@ function cell(r) {
   if (r.status === "NOT_COMPUTED") return `NOT_COMPUTED: ${r.reason.replace(/\|/g, "/").slice(0, 140)}${r.reason.length > 140 ? "…" : ""}`;
   const o = r.outputs || {};
   if (o.density?.value?.nominal) return `${r.status}: ${fmt(o.density.value.low)}–${fmt(o.density.value.high)} kg/m³ (nominal ${fmt(o.density.value.nominal)})`;
+  const gpa = (x) => (x / 1e9).toFixed(2);
+  if (o.lower?.value?.E && o.upper?.value?.E) return `${r.status}: E ${gpa(o.lower.value.E)}–${gpa(o.upper.value.E)} GPa (HS bounds)`;
+  if (o.reuss?.value && o.voigt?.value) return `${r.status}: Reuss ${gpa(o.reuss.value.low)}–${gpa(o.reuss.value.high)}, Voigt ${gpa(o.voigt.value.low)}–${gpa(o.voigt.value.high)} GPa`;
   if (o.mass?.value?.residue) {
     const f = (b) => (b.notComputed ? "n/c" : `${fmt(b.low, b.low > 100 ? 0 : 1)}–${fmt(b.high, b.high > 100 ? 0 : 1)}`);
     return `${r.status}: mass ρ ${f(o.mass.value.density)}, ash ${f(o.mass.value.residue)} %; volume ρ ${f(o.volume.value.density)}, ash ${f(o.volume.value.residue)} %`;

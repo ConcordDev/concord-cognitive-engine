@@ -41,6 +41,16 @@ export const PREDICTION_TESTS = Object.freeze({
     tests: [{ designations: ["ASTM E1461"], what: "diffusivity of a dense pressed compact of the powder, with measured density and specific heat" }],
     criterion: NOT_SET("a filler property: no recipe sets a limit; the composite tests replace it"),
   },
+  "material.modulus-hashin-shtrikman": {
+    predicts: "Hashin–Shtrikman bounds on the compound's E, K, G (shape-free)",
+    tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D4065", "ASTM D5026"], what: "storage modulus at a stated frequency and temperature" }],
+    criterion: NOT_SET("USB Blend D states no numeric modulus; a measured modulus outside the bounds means voids, debonding or a composition other than the stated one"),
+  },
+  "material.modulus-mori-tanaka-random": {
+    predicts: "Mori–Tanaka estimate of E for randomly oriented spheroidal fillers",
+    tests: [{ designations: ["ASTM D638"], what: "tensile modulus, with the fillers' measured shape (micrographs) recorded" }],
+    criterion: NOT_SET("USB Blend D states no numeric modulus"),
+  },
   "material.modulus-bounds": {
     predicts: "Voigt/Reuss bounds on Young's modulus",
     tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D790"], what: "flexural modulus (a different test from tensile: report both, never interchange them)" }],

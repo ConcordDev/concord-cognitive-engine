@@ -123,6 +123,8 @@ export const CONSTITUENT_PROPERTIES = Object.freeze({
       { flags: ["in-plane", "monolayer"], notes: ["Graphene ~−12 to −2.5 ppm/°C, −73–127 °C (Khina 2025 Table 5). Graphite in-plane −0.5 to −1.5 and out-of-plane 20–30 ppm/°C (same table): a multilayer platelet's through-thickness expansion is large and positive. No isotropic value exists for a platelet; the CTE models treat it as anisotropic or not at all."] }),
     cteThroughPlane: claim(G, "through_plane_linear_thermal_expansion_graphite", "1/K", { range: [20e-6, 30e-6] }, ["khina-2025-polymers-clte-fillers"],
       { flags: ["through-plane", "graphite"], notes: ["Graphite out-of-plane 20–30 ppm/°C, 0–300 °C (Khina 2025 Table 5): the multilayer stack's c-axis value."] }),
+    poisson: claim(G, "poisson_ratio_in_plane_simulated", "1", { range: [0.14, 0.15] }, ["macromolecules-2023-pp-graphene-cgmd"],
+      { flags: ["in-plane", "monolayer", "simulated", "single-source"], notes: ["0.14 armchair, 0.15 zigzag: graphene as computed by coarse-grained MD (Macromolecules 2023 Table 1), not measured on a multilayer platelet. A platelet is anisotropic; the isotropic-phase models use this with the platelet's modulus band and say so."] }),
     inPlaneModulus: claim(G, "in_plane_youngs_modulus_supplier", "Pa", { value: 1000 * GPA }, ["watts-2021-acsomega-gnp"],
       { flags: ["supplier-nominal", "in-plane"], notes: ["Supplier table value (Strem 06-0215, 6–8 nm GNP) for the graphene basal plane. NOT the modulus a GNP contributes in a polymer: see effectiveModulus."] }),
     effectiveModulus: claim(G, "effective_youngs_modulus_multilayer", "Pa", { range: [25 * GPA, 40 * GPA] }, ["cilento-2022-nanomaterials-2d"],
@@ -168,7 +170,7 @@ export const CONSTITUENT_PROPERTIES = Object.freeze({
 export const UNKNOWN_PROPERTIES = Object.freeze({
   hdpe_hc_copolymer: "every property: the co-polymer is not identified (comonomer, grade, supplier)",
   basalt_fiber: "thermal conductivity: no usable source (one table listed 50.2 W/(m·K), and Yun 2023 / a 2026 curing model list 0.035 W/(m·K), a mineral-wool value; neither is a solid silicate fibre's; not used)",
-  graphene: "isotropic CTE and Poisson's ratio of a multilayer platelet: no source read (in-plane and through-plane CTE are separate claims)",
+  graphene: "isotropic CTE of a multilayer platelet, and a measured Poisson's ratio: no source read (in-plane and through-plane CTE are separate claims; the Poisson's ratio is a simulated monolayer value)",
 });
 
 /** The claim for a class's property, or null (unknown). */
