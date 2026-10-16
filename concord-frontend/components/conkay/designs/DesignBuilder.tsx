@@ -7,15 +7,21 @@
  * reports what the server actually did — the fields that moved, the checks
  * that flipped, and the pass/fail counts + margins from the returned view.
  * When the design has a live run, its stream is embedded and each body
- * snapshot replaces the viewer so the user watches the build; no run, no
- * section. The workbench knobs are one collapsible panel away. Below is the
- * snapshot's own detail page, unchanged. Nothing here invents a number: every
- * value comes from the snapshot, the stream, or the workbench server's view.
+ * snapshot replaces the viewer so the user watches the build; the stream's
+ * own side viewer is hidden so the body is drawn once. When the session's
+ * view carries a solved frame (feaFrame), an FEA frame section renders it
+ * through the artifact pipeline — the real solver's utilization, and an
+ * Iterate bar that re-runs the real engineering.runFEA solver; no artifact,
+ * no section. Answers to ConKay's clarifying questions continue the same
+ * stored conversation (pendingId), never a fresh brief. Below is the
+ * snapshot's own detail page, unchanged. Nothing here invents a number:
+ * every value comes from the snapshot, the stream, or the workbench server's
+ * view.
  */
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import { fetchDesign, type CheckStatus, type DesignSnapshot } from '@/lib/conkay/designs-api';
@@ -23,7 +29,9 @@ import { retryNotice } from '@/lib/conkay/demo-api';
 import { api } from '@/lib/api/client';
 import { workbenchClient, type WorkbenchCheck, type WorkbenchReply, type WorkbenchView } from '@/lib/conkay/workbench-api';
 import { liveFileUrl, type LiveSnapshot } from '@/lib/conkay/live-api';
+import { designArtifactFromWorkbenchView } from '@/lib/conkay/design-artifact';
 import { Reply, Workbench } from '@/components/conkay/workbench/Workbench';
+import { ArtifactViewer } from '@/components/conkay/artifacts/ArtifactViewer';
 import { DesignDetails, DesignHead } from './DesignResult';
 import { DrawingsPanel } from './DrawingsPanel';
 import { LiveBuildStream } from './LiveBuild';
@@ -42,6 +50,10 @@ interface WorkbenchStartReply {
   stage?: string;
   questions?: { field: string; question: string }[];
   outcome?: { binding?: { why: string }[] };
+  /** The stored questions conversation this reply continues (stage 'questions'). */
+  pendingId?: string;
+  /** The user turns of that conversation so far, role-tagged. */
+  history?: { role: string; text: string }[];
 }
 
 interface ChatMessage {
@@ -63,11 +75,17 @@ export function DesignBuilder({ id }: { id: string }) {
   const [wbView, setWbView] = useState<WorkbenchView | null>(null);
   const [wbNote, setWbNote] = useState('');
   const [wbOpen, setWbOpen] = useState(false);
+  /** The questions-stage conversation the server is holding until the design completes. */
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [liveSnap, setLiveSnap] = useState<LiveSnapshot | null>(null);
   const [liveMissing, setLiveMissing] = useState(false);
+
+  // The frame artifact the session's view honestly carries (null until a
+  // workbench view with a solved frame lands; a plain snapshot has none).
+  const feaArtifact = useMemo(() => designArtifactFromWorkbenchView(wbView), [wbView]);
 
   // Load the showcase snapshot; a workbench UUID that is not a showcase id
   // still opens here as a live session.
@@ -112,16 +130,23 @@ export function DesignBuilder({ id }: { id: string }) {
     setSending(true);
     try {
       if (!wbId) {
-        const prompt = design ? `${design.brief}\n\n${t}` : t;
-        const r = (await api.post('/api/conkay/workbench', { prompt })).data as WorkbenchStartReply;
+        // No session yet: the first message starts one (the design's brief as
+        // context); a reply to ConKay's questions continues the stored
+        // conversation instead of starting a fresh brief + message.
+        const body = pendingId ? { pendingId, text: t } : { prompt: design ? `${design.brief}\n\n${t}` : t };
+        const r = (await api.post('/api/conkay/workbench', body)).data as WorkbenchStartReply;
         if (r.stage === 'questions' && Array.isArray(r.questions)) {
+          if (r.pendingId) setPendingId(r.pendingId);
           push({ role: 'conkay', text: 'ConKay needs these first:', questions: r.questions });
         } else if (r.id) {
+          setPendingId(null);
           setWbId(r.id);
           setWbView(r.view ?? null);
           router.replace(`/conkay/designs/${id}?wb=${encodeURIComponent(r.id)}`);
           push({ role: 'conkay', text: 'Workbench session started. The knobs, graph and receipts are in the Workbench panel below.', view: r.view ?? null });
         } else {
+          // Not designed and no session id: the server kept the pending
+          // conversation, so a follow-up still continues it.
           push({ role: 'conkay', text: r.outcome?.binding?.[0]?.why || 'This design could not be built.' });
         }
       } else {
@@ -184,6 +209,17 @@ export function DesignBuilder({ id }: { id: string }) {
                     </p>
                   </section>
                 )}
+                {feaArtifact && (
+                  <section className={PANEL} aria-label="FEA frame" data-testid="builder-fea-frame">
+                    <h2 className="text-sm font-semibold">FEA frame · case {wbView?.feaFrame?.case}</h2>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      The frame this session solved ({wbView?.feaFrame?.runId}), colored by the solver&apos;s own utilization. Say a structural change in the viewer&apos;s Iterate bar — it re-runs the real solver; the numbers come back from it, never predicted.
+                    </p>
+                    <div className="mt-2" data-testid="builder-fea-viewer">
+                      <ArtifactViewer artifact={feaArtifact} />
+                    </div>
+                  </section>
+                )}
               </div>
               <div className="flex min-w-0 flex-col gap-4">
                 <section className={`${PANEL} flex flex-col gap-3`} aria-label="ConKay chat" data-testid="builder-chat">
@@ -234,7 +270,10 @@ export function DesignBuilder({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            {!liveMissing && <LiveBuildStream id={id} onSnapshot={setLiveSnap} onMissing={() => setLiveMissing(true)} />}
+            {/* The stream's own side-panel viewer is hidden here: the body
+                snapshot already fills the main viewer above, so it is drawn
+                once, not twice. The standalone /live page keeps its viewer. */}
+            {!liveMissing && <LiveBuildStream id={id} hideViewer onSnapshot={setLiveSnap} onMissing={() => setLiveMissing(true)} />}
             {design && <DesignDetails d={design} />}
           </>
         )}

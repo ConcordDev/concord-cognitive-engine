@@ -6,13 +6,20 @@ vi.mock('next/dynamic', () => ({
 }));
 vi.mock('next/link', () => ({ default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a> }));
 vi.mock('@/lib/api/client', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
+// The artifact pipeline's dispatch (adapters pull three.js); mocked to a marker
+// — its own tests own the kind dispatch, and design-artifact.test owns the map.
+vi.mock('@/components/conkay/artifacts/ArtifactViewer', () => ({
+  ArtifactViewer: ({ artifact }: { artifact: { kind?: string } }) => (
+    <div data-testid="mock-artifact-viewer" data-kind={artifact?.kind ?? ''} />
+  ),
+}));
 const { replaceSpy } = vi.hoisted(() => ({ replaceSpy: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: replaceSpy }) }));
 
 import { DesignBuilder } from './DesignBuilder';
 import type { DesignSnapshot } from '@/lib/conkay/designs-api';
 import type { LiveEvent } from '@/lib/conkay/live-api';
-import type { WorkbenchReply, WorkbenchView } from '@/lib/conkay/workbench-api';
+import type { WorkbenchFeaFrame, WorkbenchReply, WorkbenchView } from '@/lib/conkay/workbench-api';
 import { api } from '@/lib/api/client';
 
 const MEANING = { sourced: 's', measured: 'm', computed: 'c', estimated: 'e', design: 'd', unknown: 'u' };
@@ -64,6 +71,34 @@ const ASK_REPLY: WorkbenchReply = {
     changed: [{ field: 'topSpeed', before: 80.47, after: 67.06, source: 'the user\'s words "150 mph"' }],
     flipped: [{ runId: 'requirement.check@REQ_topSpeed', from: 'FAIL', to: 'PASS' }],
     rerun: 'rebuilt',
+  },
+};
+
+/** The server's feaFrameOf shape (chat/workbench.js): the kerb-twist case of a solved frame. */
+const FEA_FRAME: WorkbenchFeaFrame = {
+  runId: 'structure.frame@CHASSIS',
+  case: 'kerb-twist',
+  model: {
+    nodes: [
+      { id: 'FA.L', x: 0.9, y: -0.7, z: 0.24 },
+      { id: 'FA.R', x: 0.9, y: 0.7, z: 0.24 },
+      { id: 'QA.L', x: 2.9, y: -0.7, z: 0.24 },
+    ],
+    members: [
+      { id: 'rail-fL1', nodeI: 'FA.L', nodeJ: 'QA.L', area: 0.0023, momentI: 2.6e-5, depthIn: 0.32, elasticModulus: 6.89e10, allowableStress: 2.76e8 },
+    ],
+    loads: [{ nodeId: 'FA.R', Fx: 0, Fy: 0, Fz: 5572.1 }],
+    supports: [{ nodeId: 'QA.L', fixedDOF: ['x', 'y', 'z'] }],
+  },
+  result: {
+    displacements: [
+      { nodeId: 'FA.L', dx: 0, dy: 0, dz: -0.0016 },
+      { nodeId: 'FA.R', dx: 0, dy: 0, dz: 0.0016 },
+      { nodeId: 'QA.L', dx: 0, dy: 0, dz: 0 },
+    ],
+    utilization: [{ id: 'rail-fL1', utilization: 0.0612 }],
+    stresses: [{ id: 'rail-fL1', combinedStress: 16871232 }],
+    summary: { maxUtilization: 0.0612 },
   },
 };
 const ASK_VIEW: WorkbenchView = {
@@ -209,6 +244,52 @@ describe('DesignBuilder', () => {
     expect(screen.queryByTestId('builder-workbench-toggle')).toBeNull();
   });
 
+  it('a reply to the questions continues the same conversation (pendingId), and on designed it becomes the session', async () => {
+    stubDesignFetch();
+    apiPost.mockImplementation(async (url: string, body?: Record<string, unknown>) => {
+      expect(url).toBe('/api/conkay/workbench');
+      if (body?.pendingId) {
+        expect(body.pendingId).toBe('p-1');
+        expect(body.text).toBe('4 seats, and 140 mph');
+        return { data: { stage: 'designed', id: 'w-cont', view: VIEW } };
+      }
+      return {
+        data: {
+          stage: 'questions',
+          questions: [{ field: 'seats', question: 'How many seats must it hold?' }],
+          pendingId: 'p-1',
+          history: [{ role: 'user', text: 'Design a car' }],
+        },
+      };
+    });
+    render(<DesignBuilder id="car" />);
+    await screen.findByRole('heading', { name: 'Four-seat 180 mph car' });
+    await submitChat('Design a car');
+    const q = await screen.findByTestId('builder-msg-conkay');
+    expect(q.textContent).toMatch(/How many seats must it hold\?/);
+    await submitChat('4 seats, and 140 mph');
+    // the continuation went to the stored conversation, not a fresh prompt
+    expect(apiPost).toHaveBeenLastCalledWith('/api/conkay/workbench', { pendingId: 'p-1', text: '4 seats, and 140 mph' });
+    expect(replaceSpy).toHaveBeenCalledWith('/conkay/designs/car?wb=w-cont');
+    expect((await screen.findByTestId('builder-session')).textContent).toBe('w-cont');
+  });
+
+  it('an FEA frame section renders only when the session view carries a solved frame', async () => {
+    stubDesignFetch();
+    // a plain snapshot: no session view at all -> no section
+    render(<DesignBuilder id="car" />);
+    await screen.findByRole('heading', { name: 'Four-seat 180 mph car' });
+    expect(screen.queryByTestId('builder-fea-frame')).toBeNull();
+    // a session whose view carries the frame -> the adapter's artifact renders
+    apiPost.mockResolvedValue({ data: { id: 'w-fea', view: { ...VIEW, feaFrame: FEA_FRAME } } });
+    await submitChat('make it faster');
+    const section = await screen.findByTestId('builder-fea-frame');
+    expect(section.textContent).toMatch(/structure\.frame@CHASSIS/);
+    expect(section.textContent).toMatch(/kerb-twist/);
+    const viewer = screen.getByTestId('mock-artifact-viewer');
+    expect(viewer.getAttribute('data-kind')).toBe('fea-frame');
+  });
+
   it('a live run streams into the page and its body snapshot takes the main viewer', async () => {
     stubDesignFetch();
     (globalThis as unknown as { EventSource: unknown }).EventSource = MockEventSource;
@@ -223,5 +304,20 @@ describe('DesignBuilder', () => {
     const liveBody = screen.getByRole('region', { name: 'Live body' });
     expect(within(liveBody).getByTestId('stl-viewer').getAttribute('data-url')).toBe('/api/conkay/demo/designs/car/live/files/9887766c0116.stl');
     expect(screen.getByTestId('builder-live-body').textContent).toMatch(/15546 triangles/);
+  });
+
+  it('the embedded stream draws the body once: its own side-panel viewer is hidden, the standalone page keeps it', async () => {
+    stubDesignFetch();
+    (globalThis as unknown as { EventSource: unknown }).EventSource = MockEventSource;
+    render(<DesignBuilder id="car" />);
+    await screen.findByRole('heading', { name: 'Four-seat 180 mph car' });
+    const es = MockEventSource.last!;
+    act(() => { for (const e of LIVE_EVENTS) es.emit(e); });
+    // the main viewer carries the body...
+    const liveBody = screen.getByRole('region', { name: 'Live body' });
+    expect(within(liveBody).getByTestId('stl-viewer').getAttribute('data-url')).toBe('/api/conkay/demo/designs/car/live/files/9887766c0116.stl');
+    // ...and the embedded stream adds no second copy: no side-panel viewer, no snapshot caption
+    expect(screen.queryByTestId('live-snapshot')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Live body' }).querySelectorAll('[data-testid="stl-viewer"]').length).toBe(1);
   });
 });

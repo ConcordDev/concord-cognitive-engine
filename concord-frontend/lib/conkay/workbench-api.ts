@@ -22,11 +22,38 @@ export interface WorkbenchCheck {
   warnings: string[]; failures: string[]; assumptions: string[]; sources: string[]; explanation: string;
 }
 
+/**
+ * One load case of the design's own structure.frame run, in the exact shape
+ * the engineering.runFEA artifact path consumes (server chat/workbench.js
+ * feaFrameOf): the model the solve used (nodes, members with their real
+ * sections' A/I and material E/allowable, the case's resolved nodal loads,
+ * its supports) and the solve's own result (per-node displacements, per-member
+ * von Mises + utilization). Absent when the design has no frame run.
+ */
+export interface WorkbenchFeaFrame {
+  runId: string;
+  case: string;
+  model: {
+    nodes: { id: string; x: number; y: number; z: number }[];
+    members: { id: string; nodeI: string; nodeJ: string; area: number; momentI: number; depthIn?: number; elasticModulus: number; allowableStress: number }[];
+    loads: { nodeId: string; Fx?: number; Fy?: number; Fz?: number; Mx?: number; My?: number; Mz?: number }[];
+    supports: { nodeId: string; fixedDOF: string[] | 'fixed' }[];
+  };
+  result: {
+    displacements: { nodeId: string; dx: number; dy: number; dz: number }[];
+    utilization: { id: string; utilization: number | null }[];
+    stresses: { id: string; combinedStress: number }[];
+    summary: Record<string, unknown>;
+  };
+  note?: string;
+}
+
 export interface WorkbenchView {
   version: string; revision: number; receipt: string; state: Record<string, unknown>;
   knobs: WorkbenchKnob[]; locked: string[];
   graph: { nodes: WorkbenchNode[]; edges: WorkbenchEdge[] };
   checks: WorkbenchCheck[];
+  feaFrame?: WorkbenchFeaFrame | null;
 }
 
 export interface WorkbenchReply {

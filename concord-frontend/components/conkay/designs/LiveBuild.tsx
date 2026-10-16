@@ -3,13 +3,16 @@
 /**
  * LiveBuildStream — the chrome-less live timeline: every orchestrator
  * iteration in order, the check that failed, the candidates it ran with their
- * computed margins, what changed and why, what reran, and the body after each
+ * computed margins, what changed and why, and the body after each
  * change. Read-only; the stream is the server's record of the run (nothing
  * solved here). Reconnects resume from the last event id; nothing is shown
  * twice. onSnapshot hands the newest body snapshot to an embedding page (the
  * builder shows it beside the chat); onMissing fires when there is no live
  * run, so the embedding page can hide the section quietly instead of the
- * standalone page's "No live run" alert.
+ * standalone page's "No live run" alert. hideViewer drops this stream's own
+ * side-panel body viewer for an embedding page that already shows the
+ * snapshot in its main viewer (the builder) — the body is drawn once, not
+ * twice; the standalone page keeps it.
  */
 
 import Link from 'next/link';
@@ -30,10 +33,12 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
 
 type Conn = 'connecting' | 'live' | 'reconnecting' | 'complete' | 'missing';
 
-export function LiveBuildStream({ id, onSnapshot, onMissing }: {
+export function LiveBuildStream({ id, onSnapshot, onMissing, hideViewer = false }: {
   id: string;
   onSnapshot?: (snap: LiveSnapshot | null) => void;
   onMissing?: () => void;
+  /** Hide the side-panel body viewer (the embedding page draws the body itself). */
+  hideViewer?: boolean;
 }) {
   const [state, dispatch] = useReducer(liveReducer, LIVE_INITIAL);
   const [conn, setConn] = useState<Conn>(() => (typeof EventSource === 'undefined' ? 'missing' : 'connecting'));
@@ -71,22 +76,24 @@ export function LiveBuildStream({ id, onSnapshot, onMissing }: {
       {conn === 'missing' && state.events.length === 0 && !onMissing && (
         <p role="alert" className="text-sm text-rose-300">No live run with this id.</p>
       )}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className={hideViewer ? '' : 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]'}>
         <ol className="flex flex-col gap-3" data-testid="live-timeline" aria-live="polite">
           {state.events.filter((e) => e.type !== 'start').map((e) => <Step key={e.id} e={e} />)}
           {!state.done && state.events.length > 0 && (
             <li className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden /> waiting for the next step</li>
           )}
         </ol>
-        <aside className={`${PANEL} flex h-fit flex-col gap-2`}>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Body at this step</h2>
-          {snap?.file ? (
-            <>
-              <StlViewer url={liveFileUrl(id, snap.file)} />
-              <p className="font-mono text-[10px] text-slate-500" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
-            </>
-          ) : <p className="text-xs text-slate-500">No solid yet.</p>}
-        </aside>
+        {!hideViewer && (
+          <aside className={`${PANEL} flex h-fit flex-col gap-2`}>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Body at this step</h2>
+            {snap?.file ? (
+              <>
+                <StlViewer url={liveFileUrl(id, snap.file)} />
+                <p className="font-mono text-[10px] text-slate-500" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
+              </>
+            ) : <p className="text-xs text-slate-500">No solid yet.</p>}
+          </aside>
+        )}
       </div>
     </>
   );
