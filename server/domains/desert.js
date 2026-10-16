@@ -12,6 +12,7 @@
 // Pure-compute macros for budgets, sizing, classification.
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
 
@@ -75,9 +76,10 @@ export default function registerDesertActions(registerLensAction) {
   });
 
   registerLensAction("desert", "heatStressIndex", (ctx, artifact, _params) => {
-    const temp = parseFloat(artifact.data?.temperatureCelsius) || 40;
-    const humidity = parseFloat(artifact.data?.humidityPercent) || 20;
-    const wind = parseFloat(artifact.data?.windSpeedKmh) || 10;
+    // Weather is measured, not assumed (was 40 °C / 20 % / 10 km/h).
+    const { values: _v, missing: _m } = needNums(artifact.data || {}, ["temperatureCelsius", "humidityPercent>=0", "windSpeedKmh>=0"]);
+    if (_m.length) return notComputed(_m, "Heat stress needs measured temperatureCelsius, humidityPercent and windSpeedKmh.");
+    const temp = _v.temperatureCelsius, humidity = _v.humidityPercent, wind = _v.windSpeedKmh;
     const heatIndex = temp + 0.33 * (humidity / 100 * 6.105 * Math.exp(17.27 * temp / (237.7 + temp))) - 0.7 * wind / 3.6 - 4;
     const risk = heatIndex > 54 ? "extreme-danger" : heatIndex > 41 ? "danger" : heatIndex > 32 ? "extreme-caution" : heatIndex > 27 ? "caution" : "safe";
     return { ok: true, result: { temperature: `${temp}°C`, humidity: `${humidity}%`, windSpeed: `${wind} km/h`, heatIndex: Math.round(heatIndex * 10) / 10, riskLevel: risk, recommendations: risk === "extreme-danger" ? ["Cease all outdoor activity", "Seek air-conditioned shelter", "Hydrate continuously"] : risk === "danger" ? ["Limit outdoor exposure", "Take breaks every 15 min", "Drink 1L water per hour"] : ["Stay hydrated", "Wear sun protection"] } };
@@ -85,10 +87,12 @@ export default function registerDesertActions(registerLensAction) {
 
   registerLensAction("desert", "terrainClassification", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const elevation = parseFloat(data.elevationMeters) || 500;
+    const { missing: _m } = needNums(data, ["elevationMeters", "vegetationCoverPercent>=0", "slopePercent>=0"]);
+    if (_m.length) return notComputed(_m, "Terrain classification needs elevationMeters, vegetationCoverPercent and slopePercent (was 500 m / 5 % / 2 %).");
+    const elevation = parseFloat(data.elevationMeters);
     const soilType = (data.soilType || "sand").toLowerCase();
-    const vegetation = parseFloat(data.vegetationCoverPercent) || 5;
-    const slope = parseFloat(data.slopePercent) || 2;
+    const vegetation = parseFloat(data.vegetationCoverPercent);
+    const slope = parseFloat(data.slopePercent);
     const terrainTypes = { sand: "erg (sand sea)", rock: "hamada (stone desert)", gravel: "reg (gravel plain)", salt: "sabkha (salt flat)", clay: "playa (dry lake bed)" };
     const terrain = terrainTypes[soilType] || "mixed desert";
     const traversability = slope < 5 && soilType !== "sand" ? "easy" : slope < 15 ? "moderate" : "difficult";
@@ -97,9 +101,9 @@ export default function registerDesertActions(registerLensAction) {
 
   registerLensAction("desert", "solarPotential", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const latitude = parseFloat(data.latitude) || 25;
-    const clearDays = parseInt(data.clearDaysPerYear) || 300;
-    const areaAcres = parseFloat(data.areaAcres) || 10;
+    const { values: _v, missing: _m } = needNums(data, ["latitude", "clearDaysPerYear>0", "areaAcres>0"]);
+    if (_m.length) return notComputed(_m, "Solar potential needs latitude, clearDaysPerYear and areaAcres (was 25° / 300 days / 10 acres).");
+    const latitude = _v.latitude, clearDays = Math.round(_v.clearDaysPerYear), areaAcres = _v.areaAcres;
     const irradiance = Math.max(3, 8 - Math.abs(latitude - 25) * 0.1);
     const annualIrradiance = irradiance * clearDays;
     const panelEfficiency = 0.20;
@@ -547,10 +551,13 @@ export default function registerDesertActions(registerLensAction) {
     try {
       const latitude = parseFloat(params.latitude);
       if (!Number.isFinite(latitude)) return { ok: false, error: "latitude required" };
-      const panelWatt = parseFloat(params.panelWatt) || 450; // W per panel
-      const panelAreaM2 = parseFloat(params.panelAreaM2) || 2.0;
-      const systemLossFactor = parseFloat(params.systemLossFactor) || 0.82; // inverter/wiring/soiling
-      const clearDays = parseInt(params.clearDaysPerYear, 10) || 300;
+      // Module rating/area, system derate and the site's clear days are inputs
+      // (previously assumed 450 W, 2 m², 0.82 and 300 days with no source).
+      const { values: _sv, missing: _sm } = needNums(params, ["panelWatt>0", "panelAreaM2>0", "systemLossFactor>0", "clearDaysPerYear>=0"]);
+      if (!_sm.length && _sv.systemLossFactor > 1) _sm.push("systemLossFactor (fraction 0-1)");
+      if (!_sm.length && _sv.clearDaysPerYear > 366) _sm.push("clearDaysPerYear (0-366)");
+      if (_sm.length) return notComputed(_sm, "Solar sizing needs the module's panelWatt and panelAreaM2 (datasheet), systemLossFactor as a derate fraction (e.g. from PVWatts or the installer), and the site's clearDaysPerYear.");
+      const panelWatt = _sv.panelWatt, panelAreaM2 = _sv.panelAreaM2, systemLossFactor = _sv.systemLossFactor, clearDays = Math.round(_sv.clearDaysPerYear);
       // Peak-sun-hours from latitude proximity to desert solar belt (~25°).
       const peakSunHours = Math.max(3, 7.5 - Math.abs(latitude - 25) * 0.08);
 

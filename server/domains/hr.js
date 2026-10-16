@@ -764,50 +764,76 @@ export default function registerHRActions(registerLensAction) {
   });
 
   // ── Payroll ─────────────────────────────────────────────────────────
-  // Federal withholding approximations (2024 brackets, single filer,
+  // Federal withholding approximations (dated IRS table below, single filer,
   // annualized). Real arithmetic — every figure derives from the
   // employee's actual salary on record.
   const FICA_SS_RATE = 0.062;       // Social Security
   const FICA_MEDICARE_RATE = 0.0145; // Medicare
-  const SS_WAGE_BASE = 168600;       // 2024 SS wage cap
+  // OASDI contribution and benefit base (taxable maximum), by wage year.
+  // Source: SSA Office of the Chief Actuary, "Contribution and Benefit Base",
+  // https://www.ssa.gov/oact/cola/cbb.html (retrieved 2026-10-15). Declared
+  // assumption on every stub; override with params.ssWageBase.
+  const SS_WAGE_BASES = { 2024: 168600, 2025: 176100, 2026: 184500, 2027: 192300 };
+  function ssWageBaseFor(year, override) {
+    const o = Number(override);
+    if (o > 0) return { value: o, year, source: "caller override (params.ssWageBase)" };
+    const known = Object.keys(SS_WAGE_BASES).map(Number);
+    const y = SS_WAGE_BASES[year] ? year : Math.max(...known.filter((k) => k <= year).concat([Math.min(...known)]));
+    return { value: SS_WAGE_BASES[y], year: y, source: `SSA contribution and benefit base, ${y} (https://www.ssa.gov/oact/cola/cbb.html)`, ...(y !== year ? { note: `no SSA figure on file for ${year}; using ${y}` } : {}) };
+  }
 
-  function fedIncomeTaxAnnual(taxable) {
-    // 2024 single-filer marginal brackets on taxable income.
-    const brackets = [
-      [0, 11600, 0.10], [11600, 47150, 0.12], [47150, 100525, 0.22],
-      [100525, 191950, 0.24], [191950, 243725, 0.32],
-      [243725, 609350, 0.35], [609350, Infinity, 0.37],
-    ];
+  // Federal income tax, single filer: brackets (lower bounds of each rate) and
+  // standard deduction by tax year. Every figure verified on irs.gov on
+  // 2026-10-15. Years not listed were not verified and are not used.
+  const FED_TAX_TABLE = {
+    2024: { stdDeduction: 14600, upper: [11600, 47150, 100525, 191950, 243725, 609350],
+      source: "IRS IR-2023-208 / Rev. Proc. 2023-34, https://www.irs.gov/newsroom/irs-provides-tax-inflation-adjustments-for-tax-year-2024", retrieved: "2026-10-15" },
+    2025: { stdDeduction: 15750, upper: [11925, 48475, 103350, 197300, 250525, 626350],
+      source: "Brackets: IRS IR-2024-273 / Rev. Proc. 2024-40, https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2025; standard deduction as raised by OBBB: IRS IR-2025-103, https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill", retrieved: "2026-10-15" },
+    2026: { stdDeduction: 16100, upper: [12400, 50400, 105700, 201775, 256225, 640600],
+      source: "IRS IR-2025-103 / Rev. Proc. 2025-32, https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill", retrieved: "2026-10-15" },
+  };
+  const FED_RATES = [0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37];
+  function fedTableFor(year) {
+    const known = Object.keys(FED_TAX_TABLE).map(Number);
+    const y = FED_TAX_TABLE[year] ? year : Math.max(...known.filter((k) => k <= year).concat([Math.min(...known)]));
+    const t = FED_TAX_TABLE[y];
+    return { year: y, ...t, ...(y !== year ? { note: `no verified IRS figures on file for ${year}; using ${y}` } : {}) };
+  }
+
+  function fedIncomeTaxAnnual(taxable, table) {
+    const bounds = [0, ...table.upper, Infinity];
     let tax = 0;
-    for (const [lo, hi, rate] of brackets) {
+    for (let i = 0; i < FED_RATES.length; i++) {
+      const lo = bounds[i], hi = bounds[i + 1];
       if (taxable <= lo) break;
-      tax += (Math.min(taxable, hi) - lo) * rate;
+      tax += (Math.min(taxable, hi) - lo) * FED_RATES[i];
     }
     return tax;
   }
 
   const PAY_PERIODS = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
 
-  function computeStub(emp, frequency) {
+  function computeStub(emp, frequency, ssBase, stateTaxRate, fedTable) {
     const periods = PAY_PERIODS[frequency] || 26;
     const annual = Math.max(0, hrNum(emp.salary));
     const gross = annual / periods;
-    // Standard deduction reduces taxable wages (2024 single = 14600).
-    const taxableAnnual = Math.max(0, annual - 14600);
-    const fedTaxPerPeriod = fedIncomeTaxAnnual(taxableAnnual) / periods;
-    const ssWages = Math.min(annual, SS_WAGE_BASE) / periods;
+    // Standard deduction from the verified IRS table for the pay-date year.
+    const taxableAnnual = Math.max(0, annual - fedTable.stdDeduction);
+    const fedTaxPerPeriod = fedIncomeTaxAnnual(taxableAnnual, fedTable) / periods;
+    const ssWages = Math.min(annual, ssBase.value) / periods;
     const socialSecurity = ssWages * FICA_SS_RATE;
     const medicare = gross * FICA_MEDICARE_RATE;
-    // State tax flat approximation 5% of taxable.
-    const stateTax = (taxableAnnual / periods) * 0.05;
-    const totalTax = fedTaxPerPeriod + socialSecurity + medicare + stateTax;
+    // State tax: caller-supplied flat rate only (was an invented 5% for every state).
+    const stateTax = stateTaxRate === null ? null : (taxableAnnual / periods) * stateTaxRate;
+    const totalTax = fedTaxPerPeriod + socialSecurity + medicare + (stateTax || 0);
     const net = gross - totalTax;
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
       employeeId: emp.id, employeeName: emp.name,
       grossPay: r2(gross),
       federalTax: r2(fedTaxPerPeriod),
-      stateTax: r2(stateTax),
+      stateTax: stateTax === null ? null : r2(stateTax),
       socialSecurity: r2(socialSecurity),
       medicare: r2(medicare),
       totalDeductions: r2(totalTax),
@@ -823,7 +849,12 @@ export default function registerHRActions(registerLensAction) {
       ? String(params.frequency) : "biweekly";
     const active = (s.employees.get(userId) || []).filter((e) => e.status === "active");
     if (active.length === 0) return { ok: false, error: "no active employees to pay" };
-    const stubs = active.map((e) => computeStub(e, frequency));
+    const payDate = hrDay(params.payDate) || hrDay(hrNow());
+    const ssBase = ssWageBaseFor(Number(payDate.slice(0, 4)), params.ssWageBase);
+    const _str = Number(params.stateTaxRate);
+    const stateTaxRate = params.stateTaxRate != null && params.stateTaxRate !== "" && _str >= 0 && _str < 1 ? _str : null;
+    const fedTable = fedTableFor(Number(payDate.slice(0, 4)));
+    const stubs = active.map((e) => computeStub(e, frequency, ssBase, stateTaxRate, fedTable));
     const totals = stubs.reduce((acc, st) => {
       acc.gross += st.grossPay; acc.tax += st.totalDeductions; acc.net += st.netPay;
       return acc;
@@ -832,13 +863,15 @@ export default function registerHRActions(registerLensAction) {
     const run = {
       id: hrId("pay"),
       periodLabel: hrClean(params.periodLabel, 60) || hrDay(hrNow()),
-      payDate: hrDay(params.payDate) || hrDay(hrNow()),
+      payDate,
       frequency,
       headcount: stubs.length,
       stubs,
       totalGross: r2(totals.gross),
       totalDeductions: r2(totals.tax),
       totalNet: r2(totals.net),
+      assumptions: { federalTax: { taxYear: fedTable.year, filingStatus: "single", standardDeduction: fedTable.stdDeduction, source: fedTable.source, retrieved: fedTable.retrieved, ...(fedTable.note ? { note: fedTable.note } : {}) }, ssWageBase: ssBase, stateTaxRate: stateTaxRate === null ? { value: null, note: "not supplied; state tax excluded (pass stateTaxRate as a fraction)" } : { value: stateTaxRate, source: "caller" } },
+      ...(stateTaxRate === null ? { missingInputs: ["stateTaxRate"] } : {}),
       status: "completed",
       createdAt: hrNow(),
     };

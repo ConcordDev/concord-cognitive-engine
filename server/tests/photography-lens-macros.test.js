@@ -89,23 +89,21 @@ describe("photography.exposureCalc — component-exact contract", () => {
     assert.match(r.result.shutterSpeed, /^(\d+s|1\/\d+s)$/);
   });
 
-  it("DEGRADE-GRACEFUL: empty data yields a finite default exposure (no NaN)", () => {
+  it("DEGRADE-GRACEFUL: empty data → NOT_COMPUTED listing the missing inputs (no invented ISO/f/EV)", () => {
     const r = dispatch("exposureCalc", ctx, wrap({}));
     assert.equal(r.ok, true);
-    assert.equal(r.result.iso, 100);                    // default
-    assert.equal(r.result.aperture, "f/5.6");           // default
-    assert.equal(r.result.ev, 12);
-    assert.match(r.result.shutterSpeed, /^(\d+s|1\/\d+s)$/);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["iso", "aperture", "ev"]);
+    assert.equal(r.result.shutterSpeed, undefined);
   });
 
   it("FAIL-CLOSED poisoned numeric: Infinity/NaN/1e999 collapse to finite defaults", () => {
     const r = dispatch("exposureCalc", ctx, wrap({ iso: "1e999", aperture: "Infinity", ev: "NaN" }));
     assert.equal(r.ok, true);
-    // parseInt('1e999') → 1 (truthy), parseFloat('Infinity') → Infinity? guard via || fallback.
-    // Whatever the parse, the readable shutter string must never be NaN/Infinity.
-    assert.match(r.result.shutterSpeed, /^(\d+s|1\/\d+s)$/);
-    assert.ok(!/NaN|Infinity/.test(r.result.shutterSpeed), "shutterSpeed must not leak NaN/Infinity");
-    assert.ok(["shallow", "moderate", "deep"].includes(r.result.depthOfField));
+    // Non-finite inputs are treated as missing → NOT_COMPUTED, never a NaN/Infinity card.
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["iso", "aperture", "ev"]);
+    assert.ok(!/NaN|Infinity/.test(JSON.stringify(r.result)), "must not leak NaN/Infinity");
   });
 });
 

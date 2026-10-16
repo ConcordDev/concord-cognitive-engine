@@ -59,7 +59,7 @@ export default function registerLogisticsActions(registerLensAction) {
         lng: nearest.lng,
         distanceFromPrevious: Math.round(nearestDist * 100) / 100,
         cumulativeDistance: Math.round(totalDistance * 100) / 100,
-        serviceMins: nearest.serviceMins || 15,
+        serviceMins: Number.isFinite(Number(nearest.serviceMins)) && nearest.serviceMins !== null && nearest.serviceMins !== "" ? Number(nearest.serviceMins) : null,
         timeWindowStart: nearest.timeWindowStart || null,
         timeWindowEnd: nearest.timeWindowEnd || null,
       });
@@ -75,11 +75,14 @@ export default function registerLogisticsActions(registerLensAction) {
       totalDistance += returnDist;
     }
 
-    // Estimate total time: assume 30 mph average speed + service time
-    const avgSpeed = params.avgSpeedMph || 30;
-    const totalDriveMinutes = Math.round((totalDistance / avgSpeed) * 60);
-    const totalServiceMinutes = ordered.reduce((s, stop) => s + (stop.serviceMins || 0), 0);
-    const totalMinutes = totalDriveMinutes + totalServiceMinutes;
+    // Time needs a caller-supplied average speed (previously an assumed 30 mph)
+    // and per-stop service minutes (previously 15 each); missing → null + missingInputs.
+    const avgSpeed = Number(params.avgSpeedMph) > 0 ? Number(params.avgSpeedMph) : null;
+    const missingService = ordered.filter((st) => st.serviceMins === null).length;
+    const totalDriveMinutes = avgSpeed === null ? null : Math.round((totalDistance / avgSpeed) * 60);
+    const totalServiceMinutes = missingService ? null : ordered.reduce((s, stop) => s + stop.serviceMins, 0);
+    const totalMinutes = totalDriveMinutes === null || totalServiceMinutes === null ? null : totalDriveMinutes + totalServiceMinutes;
+    const timeMissing = [...(avgSpeed === null ? ["avgSpeedMph"] : []), ...(missingService ? ["stops[].serviceMins"] : [])];
 
     const result = {
       generatedAt: new Date().toISOString(),
@@ -89,6 +92,7 @@ export default function registerLogisticsActions(registerLensAction) {
       estimatedDriveMinutes: totalDriveMinutes,
       estimatedServiceMinutes: totalServiceMinutes,
       estimatedTotalMinutes: totalMinutes,
+      ...(timeMissing.length ? { missingInputs: timeMissing } : {}),
       returnToOrigin,
       optimizedRoute: ordered,
     };
@@ -1681,7 +1685,7 @@ export default function registerLogisticsActions(registerLensAction) {
     if (stops.length === 0) return { ok: false, error: "stops required (each with numeric lat,lng)" };
     const vehicleCount = Math.max(1, Math.floor(Number(params.vehicleCount) || 1));
     const vehicleCapacity = Math.max(0, Number(params.vehicleCapacity) || 0);
-    const avgSpeedMph = Math.max(1, Number(params.avgSpeedMph) || 35);
+    const avgSpeedMph = Number(params.avgSpeedMph) > 0 ? Number(params.avgSpeedMph) : null; // no assumed 35 mph
 
     // Sort stops by polar angle from depot (sweep algorithm).
     const enriched = stops.map((st, i) => ({
@@ -1689,7 +1693,7 @@ export default function registerLogisticsActions(registerLensAction) {
       name: String(st.name || st.stopId || `Stop ${i + 1}`),
       lat: Number(st.lat), lng: Number(st.lng),
       demand: Math.max(0, Number(st.demand) || 0),
-      serviceMins: Math.max(0, Number(st.serviceMins) || 15),
+      serviceMins: st.serviceMins == null || st.serviceMins === "" || !Number.isFinite(Number(st.serviceMins)) ? null : Math.max(0, Number(st.serviceMins)),
       angle: Math.atan2(Number(st.lat) - dLat, Number(st.lng) - dLng),
     })).sort((a, b) => a.angle - b.angle);
 
@@ -1733,8 +1737,8 @@ export default function registerLogisticsActions(registerLensAction) {
       total += returnMi;
       const load = ordered.reduce((sum, st) => sum + st.demand, 0);
       if (vehicleCapacity > 0 && load > vehicleCapacity) overCapacity = true;
-      const serviceMin = ordered.reduce((sum, st) => sum + st.serviceMins, 0);
-      const driveMin = Math.round((total / avgSpeedMph) * 60);
+      const serviceMin = ordered.some((st) => st.serviceMins === null) ? null : ordered.reduce((sum, st) => sum + st.serviceMins, 0);
+      const driveMin = avgSpeedMph === null ? null : Math.round((total / avgSpeedMph) * 60);
       return {
         vehicleIndex: vIdx + 1,
         stopCount: ordered.length,
@@ -1743,7 +1747,7 @@ export default function registerLogisticsActions(registerLensAction) {
         utilizationPct: vehicleCapacity > 0 ? Math.round((load / vehicleCapacity) * 100) : null,
         routeDistanceMi: Math.round(total * 100) / 100,
         returnToDepotMi: Math.round(returnMi * 100) / 100,
-        estimatedMinutes: driveMin + serviceMin,
+        estimatedMinutes: driveMin === null || serviceMin === null ? null : driveMin + serviceMin,
         stops: ordered,
       };
     });
