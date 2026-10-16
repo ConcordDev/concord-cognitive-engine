@@ -11,6 +11,7 @@
 // table, no synthesized prices, no fake VIN decoder.
 
 import { DTC_DATABASE } from "../lib/automotive-dtc.js";
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
 const NHTSA_RECALLS_BASE = "https://api.nhtsa.gov/recalls/recallsByVehicle";
@@ -323,10 +324,14 @@ export default function registerAutomotiveActions(registerLensAction) {
     if (repairs.length === 0) {
       return { ok: false, error: "add repair items with { name, partsCost, laborHours, laborRate?, priority? }" };
     }
-    const shopRate = parseFloat(data.shopRate) || 120;
+    // No assumed $120/h shop rate or 1 h of labour per repair.
+    const shopRate = parseFloat(data.shopRate) > 0 ? parseFloat(data.shopRate) : null;
+    const _m = [];
+    repairs.forEach((r, i) => { if (!(parseFloat(r.laborHours) >= 0)) _m.push(`repairs[${i}].laborHours`); if (!(parseFloat(r.laborRate) > 0) && shopRate === null) _m.push(`repairs[${i}].laborRate or shopRate`); });
+    if (_m.length) return notComputed(_m, "Repair estimates need labour hours per repair and a labour rate (per repair or shopRate).");
     const estimated = repairs.map((r) => {
       const partsCost = parseFloat(r.partsCost) || 0;
-      const laborHours = parseFloat(r.laborHours) || 1;
+      const laborHours = parseFloat(r.laborHours);
       const laborRate = parseFloat(r.laborRate || shopRate);
       const laborCost = laborHours * laborRate;
       return {

@@ -69,6 +69,7 @@ import { powerLawPipeFlow, carreauPipeFlow, generalisedReynolds, HONEST_BOUNDARY
 // structural bundle, and the genuine opt-in simultaneous thermal+aero
 // combined-loads solve).
 import { runMultiPhysicsBundle } from '../lib/asset-gen/multi-physics-bundle.js';
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -139,7 +140,8 @@ const MATERIAL_LIBRARY = {
 // Returns volume (m³), mass (kg), surface area, and section props where
 // applicable. Cross-section moment of inertia for beam-shaped primitives.
 function computePrimitive(kind, p, densityKgM3) {
-  const d = densityKgM3 || 7850;
+  // No assumed steel density: mass is null unless a material or density is given.
+  const d = Number(densityKgM3) > 0 ? Number(densityKgM3) : null;
   const round = (v) => Math.round(v * 1e9) / 1e9;
   let volume = 0, surfaceArea = 0, bbox = [0, 0, 0];
   // Section (area/Ix/Iy) math is delegated to the shared compute primitive
@@ -214,7 +216,8 @@ function computePrimitive(kind, p, densityKgM3) {
   return {
     kind,
     volume: round(volume),
-    mass: round(volume * d),
+    mass: d === null ? null : round(volume * d),
+    ...(d === null ? { missingInputs: ['material or density'] } : {}),
     surfaceArea: round(surfaceArea),
     boundingBox: { x: round(bbox[0]), y: round(bbox[1]), z: round(bbox[2]) },
     section: section
@@ -527,9 +530,10 @@ export default function registerEngineeringActions(registerLensAction) {
   registerLensAction('engineering', 'stressAnalysis', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      const force = parseFloat(data.forceNewtons) || 0;
-      const area = parseFloat(data.crossSectionMm2) || 1;
-      const yieldStrength = parseFloat(data.yieldStrengthMPa) || 250;
+      // No assumed 250 MPa yield strength or 1 mm² section.
+      const { values: _v, missing: _m } = needNums(data, ["forceNewtons>=0", "crossSectionMm2>0", "yieldStrengthMPa>0"]);
+      if (_m.length) return notComputed(_m, "Stress check needs forceNewtons, crossSectionMm2 and the material's yieldStrengthMPa.");
+      const force = _v.forceNewtons, area = _v.crossSectionMm2, yieldStrength = _v.yieldStrengthMPa;
       const stress = force / area;
       const safetyFactor = stress > 0 ? yieldStrength / stress : Infinity;
       return {
@@ -625,7 +629,7 @@ export default function registerEngineeringActions(registerLensAction) {
       const kind = egClean(data.kind || 'box', 24);
       const matId = data.material;
       const mat = matId ? MATERIAL_LIBRARY[matId] : null;
-      const density = mat ? mat.density : parseFloat(data.density) || 7850;
+      const density = mat ? mat.density : parseFloat(data.density) || null;
       const geom = computePrimitive(kind, data.params || data, density);
       let structural = null;
       // If a beam-shaped primitive + span + load given, give a quick check.
@@ -1738,7 +1742,7 @@ export default function registerEngineeringActions(registerLensAction) {
       const geom = computePrimitive(
         egClean(data.kind || 'box', 24),
         data.params || data,
-        mat ? mat.density : parseFloat(data.density) || 7850,
+        mat ? mat.density : parseFloat(data.density) || null,
       );
       const requestedId = egClean(data.id, 80);
       const id = requestedId && parts.find((p) => p.id === requestedId) ? requestedId : egId('part');

@@ -143,7 +143,7 @@ describe("aviation — performance calculators", () => {
   });
 
   it("rejects out-of-range weight", () => {
-    const r = call("perf-takeoff", ctxA, { weight: 3000 });
+    const r = call("perf-takeoff", ctxA, { pressureAlt: 0, oat: 15, weight: 3000 });
     assert.equal(r.ok, false);
     assert.match(r.error, /weight/);
   });
@@ -155,8 +155,8 @@ describe("aviation — performance calculators", () => {
   });
 
   it("headwind shortens takeoff roll", () => {
-    const calm = call("perf-takeoff", ctxA, { headwind: 0, weight: 2200 });
-    const headwind = call("perf-takeoff", ctxA, { headwind: 15, weight: 2200 });
+    const calm = call("perf-takeoff", ctxA, { pressureAlt: 0, oat: 15, headwind: 0, weight: 2200 });
+    const headwind = call("perf-takeoff", ctxA, { pressureAlt: 0, oat: 15, headwind: 15, weight: 2200 });
     assert.ok(headwind.result.groundRoll_ft < calm.result.groundRoll_ft);
   });
 });
@@ -202,7 +202,7 @@ describe("aviation — flight plans", () => {
 
   it("computes fuel burn estimate when ETE known", async () => {
     mockAirports();
-    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110 });
+    const r = await call("plan-create", ctxA, { from: "KSFO", to: "KLAX", tas: 110, fuelBurnGph: 8.5 });
     assert.ok(r.result.plan.estFuelBurn_gal > 0);
   });
 

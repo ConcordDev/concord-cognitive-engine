@@ -65,7 +65,8 @@ describe("agriculture — agronomic calc contracts (exact computed values)", () 
 
   it("waterSchedule: irrigation gallons = inches × acreage × 27154 at default temp/soil", async () => {
     const r = await lensRun("agriculture", "waterSchedule", {
-      data: { fields: [{ fieldId: "f1", name: "Plot A", acreage: 10, soilType: "loam", crop: "corn" }] },
+      data: { fields: [{ fieldId: "f1", name: "Plot A", acreage: 10, soilType: "loam", crop: "corn" }],
+        weatherForecast: [{ date: new Date().toISOString().split("T")[0], highTemp: 80 }] },
       params: { daysAhead: 1 },
     });
     const field = r.result.fields[0];
