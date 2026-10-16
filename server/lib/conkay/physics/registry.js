@@ -73,7 +73,9 @@ export function envelope(solver, target, raw, { runtimeMs, revision }) {
     runtimeMs,
   };
   if (raw?.notComputed) {
-    return { ...base, status: "NOT_COMPUTED", reason: raw.notComputed, inputs: raw.inputs || {}, outputs: {}, margins: [], warnings: [], assumptions: [], covers: raw.covers || [target], provenance: { revision, computedAt: new Date().toISOString() } };
+    // A solver may keep what it did compute beside the reason (e.g. a labelled screening estimate, or the receipt of
+    // the run that could not finish); the status stays NOT_COMPUTED.
+    return { ...base, status: "NOT_COMPUTED", reason: raw.notComputed, inputs: raw.inputs || {}, outputs: raw.outputs || {}, margins: [], warnings: raw.warnings || [], assumptions: raw.assumptions || [], covers: raw.covers || [target], ...(raw.receipt ? { engineReceipt: raw.receipt } : {}), provenance: { revision, computedAt: new Date().toISOString() } };
   }
   const inputs = raw.inputs || {};
   const margins = (raw.margins || []).map((m) => ({

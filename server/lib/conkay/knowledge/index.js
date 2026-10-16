@@ -20,6 +20,7 @@ export { validateEntity } from "./validate.js";
 export { registerExtension, listExtensions, validateExtensions } from "./extensions/index.js";
 export { parseFormulationText, sourceFormulation, checkComposition, proposeVersion, processVersion, uniformRangePosition } from "./formulation.js";
 export { ruleOfMixturesDensity, mixtureDensity } from "./rule-of-mixtures.js";
+export { materialIrFromText, validateMaterialIr, massToVolumeFractions, strictDensity, conditionalDensity, compositionCheck, MATERIAL_IR_SCHEMA } from "./material-ir.js";
 export { buildTestPlan } from "./test-plan.js";
 export { renderLabPlan, LAB_PLAN_VERSION, SPECIMEN_MINIMUM } from "./lab-plan.js";
 export { buildFormulationReport, renderFormulationMarkdown } from "./formulation-report.js";
