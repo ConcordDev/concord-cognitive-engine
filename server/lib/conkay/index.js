@@ -55,6 +55,7 @@ import "./physics/solvers/crystal-aggregate.js";
 import "./physics/solvers/material-multiphase.js";
 import "./physics/solvers/material-conduction.js";
 import "./physics/solvers/material-cte-multiphase.js";
+import "./physics/solvers/material-viscoelastic-composite.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
