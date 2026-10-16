@@ -19,6 +19,8 @@ import { lensRun } from '@/lib/api/client';
 import {
   Plus, Trash2, Play, Loader2, Gauge, GitPullRequestArrow, ShieldAlert,
 } from 'lucide-react';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { legacyKeptRecord } from '@/components/legacy/legacyKeep';
 
 type Tab = 'debt' | 'migration' | 'risk';
 
@@ -65,6 +67,7 @@ export function PortfolioAssessment() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<Tab, any>>({} as Record<Tab, any>);
   const [err, setErr] = useState<string | null>(null);
+  const kept = legacyKeptRecord({ kind: tab, summary: result[tab]?.summary, error: result[tab]?.error, message: result[tab]?.message });
 
   const runDebt = async () => {
     const modules = debtModules.filter((m) => m.name.trim()).map((m) => {
@@ -213,6 +216,10 @@ export function PortfolioAssessment() {
           {result.risk && <RiskResult r={result.risk} />}
         </div>
       )}
+
+      <div className="pt-1">
+        <KeepRecordActions key={kept?.body} record={kept} />
+      </div>
 
       <style jsx>{`
         .in { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgb(39 39 42); border-radius: 0.375rem; padding: 0.3rem 0.5rem; font-size: 0.75rem; color: white; }

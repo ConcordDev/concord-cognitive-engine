@@ -65,9 +65,9 @@ export const DESTINATIONS: DestinationDef[] = [
   { id: 'crypto', name: 'Crypto', icon: Coins, group: 'create' },
   // Knowledge
   { id: 'research', name: 'Research', icon: BookOpen, group: 'knowledge',
-    absorbs: ['paper', 'science', 'philosophy', 'linguistics', 'history', 'mentorship', 'debate', 'answers', 'reasoning', 'grounding'] },
+    absorbs: ['paper', 'science', 'philosophy', 'linguistics', 'history', 'mentorship', 'debate', 'answers', 'reasoning', 'grounding', 'translation'] },
   { id: 'lab', name: 'Lab', icon: FlaskConical, group: 'knowledge',
-    absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping'] },
+    absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping', 'desert'] },
   // Frontier's ten engines (lib/frontier-engines.ts) are workspace TABS
   // switched in-place inside the destination page (FrontierEngineTabs),
   // not separate lens routes — so, unlike every other destination here,

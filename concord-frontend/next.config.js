@@ -250,6 +250,7 @@ const nextConfig = {
       { source: '/lenses/ecosystem', destination: '/lenses/eco', permanent: true },
       { source: '/lenses/entities', destination: '/lenses/entity', permanent: true },
       { source: '/lenses/governance', destination: '/lenses/council', permanent: true },
+      { source: '/lenses/next-bets', destination: '/lenses/strategic-adds', permanent: true },
       { source: '/lenses/simulation', destination: '/lenses/sim', permanent: true },
       { source: '/lenses/study', destination: '/lenses/srs', permanent: true },
       { source: '/lenses/threads', destination: '/lenses/thread', permanent: true },
