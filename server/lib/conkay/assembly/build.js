@@ -10,6 +10,7 @@ import { packageScene } from "../packaging/checks.js";
 import { obb, aabb, separation } from "../packaging/geometry.js";
 import { j941Envelope, J941_SOURCE } from "./j941.js";
 import { cadStations, boxInSolid, cadSkinMesh } from "./cad-skin.js";
+import { surfaceOverlays } from "./surface-overlays.js";
 import { tubPartBox } from "../structural/car-tub.js";
 import { loftBody, wheelMesh, crownAt, skinApertureTop, boxInsideEnvelope, partInsideEnvelope, sectionHalfWidth, resolveSpec } from "./surface.js";
 import { chooseLayout, styleControls, pushControls, powertrainForLayout, designQualityCheck } from "./style.js";
@@ -29,7 +30,7 @@ function envelope(label) {
   return { kind: "envelope", label };
 }
 
-function part({ id, name, group, role, placement, half, geometry, parameters, relationships, explode, instanceOf, mesh, spine, section }) {
+function part({ id, name, group, role, placement, half, geometry, parameters, relationships, explode, instanceOf, mesh, spine, section, placedOn }) {
   return {
     id, name, group, role,
     placement: { x: r4(placement.x), y: r4(placement.y), z: r4(placement.z), pitchDeg: placement.pitchDeg || 0, yawDeg: placement.yawDeg || 0 },
@@ -37,6 +38,7 @@ function part({ id, name, group, role, placement, half, geometry, parameters, re
     geometry, parameters: parameters || [], relationships: relationships || [],
     explode: explode || { axis: "z", sign: 1, rank: 1 },
     ...(instanceOf ? { instanceOf } : {}),
+    ...(placedOn ? { placedOn } : {}),
     ...(mesh ? { mesh } : {}),
     ...(spine ? { spine, section } : {}),
   };
@@ -53,7 +55,7 @@ function boxOf(c) {
  * bodyBBox: optional { min:[x,y,z], max } from cad.body
  * powerW: optional solved required power
  */
-export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null, verifiedInside = null, cadSkin = null } = {}) {
+export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null, verifiedInside = null, cadSkin = null, designSurface = null } = {}) {
   const nodes = new Map(ir.nodes.map((n) => [n.id, n]));
   const veh = nodes.get("VEH");
   const pkg = veh?.props?.vehicle?.packaging;
@@ -564,9 +566,12 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
       id: d.id, name: d.name, group: "exterior", role: d.role,
       placement: d.placement, half: d.half,
       geometry: envelope(d.note),
+      // with the analysed solid drawn, these stay on the styled loft's spline, which is not that solid: Studio does
+      // not draw them on it (the design-surface overlays are drawn on the solid instead)
+      ...(cadSkin ? { placedOn: "styling-loft" } : {}),
       parameters: [
-        param("x", "Station", d.placement.x, "m", prov("calculated", "on the skin spline")),
-        param("z", "Height", d.placement.z, "m", prov("calculated", "on the skin spline")),
+        param("x", "Station", d.placement.x, "m", prov("calculated", cadSkin ? "on the styled loft's skin spline, not on the analysed solid" : "on the skin spline")),
+        param("z", "Height", d.placement.z, "m", prov("calculated", cadSkin ? "on the styled loft's skin spline, not on the analysed solid" : "on the skin spline")),
         ...(d.id === "GRILLE" ? [param("width", "Opening width", d.half[1] * 2, "m", prov("estimated", "lower intake on the tapered nose, not the full cooling-core face"))] : []),
       ],
       relationships: d.id === "GRILLE" && cool
@@ -625,7 +630,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
         ? "Geometric assembly. A shape that looks finished has not been manufactured or tested. Kernel solids are marked solid; every other part is a dimensioned envelope. The loft is fitted to the kernel bounding box and is not that solid. Each check is pass, warn, fail, or info."
         : "Geometric assembly. A shape that looks finished has not been manufactured or tested. The loft's length, width and height come from the styling skeleton pinned to the package hard points, not a kernel solid. Each check is pass, warn, fail, or info.",
       verified: ["library component boxes", "J1100 dimensions from the H-points", "J941 eyellipse centroid", "fit checks listed here"],
-      geometricOnly: [...(cadSkin ? [] : ["viewer body loft"]), "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
+      geometricOnly: [...(cadSkin ? [] : ["viewer body loft"]), ...(cadSkin && designSurface ? ["design-surface overlays (panel lines, glass, lamps drawn on the solid, not cut into it)"] : []), "spoke count", "headlamp lenses", "pedal pad size", "caliper envelope", "trunk and frunk boxes"],
     },
     surface: (() => {
       const loftMesh = (({ details: _d, spec: _s, ...mesh }) => mesh)(loft);
@@ -638,6 +643,8 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
         cad: { sha256: cadSkin.sha256 || null, triangles: cadSkin.mesh.triangles },
         mesh: { ...cadSkin.mesh, stations: cadStations(cadSkin.solid, (loftMesh.stations || []).map(({ role, x }) => ({ role, x }))) },
         styling: { note: "the styled loft (Studio's skeleton) is a styling reference: not drawn, not analysed", bounds: loftMesh.bounds, stations: loftMesh.stations, arches: loftMesh.arches, windshield: loftMesh.windshield },
+        // cad.design-surface's panel cuts, glass and lamp slots projected onto this solid (assembly/surface-overlays.js)
+        overlays: designSurface?.layers ? surfaceOverlays(designSurface.layers, cadSkin.solid, { conflicts: designSurface.conflicts || [] }) : null,
       };
     })(),
     wheel,
@@ -1079,7 +1086,7 @@ export function compactAssembly(doc) {
     // the drawn body is the kernel's solid: keep its reference, never let hydrate swap in the styled loft
     return {
       ...doc,
-      surface: { spec: doc.surface.spec, source: "cad.body", cad: doc.surface.cad, styling: doc.surface.styling, mesh: { bounds: mesh.bounds, stations: mesh.stations, generated: "cad.body stl" } },
+      surface: { spec: doc.surface.spec, source: "cad.body", cad: doc.surface.cad, styling: doc.surface.styling, overlays: doc.surface.overlays || null, mesh: { bounds: mesh.bounds, stations: mesh.stations, generated: "cad.body stl" } },
       wheel: doc.wheel?.spec ? { spec: doc.wheel.spec } : doc.wheel,
       components,
     };

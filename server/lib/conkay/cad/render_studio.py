@@ -14,6 +14,11 @@
 #   blender -b -P render_studio.py -- BODY.stl OUT_DIR [PREFIX]
 #       [--hdri PATH.hdr|exr] [--hdri-rot DEG] [--hdri-strength S]
 #       [--samples N] [--paint R,G,B] [--res WxH] [--views a,b]
+#       [--overlays OVERLAYS.json]
+# --overlays draws assembly surface overlays (assembly/surface-overlays.js) on
+# the solid: glass patches as dark glossy glass (opaque: the solid has no
+# interior to see), panel lines as 1.5 mm dark tubes, lamp patches emissive.
+# They sit a few mm off the paint; the solid itself is not cut.
 # Without --hdri, Blender's bundled studio-light HDRI (city.exr) is used when
 # present, else a flat grey world with three area lights.
 import bpy, sys, os, math, mathutils
@@ -66,6 +71,53 @@ fm = bpy.data.materials.new("floor"); fm.use_nodes = True
 fb = fm.node_tree.nodes["Principled BSDF"]
 fb.inputs["Base Color"].default_value = (0.72, 0.72, 0.74, 1); fb.inputs["Roughness"].default_value = 0.55
 f.data.materials.append(fm)
+
+# design-surface overlays on the solid (presentation only)
+if opts.get("overlays"):
+    import json
+    ov = json.load(open(opts["overlays"]))
+
+    def mat(name, color, rough, emit=0.0, metal=0.0):
+        mm = bpy.data.materials.new(name); mm.use_nodes = True
+        p = mm.node_tree.nodes["Principled BSDF"]
+        p.inputs["Base Color"].default_value = color
+        p.inputs["Roughness"].default_value = rough
+        p.inputs["Metallic"].default_value = metal
+        if emit:
+            p.inputs["Emission Color"].default_value = color
+            p.inputs["Emission Strength"].default_value = emit
+        return mm
+
+    glass_m = mat("glass", (0.012, 0.016, 0.02, 1), 0.02)
+    glass_m.node_tree.nodes["Principled BSDF"].inputs["Coat Weight"].default_value = 1.0
+    line_m = mat("panel-line", (0.01, 0.01, 0.012, 1), 0.6)
+    lamp_m = mat("lamp", (0.95, 0.97, 1.0, 1), 0.05, emit=6.0)
+
+    def patch(name, o, m):
+        P = o["positions"]; I = o["indices"]
+        if not I:
+            return
+        me = bpy.data.meshes.new(name)
+        me.from_pydata([tuple(P[i:i + 3]) for i in range(0, len(P), 3)], [], [tuple(I[i:i + 3]) for i in range(0, len(I), 3)])
+        me.update()
+        for poly in me.polygons:
+            poly.use_smooth = True
+        ob = bpy.data.objects.new(name, me); ob.data.materials.append(m)
+        bpy.context.collection.objects.link(ob)
+
+    for o in ov.get("glass", []):
+        patch(o["id"], o, glass_m)
+    for o in ov.get("lamps", []):
+        patch(o["id"], o, lamp_m)
+    for o in ov.get("panelLines", []):
+        for k, run in enumerate(o.get("polylines", [])):
+            cu = bpy.data.curves.new(f'{o["id"]}-{k}', "CURVE"); cu.dimensions = "3D"
+            cu.bevel_depth = 0.0015; cu.bevel_resolution = 2
+            sp = cu.splines.new("POLY"); sp.points.add(len(run) // 3 - 1)
+            for i in range(0, len(run), 3):
+                sp.points[i // 3].co = (run[i], run[i + 1], run[i + 2], 1)
+            ob = bpy.data.objects.new(cu.name, cu); ob.data.materials.append(line_m)
+            bpy.context.collection.objects.link(ob)
 
 # world
 w = bpy.data.worlds.new("w"); bpy.context.scene.world = w; w.use_nodes = True
