@@ -244,6 +244,9 @@ function parseSentinel(text) {
   }
   const mat = readMaterial(text);
   if (mat) claims.material = mat;
+  const sf = readSafetyFactor(text, null);
+  if (sf) claims.safetyFactor = sf;
+  if (/\barmou?r\b/.test(lower)) claims.armor = claim("armor", "armor", true, { source: `"${lower.match(/\barmou?r\b/)[0]}"`, note: "armor stays off Sentinel M1 (owner rule)" });
   return { claims, loads: [] };
 }
 
@@ -299,7 +302,7 @@ export function parseChatBrief(text, { llm = false, mapPhrases = null } = {}) {
   else if (domain === "bracket") ir = { kind: "bracket", support: "cantilever", lengthM: v("length"), loadN: v("load"), loadAt: parsed.loads[0]?.at ?? (v("load") != null ? "tip" : null), otherLoads: parsed.loads.slice(1), material: v("material"), safetyFactor: v("safetyFactor"), thicknessM: v("thickness"), widthM: v("width"), section: null };
   else if (domain === "beam") ir = { kind: "beam", spanM: v("span"), support: v("support"), loads: v("loads") || [], material: v("material"), safetyFactor: v("safetyFactor"), widthM: v("width"), depthM: v("depth"), section: null };
   else if (domain === "truss") ir = { kind: "truss", type: v("type"), panels: v("panels"), spanM: v("span"), heightM: v("height"), loads: v("loads") || [], supports: v("support"), material: v("material") };
-  else ir = { kind: "sentinel-part", robot: v("robot"), joint: v("joint"), part: v("part"), loadCase: v("loadCase"), material: v("material"), armor: "off" };
+  else ir = { kind: "sentinel-part", robot: v("robot"), joint: v("joint"), part: v("part"), loadCase: v("loadCase"), material: v("material"), safetyFactor: v("safetyFactor"), armor: v("armor") === true ? "requested (refused: armor stays off M1)" : "off" };
 
   return {
     ok: true, version: BRIEF_PARSER_VERSION, domain, text: norm, ir,
