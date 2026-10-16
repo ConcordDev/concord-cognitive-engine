@@ -1,0 +1,204 @@
+{
+ "liveVersion": "1.0.0",
+ "id": "ev-180",
+ "prompt": "Design a four-seat electric car that holds 180 mph",
+ "events": [
+  {
+   "id": 1,
+   "type": "start",
+   "initialState": {
+    "brief": "Design a car that can go 180 mph, seats 4 people.",
+    "fuelType": "electric",
+    "tailExtensionM": 0.22
+   }
+  },
+  {
+   "id": 2,
+   "type": "evaluated",
+   "label": "initial design",
+   "failingChecks": [
+    "requirement.check@REQ_topSpeed",
+    "vehicle.acceptance@VEH",
+    "vehicle.required-power@VEH",
+    "vehicle.traction-battery@VEH"
+   ],
+   "envelopes": {
+    "PASS": 139,
+    "NOT_COMPUTED": 32,
+    "FAIL": 4,
+    "WARN": 10
+   },
+   "designHash": "ca8e8dda97fd722b976de85cbf29e2c6fbda05b9501eee86344d0129be0a15ea",
+   "snapshot": {
+    "kind": "stl",
+    "file": "9887766c0116.stl",
+    "sha256": "9887766c0116f602dacbe3624952c5bf3bce0ea21b08e0b6e84cedc4b147c4a8",
+    "triangles": 15546
+   }
+  },
+  {
+   "id": 3,
+   "type": "iteration",
+   "iteration": 1,
+   "failingChecks": [
+    "requirement.check@REQ_topSpeed",
+    "vehicle.acceptance@VEH",
+    "vehicle.required-power@VEH",
+    "vehicle.traction-battery@VEH"
+   ],
+   "candidates": [
+    {
+     "rule": "top-speed.next-drive-unit",
+     "variable": "motorId",
+     "value": "motor.cascadia.im-375-dz",
+     "label": "drive unit motor.cascadia.im-225-dz -> motor.cascadia.im-375-dz",
+     "gain": 0.169251,
+     "dMassKg": 9.4,
+     "perKg": 0.018005,
+     "fixes": [
+      "requirement.check@REQ_topSpeed"
+     ],
+     "regressions": []
+    },
+    {
+     "rule": "aero.rear-slant.tail-length",
+     "variable": "tailExtensionM",
+     "value": 0.32,
+     "label": "tail 0.22 m -> 0.32 m",
+     "gain": 0.123591,
+     "dMassKg": 1.9,
+     "perKg": 0.065048,
+     "fixes": [],
+     "regressions": []
+    }
+   ],
+   "change": {
+    "rule": "top-speed.next-drive-unit",
+    "variable": "motorId",
+    "value": "motor.cascadia.im-375-dz",
+    "label": "drive unit motor.cascadia.im-225-dz -> motor.cascadia.im-375-dz",
+    "reason": "clears requirement.check@REQ_topSpeed with no new failure (9.4 kg)"
+   },
+   "rerunNodes": [
+    "aero.drag-buildup@VEH",
+    "assembly.vehicle@VEH",
+    "cad.body@BODY_SHELL",
+    "cost.assembly@CHASSIS",
+    "cost.part@TUB_B_POST_L",
+    "cost.part@TUB_B_POST_R",
+    "cost.part@TUB_HEEL_CROSS",
+    "cost.part@TUB_KICK_L",
+    "cost.part@TUB_KICK_R",
+    "cost.part@TUB_REAR_BULKHEAD",
+    "cost.part@TUB_REAR_FLOOR_L",
+    "cost.part@TUB_REAR_FLOOR_R",
+    "cost.part@TUB_ROOF_RAIL_R_L",
+    "cost.part@TUB_ROOF_RAIL_R_R",
+    "drawing.ga@VEH",
+    "fluid.cooling-opening@RADIATOR",
+    "mass.assembly@BODY",
+    "mass.assembly@CHASSIS",
+    "mass.assembly@POWERTRAIN",
+    "mass.assembly@VEH",
+    "mass.breakdown@VEH",
+    "mass.cg@BODY",
+    "mass.cg@BRAKES",
+    "mass.cg@CHASSIS",
+    "mass.cg@DRIVELINE",
+    "mass.cg@INTERIOR",
+    "mass.cg@POWERTRAIN",
+    "mass.cg@SUSPENSION",
+    "mass.cg@VEH",
+    "mass.cg@WHEELS",
+    "mass.part@ENGINE",
+    "mass.part@TUB_B_POST_L",
+    "mass.part@TUB_B_POST_R",
+    "mass.part@TUB_HEEL_CROSS",
+    "mass.part@TUB_KICK_L",
+    "mass.part@TUB_KICK_R",
+    "mass.part@TUB_REAR_BULKHEAD",
+    "mass.part@TUB_REAR_FLOOR_L",
+    "mass.part@TUB_REAR_FLOOR_R",
+    "mass.part@TUB_ROOF_RAIL_R_L",
+    "mass.part@TUB_ROOF_RAIL_R_R",
+    "package.interference@VEH",
+    "package.occupant-fit@VEH",
+    "package.tub-fit@VEH",
+    "requirement.check@REQ_topSpeed",
+    "structure.frame@CHASSIS",
+    "structure.hardpoints@CHASSIS",
+    "tire.load-index@VEH",
+    "tire.speed-rating@VEH",
+    "vehicle.axle-loads@VEH",
+    "vehicle.gearing@VEH",
+    "vehicle.required-power@VEH",
+    "vehicle.top-speed@VEH",
+    "vehicle.traction-battery@VEH"
+   ],
+   "envelopes": {
+    "PASS": 141,
+    "NOT_COMPUTED": 32,
+    "WARN": 12
+   },
+   "designHash": "03fb2e52667a08f70fa7f75f458e9268f2a95ddcee0b94220257a7dea19e9bf1",
+   "binding": [],
+   "snapshot": {
+    "kind": "stl",
+    "file": "b90b1f523394.stl",
+    "sha256": "b90b1f523394da896386c17f9571c4f766123a3e3cbd7c65efdbac3efacda172",
+    "triangles": 15396
+   }
+  },
+  {
+   "id": 4,
+   "type": "done",
+   "outcome": {
+    "kind": "all-pass",
+    "warnings": [
+     "aero.drag-buildup@VEH",
+     "aero.shape@VEH",
+     "assembly.vehicle@VEH",
+     "cad.design-surface@VEH",
+     "fluid.cooling-opening@RADIATOR",
+     "package.interference@VEH",
+     "package.tub-fit@VEH",
+     "structure.crush-paths@CHASSIS",
+     "structure.frame@CHASSIS",
+     "structure.hardpoints@CHASSIS",
+     "vehicle.acceptance@VEH",
+     "vehicle.traction-battery@VEH"
+    ]
+   },
+   "finalState": {
+    "brief": "Design a car that can go 180 mph, seats 4 people.",
+    "fuelType": "electric",
+    "tailExtensionM": 0.22,
+    "motorId": "motor.cascadia.im-375-dz"
+   },
+   "receiptSha256": "5f5ce815011faf5c21071741e3bbd0f63fe1ea4120548e6e43b94f47ab12ba71",
+   "snapshot": {
+    "kind": "stl",
+    "file": "b90b1f523394.stl",
+    "sha256": "b90b1f523394da896386c17f9571c4f766123a3e3cbd7c65efdbac3efacda172",
+    "triangles": 15396
+   },
+   "envelopes": {
+    "PASS": 141,
+    "NOT_COMPUTED": 32,
+    "WARN": 12
+   }
+  }
+ ],
+ "files": [
+  {
+   "name": "9887766c0116.stl",
+   "sha256": "9887766c0116f602dacbe3624952c5bf3bce0ea21b08e0b6e84cedc4b147c4a8",
+   "bytes": 777384
+  },
+  {
+   "name": "b90b1f523394.stl",
+   "sha256": "b90b1f523394da896386c17f9571c4f766123a3e3cbd7c65efdbac3efacda172",
+   "bytes": 769884
+  }
+ ]
+}

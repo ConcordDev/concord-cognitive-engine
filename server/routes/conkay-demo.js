@@ -13,6 +13,7 @@ import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/en
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
 import { attestReceipt, ensureSigningKey } from "../lib/receipts/attest.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
+import { subscribeLive, eventsAfter, loadLiveRunFile } from "../lib/conkay/chat/live.js";
 
 /** Hydrated showcase designs, keyed by the cached snapshot object. */
 const hydratedDesigns = new WeakMap();
@@ -117,6 +118,53 @@ export default function createConkayDemoRouter({ rateLimit }) {
       // SVGs are drawn by ConKay, but never let one run script in this origin.
       if (f.contentType === "image/svg+xml") res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
       res.send(f.data);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  // Live build stream (conversational-loop item 3): the orchestrator's events as Server-Sent Events. A recorded run
+  // is replayed in order (event ids 1..n) and the stream ends after its last event; a run in this process streams
+  // as it happens. Resumes from Last-Event-ID (or ?from=). Read-only, no user data.
+  router.get("/designs/:id/live", limit, (req, res) => {
+    const id = String(req.params.id);
+    const after = Math.max(0, Number.parseInt(req.get("Last-Event-ID") ?? req.query.from ?? "0", 10) || 0);
+    const write = (e) => res.write(`id: ${e.id}\nevent: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`);
+    const head = () => {
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders?.();
+      res.write("retry: 3000\n\n");
+    };
+    const unsubscribe = subscribeLive(id, after, (e) => {
+      if (!res.headersSent) head();
+      if (e) write(e); else res.end();
+    });
+    if (unsubscribe) {
+      if (!res.headersSent) head();
+      const beat = setInterval(() => res.write(": keep-alive\n\n"), 15000);
+      beat.unref?.();
+      req.on("close", () => { clearInterval(beat); unsubscribe(); });
+      return;
+    }
+    const events = eventsAfter(id, after);
+    if (!events) return res.status(404).json({ ok: false, error: "no such live run" });
+    head();
+    for (const e of events) write(e);
+    res.end();
+  });
+
+  router.get("/designs/:id/live/files/:name", limit, (req, res) => {
+    try {
+      const buf = loadLiveRunFile(String(req.params.id), String(req.params.name));
+      if (!buf) return res.status(404).json({ ok: false, error: "no such file" });
+      res.setHeader("Content-Type", "model/stl");
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.send(buf);
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }

@@ -15,7 +15,7 @@ import { REPAIR_RULES } from "./repair-rules.js";
 import { CAD_BODY_DEFAULTS } from "../cad/body-params.js";
 import { carAcceptanceAsync } from "../compiler/car-from-library.js";
 
-export async function designFromChat(text, { budget, pick, evaluate = null } = {}) {
+export async function designFromChat(text, { budget, pick, evaluate = null, onEvent = null } = {}) {
   const parsed = parseChatBrief(text);
   if (!parsed.ok) return { ok: false, stage: "parse", errors: parsed.errors };
   if (parsed.questions.length) return { ok: true, stage: "questions", domain: parsed.domain, questions: parsed.questions, claims: parsed.claims };
@@ -25,7 +25,7 @@ export async function designFromChat(text, { budget, pick, evaluate = null } = {
     fuelType: parsed.ir.config.fuelType,
     tailExtensionM: CAD_BODY_DEFAULTS.tailExtensionM, // the body default: the orchestrator decides any change
   };
-  const run = await orchestrate({ evaluate: evaluate || carEvaluator({ carAcceptanceAsync }), rules: REPAIR_RULES, initialState, budget, pick });
+  const run = await orchestrate({ evaluate: evaluate || carEvaluator({ carAcceptanceAsync }), rules: REPAIR_RULES, initialState, budget, pick, onEvent });
   if (!run.final) return { ok: true, stage: "infeasible", domain: "car", claims: parsed.claims, outcome: run.outcome, state: run.state, log: run.log, receiptSha256: run.receiptSha256 };
   const r = run.final.report;
   return {
