@@ -42,6 +42,15 @@ export const STANDARDS = {
   "ASTM D7896": { title: "Standard Test Method for Thermal Conductivity, Thermal Diffusivity, and Volumetric Heat Capacity of Engine Coolants and Related Fluids by Transient Hot Wire Liquid Thermal Conductivity Method", url: "https://store.astm.org/d7896-19.html", verified: V, note: "scope is engine coolants and related fluids: its fit for another liquid is for the laboratory to confirm" },
   "ASTM D1078": { title: "Standard Test Method for Distillation Range of Volatile Organic Liquids", url: "https://store.astm.org/d1078-11r19.html", verified: V, note: "a distillation range, not an equilibrium bubble point" },
   "ASTM E324": { title: "Standard Test Method for Relative Initial and Final Melting Points and the Melting Range of Organic Chemicals", url: "https://store.astm.org/e0324-23.html", verified: V },
+  // Blend D brief item 10, titles checked on the ASTM store pages 2026-10-16 (undated URLs resolve to the current edition)
+  "ASTM D790": { title: "Standard Test Methods for Flexural Properties of Unreinforced and Reinforced Plastics and Electrical Insulating Materials", url: "https://store.astm.org/d790.html", verified: "2026-10-16" },
+  "ASTM D4065": { title: "Standard Practice for Plastics: Dynamic Mechanical Properties: Determination and Report of Procedures", url: "https://store.astm.org/d4065.html", verified: "2026-10-16" },
+  "ASTM D5026": { title: "Standard Test Method for Plastics: Dynamic Mechanical Properties: In Tension", url: "https://store.astm.org/d5026.html", verified: "2026-10-16" },
+  "ASTM E1530": { title: "Standard Test Method for Evaluating the Resistance to Thermal Transmission by the Guarded Heat Flow Meter Technique", url: "https://store.astm.org/e1530.html", verified: "2026-10-16" },
+  "ASTM D5470": { title: "Standard Test Method for Thermal Transmission Properties of Thermally Conductive Electrical Insulation Materials", url: "https://store.astm.org/d5470.html", verified: "2026-10-16", note: "scope is thermally conductive electrical insulation materials (through-thickness); its fit for a filled HDPE is for the laboratory to confirm" },
+  "ASTM E831": { title: "Standard Test Method for Linear Thermal Expansion of Solid Materials by Thermomechanical Analysis", url: "https://store.astm.org/e831.html", verified: "2026-10-16" },
+  "ASTM G155": { title: "Standard Practice for Operating Xenon Arc Lamp Apparatus for Exposure of Materials", url: "https://store.astm.org/g155.html", verified: "2026-10-16" },
+  "ASTM D7791": { title: "Standard Test Method for Uniaxial Fatigue Properties of Plastics", url: "https://store.astm.org/d7791.html", verified: "2026-10-16", note: "scope §1.1: 'dynamic fatigue properties of plastics in uniaxial loading', rigid and semi-rigid plastics, stresses below the proportional limit; it names no gas environment, so it is a coupon fatigue test, not hydrogen pressure cycling (that is ISO 19881 / SAE J2579 on a vessel)" },
 };
 
 export function standard(designation) {

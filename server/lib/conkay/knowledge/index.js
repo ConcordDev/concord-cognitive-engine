@@ -23,6 +23,7 @@ export { ruleOfMixturesDensity, mixtureDensity } from "./rule-of-mixtures.js";
 export { materialIrFromText, validateMaterialIr, massToVolumeFractions, strictDensity, conditionalDensity, compositionCheck, MATERIAL_IR_SCHEMA } from "./material-ir.js";
 export { buildTestPlan } from "./test-plan.js";
 export { renderLabPlan, LAB_PLAN_VERSION, SPECIMEN_MINIMUM } from "./lab-plan.js";
+export { PREDICTION_TESTS, MEASUREMENT_ONLY, CRITERION_NOT_SET, predictionTestMatrix } from "./prediction-tests.js";
 export { buildFormulationReport, renderFormulationMarkdown } from "./formulation-report.js";
 export { SOURCES, DOCUMENTS, CONNECTOR_DUTIES } from "./sources.js";
 export { STANDARDS } from "./standards.js";
