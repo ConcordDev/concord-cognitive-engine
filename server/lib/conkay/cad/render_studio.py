@@ -14,7 +14,9 @@
 #   blender -b -P render_studio.py -- BODY.stl OUT_DIR [PREFIX]
 #       [--hdri PATH.hdr|exr] [--hdri-rot DEG] [--hdri-strength S]
 #       [--samples N] [--paint R,G,B] [--res WxH] [--views a,b]
-#       [--overlays OVERLAYS.json]
+#       [--overlays OVERLAYS.json] [--glass-stl PANES.stl]
+# --glass-stl imports a second STL (cad.show-solid's panes) and gives it the
+# glass material: with the show solid as BODY.stl the apertures are real cuts.
 # --overlays draws assembly surface overlays (assembly/surface-overlays.js) on
 # the solid: glass patches as dark glossy glass (opaque: the solid has no
 # interior to see), panel lines as 1.5 mm dark tubes, lamp patches emissive.
@@ -118,6 +120,18 @@ if opts.get("overlays"):
                 sp.points[i // 3].co = (run[i], run[i + 1], run[i + 2], 1)
             ob = bpy.data.objects.new(cu.name, cu); ob.data.materials.append(line_m)
             bpy.context.collection.objects.link(ob)
+
+if opts.get("glass-stl"):
+    bpy.ops.wm.stl_import(filepath=opts["glass-stl"])
+    panes = bpy.context.selected_objects[0]
+    gm = bpy.data.materials.new("pane-glass"); gm.use_nodes = True
+    gp = gm.node_tree.nodes["Principled BSDF"]
+    gp.inputs["Base Color"].default_value = (0.012, 0.016, 0.02, 1)
+    gp.inputs["Roughness"].default_value = 0.02
+    gp.inputs["Coat Weight"].default_value = 1.0
+    panes.data.materials.append(gm)
+    for poly in panes.data.polygons:
+        poly.use_smooth = True
 
 # world
 w = bpy.data.worlds.new("w"); bpy.context.scene.world = w; w.use_nodes = True

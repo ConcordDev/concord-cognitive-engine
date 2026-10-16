@@ -165,7 +165,7 @@ function projectLine(samples, project, offset) {
 }
 
 /** The z-interval(s) of a closed polygon in (x, z) on the vertical line at x; the widest one. */
-function columnSpan(poly, x) {
+export function columnSpan(poly, x) {
   const zs = [];
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length];

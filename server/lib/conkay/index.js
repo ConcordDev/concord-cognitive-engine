@@ -35,6 +35,7 @@ import "./physics/solvers/traction-battery.js";
 import "./physics/solvers/package.js";
 import "./physics/solvers/cad-body.js";
 import "./physics/solvers/design-surface.js";
+import "./physics/solvers/show-solid.js";
 import "./physics/solvers/tub-fit.js";
 import "./physics/solvers/aero-drag.js";
 import "./physics/solvers/aero-shape.js";
