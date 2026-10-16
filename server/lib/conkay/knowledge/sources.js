@@ -139,7 +139,7 @@ export const DOCUMENTS = {
     kind: "document", sourceId: "paper", title: "Gao Z., Wang Y., Zhang B., et al. Enhanced Thermal Conductivity of High-Density Polyethylene Composites with Hybrid Fillers of Flaky and Spherical Boron Nitride Particles. Polymers 2024, 16(2), 268 (doi:10.3390/polym16020268)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10819010/", retrieved: "2026-10-16", date: "2024",
     locator: "§2.1 Materials (HDPE 2911, 0.960 g/cm3, Fushun Petrochemical); §3 Results and Discussion (thermal conductivity); Table 2 (T_M of HDPE by DSC)",
-    excerpt: "282.27% higher than that of pure HDPE (0.431 Wm−1 K−1); Table 2: HDPE T_M 134.73 °C", license: "CC BY 4.0",
+    excerpt: "282.27% higher than that of pure HDPE (0.431 Wm−1 K−1); Table 2: HDPE T_M 134.73 °C, T_C 117.79 °C", license: "CC BY 4.0",
   },
   "travas-2023-polymers-eg-bn-hdpe": {
     kind: "document", sourceId: "paper", title: "Travaš L., Rujnić Havstad M., Pilipović A., et al. Optimization of Thermal Conductivity and Tensile Properties of High-Density Polyethylene by Addition of Expanded Graphite and Boron Nitride. Polymers 2023, 15(17), 3645 (doi:10.3390/polym15173645)",
@@ -165,6 +165,13 @@ export const DOCUMENTS = {
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC13276080/", retrieved: "2026-10-16", date: "2026",
     locator: "§ Thermal properties using Differential Scanning Calorimetry (DSC)",
     excerpt: "the glass transition temperature of HDPE is between − 130 °C and − 100 °C … according to Greene et al; … thermal studies frequently fail to identify it", license: "CC BY 4.0",
+  },
+  "evgin-2020-bjnano-hdpe-gnp": {
+    kind: "document", sourceId: "paper", title: "Evgin T., Turgut A., Hamaoui G., et al. Size effects of graphene nanoplatelets on the properties of high-density polyethylene nanocomposites: morphological, thermal, electrical, and mechanical characterization. Beilstein J. Nanotechnol. 2020, 11, 167 (doi:10.3762/bjnano.11.14)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7006480/", retrieved: "2026-10-16", date: "2020",
+    locator: "Materials (HDPE LITEN FB 75, 948 kg/m3; GnP G1 5 µm/50–100 nm, G2 44 µm/50–100 nm, G3 5 µm/5–8 nm); Table 2 (DSC); Thermal conductivity section (Figure 5 text); Electrical conductivity section",
+    excerpt: "Table 2: HDPE (0 vol %) T_m 130.09 °C, T_c 116.30 °C; with GnP T_c 117.31–121.57 °C. 'the thermal conductivity of pure HDPE is 0.386 W/mK' … 'increased linearly with the addition of GnPs' … 'No thermal percolation threshold was observed for all types of nanocomposites' … 'with a GnP content of 13.92 vol %, the thermal conductivity of the HDPE/G2 nanocomposite was 0.729 W/mK, while for the HDPE/G1 and HDPE/G3 nanocomposites, it was enhanced up to 0.521 W/mK and 0.625 W/mK' … 'The percolation thresholds of G2 and G3 were 5.52 vol % and 7.38 vol %' … 'mainly ascribed to the high interfacial thermal boundary resistance'",
+    license: "CC BY 4.0",
   },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
