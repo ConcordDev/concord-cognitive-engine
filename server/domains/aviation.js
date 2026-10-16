@@ -804,11 +804,13 @@ export default function registerAviationActions(registerLensAction) {
     if (from.length > 4 || to.length > 4) return { ok: false, error: "ICAO codes max 4 chars" };
     const waypoints = Array.isArray(params.waypoints) ? params.waypoints.slice(0, 50).map(String) : [];
     const altitude = Number(params.altitude) || 7500;
-    const tas = Number(params.tas) || 110; // kt true airspeed
+    const tas = Number(params.tas) || null; // kt true airspeed — no assumed 110 kt
     if (altitude < 0 || altitude > 50_000) return { ok: false, error: "altitude 0-50000 ft" };
-    if (tas < 50 || tas > 600) return { ok: false, error: "tas 50-600 kt" };
+    if (tas !== null && (tas < 50 || tas > 600)) return { ok: false, error: "tas 50-600 kt" };
     const alternates = Array.isArray(params.alternates) ? params.alternates.slice(0, 5).map((x) => String(x).toUpperCase()) : [];
-    const fuelGallons = Number(params.fuelGallons) || 53; // C172 default
+    const fuelGallons = Number(params.fuelGallons) || null; // no assumed C172 53 gal
+    const burnGph = Number(params.fuelBurnGph) > 0 ? Number(params.fuelBurnGph) : null;
+    const reserveMin = Number(params.reserveMinutes) > 0 ? Number(params.reserveMinutes) : null;
     // Great-circle distance via aviationapi.com lookups (real FAA NASR data).
     // If either endpoint isn't in the FAA DB, distance is left null and the
     // client can prompt for manual entry.
@@ -837,16 +839,19 @@ export default function registerAviationActions(registerLensAction) {
       const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       distance_nm = Math.round(R * c);
-      ete_minutes = Math.round((distance_nm / tas) * 60);
+      ete_minutes = tas ? Math.round((distance_nm / tas) * 60) : null;
     }
     const plan = {
       id: nextAvId("plan"),
       from, to, waypoints, alternates,
       altitude, tas, fuelGallons,
       distance_nm, ete_minutes,
-      reserveFuel_gal: 5, // 30min reserve at typical burn
-      estBurn_gph: 8.5,
-      estFuelBurn_gal: ete_minutes ? Math.round((ete_minutes / 60) * 8.5 * 10) / 10 : null,
+      // No assumed 8.5 gph burn / 5 gal reserve: computed only from the caller's
+      // fuelBurnGph and reserveMinutes (14 CFR 91.151: 30 min day VFR, 45 min night).
+      reserveFuel_gal: burnGph && reserveMin ? Math.round(burnGph * reserveMin / 60 * 10) / 10 : null,
+      estBurn_gph: burnGph,
+      estFuelBurn_gal: ete_minutes && burnGph ? Math.round((ete_minutes / 60) * burnGph * 10) / 10 : null,
+      missingInputs: [...(tas ? [] : ["tas"]), ...(burnGph ? [] : ["fuelBurnGph"]), ...(reserveMin ? [] : ["reserveMinutes"]), ...(fuelGallons ? [] : ["fuelGallons"])],
       createdAt: nowIsoAv(),
       updatedAt: nowIsoAv(),
     };
@@ -899,11 +904,12 @@ export default function registerAviationActions(registerLensAction) {
       year: Number(params.year) || null,
       kind: ["single_engine_piston", "multi_engine_piston", "turboprop", "jet", "helicopter", "light_sport", "experimental"].includes(params.kind) ? params.kind : "single_engine_piston",
       icaoType: String(params.icaoType || ""),
-      cruiseKts: Math.max(0, Number(params.cruiseKts) || 110),
-      fuelBurnGph: Math.max(0, Number(params.fuelBurnGph) || 8),
-      fuelCapacityGal: Math.max(0, Number(params.fuelCapacityGal) || 50),
-      maxTakeoffWeightLbs: Math.max(0, Number(params.maxTakeoffWeightLbs) || 2400),
-      emptyWeightLbs: Math.max(0, Number(params.emptyWeightLbs) || 1500),
+      // Aircraft performance is stored as given; unknown stays null (was C172-ish 110/8/50/2400/1500).
+      cruiseKts: Number(params.cruiseKts) > 0 ? Number(params.cruiseKts) : null,
+      fuelBurnGph: Number(params.fuelBurnGph) > 0 ? Number(params.fuelBurnGph) : null,
+      fuelCapacityGal: Number(params.fuelCapacityGal) > 0 ? Number(params.fuelCapacityGal) : null,
+      maxTakeoffWeightLbs: Number(params.maxTakeoffWeightLbs) > 0 ? Number(params.maxTakeoffWeightLbs) : null,
+      emptyWeightLbs: Number(params.emptyWeightLbs) > 0 ? Number(params.emptyWeightLbs) : null,
       hobbsHours: Math.max(0, Number(params.hobbsHours) || 0),
       tachHours: Math.max(0, Number(params.tachHours) || 0),
       addedAt: new Date().toISOString(),
@@ -1312,12 +1318,15 @@ export default function registerAviationActions(registerLensAction) {
     const userId = avActor(ctx);
     const aircraftId = String(params.aircraftId || "");
     const totalDistanceNm = Math.max(0, Number(params.totalDistanceNm) || 0);
-    const reserveGal = Math.max(0, Number(params.reserveGal) || 5);
+    const _rg = Number(params.reserveGal), _rm = Number(params.reserveMinutes);
     if (!aircraftId || totalDistanceNm <= 0) return { ok: false, error: "aircraftId and totalDistanceNm > 0 required" };
     const ac = ensureAvBucket(s, "aircraft", userId).find(a => a.id === aircraftId);
     if (!ac) return { ok: false, error: "aircraft not found" };
-    const cruiseKts = ac.cruiseKts || 110;
-    const burnGph = ac.fuelBurnGph || 8;
+    const cruiseKts = ac.cruiseKts || null;
+    const burnGph = ac.fuelBurnGph || null;
+    const reserveGal = _rg >= 0 && params.reserveGal != null && params.reserveGal !== "" ? _rg : (_rm > 0 && burnGph ? Math.round(burnGph * _rm / 60 * 10) / 10 : null);
+    const _miss = [...(cruiseKts ? [] : ["aircraft.cruiseKts"]), ...(burnGph ? [] : ["aircraft.fuelBurnGph"]), ...(ac.fuelCapacityGal ? [] : ["aircraft.fuelCapacityGal"]), ...(reserveGal === null ? ["reserveGal or reserveMinutes"] : [])];
+    if (_miss.length) return notComputed(_miss, "Fuel planning needs the aircraft's cruise speed, fuel burn and capacity, plus a reserve (gal, or minutes — 14 CFR 91.151: 30 min day VFR / 45 min night). Nothing is assumed (previously 110 kt / 8 gph / 5 gal).");
     const usableGal = Math.max(0, ac.fuelCapacityGal - reserveGal);
     const enduranceHr = burnGph > 0 ? usableGal / burnGph : 0;
     const maxLegNm = enduranceHr * cruiseKts;
