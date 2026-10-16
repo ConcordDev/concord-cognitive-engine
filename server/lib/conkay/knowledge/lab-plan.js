@@ -8,7 +8,10 @@
 // A pass/fail line here is a criterion for a future test. Nothing in this
 // document is a measured result.
 
-export const LAB_PLAN_VERSION = "1.0.0";
+import { PREDICTION_TESTS, MEASUREMENT_ONLY, CRITERION_NOT_SET } from "./prediction-tests.js";
+import { standard } from "./standards.js";
+
+export const LAB_PLAN_VERSION = "1.1.0";
 
 // The source states no specimen count. Five is this plan's minimum, not a
 // number read out of a standard. If the cited standard requires more, that
@@ -220,6 +223,23 @@ export function renderLabPlan(report) {
     }
     p();
   }
+  p("## Predictions and the tests that replace them");
+  p();
+  p("Every number a ConKay material, process or vessel solver predicts is a screen. The row names the test that replaces it and where its pass criterion comes from. 'criterion not set' means no source sets one: report the measurement, do not pass or fail it.");
+  p();
+  p("| Solver | Predicts | Tests | Criterion | Criterion source |");
+  p("|---|---|---|---|---|");
+  for (const [id, m] of Object.entries(PREDICTION_TESTS)) {
+    const tests = m.tests.map((t) => `${t.designations.map((d) => standard(d).designation).join(" / ")} (${t.what})`).join("; ");
+    const crit = m.criterion.state === CRITERION_NOT_SET ? CRITERION_NOT_SET : `${m.criterion.state}: ${m.criterion.text}`;
+    const src = m.criterion.state === CRITERION_NOT_SET ? m.criterion.reason : m.criterion.source;
+    p(`| \`${id}\` | ${m.predicts} | ${tests} | ${crit} | ${src} |`);
+  }
+  p();
+  p("Measurement-only rows (no solver predicts these):");
+  p();
+  for (const r of MEASUREMENT_ONLY) p(`- ${r.property}: ${r.designations.map((d) => standard(d).designation).join(" / ")}, ${r.what}. ${r.criterion.state} (${r.criterion.reason}).`);
+  p();
   const excluded = report.testPlan.excluded || [];
   p("## Claims with no laboratory test in this plan");
   p();
