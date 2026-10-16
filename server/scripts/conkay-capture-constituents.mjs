@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { liveGetter, EvidenceStore } from "../lib/conkay/knowledge/connectors/fetcher.js";
-import { experimental } from "../lib/conkay/knowledge/connectors/pubchem.js";
+import { experimental, pubchemUrls } from "../lib/conkay/knowledge/connectors/pubchem.js";
 import { excerptPubchemView, recording } from "../lib/conkay/knowledge/connectors/recordings.js";
 
 export const FILLERS = Object.freeze([
@@ -26,10 +26,15 @@ const store = EvidenceStore.default();
 const live = liveGetter({ store, retryDelayMs: 8000, maxAttempts: 8, minIntervalMs: 400 });
 const seen = [];
 const get = async (url) => { const d = await live(url); seen.push(d); return d; };
-for (const f of FILLERS) {for (const h of HEADINGS) {
-  const r = await experimental(f.cid, h, f.subject, get);
-  console.log(`${f.classId} ${h}: ${r.notFound ? "not found" : `${r.claims?.length ?? 0} claims, ${r.reviews?.length ?? 0} reviews`}`);
-}}
+for (const f of FILLERS) {
+  for (const h of HEADINGS) {
+    const r = await experimental(f.cid, h, f.subject, get);
+    console.log(`${f.classId} ${h}: ${r.notFound ? "not found" : `${r.claims?.length ?? 0} claims, ${r.reviews?.length ?? 0} reviews`}`);
+  }
+}
+// item 7: calcium carbonate's reactivity profile (acids), recorded as a document for the compatibility table
+const react = await get(pubchemUrls.heading(10112, "Reactivity Profile"));
+console.log(`caco3 Reactivity Profile: ${react.ok ? "recorded" : react.error}`);
 const file = JSON.parse(fs.readFileSync(out, "utf8"));
 for (const d of seen) {
   if (!d.ok) { console.error("not recorded (failed):", d.url, d.error); continue; }
