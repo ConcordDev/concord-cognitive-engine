@@ -151,10 +151,10 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
  * carAcceptanceAsync with the compiler's own motor repair OFF (the orchestrator owns the repair) and returns the
  * envelopes, the report, the kerb mass, a hash of the requirements and of the design (IR nodes).
  */
-export function carEvaluator({ carAcceptanceAsync }) {
+export function carEvaluator({ carAcceptanceAsync, cadBody = true }) {
   return async (state) => {
     const config = { fuelType: state.fuelType, ...(state.motorId ? { motorId: state.motorId } : {}) };
-    const r = await carAcceptanceAsync(state.brief, { config, bodyParams: { tailExtensionM: state.tailExtensionM }, motorRepair: false });
+    const r = await carAcceptanceAsync(state.brief, { config, bodyParams: { tailExtensionM: state.tailExtensionM }, motorRepair: false, ...(cadBody ? {} : { cadBody: false }) });
     if (!r.ok) {
       const e = new Error(r.error || "the car did not build");
       // the compiler refuses a requirement no library component meets (tyres, drive units): build-infeasible
@@ -172,7 +172,7 @@ export function carEvaluator({ carAcceptanceAsync }) {
     const stl = envelopes.get("cad.body@BODY_SHELL")?.outputs?.files?.value?.stl;
     return {
       snapshot: stl?.path ? { kind: "stl", path: stl.path, sha256: stl.sha256 || null, triangles: stl.triangles ?? null } : null,
-      envelopes, report: r.report, massKg: r.report.massBreakdown?.totalKg ?? null,
+      session: s, envelopes, report: r.report, massKg: r.report.massBreakdown?.totalKg ?? null,
       requirementsHash: sha256(graph.requirements),
       designHash: sha256([...graph.nodes.values()].map((n) => ({ id: n.id, geometry: n.geometry, position: n.position, material: n.material })).sort((a, b) => a.id.localeCompare(b.id))),
     };

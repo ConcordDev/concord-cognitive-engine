@@ -5,7 +5,7 @@
 // node property by path ("material", "geometry.diameter") and return the
 // dependency key the engine uses to find what to rerun.
 
-import { compileDesignIR, SHAPES, TYPED_PROPS, paramDim } from "../compiler/design-ir.js";
+import { compileDesignIR, SHAPES, SHAPE_OPTIONAL, TYPED_PROPS, paramDim } from "../compiler/design-ir.js";
 import { getMaterial } from "../materials/index.js";
 
 export function nodeKey(id, path) {
@@ -78,12 +78,19 @@ export class DesignGraph {
       n.material = value;
     } else if (path.startsWith("geometry.")) {
       const param = path.slice("geometry.".length);
-      if (!n.geometry || !SHAPES[n.geometry.shape].includes(param)) {
+      // a shape's required parameters (positive), or its declared optional ones (a CAD body's styling lengths,
+      // which may be zero, and its numbers): anything else is not a parameter of this shape
+      const opt = n.geometry ? SHAPE_OPTIONAL[n.geometry.shape] : null;
+      const required = n.geometry && SHAPES[n.geometry.shape].includes(param);
+      const optLength = !!opt?.lengths?.includes(param), optNumber = !!opt?.numbers?.includes(param);
+      if (!n.geometry || !(required || optLength || optNumber)) {
         return { ok: false, error: `${id} has no geometry parameter "${param}"` };
       }
-      if (!(typeof value === "number" && Number.isFinite(value) && value > 0)) {
+      if (required && !(typeof value === "number" && Number.isFinite(value) && value > 0)) {
         return { ok: false, error: `${param} must be a positive ${paramDim(param)}` };
       }
+      if (optLength && !(typeof value === "number" && Number.isFinite(value) && value >= 0)) return { ok: false, error: `${param} must be a length of 0 or more` };
+      if (optNumber && !(typeof value === "number" && Number.isFinite(value))) return { ok: false, error: `${param} must be a number` };
       n.geometry[param] = value;
     } else if (/^position\.[xyz]$/.test(path)) {
       if (!n.position) return { ok: false, error: `${id} has no position` };
