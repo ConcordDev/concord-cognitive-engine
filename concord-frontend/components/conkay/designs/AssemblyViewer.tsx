@@ -26,6 +26,17 @@ export interface AssemblyMesh {
   indices: number[];
 }
 export type GlassField = number[] | AssemblyMesh;
+/** cad.design-surface layers drawn on the analysed solid (server/lib/conkay/assembly/surface-overlays.js). */
+export interface SurfaceOverlays {
+  source: 'cad.design-surface';
+  onSolid: 'cad.body';
+  skinTrimmed: false;
+  panelLines: { id: string; kind: string; side?: string; polylines: number[][]; samples: number; missed: number }[];
+  glass: { id: string; kind: string; positions: number[]; indices: number[]; samples: number; missed: number }[];
+  lamps: { id: string; kind: string; positions: number[]; indices: number[]; samples: number; missed: number }[];
+  coverage?: { samples: number; missed: number; note?: string };
+  conflicts?: { id: string; reference: string; package: string; copied: boolean }[];
+}
 export interface VehicleAssembly {
   schema?: string;
   verification?: { statement: string; geometricOnly?: string[] };
@@ -39,9 +50,11 @@ export interface VehicleAssembly {
     mesh?: { outline?: number[][]; side?: string; positions?: number[]; normals?: number[]; indices?: number[] };
     parameters?: { id: string; name: string; value: number | string; unit: string; provenance: { state: string; source?: string; note?: string } }[];
     relationships?: { kind: string; target: string; note?: string }[];
+    /** 'styling-loft': placed on the styled loft, which is not the analysed solid drawn here. */
+    placedOn?: string;
   })[];
   checks: { id: string; status: 'pass' | 'warn' | 'fail'; detail: string; outside?: string[] }[];
-  surface: { source?: 'cad.body' | 'styling'; mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
+  surface: { source?: 'cad.body' | 'styling'; overlays?: SurfaceOverlays | null; mesh: { positions: number[]; normals: number[]; paint: number[]; glass: GlassField; arch?: AssemblyMesh; bounds: { min: number[]; max: number[] } } };
   wheel: { tire: AssemblyMesh; rim: AssemblyMesh; disc: AssemblyMesh; caliper: AssemblyMesh; spec?: { spokes?: number } };
   detail?: { lamp?: AssemblyMesh; grille?: AssemblyMesh };
 }
@@ -123,6 +136,44 @@ function StudioEnv({ hdriUrl }: { hdriUrl: string | null }) {
   return <primitive object={sky || room} attach="environment" />;
 }
 
+function patchGeo(p: { positions: number[]; indices: number[] }) {
+  const g = geo({ positions: p.positions, indices: p.indices });
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Panel lines, glass and lamp slots on the analysed solid. Drawing only: the solid is not cut. */
+function OverlayLayer({ overlays, mode, clip }: { overlays: SurfaceOverlays; mode: 'studio' | 'engineering'; clip: THREE.Plane[] }) {
+  const glass = useMemo(() => overlays.glass.filter((g) => g.indices.length).map((g) => ({ id: g.id, geometry: patchGeo(g) })), [overlays]);
+  const lamps = useMemo(() => overlays.lamps.filter((l) => l.indices.length).map((l) => ({ id: l.id, geometry: patchGeo(l) })), [overlays]);
+  const lineMat = useMemo(() => new THREE.LineBasicMaterial({ color: mode === 'studio' ? '#0a0b0d' : '#1f4d6e', clippingPlanes: clip }), [mode, clip]);
+  const lines = useMemo(() => overlays.panelLines.flatMap((l) => l.polylines.map((run, k) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(vehicleMesh({ positions: run, indices: [] }).positions, 3));
+    return { id: `${l.id}-${k}`, geometry: g };
+  })), [overlays]);
+  const lineObjects = useMemo(() => lines.map((l) => ({ id: l.id, object: new THREE.Line(l.geometry, lineMat) })), [lines, lineMat]);
+  useEffect(() => () => { for (const x of [...glass, ...lamps, ...lines]) x.geometry.dispose(); }, [glass, lamps, lines]);
+  useEffect(() => () => { lineMat.dispose(); }, [lineMat]);
+  return (
+    <group>
+      {glass.map((g) => (
+        <mesh key={g.id} geometry={g.geometry}>
+          {mode === 'studio'
+            ? <meshPhysicalMaterial color="#05080b" metalness={0} roughness={0.03} clearcoat={1} clearcoatRoughness={0.02} clippingPlanes={clip} />
+            : <meshBasicMaterial color="#5aa0d8" transparent opacity={0.35} side={THREE.DoubleSide} clippingPlanes={clip} />}
+        </mesh>
+      ))}
+      {lamps.map((l) => (
+        <mesh key={l.id} geometry={l.geometry}>
+          <meshStandardMaterial color="#eef4ff" emissive="#f7fbff" emissiveIntensity={mode === 'studio' ? 1.8 : 0.5} roughness={0.1} clippingPlanes={clip} />
+        </mesh>
+      ))}
+      {lineObjects.map((l) => <primitive key={l.id} object={l.object} />)}
+    </group>
+  );
+}
+
 function WheelInstances({ assembly, explode, clip, opacity, visible }: {
   assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visible: boolean;
 }) {
@@ -168,8 +219,9 @@ function WheelInstances({ assembly, explode, clip, opacity, visible }: {
   );
 }
 
-function CarScene({ assembly, mode, paintId, hdriUrl, explode, section, opacity, hidden, isolated, onSelect }: {
+function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, section, opacity, hidden, isolated, onSelect }: {
   assembly: VehicleAssembly;
+  showOverlays: boolean;
   mode: 'studio' | 'engineering';
   paintId: StudioPaintId;
   hdriUrl: string | null;
@@ -239,6 +291,9 @@ function CarScene({ assembly, mode, paintId, hdriUrl, explode, section, opacity,
             <meshStandardMaterial color="#141618" roughness={0.92} metalness={0.05} side={THREE.DoubleSide} clippingPlanes={clip} />
           </mesh>
         )}
+        {showOverlays && assembly.surface.source === 'cad.body' && assembly.surface.overlays && show('BODY_SHELL') && (
+          <OverlayLayer overlays={assembly.surface.overlays} mode={mode} clip={clip} />
+        )}
         <WheelInstances assembly={assembly} explode={explode} clip={clip} opacity={opacity} visible={assembly.components.some((c) => c.role === 'wheel' && show(c.id))} />
         {mode === 'engineering' && doors.filter((d) => show(d.id)).map((d) => {
           const part = assembly.components.find((c) => c.id === d.id);
@@ -253,6 +308,8 @@ function CarScene({ assembly, mode, paintId, hdriUrl, explode, section, opacity,
           if (c.role === 'wheel' || c.role === 'body' || c.role === 'glass' || c.role === 'opening' || c.role === 'axle') return false;
           if (c.id === 'SPARE') return false;
           if (mode === 'studio' && outsideIds.has(c.id)) return false;
+          // placed on the styled loft, not on the analysed solid drawn here: not drawn floating off it in Studio
+          if (mode === 'studio' && c.placedOn === 'styling-loft' && assembly.surface.source === 'cad.body') return false;
           const detail = c.role === 'lamp' || c.role === 'intake' || c.role === 'mirror' || c.role === 'handle';
           if (detail) return true;
           return showInterior && !!c.half;
@@ -300,6 +357,8 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
   const locked = viewOnly || narrow;
   const [mode, setMode] = useState<'studio' | 'engineering'>('studio');
   const [paintId, setPaintId] = useState<StudioPaintId>('graphite');
+  const [showOverlays, setShowOverlays] = useState(true);
+  const overlays = assembly.surface.source === 'cad.body' ? assembly.surface.overlays || null : null;
   const [selected, setSelected] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [sectionAxis, setSectionAxis] = useState<'x' | 'y' | 'z' | null>(null);
@@ -359,6 +418,12 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 <input data-testid="section-pos" type="range" min={span[0]} max={span[1]} step={0.01} value={sectionPos} onChange={(e) => setSectionPos(Number(e.target.value))} className="w-full" />
               </label>
             )}
+            {overlays && (
+              <label className="flex items-center gap-1.5 text-[11px] text-slate-400" title="cad.design-surface panel lines, glass and lamps drawn on the analysed solid; the solid is not cut">
+                <input data-testid="overlays-toggle" type="checkbox" checked={showOverlays} onChange={(e) => setShowOverlays(e.target.checked)} />
+                Design surface (drawn, not cut)
+              </label>
+            )}
             <label className="text-[11px] text-slate-400">Transparency
               <input data-testid="opacity" type="range" min={0.15} max={1} step={0.01} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-full" />
             </label>
@@ -390,7 +455,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
             dpr={narrow ? [1, 1] : [1, 1.5]}
           >
             <color attach="background" args={[mode === 'studio' ? '#d8d9db' : '#ececec']} />
-            <CarScene assembly={assembly} mode={mode} paintId={paintId} hdriUrl={hdriUrl} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} />
+            <CarScene assembly={assembly} mode={mode} paintId={paintId} hdriUrl={hdriUrl} showOverlays={showOverlays} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} />
           </Canvas>
         </div>
         {!locked && (
@@ -418,6 +483,19 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                   </ul>
                 )}
               </>
+            )}
+            {overlays?.conflicts && overlays.conflicts.length > 0 && (
+              <div data-testid="style-conflicts">
+                <h3 className="mt-3 text-slate-200">Style reference: not copied</h3>
+                <ul className="space-y-1">
+                  {overlays.conflicts.map((c) => (
+                    <li key={c.id} className="text-slate-400"><span className="text-amber-200">{c.id}</span> {c.reference} <span className="text-slate-300">{c.package}</span></li>
+                  ))}
+                </ul>
+                {overlays.coverage && overlays.coverage.missed > 0 && (
+                  <p className="mt-1 text-slate-500">{overlays.coverage.missed} of {overlays.coverage.samples} overlay points miss the solid and are left out.</p>
+                )}
+              </div>
             )}
             <h3 className="mt-3 text-slate-200">Fit</h3>
             <ul className="space-y-1">

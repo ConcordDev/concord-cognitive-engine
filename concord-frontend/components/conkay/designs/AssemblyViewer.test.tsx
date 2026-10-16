@@ -108,6 +108,31 @@ describe('AssemblyViewer', () => {
     expect(screen.queryByTestId('present-glb')).toBeNull();
   });
 
+  it('offers the design-surface overlays and lists the style-reference conflicts for the analysed solid only', () => {
+    const overlays = {
+      source: 'cad.design-surface' as const, onSolid: 'cad.body' as const, skinTrimmed: false as const,
+      panelLines: [{ id: 'door-front-L', kind: 'door-cut', side: 'L', polylines: [[0, 0, 0, 1, 0, 0]], samples: 2, missed: 0 }],
+      glass: [], lamps: [],
+      coverage: { samples: 100, missed: 2 },
+      conflicts: [{ id: 'rear-doors-b-pillar', reference: 'The image is a two-door coupe.', package: 'The package seats four.', copied: false }],
+    };
+    const cad = { ...assembly, surface: { ...assembly.surface, source: 'cad.body' as const, overlays } };
+    const { unmount } = render(<AssemblyViewer assembly={cad} />);
+    const toggle = screen.getByTestId('overlays-toggle') as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(false);
+    const conflicts = screen.getByTestId('style-conflicts').textContent || '';
+    expect(conflicts).toMatch(/not copied/);
+    expect(conflicts).toMatch(/rear-doors-b-pillar/);
+    expect(conflicts).toMatch(/2 of 100 overlay points miss the solid/);
+    unmount();
+    // a styling-preview surface never shows overlays made for a solid
+    render(<AssemblyViewer assembly={{ ...assembly, surface: { ...assembly.surface, overlays } }} />);
+    expect(screen.queryByTestId('overlays-toggle')).toBeNull();
+    expect(screen.queryByTestId('style-conflicts')).toBeNull();
+  });
+
   it('stays view-only when asked, and still mounts the canvas', () => {
     render(<AssemblyViewer assembly={assembly} viewOnly />);
     expect(screen.queryByTestId('explode')).toBeNull();

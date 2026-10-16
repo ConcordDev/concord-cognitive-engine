@@ -55,7 +55,10 @@ export const vehicleAssembly = registerSolver({
         cadSkin = null; // unreadable STL: the styled loft is drawn and labelled as such (surface.source "styling")
       }
     }
-    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW, verifiedInside, cadSkin });
+    // cad.design-surface's layers, drawn on the solid as overlays (presentation; the solid is not cut)
+    const ds = cadSkin ? ctx.result("cad.design-surface", veh) : null;
+    const designSurface = ds?.outputs?.layers?.value ? { layers: ds.outputs.layers.value, conflicts: ds.outputs.conflicts?.value || [] } : null;
+    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW, verifiedInside, cadSkin, designSurface });
     if (doc.error) return { notComputed: doc.error };
     const sheet = buildPackagingSheet(doc, {
       scale: 25,
@@ -86,7 +89,7 @@ export const vehicleAssembly = registerSolver({
       covers: [veh],
       assumptions: [
         doc.verification.statement,
-        doc.surface.source === "cad.body" ? "The drawn body is the OpenCascade solid (cad.body). Spoke count, lamp lenses, pedal pads and the caliper are geometric." : "The viewing loft is not the OpenCascade solid. Spoke count, lamp lenses, pedal pads and the caliper are geometric.",
+        doc.surface.source === "cad.body" ? `The drawn body is the OpenCascade solid (cad.body). Spoke count, lamp lenses, pedal pads and the caliper are geometric.${doc.surface.overlays ? " Panel lines, glass and lamps are cad.design-surface layers drawn on that solid (assembly/surface-overlays.js); the solid is not cut." : ""}` : "The viewing loft is not the OpenCascade solid. Spoke count, lamp lenses, pedal pads and the caliper are geometric.",
         "SAE J287 hand-reach envelopes are not licensed and are not claimed.",
       ],
     };
