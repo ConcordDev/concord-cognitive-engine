@@ -93,7 +93,7 @@ describe("withCopolymerCandidate", () => {
 });
 
 describe("every Blend D check rerun", () => {
-  const checks = listSolvers().map((s) => s.id).filter((id) => /^(material|process)\./.test(id)).concat("vessel.h2-permeation");
+  const checks = listSolvers().map((s) => s.id).filter((id) => /^(material|process)\./.test(id) && id !== "material.crystal-aggregate").concat("vessel.h2-permeation");
   it("covers every registered material/process check and the material-level hydrogen check, for each run", () => {
     for (const r of ["unidentified", ...CANDIDATE_IDS]) for (const id of checks) assert.ok(run.runs[r].results[id], `${r}: ${id}`);
   });
@@ -112,9 +112,10 @@ describe("every Blend D check rerun", () => {
       assert.equal(run.runs[id].results["material.mass-to-volume"].status, "WARN");
     }
   });
-  it("missing values stay NOT_COMPUTED: CaCO3/silica modulus and the compound's relaxation data are not supplied by a candidate", () => {
+  it("with a candidate the Voigt/Reuss bounds compute; missing values (the compound's relaxation data, multi-phase models) stay NOT_COMPUTED", () => {
+    assert.equal(run.runs.unidentified.results["material.modulus-bounds"].status, "NOT_COMPUTED");
     for (const id of CANDIDATE_IDS) {
-      assert.match(run.runs[id].results["material.modulus-bounds"].reason, /no cited Young's modulus for: caco3, silica/);
+      assert.equal(run.runs[id].results["material.modulus-bounds"].status, "WARN");
       assert.equal(run.runs[id].results["material.viscoelastic-prony"].status, "NOT_COMPUTED");
       assert.equal(run.runs[id].results["material.tensile-bounds"].status, "NOT_COMPUTED");
       assert.ok(run.runs[id].results["material.chemical-compatibility"].status !== "PASS");

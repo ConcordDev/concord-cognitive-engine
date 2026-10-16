@@ -15,9 +15,10 @@ import { validateEntity } from "../lib/conkay/knowledge/validate.js";
 import { loadFixture, loadConnectorRecordings, replayGetter } from "../lib/conkay/knowledge/index.js";
 import { experimental } from "../lib/conkay/knowledge/connectors/pubchem.js";
 import { materialIrFromText, PROPERTY_KEYS, strictDensity } from "../lib/conkay/knowledge/material-ir.js";
+import { voigtReussHill, trigonalStiffness, uniaxialConductivityBounds, uniaxialCteAverage, CALCITE_KORTH, CALCITE_THERMAL, QUARTZ_CRYSTRAN, QUARTZ_THERMAL } from "../lib/conkay/knowledge/crystal-elasticity.js";
 
 const all = Object.entries(CONSTITUENT_PROPERTIES).flatMap(([cls, t]) => Object.entries(t).map(([k, c]) => ({ cls, k, c })));
-const excerpts = (c) => c.evidence.map((e) => DOCUMENTS[e.document].excerpt).join(" ‖ ");
+const excerpts = (c) => c.evidence.filter((e) => e.document).map((e) => DOCUMENTS[e.document].excerpt).join(" ‖ ");
 
 describe("constituent property claims", () => {
   it("are valid claims, each citing registered documents with a locator and an excerpt", () => {
@@ -26,6 +27,7 @@ describe("constituent property claims", () => {
       assert.deepEqual(validateEntity.claim(c), [], `${cls}.${k}`);
       assert.ok(c.evidence.length >= 1, `${cls}.${k}`);
       for (const e of c.evidence) {
+        if (e.kind === "calculation") { assert.match(e.receiptRef, /^receipt:crystal-aggregate:/, `${cls}.${k}`); continue; }
         const d = DOCUMENTS[e.document];
         assert.ok(d, `${cls}.${k}: unknown document ${e.document}`);
         assert.ok(d.locator && d.excerpt && d.retrieved, `${e.document} needs a locator, an excerpt and a retrieved date`);
@@ -60,6 +62,19 @@ describe("constituent property claims", () => {
       "graphene.lateralSize": ["5 µm", "15 μm", "25 μm"],
       "caco3.decompositionTemperature": ["1517 to 2442 °F (Decomposes)"],
       "silica.meltTemperature": ["1710 °C", "1716 - 1736 °C"],
+      "basalt_fiber.poisson": ["Poisson's ratio 0.20"],
+      "basalt_fiber.cte": ["5.0–8.0", "7.0–12.0", "8 × 10−6"],
+      "graphene.cteInPlane": ["Graphene | −73–127 | ~−12–(−2.5)"],
+      "graphene.cteThroughPlane": ["Graphite (out-of-plane) | 0–300 | 20–30"],
+      // derived claims: the inputs as printed (the outputs are computed: see the next test)
+      "caco3.youngsModulus": ["C11 = 144 GPa", "C12 = 53.9 GPa", "C14 = 20.5 GPa", "C13 = 51.1 GPa", "C33 = 84 GPa", "C44 = 33.5 GPa"],
+      "caco3.poisson": ["C11 = 144 GPa", "C44 = 33.5 GPa"],
+      "caco3.conductivity": ["5.526 W/m·K for 273 K", "4.646 W/m·K for 273 K"],
+      "caco3.cte": ["25 (para) -5.8 (perp) x 10-6 K-1"],
+      "silica.youngsModulus": ["Youngs Modulus (E) 73.1 GPa", "C11=87 C12=7 C44=58 C13=13 C14=(-)18 C33=106"],
+      "silica.poisson": ["Poisson Ratio 0.17", "C11=87 C12=7 C44=58 C13=13 C14=(-)18 C33=106"],
+      "silica.conductivity": ["1.38 W m-1 K-1", "10.7 (para) 6.2 (perp)"],
+      "silica.cte": ["0.55 x 10-6", "7.1 (para) 13.2 (perp)"],
     };
     for (const { cls, k, c } of all) {
       const want = printed[`${cls}.${k}`];
@@ -69,7 +84,10 @@ describe("constituent property claims", () => {
     }
   });
 
-  it("the intervals are the span of the printed values, converted to SI", () => {
+  it("the intervals are the span of the printed values, converted to SI (derived ones via the benchmarked crystal-aggregate routine)", () => {
+    const cal = voigtReussHill(trigonalStiffness(CALCITE_KORTH)), qtz = voigtReussHill(trigonalStiffness(QUARTZ_CRYSTRAN));
+    const calK = uniaxialConductivityBounds(CALCITE_THERMAL), qtzK = uniaxialConductivityBounds(QUARTZ_THERMAL);
+    const calA = uniaxialCteAverage(CALCITE_THERMAL), qtzA = uniaxialCteAverage(QUARTZ_THERMAL);
     const span = (c) => [c.range ? c.range.min : c.value, c.range ? c.range.max : c.value];
     const near = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b));
     const expect = {
@@ -81,6 +99,12 @@ describe("constituent property claims", () => {
       "graphene.thickness": [6e-9, 8e-9], "graphene.lateralSize": [5e-6, 25e-6],
       "caco3.decompositionTemperature": [(1517 - 32) * 5 / 9 + 273.15, (2442 - 32) * 5 / 9 + 273.15],
       "silica.meltTemperature": [1710 + 273.15, 1736 + 273.15],
+      "basalt_fiber.poisson": [0.2, 0.2], "basalt_fiber.cte": [5e-6, 12e-6],
+      "graphene.cteInPlane": [-12e-6, -2.5e-6], "graphene.cteThroughPlane": [20e-6, 30e-6],
+      "caco3.youngsModulus": [cal.reuss.E * 1e9, cal.voigt.E * 1e9], "caco3.poisson": [cal.voigt.nu, cal.reuss.nu],
+      "caco3.conductivity": [calK.lower, calK.upper], "caco3.cte": [calA, calA],
+      "silica.youngsModulus": [73.1e9, qtz.voigt.E * 1e9], "silica.poisson": [qtz.voigt.nu, 0.17],
+      "silica.conductivity": [1.38, qtzK.upper], "silica.cte": [0.55e-6, qtzA],
     };
     for (const { cls, k, c } of all) {
       const [lo, hi] = span(c), [elo, ehi] = expect[`${cls}.${k}`];
@@ -141,7 +165,7 @@ describe("the material IR carries the tables", () => {
     const co = ir.constituents.find((c) => c.classId === "hdpe_hc_copolymer");
     assert.ok(Object.values(co.properties).every((v) => v === null));
     assert.match(co.unknown.other, /not identified/);
-    assert.equal(ir.constituents.find((c) => c.classId === "caco3").properties.youngsModulus, null);
+    assert.equal(ir.constituents.find((c) => c.classId === "caco3").properties.youngsModulus.claimRef, "substance:calcium-carbonate.youngs_modulus");
   });
   it("adding the tables does not move the density receipt", () => {
     assert.equal(strictDensity(ir).result.receipt.id, "receipt:rule-of-mixtures-density:b3c223e0a37e6126");

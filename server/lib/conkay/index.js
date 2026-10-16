@@ -53,6 +53,7 @@ import "./physics/solvers/material-compatibility.js";
 import "./physics/solvers/process-window.js";
 import "./physics/solvers/pressure-vessel.js";
 import "./physics/solvers/material-basis.js";
+import "./physics/solvers/crystal-aggregate.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
