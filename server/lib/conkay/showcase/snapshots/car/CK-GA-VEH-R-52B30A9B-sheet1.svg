@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="420mm" height="297mm" viewBox="0 0 420 297">
-<metadata id="conkay-drawing">{"drawing":"CK-GA-VEH","revision":"R-56D8A632","modelHash":"56d8a632fd987325b5afadf6929c7d0cf5c6191ef983a1e7a24db19df95f6c84","solver":"drawing.ga@1.0.0","body":{"requestHash":"f0bd2e00aa69bd7b993c17c3","stl":"2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795","glb":"477a0793166b7bc5380e636dd7e83f42b315bdf4ead973ed8589213098acd1a7"},"sheet":1}</metadata>
+<metadata id="conkay-drawing">{"drawing":"CK-GA-VEH","revision":"R-52B30A9B","modelHash":"52b30a9b24cedaf6e4652514250347048315dd0b2b2e5f74649b3a4f3a12e6dc","solver":"drawing.ga@1.0.0","body":{"requestHash":"5d3f8b3a1aa9b2da66891b54","stl":"2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795","glb":"477a0793166b7bc5380e636dd7e83f42b315bdf4ead973ed8589213098acd1a7"},"sheet":1}</metadata>
 <rect x="0" y="0" width="420" height="297" fill="#ffffff"/>
 <rect x="10" y="10" width="400" height="277" fill="none" stroke="#000" stroke-width="0.7"/>
 <text x="30" y="25.72" font-family="Helvetica, Arial, sans-serif" font-size="2.8" font-weight="bold" text-anchor="start">SIDE ELEVATION (left side)</text>
@@ -786,13 +786,13 @@
 <text x="230" y="218.4" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">current one is superseded.</text>
 <text x="230" y="222.6" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">SCREENING DRAWING: generated from a software model; not checked, not approved, not for manufacture.</text>
 <text x="230" y="226.8" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start">All masses are mass.part results (state: sourced / estimated / computed / placeholder); occupants (payload) are not parts and are not lis...</text>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,72.2 41.43,65.83 52.18,60.71 57.81,58.79 64.72,57.29 66,57.13 72.22,56.66 78.62,56.41 88.91,55.6 93.2,54.81 108,46.29 125.07,36.41 156,37 182.64,38.74 184.64,40.24 209.6,60.12 209.6,80.98 184.64,80.98 182.64,80.98 156,80.98 125.07,80.98 108,80.98 93.2,80.98 88.91,80.98 78.62,80.98 72.22,80.98 66,80.98 64.72,80.98 57.81,80.98 52.18,80.98 41.43,80.98 30,80.98 30,72.2"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,73 41.43,63.18 52.18,57.66 57.81,57.49 64.72,57.45 66,57.45 72.22,57.17 78.62,57.28 88.91,56 93.2,55.21 108,53.09 125.07,51.19 156,50.31 182.64,49.94 184.64,49.91 209.6,66.57"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="54.6,80.98 77.4,80.98 77.4,66.18 54.6,66.18 54.6,80.98"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="178.04,80.98 200.84,80.98 200.84,66.18 178.04,66.18 178.04,80.98"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="69.27,80.98 83.67,80.98 83.67,76.58 69.27,76.58 69.27,80.98"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="38.8,77.8 40.4,77.8 40.4,71.4 38.8,71.4 38.8,77.8"/>
-<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="79.4,80.98 176.04,80.98 176.04,78.8 79.4,78.8 79.4,80.98"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,72.2 41.43,60.74 52.18,52.9 57.81,50.25 64.72,50.25 66,50.25 72.22,50.25 78.62,50.25 88.91,51.79 93.2,52.62 108,46.21 125.07,36.41 156,37 182.64,38.75 184.64,40.3 209.6,60.12 209.6,80.98 184.64,80.98 182.64,80.98 156,80.98 125.07,80.98 108,80.98 93.2,80.98 88.91,80.98 78.62,80.98 72.22,80.98 66,80.98 64.72,80.98 57.81,80.98 52.18,80.98 41.43,80.98 30,80.98 30,72.2"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="30,73 41.43,60.86 52.18,53.3 57.81,51.19 64.72,51.19 66,51.19 72.22,51.19 78.62,51.19 88.91,52.73 93.2,53.73 108,52.78 125.07,51.19 156,50.31 182.64,49.94 184.64,49.91 209.6,66.57"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="46,77.01 52.86,77.01 52.86,56.99 46,56.99 46,77.01"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="56.06,78.8 82.48,78.8 82.48,51.37 56.06,51.37 56.06,78.8"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="89.8,69.91 114.2,69.91 114.2,60.26 89.8,60.26 89.8,69.91"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="178.04,78.78 191.24,78.78 191.24,61.51 178.04,61.51 178.04,78.78"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="181.2,60.51 199.2,60.51 199.2,50.51 181.2,50.51 181.2,60.51"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="120.81,89.4 140.81,89.4 140.81,53.4 120.81,53.4 120.81,89.4"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="120.81,89.4 140.81,89.4 140.81,53.4 120.81,53.4 120.81,89.4"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="155.24,90.2 175.24,90.2 175.24,54.2 155.24,54.2 155.24,90.2"/>
@@ -807,6 +807,8 @@
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="83.61,60.5 114.64,60.5 114.64,58.9 83.61,58.9 83.61,60.5"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="90.98,75.18 92.58,75.18 92.58,71.98 90.98,71.98 90.98,75.18"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="90.98,75.18 92.58,75.18 92.58,71.98 90.98,71.98 90.98,75.18"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="90.98,75.18 92.58,75.18 92.58,71.98 90.98,71.98 90.98,75.18"/>
+<polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="104.8,72.4 108,72.4 108,62.8 104.8,62.8 104.8,72.4"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="87.2,66.6 156,66.6 156,40.59 120,44 87.2,58.24"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="160,72.4 170.38,72.4 170.38,57.69 182.64,57.69 182.64,43.73 160,40.67"/>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="87.2,66.6 156,66.6 156,40.59 120,44 87.2,58.24"/>
@@ -824,9 +826,9 @@
 <text x="232" y="281" font-family="Helvetica, Arial, sans-serif" font-size="2.2" font-weight="bold" text-anchor="start">SCREENING - NOT FOR MANUFACTURE</text>
 <text x="232" y="285.4" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">Generated by ConKay drawing.ga 1.0.0 from cad.body (OCCT 7.7.2.0); revision = model hash</text>
 <text x="342" y="257" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start">Revision</text>
-<text x="342" y="266" font-family="Helvetica, Arial, sans-serif" font-size="5" font-weight="bold" text-anchor="start">R-56D8A632</text>
-<text x="342" y="273" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">model hash 56d8a632fd987325b5afadf6929c7d0c</text>
-<text x="342" y="279.5" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">f5c6191ef983a1e7a24db19df95f6c84</text>
+<text x="342" y="266" font-family="Helvetica, Arial, sans-serif" font-size="5" font-weight="bold" text-anchor="start">R-52B30A9B</text>
+<text x="342" y="273" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">model hash 52b30a9b24cedaf6e465251425034704</text>
+<text x="342" y="279.5" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start">8315dd0b2b2e5f74649b3a4f3a12e6dc</text>
 <polyline fill="none" stroke="#000" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" points="380,262.5 388,264 388,258 380,259.5 380,262.5"/>
 <polyline fill="none" stroke="#000" stroke-width="0.18" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,1,1,1" points="379,261 389,261"/>
 <circle cx="394" cy="261" r="3" fill="none" stroke="#000" stroke-width="0.25"/>

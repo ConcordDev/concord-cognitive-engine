@@ -39,7 +39,11 @@ export const vehicleAssembly = registerSolver({
       ctx.get(id, "position");
       ctx.get(id, "props");
     }
-    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW });
+    // tub parts package.tub-fit found inside the analysed CAD solid by at least the skin's thickness: Studio's styled
+    // surface is a preview, so missing it is a display gap for these, not a packaging failure
+    const tf = bbox ? ctx.result("package.tub-fit", veh) : null;
+    const verifiedInside = new Set((tf?.outputs?.skin?.value || []).filter((r) => r.inside && r.clearanceM >= 0).map((r) => r.id));
+    const doc = assemblyFromIr(ir, { bodyBBox: bbox || null, powerW, verifiedInside });
     if (doc.error) return { notComputed: doc.error };
     const sheet = buildPackagingSheet(doc, {
       scale: 25,

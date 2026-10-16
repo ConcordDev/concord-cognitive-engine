@@ -143,13 +143,21 @@ function maxCurvatureChange(points) {
   return max;
 }
 
-export function chooseLayout({ layout, brief } = {}) {
+export function chooseLayout({ layout, brief, fuelType = null } = {}) {
   if (layout && LAYOUTS.includes(layout)) {
     return {
       id: layout,
       chosenBy: "caller",
       reason: `Layout ${layout.replaceAll("_", " ")} was requested. The styling skeleton stays the same; only the package, and the curves it actually hits, change.`,
     };
+  }
+  // A design that names its powertrain (the compiler's car) is shown as designed: the layout follows it and the
+  // package's own parts are drawn. The styling-only skateboard below is for a design that names none.
+  if (fuelType === "electric") {
+    return { id: "ev_skateboard", chosenBy: "design", reason: "The design is electric: the compiler's drive unit, differential and traction battery are drawn where the package placed them." };
+  }
+  if (fuelType) {
+    return { id: "front_engine", chosenBy: "design", reason: `The design's powertrain is a front engine (${fuelType}): the compiler's engine, gearbox and cooling are drawn where the package placed them.` };
   }
   const text = String(brief || "");
   const why = text

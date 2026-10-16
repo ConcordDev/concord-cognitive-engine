@@ -22,13 +22,13 @@
  ],
  "caveats": [
   "The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
-  "The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.3469981317764192 is computed (screening range): aero.drag-buildup centre of 0.274..0.440 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
-  "The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 316.3 km/h (196.6 mph, model_output_unvalidated).",
+  "The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.14542277462919667 is computed (screening range): aero.drag-buildup centre of 0.099..0.214 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+  "The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
   "The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
   "REQ_mass passes on a lower-bound mass.",
   "REQ_topSpeed passes on a model output (model_output_unvalidated), not a validated top speed: the limited speed (the 295 km/h set point) is reachable only if the unlimited model output holds.",
   "Packaging is screening level: not checked for want of dimensions or design: bellhousing, SUSPENSION_FRONT, SUSPENSION_REAR, STEERING_RACK, EXHAUST, CONTROL_PACK, SEAT_3, SEAT_4, BRAKES_FRONT, BRAKES_REAR, structural tub, pedal box, dash, steering column, driveshaft, doors, suspension travel.",
-  "Packaging fit: warn. head-M95 pass; head-F5 pass; head-M95-rear pass; heel-floor pass; rear-leg pass; four-seats pass; powertrain-cabin pass; powertrain-layout pass; wheel-footwell pass; ingress pass; containment pass; b-pillar pass; cooling-power warn; spare warn; design-quality info."
+  "Packaging fit: warn. head-M95 pass; head-F5 pass; head-M95-rear pass; heel-floor pass; rear-leg pass; four-seats pass; powertrain-cabin pass; powertrain-layout pass; wheel-footwell pass; ingress pass; containment pass; b-pillar pass; cooling-power pass; spare warn; design-quality warn."
  ],
  "failures": [],
  "checks": [
@@ -1723,11 +1723,11 @@
    "margins": [
     {
      "check": "installed power ≥ power to reach the required top speed",
-     "demand": 265552.618,
+     "demand": 118814.6096,
      "capacity": 343021.9,
      "unit": "W",
-     "utilization": 0.7742,
-     "marginPct": 29.17
+     "utilization": 0.3464,
+     "marginPct": 188.7
     }
    ],
    "failures": [],
@@ -1748,12 +1748,14 @@
    "runId": "vehicle.gearing@VEH",
    "solver": "vehicle.gearing",
    "target": "VEH",
-   "status": "PASS",
+   "status": "WARN",
    "method": "v = ω_limit·r / (ratio·final drive) per gear, ω_limit = min(engine redline, transmission max input rpm); effective top speed = min(drag-limited, gear-limited)",
    "reason": null,
    "margins": [],
    "failures": [],
-   "warnings": []
+   "warnings": [
+    "Top gear runs out of revs at 224 mph, below the 261 mph the power allows: the top speed is gear-limited."
+   ]
   },
   {
    "runId": "tire.speed-rating@VEH",
@@ -2720,7 +2722,8 @@
    "margins": [],
    "failures": [],
    "warnings": [
-    "screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation"
+    "screening estimate: a bounded drag build-up, not CFD or wind-tunnel validation",
+    "rear slant 12.2 deg <= 12.5: no slant increment. Gant: Ahmed's total drag falls from 0 to 15 deg. A component figure at this angle was not read, so the omitted slant drag is unknown."
    ]
   },
   {
@@ -2735,8 +2738,6 @@
    "warnings": [
     "screening comparison of two v1 build-ups, not CFD and not a wind-tunnel value",
     "Kamm's cited truncation is 50 percent. This face ratio is 0.45.",
-    "rear slant 24.824265473539782 deg is past 12.5 deg, so the slant term is not zero and this cut is not counted as a reduction",
-    "the centre Cd is not below the kamm-ratio 0.5 solid",
     "the 2D section-lift sign is indeterminate (the two Kutta corners disagree). No 3D lift coefficient is computed."
    ]
   },
@@ -2750,8 +2751,8 @@
    "margins": [],
    "failures": [],
    "warnings": [
-    "cooling-power: Cooling core is an assumed EV heat exchanger, not the library gasoline radiator and not a heat-rejection solve. Installed motor peak is 420000 W. Solved required power is 265553 W.",
-    "spare: no spare tire is specified, so none is placed"
+    "spare: no spare tire is specified, so none is placed",
+    "design-quality: 45 styling controls. dash-to-axle 23% of the wheelbase, hood 184 mm vs the arch top, rake 60.0°, greenhouse/body 0.50, tumblehome 14°, belt rise 26 mm, fender/half-track 1.22, kamm/peak 0.62, max silhouette turn 38.9° over 80 mm, max curvature change 294.34 1/m². Pushes: roof raised 16 mm for 95th-percentile rear head; hood raised 191 mm for the library radiator; shoulder raised 70 mm for the library radiator; hood raised 166 mm for the library engine; shoulder raised 160 mm for the library engine; deck raised 183 mm for the library fuel cell; shoulder raised 112 mm for the library fuel cell; cage arches: the opening's cage quads widened to 0.8500000000000001 of the arch radius to clear the skin. Off-crease highlight bend 12.6° at the tightest edge (40 adjacent pairs over 8°). Edges longer than 28 mm stay within 4.0°. Half-body cage 491 control points, Catmull–Clark level 3. Outside the styling bands: hood above the front axle is 184 mm relative to the arch top, outside -20–80 mm; silhouette turn 38.9° over 80 mm is at least 25°."
    ]
   },
   {
@@ -2800,8 +2801,8 @@
    "failures": [],
    "warnings": [
     "caveat: The kerb mass is a lower bound: 40 item(s) the parts' published masses exclude are not in it (see massBreakdown.excluded).",
-    "caveat: The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.3469981317764192 is computed (screening range): aero.drag-buildup centre of 0.274..0.440 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
-    "caveat: The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 316.3 km/h (196.6 mph, model_output_unvalidated).",
+    "caveat: The top speed is a model output (model_output_unvalidated), not a measurement: Cd 0.14542277462919667 is computed (screening range): aero.drag-buildup centre of 0.099..0.214 (not CFD or wind tunnel), frontal area computed from BODY_SHELL (cad.body: projected area of the kernel solid onto the y-z plane), driveline efficiency 0.9 given.",
+    "caveat: The vehicle top speed (295.0 km/h, 183.3 mph) is the set point of an electronic speed limiter that is a design choice, not built or calibrated; the tyre check relies on its overshoot staying within the 5 km/h design allowance. Without it the model gives 361.1 km/h (224.4 mph, model_output_unvalidated).",
     "caveat: The gear limit rests on an estimated redline (7500 rpm): estimated: Ford does not publish a redline for the Gen 4 / Gen 4X crate engines (product pages; the 2020 Mustang technical specification lists the GT's redline as N/A). 7,500 rpm is the Mustang GT tachometer redline since the 2018 (Gen 3) engine as reported from the gauge cluster; the low end is the 7,000 rpm redline of the 2015-2017 (Gen 2) engine reported in the same article.",
     "caveat: REQ_mass passes on a lower-bound mass.",
     "caveat: REQ_topSpeed passes on a model output (model_output_unvalidated), not a validated top speed: the limited speed (the 295 km/h set point) is reachable only if the unlimited model output holds."
@@ -2809,8 +2810,8 @@
   }
  ],
  "checkCounts": {
-  "PASS": 14,
-  "WARN": 11,
+  "PASS": 13,
+  "WARN": 12,
   "FAIL": 0,
   "NOT_COMPUTED": 0,
   "ERROR": 0
@@ -3505,7 +3506,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · unlimited top speed",
    "subject": "VEH",
-   "value": 87.865745,
+   "value": 100.294977,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -3524,7 +3525,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · drag limited top speed",
    "subject": "VEH",
-   "value": 87.865745,
+   "value": 116.85545,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -3562,7 +3563,7 @@
    "group": "Solver outputs",
    "name": "vehicle.top-speed · aero power at top speed",
    "subject": "VEH",
-   "value": 240091.455984,
+   "value": 100619.463036,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3600,7 +3601,7 @@
    "group": "Solver outputs",
    "name": "vehicle.required-power · required power",
    "subject": "VEH",
-   "value": 265552.618006,
+   "value": 118814.60964,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3619,7 +3620,7 @@
    "group": "Solver outputs",
    "name": "vehicle.required-power · aero power",
    "subject": "VEH",
-   "value": 227339.462203,
+   "value": 95275.254674,
    "unit": "W",
    "range": null,
    "status": "computed",
@@ -3809,7 +3810,7 @@
    "group": "Solver outputs",
    "name": "vehicle.gearing · drag limited top speed",
    "subject": "VEH",
-   "value": 87.865745,
+   "value": 116.85545,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -3828,7 +3829,7 @@
    "group": "Solver outputs",
    "name": "vehicle.gearing · effective top speed",
    "subject": "VEH",
-   "value": 87.865745,
+   "value": 100.294977,
    "unit": "m/s",
    "range": null,
    "status": "computed",
@@ -4140,30 +4141,30 @@
  "drawings": [
   {
    "title": "General arrangement CK-GA-VEH",
-   "revision": "R-56D8A632",
-   "modelHash": "56d8a632fd987325b5afadf6929c7d0cf5c6191ef983a1e7a24db19df95f6c84",
+   "revision": "R-52B30A9B",
+   "modelHash": "52b30a9b24cedaf6e4652514250347048315dd0b2b2e5f74649b3a4f3a12e6dc",
    "method": "Hidden-line projection (OpenCascade HLRBRep_PolyAlgo) of the CAD body's STEP into side, plan and front views at 1:25 on A3, first-angle; tyres and axle centre lines from the node positions; key dimensions from cad.body (computed) and the layout (design / derived); BOM grouped from the component library and designed parts with mass.part masses; title block revision = SHA-256 of everything shown",
    "files": [
     {
      "label": "Sheet 1 (side, plan, front)",
-     "name": "CK-GA-VEH-R-56D8A632-sheet1.svg",
+     "name": "CK-GA-VEH-R-52B30A9B-sheet1.svg",
      "kind": "svg",
-     "bytes": 348509,
-     "sha256": "8215ad28b2c29bc6a02479dc4770182f1e71bbb08288f1849602fc246d000e66"
+     "bytes": 348852,
+     "sha256": "350e4772ee225c536748013aed2bfd08cbd411c1a4101ff4d51a58fd80b07235"
     },
     {
      "label": "Sheet 2 (BOM, dimensions)",
-     "name": "CK-GA-VEH-R-56D8A632-sheet2.svg",
+     "name": "CK-GA-VEH-R-52B30A9B-sheet2.svg",
      "kind": "svg",
      "bytes": 76718,
-     "sha256": "b1585a16fe672a906c17e40ee917cfa0b4f431e21eb09faefb4badfa97e82103"
+     "sha256": "5d6bf10ec77730284f0a928b219e53a857160407a93700dc4f3a1817a850371e"
     },
     {
      "label": "PDF (both sheets)",
-     "name": "CK-GA-VEH-R-56D8A632.pdf",
+     "name": "CK-GA-VEH-R-52B30A9B.pdf",
      "kind": "pdf",
-     "bytes": 372792,
-     "sha256": "b51b763f37f0fd466a7ca0b4f82e5e061136d252cdc60847673740263144c308"
+     "bytes": 373256,
+     "sha256": "69fd7c59c6e58ceabe90c1bdec0ac34df4639738389cc44783f7e90b03a326b0"
     }
    ]
   }
@@ -4176,7 +4177,7 @@
   "triangles": 14740,
   "units": "m",
   "upAxis": "z",
-  "source": "cad.body@BODY_SHELL (OpenCascade kernel f0bd2e00aa69bd7b993c17c3); exterior skin only, no tyres or interior"
+  "source": "cad.body@BODY_SHELL (OpenCascade kernel 5d3f8b3a1aa9b2da66891b54); exterior skin only, no tyres or interior"
  },
  "physicalTests": [
   "Cd and frontal area: Cd is an input or the centre of a screening drag build-up range (no CFD or wind-tunnel value); frontal area is given, from the CAD body (computed from the solid) or from an ellipsoid body (screening) (the top speed depends on it)",
@@ -4209,19 +4210,19 @@
  },
  "files": [
   {
-   "name": "CK-GA-VEH-R-56D8A632-sheet1.svg",
-   "bytes": 348509,
-   "sha256": "8215ad28b2c29bc6a02479dc4770182f1e71bbb08288f1849602fc246d000e66"
+   "name": "CK-GA-VEH-R-52B30A9B-sheet1.svg",
+   "bytes": 348852,
+   "sha256": "350e4772ee225c536748013aed2bfd08cbd411c1a4101ff4d51a58fd80b07235"
   },
   {
-   "name": "CK-GA-VEH-R-56D8A632-sheet2.svg",
+   "name": "CK-GA-VEH-R-52B30A9B-sheet2.svg",
    "bytes": 76718,
-   "sha256": "b1585a16fe672a906c17e40ee917cfa0b4f431e21eb09faefb4badfa97e82103"
+   "sha256": "5d6bf10ec77730284f0a928b219e53a857160407a93700dc4f3a1817a850371e"
   },
   {
-   "name": "CK-GA-VEH-R-56D8A632.pdf",
-   "bytes": 372792,
-   "sha256": "b51b763f37f0fd466a7ca0b4f82e5e061136d252cdc60847673740263144c308"
+   "name": "CK-GA-VEH-R-52B30A9B.pdf",
+   "bytes": 373256,
+   "sha256": "69fd7c59c6e58ceabe90c1bdec0ac34df4639738389cc44783f7e90b03a326b0"
   },
   {
    "name": "body-2b42882b03f0.stl",
@@ -4229,5 +4230,5 @@
    "sha256": "2b42882b03f0494e8f113e02646d02e6a18a92810d7d3432f764fa278e3f6795"
   }
  ],
- "snapshotSha256": "187da11d85664a418f01be72e07b063707bffd9c7c9d9da6334f7d9b700e9a85"
+ "snapshotSha256": "0146529fe97d1389f92a969d0cf43579540a41d41d788440375b9b9183606ef2"
 }

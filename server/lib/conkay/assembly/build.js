@@ -51,7 +51,7 @@ function boxOf(c) {
  * bodyBBox: optional { min:[x,y,z], max } from cad.body
  * powerW: optional solved required power
  */
-export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null } = {}) {
+export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = null, brief = null, verifiedInside = null } = {}) {
   const nodes = new Map(ir.nodes.map((n) => [n.id, n]));
   const veh = nodes.get("VEH");
   const pkg = veh?.props?.vehicle?.packaging;
@@ -106,7 +106,11 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   const layoutChoice = chooseLayout({
     layout,
     brief: brief || veh.props?.vehicle?.brief || ir.brief || "",
+    fuelType: veh.props?.vehicle?.fuelType || null,
   });
+  // the design's own parts are drawn whenever the layout is the design's (never an invented powertrain beside them)
+  const designParts = layoutChoice.chosenBy === "design" || layoutChoice.id === "front_engine";
+  const hasGearbox = nodes.has("TRANSMISSION");
   const archTop = (centers.TIRE_FL?.z ?? tyreR) + tyreR + 0.032;
   // roofZ above is the head-clearance floor (or the kernel box). The styled
   // peak may sit higher so the greenhouse is about half the body. A kernel
@@ -147,9 +151,11 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   if (driverHead) conflicts.push({ x: driverHead[0], hx: 0.09, zTop: driverHead[1], zClear: 0.02, reason: "95th-percentile driver head", curve: "roof" });
   if (rearHead) conflicts.push({ x: rearHead[0], hx: 0.09, zTop: rearHead[1], zClear: 0.02, reason: "95th-percentile rear head", curve: "roof" });
   let evPack = null;
-  if (layoutChoice.id === "front_engine") {
+  // a package component sits at its node, plus its offset (the traction battery's second block)
+  const compAt = (c) => { const p = centers[c.node]; return p && { x: p.x + (c.offset?.[0] || 0), y: p.y + (c.offset?.[1] || 0), z: p.z + (c.offset?.[2] || 0) }; };
+  if (designParts) {
     for (const c of pkg.components || []) {
-      const p = centers[c.node];
+      const p = compAt(c);
       if (!p || !c.half) continue;
       const ahead = p.x < (draft.cowlX + 0.15);
       conflicts.push({
@@ -294,18 +300,18 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
     relationships: [], explode: { axis: "z", sign: -1, rank: 2 },
   }));
 
-  // Powertrain. front_engine keeps the library boxes and lets them push the hood.
-  // Every other layout shows the sized motors, inverter, battery and cooler.
-  // The library mass tree is still the gasoline car either way.
-  if (layoutChoice.id === "front_engine") {
+  // Powertrain. The design's layout draws the package's own boxes (engine or drive unit, gearbox, differential,
+  // battery blocks, cooling) and lets them push the hood and deck. Only a layout the caller asked for that the
+  // design does not have (a styling study) shows style.js's sized motors and battery, which are not in the design.
+  if (designParts) {
     for (const c of pkg.components || []) {
-      const p = centers[c.node];
+      const p = compAt(c);
       if (!p) continue;
       const vol = 8 * (c.half?.[0] || 0) * (c.half?.[1] || 0) * (c.half?.[2] || 0);
       components.push(part({
-        id: c.id, name: c.id, group: "powertrain", role: c.node === "RADIATOR" ? "cooling" : "powertrain",
+        id: c.id, name: c.id, group: "powertrain", role: c.node === "RADIATOR" ? "cooling" : c.node === "BATTERY_CELLS" ? "battery" : "powertrain",
         placement: { x: p.x, y: p.y, z: p.z }, half: c.half,
-        geometry: envelope(`bounding box of the library overall dimensions (${c.dims?.state || "unlabelled"}). Not a manufactured solid. The hood and deck move only where this box clears the styling skeleton.`),
+        geometry: envelope(`bounding box of the ${c.component ? "library overall dimensions" : "package's computed block"} (${c.dims?.state || "unlabelled"}). Not a manufactured solid. The hood and deck move only where this box clears the styling skeleton.`),
         parameters: [
           param("volume", "Envelope volume", vol * 1000, "L", prov("calculated", "8 × half-extents of the library box")),
           ...(c.node === "ENGINE" && Number.isFinite(powerW) ? [param("requiredPower", "Required power at the brief speed", powerW, "W", prov("calculated", "vehicle.required-power", "aero drag plus rolling resistance at the required top speed"))] : []),
@@ -415,12 +421,13 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   });
   components.push(pedal("PEDAL_ACCEL", "Accelerator", -dc.frontSeatY + 0.06, "on the AHP / BOF line"));
   components.push(pedal("PEDAL_BRAKE", "Brake", -dc.frontSeatY - 0.02, "inboard of the accelerator; lateral offset is an allowance"));
-  if (layoutChoice.id === "front_engine") {
+  if (hasGearbox) {
     components.push(pedal("PEDAL_CLUTCH", "Clutch", -dc.frontSeatY - 0.12, "the gearbox is a manual TKX, so a clutch pedal is placed. Lateral offset is an allowance."));
   }
 
-  // The library car is a manual. A skateboard has no gearbox, so no shifter is placed.
-  if (layoutChoice.id === "front_engine") {
+  // The library gasoline car is a manual (a TRANSMISSION in the design); the electric car has no gearbox, so no
+  // shifter is placed.
+  if (hasGearbox) {
     const gear = openings?.service?.find((s) => s.id === "gear-lever");
     const gx = gear ? (gear.x0 + gear.x1) / 2 : scene.sgRPFront.x - 0.15;
     const gz = dc.floorZ + 0.28;
@@ -574,7 +581,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
 
   const checks = fitChecks({
     spec: loft.spec, scene, components, pkg, roofZ, minInnerRoof, measuredRoof, frontAxleX, rearAxleX,
-    tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack,
+    tyreR, tyreW, track, driver, driverF5, rearM, openings, powerW, layoutChoice, evPack, designParts, verifiedInside, electric: veh.props?.vehicle?.fuelType === "electric",
   });
   const standards = standardsTable({ scene, dc, eye, roofZ, spec });
 
@@ -671,7 +678,18 @@ function fitChecks(ctx) {
   // Powertrain vs cabin. A front engine is checked at the firewall. Motors are checked the same way when they sit ahead of it.
   const engine = ctx.components.find((c) => c.id === "ENGINE");
   const wall = ctx.pkg.firewallX ?? ctx.scene.ahp.x;
-  if (engine?.half) {
+  if (engine?.half && ctx.electric && ctx.designParts) {
+    // the electric car's drive unit sits behind the cabin: its front face against the rear occupants' boxes
+    // the electric car's drive unit sits behind and below the rear occupants: the separating-axis gap between its
+    // box and every rear occupant box (the clearance the package derived the rear axle from)
+    const rearOcc = Object.values(ctx.scene.scenarios).flatMap((occ) => occ.filter((o) => o.seat === "SEAT_3" || o.seat === "SEAT_4"));
+    const unit = aabb({ id: "ENGINE", min: [0, 1, 2].map((i) => [engine.placement.x, engine.placement.y, engine.placement.z][i] - engine.half[i]), max: [0, 1, 2].map((i) => [engine.placement.x, engine.placement.y, engine.placement.z][i] + engine.half[i]) });
+    let worst = { gap: Infinity, id: null };
+    for (const o of rearOcc) for (const b of o.boxes) { const g = separation(unit, b).separation; if (g < worst.gap) worst = { gap: g, id: `${o.seat}:${b.id}` }; }
+    add("powertrain-cabin", worst.gap >= 0 ? "pass" : "fail",
+      `drive unit to the nearest rear occupant box (${worst.id}): ${mm(worst.gap)} mm (separating-axis lower bound; the package derived the rear axle from this clearance)`,
+      { valueM: r4(worst.gap) });
+  } else if (engine?.half) {
     const engineRear = engine.placement.x + engine.half[0];
     const gap = wall - engineRear;
     const lifts = (ctx.spec?.pushes || []).filter((p) => /engine|hood|radiator|deck|fuel/.test(p));
@@ -693,9 +711,9 @@ function fitChecks(ctx) {
   const layoutId = ctx.layoutChoice?.id || ctx.spec?.layout || "ev_skateboard";
   const pushes = ctx.spec?.pushes || [];
   const shapePushes = pushes.filter((p) => /raised/.test(p));
-  const massNote = layoutId === "front_engine"
-    ? "The displayed powertrain is the library gasoline set. The hood and the fenders rise only where that set clears the styling skeleton."
-    : "The library mass tree is still the gasoline car. This assembly shows the sized motors, inverter, battery and cooler instead of that set.";
+  const massNote = ctx.designParts
+    ? `The displayed powertrain is the design's own package (${ctx.electric ? "drive unit, differential, traction battery blocks and cooling" : "the library gasoline set"}). The hood, deck and fenders rise only where those boxes clear the styling skeleton.`
+    : "Styling study: this layout is not the design's. The sized motors, inverter, battery and cooler shown are style.js estimates, not parts of the design, and the design's mass tree does not include them.";
   const energy = ctx.evPack?.energy;
   const energyNote = energy
     ? ` Range was not specified. Assumed ${energy.assumedRangeKm} km at ${energy.whPerKm} Wh/km would need ${energy.needKWh.toFixed(0)} kWh. The floor pack that fits is ${energy.fitKWh.toFixed(1)} kWh (${energy.rangeFitKm.toFixed(0)} km at that rate), ${(energy.thickM * 1000).toFixed(0)} mm thick.`
@@ -748,15 +766,21 @@ function fitChecks(ctx) {
 
   const EXTERIOR = new Set(["body", "glass", "wheel", "lamp", "intake", "opening", "axle", "mirror", "handle"]);
   const outside = [];
+  const previewOnly = [];
   for (const c of ctx.components) {
     if (EXTERIOR.has(c.role) || c.id === "SPARE") continue;
     if (!c.half || c.half.every((h) => h === 0)) continue;
-    if (!partInsideEnvelope(ctx.spec, c, 0.05)) outside.push(c.id);
+    if (partInsideEnvelope(ctx.spec, c, 0.05)) continue;
+    // inside the analysed CAD solid by the skin's thickness (package.tub-fit): a gap in the styled preview only
+    if (ctx.verifiedInside?.has(c.id)) previewOnly.push(c.id);
+    else outside.push(c.id);
   }
+  const previewNote = previewOnly.length ? ` ${previewOnly.join(", ")} cross${previewOnly.length === 1 ? "es" : ""} Studio's styled surface, which is a preview, but package.tub-fit finds ${previewOnly.length === 1 ? "it" : "them"} inside the analysed CAD body by at least the skin's thickness; drawn.` : "";
   if (!ctx.spec) add("containment", "warn", "no body spec, containment not checked");
   else if (outside.length) {add("containment", "fail",
-    `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.`,
-    { outside });}
+    `${outside.length} non-exterior part${outside.length === 1 ? "" : "s"} sit outside the body envelope: ${outside.slice(0, 12).join(", ")}${outside.length > 12 ? "…" : ""}. They are a packaging failure and are not drawn in Studio.${previewNote}`,
+    { outside, previewOnly });}
+  else if (previewOnly.length) add("containment", "warn", `every non-exterior part is inside the analysed body.${previewNote}`, { outside: [], previewOnly });
   else add("containment", "pass", "every non-exterior bounding box is inside the body envelope");
 
   // Pillar vs occupant: B-pillar x should sit between the rows.
@@ -767,7 +791,9 @@ function fitChecks(ctx) {
     add("b-pillar", between ? "pass" : "warn", `B-pillar station ${mm(bx)} mm, front H ${mm(frontH)} mm, rear H ${mm(rearH)} mm`, { valueM: r4(bx) });
   }
 
-  if (layoutId !== "front_engine") {
+  if (ctx.designParts && ctx.electric) {
+    add("cooling-power", "warn", `the cooling core is the package's radiator box; the drive unit's and the traction battery's heat rejection is not solved (vehicle.traction-battery reports the pack's conduction loss)${Number.isFinite(ctx.powerW) ? `; required power at the brief speed is ${Math.round(ctx.powerW)} W` : ""}`, { powerW: Number.isFinite(ctx.powerW) ? Math.round(ctx.powerW) : null });
+  } else if (!ctx.designParts) {
     const installed = ctx.evPack?.installedW;
     const powerNote = Number.isFinite(ctx.powerW)
       ? `Solved required power is ${Math.round(ctx.powerW)} W.`
