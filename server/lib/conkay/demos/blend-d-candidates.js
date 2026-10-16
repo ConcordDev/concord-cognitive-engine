@@ -29,6 +29,17 @@ function runAll(ir) {
   return out;
 }
 
+/** The candidate's sourced degradation onset (and OIT) against the stated 200 °C. */
+function degradationScreen(id) {
+  const P = COPOLYMER_CANDIDATES[id].properties, d = P.degradationOnset;
+  if (!d) return "thermal stability at 200 °C is not computed: no TGA read for this candidate";
+  const lo = (d.range ? d.range.min : d.value) - 273.15;
+  const parts = [`degradation onset ${lo.toFixed(1)} °C${d.range ? `–${(d.range.max - 273.15).toFixed(1)} °C` : ""} (${d.id}): ${(lo - PROCESS_C).toFixed(1)} K above 200 °C at the low end`];
+  if (P.oitAt200C) parts.push(`but its OIT at 200 °C is only ${P.oitAt200C.range.min.toFixed(1)}–${P.oitAt200C.range.max.toFixed(1)} s (ASTM D3895, ${P.oitAt200C.id}): the source reads this as oxidative degradation during prior use and recycling; whether the compound needs restabilising before 200 °C is a test (OIT of the compound, ASTM D3895), and the oxidative life of the melt in air is not computed`);
+  if (id === "eva") parts.push("EVA releases acetic acid on deacetylation; residence time at 200 °C is not computed");
+  return parts.join("; ");
+}
+
 /** The candidate's own melting against the stated 200 °C (a screen the HDPE-only process.window does not do). */
 function candidateMeltScreen(id) {
   const tm = COPOLYMER_CANDIDATES[id].properties.meltTemperature;
@@ -38,7 +49,7 @@ function candidateMeltScreen(id) {
   return {
     meltC: [+(lo - 273.15).toFixed(2), +(hi - 273.15).toFixed(2)], melts, claimRef: tm.id,
     window: window || { inside: null, source: "no processing window read for this candidate (not computed)" },
-    degradation: "thermal stability at 200 °C is not computed: no TGA / OIT read for this candidate",
+    degradation: degradationScreen(id),
   };
 }
 
@@ -144,11 +155,11 @@ export function renderCandidateReport(run = runCandidateChecks()) {
   }
   p("## Candidate melting against the stated 200 °C");
   p();
-  p("process.window checks the HDPE matrix only. This screen adds the candidate's own melting point; it does not check thermal degradation.");
+  p("process.window checks the HDPE matrix only. This screen adds the candidate's own melting point and its sourced degradation onset.");
   p();
   for (const id of CANDIDATE_IDS) {
     const m = run.runs[id].melt;
-    p(`- ${id}: melting ${m.meltC[0]}–${m.meltC[1]} °C (${m.claimRef}) → ${m.melts ? "molten" : "NOT molten"} at 200 °C. Processing window: ${m.window.inside === null ? m.window.source : `${m.window.inside ? "inside" : "outside"} — ${m.window.source}`}. ${m.degradation}.`);
+    p(`- ${id}: melting ${m.meltC[0]}–${m.meltC[1]} °C (${m.claimRef}) → ${m.melts ? "molten" : "NOT molten"} at 200 °C. Processing window: ${m.window.inside === null ? m.window.source : `${m.window.inside ? "inside" : "outside"} — ${m.window.source}`}. Stability: ${m.degradation}.`);
   }
   p();
   p("## What changed and what did not");

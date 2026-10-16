@@ -191,7 +191,7 @@ export const DOCUMENTS = {
     kind: "document", sourceId: "standard", title: "Plastics Pipe Institute TR-19 (04.28.2023), Chemical Resistance of Plastic Piping Materials",
     url: "https://plasticpipe.org/TR-19", retrieved: "2026-10-16",
     locator: "p.6 (aqueous salt solutions); Table 2 Resistance Codes; Table 3 p.45 row 'Sodium Chloride, Saturated', column PE (MDPE, HDPE, PE-RT)",
-    excerpt: "'aqueous solutions of neutral inorganic salts generally have the same effect on plastic piping materials as water alone; thus, sodium chloride … solutions have the same effect as water.' Table 3, Sodium Chloride, Saturated, PE: 'R to 140' (°F). Table 2: 'R to xx°F — Plastic material is generally Resistant up to the temperature (°F) indicated … Swelling < 3% or weight loss < 0.5% and elongation at break not significantly changed'",
+    excerpt: "'aqueous solutions of neutral inorganic salts generally have the same effect on plastic piping materials as water alone; thus, sodium chloride … solutions have the same effect as water.' Table 3, Sodium Chloride, Saturated, PE: 'R to 140' (°F); PP (PP-R, PP-RCT): 'R to 140'. Table 2: 'R to xx°F — Plastic material is generally Resistant up to the temperature (°F) indicated … Swelling < 3% or weight loss < 0.5% and elongation at break not significantly changed'",
     sha256: "313aada9bb934d27e2eb81b694a18ebbbdd2b85e61d0c6a0887d84c18e5d2b39", license: "PPI copyright; excerpt only",
   },
   "lavoie-2021-membranes-hdpe-uv": {
@@ -370,6 +370,27 @@ export const DOCUMENTS = {
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7605320/", retrieved: "2026-10-16", date: "2020",
     locator: "§ models, eqs. (7)–(9)",
     excerpt: "upper bound (parallel model, linear mixing rule) and the lower bound (series model, inverse mixing rule) … (9) κ eff = κ m [1 + 3Φ f / ((κ f + 2κ m)/(κ f − κ m) − Φ f)] (Maxwell, spherical non-interacting particles)",
+    license: "CC BY 4.0",
+  },
+  "zhiltsova-2025-polymers-rpp": {
+    kind: "document", sourceId: "paper", title: "Zhiltsova T., Oliveira M.S.A., et al. Sustainable Polypropylene Blends: Balancing Recycled Content with Processability and Performance. Polymers 2025, 17(11), 1556 (doi:10.3390/polym17111556)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12158057/", retrieved: "2026-10-16", date: "2025",
+    locator: "§2 (TGA: E 2550-11, 30–700 °C at 20 K/min under nitrogen; OIT: ASTM D3895-14, N2 to 200 °C then O2); Table 5 (OIT); Table 6 (TGA)",
+    excerpt: "PP r: post-consumer recycled polypropylene. Table 5 OIT (s): PP v 277.6 (±) 55.3; PP r 50.8 (±) 8.3. Table 6: PP v T on 325.5 °C; PP r T on 344.2 °C, T p 469.3 °C. 'it also shows an 82% reduction in OIT compared to PP v , indicating that it has undergone oxidative degradation during its prior use and recycling'",
+    license: "CC BY 4.0",
+  },
+  "slonov-2023-polymers-pe-eva": {
+    kind: "document", sourceId: "paper", title: "Slonov A., Musov I., et al. Investigation of the Properties of Polyethylene and Ethylene-Vinyl Acetate Copolymer Blends for 3D Printing. Polymers 2023, 15(20), 4129 (doi:10.3390/polym15204129)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10610766/", retrieved: "2026-10-16", date: "2023",
+    locator: "§2 (EVA grade 11306-075, 12 % vinyl acetate; TGA at 5 °C/min in air); Table 5 'TGA results for PE/EVA blends'",
+    excerpt: "'an ethylene-vinyl acetate copolymer (EVA) grade 11306-075, with a vinyl acetate content of 12%'; 'TGA … at a heating rate of 5 °C/min in the air environment'; Table 5: 100/0 | 368.8 | 395.7 | 418.9; 0/100 | 331.6 | 343.2 | 437.3 (T5%, T10%, T50% °C)",
+    license: "CC BY 4.0",
+  },
+  "rajabifar-2026-acsami-eva-foam": {
+    kind: "document", sourceId: "paper", title: "Rajabifar N., Ameli A., et al. Unveiling the Printability and Performance of 3D Printed Ethylene-Vinyl Acetate Stretchable Foams. ACS Appl. Mater. Interfaces 2026 (doi:10.1021/acsami.6c10093)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC13425563/", retrieved: "2026-10-16", date: "2026",
+    locator: "Methods (TGA 45–600 °C, 10 °C/min, nitrogen); Results, TGA zones",
+    excerpt: "'the two-step weight loss of EVA was observed, such that the deacetylation of vinyl acetate initially took place between 305 and 386 °C (zone 2), followed by chain scission of the polymer backbone'",
     license: "CC BY 4.0",
   },
   "liang-2025-polymers-basalt": {

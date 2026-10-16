@@ -32,6 +32,7 @@ describe("compatibility rows", () => {
       "h2:hdpe:decompression": ["liner blistering and collapse"],
       "uv:hdpe": ["chain scission", "carbon black is added", "about 2 to 3% in mass"],
       "acids:caco3": ["Reacts with acids and acidic salts to generate gaseous carbon dioxide"],
+      "saltwater:recycled_impact_pp": ["PP (PP-R, PP-RCT): 'R to 140'"],
     };
     for (const r of COMPATIBILITY.filter((x) => x.rating !== "unknown")) {
       const text = r.evidence.map((e) => DOCUMENTS[e.document].excerpt).join(" ‖ ");

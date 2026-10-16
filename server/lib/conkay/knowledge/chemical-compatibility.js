@@ -31,6 +31,12 @@ export const COMPATIBILITY = Object.freeze([
   unknown("uv:graphene", "UV (sunlight)", "graphene", "no source read on whether ~2.8 wt % graphene nanoplatelets protect HDPE against UV the way 2–3 wt % carbon black does: not claimed"),
   unknown("saltwater:basalt_fiber", "salt water", "basalt_fiber", "no source read on basalt fibre in salt water or on the fibre–HDPE interface there"),
   unknown("any:hdpe_hc_copolymer", "any", "hdpe_hc_copolymer", "the co-polymer is not identified: no compatibility can be read for it"),
+  row("saltwater:recycled_impact_pp", "salt water (aqueous sodium chloride)", "recycled_impact_pp", "resistant (R) to 140 °F (60 °C)", ["ppi-tr19-2023"], {
+    conditions: "saturated sodium chloride; PPI TR-19 Table 3 code 'R to 140' for PP (PP-R, PP-RCT)",
+    notes: ["TR-19 rates PP homopolymer and random copolymers as a group; an impact (block) copolymer and a recycled stream are not rated separately", "TR-19 is for piping and notes it 'May not be fully applicable to pressurized applications'"],
+  }),
+  unknown("h2:recycled_impact_pp", "high-pressure hydrogen", "recycled_impact_pp", "no source read on polypropylene in high-pressure hydrogen (the liner literature read covers PE and PA)"),
+  unknown("any:eva", "salt water, hydrogen, UV", "eva", "PPI TR-19 does not list EVA, and no source on EVA in salt water or hydrogen was read"),
 ]);
 
 /** The rows that apply to a material IR's constituents (by class), plus the compound-level note. */
