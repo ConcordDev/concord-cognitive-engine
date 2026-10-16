@@ -877,7 +877,11 @@ describe("finance — earnings-calendar + retirement-monte-carlo (uncovered)", (
   it("retirement-monte-carlo clamps a retireAge ≤ currentAge up to currentAge+1", async () => {
     const r = await lensRun("finance", "retirement-monte-carlo", { params: {
       currentAge: 60, retireAge: 50, currentSavings: 100000, paths: 100,
+      expectedReturn: 0.07, volatility: 0.15, annualSpendInRetirement: 60000,
     } });
+    const nc = await lensRun("finance", "retirement-monte-carlo", { params: { currentAge: 60, retireAge: 50 } });
+    assert.equal(nc.result.status, "NOT_COMPUTED");
+    assert.deepEqual(nc.result.missingInputs, ["expectedReturn", "volatility", "annualSpendInRetirement"]);
     assert.equal(r.ok, true);
     // currentAge clamps within [18,90]=60; years = 95 − 60 = 35; paths floored at 100
     assert.equal(r.result.years, 35);

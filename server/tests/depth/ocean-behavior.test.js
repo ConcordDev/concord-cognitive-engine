@@ -38,8 +38,14 @@ describe("ocean — calc contracts (exact computed values)", () => {
     assert.equal(r.result.beaufortScale, 8); // 35 >= 34
   });
 
-  it("waveAnalysis: empty data uses defaults (height 1, period 8, wind 15)", async () => {
-    const r = await lensRun("ocean", "waveAnalysis", { data: {} });
+  it("waveAnalysis: empty data is NOT_COMPUTED (no assumed height/period/wind)", async () => {
+    const e = await lensRun("ocean", "waveAnalysis", { data: {} });
+    assert.equal(e.result.status, "NOT_COMPUTED");
+    assert.deepEqual(e.result.missingInputs, ["waveHeightMeters", "wavePeriodSeconds"]);
+  });
+
+  it("waveAnalysis: height 1, period 8, wind 15 (explicit)", async () => {
+    const r = await lensRun("ocean", "waveAnalysis", { data: { waveHeightMeters: 1, wavePeriodSeconds: 8, windSpeedKnots: 15 } });
     // wavelength = 1.56*64 = 99.84 → round 100m. speed = 1.56*8 = 12.48 → 12.5 m/s.
     assert.equal(r.result.wavelength, "100m");
     assert.equal(r.result.speed, "12.5 m/s");
@@ -47,25 +53,12 @@ describe("ocean — calc contracts (exact computed values)", () => {
     assert.equal(r.result.seaState, "slight"); // 1 in [0.5,1.25)
   });
 
-  it("tidalPrediction: echoes location+tidalRange and reports a valid lunar phase enum", async () => {
-    const r = await lensRun("ocean", "tidalPrediction", {
-      data: { location: "Half Moon Bay", tidalRangeMeters: 3 },
-    });
+  it("tidalPrediction: no station → NOT_COMPUTED (the lunar-sine guess was removed)", async () => {
+    const r = await lensRun("ocean", "tidalPrediction", { data: { location: "Half Moon Bay", tidalRangeMeters: 3 } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.location, "Half Moon Bay");
-    assert.equal(r.result.tidalRange, "3m");
-    assert.ok(["new-moon", "first-quarter", "full-moon", "last-quarter"].includes(r.result.lunarPhase));
-    assert.ok(["spring-tide", "neap-tide"].includes(r.result.springOrNeap));
-    // estimatedCurrentHeight is sin-curve bounded by ±range/2 = ±1.5m.
-    const h = parseFloat(r.result.estimatedCurrentHeight);
-    assert.ok(Number.isFinite(h));
-    assert.ok(Math.abs(h) <= 1.5 + 1e-9);
-  });
-
-  it("tidalPrediction: missing data defaults location 'unknown' and range 2m", async () => {
-    const r = await lensRun("ocean", "tidalPrediction", { data: {} });
-    assert.equal(r.result.location, "unknown");
-    assert.equal(r.result.tidalRange, "2m");
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["stationId"]);
+    assert.equal(r.result.estimatedCurrentHeight, undefined);
   });
 
   it("salinityProfile: sorts readings by depth, computes avg + detects halocline + water mass", async () => {

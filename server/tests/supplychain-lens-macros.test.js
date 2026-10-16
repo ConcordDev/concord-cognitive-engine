@@ -289,9 +289,10 @@ describe("supplychain robustness contract", () => {
       ] } },
     });
     const it = inv.items[0];
-    for (const k of ["currentStock", "reorderPoint", "safetyStock", "eoq", "daysOfStock"]) {
-      assert.ok(Number.isFinite(it[k]), `inventoryOptimize.${k} must be finite, got ${it[k]}`);
-    }
+    // Poisoned numerics are treated as missing → per-item NOT_COMPUTED, never NaN/Infinity.
+    assert.equal(it.status, "NOT_COMPUTED");
+    assert.deepEqual(it.missingInputs, ["dailyDemand", "leadTimeDays", "currentStock", "orderCost", "holdingCost"]);
+    assert.ok(!/NaN|Infinity/.test(JSON.stringify(inv)));
     // scenarioSimulate — poison the base numerics.
     const scn = dispatch("scenarioSimulate", ctxA, {
       disruption: "port_closure",
