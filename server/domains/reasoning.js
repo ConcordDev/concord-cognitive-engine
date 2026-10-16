@@ -110,6 +110,8 @@ function premiseExtractCore(text) {
   return { totalSentences: sentences.length, premises: premises.length, conclusions: conclusions.length, statements: classified.filter(c => c.role === "statement").length, classified, premiseTypes: { factual: premises.filter(p => p.type === "factual").length, normative: premises.filter(p => p.type === "normative").length, definitional: premises.filter(p => p.type === "definitional").length } };
 }
 
+import { advisory } from "../lib/lens-inputs.js";
+
 export default function registerReasoningActions(registerLensAction) {
   /* ================================================================ */
   /*  Stateless analysis engines — thin registerLensAction wrappers    */
@@ -126,15 +128,15 @@ export default function registerReasoningActions(registerLensAction) {
     return { ok: true, result: logicValidateCore(premises, conclusion) };
   });
 
-  registerLensAction("reasoning", "argumentMap", (ctx, artifact, params) => {
+  registerLensAction("reasoning", "argumentMap", advisory("structural claim/support map; no validity or truth checking", (ctx, artifact, params) => {
     const claims = artifact.data?.claims || params?.claims || [];
     return { ok: true, result: argumentMapCore(claims) };
-  });
+  }));
 
-  registerLensAction("reasoning", "fallacyDetect", (ctx, artifact, params) => {
+  registerLensAction("reasoning", "fallacyDetect", advisory("keyword/pattern fallacy heuristic; not a logical analysis", (ctx, artifact, params) => {
     const text = artifact.data?.text || artifact.data?.argument || params?.text || params?.argument || "";
     return { ok: true, result: fallacyDetectCore(text) };
-  });
+  }));
 
   registerLensAction("reasoning", "premiseExtract", (ctx, artifact, params) => {
     const text = artifact.data?.text || artifact.data?.argument || params?.text || params?.argument || "";

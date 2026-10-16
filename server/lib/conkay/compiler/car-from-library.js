@@ -176,6 +176,7 @@ export function buildCarFromLibrary(brief, opts = {}) {
     if (!hits.length) break;
     const worst = hits.reduce((a, b) => (b.minClearanceM < a.minClearanceM ? b : a));
     const seat = r.ir.nodes.find((n) => n.id === "SEAT_3");
+    if (!seat?.position) break; // no rear seat (a two-seat car): nothing to move inboard
     const y = Math.abs(parseFloat(seat.position.y));
     const next = Math.floor((y + worst.minClearanceM - 0.001) * 1000 + 1e-9) / 1000;
     const reason = `${worst.part} cuts ${(-worst.minClearanceM * 1000).toFixed(1)} mm into ${worst.against}: the rear seats move inboard from |y| ${y} m to ${next} m (the overlap + 1 mm)`;

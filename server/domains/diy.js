@@ -1,3 +1,4 @@
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 // server/domains/diy.js
 // Domain actions for DIY/maker: project cost estimation, material calculation,
 // tool inventory management, build time estimation, safety assessment.
@@ -13,7 +14,9 @@ export default function registerDIYActions(registerLensAction) {
     const data = artifact.data || {};
     const materials = data.materials || [];
     const laborHours = parseFloat(data.estimatedHours || data.laborHours) || 0;
-    const hourlyRate = parseFloat(data.hourlyRate) || 25;
+    // No assumed $25/h labour rate.
+    const hourlyRate = parseFloat(data.hourlyRate) >= 0 ? parseFloat(data.hourlyRate) : null;
+    if (laborHours > 0 && hourlyRate === null) return notComputed(["hourlyRate"], "Labour hours were given but no hourlyRate.");
 
     const materialCosts = materials.map(m => {
       const qty = parseFloat(m.quantity) || 0;
@@ -23,7 +26,7 @@ export default function registerDIYActions(registerLensAction) {
     });
 
     const totalMaterials = materialCosts.reduce((s, m) => s + m.total, 0);
-    const laborCost = Math.round(laborHours * hourlyRate * 100) / 100;
+    const laborCost = laborHours > 0 ? Math.round(laborHours * hourlyRate * 100) / 100 : 0;
     const wasteFactor = 1.1; // 10% waste allowance
     const adjustedMaterials = Math.round(totalMaterials * wasteFactor * 100) / 100;
 

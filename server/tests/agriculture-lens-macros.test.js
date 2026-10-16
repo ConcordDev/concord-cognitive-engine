@@ -158,7 +158,8 @@ describe("agriculture — predict-yield (exact computed values)", () => {
     const r = call("predict-yield", ctxA, {}, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.crop, "corn");
-    assert.equal(r.result.acreage, 1);
+    assert.equal(r.result.acreage, null);        // no assumed 1 ac
+    assert.equal(r.result.totalYield, null);
   });
 });
 
@@ -166,11 +167,20 @@ describe("agriculture — predict-yield (exact computed values)", () => {
 // waterSchedule — gallons = inches × acreage × 27,154; temp + soil + precip.
 // ───────────────────────────────────────────────────────────────────────────
 describe("agriculture — waterSchedule (irrigation math)", () => {
-  it("corn on loam, 1 day, no weather → base 0.3in, default 80F (tempFactor 1.0)", () => {
+  it("no forecast high → day is NOT_COMPUTED (no assumed 80 °F)", () => {
+    const r = call("waterSchedule", ctxA, { daysAhead: 1 }, {
+      fields: [{ fieldId: "f1", name: "F1", acreage: 1, soilType: "loam", crop: "corn" }],
+    });
+    assert.equal(r.result.fields[0].schedule[0].status, "NOT_COMPUTED");
+    assert.equal(r.result.fields[0].notComputedDays, 1);
+  });
+
+  it("corn on loam, 1 day, 80F forecast → base 0.3in (tempFactor 1.0)", () => {
     // effectiveNeed = 0.3 * 1.0 / 1.0 = 0.3; no precip → irrigation 0.3in.
     // gallons = 0.3 × 1ac × 27154 = 8146.2 → round 8146.
     const r = call("waterSchedule", ctxA, { daysAhead: 1 }, {
       fields: [{ fieldId: "f1", name: "F1", acreage: 1, soilType: "loam", crop: "corn" }],
+      weatherForecast: [{ date: new Date().toISOString().split("T")[0], highTemp: 80 }],
     });
     assert.equal(r.ok, true);
     const day0 = r.result.fields[0].schedule[0];
@@ -184,6 +194,7 @@ describe("agriculture — waterSchedule (irrigation math)", () => {
     // 0.3 / 1.3 = 0.2307… → round 0.23in.
     const r = call("waterSchedule", ctxA, { daysAhead: 1 }, {
       fields: [{ fieldId: "f1", name: "F1", acreage: 1, soilType: "clay", crop: "corn" }],
+      weatherForecast: [{ date: new Date().toISOString().split("T")[0], highTemp: 80 }],
     });
     assert.equal(r.result.fields[0].schedule[0].effectiveNeedInches, 0.23);
   });
@@ -722,7 +733,9 @@ describe("agriculture — AgricultureActionPanel calculator alignment", () => {
     // corn base 0.3in/day, loam retention 1.0 → 0.3in/day × ~7 active days on 40ac.
     // gallons = inches × acreage × 27154 → non-zero positive total.
     assert.ok(r.result.totalGallonsAllFields > 0, "real positive irrigation gallons");
-    assert.equal(wf.activeDays + wf.skipDays, 7, "active + skip = horizon");
+    // Only today has a forecast high; the other 6 days are NOT_COMPUTED, not assumed 80 °F.
+    assert.equal(wf.activeDays + wf.skipDays + wf.notComputedDays, 7, "active + skip + not-computed = horizon");
+    assert.equal(wf.notComputedDays, 6);
   });
 
   it("actYield → predict-yield reads acreage (NOT acres) + returns estimatedYieldPerAcre/totalYield/unit/band", () => {

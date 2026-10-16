@@ -272,32 +272,25 @@ describe("plumbing lens — fail-closed on poisoned numeric inputs", () => {
     // Infinity to prove the velocity*2.448 floor keeps the sqrt finite.
     const rGarbage = call("pipeSize", ctxA, { flowGPM: "abc", velocityFPS: "NaN", material: "copper" });
     assert.equal(rGarbage.ok, true);
-    // garbage → defaults flow 5, velocity 5 → d = √(5/12.24) = 0.639"
-    assert.equal(rGarbage.result.flowRate, "5 GPM");
-    assert.equal(rGarbage.result.velocity, "5 ft/s");
-    for (const k of ["calculatedDiameter", "recommendedSize"]) {
-      assert.ok(Number.isFinite(numIn(rGarbage.result[k])), `${k} = ${rGarbage.result[k]} must be finite`);
-    }
+    // garbage → NOT_COMPUTED (previously silently became flow 5 / velocity 5)
+    assert.equal(rGarbage.result.status, "NOT_COMPUTED");
+    assert.deepEqual(rGarbage.result.missingInputs, ["flowGPM", "velocityFPS"]);
 
     // Literal Infinity flow (parseFloat passes it through) — the rendered
     // diameter must NOT be "Infinity"/"NaN". (Sqrt(Infinity) is Infinity, which
     // would surface as a poisoned card. This asserts the contract the UI needs.)
     const rInf = call("pipeSize", ctxA, { flowGPM: Infinity, velocityFPS: 5 });
     assert.equal(rInf.ok, true);
-    assert.ok(Number.isFinite(numIn(rInf.result.calculatedDiameter)),
-      `calculatedDiameter = ${rInf.result.calculatedDiameter} must be finite even for Infinity flow`);
-    assert.ok(Number.isFinite(numIn(rInf.result.recommendedSize)),
-      `recommendedSize = ${rInf.result.recommendedSize} must be finite`);
+    assert.equal(rInf.result.status, "NOT_COMPUTED");
+    assert.ok(!/NaN|Infinity/.test(JSON.stringify(rInf.result)));
   });
 
   it("waterHeaterSize: garbage household/fixtures fall to defaults, kW stays finite + realistic", () => {
     const r = call("waterHeaterSize", ctxA, { household: "x", simultaneousFixtures: "NaN" });
     assert.equal(r.ok, true);
-    // parseInt("x") → NaN → `|| 2` → people 2, simultaneous 2
-    assert.equal(r.result.household, 2);
-    assert.equal(r.result.peakDemandGPM, 5);
-    assert.ok(Number.isFinite(numIn(r.result.tanklessRecommendation)));
-    assert.ok(Number.isFinite(r.result.firstHourRating));
+    // garbage → NOT_COMPUTED (previously silently became 2 people / 2 fixtures)
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["household", "simultaneousFixtures"]);
 
     // Infinity tempRiseF would blow up kW to Infinity — assert it stays finite.
     const rInf = call("waterHeaterSize", ctxA, { household: 3, simultaneousFixtures: 2, tempRiseF: Infinity });
@@ -309,15 +302,14 @@ describe("plumbing lens — fail-closed on poisoned numeric inputs", () => {
   it("drainSlope: NaN/Infinity pipe size + length never emit NaN/Infinity into the rendered drop", () => {
     const r = call("drainSlope", ctxA, { pipeSizeInches: "abc", lengthFeet: "x" });
     assert.equal(r.ok, true);
-    // garbage → defaults pipe 2, length 10 → 2.5" drop
-    assert.equal(r.result.pipeSize, '2"');
-    assert.equal(r.result.length, "10 ft");
-    assert.ok(Number.isFinite(numIn(r.result.totalDrop)));
+    // garbage → NOT_COMPUTED (previously silently became 2" / 10 ft)
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["pipeSizeInches", "lengthFeet"]);
 
     const rInf = call("drainSlope", ctxA, { pipeSizeInches: 2, lengthFeet: Infinity });
     assert.equal(rInf.ok, true);
-    assert.ok(Number.isFinite(numIn(rInf.result.totalDrop)),
-      `totalDrop = ${rInf.result.totalDrop} must be finite even for Infinity length`);
+    assert.equal(rInf.result.status, "NOT_COMPUTED");
+    assert.ok(!/NaN|Infinity/.test(JSON.stringify(rInf.result)));
   });
 
   it("fixtureCount: poisoned fixture counts (NaN/Infinity) never leak into totalWSFU", () => {

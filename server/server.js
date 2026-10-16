@@ -8501,7 +8501,7 @@ function authMiddleware(req, res, next) {
   // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
   // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.
-  if (req.method === "GET" && /^\/api\/conkay\/demo\/(materials|beam|sweep|designs(\/[a-z0-9-]{1,40}(\/files\/[A-Za-z0-9._-]{1,120}|\/present\.glb)?)?)$/.test(req.path)) return next();
+  if (req.method === "GET" && /^\/api\/conkay\/demo\/(materials|beam|sweep|designs(\/[a-z0-9-]{1,40}(\/files\/[A-Za-z0-9._-]{1,120}|\/present\.glb|\/live(\/files\/[a-f0-9]{12}\.stl)?)?)?)$/.test(req.path)) return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -39988,6 +39988,9 @@ app.use("/api/conkay", createConkayDesignRouter({ requireAuth, db }));
 // ConKay CAD Wave 1 — multi-part assembly store + revise
 import createConkayAssemblyRouter from "./routes/conkay-assembly.js";
 app.use("/api/conkay", createConkayAssemblyRouter({ requireAuth, db }));
+// ConKay Workbench v0 (conversational-loop item 5): knobs, locks, follow-ups and receipts on a design (signed in)
+import createConkayWorkbenchRouter from "./routes/conkay-workbench.js";
+app.use("/api/conkay", createConkayWorkbenchRouter({ requireAuth }));
 // ConKay industry verticals — molecular / hospital / prosthetics / studio / aero (NEW paths)
 import createConkayVerticalsRouter from "./routes/conkay-verticals.js";
 app.use("/api/conkay", createConkayVerticalsRouter({ requireAuth, db }));
