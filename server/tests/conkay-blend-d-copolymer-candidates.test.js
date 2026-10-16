@@ -80,8 +80,11 @@ describe("withCopolymerCandidate", () => {
       assert.equal(c.name, base.constituents[i].name);
       assert.equal(c.candidate.id, id);
       assert.match(c.candidate.basis, /does not identify the co-polymer/);
-      assert.equal(c.properties.conductivity, null);
-      assert.equal(c.properties.cte, null);
+      if (id === "eva") { assert.equal(c.properties.conductivity, null); assert.equal(c.properties.cte, null); } else {
+        // rPP carries a generic PP's k and CTE (Yun 2023 Table 1, compiled), flagged as not a recycled grade's
+        assert.ok(c.properties.conductivity.flags.includes("virgin-pp") && c.properties.cte.flags.includes("virgin-pp"));
+      }
+      assert.equal(c.properties.crystallizationTemperature, null);
       assert.ok(c.properties.density.lo > 0);
     }
   });

@@ -55,6 +55,7 @@ import "./physics/solvers/pressure-vessel.js";
 import "./physics/solvers/material-basis.js";
 import "./physics/solvers/crystal-aggregate.js";
 import "./physics/solvers/material-multiphase.js";
+import "./physics/solvers/material-conduction.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
