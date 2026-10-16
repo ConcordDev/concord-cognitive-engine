@@ -19,6 +19,7 @@ import { scanQuantities } from "./quantities.js";
 import { orchestrate } from "./orchestrator.js";
 import { resolveMaterialName } from "../materials/index.js";
 import { parseEdit } from "../compiler/edit-parser.js";
+import { listComponents } from "../components/index.js";
 
 export const WHAT_IF_VERSION = "1.0.0";
 export const TAIL_STEP_M = 0.1; // the repair table's tail step (chat/repair-rules.js)
@@ -122,6 +123,7 @@ export class DesignConversation {
     this.evaluate = evaluate;
     this.rules = rules;
     this.budget = budget;
+    this.locked = new Set(); // design variables the user locked (the Workbench): no edit and no orchestrator touches them
     this.revisions = [{ kind: "start", state, final, requirements, receipt: designReceipt(final.envelopes) }];
   }
 
@@ -132,12 +134,48 @@ export class DesignConversation {
     const graph = cur.final.session.engine.graph;
     const w = readWhatIf(text, { graph, requirements: cur.requirements });
     if (w.kind === "error" || w.kind === "question" || w.kind === "limit" || w.kind === "unchanged") return w;
+    const lockedHit = Object.keys(w.stateUpdate || {}).find((v) => this.locked.has(v));
+    if (lockedHit) return { kind: "locked", variable: lockedHit, note: `${lockedHit} is locked: unlock it to change it` };
+    return this._apply(w, text);
+  }
+
+  /** The Workbench's knobs: the same edit path as a chat follow-up. */
+  async setKnob(variable, value) {
+    if (this.locked.has(variable)) return { kind: "locked", variable, note: `${variable} is locked: unlock it to change it` };
+    const knob = knobsOf(this).find((k) => k.variable === variable);
+    if (!knob) return { kind: "error", error: `no knob "${variable}"` };
+    if (knob.options && !knob.options.includes(value)) return { kind: "error", error: `${variable} must be one of ${knob.options.join(", ")}` };
+    if (knob.bounds && !(typeof value === "number" && value >= knob.bounds[0] && value <= knob.bounds[1])) return { kind: "error", error: `${variable} must be within ${knob.bounds[0]}..${knob.bounds[1]} ${knob.unit || ""}`.trim() };
+    if (variable === "tailExtensionM") {
+      const before = this.current.final.session.engine.graph.node("BODY_SHELL")?.geometry?.tailExtension;
+      return this._apply({ kind: "parameter", ops: [{ node: "BODY_SHELL", path: "geometry.tailExtension", value }], changes: [{ field: "BODY_SHELL tail", before, after: value, unit: "m", source: "Workbench knob" }], stateUpdate: { tailExtensionM: value } }, `knob ${variable} = ${value}`);
+    }
+    // a component choice (the drive unit): the compiler rebuilds the car with it, and the orchestrator resumes on
+    // whatever else fails (never moving a locked variable)
+    return this._rebuild({ ...this.current.state, [variable]: value }, { field: variable, before: this.current.state[variable] ?? knob.value, after: value, source: "Workbench knob" }, `knob ${variable} = ${value}`);
+  }
+
+  lock(variable) { if (!knobsOf(this).some((k) => k.variable === variable)) return { ok: false, error: `no knob "${variable}"` }; this.locked.add(variable); return { ok: true, locked: [...this.locked].sort() }; }
+  unlock(variable) { this.locked.delete(variable); return { ok: true, locked: [...this.locked].sort() }; }
+
+  async _rebuild(state, change, text) {
+    const cur = this.current;
+    const before = new Map(cur.final.envelopes);
+    const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget, locked: [...this.locked] });
+    if (!run.final) return { kind: "variable", ok: true, outcome: run.outcome, note: "this choice cannot be built from the library" };
+    const rev = { kind: "variable", text, state: run.state, final: run.final, requirements: cur.requirements, receipt: designReceipt(run.final.envelopes), orchestrator: { outcome: run.outcome, log: run.log } };
+    this.revisions.push(rev);
+    return { kind: "variable", ok: true, revision: this.revisions.length - 1, diff: { changed: [change], flipped: flips(before, run.final.envelopes), rerun: "rebuilt: a component choice feeds the compiler" }, outcome: run.outcome, receipt: rev.receipt };
+  }
+
+  async _apply(w, text) {
+    const cur = this.current;
     const before = new Map(cur.final.envelopes);
     if (w.kind === "requirement") {
       // the user's words change a requirement: rebuild from the new brief and resume the orchestrator from the
       // current design variables
       const state = { ...cur.state, brief: briefFrom(w.requirements) };
-      const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget });
+      const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget, locked: [...this.locked] });
       if (!run.final) return { kind: "requirement", ok: true, outcome: run.outcome, note: "the new requirement cannot be built from the library" };
       const rev = { kind: "requirement", text, words: w.words, field: w.field, state: run.state, final: run.final, requirements: w.requirements, receipt: designReceipt(run.final.envelopes), orchestrator: { outcome: run.outcome, log: run.log } };
       this.revisions.push(rev);
@@ -161,7 +199,7 @@ export class DesignConversation {
     let resumed = null;
     if (newFails.length && Object.keys(w.stateUpdate).length) {
       // a design variable the orchestrator also owns (the tail): resume it from the edited state
-      const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget });
+      const run = await orchestrate({ evaluate: this.evaluate, rules: this.rules, initialState: state, budget: this.budget, locked: [...this.locked] });
       resumed = { outcome: run.outcome, log: run.log };
       if (run.final) { rev.final = run.final; rev.state = run.state; rev.receipt = designReceipt(run.final.envelopes); }
     }
@@ -187,6 +225,23 @@ export class DesignConversation {
     const receipt = designReceipt(prev.final.envelopes);
     return { ok: true, revision: this.revisions.length - 1, receipt, matches: receipt === prev.receipt };
   }
+}
+
+/** The design variables a person may move, with their declared bounds or options (the repair table's). */
+export function knobsOf(conv) {
+  const cur = conv.current;
+  const out = [];
+  const tail = cur.final.session?.engine?.graph?.node("BODY_SHELL")?.geometry?.tailExtension;
+  if (Number.isFinite(tail)) out.push({ variable: "tailExtensionM", label: "Tail length", value: tail, unit: "m", bounds: TAIL_BOUNDS_M, step: TAIL_STEP_M, locked: conv.locked.has("tailExtensionM"), source: "the repair table's tail rule (chat/repair-rules.js)" });
+  const sel = cur.final.report?.selection?.engine_or_motor;
+  if (sel) {
+    // every library drive unit for this powertrain (a pinned choice narrows the compiler's own candidate list to
+    // itself); the compiler checks the one picked, and an unbuildable pick comes back infeasible, not guessed
+    const electric = cur.state.fuelType === "electric";
+    const options = listComponents("engine_or_motor").filter((c) => (electric ? /^motor\./ : /^engine\./).test(c.id)).map((c) => c.id).sort();
+    if (options.length) out.push({ variable: "motorId", label: "Drive unit", value: sel.chosen, options, locked: conv.locked.has("motorId"), source: "components/library.json (the compiler checks the one picked)" });
+  }
+  return out;
 }
 
 /** The runs a set of changed keys must rerun: the runs whose reads touch a key, then every reader of their results. */
