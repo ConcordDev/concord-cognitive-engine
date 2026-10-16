@@ -15,6 +15,7 @@ import {
 } from "../lib/asset-gen/degradation-constants.js";
 import { checkDurabilityGate } from "../lib/asset-gen/durability-gate.js";
 import { HONEST_BOUNDARY as DEGRADATION_HONEST_BOUNDARY } from "../lib/simulation/degradation-kinetics.js";
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -230,8 +231,10 @@ export default function registerMaterialsActions(registerLensAction) {
     const material = (data.name || data.material || "").toLowerCase();
     const category = (data.category || "metal").toLowerCase();
     const environment = (data.environment || "indoor").toLowerCase();
-    const temperature = parseFloat(data.temperature) || 25;
-    const humidity = parseFloat(data.humidity) || 50;
+    // Service conditions are inputs, not assumed 25 °C / 50 % RH.
+    const { values: _v, missing: _m } = needNums(data, ["temperature", "humidity>=0"]);
+    if (_m.length) return notComputed(_m, "Corrosion risk needs the service temperature and humidity.");
+    const temperature = _v.temperature, humidity = _v.humidity;
 
     // Base corrosion resistance by material category
     const baseResistance = {
@@ -298,7 +301,9 @@ export default function registerMaterialsActions(registerLensAction) {
     const thermalK = parseFloat(data.thermalConductivity) || 0;
     const meltingPoint = parseFloat(data.meltingPoint) || 0;
     const expansion = parseFloat(data.thermalExpansion) || 0;
-    const operatingTemp = parseFloat(data.operatingTemp) || 25;
+    const { values: _ot, missing: _m } = needNums(data, ["operatingTemp"]);
+    if (_m.length) return notComputed(_m, "Thermal analysis needs operatingTemp (was assumed 25 °C).");
+    const operatingTemp = _ot.operatingTemp;
     const application = (data.application || "general").toLowerCase();
 
     // Safety margin: material should handle 1.5x operating temp

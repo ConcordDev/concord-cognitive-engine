@@ -86,10 +86,16 @@ export const BUILDUP_COEFFICIENTS = Object.freeze({
   wheels: { low: 0.2, high: 0.3, basis: "approximately 25% of overall drag (Brandt et al. 2019); +/- 0.05 band is an estimate", status: "sourced centre / estimated band" },
 });
 
-/** Effective rear-slant angle (deg) from a centreline roof line [{ x, z }]: from the roof's highest point to its last point. */
+/**
+ * Effective rear-slant angle (deg) from a centreline roof line [{ x, z }] (ordered nose to tail): the chord from the
+ * top of the roof's final descent to its last point. Walking forward from the tail while the roof keeps rising finds
+ * where the descent to the tail begins. A roof with two humps (front and rear heads) starts its slant at the rear hump:
+ * a chord from a higher front hump would pass through the rear one, so it is not a surface the flow sees. On a single
+ * peak this is the highest point, as before.
+ */
 export function rearSlantDeg(roof) {
-  let k = 0;
-  roof.forEach((p, i) => { if (p.z > roof[k].z) k = i; });
+  let k = roof.length - 1;
+  while (k > 0 && roof[k - 1].z > roof[k].z) k--;
   const a = roof[k], b = roof.at(-1);
   if (b.x <= a.x) return 0;
   return (Math.atan2(a.z - b.z, b.x - a.x) * 180) / Math.PI;

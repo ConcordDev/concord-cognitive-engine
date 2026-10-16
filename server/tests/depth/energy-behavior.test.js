@@ -29,8 +29,9 @@ describe("energy — pure-compute calc contracts (exact computed values)", () =>
     assert.equal(r.result.avgKWh, 20);
     assert.equal(r.result.peakKWh, 30);
     assert.equal(r.result.readingCount, 3);
-    assert.equal(r.result.costPerKWh, 0.12);          // default
-    assert.equal(r.result.estimatedCost, 7.2);        // round(60*0.12*100)/100
+    assert.equal(r.result.costPerKWh, null);          // no silent $0.12 default
+    assert.equal(r.result.estimatedCost, null);
+    assert.deepEqual(r.result.missingInputs, ["costPerKWh"]);
     assert.equal(r.result.peakToAvgRatio, 1.5);       // round((30/20)*100)/100
     assert.equal(r.result.savingsOpportunity, "Consumption is relatively stable"); // 30 !> 40
   });

@@ -314,6 +314,16 @@ export function parseDesignIntent(text) {
   assumed.section = sectionInfo.assumed;
   if (sectionInfo.note) assumptions.push(sectionInfo.note);
 
+  // The fallbacks above have no cited source. Each one used is listed here as an uncited default, with the
+  // question the chat parser asks instead (lib/conkay/chat/brief-parser.js never applies them).
+  const uncitedDefaults = [
+    assumed.load && { field: "load", value: -DEFAULT_LOAD_N, unit: "N", status: "uncited default", ask: "What load does it carry, and where?" },
+    assumed.span && { field: "span", value: spans[0], unit: "m", status: "uncited default", ask: "How long is it?" },
+    assumed.material && { field: "material", value: "steel-a36", status: "uncited default", ask: "What material?" },
+    assumed.support && { field: "support", value: supportInfo.support, status: "uncited default", ask: "How is it supported?" },
+    assumed.section && { field: "section", value: sectionInfo.note, status: "uncited default", ask: null },
+  ].filter(Boolean);
+
   return {
     ok: true,
     intent: {
@@ -323,6 +333,7 @@ export function parseDesignIntent(text) {
       section: sectionInfo.section,
       assumed,
       assumptions,
+      uncitedDefaults,
     },
   };
 }

@@ -230,12 +230,16 @@ describe("automotive — repairEstimate", () => {
     assert.equal(r.result.totalWithTax, 432);
   });
 
-  it("uses the default shop rate (120) when none supplied", () => {
+  it("no assumed shop rate: NOT_COMPUTED without one, exact when supplied", () => {
     const r = call("repairEstimate", ctxA, { artifact: { data: {
       repairs: [{ name: "Alignment", partsCost: 0, laborHours: 1 }],
     } } });
-    assert.equal(r.result.repairs[0].laborRate, 120);
-    assert.equal(r.result.grandTotal, 120);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    const r2 = call("repairEstimate", ctxA, { artifact: { data: {
+      shopRate: 120, repairs: [{ name: "Alignment", partsCost: 0, laborHours: 1 }],
+    } } });
+    assert.equal(r2.result.repairs[0].laborRate, 120);
+    assert.equal(r2.result.grandTotal, 120);
   });
 
   it("recommends a second opinion above $3000", () => {
