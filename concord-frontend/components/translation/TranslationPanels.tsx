@@ -9,6 +9,8 @@
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { translationKeptRecord } from '@/components/translation/translationKeep';
 
 export interface Language {
   code: string;
@@ -104,6 +106,7 @@ export function SingleTranslatePanel({
   const [error, setError] = useState<string | null>(null);
   const [misses, setMisses] = useState<GlossaryMiss[]>([]);
   const [copied, setCopied] = useState(false);
+  const kept = translationKeptRecord({ source, target, formality, input: text, output });
 
   const handleTranslate = useCallback(async () => {
     if (!text.trim()) return;
@@ -217,6 +220,7 @@ export function SingleTranslatePanel({
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
+          <KeepRecordActions key={kept?.body} record={kept} />
         </div>
       )}
 

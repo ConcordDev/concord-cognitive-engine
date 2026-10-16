@@ -7,6 +7,8 @@ import {
   fetchJSON, Loading, ErrorState, Stat, Empty,
   type CorpusStats,
 } from '@/components/lattice/latticeShared';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { latticeKeptRecord } from '@/components/lattice/latticeKeep';
 
 export function OverviewPanel() {
   const corpusStats = useQuery({
@@ -14,6 +16,7 @@ export function OverviewPanel() {
     queryFn: () => fetchJSON<CorpusStats>('/api/lattice/corpus/stats'),
     refetchInterval: 60_000,
   });
+  const kept = latticeKeptRecord(corpusStats.data);
 
   return (
     <section>
@@ -34,6 +37,9 @@ export function OverviewPanel() {
             <Stat label="Total rows" value={corpusStats.data!.totals.total} />
             <Stat label="Consented" value={corpusStats.data!.totals.consented} />
             <Stat label="Consent ratio" value={`${(corpusStats.data!.totals.ratio * 100).toFixed(1)}%`} />
+          </div>
+          <div className="mt-3">
+            <KeepRecordActions key={kept?.body} record={kept} />
           </div>
           <h3 className="mt-6 mb-2 text-sm font-semibold text-fuchsia-300">Per-table consent</h3>
           <div className="overflow-x-auto rounded border border-fuchsia-900/40">

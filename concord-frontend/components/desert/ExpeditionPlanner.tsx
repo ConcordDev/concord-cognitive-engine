@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
 import { Plus, Trash2, Route, Droplets, Clock, MapPin, Save } from 'lucide-react';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { desertKeptRecord } from '@/components/desert/desertKeep';
 
 // Desert-scoped map with an offline tile cache for no-signal fieldwork
 // (see lib/desert/tile-cache.ts) — NOT the shared components/common/MapView,
@@ -68,6 +70,7 @@ export function ExpeditionPlanner() {
   const [saved, setSaved] = useState<SavedRoute[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const kept = desertKeptRecord({ name, totals, legs });
 
   const loadSaved = useCallback(async () => {
     const r = await lensRun<{ routes: SavedRoute[] }>('desert', 'routeList', {});
@@ -299,6 +302,7 @@ export function ExpeditionPlanner() {
               ))}
             </tbody>
           </table>
+          <KeepRecordActions key={kept?.body} record={kept} />
         </div>
       )}
 

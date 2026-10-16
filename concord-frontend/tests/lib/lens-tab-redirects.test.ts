@@ -13,6 +13,7 @@ describe('lens tabLabel redirects', () => {
     expect(redirects).toEqual(expect.arrayContaining([
       { source: '/lenses/threads', destination: '/lenses/thread' },
       { source: '/lenses/visuals', destination: '/lenses/fractal' },
+      { source: '/lenses/next-bets', destination: '/lenses/strategic-adds' },
     ]));
     expect(TAB_LABEL_REDIRECTS).toEqual(redirects);
   });
