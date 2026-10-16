@@ -254,10 +254,14 @@ describe("landscaping — seasonal plan (4-season schedule + month-derived curre
     assert.deepEqual(r.result.immediateActions, r.result.plan[expected]);
   });
 
-  it("seasonalPlan: defaults zone to 7 when omitted", async () => {
+  it("seasonalPlan: zone omitted → NOT_COMPUTED (no assumed zone 7); plan is labelled ADVISORY", async () => {
     const r = await lensRun("landscaping", "seasonalPlan", { data: {} });
     assert.equal(r.ok, true);
-    assert.equal(r.result.zone, 7);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["hardnessZone"]);
+    const a = await lensRun("landscaping", "seasonalPlan", { data: { hardnessZone: 6 } });
+    assert.equal(a.result.status, "ADVISORY");
+    assert.equal(a.result.verdict, null);
   });
 });
 

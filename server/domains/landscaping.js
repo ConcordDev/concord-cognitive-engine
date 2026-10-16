@@ -14,6 +14,8 @@ import {
 
 const TREFLE_BASE = "https://trefle.io/api/v1";
 
+import { needNums, notComputed, advisory } from "../lib/lens-inputs.js";
+
 export default function registerLandscapingActions(registerLensAction) {
   registerLensAction("landscaping", "plantSelection", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -44,11 +46,12 @@ export default function registerLandscapingActions(registerLensAction) {
     const gallonsPerWeek = Math.round(sqft * inchesPerWeek * 0.623);
     return { ok: true, result: { squareFootage: sqft, plantType, inchesPerWeek, gallonsPerWeek, gallonsPerMonth: gallonsPerWeek * 4, runtimeMinutes: Math.round(gallonsPerWeek / 5), frequency: inchesPerWeek > 0.8 ? "3x per week" : "2x per week", monthlyCost: Math.round(gallonsPerWeek * 4 * 0.004 * 100) / 100 } };
   });
-  registerLensAction("landscaping", "seasonalPlan", (ctx, artifact, _params) => {
-    const zone = parseInt(artifact.data?.hardnessZone) || 7;
+  registerLensAction("landscaping", "seasonalPlan", advisory("generic seasonal task calendar (northern-hemisphere months); not zone- or species-specific — use trefle plant lookups for species data", (ctx, artifact, _params) => {
+    const _z = needNums(artifact?.data, ["hardnessZone>0"]); if (_z.missing.length) return notComputed(_z.missing, "Seasonal plan needs your USDA hardiness zone (1–13).");
+    const zone = Math.trunc(_z.values.hardnessZone);
     const seasons = { spring: ["Fertilize lawn", "Prune winter damage", "Plant annuals", "Mulch beds", "Edge beds"], summer: ["Deep water weekly", "Mow at 3-4 inches", "Deadhead flowers", "Watch for pests", "Prune after bloom"], fall: ["Aerate lawn", "Overseed thin spots", "Plant bulbs", "Final fertilizer", "Clean up leaves"], winter: ["Plan spring design", "Order seeds", "Maintain tools", "Protect tender plants", "Prune dormant trees"] };
     return { ok: true, result: { zone, plan: seasons, currentSeason: ["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()], immediateActions: seasons[["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()]] } };
-  });
+  }));
   registerLensAction("landscaping", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     // fail-CLOSED on poisoned numerics: Infinity/NaN/garbage must never leak
