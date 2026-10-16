@@ -4,6 +4,9 @@
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 
+import { optNum, notComputed } from "../lib/lens-inputs.js";
+
+import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 export default function registerAgricultureActions(registerLensAction) {
   /**
    * rotationPlan
@@ -250,7 +253,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * artifact.data.weatherForecast: [{ date, highTemp, lowTemp, precipInches, humidity }] (optional)
    * params.daysAhead (default 7)
    */
-  registerLensAction("agriculture", "waterSchedule", (ctx, artifact, params) => {
+  const waterScheduleSync = (ctx, artifact, params) => {
   try {
     const fields = artifact.data.fields || [];
     const forecast = artifact.data.weatherForecast || [];
@@ -285,7 +288,12 @@ export default function registerAgricultureActions(registerLensAction) {
         // Find weather data for this date
         const weather = forecast.find((w) => w.date === dateStr);
         const precipExpected = weather ? parseFloat(weather.precipInches) || 0 : 0;
-        const highTemp = weather ? parseFloat(weather.highTemp) || 80 : 80;
+        const highTemp = weather ? optNum(weather.highTemp) : null;
+        if (highTemp === null) {
+          // No forecast high for this day: previously assumed 80 °F. Now the day is not computed.
+          dailySchedule.push({ date: dateStr, status: "NOT_COMPUTED", missingInputs: ["weatherForecast[].highTemp"], effectiveNeedInches: null, precipExpectedInches: precipExpected, irrigationNeededInches: null, totalGallons: null, highTemp: null, skipDay: false });
+          continue;
+        }
 
         // Adjust water need by temperature (higher temps = more evapotranspiration)
         const tempFactor = highTemp > 95 ? 1.3 : highTemp > 85 ? 1.1 : highTemp < 60 ? 0.7 : 1.0;
@@ -297,7 +305,7 @@ export default function registerAgricultureActions(registerLensAction) {
         const irrigationNeeded = Math.max(0, Math.round((effectiveNeed - precipExpected) * 100) / 100);
 
         // Total gallons: inches x acreage x 27,154 gallons per acre-inch
-        const totalGallons = Math.round(irrigationNeeded * (parseFloat(field.acreage) || 1) * 27154);
+        const _acres = optNum(field.acreage); const totalGallons = _acres === null || _acres <= 0 ? null : Math.round(irrigationNeeded * _acres * 27154);
 
         dailySchedule.push({
           date: dateStr,
@@ -310,8 +318,10 @@ export default function registerAgricultureActions(registerLensAction) {
         });
       }
 
-      const totalIrrigationInches = dailySchedule.reduce((s, d) => s + d.irrigationNeededInches, 0);
-      const totalGallons = dailySchedule.reduce((s, d) => s + d.totalGallons, 0);
+      const computedDays = dailySchedule.filter((d) => d.status !== "NOT_COMPUTED");
+      const notComputedDays = dailySchedule.length - computedDays.length;
+      const totalIrrigationInches = computedDays.reduce((s, d) => s + d.irrigationNeededInches, 0);
+      const totalGallons = computedDays.some((d) => d.totalGallons === null) ? null : computedDays.reduce((s, d) => s + d.totalGallons, 0);
       const skipDays = dailySchedule.filter((d) => d.skipDay).length;
 
       return {
@@ -323,8 +333,10 @@ export default function registerAgricultureActions(registerLensAction) {
         baseNeedInchesPerDay: baseNeed,
         totalIrrigationInches: Math.round(totalIrrigationInches * 100) / 100,
         totalGallons,
-        activeDays: daysAhead - skipDays,
+        activeDays: daysAhead - skipDays - notComputedDays,
         skipDays,
+        notComputedDays,
+        ...(totalGallons === null ? { missingInputs: ["acreage"] } : {}),
         schedule: dailySchedule,
       };
     });
@@ -333,14 +345,31 @@ export default function registerAgricultureActions(registerLensAction) {
       generatedAt: new Date().toISOString(),
       daysAhead,
       fields: schedules,
-      totalGallonsAllFields: schedules.reduce((s, f) => s + f.totalGallons, 0),
+      totalGallonsAllFields: schedules.some((f) => f.totalGallons === null) ? null : schedules.reduce((s, f) => s + f.totalGallons, 0),
     };
 
     artifact.data.waterSchedule = report;
 
     return { ok: true, result: report };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  };
+  // fetchForecast:true + lat/lng → Open-Meteo daily forecast (high °F, precip in)
+  // fills every day the caller didn't supply (backend side of the 7-day gap).
+  registerLensAction("agriculture", "waterSchedule", (ctx, artifact, params = {}) => {
+    const d = artifact?.data || {};
+    const want = params?.fetchForecast === true || d.fetchForecast === true;
+    if (!want) return waterScheduleSync(ctx, artifact, params);
+    const lat = d.lat ?? params.lat ?? d.fields?.[0]?.lat, lng = d.lng ?? params.lng ?? d.fields?.[0]?.lng;
+    return (async () => {
+      const src = await openMeteoDailyForecast(lat, lng, Number(params.daysAhead) || 7);
+      if (!src.ok) { const r = waterScheduleSync(ctx, artifact, params); return r?.ok ? { ...r, result: { ...r.result, forecastSource: { status: "NOT_COMPUTED", reason: src.reason } } } : r; }
+      const given = Array.isArray(d.weatherForecast) ? d.weatherForecast : [];
+      const merged = [...given, ...src.value.filter((x) => !given.some((g) => g.date === x.date))];
+      artifact.data = { ...d, weatherForecast: merged };
+      const r = waterScheduleSync(ctx, artifact, params);
+      return r?.ok ? { ...r, result: { ...r.result, forecastProvenance: src.provenance } } : r;
+    })();
+  });
 
   /**
    * plan-crop
@@ -439,7 +468,8 @@ export default function registerAgricultureActions(registerLensAction) {
     const baseTemps = { corn: 10, soybeans: 10, wheat: 4, alfalfa: 5 };
     const cropName = (crop.crop || crop.variety || "corn").toLowerCase();
     const baseTemp = baseTemps[cropName] || 10;
-    const avgDailyTemp = Number(params?.avgTempC) || 21; // typical Jun-Aug Midwest
+    const avgDailyTemp = optNum(params?.avgTempC ?? crop.avgTempC);
+    if (avgDailyTemp === null) return notComputed(["avgTempC"], "Growing-degree-days need the mean daily temperature since planting (°C) — previously assumed 21 °C. Historical means are available from agriculture's open-meteo archive actions.");
     const gddPerDay = Math.max(0, avgDailyTemp - baseTemp);
     const gddToDate = Math.round(gddPerDay * daysElapsed);
 
@@ -607,7 +637,7 @@ export default function registerAgricultureActions(registerLensAction) {
   registerLensAction("agriculture", "predict-yield", (ctx, artifact, params) => {
   try {
     const crop = String(artifact.data?.crop || artifact.data?.variety || params?.crop || "corn").toLowerCase();
-    const acreage = Number(artifact.data?.acreage || params?.acreage) || 1;
+    const acreage = (() => { const a = optNum(artifact.data?.acreage ?? params?.acreage); return a !== null && a > 0 ? a : null; })();
     const soilType = (artifact.data?.soilType || params?.soilType || "loam").toLowerCase();
     const history = artifact.data?.history || [];
 
@@ -630,7 +660,7 @@ export default function registerAgricultureActions(registerLensAction) {
       ? (band.mid * 0.6 + historyAvg * 0.4) * soilMult
       : band.mid * soilMult;
     const estimatedYieldPerAcre = Math.round(blended * 100) / 100;
-    const totalYield = Math.round(estimatedYieldPerAcre * acreage * 100) / 100;
+    const totalYield = acreage === null ? null : Math.round(estimatedYieldPerAcre * acreage * 100) / 100;
 
     const result = {
       generatedAt: new Date().toISOString(),
@@ -643,7 +673,7 @@ export default function registerAgricultureActions(registerLensAction) {
       estimatedYieldPerAcre,
       totalYield,
       unit: band.unit,
-      summary: `${crop} on ${acreage} ac (${soilType}): ${estimatedYieldPerAcre} ${band.unit}/ac = ${totalYield} ${band.unit} total. Band ${band.low}-${band.high}.`,
+      summary: acreage === null ? `${crop} (${soilType}): ${estimatedYieldPerAcre} ${band.unit}/ac; total not computed (acreage not given). Band ${band.low}-${band.high}.` : `${crop} on ${acreage} ac (${soilType}): ${estimatedYieldPerAcre} ${band.unit}/ac = ${totalYield} ${band.unit} total. Band ${band.low}-${band.high}.`,
     };
     if (artifact.data) artifact.data.lastYieldPrediction = result;
     return { ok: true, result };
@@ -1975,7 +2005,9 @@ export default function registerAgricultureActions(registerLensAction) {
         return { ok: false, error: "field has no coords — pass bounds {minLat,maxLat,minLng,maxLng} or lat/lng" };
       }
       // Acreage -> approximate half-side in degrees (1 acre ~ 4046.86 m2).
-      const acres = Math.max(1, Number(field?.acreage ?? params.acreage) || 40);
+      const _ac = optNum(field?.acreage ?? params.acreage);
+      if (_ac === null || _ac <= 0) return notComputed(["acreage"], "Deriving a grid from a centroid needs the field acreage (previously assumed 40 ac) — or pass explicit bounds.");
+      const acres = Math.max(1, _ac);
       const sideMeters = Math.sqrt(acres * 4046.86);
       const halfLat = (sideMeters / 2) / 111320;
       const halfLng = (sideMeters / 2) / (111320 * Math.cos(lat * Math.PI / 180) || 1);
@@ -1985,7 +2017,9 @@ export default function registerAgricultureActions(registerLensAction) {
     const minLng = Number(bounds.minLng), maxLng = Number(bounds.maxLng);
     if (![minLat, maxLat, minLng, maxLng].every(Number.isFinite)) return { ok: false, error: "invalid bounds" };
     const acresPerSample = Math.max(0.5, Math.min(40, Number(params.acresPerSample) || 2.5));
-    const fieldAcres = Math.max(1, Number(field?.acreage ?? params.acreage) || 40);
+    // Field size: declared acreage, else the area of the bounds (no assumed 40 ac).
+    const _fa = optNum(field?.acreage ?? params.acreage);
+    const fieldAcres = Math.max(1, _fa !== null && _fa > 0 ? _fa : Math.abs((maxLat - minLat) * 111320 * (maxLng - minLng) * 111320 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)) / 4046.86);
     const targetSamples = Math.max(1, Math.min(400, Math.round(fieldAcres / acresPerSample)));
     const dim = Math.max(1, Math.round(Math.sqrt(targetSamples)));
     const points = [];

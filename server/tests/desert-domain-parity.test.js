@@ -137,7 +137,7 @@ describe("desert resource node mapping", () => {
 
 describe("desert solar-installation calculator", () => {
   it("solarInstall sizes an array from a target daily load", () => {
-    const r = call("solarInstall", ctxA, { latitude: 25, targetDailyKwh: 30 });
+    const r = call("solarInstall", ctxA, { panelWatt: 450, panelAreaM2: 2, systemLossFactor: 0.82, clearDaysPerYear: 300, latitude: 25, targetDailyKwh: 30 });
     assert.equal(r.ok, true);
     assert.equal(r.result.sizedFor, "targetLoad");
     assert.ok(r.result.panelCount > 0);
@@ -146,11 +146,17 @@ describe("desert solar-installation calculator", () => {
   });
 
   it("solarInstall sizes by fixed panel count", () => {
-    const r = call("solarInstall", ctxA, { latitude: 25, panelCount: 100 });
+    const r = call("solarInstall", ctxA, { panelWatt: 450, panelAreaM2: 2, systemLossFactor: 0.82, clearDaysPerYear: 300, latitude: 25, panelCount: 100 });
     assert.equal(r.ok, true);
     assert.equal(r.result.sizedFor, "panelCount");
     assert.equal(r.result.panelCount, 100);
     assert.ok(r.result.footprintM2 > 0);
+  });
+
+  it("solarInstall: no assumed module/derate/clear days → NOT_COMPUTED", () => {
+    const r = call("solarInstall", ctxA, { latitude: 25, panelCount: 10 });
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.deepEqual(r.result.missingInputs, ["panelWatt", "panelAreaM2", "systemLossFactor", "clearDaysPerYear"]);
   });
 
   it("solarInstall rejects missing latitude", () => {
@@ -215,7 +221,7 @@ describe("desert pure-compute analysis macros", () => {
 
   it("heatStressIndex returns a risk level", () => {
     const fn = ACTIONS.get("desert.heatStressIndex");
-    const r = fn(ctxA, { data: { temperatureCelsius: 50, humidityPercent: 30 } }, {});
+    const r = fn(ctxA, { data: { temperatureCelsius: 50, humidityPercent: 30, windSpeedKmh: 10 } }, {});
     assert.equal(r.ok, true);
     assert.ok(r.result.riskLevel);
   });

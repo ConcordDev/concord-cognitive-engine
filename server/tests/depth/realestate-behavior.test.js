@@ -52,7 +52,7 @@ describe("realestate — finance calc contracts (exact computed values)", () => 
 
   it("calc-mortgage: LTV > 80 (10% down) adds 0.5%/yr PMI", async () => {
     const r = await lensRun("realestate", "calc-mortgage", {
-      params: { price: 400000, downPercent: 10, rate: 7, termYears: 30 },
+      params: { price: 400000, downPercent: 10, rate: 7, termYears: 30, taxRate: 1.1, insurance: 1200 },
     });
     assert.equal(r.result.loanAmount, 360000);
     assert.equal(r.result.ltvPercent, 90);

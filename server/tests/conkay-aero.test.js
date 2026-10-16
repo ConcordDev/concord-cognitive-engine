@@ -155,9 +155,18 @@ describe("drag build-up: correlations and sources [PS][Sch][A][S]", () => {
     assert.ok(dragBuildup({ ...g, rearSlantDeg: 5 }, { ...f, speedMs: 120 }).flags.some((x) => /Mach/.test(x)));
     assert.ok(dragBuildup({ ...g, rearSlantDeg: 5 }, { ...f, speedMs: 0.5 }).flags.some((x) => /Re_L/.test(x)));
   });
-  it("rear slant: from the roof's highest point to the tail", () => {
+  it("rear slant: from the top of the roof's final descent to the tail", () => {
     const roof = [{ x: 0, z: 1 }, { x: 1, z: 1.2 }, { x: 2, z: 1.2 - Math.tan((10 * Math.PI) / 180) }];
-    rel(rearSlantDeg(roof), 10, 1e-9, "10 deg");
+    rel(rearSlantDeg(roof), 10, 1e-9, "single peak: the highest point, 10 deg");
+    // two humps, the front one higher: the slant starts at the rear hump (a chord from the front hump would cut
+    // through the rear one). Measuring from the highest point gives atan(0.35 / 2) = 9.9 deg; the real slant is 25.
+    const t25 = Math.tan((25 * Math.PI) / 180);
+    const twoHump = [{ x: 0, z: 1 }, { x: 1, z: 1.3 }, { x: 1.5, z: 1.25 }, { x: 2, z: 1.29 }, { x: 3, z: 1.29 - t25 }];
+    rel(rearSlantDeg(twoHump), 25, 1e-9, "rear hump to tail");
+    assert.ok(rearSlantDeg(twoHump) > (Math.atan2(1.3 - (1.29 - t25), 2) * 180) / Math.PI, "steeper than the highest-point chord");
+    // a flat rear roof before the descent: the slant starts where the flat ends (the last point at the plateau)
+    const flat = [{ x: 0, z: 1.2 }, { x: 1, z: 1.2 }, { x: 2, z: 1.2 - Math.tan((15 * Math.PI) / 180) }];
+    rel(rearSlantDeg(flat), 15, 1e-9, "plateau end");
   });
 });
 
