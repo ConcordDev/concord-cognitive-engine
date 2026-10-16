@@ -14,6 +14,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { designFromChat } from "../lib/conkay/chat/run.js";
 import { kernelPythonPath } from "../lib/conkay/cad/body-kernel.js";
+import { DesignConversation, dependencyClosure } from "../lib/conkay/chat/what-if.js";
+import { REPAIR_RULES } from "../lib/conkay/chat/repair-rules.js";
+import { carEvaluator } from "../lib/conkay/chat/orchestrator.js";
+import { carAcceptanceAsync } from "../lib/conkay/compiler/car-from-library.js";
 
 const PROMPT = "Design a four-seat electric car that holds 180 mph";
 const enabled = process.env.CONKAY_ORCHESTRATOR_E2E === "1" && (() => { try { return fs.existsSync(kernelPythonPath()); } catch { return false; } })();
@@ -43,6 +47,20 @@ describe("orchestrator: the electric car from one prompt", { skip: enabled ? fal
     const b = await designFromChat(PROMPT);
     assert.equal(a.receiptSha256, first.receiptSha256);
     assert.equal(b.receiptSha256, first.receiptSha256);
+  });
+  it("follow-up \"make the tail longer\": reruns exactly its dependency closure (not the pack's mass; the traction battery, whose power at speed reads the Cd), undo restores the receipt", { timeout: 60 * 60 * 1000 }, async () => {
+    const conv = new DesignConversation({ evaluate: carEvaluator({ carAcceptanceAsync }), rules: REPAIR_RULES, requirements: first.ir.requirements, state: first.state, final: first.final });
+    const r0 = conv.current.receipt;
+    const reply = await conv.ask("make the tail longer");
+    assert.equal(reply.kind, "parameter");
+    assert.deepEqual(reply.diff.changed.map((c) => [c.field, c.before, c.after]), [["BODY_SHELL tail", 0.22, 0.32]]);
+    const rev = conv.revisions.at(-1);
+    assert.deepEqual(reply.diff.rerun, dependencyClosure(rev.readsBefore, rev.changedKeys));
+    assert.ok(reply.diff.rerun.includes("cad.body@BODY_SHELL") && reply.diff.rerun.includes("aero.drag-buildup@VEH"));
+    assert.equal(reply.diff.rerun.includes("mass.part@BATTERY_CELLS"), false, "the pack's mass does not read the body");
+    assert.ok(reply.diff.rerun.includes("vehicle.traction-battery@VEH"), "its electrical power at speed reads the drag build-up");
+    const u = await conv.undo();
+    assert.equal(u.receipt, r0);
   });
   it("400 mph: proven infeasible at the build, the tyre library named as binding, the requirement change only offered", { timeout: 10 * 60 * 1000 }, async () => {
     const r = await designFromChat("Design a four-seat electric car that holds 400 mph");

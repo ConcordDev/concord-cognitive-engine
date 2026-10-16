@@ -29,8 +29,9 @@ export async function designFromChat(text, { budget, pick, evaluate = null, onEv
   if (!run.final) return { ok: true, stage: "infeasible", domain: "car", claims: parsed.claims, outcome: run.outcome, state: run.state, log: run.log, receiptSha256: run.receiptSha256 };
   const r = run.final.report;
   return {
-    ok: true, stage: "designed", domain: "car", claims: parsed.claims,
+    ok: true, stage: "designed", domain: "car", claims: parsed.claims, ir: parsed.ir,
     outcome: run.outcome, state: run.state, log: run.log, receiptSha256: run.receiptSha256,
+    final: run.final, // the live design (its session), for follow-ups (chat/what-if.js); not serialized
     result: {
       verdict: r.verdict, topSpeed: { mph: r.topSpeed.mph, limitedBy: r.topSpeed.limitedBy, unlimitedMph: r.topSpeed.unlimitedMph },
       drive: r.selection?.engine_or_motor?.chosen, cd: run.final.envelopes.get("aero.drag-buildup@VEH")?.outputs?.dragCoefficient?.value ?? null,
