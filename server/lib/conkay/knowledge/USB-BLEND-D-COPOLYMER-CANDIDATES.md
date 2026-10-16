@@ -1,0 +1,78 @@
+# USB Blend D — co-polymer candidates
+
+The source names an 'HDPE/HC co-polymer' (10–15 %) without identifying it. Dutch (2026-10-16) targets discarded plastics and asked for two candidates in its place, each with sourced properties, and every Blend D check rerun for each. A candidate is a what-if: the source still does not say what the co-polymer is.
+
+Basis: **unknown** — the source does not say whether the percentages are by mass or by volume. Still needed from Dutch: whether the percentages are by weight or by volume. Until then the checks read them as mass fractions and say so on every result that depends on it.
+
+## Candidates
+
+### primary: recycled impact-grade polypropylene (ethylene–propylene copolymer)
+
+Feedstock: tubs, caps, bins, crates, bumpers (Dutch, 2026-10-16).
+
+| Property | Span | Sources | Notes |
+|---|---|---|---|
+| density | 902–940 kg/m³ | vinmar-verdant-rrpi1520k, vinmar-vinpol-rrpi50y, mba-pp2143-tds | 0.902 (VERDANT RRPI1520K, post-industrial, ASTM D-792A); 0.91 (VINPOL RRPI50Y, post-industrial, ASTM D-792); 0.94 (MBA PP 2143, post-consumer, 'MBA Method'). The post-consumer grade is the densest: its filler/contaminant content is not stated. |
+| youngsModulus | 900.0–1305.0 MPa | mba-pp2143-tds, vinmar-verdant-rrpi1520k, vinmar-vinpol-rrpi50y, takayama-2025-polymers-pp-reuse | 900 MPa flexural (ISO 178) and 1100 MPa tensile (ISO 527), MBA PP 2143; 965–1165 MPa flexural (ASTM D-790), VERDANT RRPI1520K; 966 MPa flexural, VINPOL RRPI50Y; block copolymer BC03AD 1305 → 1046 MPa tensile after 0 → 5 extrusion cycles (Takayama 2025 Table 7). Flags: mixed-test-methods. |
+| poisson | 0.341–0.37 | takayama-2025-polymers-pp-reuse | Block-type PP (Novatec BC03AD), 0 / 1 / 3 / 5 extrusion cycles: 0.361 / 0.370 / 0.350 / 0.341 (Takayama 2025 Table 7, small-strain tensile model). No recycled-grade datasheet states a Poisson's ratio. Flags: single-source. |
+| yieldStrength | 19.0–22.2 MPa | vinmar-vinpol-rrpi50y, mba-pp2143-tds, takayama-2025-polymers-pp-reuse | 19 MPa (VINPOL RRPI50Y, ASTM D-638); 20 MPa (MBA PP 2143, ISO 527); 22.2 → 20.3 MPa over 0 → 5 extrusion cycles (Takayama 2025 Table 7). VERDANT's 25–26 MPa is labelled 'Tensile Strength' without 'at yield' and is not included. |
+| meltTemperature | 165.0–165.8 °C | takayama-2025-polymers-pp-reuse | Block-PP DSC peak 165.0–165.8 °C over 0–5 extrusion cycles (Takayama 2025 Table 9); a virgin block copolymer reprocessed in the lab, not a post-consumer stream. Flags: single-source. |
+
+Unknown (checks that need these are NOT_COMPUTED): thermal conductivity, CTE, crystallization temperature, hydrogen permeability, relaxation spectrum: no source read for a recycled PP copolymer.
+
+Variability: recycled grades span 0.902–0.94 g/cm³ and 900–1165 MPa flexural modulus across three datasheets (two post-industrial, one post-consumer); reprocessing alone lowered a block copolymer's tensile modulus 20 % (1305 → 1046 MPa over five extrusions, Takayama 2025). A discarded-plastics stream is mixed: measure each lot (ASTM D792, D638/D790, D1238, D3418).
+
+### fallback: ethylene vinyl acetate copolymer (EVA)
+
+Feedstock: shoe and mat foam (Dutch, 2026-10-16).
+
+| Property | Span | Sources | Notes |
+|---|---|---|---|
+| density | 935–953 kg/m³ | vinmar-vinpol-ev0218, vinmar-vinpol-ev0627 | 0.935 g/cm³ at 18 wt % VA (VINPOL EV0218, ASTM D-1505); 0.953 at 26.7 wt % VA (VINPOL EV0627). Solid resin, not foam: a foam's density is far lower and is not this property. |
+| youngsModulus | 20.1–60.0 MPa | vinmar-vinpol-ev0218, vinmar-vinpol-ev0627, rondon-2026-edt-eva-mouthguard | 60 MPa flexural (EV0218, ASTM D-790); 23 MPa 1 % secant flexural (EV0627); 20.1–36.8 MPa tensile on three EVA sheets (Rondon 2026 Table 3). Falls as VA content rises. Flags: mixed-test-methods. |
+| poisson | 0.24–0.34 | rondon-2026-edt-eva-mouthguard | Rondon 2026 Table 3 prints 0.29 ± 0.05 for all three EVA sheets (DIC, ASTM D638, small strain); the span is mean ± 1 SD. The identical value for three different sheets is as printed and has not been checked against the paper's raw data. Flags: single-source, identical-across-materials. |
+| yieldStrength | 5.2–5.2 MPa | vinmar-vinpol-ev0218 | 5.2 MPa at 18 wt % VA (EV0218, ASTM D-638). Flags: single-source. |
+| meltTemperature | 72.0–87.0 °C | vinmar-vinpol-ev0218, vinmar-vinpol-ev0627 | 87 °C at 18 % VA (EV0218, ASTM D-3418); 72 °C peak at 26.7 % VA (EV0627, supplier method). |
+
+Unknown (checks that need these are NOT_COMPUTED): thermal conductivity, CTE, crystallization temperature, hydrogen permeability, relaxation spectrum, and any recycled-EVA grade: only virgin resin datasheets were read.
+
+Variability: the properties depend on VA content (18 vs 26.7 wt % here) and the discarded feedstock's VA is unknown. Shoe and mat foams are commonly crosslinked and foamed; whether that stock melts and blends like the resin above is not established — measure the feedstock's melt flow (ASTM D1238) and density (ASTM D792) first.
+
+## Every Blend D check, rerun
+
+Material node with the formulation and props.micromechanics = {"filler":"basalt-fiber","shape":"fibre"} (as in the earlier Blend D items). The vessel structure checks (vessel.hoop-stress, burst-margin, crash-seal-screen) target a chamber node, not the material, and read the wall's strength, which no candidate supplies; they are unchanged.
+
+| Check | unidentified | recycled-impact-pp | eva |
+|---|---|---|---|
+| `material.composition-check` | WARN | WARN | WARN |
+| `material.density-rom` | NOT_COMPUTED: no cited density for: hdpe-hc-co-polymer: the strict density is unknown | WARN: 1026–1095 kg/m³ (nominal 1062) | WARN: 1032–1097 kg/m³ (nominal 1067) |
+| `material.mass-to-volume` | NOT_COMPUTED: no cited density for: hdpe-hc-co-polymer | WARN: co-polymer 15.72–16.85 vol % (nominal 16.28) | WARN: co-polymer 15.54–16.35 vol % (nominal 15.95) |
+| `material.modulus-bounds` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; no cited Young's modulus for: hdpe-hc-co-polymer, caco3, silica | NOT_COMPUTED: no cited Young's modulus for: caco3, silica | NOT_COMPUTED: no cited Young's modulus for: caco3, silica |
+| `material.modulus-halpin-tsai` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; this model is two-phase (one matrix, one filler); the formulation has 5 other … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … |
+| `material.modulus-mori-tanaka` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; this model is two-phase (one matrix, one filler); the formulation has 5 other … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … |
+| `material.tensile-bounds` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; this model is two-phase (one matrix, one filler); the formulation has 5 other … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … |
+| `material.k-maxwell-garnett` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; Maxwell is a sphere model (props.micromechanics.shape = sphere); platelets and… | NOT_COMPUTED: Maxwell is a sphere model (props.micromechanics.shape = sphere); platelets and fibres are not claimed; this model is two-phase (one matrix, … | NOT_COMPUTED: Maxwell is a sphere model (props.micromechanics.shape = sphere); platelets and fibres are not claimed; this model is two-phase (one matrix, … |
+| `material.k-lewis-nielsen` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; Lewis–Nielsen needs A and φ_max for the filler's shape (props.micromechanics.l… | NOT_COMPUTED: Lewis–Nielsen needs A and φ_max for the filler's shape (props.micromechanics.lewisNielsen); only the sphere values are cited here; this mode… | NOT_COMPUTED: Lewis–Nielsen needs A and φ_max for the filler's shape (props.micromechanics.lewisNielsen); only the sphere values are cited here; this mode… |
+| `material.cte-turner` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; this model is two-phase (one matrix, one filler); the formulation has 5 other … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … |
+| `material.cte-schapery` | NOT_COMPUTED: no volume fractions: no cited density for hdpe-hc-co-polymer; this model is two-phase (one matrix, one filler); the formulation has 5 other … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … | NOT_COMPUTED: this model is two-phase (one matrix, one filler); the formulation has 5 other constituents (hdpe-base, hdpe-hc-co-polymer, caco3, graphene, … |
+| `material.thermal-transitions` | WARN | WARN | WARN |
+| `material.heat-dissipation-screen` | WARN | WARN | WARN |
+| `material.viscoelastic-prony` | NOT_COMPUTED: no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, caco3, graphene, silica): its Prony series is unknown unt… | NOT_COMPUTED: no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, caco3, graphene, silica): its Prony series is unknown unt… | NOT_COMPUTED: no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, caco3, graphene, silica): its Prony series is unknown unt… |
+| `material.impact-recovery-screen` | NOT_COMPUTED: props.impact.strainAmplitude; props.impact.frequencyHz; no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, c… | NOT_COMPUTED: props.impact.strainAmplitude; props.impact.frequencyHz; no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, c… | NOT_COMPUTED: props.impact.strainAmplitude; props.impact.frequencyHz; no relaxation data for this compound (hdpe-base, hdpe-hc-co-polymer, basalt-fiber, c… |
+| `vessel.h2-permeation` | WARN | WARN | WARN |
+| `material.chemical-compatibility` | WARN | WARN | WARN |
+| `process.window` | WARN | WARN | WARN |
+
+## Candidate melting against the stated 200 °C
+
+process.window checks the HDPE matrix only. This screen adds the candidate's own melting point; it does not check thermal degradation.
+
+- recycled-impact-pp: melting 165–165.8 °C (material:recycled-impact-pp.melting_temperature) → molten at 200 °C. Processing window: inside — MBA Polymers PP 2143 TDS p.2: 'Melt Temperature Range 190-220 °C', 'Recommended Melt Temperature 200 °C'. thermal stability at 200 °C is not computed: no TGA / OIT read for this candidate.
+- eva: melting 72–87 °C (material:eva.melting_temperature) → molten at 200 °C. Processing window: no processing window read for this candidate (not computed). thermal stability at 200 °C is not computed: no TGA / OIT read for this candidate.
+
+## What changed and what did not
+
+- With either candidate the strict rule-of-mixtures density and the mass-to-volume fractions are computed (they were NOT_COMPUTED for want of the co-polymer's density). Both remain estimates: no voids, mass basis assumed.
+- Stiffness, strength, conductivity and CTE models stay NOT_COMPUTED: CaCO3 and silica have no cited modulus, and the two-phase models do not cover six constituents. A candidate does not change that.
+- Viscoelastic, hydrogen, compatibility and thermal-transition checks read the HDPE matrix or need compound tests; the candidate adds no data to them, and the compatibility table does not cover either candidate.
+- Nothing here is a measurement of a Blend D batch. Measure the lot: ASTM D792, D638/D790, D1238, D3418.
