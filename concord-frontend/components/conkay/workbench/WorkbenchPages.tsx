@@ -1,15 +1,13 @@
 'use client';
 
-/** /conkay/workbench (start a design from a prompt) and /conkay/workbench/[id] (its Workbench). Signed in. */
+/** /conkay/workbench — start a design from a prompt; it opens on /conkay/designs/[id]. Signed in. */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
-import { workbenchClient, type WorkbenchView } from '@/lib/conkay/workbench-api';
 import { DesignsHeader } from '@/components/conkay/designs/DesignsHeader';
 import { PANEL } from '@/components/conkay/designs/design-styles';
-import { Workbench } from './Workbench';
 
 function Shell({ crumb, children }: { crumb: string; children: React.ReactNode }) {
   return (
@@ -31,7 +29,7 @@ export function WorkbenchStart() {
     try {
       const r = (await api.post('/api/conkay/workbench', { prompt })).data;
       if (r.stage === 'questions') setQuestions(r.questions);
-      else if (r.id) router.push(`/conkay/workbench/${r.id}`);
+      else if (r.id) router.push(`/conkay/designs/${r.id}`);
       else setError(r.outcome?.binding?.[0]?.why || 'this design could not be built');
     } catch (e) { setError(e instanceof Error ? e.message : 'the request failed'); } finally { setBusy(false); }
   };
@@ -51,23 +49,6 @@ export function WorkbenchStart() {
           <ul className="mt-1 list-disc pl-5 text-sm text-sky-200">{questions.map((q) => <li key={q.field}>{q.question}</li>)}</ul></section>
       )}
       {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-    </Shell>
-  );
-}
-
-export function WorkbenchById({ id }: { id: string }) {
-  const [view, setView] = useState<WorkbenchView | null>(null);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let live = true;
-    workbenchClient.get(id).then((r) => { if (live) setView(r.view); }).catch(() => { if (live) setError('No workbench design with this id (they live until the server restarts).'); });
-    return () => { live = false; };
-  }, [id]);
-  return (
-    <Shell crumb={`Workbench · ${id.slice(0, 8)}`}>
-      {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-      {!view && !error && <div className="h-64 animate-pulse rounded-2xl border border-white/5 bg-white/[0.02]" aria-busy="true" />}
-      {view && <Workbench id={id} initialView={view} />}
     </Shell>
   );
 }

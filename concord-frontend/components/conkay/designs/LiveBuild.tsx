@@ -1,10 +1,15 @@
 'use client';
 
 /**
- * LiveBuild — /conkay/designs/[id]/live. Watch the design get made: every orchestrator iteration in order, the
- * check that failed, the candidates it ran with their computed margins, what changed and why, what reran, and
- * the body after each change. Read-only; the stream is the server's record of the run (nothing solved here).
- * Reconnects resume from the last event id; nothing is shown twice.
+ * LiveBuildStream — the chrome-less live timeline: every orchestrator
+ * iteration in order, the check that failed, the candidates it ran with their
+ * computed margins, what changed and why, what reran, and the body after each
+ * change. Read-only; the stream is the server's record of the run (nothing
+ * solved here). Reconnects resume from the last event id; nothing is shown
+ * twice. onSnapshot hands the newest body snapshot to an embedding page (the
+ * builder shows it beside the chat); onMissing fires when there is no live
+ * run, so the embedding page can hide the section quietly instead of the
+ * standalone page's "No live run" alert.
  */
 
 import Link from 'next/link';
@@ -13,7 +18,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CircleSlash, Loader2, Radio, Wrench } from 'lucide-react';
 import {
   LIVE_EVENT_TYPES, LIVE_INITIAL, latestSnapshot, liveFileUrl, liveReducer, liveStreamUrl,
-  type LiveCandidate, type LiveEvent,
+  type LiveCandidate, type LiveEvent, type LiveSnapshot,
 } from '@/lib/conkay/live-api';
 import { DesignsHeader } from './DesignsHeader';
 import { PANEL } from './design-styles';
@@ -25,7 +30,11 @@ const StlViewer = dynamic(() => import('./StlViewer'), {
 
 type Conn = 'connecting' | 'live' | 'reconnecting' | 'complete' | 'missing';
 
-export function LiveBuild({ id }: { id: string }) {
+export function LiveBuildStream({ id, onSnapshot, onMissing }: {
+  id: string;
+  onSnapshot?: (snap: LiveSnapshot | null) => void;
+  onMissing?: () => void;
+}) {
   const [state, dispatch] = useReducer(liveReducer, LIVE_INITIAL);
   const [conn, setConn] = useState<Conn>(() => (typeof EventSource === 'undefined' ? 'missing' : 'connecting'));
 
@@ -49,6 +58,42 @@ export function LiveBuild({ id }: { id: string }) {
   const start = state.events.find((e) => e.type === 'start');
   const brief = typeof start?.initialState?.brief === 'string' ? start.initialState.brief : null;
 
+  useEffect(() => { onSnapshot?.(snap); }, [onSnapshot, snap]);
+  useEffect(() => { if (conn === 'missing') onMissing?.(); }, [conn, onMissing]);
+
+  return (
+    <>
+      <section className="flex flex-wrap items-center gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">Live build</h2>
+        <ConnChip conn={conn} />
+        {brief && <p className="text-sm text-slate-400" data-testid="live-brief">{brief}</p>}
+      </section>
+      {conn === 'missing' && state.events.length === 0 && !onMissing && (
+        <p role="alert" className="text-sm text-rose-300">No live run with this id.</p>
+      )}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <ol className="flex flex-col gap-3" data-testid="live-timeline" aria-live="polite">
+          {state.events.filter((e) => e.type !== 'start').map((e) => <Step key={e.id} e={e} />)}
+          {!state.done && state.events.length > 0 && (
+            <li className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden /> waiting for the next step</li>
+          )}
+        </ol>
+        <aside className={`${PANEL} flex h-fit flex-col gap-2`}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Body at this step</h2>
+          {snap?.file ? (
+            <>
+              <StlViewer url={liveFileUrl(id, snap.file)} />
+              <p className="font-mono text-[10px] text-slate-500" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
+            </>
+          ) : <p className="text-xs text-slate-500">No solid yet.</p>}
+        </aside>
+      </div>
+    </>
+  );
+}
+
+/** LiveBuild — /conkay/designs/[id]/live: the site chrome around LiveBuildStream. */
+export function LiveBuild({ id }: { id: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
       <DesignsHeader crumb={{ label: `${id} · live` }} />
@@ -56,31 +101,7 @@ export function LiveBuild({ id }: { id: string }) {
         <Link href="/conkay/designs" className="flex w-fit items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
           <ArrowLeft className="h-3 w-3" aria-hidden /> All designs
         </Link>
-        <section className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">Live build</h1>
-          <ConnChip conn={conn} />
-          {brief && <p className="text-sm text-slate-400" data-testid="live-brief">{brief}</p>}
-        </section>
-        {conn === 'missing' && state.events.length === 0 && (
-          <p role="alert" className="text-sm text-rose-300">No live run with this id.</p>
-        )}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <ol className="flex flex-col gap-3" data-testid="live-timeline" aria-live="polite">
-            {state.events.filter((e) => e.type !== 'start').map((e) => <Step key={e.id} e={e} />)}
-            {!state.done && state.events.length > 0 && (
-              <li className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden /> waiting for the next step</li>
-            )}
-          </ol>
-          <aside className={`${PANEL} flex h-fit flex-col gap-2`}>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Body at this step</h2>
-            {snap?.file ? (
-              <>
-                <StlViewer url={liveFileUrl(id, snap.file)} />
-                <p className="font-mono text-[10px] text-slate-500" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
-              </>
-            ) : <p className="text-xs text-slate-500">No solid yet.</p>}
-          </aside>
-        </div>
+        <LiveBuildStream id={id} />
       </main>
     </div>
   );
