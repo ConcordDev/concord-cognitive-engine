@@ -769,7 +769,18 @@ export default function registerHRActions(registerLensAction) {
   // employee's actual salary on record.
   const FICA_SS_RATE = 0.062;       // Social Security
   const FICA_MEDICARE_RATE = 0.0145; // Medicare
-  const SS_WAGE_BASE = 168600;       // 2024 SS wage cap
+  // OASDI contribution and benefit base (taxable maximum), by wage year.
+  // Source: SSA Office of the Chief Actuary, "Contribution and Benefit Base",
+  // https://www.ssa.gov/oact/cola/cbb.html (retrieved 2026-10-15). Declared
+  // assumption on every stub; override with params.ssWageBase.
+  const SS_WAGE_BASES = { 2024: 168600, 2025: 176100, 2026: 184500, 2027: 192300 };
+  function ssWageBaseFor(year, override) {
+    const o = Number(override);
+    if (o > 0) return { value: o, year, source: "caller override (params.ssWageBase)" };
+    const known = Object.keys(SS_WAGE_BASES).map(Number);
+    const y = SS_WAGE_BASES[year] ? year : Math.max(...known.filter((k) => k <= year).concat([Math.min(...known)]));
+    return { value: SS_WAGE_BASES[y], year: y, source: `SSA contribution and benefit base, ${y} (https://www.ssa.gov/oact/cola/cbb.html)`, ...(y !== year ? { note: `no SSA figure on file for ${year}; using ${y}` } : {}) };
+  }
 
   function fedIncomeTaxAnnual(taxable) {
     // 2024 single-filer marginal brackets on taxable income.
@@ -788,26 +799,26 @@ export default function registerHRActions(registerLensAction) {
 
   const PAY_PERIODS = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
 
-  function computeStub(emp, frequency) {
+  function computeStub(emp, frequency, ssBase, stateTaxRate) {
     const periods = PAY_PERIODS[frequency] || 26;
     const annual = Math.max(0, hrNum(emp.salary));
     const gross = annual / periods;
     // Standard deduction reduces taxable wages (2024 single = 14600).
     const taxableAnnual = Math.max(0, annual - 14600);
     const fedTaxPerPeriod = fedIncomeTaxAnnual(taxableAnnual) / periods;
-    const ssWages = Math.min(annual, SS_WAGE_BASE) / periods;
+    const ssWages = Math.min(annual, ssBase.value) / periods;
     const socialSecurity = ssWages * FICA_SS_RATE;
     const medicare = gross * FICA_MEDICARE_RATE;
-    // State tax flat approximation 5% of taxable.
-    const stateTax = (taxableAnnual / periods) * 0.05;
-    const totalTax = fedTaxPerPeriod + socialSecurity + medicare + stateTax;
+    // State tax: caller-supplied flat rate only (was an invented 5% for every state).
+    const stateTax = stateTaxRate === null ? null : (taxableAnnual / periods) * stateTaxRate;
+    const totalTax = fedTaxPerPeriod + socialSecurity + medicare + (stateTax || 0);
     const net = gross - totalTax;
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
       employeeId: emp.id, employeeName: emp.name,
       grossPay: r2(gross),
       federalTax: r2(fedTaxPerPeriod),
-      stateTax: r2(stateTax),
+      stateTax: stateTax === null ? null : r2(stateTax),
       socialSecurity: r2(socialSecurity),
       medicare: r2(medicare),
       totalDeductions: r2(totalTax),
@@ -823,7 +834,11 @@ export default function registerHRActions(registerLensAction) {
       ? String(params.frequency) : "biweekly";
     const active = (s.employees.get(userId) || []).filter((e) => e.status === "active");
     if (active.length === 0) return { ok: false, error: "no active employees to pay" };
-    const stubs = active.map((e) => computeStub(e, frequency));
+    const payDate = hrDay(params.payDate) || hrDay(hrNow());
+    const ssBase = ssWageBaseFor(Number(payDate.slice(0, 4)), params.ssWageBase);
+    const _str = Number(params.stateTaxRate);
+    const stateTaxRate = params.stateTaxRate != null && params.stateTaxRate !== "" && _str >= 0 && _str < 1 ? _str : null;
+    const stubs = active.map((e) => computeStub(e, frequency, ssBase, stateTaxRate));
     const totals = stubs.reduce((acc, st) => {
       acc.gross += st.grossPay; acc.tax += st.totalDeductions; acc.net += st.netPay;
       return acc;
@@ -832,13 +847,15 @@ export default function registerHRActions(registerLensAction) {
     const run = {
       id: hrId("pay"),
       periodLabel: hrClean(params.periodLabel, 60) || hrDay(hrNow()),
-      payDate: hrDay(params.payDate) || hrDay(hrNow()),
+      payDate,
       frequency,
       headcount: stubs.length,
       stubs,
       totalGross: r2(totals.gross),
       totalDeductions: r2(totals.tax),
       totalNet: r2(totals.net),
+      assumptions: { ssWageBase: ssBase, stateTaxRate: stateTaxRate === null ? { value: null, note: "not supplied; state tax excluded (pass stateTaxRate as a fraction)" } : { value: stateTaxRate, source: "caller" } },
+      ...(stateTaxRate === null ? { missingInputs: ["stateTaxRate"] } : {}),
       status: "completed",
       createdAt: hrNow(),
     };

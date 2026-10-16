@@ -69,6 +69,7 @@ import { powerLawPipeFlow, carreauPipeFlow, generalisedReynolds, HONEST_BOUNDARY
 // structural bundle, and the genuine opt-in simultaneous thermal+aero
 // combined-loads solve).
 import { runMultiPhysicsBundle } from '../lib/asset-gen/multi-physics-bundle.js';
+import { needNums, notComputed } from "../lib/lens-inputs.js";
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -527,9 +528,10 @@ export default function registerEngineeringActions(registerLensAction) {
   registerLensAction('engineering', 'stressAnalysis', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      const force = parseFloat(data.forceNewtons) || 0;
-      const area = parseFloat(data.crossSectionMm2) || 1;
-      const yieldStrength = parseFloat(data.yieldStrengthMPa) || 250;
+      // No assumed 250 MPa yield strength or 1 mm² section.
+      const { values: _v, missing: _m } = needNums(data, ["forceNewtons>=0", "crossSectionMm2>0", "yieldStrengthMPa>0"]);
+      if (_m.length) return notComputed(_m, "Stress check needs forceNewtons, crossSectionMm2 and the material's yieldStrengthMPa.");
+      const force = _v.forceNewtons, area = _v.crossSectionMm2, yieldStrength = _v.yieldStrengthMPa;
       const stress = force / area;
       const safetyFactor = stress > 0 ? yieldStrength / stress : Infinity;
       return {

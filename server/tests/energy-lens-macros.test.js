@@ -307,7 +307,8 @@ describe("energy — billing + goals (BillingPanel)", () => {
   it("rate-get default → rate-set → bill-estimate uses set rate", () => {
     const g0 = call("rate-get", ctxA, {});
     assert.equal(g0.result.isDefault, true);
-    assert.equal(g0.result.rate.ratePerKwh, 0.17); // DEFAULT_RATE
+    assert.equal(g0.result.rate.ratePerKwh, null); // no silent fallback rate
+    assert.deepEqual(g0.result.missingInputs, ["ratePerKwh"]);
 
     call("rate-set", ctxA, { ratePerKwh: 0.30, utility: "PG&E" });
     const g1 = call("rate-get", ctxA, {});
