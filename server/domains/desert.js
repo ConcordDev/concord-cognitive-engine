@@ -551,10 +551,13 @@ export default function registerDesertActions(registerLensAction) {
     try {
       const latitude = parseFloat(params.latitude);
       if (!Number.isFinite(latitude)) return { ok: false, error: "latitude required" };
-      const panelWatt = parseFloat(params.panelWatt) || 450; // W per panel
-      const panelAreaM2 = parseFloat(params.panelAreaM2) || 2.0;
-      const systemLossFactor = parseFloat(params.systemLossFactor) || 0.82; // inverter/wiring/soiling
-      const clearDays = parseInt(params.clearDaysPerYear, 10) || 300;
+      // Module rating/area, system derate and the site's clear days are inputs
+      // (previously assumed 450 W, 2 m², 0.82 and 300 days with no source).
+      const { values: _sv, missing: _sm } = needNums(params, ["panelWatt>0", "panelAreaM2>0", "systemLossFactor>0", "clearDaysPerYear>=0"]);
+      if (!_sm.length && _sv.systemLossFactor > 1) _sm.push("systemLossFactor (fraction 0-1)");
+      if (!_sm.length && _sv.clearDaysPerYear > 366) _sm.push("clearDaysPerYear (0-366)");
+      if (_sm.length) return notComputed(_sm, "Solar sizing needs the module's panelWatt and panelAreaM2 (datasheet), systemLossFactor as a derate fraction (e.g. from PVWatts or the installer), and the site's clearDaysPerYear.");
+      const panelWatt = _sv.panelWatt, panelAreaM2 = _sv.panelAreaM2, systemLossFactor = _sv.systemLossFactor, clearDays = Math.round(_sv.clearDaysPerYear);
       // Peak-sun-hours from latitude proximity to desert solar belt (~25°).
       const peakSunHours = Math.max(3, 7.5 - Math.abs(latitude - 25) * 0.08);
 

@@ -140,7 +140,8 @@ const MATERIAL_LIBRARY = {
 // Returns volume (m³), mass (kg), surface area, and section props where
 // applicable. Cross-section moment of inertia for beam-shaped primitives.
 function computePrimitive(kind, p, densityKgM3) {
-  const d = densityKgM3 || 7850;
+  // No assumed steel density: mass is null unless a material or density is given.
+  const d = Number(densityKgM3) > 0 ? Number(densityKgM3) : null;
   const round = (v) => Math.round(v * 1e9) / 1e9;
   let volume = 0, surfaceArea = 0, bbox = [0, 0, 0];
   // Section (area/Ix/Iy) math is delegated to the shared compute primitive
@@ -215,7 +216,8 @@ function computePrimitive(kind, p, densityKgM3) {
   return {
     kind,
     volume: round(volume),
-    mass: round(volume * d),
+    mass: d === null ? null : round(volume * d),
+    ...(d === null ? { missingInputs: ['material or density'] } : {}),
     surfaceArea: round(surfaceArea),
     boundingBox: { x: round(bbox[0]), y: round(bbox[1]), z: round(bbox[2]) },
     section: section
@@ -627,7 +629,7 @@ export default function registerEngineeringActions(registerLensAction) {
       const kind = egClean(data.kind || 'box', 24);
       const matId = data.material;
       const mat = matId ? MATERIAL_LIBRARY[matId] : null;
-      const density = mat ? mat.density : parseFloat(data.density) || 7850;
+      const density = mat ? mat.density : parseFloat(data.density) || null;
       const geom = computePrimitive(kind, data.params || data, density);
       let structural = null;
       // If a beam-shaped primitive + span + load given, give a quick check.
@@ -1740,7 +1742,7 @@ export default function registerEngineeringActions(registerLensAction) {
       const geom = computePrimitive(
         egClean(data.kind || 'box', 24),
         data.params || data,
-        mat ? mat.density : parseFloat(data.density) || 7850,
+        mat ? mat.density : parseFloat(data.density) || null,
       );
       const requestedId = egClean(data.id, 80);
       const id = requestedId && parts.find((p) => p.id === requestedId) ? requestedId : egId('part');
