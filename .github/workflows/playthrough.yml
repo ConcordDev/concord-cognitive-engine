@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # playthrough.spec.ts reads two hero GLBs, which are Git LFS objects: a
       # plain checkout leaves 130-byte pointer files and the "real GLB bytes"
