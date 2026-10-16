@@ -173,6 +173,20 @@ export const DOCUMENTS = {
     excerpt: "Table 2: HDPE (0 vol %) T_m 130.09 °C, T_c 116.30 °C; with GnP T_c 117.31–121.57 °C. 'the thermal conductivity of pure HDPE is 0.386 W/mK' … 'increased linearly with the addition of GnPs' … 'No thermal percolation threshold was observed for all types of nanocomposites' … 'with a GnP content of 13.92 vol %, the thermal conductivity of the HDPE/G2 nanocomposite was 0.729 W/mK, while for the HDPE/G1 and HDPE/G3 nanocomposites, it was enhanced up to 0.521 W/mK and 0.625 W/mK' … 'The percolation thresholds of G2 and G3 were 5.52 vol % and 7.38 vol %' … 'mainly ascribed to the high interfacial thermal boundary resistance'",
     license: "CC BY 4.0",
   },
+  "segura-2025-polymers-hdpe-relaxation": {
+    kind: "document", sourceId: "paper", title: "Segura-Méndez E.E., Puente-Córdova J.G., Rentería-Baltiérrez F.Y., et al. Modeling of Stress Relaxation Behavior in HDPE and PP Using Fractional Derivatives. Polymers 2025, 17(4), 453 (doi:10.3390/polym17040453)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11859346/", retrieved: "2026-10-16", date: "2025",
+    locator: "§3 Materials and Methods (stress relaxation, ASTM D638 Type I, Shimadzu AGS-X, steps of 1000 s); Table 6 (parallel Maxwell parameters for HDPE at 0.5/1/5/10 % strain)",
+    excerpt: "HDPE | 0.5 | 170.4 | 57.800 | 443.5 | 5941.77 | 0.9925 … 1 | 132.2 | 48.008 | 387.5 | 5733.90 | 0.9778 … 5 | 89.71 | 69.930 | 209.8 | 6119.95 | 0.9900 … 10 | 67.27 | 48.100 | 140.8 | 5945.30 | 0.9836 (ε %, E6 MPa, τ6 s, E7 MPa, τ7 s, R2); 'The duration of each step was 1000 s'",
+    license: "CC BY 4.0",
+  },
+  "pacheco-2015-lajss-prony": {
+    kind: "document", sourceId: "paper", title: "Pacheco J.E.L., Bavastri C.A., Pereira J.T. Viscoelastic Relaxation Modulus Characterization Using Prony Series. Latin American Journal of Solids and Structures 2015, 12, 420–445",
+    url: "https://www.scielo.br/j/lajss/a/JYnGg6LdhHhmq8cRG7Jdwjd/?format=pdf&lang=en", retrieved: "2026-10-16", date: "2015",
+    locator: "eqs. 11–14 (Prony with WLF shift, constant-strain-rate stress); Table 4 (strain rate 1.0 /s, −35/23/80 °C); appendix Tables 7, 9, 11 (SABIC Stamax 30YM240, 30 % long glass fibre PP, ISO 527/1B)",
+    excerpt: "Table 4: τ (s) 0.517896 → 2524.9 MPa; 193.062086 → 2301.1; 10000.000000 → 1021.0; E∞ 2217.5 MPa; C1 10.0; C2 103.8183 °C; Ts −55.4621 °C; Minimum error 0.3051 MPa2",
+    sha256: "13127e40c707a51b113ed06cce281f159442592dbea949b6237186f9f9aaf95f", license: "CC BY-NC (SciELO)",
+  },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",

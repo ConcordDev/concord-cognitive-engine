@@ -45,6 +45,7 @@ import "./physics/solvers/vehicle-acceptance.js";
 import "./physics/solvers/material.js";
 import "./physics/solvers/material-stiffness.js";
 import "./physics/solvers/material-thermal.js";
+import "./physics/solvers/material-viscoelastic.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
