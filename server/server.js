@@ -39988,6 +39988,9 @@ app.use("/api/conkay", createConkayDesignRouter({ requireAuth, db }));
 // ConKay CAD Wave 1 — multi-part assembly store + revise
 import createConkayAssemblyRouter from "./routes/conkay-assembly.js";
 app.use("/api/conkay", createConkayAssemblyRouter({ requireAuth, db }));
+// ConKay Workbench v0 (conversational-loop item 5): knobs, locks, follow-ups and receipts on a design (signed in)
+import createConkayWorkbenchRouter from "./routes/conkay-workbench.js";
+app.use("/api/conkay", createConkayWorkbenchRouter({ requireAuth }));
 // ConKay industry verticals — molecular / hospital / prosthetics / studio / aero (NEW paths)
 import createConkayVerticalsRouter from "./routes/conkay-verticals.js";
 app.use("/api/conkay", createConkayVerticalsRouter({ requireAuth, db }));

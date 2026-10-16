@@ -43,7 +43,10 @@ function rerunSet(a, b) {
   return out.sort();
 }
 
-export async function orchestrate({ evaluate, rules, initialState, budget = {}, pick = null, now = () => Date.now(), onEvent = null }) {
+export async function orchestrate({ evaluate, rules, initialState, budget = {}, pick = null, now = () => Date.now(), onEvent = null, locked = [] }) {
+  // locked design variables (the Workbench): never moved; a rule on one reports it as binding instead
+  const lockedSet = new Set(locked);
+  const lockedHash0 = sha256(locked.map((v) => [v, initialState[v] ?? null]).sort());
   // progress events for the live view (item 3): pure data, no clock, so a replay is the run
   const emit = (e) => { try { onEvent?.(e); } catch { /* a viewer never breaks the run */ } };
   emit({ type: "start", initialState: { ...initialState } });
@@ -78,6 +81,7 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
     const binding = rules.filter((r) => r.variable && !r.applies(ctx) && r.checks.some((c) => fails.includes(c))).map((r) => ({ rule: r.id, variable: r.variable, why: r.atBound(ctx) }));
     const tried = [];
     for (const rule of applicable) {
+      if (lockedSet.has(rule.variable)) { binding.push({ rule: rule.id, variable: rule.variable, why: `${rule.variable} is locked by the user at ${JSON.stringify(state[rule.variable] ?? null)}: not changed` }); continue; }
       const cands = rule.candidates(ctx);
       if (!cands.length) { binding.push({ rule: rule.id, variable: rule.variable, why: rule.atBound(ctx) }); continue; }
       for (const c of cands) {
@@ -136,9 +140,10 @@ export async function orchestrate({ evaluate, rules, initialState, budget = {}, 
     }
     state = chosen._state;
     cur = chosen._res;
+    if (sha256(locked.map((v) => [v, state[v] ?? null]).sort()) !== lockedHash0) throw new Error("the orchestrator changed a locked variable: refused");
   }
   const strippedLog = log;
-  const body = { orchestratorVersion: ORCHESTRATOR_VERSION, initialState, finalState: state, outcome, log: strippedLog, finalDesignHash: cur.designHash, requirementsHash: reqHash0 };
+  const body = { orchestratorVersion: ORCHESTRATOR_VERSION, initialState, finalState: state, outcome, log: strippedLog, finalDesignHash: cur.designHash, requirementsHash: reqHash0, ...(locked.length ? { locked: [...locked].sort() } : {}) };
   const receiptSha256 = sha256(body);
   emit({ type: "done", outcome, finalState: state, receiptSha256, snapshot: cur.snapshot || null, envelopes: counts(cur.envelopes) });
   return { ...body, receiptSha256, final: cur, state };
