@@ -9,6 +9,7 @@
 import { parseChatBrief } from "./brief-parser.js";
 import { MAX_QUESTIONS } from "./question-policy.js";
 import { solveBracket, solveBeam, solveTrussProblem } from "./structures.js";
+import { solveSentinelBracket } from "./sentinel-part.js";
 
 export const SESSION_VERSION = "1.0.0";
 
@@ -43,6 +44,11 @@ export class ChatSession {
     if (p.domain === "truss") {
       const r = solveTrussProblem(p.ir);
       return { ...base, kind: r.ok ? "answer" : "error", answer: r, ...(r.ok ? {} : { errors: [{ error: r.error || `missing ${r.missing.join(", ")}` }] }) };
+    }
+    if (p.domain === "sentinel-part") {
+      const r = solveSentinelBracket({ ...p.ir, armor: /requested/.test(String(p.ir.armor)) });
+      if (!r.ok && r.missing) return { ...base, kind: "questions", questions: r.missing.map((f) => ({ field: f, question: "Which joint's part: hip, knee or ankle?", reason: "the solver needs it" })) };
+      return { ...base, kind: r.ok ? "answer" : "refused", answer: r, ...(r.ok ? {} : { errors: [{ error: r.error }] }) };
     }
     return { ...base, kind: "handoff", note: `a ${p.domain} design runs through the orchestrator (chat/run.js designFromChat), not the class-problem solvers`, ir: p.ir };
   }
