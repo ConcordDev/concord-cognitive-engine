@@ -215,6 +215,20 @@ export const DOCUMENTS = {
     excerpt: "'Incompatible with acids, alum, ammonium salts, fluorine, magnesium. Reacts with acids and acidic salts to generate gaseous carbon dioxide with effervescence (bubbling).'",
     license: "CAMEO Chemicals (NOAA): US government",
   },
+  "mol-hdpe-catalogue-2023-processing": {
+    kind: "document", sourceId: "manufacturer_datasheet", title: "MOL Group, High Density Polyethylene (TIPELIN) Product Catalogue 2023 — processing and oxidation induction time",
+    url: "https://molgroupchemicals.com/userfiles/catalog/hdpe/HDPE_Product_catalogue_2023_EN.pdf", retrieved: "2026-10-16",
+    locator: "p.9 (processing notes); p.7 blow-moulding grade table, column 'OIT 200°C' (EN 728, min)",
+    excerpt: "p.9: 'Recommended melt temperatures are 180–220°C' (blow moulding); 'melt temperatures of 200–220°C are recommended' (film); 'Recommended processing temperatures are 170–220°C for extrusion.' p.7 OIT 200 °C (min) by grade: 8, 40, 90, 8, 7, 30, 90, 30, 105, 50, >100, 120, >120",
+    sha256: "886a069738f4107b4046ae7a7f56ccbd7022160837f6cd57dc0ed4c2ed2a12f3", license: "manufacturer copyright; excerpt only",
+  },
+  "evgin-2020-bjnano-tga": {
+    kind: "document", sourceId: "paper", title: "Evgin T., Turgut A., Hamaoui G., et al. Beilstein J. Nanotechnol. 2020, 11, 167 (doi:10.3762/bjnano.11.14) — TGA",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7006480/", retrieved: "2026-10-16", date: "2020",
+    locator: "Characterization (TGA method); Table 3 (TGA results)",
+    excerpt: "'TGA was carried out at a heating rate of 10 °C/min from room temperature to 700 °C under a nitrogen atmosphere'; Table 3, HDPE (0 vol %): T5% 440.77 °C, T50% 474.44 °C; 'T 5% (5% sample weight loss) was defined as the onset degradation temperature'",
+    license: "CC BY 4.0",
+  },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",

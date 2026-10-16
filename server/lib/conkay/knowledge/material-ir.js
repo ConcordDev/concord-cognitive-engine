@@ -15,7 +15,7 @@
 // COMPUTED with the constituent named. No property here is a fallback.
 
 import crypto from "node:crypto";
-import { sourceFormulation, proposeVersion, constituentClassOf, checkComposition } from "./formulation.js";
+import { sourceFormulation, proposeVersion, processVersion, constituentClassOf, checkComposition } from "./formulation.js";
 import { constituentDensity } from "./constituents.js";
 import { CONSTITUENT_PROPERTIES as TABLES, UNKNOWN_PROPERTIES } from "./constituent-properties.js";
 import { ruleOfMixturesDensity } from "./rule-of-mixtures.js";
@@ -34,6 +34,7 @@ export function materialIrFromText(text, meta = {}) {
   const { record: source } = sourceFormulation(text, meta);
   const version = proposeVersion(source);
   const basis = source.composition.basis === "mass" || source.composition.basis === "volume" ? source.composition.basis : "unknown";
+  const proc = processVersion(source);
   return {
     schema: MATERIAL_IR_SCHEMA,
     id: source.id.replace(/:source$/, ""),
@@ -42,6 +43,11 @@ export function materialIrFromText(text, meta = {}) {
     basis,
     basisNote: basis === "unknown" ? "the source does not say whether the percentages are by mass or by volume" : null,
     statedTotal: source.composition.statedTotal ? source.composition.statedTotal.value : null,
+    process: {
+      id: proc.id,
+      steps: proc.process.steps.map((st) => ({ action: st.action, temperatureC: st.conditions?.temperature?.unit === "°C" ? st.conditions.temperature.value : null, statedAs: st.statedAs, locator: st.locator })),
+      missing: [...proc.process.missing],
+    },
     nominal: version.ok ? { rule: version.rule, recordId: version.record.id, fractions: version.fractions.map((f) => ({ id: f.id, pct: f.pct })) } : null,
     constituents: source.composition.ingredients.map((x) => {
       const { classId } = constituentClassOf(x.name);
