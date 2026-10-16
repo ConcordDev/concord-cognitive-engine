@@ -8,6 +8,7 @@ vi.mock('@react-three/fiber', () => ({
 }));
 vi.mock('@react-three/drei', () => ({ OrbitControls: () => null, ContactShadows: () => null }));
 vi.mock('three/examples/jsm/environments/RoomEnvironment.js', () => ({ RoomEnvironment: class {} }));
+vi.mock('three/examples/jsm/loaders/HDRLoader.js', () => ({ HDRLoader: class { load() {} } }));
 
 import { AssemblyViewer, type VehicleAssembly } from './AssemblyViewer';
 
@@ -89,6 +90,22 @@ describe('AssemblyViewer', () => {
     const badge = screen.getByTestId('studio-preview-badge').textContent || '';
     expect(badge).toMatch(/analysed body \(cad\.body solid\)/);
     expect(badge).not.toMatch(/styling preview/);
+  });
+
+  it('switches studio paint and offers the presentation GLB only for the analysed solid', () => {
+    const cad = { ...assembly, surface: { ...assembly.surface, source: 'cad.body' as const } };
+    const { unmount } = render(<AssemblyViewer assembly={cad} glbUrl="/api/conkay/demo/designs/car/present.glb" />);
+    expect(screen.getByTestId('paint-graphite').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByTestId('paint-silver'));
+    expect(screen.getByTestId('paint-silver').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('paint-graphite').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('present-glb').getAttribute('href')).toBe('/api/conkay/demo/designs/car/present.glb');
+    fireEvent.click(screen.getByText('Engineering'));
+    expect(screen.queryByTestId('paint-silver')).toBeNull();
+    unmount();
+    // a styling-preview surface is not the analysed solid: no GLB link
+    render(<AssemblyViewer assembly={assembly} glbUrl="/x.glb" />);
+    expect(screen.queryByTestId('present-glb')).toBeNull();
   });
 
   it('stays view-only when asked, and still mounts the canvas', () => {

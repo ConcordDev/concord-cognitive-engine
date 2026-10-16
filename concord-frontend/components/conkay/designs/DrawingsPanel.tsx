@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useState } from 'react';
 import { Box, Download, FileText, Loader2 } from 'lucide-react';
 import { designFileUrl, formatBytes, type DesignDrawing, type DesignModel3d, type DesignSnapshot } from '@/lib/conkay/designs-api';
+import { presentGlbUrl } from '@/lib/conkay/present-paint';
 import { PANEL } from './design-styles';
 
 const AssemblyView = dynamic(() => import('./AssemblyViewer').then((m) => m.AssemblyViewer), {
@@ -92,7 +93,7 @@ export function DrawingsPanel({ designId, drawings, model3d, assembly = null }: 
       {assembly && (
         <div className="rounded-xl border border-white/10 bg-[#0c1218] p-2">
           <h3 className="mb-2 text-xs font-medium text-slate-300">Assembly</h3>
-          <AssemblyView assembly={assembly} />
+          <AssemblyView assembly={assembly} glbUrl={presentGlbUrl(designId)} />
         </div>
       )}
       {model3d && (

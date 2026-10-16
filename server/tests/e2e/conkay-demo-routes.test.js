@@ -288,6 +288,9 @@ describe('E2E — no-login ConKay demo (/api/conkay/demo/*)', { timeout: 150000 
     assert.equal(f.status, 200);
     assert.equal(f.headers.get('content-type'), 'image/svg+xml');
     assert.match(f.headers.get('content-security-policy') || '', /default-src 'none'/);
+    const glb = await apiFetch(base, '/api/conkay/demo/designs/car/present.glb');
+    assert.equal(glb.status, 200, 'the presentation GLB is public like the other snapshot files');
+    assert.equal(glb.headers.get('content-type'), 'model/gltf-binary');
     const n = await getJSON(base, '/api/conkay/demo/designs/nuscale-us600');
     assert.ok(n.body.design.disclaimers.some((d) => /screening-only/.test(d)), 'nuclear snapshot carries the screening disclaimer');
   });

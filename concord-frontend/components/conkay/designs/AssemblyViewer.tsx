@@ -2,9 +2,11 @@
 
 /**
  * AssemblyViewer — the parametric vehicle, orbitable.
- * Studio is the default: clearcoat paint, transmissive glass, instanced
- * wheels, a local studio environment (three.js RoomEnvironment, no network
- * HDRI). Engineering flattens the shading and shows every envelope.
+ * Studio is the default: clearcoat paint (the same graphite as the Cycles
+ * render and the presentation GLB, or silver), transmissive glass, instanced
+ * wheels, a same-origin CC0 sky HDRI for lighting and reflections over a flat
+ * studio backdrop (three.js RoomEnvironment until it loads, and if it fails).
+ * Engineering flattens the shading and shows every envelope.
  * Selection, hide, isolate, transparency, explode and a section plane work
  * in both. A narrow screen is view-only: the canvas stays, the controls do not.
  */
@@ -14,7 +16,9 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { explodedShift, sectionPlane, toThree, type ExplodePart } from '@/lib/conkay/assembly-view';
+import { STUDIO_HDRI_URL, STUDIO_PAINTS, type StudioPaintId } from '@/lib/conkay/present-paint';
 
 export interface AssemblyMesh {
   positions: number[];
@@ -92,16 +96,31 @@ function glassGeometry(assembly: VehicleAssembly) {
   );
 }
 
-function StudioEnv() {
+function StudioEnv({ hdriUrl }: { hdriUrl: string | null }) {
   const gl = useThree((s) => s.gl);
-  const texture = useMemo(() => {
+  const room = useMemo(() => {
     const pmrem = new THREE.PMREMGenerator(gl);
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
     return env;
   }, [gl]);
-  useEffect(() => () => { texture.dispose(); }, [texture]);
-  return <primitive object={texture} attach="environment" />;
+  useEffect(() => () => { room.dispose(); }, [room]);
+  const [sky, setSky] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!hdriUrl) return;
+    let live = true;
+    let made: THREE.Texture | null = null;
+    new HDRLoader().load(hdriUrl, (eq) => {
+      if (!live) { eq.dispose(); return; }
+      const pmrem = new THREE.PMREMGenerator(gl);
+      made = pmrem.fromEquirectangular(eq).texture;
+      pmrem.dispose();
+      eq.dispose();
+      setSky(made);
+    }, undefined, () => { /* the room environment stays */ });
+    return () => { live = false; made?.dispose(); setSky(null); };
+  }, [gl, hdriUrl]);
+  return <primitive object={sky || room} attach="environment" />;
 }
 
 function WheelInstances({ assembly, explode, clip, opacity, visible }: {
@@ -149,9 +168,11 @@ function WheelInstances({ assembly, explode, clip, opacity, visible }: {
   );
 }
 
-function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated, onSelect }: {
+function CarScene({ assembly, mode, paintId, hdriUrl, explode, section, opacity, hidden, isolated, onSelect }: {
   assembly: VehicleAssembly;
   mode: 'studio' | 'engineering';
+  paintId: StudioPaintId;
+  hdriUrl: string | null;
   explode: number;
   section: { axis: 'x' | 'y' | 'z'; position: number } | null;
   opacity: number;
@@ -161,6 +182,8 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
 }) {
   const bounds = assembly.surface.mesh.bounds;
   const cx = (bounds.min[0] + bounds.max[0]) / 2;
+  const coat = STUDIO_PAINTS[paintId];
+  const coatColor = useMemo(() => new THREE.Color().setRGB(...coat.baseColor, THREE.LinearSRGBColorSpace), [coat]);
   const paint = useMemo(() => geo({ positions: assembly.surface.mesh.positions, normals: assembly.surface.mesh.normals, indices: assembly.surface.mesh.paint }), [assembly]);
   const glass = useMemo(() => glassGeometry(assembly), [assembly]);
   const arch = useMemo(() => (assembly.surface.mesh.arch?.positions?.length ? geo(assembly.surface.mesh.arch) : null), [assembly]);
@@ -194,7 +217,7 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
   const showInterior = mode === 'engineering' || explode > 0.02;
   return (
     <>
-      {mode === 'studio' && <StudioEnv />}
+      {mode === 'studio' && <StudioEnv hdriUrl={hdriUrl} />}
       <ambientLight intensity={mode === 'studio' ? 0.35 : 0.7} />
       <directionalLight position={[4, 8, 3]} intensity={mode === 'studio' ? 2.2 : 1} castShadow />
       <directionalLight position={[-4, 3, -2]} intensity={0.6} color="#d7e2f0" />
@@ -202,7 +225,7 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
         {show('BODY_SHELL') && (
           <mesh geometry={paint} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onSelect('BODY_SHELL'); }}>
             {mode === 'studio'
-              ? <meshPhysicalMaterial color="#e6e8ee" metalness={0.9} roughness={0.16} clearcoat={1} clearcoatRoughness={0.05} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+              ? <meshPhysicalMaterial color={coatColor} metalness={coat.metallic} roughness={coat.roughness} clearcoat={coat.clearcoat} clearcoatRoughness={coat.clearcoatRoughness} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
               : <meshLambertMaterial color={GROUP_COLOR.exterior} flatShading clippingPlanes={clip} transparent opacity={Math.min(opacity, 0.45)} />}
           </mesh>
         )}
@@ -265,10 +288,18 @@ function CarScene({ assembly, mode, explode, section, opacity, hidden, isolated,
   );
 }
 
-export function AssemblyViewer({ assembly, viewOnly = false }: { assembly: VehicleAssembly; viewOnly?: boolean }) {
+export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdriUrl = STUDIO_HDRI_URL }: {
+  assembly: VehicleAssembly;
+  viewOnly?: boolean;
+  /** Presentation GLB of the analysed solid (offered for download in Studio); null hides the link. */
+  glbUrl?: string | null;
+  /** Equirectangular HDR for Studio lighting; null keeps the local RoomEnvironment. */
+  hdriUrl?: string | null;
+}) {
   const narrow = useNarrow();
   const locked = viewOnly || narrow;
   const [mode, setMode] = useState<'studio' | 'engineering'>('studio');
+  const [paintId, setPaintId] = useState<StudioPaintId>('graphite');
   const [selected, setSelected] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [sectionAxis, setSectionAxis] = useState<'x' | 'y' | 'z' | null>(null);
@@ -292,6 +323,29 @@ export function AssemblyViewer({ assembly, viewOnly = false }: { assembly: Vehic
               <button type="button" className={`rounded px-2 py-1 text-[11px] ${mode === 'studio' ? 'bg-white/15' : 'text-slate-400'}`} onClick={() => setMode('studio')}>Studio</button>
               <button type="button" className={`rounded px-2 py-1 text-[11px] ${mode === 'engineering' ? 'bg-white/15' : 'text-slate-400'}`} onClick={() => setMode('engineering')}>Engineering</button>
             </div>
+            {mode === 'studio' && (
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-400">
+                Paint
+                {(Object.keys(STUDIO_PAINTS) as StudioPaintId[]).map((id) => {
+                  const [r, g, b] = STUDIO_PAINTS[id].baseColor.map((c) => Math.round(255 * Math.pow(c, 1 / 2.2)));
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      data-testid={`paint-${id}`}
+                      aria-pressed={paintId === id}
+                      title={STUDIO_PAINTS[id].label}
+                      onClick={() => setPaintId(id)}
+                      className={`h-4 w-4 rounded-full border transition-transform ${paintId === id ? 'scale-110 border-sky-300' : 'border-white/30 hover:scale-105'}`}
+                      style={{ background: `rgb(${r},${g},${b})` }}
+                    />
+                  );
+                })}
+                {glbUrl && assembly.surface.source === 'cad.body' && (
+                  <a data-testid="present-glb" href={glbUrl} download className="ml-auto rounded border border-white/15 px-1.5 py-0.5 text-slate-300 hover:border-sky-400/40 hover:text-sky-100" title="Analysed solid with normals and this clearcoat material (glTF 2.0)">GLB</a>
+                )}
+              </div>
+            )}
             <label className="text-[11px] text-slate-400">Explode
               <input data-testid="explode" type="range" min={0} max={1} step={0.01} value={explode} onChange={(e) => setExplode(Number(e.target.value))} className="w-full" />
             </label>
@@ -331,12 +385,12 @@ export function AssemblyViewer({ assembly, viewOnly = false }: { assembly: Vehic
             </div>
           )}
           <Canvas
-            gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05, localClippingEnabled: true }}
+            gl={{ antialias: true, toneMapping: THREE.AgXToneMapping, toneMappingExposure: 1.05, localClippingEnabled: true }}
             camera={{ position: [viewNose - 1.8, 0.92, 2.6], fov: 28 }}
             dpr={narrow ? [1, 1] : [1, 1.5]}
           >
             <color attach="background" args={[mode === 'studio' ? '#d8d9db' : '#ececec']} />
-            <CarScene assembly={assembly} mode={mode} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} />
+            <CarScene assembly={assembly} mode={mode} paintId={paintId} hdriUrl={hdriUrl} explode={explode} section={section} opacity={opacity} hidden={hidden} isolated={isolated} onSelect={setSelected} />
           </Canvas>
         </div>
         {!locked && (
