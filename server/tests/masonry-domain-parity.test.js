@@ -87,7 +87,7 @@ describe("masonry — Feature 2: proposals", () => {
     assert.equal(call("proposal-create", ctxA, { projectTitle: "X" }).ok, false);
   });
   it("proposal-update-status to accepted stamps acceptedAt", () => {
-    const p = call("proposal-create", ctxA, { client: "C", lineItems: [] }).result;
+    const p = call("proposal-create", ctxA, { client: "C", lineItems: [{ description: "Block", quantity: 1, unitCost: 2.5 }] }).result;
     const up = call("proposal-update-status", ctxA, { id: p.id, status: "accepted" });
     assert.equal(up.ok, true);
     assert.equal(up.result.status, "accepted");

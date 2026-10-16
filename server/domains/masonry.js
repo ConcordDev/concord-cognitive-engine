@@ -240,7 +240,10 @@ export default function registerMasonryActions(registerLensAction) {
   // Builds a structured proposal (line items, totals, terms) for the client.
   // ─────────────────────────────────────────────────────────────────────
   function priceProposal(lineItems, taxPct, marginPct) {
-    const lines = (lineItems || []).map((li) => {
+    // Defensive: a non-array (string/number/object) must never reach .map —
+    // the proposal-create action validates, but keep the calculator itself
+    // crash-proof for any other caller.
+    const lines = (Array.isArray(lineItems) ? lineItems : []).map((li) => {
       const qty = mnum(li.quantity, 1);
       const unitCost = Math.round(mnum(li.unitCost) * 100) / 100;
       const lineTotal = Math.round(qty * unitCost * 100) / 100;
@@ -263,7 +266,29 @@ export default function registerMasonryActions(registerLensAction) {
       const userId = maid(ctx);
       const client = mclean(params.client, 120);
       if (!client) return { ok: false, error: "Client name required" };
-      const priced = priceProposal(params.lineItems, params.taxPct, params.marginPct);
+      // lineItems must be a non-empty array of item objects — a non-array
+      // used to crash priceProposal's .map ("(lineItems || []).map is not
+      // a function"); reject it with a clear error instead.
+      const lineItems = params.lineItems;
+      if (!Array.isArray(lineItems) || lineItems.length === 0) {
+        return { ok: false, error: "lineItems must be a non-empty array" };
+      }
+      const numericOk = (v) =>
+        (typeof v === "number" && Number.isFinite(v)) ||
+        (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)));
+      for (const li of lineItems) {
+        if (!li || typeof li !== "object" || Array.isArray(li)) {
+          return { ok: false, error: "lineItems must be a non-empty array" };
+        }
+        const hasDescription = (typeof li.description === "string" && li.description.trim() !== "") ||
+          (typeof li.name === "string" && li.name.trim() !== "");
+        const quantityOk = li.quantity != null && numericOk(li.quantity);
+        const unitCostOk = li.unitCost != null && numericOk(li.unitCost);
+        if (!hasDescription || !quantityOk || !unitCostOk) {
+          return { ok: false, error: "each line item needs a description and numeric quantity/unitCost" };
+        }
+      }
+      const priced = priceProposal(lineItems, params.taxPct, params.marginPct);
       const list = mlist(s.proposals, userId);
       const num = `PROP-${String(list.length + 1001).padStart(4, "0")}`;
       const rec = {

@@ -1919,6 +1919,11 @@ registerHeartbeat("environment-sense", {
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
+import {
+  validateCourtshipInteraction,
+  parseSubstrateImportBody,
+  withTimeout,
+} from "./lib/lens-contract-guards.js";
 import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
@@ -54649,19 +54654,20 @@ app.get("/api/substrate/export", requireAuth(), async (req, res) => {
 
 app.post("/api/substrate/import", requireAuth(), async (req, res) => {
   const userId = req.user.id;
+  // Accept a raw gzipped Buffer, {data:"<base64 gzip>"}, or a plain
+  // {dtus:[...]} JSON object. Anything else (or bad gzip/JSON, or a
+  // non-object dtu) is a 400 — never a Buffer.from(object) crash.
+  const parsed = parseSubstrateImportBody(req.body);
+  if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
   try {
-    const { gunzipSync } = await import("zlib");
-    const raw = gunzipSync(Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body));
-    const substrate = JSON.parse(raw.toString());
-
     let imported = 0;
-    for (const dtu of (substrate.dtus || [])) {
+    for (const dtu of parsed.dtus) {
       const newDtu = {
         ...dtu,
         id: generateRequestId(),
         ownerId: userId,
         importedAt: nowISO(),
-        importedFrom: substrate.userId,
+        importedFrom: parsed.sourceUserId,
       };
       STATE.dtus.set(newDtu.id, newDtu);
       imported++;
@@ -61674,7 +61680,15 @@ app.get("/api/courtship/mine", requireAuth(), asyncHandler(async (req, res) => {
 app.post("/api/courtship/interact", requireAuth(), asyncHandler(async (req, res) => {
   const { courtInteraction } = await import("./lib/romance-engine.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(courtInteraction(db, userId, req.body?.partnerKind, req.body?.partnerId, req.body?.sentiment || 1));
+  // Guard the engine inputs: a missing/invalid partnerKind or partnerId
+  // trips a sqlite CHECK/bind 500; a non-numeric sentiment is a 400 too.
+  const guard = validateCourtshipInteraction(req.body);
+  if (!guard.ok) return res.status(400).json({ ok: false, error: guard.error });
+  const result = courtInteraction(db, userId, guard.partnerKind, guard.partnerId, guard.sentiment);
+  if (!result || result.ok === false) {
+    return res.status(400).json({ ok: false, error: result?.reason || result?.error || "courtship interaction failed" });
+  }
+  res.json(result);
 }));
 
 app.get("/api/courtship/:partnerKind/:partnerId", requireAuth(), asyncHandler(async (req, res) => {
@@ -70356,13 +70370,34 @@ app.get("/api/dreams/state", (_req, res) => {
   res.json({ ok: true, ...getDreamState() });
 });
 
+// One dream cycle at a time, and never let a slow/unavailable LLM stall the
+// caller: the phases can sit in a ~30s brain call before answering 500.
+const DREAM_START_TIMEOUT_MS = 10000;
+
 app.post("/api/dreams/start", async (_req, res) => {
-  try {
-    const result = await startDreamCycle();
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  // 409 instead of starting an overlapping cycle while one is in flight.
+  if (STATE.dreamState?.isActive) {
+    return res.status(409).json({ ok: false, error: "dream cycle already running" });
   }
+  let result;
+  try {
+    result = await withTimeout(startDreamCycle(), DREAM_START_TIMEOUT_MS, "dream cycle timed out");
+  } catch (e) {
+    if (e?.timedOut) {
+      return res.status(503).json({ ok: false, error: "dream cycle timed out", retryable: true });
+    }
+    // Expected operational failures (LLM unavailable, brain cold, ...) are
+    // retryable service errors — a clear 503, not a 500.
+    return res.status(503).json({ ok: false, error: String(e?.message || e), retryable: true });
+  }
+  if (!result || result.ok === false) {
+    const reason = String(result?.reason || result?.error || "dream cycle failed");
+    if (/already active/i.test(reason)) {
+      return res.status(409).json({ ok: false, error: "dream cycle already running" });
+    }
+    return res.status(503).json({ ok: false, error: reason, retryable: true });
+  }
+  res.json(result);
 });
 
 app.get("/api/dreams/history", (_req, res) => {
