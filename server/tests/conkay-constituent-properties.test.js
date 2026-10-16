@@ -21,7 +21,7 @@ const excerpts = (c) => c.evidence.map((e) => DOCUMENTS[e.document].excerpt).joi
 
 describe("constituent property claims", () => {
   it("are valid claims, each citing registered documents with a locator and an excerpt", () => {
-    assert.ok(all.length >= 19);
+    assert.ok(all.length >= 20);
     for (const { cls, k, c } of all) {
       assert.deepEqual(validateEntity.claim(c), [], `${cls}.${k}`);
       assert.ok(c.evidence.length >= 1, `${cls}.${k}`);
@@ -47,6 +47,7 @@ describe("constituent property claims", () => {
       "hdpe.cte": ["~180 ppm/°C", "2.2"],
       "hdpe.meltTemperature": ["133 °C", "130", "134.73 °C"],
       "hdpe.glassTransition": ["− 130 °C and − 100 °C"],
+      "hdpe.crystallizationTemperature": ["T_c 116.30 °C", "T_C 117.79 °C"],
       "basalt_fiber.youngsModulus": ["91–110 GPa", "85–110 GPa", "88 GPa"],
       "basalt_fiber.tensileStrength": ["3000–4800 MPa", "2950 MPa"],
       "basalt_fiber.diameter": ["7–15 μm", "16 μm", "17.4 μm", "9–23 µm", "6−21 µm"],
@@ -74,7 +75,7 @@ describe("constituent property claims", () => {
     const expect = {
       "hdpe.youngsModulus": [970e6, 1410e6], "hdpe.yieldStrength": [23e6, 29.1e6], "hdpe.poisson": [0.41, 0.41],
       "hdpe.conductivity": [0.37, 0.431], "hdpe.cte": [180e-6, 220e-6], "hdpe.meltTemperature": [403.15, 407.88],
-      "hdpe.glassTransition": [143.15, 173.15], "basalt_fiber.youngsModulus": [85e9, 110e9], "basalt_fiber.tensileStrength": [2950e6, 4800e6],
+      "hdpe.glassTransition": [143.15, 173.15], "hdpe.crystallizationTemperature": [389.45, 390.94], "basalt_fiber.youngsModulus": [85e9, 110e9], "basalt_fiber.tensileStrength": [2950e6, 4800e6],
       "basalt_fiber.diameter": [6e-6, 23e-6], "graphene.inPlaneModulus": [1000e9, 1000e9], "graphene.effectiveModulus": [25e9, 40e9],
       "graphene.inPlaneConductivity": [3000, 3000], "graphene.throughPlaneConductivity": [6, 6], "graphene.effectiveInPlaneConductivity": [300, 470],
       "graphene.thickness": [6e-9, 8e-9], "graphene.lateralSize": [5e-6, 25e-6],

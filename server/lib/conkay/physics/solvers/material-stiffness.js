@@ -14,16 +14,16 @@ import { registerSolver } from "../registry.js";
 import { validateMaterialIr, massToVolumeFractions } from "../../knowledge/material-ir.js";
 import { voigt, reuss, halpinTsaiOriented, moriTanakaSpheres, kellyTyson } from "../../knowledge/micromechanics.js";
 
-const formulated = (g) => [...g.nodes.values()].filter((n) => n.kind === "Material" && n.props?.formulation).map((n) => n.id);
-const span = (v) => (v == null ? null : typeof v === "number" ? { lo: v, hi: v } : v);
-const mid = (s) => (s.lo + s.hi) / 2;
+export const formulated = (g) => [...g.nodes.values()].filter((n) => n.kind === "Material" && n.props?.formulation).map((n) => n.id);
+export const span = (v) => (v == null ? null : typeof v === "number" ? { lo: v, hi: v } : v);
+export const mid = (s) => (s.lo + s.hi) / 2;
 export const MORI_TANAKA_MAX_PHI = 0.3;
 
 /**
  * The IR, the nominal volume fractions (or the reason there are none) and the micromechanics inputs. Solvers
  * collect every missing input into `blockers` and report them all at once, not just the first.
  */
-function setup(ctx, id) {
+export function setup(ctx, id) {
   const ir = ctx.get(id, "props.formulation");
   const errors = validateMaterialIr(ir);
   if (errors.length) return { notComputed: `invalid material IR: ${errors.join("; ")}` };
@@ -36,7 +36,7 @@ function setup(ctx, id) {
   return { ir, phi: r.phi.map((p) => p.pct / 100), micro, blockers: [] };
 }
 
-const blocked = (b) => ({ notComputed: b.join("; ") });
+export const blocked = (b) => ({ notComputed: b.join("; ") });
 
 /**
  * A constituent's modulus interval. Graphene nanoplatelets have no single modulus: the band runs from the
@@ -54,7 +54,7 @@ function missingModuli(ir, ids) {
 }
 
 /** The two-phase split: the named filler and one matrix made of every other constituent (a single polymer only). */
-function twoPhase(ir, micro) {
+export function twoPhase(ir, micro) {
   const filler = ir.constituents.find((c) => c.id === micro.filler);
   if (!filler) return { notComputed: `props.micromechanics.filler names no constituent (${micro.filler ?? "not set"})` };
   const others = ir.constituents.filter((c) => c.id !== filler.id);
