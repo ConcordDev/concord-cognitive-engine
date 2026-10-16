@@ -195,6 +195,8 @@ function parseBeam(text, scan, assumptions) {
   const span = L.length || (L.loose.length === 1 ? L.loose[0] : null);
   if (span) claims.span = claim("span", "span", r6(span.si), { unit: "m", display: span.raw, source: `"${span.raw}"`, ...(L.length ? {} : { note: "the only length given, read as the span" }) });
   else if (L.loose.length > 1) assumptions.push(`lengths ${L.loose.map((q) => q.raw).join(", ")} were given without saying which is the span: none is used as the span`);
+  if (L.width) claims.width = claim("width", "section width", r6(L.width.si), { unit: "m", display: L.width.raw, source: `"${L.width.raw}"` });
+  if (L.height) claims.depth = claim("depth", "section depth", r6(L.height.si), { unit: "m", display: L.height.raw, source: `"${L.height.raw}"` });
   const { loads, notes } = loadsFrom(text, scan);
   if (loads.length) claims.loads = claim("loads", "loads", loads, { display: loads.map((l) => (l.type === "udl" ? `${l.Npm} N/m distributed` : `${l.N} N${l.at ? ` at ${typeof l.at === "string" ? l.at : `${l.at.xM} m from the ${l.at.from}`}` : ""}`)).join("; "), source: loads.map((l) => l.source).join(", "), ...(notes.length ? { note: notes.join("; ") } : {}) });
   for (const l of loads) if (l.type === "point" && !l.at) assumptions.push(`where ${l.source} acts was not said: ask, or give "at midspan" / "at 2 m from the left"`);
@@ -295,7 +297,7 @@ export function parseChatBrief(text, { llm = false, mapPhrases = null } = {}) {
   let ir;
   if (domain === "car") ir = carIr(Object.fromEntries(Object.entries(claims).filter(([, c]) => c.status !== STATUS.UNKNOWN)));
   else if (domain === "bracket") ir = { kind: "bracket", support: "cantilever", lengthM: v("length"), loadN: v("load"), loadAt: parsed.loads[0]?.at ?? (v("load") != null ? "tip" : null), otherLoads: parsed.loads.slice(1), material: v("material"), safetyFactor: v("safetyFactor"), thicknessM: v("thickness"), widthM: v("width"), section: null };
-  else if (domain === "beam") ir = { kind: "beam", spanM: v("span"), support: v("support"), loads: v("loads") || [], material: v("material"), safetyFactor: v("safetyFactor"), section: null };
+  else if (domain === "beam") ir = { kind: "beam", spanM: v("span"), support: v("support"), loads: v("loads") || [], material: v("material"), safetyFactor: v("safetyFactor"), widthM: v("width"), depthM: v("depth"), section: null };
   else if (domain === "truss") ir = { kind: "truss", type: v("type"), panels: v("panels"), spanM: v("span"), heightM: v("height"), loads: v("loads") || [], supports: v("support"), material: v("material") };
   else ir = { kind: "sentinel-part", robot: v("robot"), joint: v("joint"), part: v("part"), loadCase: v("loadCase"), material: v("material"), armor: "off" };
 
