@@ -31,6 +31,11 @@ export const PREDICTION_TESTS = Object.freeze({
     tests: [{ designations: ["ASTM D792", "ASTM E1131"], what: "measured density and filler content, from which the volume fractions are recomputed" }],
     criterion: NOT_SET("a derived quantity; no source sets a limit"),
   },
+  "material.basis-discriminator": {
+    predicts: "density and ash residue under the mass and the volume reading of the percentages",
+    tests: [{ designations: ["ASTM D5630", "ASTM E1131"], what: "ash / inorganic residue of a moulded batch: the band it falls in names the basis, independent of voids" }, { designations: ["ASTM D792"], what: "density of the same batch: decides only together with a void estimate" }],
+    criterion: { state: "computed decision rule", text: "the reading whose predicted band contains the measured residue; a value in neither band means the batch or the recipe differs from the stated ranges", source: "material.basis-discriminator receipt (exact bands over the stated ranges; CaCO3 → CaO factor from CIAAW atomic weights, sources.js ciaaw-abridged-atomic-weights)" },
+  },
   "material.modulus-bounds": {
     predicts: "Voigt/Reuss bounds on Young's modulus",
     tests: [{ designations: ["ASTM D638"], what: "tensile modulus" }, { designations: ["ASTM D790"], what: "flexural modulus (a different test from tensile: report both, never interchange them)" }],

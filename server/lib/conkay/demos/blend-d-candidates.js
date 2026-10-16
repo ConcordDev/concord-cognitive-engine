@@ -42,6 +42,8 @@ function candidateMeltScreen(id) {
   };
 }
 
+export const BASES_TRIED = Object.freeze(["mass", "volume"]);
+
 export function runCandidateChecks() {
   const { text, meta } = loadFixture("usb-blend-d");
   const base = materialIrFromText(text, meta);
@@ -50,7 +52,16 @@ export function runCandidateChecks() {
     const ir = withCopolymerCandidate(base, id);
     runs[id] = { ir, results: runAll(ir), melt: candidateMeltScreen(id) };
   }
-  return { basis: base.basis, basisNote: base.basisNote, runs };
+  // The same checks with each basis taken as given (the source states neither).
+  const byBasis = {};
+  for (const id of ["unidentified", ...CANDIDATE_IDS]) {
+    byBasis[id] = {};
+    for (const b of BASES_TRIED) {
+      const ir = { ...runs[id].ir, basis: b, basisNote: `assumed ${b} for comparison: the source does not say` };
+      byBasis[id][b] = runAll(ir);
+    }
+  }
+  return { basis: base.basis, basisNote: base.basisNote, runs, byBasis };
 }
 
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toFixed(d) : "—");
@@ -60,6 +71,10 @@ function cell(r) {
   if (r.status === "NOT_COMPUTED") return `NOT_COMPUTED: ${r.reason.replace(/\|/g, "/").slice(0, 140)}${r.reason.length > 140 ? "…" : ""}`;
   const o = r.outputs || {};
   if (o.density?.value?.nominal) return `${r.status}: ${fmt(o.density.value.low)}–${fmt(o.density.value.high)} kg/m³ (nominal ${fmt(o.density.value.nominal)})`;
+  if (o.mass?.value?.residue) {
+    const f = (b) => (b.notComputed ? "n/c" : `${fmt(b.low, b.low > 100 ? 0 : 1)}–${fmt(b.high, b.high > 100 ? 0 : 1)}`);
+    return `${r.status}: mass ρ ${f(o.mass.value.density)}, ash ${f(o.mass.value.residue)} %; volume ρ ${f(o.volume.value.density)}, ash ${f(o.volume.value.residue)} %`;
+  }
   if (o.volumeFractions?.value) {
     const v = o.volumeFractions.value["hdpe-hc-co-polymer"];
     return v ? `${r.status}: co-polymer ${fmt(v.min, 2)}–${fmt(v.max, 2)} vol % (nominal ${fmt(v.pct, 2)})` : r.status;
@@ -107,6 +122,23 @@ export function renderCandidateReport(run = runCandidateChecks()) {
   const checks = Object.keys(run.runs.unidentified.results);
   for (const id of checks) p(`| \`${id}\` | ${ids.map((r) => cell(run.runs[r].results[id])).join(" | ")} |`);
   p();
+  p("## Weight or volume: every check under each reading");
+  p();
+  p("The source does not say. Each case below is run twice, with the percentages taken as mass and as volume fractions. Neither reading can be called correct from the text: the source states no density, ash content or other measured value to check against. What decides it is a measurement on a batch; material.basis-discriminator names it.");
+  p();
+  const cols = [];
+  for (const id of ["unidentified", ...CANDIDATE_IDS]) for (const b of BASES_TRIED) cols.push([id, b]);
+  p(`| Check | ${cols.map(([i, b]) => `${i} (${b})`).join(" | ")} |`);
+  p(`|---|${cols.map(() => "---").join("|")}|`);
+  for (const id of Object.keys(run.byBasis.unidentified.mass)) p(`| \`${id}\` | ${cols.map(([i, b]) => cell(run.byBasis[i][b][id])).join(" | ")} |`);
+  p();
+  const disc = run.byBasis["recycled-impact-pp"].mass["material.basis-discriminator"];
+  if (disc?.outputs?.decidingTests?.value) {
+    p("Deciding measurements (recycled impact PP case; the EVA case is within a few kg/m³ and tenths of a percent):");
+    p();
+    for (const t of disc.outputs.decidingTests.value) p(`- ${t}`);
+    p();
+  }
   p("## Candidate melting against the stated 200 °C");
   p();
   p("process.window checks the HDPE matrix only. This screen adds the candidate's own melting point; it does not check thermal degradation.");
@@ -118,7 +150,7 @@ export function renderCandidateReport(run = runCandidateChecks()) {
   p();
   p("## What changed and what did not");
   p();
-  p("- With either candidate the strict rule-of-mixtures density and the mass-to-volume fractions are computed (they were NOT_COMPUTED for want of the co-polymer's density). Both remain estimates: no voids, mass basis assumed.");
+  p("- With either candidate the strict rule-of-mixtures density and the mass-to-volume fractions are computed (they were NOT_COMPUTED for want of the co-polymer's density). Both remain estimates: no voids, and the basis as stated (unknown, read as mass) unless a column above says otherwise.");
   p("- Stiffness, strength, conductivity and CTE models stay NOT_COMPUTED: CaCO3 and silica have no cited modulus, and the two-phase models do not cover six constituents. A candidate does not change that.");
   p("- Viscoelastic, hydrogen, compatibility and thermal-transition checks read the HDPE matrix or need compound tests; the candidate adds no data to them, and the compatibility table does not cover either candidate.");
   p("- Nothing here is a measurement of a Blend D batch. Measure the lot: ASTM D792, D638/D790, D1238, D3418.");

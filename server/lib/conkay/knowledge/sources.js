@@ -287,6 +287,13 @@ export const DOCUMENTS = {
     excerpt: "Table 3 (EVA sheets Bio-art / Essence dental / Proform): Elastic modulus 33.7 ± 1.0 / 36.8 ± 1.3 / 20.1 ± 0.9 MPa; Density 0.94 ± 0.09 / 0.99 ± 0.02 / 0.95 ± 0.01 g·cm−3; Poison ratio 0.29 ± 0.05 / 0.29 ± 0.05 / 0.29 ± 0.05",
     license: "CC BY 4.0",
   },
+  "ciaaw-abridged-atomic-weights": {
+    kind: "url", sourceId: "paper", title: "IUPAC Commission on Isotopic Abundances and Atomic Weights (CIAAW), Abridged Standard Atomic Weights",
+    url: "https://www.ciaaw.org/abridged-atomic-weights.htm", retrieved: "2026-10-16",
+    locator: "table rows 6 (C), 8 (O), 20 (Ca)",
+    excerpt: "6 | C | carbon | 12.011 ± 0.002; 8 | O | oxygen | 15.999 ± 0.001; 20 | Ca | calcium | 40.078 ± 0.004",
+    sha256: "f9e9554471749c55a624aec55151922470a7f4104c62811eb194fed9731b907d", license: "IUPAC/CIAAW public reference data",
+  },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",
