@@ -215,7 +215,7 @@ describe("desert pure-compute analysis macros", () => {
 
   it("heatStressIndex returns a risk level", () => {
     const fn = ACTIONS.get("desert.heatStressIndex");
-    const r = fn(ctxA, { data: { temperatureCelsius: 50, humidityPercent: 30 } }, {});
+    const r = fn(ctxA, { data: { temperatureCelsius: 50, humidityPercent: 30, windSpeedKmh: 10 } }, {});
     assert.equal(r.ok, true);
     assert.ok(r.result.riskLevel);
   });
