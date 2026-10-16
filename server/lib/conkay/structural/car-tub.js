@@ -71,6 +71,7 @@ export const TUB_DESIGN_CHOICES = Object.freeze({
   kickStartX: { value: 2.90, basis: "design choice: where the sill turns inboard to the rear quarter box (kick length / depth ≥ 2)" },
   quarterY: { value: 0.585, basis: "design choice: rear quarter boxes between the rear occupants' pelvis (|y| ≤ 0.540) and the rear wheel wells' inner walls (|y| 0.632 inside the skin)" },
   quarterSection: { value: { width: 0.08, height: 0.34, wall: 0.005 }, basis: "design choice: rear quarter box 80 wide × 340 tall (z 0.14-0.48, below the rear occupants' torso at z 0.486), 5 mm wall" },
+  wellGapM: { value: 0.01, basis: "design choice: least lateral gap from the front rails and rear quarter boxes to the wheel wells' inner walls (above the 2.925 mm skin they must clear); with a larger tyre the rail and quarter box move inboard to keep it (derived, 2026-10-16)" },
   kickWall: { value: 0.006, basis: "design choice: 6 mm sill-kick wall (the kick carries the cabin's twist into the quarter box)" },
   kickTopZ: { value: 0.315, basis: "design choice: the kick stays below the rear occupants' H-point (z 0.32): their egress line rises at x 3.481, |y| 0.515-0.595, where only a box under 37 mm wide could pass above it" },
   fwLowerWall: { value: 0.006, basis: "design choice: 6 mm firewall lower cross wall (takes the front rails' root moments in torsion)" },
@@ -96,6 +97,18 @@ export const TUB_DESIGN_CHOICES = Object.freeze({
  * walls: optional per-group wall overrides (rail, sill, kick, quarter, post, fwLower, scuttle, cpost,
  * tunnel, cross, bulkhead) for studies. Returns { parts, nodes, members, panels, pickups, choices }.
  */
+/**
+ * The electric car's tub wall choices (2026-10-16 stance pass). With the 20 in tyres the front rails (|y| 0.41 → 0.38)
+ * and rear quarter boxes (0.585 → 0.57) moved inboard to clear the larger wheel wells, which cost torsional stiffness:
+ * measured on structure.frame, default walls 10,563 / 10,279 N·m/deg (rigid joints / soft bond line) against the
+ * 10,800 target; rail 5 mm + kick 9 mm gives 11,171 / 10,858 for +12 kg (the cheapest passing pair of the sweep:
+ * rail 4 / quarter 6 / kick 8 / sill 5 mm steps alone or in pairs fell short on the soft bond line).
+ */
+export const ELECTRIC_TUB_WALLS = Object.freeze({
+  rail: { value: 0.005, basis: "design choice: front rail wall 5 mm (was 3 mm), to hold the torsion target after the rails moved inboard to clear the 20 in wheel wells" },
+  kick: { value: 0.009, basis: "design choice: sill-kick wall 9 mm (was 6 mm), same reason" },
+});
+
 /**
  * The package landmarks the tub's fore-aft positions follow (car-tub positions are offsets from these, so
  * the tub follows the package: the front-engine car reproduces its original layout exactly, the electric
@@ -140,6 +153,20 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
   const fromPackage = Object.fromEntries(["firewallX", "frontRailX0", "heelX", "kickStartX", "bHoopX", "rearBulkheadX", "rearCrossX"].filter((k) => !(choices && k in choices && choices !== TUB_DESIGN_CHOICES)).map((k) => [k, { ...TUB_DESIGN_CHOICES[k], value: pos[k], basis: `${TUB_DESIGN_CHOICES[k].basis} [follows the package: ${k} = ${pos[k]} m]` }]));
   const c = Object.fromEntries(Object.entries({ ...TUB_DESIGN_CHOICES, ...fromPackage, ...(choices === TUB_DESIGN_CHOICES ? {} : choices) }).map(([k, v]) => [k, v.value]));
   const w = (id, d) => walls[id] ?? d;
+  // the front rails and rear quarter boxes sit inboard of the wheel wells (landmarks from the tyres, their steering
+  // lock and the body's arch clearance): the chosen |y| unless the well's inner wall, less wellGapM and half the box,
+  // is further in (a larger tyre); rounded down to the 5 mm grid. Explicit choices are kept as given.
+  const floor5 = (v) => Math.floor(v * 200 + 1e-9) / 200;
+  const explicit = (k) => choices !== TUB_DESIGN_CHOICES && choices && k in choices;
+  const derivedY = {};
+  const wellBound = (k, wallY, half) => {
+    if (explicit(k) || !Number.isFinite(wallY)) return c[k];
+    const lim = floor5(wallY - c.wellGapM - half);
+    if (lim < c[k]) derivedY[k] = { chosen: c[k], value: lim, wellInnerY: wallY, basis: `moved inboard from ${c[k]} m: wheel-well inner wall |y| ${r4(wallY)} m - wellGapM ${c.wellGapM} m - half box ${r4(half)} m, rounded down to 5 mm` };
+    return Math.min(c[k], lim);
+  };
+  c.frontRailY = wellBound("frontRailY", L.frontWellInnerY, c.frontRailSection.width / 2);
+  c.quarterY = wellBound("quarterY", L.rearWellInnerY, c.quarterSection.width / 2);
   const XF = c.firewallX, FD = c.firewallDepth, YR = c.frontRailY, YS = c.sillY, YQ = c.quarterY, KX = c.kickStartX;
   const SX = r4(XF + 0.49), GA = r4(XF + 0.57), GB = r4(XF + 0.75), Q0X = pos.quarterStartX, QX0 = pos.quarterX0, QX1 = pos.quarterX1;
   const electric = !!L.electric;
@@ -335,7 +362,7 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
     const fw = plate(`TUB_FIREWALL_${s}`, `Firewall sheet ${s}`, { length: YS, width: ZU - ZN, thickness: t }, along("y", [XF + FD / 2, sg > 0 ? 0 : -YS, Z0 + 0.28], [XF + FD / 2 + t, sg > 0 ? YS : 0, ZU0]));
     panels.push({ id: `firewall-${s}`, nodes: [`S${XF}.${s}`, "FWC", "FWUC", `FWU.${s}`], part: fw });
   }
-  return { parts, nodes, members, panels, pickups: { front: ["FA.L", "FA.R"], rear: ["QA.L", "QA.R"], frontArm: 2 * YR, rearArm: 2 * YQ }, choices: c, landmarks: L, positions: pos, ids: { tunnelSeat: `T${SX}`, tunnelGapA: `T${GA}`, tunnelGapB: `R${GB}` }, electric, bulkheadOnKick };
+  return { parts, nodes, members, panels, pickups: { front: ["FA.L", "FA.R"], rear: ["QA.L", "QA.R"], frontArm: 2 * YR, rearArm: 2 * YQ }, choices: c, derivedY, landmarks: L, positions: pos, ids: { tunnelSeat: `T${SX}`, tunnelGapA: `T${GA}`, tunnelGapB: `R${GB}` }, electric, bulkheadOnKick };
 }
 
 /** The packaging box of a tub part as an oriented box (its outer envelope). */
@@ -452,6 +479,26 @@ export function tubEnvelopeFit(ir) {
   return tubPackagingFit(packageScene({ pkg, centers }), parts);
 }
 
+/**
+ * The CAD body's wheel-well inner walls (|y|), as cad/conkay_body_occ.py cuts them: a well of the tyre's swept radius
+ * plus archClearance; its inner wall at the tyre's lateral reach over the steering lock (front: r·sinθ + w/2·cosθ up to
+ * the swept radius; rear, unsteered: w/2) plus archClearance. Empty without a CAD body (no wells to clear).
+ */
+export function wellLandmarks(ir, pkg) {
+  const body = ir.nodes.find((n) => n.id === "BODY_SHELL");
+  if (body?.geometry?.shape !== "cad-body") return {};
+  const g = body.geometry.archClearance;
+  const clr = typeof g === "number" ? g : /mm\s*$/.test(String(g)) ? parseFloat(g) / 1000 : num(g); // "40 mm" → 0.04 m
+  const tyreY = (id) => Math.abs(num(ir.nodes.find((n) => n.id === id)?.position?.y));
+  const t = (id) => pkg.tyres.find((x) => x.id === id);
+  const fl = t("TIRE_FL"), rl = t("TIRE_RL");
+  if (!fl || !rl || !Number.isFinite(clr)) return {};
+  const th = ((pkg.steeringLock?.innerDeg ?? 0) * Math.PI) / 180;
+  const r = fl.diameterM / 2, hw = fl.widthM / 2, crit = Math.atan2(r, hw);
+  const lat = th <= crit ? r * Math.sin(th) + hw * Math.cos(th) : Math.hypot(r, hw);
+  return { frontWellInnerY: r4(tyreY("TIRE_FL") - lat - clr), rearWellInnerY: r4(tyreY("TIRE_RL") - rl.widthM / 2 - clr) };
+}
+
 export function tubLandmarks(ir) {
   const veh = ir.nodes.find((n) => n.id === "VEH");
   const pkg = veh?.props?.vehicle?.packaging;
@@ -474,6 +521,7 @@ export function tubLandmarks(ir) {
     diffRear: diff ? r4(diff.max) : FRONT_ENGINE_LANDMARKS.diffRear,
     driveFront: electric && comp("ENGINE") ? r4(comp("ENGINE").min) : null,
     electric,
+    ...wellLandmarks(ir, pkg),
   };
 }
 

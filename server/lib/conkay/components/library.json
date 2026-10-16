@@ -958,6 +958,136 @@
       }
     },
     {
+      "id": "tyre.michelin.pilot-sport-4s.275-35zr20-102y-xl",
+      "category": "tyres",
+      "manufacturer": "Michelin",
+      "model": "Pilot Sport 4S",
+      "variant": "275/35ZR20 (102Y) XL",
+      "mass": {
+        "kg": 12.7006,
+        "published": "28 lbs",
+        "massState": {
+          "state": "sourced",
+          "variant": "275/35ZR20 (102Y) XL",
+          "source": {
+            "url": "https://tiresize.com/tires/Michelin/Pilot-Sport-4S-275-35R20.htm",
+            "title": "Michelin Pilot Sport 4S 275/35R20 (tiresize.com spec table: '275/35ZR20 | 102Y XL BSW | 300 AA A | 27.6\" | 10.9\" | 9-11\" | 9.5\" | 9.5/32\" | Extra Load | 1874 lbs | 50 psi | 186 mph | 28 lbs')",
+            "retrieved": "2026-10-16"
+          }
+        }
+      },
+      "dimensions": {
+        "state": "sourced",
+        "overallDiameterM": 0.70104,
+        "sectionWidthM": 0.27686,
+        "rimDiameterIn": 20,
+        "rimWidthRangeIn": [
+          9,
+          11
+        ],
+        "source": {
+          "url": "https://tiresize.com/tires/Michelin/Pilot-Sport-4S-275-35R20.htm",
+          "title": "Michelin Pilot Sport 4S 275/35R20 (tiresize.com spec table: '275/35ZR20 | 102Y XL BSW | 300 AA A | 27.6\" | 10.9\" | 9-11\" | 9.5\" | 9.5/32\" | Extra Load | 1874 lbs | 50 psi | 186 mph | 28 lbs')",
+          "retrieved": "2026-10-16"
+        }
+      },
+      "ratings": {
+        "loadIndex": 102,
+        "maxLoadKg": 850.0,
+        "maxLoadPublished": "1874 lbs @ 50 psi",
+        "speedSymbol": "(Y)",
+        "maxSpeedKmh": null,
+        "maxSpeedNote": "(Y): the listing gives 186 mph (300 km/h) as its maximum; no explicit Michelin figure above it was read, so 300 km/h is established",
+        "serviceDescriptionSources": [
+          {
+            "url": "https://tiresize.com/tires/Michelin/Pilot-Sport-4S-275-35R20.htm",
+            "title": "Michelin Pilot Sport 4S 275/35R20 (tiresize.com spec table: '275/35ZR20 | 102Y XL BSW | 300 AA A | 27.6\" | 10.9\" | 9-11\" | 9.5\" | 9.5/32\" | Extra Load | 1874 lbs | 50 psi | 186 mph | 28 lbs')",
+            "retrieved": "2026-10-16"
+          }
+        ],
+        "highSpeedLoadDerating": {
+          "table": [
+            {
+              "mph": 118,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 124,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 130,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 136,
+              "psi": 0,
+              "loadPct": 100
+            },
+            {
+              "mph": 143,
+              "psi": 1.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 149,
+              "psi": 3,
+              "loadPct": 100
+            },
+            {
+              "mph": 155,
+              "psi": 4.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 161,
+              "psi": 6,
+              "loadPct": 100
+            },
+            {
+              "mph": 168,
+              "psi": 7.5,
+              "loadPct": 100
+            },
+            {
+              "mph": 174,
+              "psi": 7.5,
+              "loadPct": 95
+            },
+            {
+              "mph": 180,
+              "psi": 7.5,
+              "loadPct": 90
+            },
+            {
+              "mph": 186,
+              "psi": 7.5,
+              "loadPct": 85
+            }
+          ],
+          "source": {
+            "url": "https://www.michelinman.com/auto/tires/michelin-pilot-sport-4-s",
+            "title": "Michelin USA: MICHELIN Pilot Sport 4 S (Y-speed-rated sizes: load and inflation table; 'For speeds above 186 mph (300 kph), consult your vehicle manufacturer and tire dealer.')",
+            "retrieved": "2026-10-09"
+          },
+          "note": "Michelin: for speeds over 100 mph, load and inflation must be adjusted per this table (Y-speed-rated sizes)."
+        },
+        "highSpeedNote": "No published manufacturer rating above 300 km/h was found: Michelin's guidance for Y-rated Pilot Sport 4 S sizes stops at 186 mph (300 km/h) ('For speeds above 186 mph (300 kph), consult your vehicle manufacturer and tire dealer'), and the EU product information sheet for the range states '(Y) > 300 km/h' with no maximum (EPREL 412132, https://eprel.ec.europa.eu/fiches/tyres/Fiche_412132_EN.pdf, a 325/30ZR19 size, retrieved 2026-10-09)."
+      },
+      "applicability": {
+        "rimDiameterIn": 20,
+        "rimWidthIn": {
+          "min": 9,
+          "max": 11
+        },
+        "maxLoadKg": 850.0,
+        "establishedMaxSpeedKmh": 300
+      }
+    },
+    {
       "id": "wheel.enkei.rpf1.3798906535sp",
       "category": "wheels",
       "manufacturer": "Enkei",
@@ -1000,6 +1130,58 @@
         "boltPattern": "5x114.3",
         "diameterIn": 18,
         "widthIn": 9
+      }
+    },
+    {
+      "id": "wheel.apex.vs-5rs.20x10-et32-5x114.3-66.1",
+      "category": "wheels",
+      "manufacturer": "APEX",
+      "model": "VS-5RS (forged, Sprint line)",
+      "variant": "20x10 ET32, 5x114.3, 66.1 mm bore",
+      "mass": {
+        "kg": 9.3894,
+        "published": "20.7 lbs",
+        "massState": {
+          "state": "sourced",
+          "variant": "20x10 ET32 5x114.3",
+          "source": {
+            "url": "https://apexwheels.com/wheels/apex-vs-5rs-20x10-et32-wheels-5x114-3mm-66-1mm",
+            "title": "APEX VS-5RS 20x10\" ET32 Wheels - 5x114.3mm / 66.1mm (manufacturer page, SPECIFICATIONS: 'OFFSET 32mm', 'BOLT PATTERN 5x114.3mm', 'CENTER BORE 66.1mm', 'LOAD RATING 1,600 lbs', 'WEIGHT 20.7 lbs', 'TESTED BY STL', 'TEST REFERENCE # STL-AX2-0018')",
+            "retrieved": "2026-10-16",
+            "note": "read in a browser: the site's bot checkpoint blocks scripted fetches, so no file hash is recorded"
+          }
+        }
+      },
+      "dimensions": {
+        "state": "sourced",
+        "diameterIn": 20,
+        "widthIn": 10,
+        "insetMm": 32,
+        "boltPattern": "5x114.3",
+        "boreMm": 66.1,
+        "source": {
+          "url": "https://apexwheels.com/wheels/apex-vs-5rs-20x10-et32-wheels-5x114-3mm-66-1mm",
+          "title": "APEX VS-5RS 20x10\" ET32 Wheels - 5x114.3mm / 66.1mm (manufacturer page, SPECIFICATIONS: 'OFFSET 32mm', 'BOLT PATTERN 5x114.3mm', 'CENTER BORE 66.1mm', 'LOAD RATING 1,600 lbs', 'WEIGHT 20.7 lbs', 'TESTED BY STL', 'TEST REFERENCE # STL-AX2-0018')",
+          "retrieved": "2026-10-16",
+          "note": "read in a browser: the site's bot checkpoint blocks scripted fetches, so no file hash is recorded"
+        }
+      },
+      "ratings": {
+        "loadRatingKg": {
+          "value": 725.7,
+          "published": "1,600 lbs",
+          "source": {
+            "url": "https://apexwheels.com/wheels/apex-vs-5rs-20x10-et32-wheels-5x114-3mm-66-1mm",
+            "title": "APEX VS-5RS 20x10\" ET32 Wheels - 5x114.3mm / 66.1mm (manufacturer page, SPECIFICATIONS: 'OFFSET 32mm', 'BOLT PATTERN 5x114.3mm', 'CENTER BORE 66.1mm', 'LOAD RATING 1,600 lbs', 'WEIGHT 20.7 lbs', 'TESTED BY STL', 'TEST REFERENCE # STL-AX2-0018')",
+            "retrieved": "2026-10-16",
+            "note": "read in a browser: the site's bot checkpoint blocks scripted fetches, so no file hash is recorded"
+          }
+        }
+      },
+      "applicability": {
+        "boltPattern": "5x114.3",
+        "diameterIn": 20,
+        "widthIn": 10
       }
     },
     {

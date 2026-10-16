@@ -55,6 +55,7 @@ export const CAD_BODY_DEFAULTS = Object.freeze({
  * front-engine car and the default tail falls more steeply.
  */
 export const ELECTRIC_BODY_CHOICES = Object.freeze({
+  fenderCoverM: { value: 0.005, basis: "design choice (2026-10-16 stance pass): the fender side 5 mm beyond the 20 in tyre's outer face (was 20 mm), so the wheels fill the arches near flush with the body side; with the 275/35ZR20 tyre the 20 mm cover put the lofted body 15 mm over maxWidth 1.95 m, 5 mm brings it 9 mm under. A regulatory wheel-coverage rule is not checked here (none read)" },
   tailExtensionM: { value: 0.6, basis: "design choice (measured 2026-10-15, cad.body + aero.drag-buildup on the electric package): with 0.6 m on the final package (firewall 1.44 m, body enclosing the tub) the rear slant measures 10.8 deg, Cd 0.101..0.148..0.216, no slant term; the body is 5.16 m long. On that same final package the 0.22 m default measures 12.39 deg, just under Ahmed's 12.5 deg onset (Cd centre 0.145, body 4.78 m), so the longer tail buys slant margin (1.7 deg) for 0.38 m of length, not the slant term itself; the chat orchestrator, starting from 0.22 m, keeps 0.22 m (chat/repair-rules.js). (An earlier package revision, firewall 1.42 m, measured 13.2 deg at 0.22 m.) Not a wind-tunnel result: the slant onset is Ahmed's, transferred to this shape" },
 });
 

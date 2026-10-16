@@ -171,7 +171,10 @@ describe("acceptance: the speed rule, the motor repair and the pack against the 
   const r = carAcceptance(BRIEF, EV);
   const rep = r.report;
   it("gear limit = 12,000 rpm / 60 / 3.55 × 2π r", () => {
-    const r_ = 0.3264, mph = ((12000 / 60 / 3.55) * 2 * Math.PI * r_) / 0.44704;
+    // the chosen tyre's own radius (20 in on the electric car since the stance pass: 275/35ZR20, 0.70104 m)
+    const r_ = getComponent(rep.components.find((c) => c.node === "TIRE_FL").componentId).dimensions.overallDiameterM / 2;
+    assert.equal(r_, 0.70104 / 2);
+    const mph = ((12000 / 60 / 3.55) * 2 * Math.PI * r_) / 0.44704;
     near(rep.topSpeed.gearLimitedMph, mph, 2e-3, "direct-drive limit");
   });
   it("the iM-225 fails 180 mph on power; the repair moves to the iM-375 and records the reason", () => {
