@@ -13,10 +13,13 @@ import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/en
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
 import { attestReceipt, ensureSigningKey } from "../lib/receipts/attest.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
+import { presentGlbFromStl } from "../lib/conkay/assembly/present-glb.js";
 import { subscribeLive, eventsAfter, loadLiveRunFile } from "../lib/conkay/chat/live.js";
 
 /** Hydrated showcase designs, keyed by the cached snapshot object. */
 const hydratedDesigns = new WeakMap();
+/** Presentation GLB per source STL sha256 (derived, deterministic). */
+const presentGlbBySha = new Map();
 /** Signed body per snapshot revision. The car is about 5 MB; canonicalizing it on every request costs ~0.4 s. */
 const signedByRevision = new Map();
 
@@ -102,6 +105,34 @@ export default function createConkayDemoRouter({ rateLimit }) {
         if (rev) signedByRevision.set(rev, signed);
       }
       res.json({ ok: true, design: signed });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  // Presentation GLB of a design's analysed solid: the snapshot's own body
+  // STL (hash-checked by loadSnapshotFile), welded, with normals and the
+  // studio clearcoat material. Derived on first request, cached by STL hash.
+  router.get("/designs/:id/present.glb", limit, async (req, res) => {
+    try {
+      const id = String(req.params.id);
+      const snap = await loadSnapshot(id);
+      if (!snap) return res.status(404).json({ ok: false, error: "no such showcase design" });
+      const stlName = (snap.files || []).map((f) => f.name).find((n) => /^body-[0-9a-f]+\.stl$/.test(n));
+      if (!stlName) return res.status(404).json({ ok: false, error: "this design has no analysed body solid" });
+      const f = await loadSnapshotFile(id, stlName);
+      if (!f) return res.status(404).json({ ok: false, error: "the body STL is missing or drifted from its snapshot" });
+      let out = presentGlbBySha.get(f.sha256);
+      if (!out) {
+        out = presentGlbFromStl(f.data, { source: { design: id, stl: stlName, stlSha256: f.sha256 } });
+        presentGlbBySha.set(f.sha256, out);
+      }
+      res.setHeader("Content-Type", "model/gltf-binary");
+      res.setHeader("Content-Disposition", `attachment; filename="${id}-present.glb"`);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      res.setHeader("ETag", `"${out.sha256}"`);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.send(out.glb);
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
