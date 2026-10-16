@@ -344,6 +344,20 @@ export const DOCUMENTS = {
     excerpt: "SiO2 (quartz glass) | 25–250 | 0.55; Graphite (in-plane) | 0–300 | −0.5–(−1.5); Graphite (out-of-plane) | 0–300 | 20–30; Graphene | −73–127 | ~−12–(−2.5); Basalt fiber (longitudinal direction) | −50–600 | 5.0–8.0; Basalt fiber (transverse direction) | 7.0–12.0 (ppm/°C)",
     license: "CC BY 4.0",
   },
+  "macromolecules-2023-pp-graphene-cgmd": {
+    kind: "document", sourceId: "paper", title: "Atta M., Srivastava R., Koutroumanis N., Semitekolos D., et al. Mesoscopic Modeling and Experimental Validation of Thermal and Mechanical Properties of Polypropylene Nanocomposites Reinforced By Graphene-Based Fillers. Macromolecules 2023, 56 (doi:10.1021/acs.macromol.3c01529)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10753874/", retrieved: "2026-10-16", date: "2023",
+    locator: "Table 1 'Mechanical and Thermal Properties of Graphene as Computed by CG-MD'",
+    excerpt: "armchair | 845 | 0.14 | 621.5; zigzag | 916 | 0.15 | 658.7 (Young's modulus GPa | Poisson ratio | thermal conductivity W/(m K))",
+    license: "CC BY 4.0",
+  },
+  "heliyon-2024-eshelby-spheroid": {
+    kind: "document", sourceId: "paper", title: "Analytical solutions for macroscopic elastic moduli and thermal expansion coefficient of composite materials with coated fillers. Heliyon 2024, e25274 (doi:10.1016/j.heliyon.2024.e25274)",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11637110/", retrieved: "2026-10-16", date: "2024",
+    locator: "Appendix A, eqs. (A.1a)–(A.1c) geometrical factors and (A.2)–(A.3) Eshelby tensor of a spheroid",
+    excerpt: "(A.1a) prolate: H3 = 1 − ω3/(ω3²−1)^(3/2) {ω3(ω3²−1)^(1/2) − cosh⁻¹ω3}, H31 = (1 − 3H3)/(2(ω3²−1)); (A.1b) sphere: H3 = 1/3, H31 = 1/5; (A.1c) oblate: H3 = 1 − ω3/(1−ω3²)^(3/2) {cos⁻¹ω3 − ω3(1−ω3²)^(1/2)}; (A.2) S1111 = S2222 = (5−4ν)/(8(1−ν))(1−H3) + 3(H3−H31)/(8(1−ν)), S3333 = H3 + (H3−H31)/(1−ν), S1122 = S2211 = −(1−4ν)/(8(1−ν))(1−H3) + (H3−H31)/(8(1−ν)); (A.3) S2233 = S1133 = ν/(2(1−ν))(1−H3) − (H3−H31)/(2(1−ν)), S3311 = S3322 = ν/(1−ν)H3 − (H3−H31)/(2(1−ν)), S2323 = S3131 = (1/4)(1+H3) − (H3−H31)/(2(1−ν)), S1212 = (S1111 − S1122)/2",
+    license: "CC BY (Heliyon open access)",
+  },
   "liang-2025-polymers-basalt": {
     kind: "document", sourceId: "paper", title: "Liang F., Yang Q., Tao J., et al. Multi-Performance Evolution and Elasto-Plastic Damage Modeling of Basalt Fiber-Reinforced EPS Geopolymer Lightweight Concrete. Polymers 2025, 17(18), 2471 (doi:10.3390/polym17182471)",
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473786/", retrieved: "2026-10-16", date: "2025",

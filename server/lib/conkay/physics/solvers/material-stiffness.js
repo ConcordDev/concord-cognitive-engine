@@ -70,13 +70,13 @@ const common = {
 
 export const modulusBounds = registerSolver({
   id: "material.modulus-bounds",
-  version: "1.0.0",
+  version: "1.1.0",
   domain: "material.stiffness",
   fidelity: 1,
-  method: "Voigt (iso-strain) and Reuss (iso-stress) bounds over every constituent at the nominal volume fractions, each modulus over its cited interval",
+  method: "Voigt (uniform strain: E from K_V = Σφ_iK_i, G_V = Σφ_iG_i) and Reuss (uniform stress: 1/E = Σφ_i/E_i) bounds at the nominal volume fractions, each modulus over its cited interval",
   reference: "server/lib/conkay/knowledge/micromechanics.js",
-  regime: "any phase count and shape; the true modulus of a perfectly bonded, void-free composite lies between the bounds",
-  tolerance: "exact bounds for the inputs; the band also spans the moduli intervals",
+  regime: "any phase count and shape; the Young's modulus of a perfectly bonded, void-free composite lies between the bounds. Σφ_iE_i is an upper bound only when every Poisson's ratio is equal (Hill): with a ν missing the upper side is reported as that rule of mixtures and flagged as not a bound",
+  tolerance: "exact bounds for the inputs; the band also spans the moduli and ν intervals",
   ...common,
   run(ctx, id) {
     const s = setup(ctx, id);
@@ -85,16 +85,25 @@ export const modulusBounds = registerSolver({
     const missing = missingModuli(s.ir, ids);
     if (missing.length) s.blockers.push(`no cited Young's modulus for: ${missing.join(", ")}`);
     if (s.blockers.length) return blocked(s.blockers);
-    const ph = (pick) => s.ir.constituents.map((c, i) => ({ phi: s.phi[i], E: pick(modulusOf(c)) }));
-    const norm = (p) => { const t = p.reduce((a, x) => a + x.phi, 0); return p.map((x) => ({ ...x, phi: x.phi / t })); };
-    return {
-      inputs: { volumeFractions: { value: Object.fromEntries(ids.map((k, i) => [k, s.phi[i]])) } },
-      outputs: {
-        voigt: { value: { low: voigt(norm(ph((x) => x.lo))), high: voigt(norm(ph((x) => x.hi))) }, unit: "Pa", basis: "upper bound (iso-strain)" },
-        reuss: { value: { low: reuss(norm(ph((x) => x.lo))), high: reuss(norm(ph((x) => x.hi))) }, unit: "Pa", basis: "lower bound (iso-stress)" },
-      },
-      warnings: ["bounds, not a prediction: a short-fibre or platelet composite lies between them, usually near Reuss at low loading"],
-    };
+    const t = s.phi.reduce((a, b) => a + b, 0), phi = s.phi.map((x) => x / t);
+    const Es = s.ir.constituents.map((c) => modulusOf(c));
+    const nus = s.ir.constituents.map((c) => (c.properties.poisson ? span(c.properties.poisson) : null));
+    const reussOf = (pick) => reuss(phi.map((f, i) => ({ phi: f, E: pick(Es[i]) })));
+    const outputs = { reuss: { value: { low: reussOf((x) => x.lo), high: reussOf((x) => x.hi) }, unit: "Pa", basis: "lower bound (uniform stress)" } };
+    const warnings = ["bounds, not a prediction: a short-fibre or platelet composite lies between them, usually near Reuss at low loading"];
+    const noNu = ids.filter((_, i) => !nus[i]);
+    if (!noNu.length) {
+      // K_V and G_V rise with E at fixed ν; K falls and G rises as ν falls — take each phase's extremes.
+      const K = (E, nu) => E / (3 * (1 - 2 * nu)), G = (E, nu) => E / (2 * (1 + nu));
+      const KVlo = phi.reduce((a, f, i) => a + f * K(Es[i].lo, nus[i].lo), 0), KVhi = phi.reduce((a, f, i) => a + f * K(Es[i].hi, nus[i].hi), 0);
+      const GVlo = phi.reduce((a, f, i) => a + f * G(Es[i].lo, nus[i].hi), 0), GVhi = phi.reduce((a, f, i) => a + f * G(Es[i].hi, nus[i].lo), 0);
+      const E9 = (k, g) => (9 * k * g) / (3 * k + g);
+      outputs.voigt = { value: { low: E9(KVlo, GVlo), high: E9(KVhi, GVhi) }, unit: "Pa", basis: "upper bound (uniform strain): E(K_V, G_V)" };
+    } else {
+      outputs.voigt = { value: { low: voigt(phi.map((f, i) => ({ phi: f, E: Es[i].lo }))), high: voigt(phi.map((f, i) => ({ phi: f, E: Es[i].hi }))) }, unit: "Pa", basis: "Σφ_iE_i (rule of mixtures): NOT a rigorous upper bound, because a Poisson's ratio is missing" };
+      warnings.push(`no Poisson's ratio for ${noNu.join(", ")}: the upper side is Σφ_iE_i, which is a bound only when every ν is equal; the true modulus can exceed it`);
+    }
+    return { inputs: { volumeFractions: { value: Object.fromEntries(ids.map((k, i) => [k, s.phi[i]])) } }, outputs, warnings };
   },
 });
 
