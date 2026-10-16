@@ -46,6 +46,7 @@ import "./physics/solvers/material.js";
 import "./physics/solvers/material-stiffness.js";
 import "./physics/solvers/material-thermal.js";
 import "./physics/solvers/material-viscoelastic.js";
+import "./physics/solvers/vessel-h2.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
