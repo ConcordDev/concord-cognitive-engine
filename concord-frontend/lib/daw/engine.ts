@@ -213,13 +213,13 @@ export class TransportEngine {
 // ============================================================================
 
 export class SynthEngine {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private outputNode: GainNode;
-  private activeVoices: Map<number, { oscillators: OscillatorNode[]; gain: GainNode; filter: BiquadFilterNode }> = new Map();
+  private activeVoices: Map<number, { oscillators: OscillatorNode[]; gain: GainNode; filter: BiquadFilterNode; level?: number }> = new Map();
   private preset: SynthPreset;
 
-  constructor(preset: SynthPreset) {
-    this.ctx = getAudioContext();
+  constructor(preset: SynthPreset, ctx?: BaseAudioContext) {
+    this.ctx = ctx ?? getAudioContext();
     this.outputNode = this.ctx.createGain();
     this.outputNode.gain.value = 0.5;
     this.outputNode.connect(this.ctx.destination);
@@ -289,7 +289,7 @@ export class SynthEngine {
       );
     }
 
-    this.activeVoices.set(note, { oscillators, gain: voiceGain, filter });
+    this.activeVoices.set(note, { oscillators, gain: voiceGain, filter, level: vel * (env?.sustain ?? 0.7) });
   }
 
   noteOff(note: number, time?: number): void {
@@ -299,7 +299,8 @@ export class SynthEngine {
 
     const release = this.preset.ampEnvelope?.release ?? 0.3;
     voice.gain.gain.cancelScheduledValues(t);
-    voice.gain.gain.setValueAtTime(voice.gain.gain.value, t);
+    const held = t > this.ctx.currentTime && voice.level != null ? voice.level : voice.gain.gain.value;
+    voice.gain.gain.setValueAtTime(held, t);
     voice.gain.gain.linearRampToValueAtTime(0, t + release);
 
     voice.oscillators.forEach(osc => {
@@ -332,12 +333,12 @@ export class SynthEngine {
 // ============================================================================
 
 export class DrumMachineEngine {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private outputNode: GainNode;
   private buffers: Map<string, AudioBuffer> = new Map();
 
-  constructor() {
-    this.ctx = getAudioContext();
+  constructor(ctx?: BaseAudioContext) {
+    this.ctx = ctx ?? getAudioContext();
     this.outputNode = this.ctx.createGain();
     this.outputNode.gain.value = 0.8;
     this.outputNode.connect(this.ctx.destination);

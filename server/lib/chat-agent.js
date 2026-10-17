@@ -266,7 +266,7 @@ Available tools (with one working example each):
   - conkay_design: solve, open, from-brief, edit, get, list, export, parse-brief, feasibility, solvers, car-acceptance
   - productivity tasks: productivity.task-add, task-list, task-update, task-complete, today-view
   - calendar: events-create, events-list, events-update, availability-find, conflicts-check
-  - music (domain "music" via run_lens_action, never as a tool name): track-add {title, artist?, genre?}, track-list, playlist-create {name}, play-track {id}. track-add creates a library ENTRY only (title/genre, no audio). Agent mode cannot generate song audio yet.
+  - music: To MAKE a new song: [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "studio", "action": "compose", "params": {"genre": "lofi", "key": "C", "bpm": 85, "bars": 8, "title": "..."}}}] — composes it with Concord's Studio engine; the user can play it inline, save it, and open it in Studio. To play an existing real recording: run_lens_action domain "music" action "ingest-itunes" {"term": "artist or song or genre"} (30-second previews), then play-track {"id"} on one of the returned tracks. track-add only creates a library entry with no audio.
 - list_lens_actions: Look up the REAL action names and their input fields for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Results rank top-level and common actions first. Params: {"domain": "domain_name"}
   Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
@@ -305,7 +305,7 @@ Rules:
 - For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
 - For deep cited research over Concord's substrate, use expert_mode.
 - Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.
-- If asked to make/compose/generate a song or audio, say plainly that agent mode cannot generate song audio yet (you may offer lyrics, chords via music.chordProgress, or point to the Studio lens). Never say a song was made, rendered, or is playing unless a tool result actually returned an audio URL.`;
+- Never say anything was made, rendered, or is playing unless a tool returned a song or audio artifact in this conversation. Music has no render action — never call one. Concord cannot generate recorded audio (vocals, real instruments) from a prompt; studio.compose makes an instrumental arrangement with Studio's synths.`;
 
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
@@ -356,7 +356,7 @@ export function stripToolCalls(text) {
 const PREFERRED_LENS_ACTIONS = [
   "task-add", "task-list", "task-update", "task-complete", "task-delete", "task-quick-add", "today-view", "upcoming-view",
   "events-create", "events-list", "events-update", "events-delete", "calendars-list", "availability-find", "conflicts-check", "nl-parse-event",
-  "play-track", "track-list", "track-add", "playlist-create", "playlist-list",
+  "compose", "play-track", "ingest-itunes", "track-list", "track-add", "playlist-create", "playlist-list",
   "solve", "open", "from-brief", "edit", "get", "list", "export", "parse-brief", "feasibility", "solvers", "car-acceptance",
   "search", "create", "save",
 ];
@@ -541,16 +541,79 @@ function storeDataUrl(raw, header, bucket) {
   const n = bucket.length + 1;
   const ref = `artifact:data_${n}`;
   const isImage = mime.startsWith("image/");
+  const isAudio = mime.startsWith("audio/");
   bucket.push({
-    kind: isImage ? "image" : "file",
+    kind: isImage ? "image" : (isAudio ? "audio" : "file"),
     source: "run_lens_action",
     ref,
     mimeType: mime,
+    ...(isAudio ? { url: raw } : {}),
     ...(isImage && isB64 ? { image_b64: payload } : {}),
     ...(!isImage && isB64 ? { data_b64: payload } : {}),
     ...(!isB64 ? { text: payload } : {}),
   });
   return `[${ref} ${mime}]`;
+}
+
+function looksLikeAudioUrl(url) {
+  if (typeof url !== "string" || !url.trim()) return false;
+  if (url.startsWith("data:audio/")) return true;
+  if (url.startsWith("/api/")) {
+    // Heuristic: /api/media/…/stream, /api/artifacts/…/download, etc.
+    return /\.(m4a|mp3|wav|ogg|flac|aac|weba|webm)(\?|$)/i.test(url) || /\/(stream|download)(\?|$)/i.test(url);
+  }
+  if (!/^https?:\/\//i.test(url)) return false;
+  const audioExt = /\.(m4a|mp3|wav|ogg|flac|aac|weba|webm|wma)(\?|$|#)/i;
+  const audioMimeHint = /\/audio\//i;
+  return audioExt.test(url) || audioMimeHint.test(url);
+}
+
+function audioMimeFromUrl(url) {
+  const m = String(url).match(/\.(m4a|mp3|wav|ogg|flac|aac|weba|webm|wma)(\?|$|#)/i);
+  const map = { m4a: "audio/x-m4a", mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac", weba: "audio/webm", webm: "audio/webm", wma: "audio/x-ms-wma" };
+  if (m && map[m[1].toLowerCase()]) return map[m[1].toLowerCase()];
+  return "audio/mpeg";
+}
+
+function extractAudioArtifacts(value, depth = 0, seen = new WeakSet()) {
+  if (depth > 3 || value == null || typeof value !== "object") return [];
+  if (seen.has(value)) return [];
+  seen.add(value);
+  const out = [];
+  if (Array.isArray(value)) {
+    for (const v of value) out.push(...extractAudioArtifacts(v, depth + 1, seen));
+    return out;
+  }
+  // Track-like object: if it has a previewUrl/audioUrl, lift it.
+  const candidates = [];
+  for (const [k, v] of Object.entries(value)) {
+    if ((k === "audioUrl" || k === "previewUrl" || k === "downloadUrl") && looksLikeAudioUrl(v)) {
+      candidates.push({ url: v, key: k });
+    } else if (typeof v === "object" && v != null) {
+      out.push(...extractAudioArtifacts(v, depth + 1, seen));
+    }
+  }
+  if (candidates.length) {
+    const nearestTrack = value.track && typeof value.track === "object" ? value.track
+      : (Array.isArray(value.tracks) && value.tracks[0] ? value.tracks[0]
+        : (value.title || value.name ? value : null));
+    for (const { url } of candidates) {
+      const title = nearestTrack?.title || nearestTrack?.name || value.title || value.name || "Audio";
+      const artist = nearestTrack?.artist || value.artist || undefined;
+      out.push({ kind: "audio", url, title, ...(artist ? { artist } : {}), mimeType: audioMimeFromUrl(url) });
+    }
+  }
+  return out;
+}
+
+function dedupeArtifacts(artifacts) {
+  const seen = new Set();
+  return artifacts.filter((a) => {
+    const key = a.url || a.ref || a.projectId || a.id || JSON.stringify(a);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
@@ -807,12 +870,31 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               };
             }
           }
-          const lead = pulled.find((a) => a.kind === "image") || pulled[0];
+          // Lift real audio URLs onto artifacts (iTunes preview, bounce download, etc.).
+          const audioArtifacts = extractAudioArtifacts(cleaned, 0).slice(0, 3);
+          let artifacts = dedupeArtifacts([...pulled, ...audioArtifacts]);
+
+          // A studio.compose result carries a generated song/project; turn it
+          // into a playable song artifact for the chat UI.
+          if (domain === "studio" && action === "compose" && result?.result?.song && result?.result?.project?.id) {
+            const songArtifact = {
+              kind: "song",
+              projectId: result.result.project.id,
+              title: result.result.song.title || result.result.project.name,
+              bpm: result.result.song.bpm,
+              key: result.result.song.key,
+              durationSec: result.result.song.durationSec,
+              song: result.result.song,
+            };
+            artifacts = [songArtifact, ...artifacts.filter((a) => a.kind !== "audio")];
+          }
+
+          const lead = artifacts.find((a) => a.kind === "image") || artifacts[0];
           return {
             tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput,
             result: cleaned,
             ...(lead ? { artifact: lead } : {}),
-            ...(pulled.length ? { artifacts: pulled } : {}),
+            ...(artifacts.length ? { artifacts } : {}),
           };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
@@ -1236,8 +1318,16 @@ export function formatToolResults(results) {
       return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}]${via} title="${r.title}"\n${t}`);
     }
     if (r.tool === "run_lens_action") {
+      if (r.domain === "studio" && r.action === "compose") {
+        const payload = r.result?.result || r.result || {};
+        const s = payload.song;
+        const projectId = payload.project?.id;
+        if (s) {
+          return `[TOOL_RESULT: ${r.key}] Composed "${s.title}" (${s.genre}, ${s.key} ${s.scale}, ${s.bpm} BPM, ${s.bars} bars, ~${Math.round(s.durationSec)}s). A playable song artifact is attached; the user can play it inline, save it, or open it in Studio (project ${projectId}).`;
+        }
+      }
       const note = Array.isArray(r.artifacts) && r.artifacts.length
-        ? ` ${r.artifacts.length} data URL(s) stored as artifacts (${r.artifacts.map(a => a.ref).join(", ")}). The bytes are attached — refer to those ids, do not invent a replacement image.`
+        ? ` ${r.artifacts.length} artifact(s) attached (${r.artifacts.map(a => a.ref || a.kind).join(", ")}). The bytes/URLs are attached — refer to those, do not invent a replacement.`
         : "";
       return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}${note}`;
     }
