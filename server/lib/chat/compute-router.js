@@ -32,7 +32,16 @@ const m = (t, re) => t.match(re);
 const MASS = { kg: 1, kilogram: 1, kilograms: 1, g: 0.001, gram: 0.001, grams: 0.001, lb: 0.45359237, lbs: 0.45359237, pound: 0.45359237, pounds: 0.45359237, oz: 0.028349523125, ounce: 0.028349523125, ounces: 0.028349523125, ton: 907.18474, tons: 907.18474, tonne: 1000, tonnes: 1000 };
 const LENGTH = { m: 1, meter: 1, meters: 1, metre: 1, metres: 1, km: 1000, kilometer: 1000, kilometers: 1000, cm: 0.01, centimeter: 0.01, centimeters: 0.01, mm: 0.001, millimeter: 0.001, millimeters: 0.001, ft: 0.3048, foot: 0.3048, feet: 0.3048, in: 0.0254, inch: 0.0254, inches: 0.0254, mi: 1609.344, mile: 1609.344, miles: 1609.344, yd: 0.9144, yard: 0.9144, yards: 0.9144 };
 const VOLUME = { l: 1, liter: 1, liters: 1, litre: 1, litres: 1, ml: 0.001, milliliter: 0.001, milliliters: 0.001, gal: 3.785411784, gallon: 3.785411784, gallons: 3.785411784, qt: 0.946352946, quart: 0.946352946, quarts: 0.946352946, cup: 0.2365882365, cups: 0.2365882365 };
-const TABLES = [MASS, LENGTH, VOLUME];
+// Speed in m/s. Multi-word units are folded to one token first ("miles per hour" → mph).
+const SPEED = { mps: 1, mph: 0.44704, kph: 1 / 3.6, kmh: 1 / 3.6, knot: 0.514444, knots: 0.514444, kn: 0.514444, fps: 0.3048 };
+const SPEED_ALIASES = [
+  [/\bmiles?\s+(?:per|an|a)\s+hour\b/gi, "mph"],
+  [/\b(?:kilomet(?:er|re)s?|km)\s+(?:per|an|a)\s+hour\b|\bkm\s*\/\s*h(?:r|our)?\b|\bkm\/h\b/gi, "kph"],
+  [/\b(?:met(?:er|re)s?)\s+per\s+second\b|\bm\s*\/\s*s\b/gi, "mps"],
+  [/\b(?:feet|foot)\s+per\s+second\b|\bft\s*\/\s*s\b/gi, "fps"],
+];
+function foldSpeedUnits(t) { let out = t; for (const [re, rep] of SPEED_ALIASES) out = out.replace(re, rep); return out; }
+const TABLES = [MASS, LENGTH, VOLUME, SPEED];
 const TEMP = { c: "C", celsius: "C", f: "F", fahrenheit: "F", k: "K", kelvin: "K" };
 
 function toC(v, u) { return u === "C" ? v : u === "F" ? (v - 32) * 5 / 9 : v - 273.15; }
@@ -114,7 +123,8 @@ const ROUTES = [
   },
   {
     id: "unit-convert",
-    detect: (t) => {
+    detect: (t0) => {
+      const t = foldSpeedUnits(t0);
       let c = m(t, new RegExp(`${NUM}\\s*(?:degrees?\\s*)?([a-zA-Z]+)\\s+(?:to|into|in)\\s+(?:degrees?\\s*)?([a-zA-Z]+)`, "i"));
       // "how many feet in 3 meters" / "how many ounces are in a pound"
       const hm = m(t, new RegExp(`how many\\s+([a-zA-Z]+)\\s+(?:are\\s+)?in\\s+(?:an?\\s+)?(?:${NUM}\\s*)?([a-zA-Z]+)`, "i"));
@@ -128,7 +138,8 @@ const ROUTES = [
     },
     run: (p) => {
       const value = p.kind === "temp" ? fromC(toC(p.v, p.from), p.to) : p.v * p.factor;
-      const label = p.kind === "temp" ? `${p.v} °${p.from} = ${fmt(value)} °${p.to}` : `${p.v} ${p.f} = ${fmt(value, 6)} ${p.to}`;
+      const u = (x) => ({ kph: "km/h", kmh: "km/h", mps: "m/s", fps: "ft/s" }[x] || x);
+      const label = p.kind === "temp" ? `${p.v} °${p.from} = ${fmt(value)} °${p.to}` : `${p.v} ${u(p.f)} = ${fmt(value, 6)} ${u(p.to)}`;
       return { value, text: `${label}.`, engine: "units (exact definitions)" };
     },
   },
@@ -211,7 +222,11 @@ const ROUTES = [
   {
     id: "arithmetic",
     detect: (t) => {
-      const expr = arithmeticQuestion(t);
+      // A function call ("… + sqrt(2025)") goes to the function form first: the
+      // plain-arithmetic extractor stops at the first word and answered
+      // "(3.75 × 1840) / 12.5 = 552", silently dropping "+ sqrt(2025)" (chat-par probe).
+      const hasFn = /\b(?:sqrt|sin|cos|tan|log|ln|exp)\s*\(/i.test(t);
+      const expr = hasFn ? null : arithmeticQuestion(t);
       if (expr) return { expr };
       // functions/constants: "sqrt(2) times pi", "what is sin(pi/2)"
       const s = t.replace(/\btimes\b/gi, "*").replace(/\bdivided by\b/gi, "/").replace(/\bplus\b/gi, "+").replace(/\bminus\b/gi, "-");

@@ -172,7 +172,7 @@ export function ToolCallCard({ call }: ToolCallCardProps) {
         <div className="px-3 pb-3 pt-0 border-t border-white/5">
           {!call.ok && (
             <p className="text-xs text-red-400 mt-2">
-              Error: {String((call.result as { error?: string })?.error || 'Unknown error')}
+              Error: {String((call as { error?: string }).error || (call.result as { error?: string })?.error || 'Unknown error')}
             </p>
           )}
           {call.ok && call.tool === 'web_search' && <WebSearchResult result={call.result} />}
