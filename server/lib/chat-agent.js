@@ -49,6 +49,7 @@ import {
   shouldSkipToolFollowup,
   followUpFailureReply,
 } from "./chat/tool-turn-reply.js";
+import { guardPlaybackClaim } from "./chat/playback-honesty.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -265,7 +266,7 @@ Available tools (with one working example each):
   - conkay_design: solve, open, from-brief, edit, get, list, export, parse-brief, feasibility, solvers, car-acceptance
   - productivity tasks: productivity.task-add, task-list, task-update, task-complete, today-view
   - calendar: events-create, events-list, events-update, availability-find, conflicts-check
-  - music: music.render, track-list, track-add, playlist-create, play-track
+  - music (domain "music" via run_lens_action, never as a tool name): track-add {title, artist?, genre?}, track-list, playlist-create {name}, play-track {id}. track-add creates a library ENTRY only (title/genre, no audio). Agent mode cannot generate song audio yet.
 - list_lens_actions: Look up the REAL action names and their input fields for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Results rank top-level and common actions first. Params: {"domain": "domain_name"}
   Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
@@ -303,7 +304,8 @@ Rules:
 - For current events / facts you don't know, use web_search.
 - For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
 - For deep cited research over Concord's substrate, use expert_mode.
-- Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.`;
+- Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.
+- If asked to make/compose/generate a song or audio, say plainly that agent mode cannot generate song audio yet (you may offer lyrics, chords via music.chordProgress, or point to the Studio lens). Never say a song was made, rendered, or is playing unless a tool result actually returned an audio URL.`;
 
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
@@ -354,7 +356,7 @@ export function stripToolCalls(text) {
 const PREFERRED_LENS_ACTIONS = [
   "task-add", "task-list", "task-update", "task-complete", "task-delete", "task-quick-add", "today-view", "upcoming-view",
   "events-create", "events-list", "events-update", "events-delete", "calendars-list", "availability-find", "conflicts-check", "nl-parse-event",
-  "render", "play-track", "track-list", "track-add", "playlist-create", "playlist-list",
+  "play-track", "track-list", "track-add", "playlist-create", "playlist-list",
   "solve", "open", "from-brief", "edit", "get", "list", "export", "parse-brief", "feasibility", "solvers", "car-acceptance",
   "search", "create", "save",
 ];
@@ -787,6 +789,24 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           // image is not sliced down to a broken prefix in the model text.
           const pulled = [];
           const cleaned = pullDataUrls(result, pulled);
+          if (result && typeof result === "object" && result.ok === false) {
+            return {
+              tool: call.tool, ok: false, key: resolved.key, domain, action, input: actionInput,
+              error: String(result.error || result.message || result.reason || "action failed"),
+              result: cleaned,
+            };
+          }
+          if (domain === "music" && action === "play-track") {
+            const t = result?.result?.track || result?.track || {};
+            const audioUrl = result?.result?.audioUrl || result?.audioUrl || t.audioUrl || t.previewUrl || null;
+            if (!audioUrl) {
+              return {
+                tool: call.tool, ok: false, key: resolved.key, domain, action, input: actionInput,
+                error: "This track is only a library entry with no audio file, so nothing can be played.",
+                result: cleaned,
+              };
+            }
+          }
           const lead = pulled.find((a) => a.kind === "image") || pulled[0];
           return {
             tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput,
@@ -1141,8 +1161,25 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, capability, error: `invoke_capability error: ${err?.message || err}` };
         }
       }
-      default:
+      default: {
+        const m = String(call.tool || "").match(/^([a-z0-9_-]+)\.([a-z0-9_.-]+)$/i);
+        if (m) {
+          const domain = m[1];
+          const action = m[2];
+          const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
+          if (resolved.via !== "none") {
+            return executeToolCall(ctx, runMacro, lensActions, {
+              tool: "run_lens_action",
+              params: { domain, action, params: call.params || {} },
+            });
+          }
+          return {
+            tool: call.tool, ok: false, error: `unknown tool: ${call.tool}`,
+            retryHint: `[TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "${domain}", "action": "${action}", "params": ${JSON.stringify(call.params || {})}}}]`,
+          };
+        }
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
+      }
     }
   } catch (err) {
     return { tool: call.tool, ok: false, error: String(err?.message || err) };
@@ -1166,10 +1203,14 @@ export function formatToolResults(results) {
     if (!r.ok) {
       // Param-validator error: include the worked example so the model
       // self-corrects next turn instead of giving up.
-      if (r.retryHint) {
-        return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}. Retry with the marker below (replace <placeholders> with real values):\n${r.retryHint}`;
+      let line = `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
+      if (r.validActions) {
+        line += `\nValid actions: ${Array.isArray(r.validActions) ? r.validActions.join(", ") : r.validActions}`;
       }
-      return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
+      if (r.retryHint) {
+        line += `\nHint: ${r.retryHint}`;
+      }
+      return line;
     }
     if (r.tool === "web_search") {
       // r.result is a structured object {ok, query, results:[{title,snippet,url,...}]}
@@ -1263,10 +1304,11 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     if (routed) {
       const text = composeRoutedReply(routed);
       emit("tool_call", { tool: "compute_router", ok: true, route: routed.route, engine: routed.engine, result: routed.value });
+      const toolCalls = [{ tool: "compute_router", ok: true, route: routed.route, engine: routed.engine, result: routed.value }];
       return {
         ok: true,
-        answer: text,
-        toolCalls: [{ tool: "compute_router", ok: true, route: routed.route, engine: routed.engine, result: routed.value }],
+        answer: guardPlaybackClaim(text, toolCalls),
+        toolCalls,
         artifacts: [],
         turns: 0,
         provider: "concord-engine",
@@ -1296,7 +1338,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         emit("tool_call", toolCall);
         return {
           ok: true,
-          answer: image.reply,
+          answer: guardPlaybackClaim(image.reply, [toolCall]),
           toolCalls: [toolCall],
           artifacts: artifact ? [artifact] : [],
           turns: 0,
@@ -1364,6 +1406,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   let lastModel = "ollama";
   let finalAnswer = "";
   let turnsTaken = 0;
+  let usedRetry = false;
   // Set true only when the loop exhausts every turn while the brain is
   // STILL issuing tool calls (never reached the `calls.length === 0` break
   // below). Without the forced wrap-up turn added after the loop, `finalAnswer`
@@ -1472,7 +1515,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
     if (calls.length === 0) {
       // No more tool calls — this is the final answer.
-      finalAnswer = visibleAnswer;
+      finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls);
       break;
     }
 
@@ -1501,7 +1544,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
             messages.push({ role: "user", content: formatToolResults(results) });
             return {
               ok: true,
-              answer: visibleAnswer,
+              answer: guardPlaybackClaim(visibleAnswer, allToolCalls),
               toolCalls: allToolCalls,
               artifacts: allArtifacts,
               turns: turnsTaken,
@@ -1572,18 +1615,27 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // A failed tool, or a plain create_dtu save, is answered from the tool
     // results — never a free-generated follow-up that leaks prompt fragments
     // ("Mention in a sentence.") or drops the stored title (INC-SWEEP F3).
-    if (shouldSkipToolFollowup(results)) {
-      finalAnswer = composeToolTurnReply(results)
-        || followUpFailureReply(results, formatToolResults(results))
-        || visibleAnswer;
+    const skipFollowup = shouldSkipToolFollowup(results, { allowRetry: !usedRetry });
+    if (skipFollowup) {
+      finalAnswer = guardPlaybackClaim(
+        composeToolTurnReply(results)
+          || followUpFailureReply(results, formatToolResults(results))
+          || visibleAnswer,
+        allToolCalls,
+      );
       break;
+    }
+    // One retry is granted when the failure is retryable (unknown/missing) and
+    // we haven't used it yet; the next failure is answered from the results.
+    if (!usedRetry && results.some((r) => !r?.ok)) {
+      usedRetry = true;
     }
 
     // Append the brain's intermediate text + tool results to the message
     // history so the next turn sees both.
     messages.push({ role: "assistant", content: r.text });
     messages.push({ role: "user", content: formatToolResults(results) });
-    finalAnswer = visibleAnswer; // last visible body, in case we exit on max turns
+    finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls); // last visible body, in case we exit on max turns
     if (turn === maxTurns - 1) ranOutOfTurnsWithPendingCalls = true;
   }
 
@@ -1606,7 +1658,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
       });
       if (wrapUp?.ok && wrapUp.text) {
-        finalAnswer = stripToolCalls(wrapUp.text);
+        finalAnswer = guardPlaybackClaim(stripToolCalls(wrapUp.text), allToolCalls);
         lastProvider = wrapUp.provider ?? lastProvider;
         lastModel = wrapUp.model ?? lastModel;
       }

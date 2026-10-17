@@ -310,6 +310,7 @@ export default function registerMusicActions(registerLensAction) {
   const muListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const muNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const muClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const muTrackId = (p = {}) => p.id || p.trackId || p.track_id || null;
   const findTrack = (s, userId, id) => (s.tracks.get(userId) || []).find((t) => t.id === id) || null;
   // D8 — collaborative playlists. A playlist lives under its owner's userId, so a
   // collaborator's edit must find it across users (and only when it's flagged
@@ -362,7 +363,7 @@ export default function registerMusicActions(registerLensAction) {
 
   registerLensAction("music", "track-detail", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const track = findTrack(s, muAid(ctx), params.id);
+    const track = findTrack(s, muAid(ctx), muTrackId(params));
     if (!track) return { ok: false, error: "track not found" };
     return { ok: true, result: { track } };
   });
@@ -370,18 +371,19 @@ export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "track-delete", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
+    const id = muTrackId(params);
     const arr = s.tracks.get(userId) || [];
-    const i = arr.findIndex((t) => t.id === params.id);
+    const i = arr.findIndex((t) => t.id === id);
     if (i < 0) return { ok: false, error: "track not found" };
     arr.splice(i, 1);
-    for (const p of s.playlists.get(userId) || []) p.trackIds = p.trackIds.filter((x) => x !== params.id);
+    for (const p of s.playlists.get(userId) || []) p.trackIds = p.trackIds.filter((x) => x !== id);
     saveMusicState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("music", "track-like", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const track = findTrack(s, muAid(ctx), params.id);
+    const track = findTrack(s, muAid(ctx), muTrackId(params));
     if (!track) return { ok: false, error: "track not found" };
     track.liked = !track.liked;
     saveMusicState();
@@ -444,9 +446,10 @@ export default function registerMusicActions(registerLensAction) {
     }
     if (!pl) return { ok: false, error: "playlist not found" };
     // The contributor must actually hold the track in their own library.
-    if (!findTrack(s, userId, params.trackId)) return { ok: false, error: "track not found" };
-    if (params.remove === true) pl.trackIds = pl.trackIds.filter((x) => x !== params.trackId);
-    else if (!pl.trackIds.includes(params.trackId)) pl.trackIds.push(String(params.trackId));
+    const trackId = muTrackId(params);
+    if (!trackId || !findTrack(s, userId, trackId)) return { ok: false, error: "track not found" };
+    if (params.remove === true) pl.trackIds = pl.trackIds.filter((x) => x !== trackId);
+    else if (!pl.trackIds.includes(trackId)) pl.trackIds.push(String(trackId));
     // Record a non-owner contributor so the playlist surfaces in their list.
     if (ownerId !== userId) {
       pl.contributors = Array.from(new Set([...(pl.contributors || []), userId]));
@@ -498,7 +501,11 @@ export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "play-track", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
-    const track = findTrack(s, userId, params.id);
+    let track = findTrack(s, userId, muTrackId(params));
+    if (!track && params.title) {
+      const title = String(params.title).trim().toLowerCase();
+      track = (s.tracks.get(userId) || []).find((t) => t.title.toLowerCase() === title) || null;
+    }
     if (!track) return { ok: false, error: "track not found" };
     track.playCount += 1;
     muListB(s.plays, userId).push({ trackId: track.id, durationSec: track.durationSec, at: muNow() });
@@ -506,7 +513,7 @@ export default function registerMusicActions(registerLensAction) {
     const q = s.queue.get(userId);
     if (q) { const qi = q.indexOf(track.id); if (qi >= 0) q.splice(qi, 1); }
     saveMusicState();
-    return { ok: true, result: { track, playCount: track.playCount } };
+    return { ok: true, result: { track, playCount: track.playCount, audioUrl: track.audioUrl || track.previewUrl || null, playable: Boolean(track.audioUrl || track.previewUrl) } };
   });
 
   registerLensAction("music", "playback-progress", (ctx, _a, params = {}) => {
@@ -533,10 +540,11 @@ export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "queue-add", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
-    if (!findTrack(s, userId, params.trackId)) return { ok: false, error: "track not found" };
+    const trackId = muTrackId(params);
+    if (!findTrack(s, userId, trackId)) return { ok: false, error: "track not found" };
     const q = muListB(s.queue, userId);
-    if (params.next === true) q.unshift(String(params.trackId));
-    else q.push(String(params.trackId));
+    if (params.next === true) q.unshift(String(trackId));
+    else q.push(String(trackId));
     saveMusicState();
     return { ok: true, result: { queueLength: q.length } };
   });
@@ -717,7 +725,7 @@ export default function registerMusicActions(registerLensAction) {
   registerLensAction("music", "track-lyrics-set", (ctx, _a, params = {}) => {
   try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const track = findTrack(s, muAid(ctx), params.id);
+    const track = findTrack(s, muAid(ctx), muTrackId(params));
     if (!track) return { ok: false, error: "track not found" };
     const raw = params.lyrics;
     if (Array.isArray(raw)) {
@@ -738,7 +746,7 @@ export default function registerMusicActions(registerLensAction) {
 
   registerLensAction("music", "track-lyrics-get", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const track = findTrack(s, muAid(ctx), params.id);
+    const track = findTrack(s, muAid(ctx), muTrackId(params));
     if (!track) return { ok: false, error: "track not found" };
     return { ok: true, result: { id: track.id, title: track.title, lyrics: track.lyrics || [], synced: !!track.lyricsSynced } };
   });
