@@ -18,6 +18,7 @@
 import { seatBoxes, umtriHPointX } from "../packaging/checks.js";
 import { seatOccupant, occupantDims, PACKAGING_REFERENCES } from "../packaging/occupant.js";
 import { aabb, separation, bounds } from "../packaging/geometry.js";
+import { frontSeatPopulationPosition } from "../packaging/seat-position-model.js";
 
 const IN = 0.0254;
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -258,7 +259,11 @@ export function deriveRearPackage({ choices, keys, rearKeys = null, seatDims, di
   return {
     rearSgRPX, rearAxleX, rearSeatY, fuelCellCenter,
     ...(driveUnit ? { driveUnitBox: bounds(unitAt(rearAxleX)) } : {}),
-    inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys, ...(rearKeys ? { rearOccupants: rearKeys } : {}) },
+    inputs: {
+      sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys, ...(rearKeys ? { rearOccupants: rearKeys } : {}),
+      // information only (no layout value depends on it): where that front seat sits among drivers (SAE 980651 SAM)
+      frontSeatPopulation: frontSeatPopulationPosition({ hxAtStature: (S) => prpX + umtriHPointX(S / 1000, c.steeringWheelL6, c.h30), seatX: sgRPFrontX, trackFrontX: hx("M50") - c.seatTrackTravel / 2, trackRearX: trackRear }),
+    },
     method: [
       `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
       `rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (on the axle, centre at tyre-radius height${c.diffRiseM ? ` + diffRiseM ${r4(c.diffRiseM)} m` : ""}) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)`,

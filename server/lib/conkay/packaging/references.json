@@ -220,5 +220,71 @@
  "steeringLock": {
   "method": "estimated: inner front-wheel lock angle from the reference S550's published curb-to-curb turning diameter, wheelbase and front track by Ackermann (bicycle-model) geometry: outer wheel sin(delta_o) = wheelbase / (turning diameter / 2), inner tan(delta_i) = wheelbase / (wheelbase / tan(delta_o) - front track). Treats the curb-to-curb circle as the outer front tyre's path and ignores scrub radius and tyre width.",
   "inputs": "referenceVehicle: wheelbase 107.1 in, front track 62.3 in, turning diameter curb-to-curb 36.5 ft"
+ },
+ "samSeatPosition": {
+  "source": {
+   "title": "Flannagan, Manary, Schneider and Reed (1998), An Improved Seating Accommodation Model with Application to Different User Populations, SAE Technical Paper 980651 (the Seating Accommodation Model, SAM; the model SAE J4004 builds on)",
+   "url": "http://mreed.umtri.umich.edu/mreed/pubs/Flannagan_19980651.pdf",
+   "retrieved": "2026-10-17",
+   "locators": {
+    "meanEquation": "Eq. 8, printed p.6",
+    "sdEquation": "Eq. 9, printed p.6",
+    "mixture": "Eq. 10-13, printed p.6-7",
+    "populations": "Table 4, printed p.8"
+   }
+  },
+  "equations": {
+   "mean": "mu = 16.83 + 0.433 muS - 0.24 h - 2.19 p + 0.41 w - 18.2 t  (mm aft of BOF; muS mean stature of a single-gender population, h H30, p seat cushion angle, w wheel-to-BOF distance, t 0 automatic / 1 manual)",
+   "sd": "sigma = sqrt(0.187 sigmaS^2 + 885)  (single-gender seat-position standard deviation, mm; 0.187 = 0.433^2, 885 = 29.75^2, the residual standard deviation 29.75 mm)",
+   "mixture": "p = k PhiM(x) + (1 - k) PhiF(x)  (Eq. 13, k proportion of male drivers)"
+  },
+  "coefficients": {
+   "statureSlope": 0.433,
+   "statureSlopeSquared": 0.187,
+   "residualVariance": 885,
+   "residualSdMm": 29.75
+  },
+  "populations": {
+   "US": {
+    "maleMeanMm": 1753,
+    "maleSdMm": 71,
+    "femaleMeanMm": 1615,
+    "femaleSdMm": 64,
+    "source": "Table 4 (from Abraham, Johnson and Najjar 1979, NCHS Series 11 No. 211)"
+   }
+  },
+  "use": "The scatter of where drivers sit about the mean the UMTRI equation (umtriSeatPosition) predicts, so a seat position can be stated as a percentile of a driver population. The absolute position stays the UMTRI equation's (SAM Eq. 8 needs the seat cushion angle and transmission, which the layout does not set); the model's stature slope (0.433) is the same in both. A population model, not a limit.",
+  "notChecked": "SAE J4004 itself (paywalled) was not read; SAM is the model J4004 states it is based on per the SAE abstract, and the J4004 Appendix A track-length method is not reproduced here."
+ },
+ "driverSelectedSeatback": {
+  "source": {
+   "title": "Manary, Flannagan, Reed and Schneider (1998), ATD Positioning Based on Driver Posture and Position, SAE Technical Paper 983163",
+   "url": "https://mreed.umtri.umich.edu/mreed/pubs/Manary_19983163.pdf",
+   "retrieved": "2026-10-17",
+   "locators": {
+    "table": "Table 4 (six vehicles)",
+    "text": "'DRIVER-SELECTED SEATBACK ANGLE' section and Fig. 5-6"
+   }
+  },
+  "vehicles": {
+   "Avenger": {
+    "n": 113,
+    "h30Mm": 189,
+    "wheelToBofMm": 577,
+    "designSeatbackDeg": 24.0,
+    "selectedSeatbackMeanDeg": 20.6,
+    "selectedSeatbackSdDeg": 4.0
+   },
+   "Laser": {
+    "n": 120,
+    "h30Mm": 197,
+    "wheelToBofMm": 550,
+    "designSeatbackDeg": 25.0,
+    "selectedSeatbackMeanDeg": 21.8,
+    "selectedSeatbackSdDeg": 3.7
+   }
+  },
+  "finding": "In 31 of 37 vehicles the design seatback angle exceeds the mean angle drivers select, by 2.1 deg on average; design angle is a poor predictor of the selected angle; seat height has only a weak effect on it.",
+  "use": "Context for the front seatback angle (L40 torsoDeg): the lowest-seat vehicles in the study (H30 189 and 197 mm, like this car's 185) have DESIGN angles of 24 and 25 deg, so this car's 25 deg is a typical design value, not an upright-sport-posture opportunity. Not used to change the layout."
  }
 }
