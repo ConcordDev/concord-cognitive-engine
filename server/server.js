@@ -20372,6 +20372,7 @@ const _combatSocketLimiter = makeSocketRateLimiter({
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
+import { ensureSocketChatSession, persistSocketChatTurn } from "./lib/chat/socket-session.js";
 import {
   resolveChatMaxTokens,
   finishLengthLimitedReply,
@@ -55544,22 +55545,22 @@ function initChatSocketHandlers(io) {
             // Ensure session exists. Capture ownerId from the socket auth
             // metadata (set by the io.use middleware in initRealtime) so
             // assertSessionAccessible can later refuse cross-user reads.
-            if (!STATE.sessions.has(sessionId)) {
-              const _ownerId = socket.data?.userId || null;
-              STATE.sessions.set(sessionId, {
-                ownerId: _ownerId,
-                participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
-                createdAt: nowISO(),
-                messages: [],
-                currentLens: null,
-                lensHistory: [],
-                crossDomainContext: {},
-              });
+            // If the session isn't in memory (backend restart, cache
+            // trim), load its saved history from the chat session store
+            // (SQLite) first, so the conversation doesn't start from scratch.
+            const _streamDb = db || STATE.db || globalThis._concordSTATE?.db || null;
+            const _streamOwnerId = socket.data?.userId || null;
+            const _ensured = ensureSocketChatSession(_streamDb, STATE, sessionId, { ownerId: _streamOwnerId, now: nowISO });
+            if (!_ensured.ok) {
+              ack?.({ ok: false, error: _ensured.error });
+              socket.emit("chat:status", { sessionId, status: "error", lens, error: _ensured.error });
+              return;
             }
-            const _streamSess = STATE.sessions.get(sessionId);
+            const _streamSess = _ensured.session;
 
             // Record user message in session
-            _streamSess.messages.push({ role: "user", content: String(prompt), ts: nowISO() });
+            const _streamUserTs = nowISO();
+            _streamSess.messages.push({ role: "user", content: String(prompt), ts: _streamUserTs });
             if (_streamSess.messages.length > 60) _streamSess.messages.splice(0, _streamSess.messages.length - 60);
 
             // ── Web Search Integration (best-effort) ──────────────────────
@@ -55786,6 +55787,16 @@ function initChatSocketHandlers(io) {
                 content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
                 meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
+              });
+
+              // Persist the user/assistant turn so it survives a restart.
+              persistSocketChatTurn(_streamDb, sessionId, {
+                ownerId: _streamSess.ownerId || _streamOwnerId,
+                lens,
+                userText: String(prompt),
+                userTs: _streamUserTs,
+                assistantText: streamResult.content,
+                source: streamResult.source || "ollama-stream",
               });
 
               // Update brain stats
