@@ -157,7 +157,8 @@ function Receipt({ check }: { check: WorkbenchCheck | null }) {
   );
 }
 
-function Reply({ r }: { r: WorkbenchReply }) {
+/** What a reply says changed — shared by the Workbench's own reply area and the builder's chat. */
+export function Reply({ r }: { r: WorkbenchReply }) {
   return (
     <section className={PANEL} aria-label="what changed" data-testid="wb-reply">
       {r.note && <p className="text-sm text-amber-200">{r.note}</p>}

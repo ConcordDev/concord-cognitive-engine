@@ -170,13 +170,16 @@ export function hydrateSession(db, STATE, sessionId, { ownerId = null } = {}) {
     const sess = db.prepare(`SELECT owner_id, last_lens, created_at FROM chat_sessions WHERE session_id = ?`)
       .get(sessionId);
     if (!sess) return false;
+    // Newest N messages, returned in chronological order. (Selecting
+    // ORDER BY ts ASC LIMIT N loaded the OLDEST N, so a long session came
+    // back without its most recent turns.)
     const rows = db.prepare(`
       SELECT role, content, ts, meta_json
       FROM chat_messages
       WHERE session_id = ?
-      ORDER BY ts ASC
+      ORDER BY ts DESC, id DESC
       LIMIT ?
-    `).all(sessionId, HYDRATE_LIMIT);
+    `).all(sessionId, HYDRATE_LIMIT).reverse();
     if (!rows || rows.length === 0) {
       // Session row exists but no messages — still seed the in-mem
       // entry so the chat handler doesn't recreate it with a wrong owner.

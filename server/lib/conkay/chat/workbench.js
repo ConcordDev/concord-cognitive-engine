@@ -12,8 +12,10 @@
 // A knob move and a chat edit go through the same edit path (DesignConversation.setKnob / ask).
 
 import { knobsOf } from "./what-if.js";
+import { sectionProps } from "../structural/frame-fe.js";
+import { getMaterial } from "../materials/index.js";
 
-export const WORKBENCH_VERSION = "1.0.0";
+export const WORKBENCH_VERSION = "1.1.0";
 
 const fmt = (v) => (typeof v === "number" ? (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(4) : +v.toPrecision(5)) : String(v));
 
@@ -64,6 +66,83 @@ export function checkReceipt(e) {
   };
 }
 
+/**
+ * The frame-FE run the conversation actually ran (structure.frame on a node
+ * carrying props.frameModel), as one honest load case in the shape the
+ * engineering.runFEA path consumes (nodes/members/loads/supports in;
+ * displacements/utilization/stresses out) — every field from the real solve:
+ *   - model geometry: the graph node's own frameModel (nodes, members i/j,
+ *     supports), with each member's REAL section + material as the run's own
+ *     recorded inputs (`member.<id>`), A/Iz/depth via the solver's own
+ *     sectionProps and E/fy via the material library the solve read;
+ *   - model loads: the case's resolved nodal forces (the run's
+ *     `<case>.appliedLoads` output — weight/force reads already numbers);
+ *   - result: the run's own `<case>.members` (von Mises + utilization) and
+ *     `<case>.nodeDisplacements` outputs.
+ * A case whose resolved loads are only member UDLs cannot be honestly
+ * re-solved through the nodal-only runFEA element, so it is skipped: the case
+ * shown is the first stress-checked one with resolved nodal loads (the car's
+ * kerb-twist), else the first with any nodal load (its twist couple). Null
+ * unless every member resolves fully — never a half-real model.
+ */
+export function feaFrameOf(engine) {
+  try {
+    for (const [runId, run] of engine.runs) {
+      if (run.solverId !== "structure.frame" || !run.envelope) continue;
+      const fm = engine.graph.nodes.get(run.target)?.props?.frameModel;
+      if (!fm || !Array.isArray(fm.nodes) || !Array.isArray(fm.members) || fm.members.length === 0) continue;
+      const env = run.envelope;
+      const outs = env.outputs || {};
+      // pick the case: resolved nodal loads (re-runnable through the nodal-only
+      // runFEA element), preferring one whose stresses the run actually checked.
+      let pick = null;
+      for (const lc of fm.loadCases || []) {
+        const applied = outs[`${lc.id}.appliedLoads`]?.value;
+        if (!applied || !Array.isArray(applied.nodal) || applied.nodal.length === 0) continue;
+        if (!pick || (!lc.stiffnessOnly && pick.lc.stiffnessOnly)) pick = { lc, applied };
+      }
+      if (!pick) continue;
+      const rows = outs[`${pick.lc.id}.members`]?.value;
+      const disp = outs[`${pick.lc.id}.nodeDisplacements`]?.value;
+      if (!Array.isArray(rows) || rows.length === 0 || !Array.isArray(disp) || disp.length === 0) continue;
+      const fs = fm.factorOfSafety?.value ?? 1;
+      const members = [];
+      for (const m of fm.members) {
+        const sec = env.inputs?.[`member.${m.id}`]?.value?.section;
+        if (!sec) return null; // a member the run did not record ⟹ no honest model
+        const sp = sectionProps(sec);
+        const mat = getMaterial(env.inputs[`member.${m.id}`].value.material);
+        const E = mat?.youngsModulusPa, fy = mat?.yieldPa;
+        if (![sp.A, sp.Iz, sp.depth, E, fy].every((v) => Number.isFinite(v) && v > 0)) return null; // no half-real member
+        members.push({ id: String(m.id), nodeI: String(m.i), nodeJ: String(m.j), area: sp.A, momentI: sp.Iz, depthIn: sp.depth, elasticModulus: E, allowableStress: fy / fs });
+      }
+      const loads = pick.applied.nodal.map((n) => ({
+        nodeId: String(n.node),
+        Fx: n.F?.[0] ?? 0, Fy: n.F?.[1] ?? 0, Fz: n.F?.[2] ?? 0,
+        ...(Array.isArray(n.M) ? { Mx: n.M[0] ?? 0, My: n.M[1] ?? 0, Mz: n.M[2] ?? 0 } : {}),
+      }));
+      const supports = (pick.lc.supports || fm.supports || []).map((s) => ({ nodeId: String(s.node), fixedDOF: s.fix }));
+      const utils = rows.map((r) => ({ id: String(r.id), utilization: Number.isFinite(r.utilization) ? r.utilization : null }));
+      const maxUtil = utils.reduce((mx, u) => (u.utilization != null && u.utilization > mx ? u.utilization : mx), 0);
+      return {
+        runId,
+        case: pick.lc.id,
+        model: { nodes: fm.nodes, members, loads, supports },
+        result: {
+          displacements: disp.map((d) => ({ nodeId: String(d.node), dx: d.u?.[0] ?? 0, dy: d.u?.[1] ?? 0, dz: d.u?.[2] ?? 0 })),
+          utilization: utils,
+          stresses: rows.map((r) => ({ id: String(r.id), combinedStress: Number.isFinite(r.vonMisesPa) ? r.vonMisesPa : 0 })),
+          summary: { maxUtilization: maxUtil },
+        },
+        note: `the structure.frame run on this design, load case "${pick.lc.id}", as the conversation solved it`,
+      };
+    }
+  } catch { // any surprise in the run's shape ⟹ no artifact, never a guess
+    return null;
+  }
+  return null;
+}
+
 /** The Workbench view of a conversation's current design. */
 export function workbenchView(conv) {
   const cur = conv.current;
@@ -105,5 +184,9 @@ export function workbenchView(conv) {
     locked: [...conv.locked].sort(),
     graph: { nodes, edges: dedup },
     checks: runs.map(([, r]) => checkReceipt(r.envelope)).sort((a, b) => a.runId.localeCompare(b.runId)),
+    // one frame case of the design's own structure.frame run, in the shape the
+    // engineering.runFEA artifact path consumes (feaFrameOf: honest fields of
+    // the real solve, or absent when the design has none)
+    feaFrame: feaFrameOf(engine),
   };
 }

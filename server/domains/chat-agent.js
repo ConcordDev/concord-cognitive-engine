@@ -34,7 +34,16 @@ export default function registerChatAgentMacros(register) {
       db, userId, message: resolvedMessage, history,
       runMacro: runMacroFn,
       lensActions,
-      opts: { maxTurns: Math.min(8, maxTurns || 5), slot },
+      opts: {
+        maxTurns: Math.min(8, maxTurns || 5),
+        slot,
+        // chat.respond's agent route (lib/chat/agent-route.js) says which
+        // tool the request needs; a short system addendum, length-capped.
+        ...(typeof input.routeHint === "string" && input.routeHint.trim()
+          ? { extraSystemBlock: `\n\n${input.routeHint.trim().slice(0, 600)}` }
+          : {}),
+        ...(input.sessionId ? { sessionId: String(input.sessionId) } : {}),
+      },
     });
   }, { note: "Agent Mode — runs an agentic tool-use loop with web search, compute, browse_url, run_lens_action (any of 200+ lens domain actions), create_dtu, expert_mode. Routes through Sprint 10 BYO router so user's API key kicks in. Returns answer + toolCalls + artifacts + provenance. Accepts input.message or input.task (alias)." });
 }
