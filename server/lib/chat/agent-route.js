@@ -114,7 +114,7 @@ export function chatAgentRoute(prompt, opts = {}) {
 }
 
 const ROUTE_HINT = {
-  web: "This request needs live web information: call web_search first and answer only from its results.",
+  web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
   save: "The user wants this saved: call create_dtu with a short title and the user's own words as the summary, then give the stored DTU id. If create_dtu fails, say it was not saved and why.",
@@ -176,28 +176,111 @@ export function clientToolCall(tc) {
  * @param {string}   deps.route         from chatAgentRoute
  * @returns {Promise<null | {reply, toolCalls, artifacts, sources, provider, model, linksRemoved, dtuRefsRemoved}>}
  */
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route }) {
+// Routes that create something for the user. If the loop fails on one of these,
+// the conversational fallback used to answer "Task added" with nothing stored.
+const WRITE_ROUTES = new Set(["action", "save", "music"]);
+
+const PLAYABLE_CLAIM_RE = /\b(?:ready to play|play(?:able)? (?:it )?below|tap play|press play|is playing|now playing|here(?:'s| is) (?:your|the) (?:song|track|preview))\b/i;
+const REAL_MUSIC_RE = /\b(?:play|listen to|put on|queue|find)\b/i;
+const NEW_MUSIC_RE = /\b(?:make|compose|write|create|generate|produce)\b/i;
+
+/** "Play a real song by Daft Punk" → "Daft Punk"; "play Bohemian Rhapsody" → "Bohemian Rhapsody". */
+export function realMusicTerm(prompt) {
+  let t = String(prompt || "").replace(/[“”"]/g, "").trim();
+  const by = t.match(/\bby\s+(.+?)\s*[.?!]*$/i);
+  if (by) return by[1].trim().slice(0, 80);
+  t = t.replace(/^\s*(?:(?:please|can you|could you|would you)\s+)*(?:play|listen to|put on|queue|find)\s+(?:me\s+)?(?:some(?:thing)?\s+|a\s+|an\s+|the\s+)?(?:real\s+|actual\s+|existing\s+)?(?:song|track|music|tune)?\s*(?:called\s+|named\s+)?/i, "");
+  return t.replace(/[.?!]+$/g, "").trim().slice(0, 80);
+}
+
+function hasPlayable(artifacts) {
+  return (artifacts || []).some((a) => a && (a.kind === "song" || a.kind === "audio" || a.type === "song" || a.type === "audio"));
+}
+
+/** Web sources appended as markdown links when the reply cites none of them. */
+export function withSourceLinks(reply, sources) {
+  const list = (sources || []).filter((x) => x?.url).slice(0, 5);
+  if (!list.length || list.some((x) => String(reply).includes(x.url))) return reply;
+  const lines = list.map((x, n) => `${n + 1}. [${String(x.title || x.url).replace(/[[\]]/g, "").slice(0, 120)}](${x.url})`);
+  return `${String(reply).trim()}\n\nSources:\n${lines.join("\n")}`;
+}
+
+/**
+ * Answer one chat turn through chat_agent.do.
+ * @param {object} deps
+ * @param {Function} deps.runMacro      server runMacro(domain, name, input, ctx)
+ * @param {object}   deps.ctx           chat ctx (needs db + actor.userId)
+ * @param {Array}    deps.history       prior turns as {role, content}, current turn excluded
+ * @param {string}   deps.prompt
+ * @param {string}   deps.route         from chatAgentRoute
+ * @param {Map}      [deps.lensActions] LENS_ACTIONS, for the iTunes preview fallback
+ * @returns {Promise<null | {reply, toolCalls, artifacts, sources, provider, model, linksRemoved, dtuRefsRemoved}>}
+ */
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
-  const r = await runMacro("chat_agent", "do", {
-    message: prompt,
-    history: (history || []).slice(-12),
-    maxTurns: 5,
-    routeHint: routeHint(route),
-    // Concord's voice for the reply (CONCORD_VOICE); the route hint stays last.
-    voiceBlock: compactVoiceBlock(),
-  }, ctx);
-  if (!r?.ok || !String(r.answer || "").trim()) return null;
+  let r = null;
+  try {
+    r = await runMacro("chat_agent", "do", {
+      message: prompt,
+      history: (history || []).slice(-12),
+      maxTurns: 5,
+      routeHint: routeHint(route),
+      // Concord's voice for the reply (CONCORD_VOICE); the route hint stays last.
+      voiceBlock: compactVoiceBlock(),
+    }, ctx);
+  } catch (e) {
+    r = { ok: false, error: String(e?.message || e) };
+  }
+  const toolCalls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
+  let artifacts = Array.isArray(r?.artifacts) ? r.artifacts : [];
+  let answer = String(r?.answer || "").trim();
+
+  // Real music the loop did not fetch: look the artist/song up on iTunes directly,
+  // so "play a real song by X" never gets "ready to play below" with nothing below.
+  if (route === "music" && !hasPlayable(artifacts) && REAL_MUSIC_RE.test(prompt) && !NEW_MUSIC_RE.test(prompt) && lensActions) {
+    const term = realMusicTerm(prompt);
+    if (term) {
+      try {
+        const { executeToolCall } = await import("../chat-agent.js");
+        const tc = await executeToolCall(ctx, runMacro, lensActions, { tool: "run_lens_action", params: { domain: "music", action: "ingest-itunes", params: { term, limit: 3 } } });
+        toolCalls.push(tc);
+        const found = (tc?.artifacts || (tc?.artifact ? [tc.artifact] : [])).filter((a) => a?.kind === "audio" && a.url);
+        if (tc?.ok && found.length) {
+          artifacts = [...artifacts, ...found];
+          const names = found.map((a) => `"${a.title || "Untitled"}"${a.artist ? ` by ${a.artist}` : ""}`).join(", ");
+          answer = `Found ${found.length === 1 ? "a real track" : `${found.length} real tracks`} for "${term}" on iTunes: ${names}. The 30-second ${found.length === 1 ? "preview is" : "previews are"} ready to play below.`;
+        } else {
+          answer = `I couldn't find a playable preview for "${term}"${tc?.error ? ` (${tc.error})` : ""}.`;
+        }
+      } catch (e) {
+        answer = `I couldn't look up "${term}" right now (${String(e?.message || e)}).`;
+      }
+    }
+  }
+  if (route === "music" && !hasPlayable(artifacts) && PLAYABLE_CLAIM_RE.test(answer)) {
+    answer = "I couldn't make anything playable this time: no song or preview came back from the music tools. Nothing is ready to play.";
+  }
+
+  if (!r?.ok || !answer) {
+    if (!WRITE_ROUTES.has(route) || answer) {
+      if (!answer) return null;
+    } else {
+      const failed = toolCalls.filter((t) => t && t.ok === false).map((t) => t.error).filter(Boolean);
+      answer = `I couldn't complete that, so nothing was created or saved.${failed.length ? ` The tool said: ${String(failed[0]).slice(0, 200)}.` : (r?.error ? ` (${String(r.error).slice(0, 200)})` : "")}`;
+    }
+  }
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
   // tool returned. Anything else is invented.
-  const g = guardDtuCitations(String(r.answer).trim(), collectRetrievedDtus(r.contextDtus || [], r.toolCalls || []), { prompt });
+  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls), { prompt });
+  const sources = sourcesFromToolCalls(toolCalls);
   return {
-    reply: g.text,
-    toolCalls: Array.isArray(r.toolCalls) ? r.toolCalls.map(clientToolCall) : [],
-    artifacts: Array.isArray(r.artifacts) ? r.artifacts : [],
-    sources: sourcesFromToolCalls(r.toolCalls),
-    provider: r.provider || null,
-    model: r.model || null,
-    linksRemoved: r.linksRemoved || [],
+    reply: withSourceLinks(g.text, sources),
+    toolCalls: toolCalls.map(clientToolCall),
+    artifacts,
+    sources,
+    provider: r?.provider || null,
+    model: r?.model || null,
+    linksRemoved: r?.linksRemoved || [],
     dtuRefsRemoved: g.removed,
   };
 }

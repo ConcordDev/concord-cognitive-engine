@@ -27692,7 +27692,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
       if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
         const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
