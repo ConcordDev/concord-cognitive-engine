@@ -1265,7 +1265,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           const reader = streamRes.body?.getReader();
           const decoder = new TextDecoder();
           let accumulated = '';
-          let finalOut: Record<string, unknown> | null = null;
+          // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
+          let finalOut = null as Record<string, unknown> | null;
           let gotDone = false;
           const sse = createSseParser((data) => {
             if (typeof data.chunk === 'string' && data.chunk) {
