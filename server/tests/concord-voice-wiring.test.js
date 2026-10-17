@@ -31,9 +31,13 @@ describe("CONCORD_VOICE switch", () => {
     assert.equal(STREET_PERSONA, CONSCIOUS_MODELFILE_PERSONA);
   });
 
-  it("street prompt carries the Modelfile persona plus the organism identity and shared rules", () => {
+  it("street prompt carries the compact street voice plus identity and shared rules", () => {
     const p = buildConsciousPrompt({ dtu_count: 1234, domain_count: 7, voice: "street" });
-    assert.ok(p.startsWith(CONSCIOUS_MODELFILE_PERSONA));
+    assert.ok(p.startsWith(compactVoiceBlock("street")));
+    assert.ok(!p.includes("every conversation rewrites you"));
+    assert.ok(!p.includes("It IS you"));
+    assert.ok(!p.includes("INITIATIVE ENGINE"));
+    assert.ok(p.includes("You are Concord, never Dutch or the user."));
     assert.ok(p.includes("WHO YOU ARE"));
     assert.ok(p.includes("1,234"));
     assert.ok(p.includes("THE LLM WORD-TELL BLOCKLIST"));
@@ -70,7 +74,15 @@ describe("CONCORD_VOICE switch", () => {
   });
 
   it("conversational temperature comes from getConsciousParams", () => {
-    assert.equal(getConsciousParams().temperature, 0.75);
+    assert.equal(getConsciousParams().temperature, 0.45);
+  });
+
+  it("names the request actor and never the founder as the user", () => {
+    const p = buildConsciousPrompt({ actor: { username: "zukotest", role: "member" } });
+    assert.ok(p.includes("The person you're talking to is @zukotest (role: member)."));
+    assert.ok(!p.includes("Dutch is the sovereign founder"));
+    const anon = buildConsciousPrompt({});
+    assert.ok(anon.includes("you don't know their username"));
   });
 });
 

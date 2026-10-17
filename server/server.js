@@ -28667,6 +28667,7 @@ Rules for tool use:
 - Only use create_dtu when the user asks to save/remember something.
 - After the tool call marker, continue your response naturally. You will receive the tool results and can then give a final answer.
 - Do NOT fabricate tool results or calculations.
+- You only know a tool's result if a TOOL RESULT appears in this conversation. If you haven't called a tool, say so and offer to try one now. Never claim a tool failed, was missing or was denied unless a tool result said so.
 
 ${_operatorV6Block}` : "";
 
@@ -29012,9 +29013,9 @@ ${_operatorV6Block}` : "";
   } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
     // Conversational chat speaks at the conscious brain's temperature
-    // (prompts/conscious.js getConsciousParams, 0.75); task modes keep 0.35.
+    // (prompts/conscious.js getConsciousParams, 0.45); task modes keep 0.35.
     const _llmTemp = clamp(
-      (_conversationalChat ? (getConsciousParams().temperature ?? 0.75) : 0.35)
+      (_conversationalChat ? (getConsciousParams().temperature ?? 0.45) : 0.35)
         + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
       0.1, 0.9
     );
@@ -29127,6 +29128,7 @@ ${_operatorV6Block}` : "";
       styleHints: buildStyleHints(styleVec),
       voice_exemplars: _voiceExemplarsForPrompt(),
       moodColor: _chatMoodColor,
+      actor: ctx?.actor || null,
     }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
@@ -38402,6 +38404,7 @@ app.use((req, res, next) => {
         userId: req.user.id,
         orgId: "default",
         role: req.user.role || "member",
+        username: req.user.username || null,
         scopes: Array.isArray(req.user.scopes) && req.user.scopes.length ? req.user.scopes : ["read", "write"],
         // Private/High Power Mode (migration 397). makeCtx prefers req.actor
         // over req.user, so without this every authenticated HTTP macro
