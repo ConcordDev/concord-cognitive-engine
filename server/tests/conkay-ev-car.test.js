@@ -157,12 +157,19 @@ describe("compiler: the EV path", () => {
 
 describe("compiler: the B-post repair moves the rear seats inboard", () => {
   it("records the overlap and the new spacing; the posts then clear", () => {
-    const b = buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } });
+    // rearSeating "full" = every checked occupant (incl. the 95th male) sits in the rear. The electric car is now a 2+2
+    // (conkay-car-2plus2.test.js): its F5 rear occupants are narrower, so no repair is needed (asserted below).
+    const b = buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" }, rearSeating: "full" });
     const [rep] = b.layoutRepairs || [];
     assert.ok(rep, "a repair ran");
     assert.equal(rep.variable, "rearSeatY");
     assert.ok(rep.after < rep.before);
     assert.match(rep.reason, /TUB_B_POST_.* cuts .* mm into SEAT_[34]/);
+    assert.ok(!tubEnvelopeFit(b.ir).some((x) => /^TUB_B_POST_/.test(x.part) && x.minClearanceM < 0));
+  });
+  it("the 2+2 electric car needs no such repair: its F5 rear occupants clear the posts", () => {
+    const b = buildCarFromLibrary(BRIEF, { config: { fuelType: "electric" } });
+    assert.equal(b.layoutRepairs, undefined);
     assert.ok(!tubEnvelopeFit(b.ir).some((x) => /^TUB_B_POST_/.test(x.part) && x.minClearanceM < 0));
   });
 });

@@ -22,6 +22,20 @@ import { aabb, separation, bounds } from "../packaging/geometry.js";
 const IN = 0.0254;
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
 
+/**
+ * The 2+2 rear seats' occupant (car-design brief item 0, stance pass 3). A 2+2's rear seats are for occasional
+ * use: that is a DESIGN CHOICE (the owner chose a 2+2 over lowering the rear seating, 2026-10-17). The occupant
+ * dimensions are not chosen: the smallest ADULT in the repo's ANSUR II table, the 5th-percentile female (stature
+ * 1,525 mm, buttock-knee length 541 mm against the 95th male's 669 mm), Gordon et al. (2014), NATICK/TR-15/007,
+ * the report pages cited per dimension in packaging/anthropometry.json (stature p.193, buttock-knee length p.81,
+ * thigh link p.289). ANSUR II is an adult survey: there is no child dimension in the table, so a child in the rear
+ * is NOT checked (unknown stays unknown). The front seats keep F5, F95 and M95.
+ */
+export const REAR_2PLUS2_OCCUPANTS = Object.freeze({
+  keys: Object.freeze(["F5"]),
+  basis: "design choice: 2+2 rear seats sized for occasional use by the smallest adult in the ANSUR II table (F5: stature 1525 mm p.193, buttock-knee length 541 mm p.81, thigh link 340 mm p.289; Gordon et al. 2014, NATICK/TR-15/007); no child dimensions exist in the table, so children are not checked",
+});
+
 /** Seating and layout design choices (metres, degrees), each with its basis. */
 export const LAYOUT_DESIGN_CHOICES = Object.freeze({
   floorZ: { value: 0.12, basis: "design choice: cabin floor (heel rest surface) height above ground" },
@@ -166,7 +180,7 @@ function smallestX(f, lo, hi) {
  *   fuelCellCenter  above the differential (clearance), the smallest x clearing the rear occupants.
  * Returns { rearSgRPX, rearAxleX, fuelCellCenter, method } (m), or { error }.
  */
-export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM, tyreR, rearWell = null, driveUnit = null }) {
+export function deriveRearPackage({ choices, keys, rearKeys = null, seatDims, diffDims, fuelDimsM, tyreR, rearWell = null, driveUnit = null }) {
   const c = Object.fromEntries(Object.entries(choices).map(([k, v]) => [k, v.value]));
   const J = PACKAGING_REFERENCES.saeJ1100.definitions;
   if (!seatDims || !diffDims || !tyreR) return { error: "needs the front seat dimensions, the differential dimensions and the tyre radius" };
@@ -178,7 +192,7 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   const hz = c.floorZ + c.h30;
   const seatRearX = seatBoxes("SgRP", seatDims, { x: sgRPFrontX, y: 0, z: hz }, c.torsoDeg, c.floorZ, c.frontSeatBackThicknessM || 0).rearX;
   const rearZ = c.floorZ + c.rearH31;
-  const rearOccAt = (x, y, sides = [-1, 1]) => keys.flatMap((k) => sides.map((s) => seatOccupant(k, { id: s < 0 ? "SEAT_3" : "SEAT_4", hPoint: { x, y: s * y, z: rearZ }, torsoDeg: c.rearTorsoDeg, posture: "rear", floorZ: c.floorZ })));
+  const rearOccAt = (x, y, sides = [-1, 1]) => (rearKeys || keys).flatMap((k) => sides.map((s) => seatOccupant(k, { id: s < 0 ? "SEAT_3" : "SEAT_4", hPoint: { x, y: s * y, z: rearZ }, torsoDeg: c.rearTorsoDeg, posture: "rear", floorZ: c.floorZ })));
   // Knee pivot relative to the H-point does not depend on the H-point's x.
   const kneeAhead = Math.max(...rearOccAt(0, c.rearSeatY).map((o) => -o.landmarks.knee[0]));
   const rearSgRPX = mmUp(seatRearX + J.L48.subtractMm / 1000 + c.rearKneeMarginM + kneeAhead);
@@ -244,7 +258,7 @@ export function deriveRearPackage({ choices, keys, seatDims, diffDims, fuelDimsM
   return {
     rearSgRPX, rearAxleX, rearSeatY, fuelCellCenter,
     ...(driveUnit ? { driveUnitBox: bounds(unitAt(rearAxleX)) } : {}),
-    inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys },
+    inputs: { sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys, ...(rearKeys ? { rearOccupants: rearKeys } : {}) },
     method: [
       `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
       `rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (on the axle, centre at tyre-radius height${c.diffRiseM ? ` + diffRiseM ${r4(c.diffRiseM)} m` : ""}) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)`,
