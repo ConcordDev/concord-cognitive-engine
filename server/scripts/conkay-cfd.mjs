@@ -3,6 +3,7 @@
 //
 //   node scripts/conkay-cfd.mjs case --body <cadRequestHash> --out <dir> [--nproc 7] [--end 4000]
 //                                    [--aref <m2> --aref-basis "<text>"]
+//                                    [--turbulence rans|ddes] [--ft-discard 5] [--ft-average 10] [--cfl 1]
 //   node scripts/conkay-cfd.mjs case --ahmed --out <dir> [--nproc 7] [--end 4000]
 //   node scripts/conkay-cfd.mjs import --body <cadRequestHash> --run <finished case dir>
 //
@@ -10,6 +11,9 @@
 // dictionaries (cfd/openfoam_case.py, preset car5m), copies body.step, and writes tessellate.sh and
 // case.json. On the CFD machine: ./tessellate.sh (gmsh), then ./Allrun. Size --nproc to the
 // machine's real CPU quota (/sys/fs/cgroup/cpu.max), not nproc.
+// `--turbulence ddes` (default rans) adds the transient SST-DDES overlay (des/ dictionaries and
+// AllrunDES; --end is then the RANS stage and must be a multiple of 500). On the CFD machine:
+// ./Allrun (steady RANS) then ./AllrunDES. The DES template has never been run.
 // `import` copies the run's forceCoeffs files and snappy summary into the CFD run store
 // (cfd/run-store.js) with case.json and surface.json as the receipt. See docs/CONKAY-AERO-CFD.md.
 
@@ -41,6 +45,20 @@ function intArg(v, name, dflt) {
   return n;
 }
 
+/** Turbulence options from the CLI, as writeCase fields; the kernel validates them. */
+function turbulenceArgs(a) {
+  const out = {};
+  if (a.turbulence != null) out.turbulence = String(a.turbulence);
+  for (const [flag, field] of [["ft-discard", "flowThroughsDiscard"], ["ft-average", "flowThroughsAverage"], ["cfl", "cflTarget"]]) {
+    if (a[flag] != null) {
+      const n = Number(a[flag]);
+      if (!(n > 0) || !Number.isFinite(n)) throw new Error(`--${flag} must be a positive number`);
+      out[field] = n;
+    }
+  }
+  return out;
+}
+
 function tessellateScript(name) {
   // the STL's single solid is renamed so snappyHexMesh names the patch <name>_body
   return `#!/bin/bash
@@ -67,12 +85,13 @@ async function cmdCase(a) {
   if (fs.existsSync(a.out) && fs.readdirSync(a.out).length) throw new Error(`${a.out} is not empty`);
   const nproc = intArg(a.nproc, "nproc", 7);
   const endTime = intArg(a.end, "end", 4000);
+  const turb = turbulenceArgs(a);
   if (a.ahmed) {
-    const r = await writeCase({ preset: "ahmed", outDir: a.out, nproc, endTime });
+    const r = await writeCase({ preset: "ahmed", outDir: a.out, nproc, endTime, ...turb });
     if (!r.ok) throw new Error(r.error);
     const geo = new URL("../lib/conkay/cfd/ahmed.geo", import.meta.url);
     fs.copyFileSync(geo, path.join(a.out, "ahmed.geo"));
-    fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify({ preset: "ahmed", nproc, endTime, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, geometry: "ahmed.geo: gmsh ahmed.geo -2 -format stl -o constant/geometry/ahmed.stl" }, null, 2));
+    fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify({ preset: "ahmed", nproc, endTime, turbulence: r.turbulence ?? "rans", des: r.des ?? null, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, geometry: "ahmed.geo: gmsh ahmed.geo -2 -format stl -o constant/geometry/ahmed.stl" }, null, 2));
     return r;
   }
   const key = a.body;
@@ -91,7 +110,7 @@ async function cmdCase(a) {
     arefBasis = String(a["aref-basis"]);
   }
   const lref = m.lengthM;
-  const r = await writeCase({ preset: "car5m", outDir: a.out, nproc, endTime, aref, lref });
+  const r = await writeCase({ preset: "car5m", outDir: a.out, nproc, endTime, aref, lref, ...turb });
   if (!r.ok) throw new Error(r.error);
   if (!fitsPreset(bbox, r.fits)) throw new Error(`the body box ${JSON.stringify(bbox)} is outside the car5m preset's refinement box ${JSON.stringify(r.fits)}`);
   fs.mkdirSync(path.join(a.out, "constant/geometry"), { recursive: true });
@@ -99,7 +118,7 @@ async function cmdCase(a) {
   fs.writeFileSync(path.join(a.out, "tessellate.sh"), tessellateScript("car"), { mode: 0o755 });
   const caseJson = {
     preset: "car5m", cadRequestHash: key, stepSha256: sha256File(step), nproc, endTime, aref, lref,
-    frontalAreaBasis: arefBasis, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, tessellation: TESSELLATION,
+    frontalAreaBasis: arefBasis, turbulence: r.turbulence ?? "rans", des: r.des ?? null, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, tessellation: TESSELLATION,
   };
   fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify(caseJson, null, 2));
   return caseJson;
@@ -130,7 +149,7 @@ function cmdImport(a) {
   }
   const rec = importRun(key, { postProcessingDir: path.join(a.run, "postProcessing"), snappySummaryFile: summary }, {
     stepSha256: cj.stepSha256,
-    case: { preset: cj.preset, nproc: cj.nproc, endTime: cj.endTime, aref: cj.aref, lref: cj.lref, caseSha256: cj.caseSha256, kernelSha256: cj.kernelSha256 },
+    case: { preset: cj.preset, turbulence: cj.turbulence ?? "rans", des: cj.des ?? null, nproc: cj.nproc, endTime: cj.endTime, aref: cj.aref, lref: cj.lref, caseSha256: cj.caseSha256, kernelSha256: cj.kernelSha256 },
     frontalAreaBasis: cj.frontalAreaBasis,
     surface,
     host: a.host || null,

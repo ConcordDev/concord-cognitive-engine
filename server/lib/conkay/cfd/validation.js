@@ -22,17 +22,43 @@ export const AHMED_TOLERANCE = Object.freeze({
 });
 
 export const AHMED_CFD_VALIDATION = Object.freeze({
+  turbulence: "rans",
   status: "pending",
   reason: "the first 2000-iteration run did not settle (half-window drift 1.1 % on the total); the 4000-iteration extension is running",
   target: AHMED_GANT_25.total,
 });
 
-/** { accepted, reason } for a validation record. */
-export function validationAccepted(v = AHMED_CFD_VALIDATION) {
-  if (v.status !== "settled") return { accepted: false, reason: `the CFD template's Ahmed 25 deg validation is ${v.status}: ${v.reason}` };
+// The transient DDES template (cfd/openfoam_case.py, turbulence "ddes"). It has never been run: no
+// DES Ahmed case exists, so this stays pending. A settled record here must come from a DES run
+// reduced with timeWindowStatistics/timeWindowVerdict (force-coeffs.js), not from the RANS tail.
+export const AHMED_DES_VALIDATION = Object.freeze({
+  turbulence: "ddes",
+  status: "pending",
+  reason: "no DES Ahmed 25 deg run has been made with the DDES template",
+  target: AHMED_GANT_25.total,
+});
+
+const VALIDATIONS = Object.freeze({ rans: AHMED_CFD_VALIDATION, ddes: AHMED_DES_VALIDATION });
+
+/** The validation record for a turbulence model; throws on an unknown model (no fallback to RANS). */
+export function validationFor(turbulence) {
+  if (!Object.hasOwn(VALIDATIONS, turbulence)) throw new Error(`no Ahmed validation record for turbulence ${JSON.stringify(turbulence)}`);
+  return VALIDATIONS[turbulence];
+}
+
+/**
+ * { accepted, reason } for a validation record, used for a result of the given turbulence model.
+ * A record only ever unlocks results of its own model: a RANS validation never accepts a DES result
+ * and vice versa. A record without a `turbulence` field is a RANS record.
+ */
+export function validationAccepted(v = AHMED_CFD_VALIDATION, turbulence = "rans") {
+  const own = v.turbulence ?? "rans";
+  if (own !== turbulence) return { accepted: false, reason: `the ${own} Ahmed 25 deg validation does not validate a ${turbulence} result` };
+  const label = turbulence === "rans" ? "" : `${turbulence.toUpperCase()} `;
+  if (v.status !== "settled") return { accepted: false, reason: `the CFD template's Ahmed 25 deg ${label}validation is ${v.status}: ${v.reason}` };
   const err = (v.total.mean - v.target) / v.target;
   if (!(Math.abs(err) <= AHMED_TOLERANCE.relError)) {
-    return { accepted: false, reason: `the CFD template misses Ahmed 25 deg by ${(err * 100).toFixed(1)} % (tolerance ${AHMED_TOLERANCE.relError * 100} %)` };
+    return { accepted: false, reason: `the CFD template (${turbulence}) misses Ahmed 25 deg by ${(err * 100).toFixed(1)} % (tolerance ${AHMED_TOLERANCE.relError * 100} %)` };
   }
   return { accepted: true, relError: err };
 }
