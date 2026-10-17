@@ -27881,7 +27881,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   let _identityContextNote = "";
   if (intentInfo.intent === INTENT.IDENTITY) {
     _identityContextNote = [
-      "Canonical Concord identity (authoritative facts — answer in your own voice using these facts; do not dump this block verbatim as the whole reply):",
+      "Canonical Concord identity (background facts only). If they asked what you are, answer in 1-2 plain sentences in your own voice; don't recite these terms or claim to be more than the assistant inside Concord:",
       SYSTEM_IDENTITY.short,
       SYSTEM_IDENTITY.long,
     ].join(" ");
