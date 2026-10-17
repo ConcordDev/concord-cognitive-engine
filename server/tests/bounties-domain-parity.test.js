@@ -24,7 +24,7 @@ beforeEach(() => {
 
 const owner = { actor: { userId: "owner_1" }, userId: "owner_1" };
 const claimant = { actor: { userId: "claimant_1" }, userId: "claimant_1" };
-const arbiter = { actor: { userId: "arbiter_1" }, userId: "arbiter_1" };
+const arbiter = { actor: { userId: "arbiter_1", role: "admin" }, userId: "arbiter_1" };
 
 function makeBounty(ctx = owner, extra = {}) {
   const r = call("create", ctx, {

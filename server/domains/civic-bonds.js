@@ -13,6 +13,7 @@ import {
   checkQuorum, pledgeToBond, unpledge, fundBond, completeMilestone, completeBond,
   failBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
+import { isAdmin, requireActor } from "../lib/lens-authz.js";
 // GOVERNANCE_SCOPES is the canonical town->city->county->state->national->
 // international hierarchy (the same single conceptual source the migration
 // 305 `civic_bonds.scope` column comment points at: "-- GOVERNANCE_SCOPES").
@@ -38,9 +39,44 @@ function badNumericField(input, keys) {
   }
   return null;
 }
-function authed(ctx) {
-  const uid = ctx?.actor?.userId;
-  return uid ? String(uid) : null;
+function requireBondManager(ctx, bondId) {
+  const auth = requireActor(ctx);
+  if (!auth.ok) return auth;
+  const uid = auth.actorId;
+
+  const r = getBond(ctx.db, bondId);
+  if (!r.ok) return r;
+  const bond = r.bond;
+
+  // Proposer always controls the bond lifecycle.
+  if (uid === String(bond.proposer_id || "")) return { ok: true, actorId: uid, bond };
+
+  // Global admins may intervene.
+  if (isAdmin(ctx)) return { ok: true, actorId: uid, bond };
+
+  // Realm ruler may manage bonds tied to their realm (this is also the lawful
+  // path for the corruption mechanic: raid by the realm ruler).
+  if (bond.realm_id) {
+    const realm = ctx.db.prepare(`SELECT ruler_kind, ruler_id FROM realms WHERE id = ?`).get(bond.realm_id);
+    if (realm?.ruler_kind === "player" && realm?.ruler_id === uid) {
+      return { ok: true, actorId: uid, bond };
+    }
+  }
+
+  // Org leader/officer may manage bonds scoped to their organization.
+  if (bond.org_id) {
+    const org = ctx.db.prepare(`SELECT leader_id FROM world_organizations WHERE id = ?`).get(bond.org_id);
+    if (org?.leader_id === uid) return { ok: true, actorId: uid, bond };
+    const member = ctx.db.prepare(`SELECT role FROM org_members WHERE org_id = ? AND user_id = ?`).get(bond.org_id, uid);
+    if (member?.role === "leader" || member?.role === "officer") {
+      return { ok: true, actorId: uid, bond };
+    }
+  }
+
+  // NOTE: faction_id has no runtime player-role table in this schema, so a
+  // faction-scoped bond can only be managed by its proposer or an admin. That
+  // is a known product gap — leave for the owner to decide.
+  return { ok: false, reason: "forbidden" };
 }
 
 export default function registerCivicBondsMacros(register) {
@@ -81,7 +117,7 @@ export default function registerCivicBondsMacros(register) {
   // ── writes (auth) ──────────────────────────────────────────────────────
   register("civic_bonds", "create", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
     const bad = badNumericField(input, ["targetAmount", "denomination", "returnRate", "quorum", "approvalThreshold"]);
     if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return createBond(ctx.db, { ...input, proposerId: uid });
@@ -89,19 +125,20 @@ export default function registerCivicBondsMacros(register) {
 
   register("civic_bonds", "open", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return openBondForVoting(ctx.db, input.bondId, uid);
   }, { note: "move a bond to voting" });
 
   register("civic_bonds", "vote", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
     return voteBond(ctx.db, input.bondId, uid, input.vote);
   }, { note: "cast one vote (idempotent per voter)" });
 
   register("civic_bonds", "pledge", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
     const bad = badNumericField(input, ["amount"]);
     if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return pledgeToBond(ctx.db, input.bondId, { entityKind: "player", entityId: uid, amount: input.amount });
@@ -109,19 +146,21 @@ export default function registerCivicBondsMacros(register) {
 
   register("civic_bonds", "unpledge", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
     return unpledge(ctx.db, input.bondId, { entityKind: "player", entityId: uid });
   }, { note: "refund your unfilled escrow (while voting/funding)" });
 
   register("civic_bonds", "fund", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return fundBond(ctx.db, input.bondId, uid);
   }, { note: "fund a bond — enforces the 110% pre-funding gate" });
 
   register("civic_bonds", "complete_milestone", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     const bad = badNumericField(input, ["idx"]);
     if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return completeMilestone(ctx.db, input.bondId, input.idx);
@@ -129,13 +168,15 @@ export default function registerCivicBondsMacros(register) {
 
   register("civic_bonds", "complete", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return completeBond(ctx.db, input.bondId);
   }, { note: "closeout: pay capped returns + spillover" });
 
   register("civic_bonds", "fail", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return failBond(ctx.db, input.bondId, input.reason);
   }, { note: "fail the bond: refund unspent escrow" });
 
@@ -143,7 +184,8 @@ export default function registerCivicBondsMacros(register) {
   // rulers never call this; doing so collapses legitimacy + raises refusal_debt.
   register("civic_bonds", "raid", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
-    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const auth = requireActor(ctx); if (!auth.ok) return auth; const uid = auth.actorId;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return raidBondEscrow(ctx.db, input.bondId, uid);
   }, { note: "CORRUPT: divert escrow to treasury (legitimacy + refusal_debt fallout)" });
 }

@@ -126,6 +126,7 @@ describe("music.publish-as-stem", async () => {
     assert.equal(artifact.mime_type, "audio/wav");
     assert.equal(artifact.storage_mode, "inline");
     assert.equal(artifact.created_by, "user_alice");
+    assert.equal(artifact.visibility, "public");
 
     const dtu = db.prepare("SELECT * FROM dtus WHERE id = ?").get(r.result.dtuId);
     assert.ok(dtu);

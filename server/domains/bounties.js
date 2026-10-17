@@ -12,6 +12,8 @@
 // domains) — bounties, submissions, disputes and earnings are scoped to
 // the acting user but a global index makes the open board cross-user.
 
+import { isAdmin, requireActor } from "../lib/lens-authz.js";
+
 export default function registerBountiesActions(registerLensAction) {
   function getState() {
     const STATE = globalThis._concordSTATE;
@@ -362,6 +364,19 @@ export default function registerBountiesActions(registerLensAction) {
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
       if (!b.dispute || b.dispute.status !== "open") return { ok: false, error: "no open dispute on this bounty" };
+
+      // Authorization: only admins/moderators (or an explicitly assigned
+      // neutral arbiter) may resolve disputes; parties to the dispute are
+      // barred from arbitrating their own case.
+      const auth = requireActor(ctx);
+      if (!auth.ok) return { ok: false, error: auth.reason };
+      const role = String(ctx?.actor?.role || "").toLowerCase();
+      const canArbitrate = isAdmin(ctx) || role === "moderator";
+      if (!canArbitrate) return { ok: false, error: "forbidden" };
+      const userId = auth.actorId;
+      const isParty = b.ownerId === userId || (b.submissions || []).some((x) => x.claimantId === userId);
+      if (isParty) return { ok: false, error: "parties to a dispute cannot arbitrate" };
+
       // ruling: 'uphold' keeps the prior outcome; 'overturn' reopens the bounty;
       // 'split' marks a partial settlement.
       const ruling = ["uphold", "overturn", "split"].includes(params.ruling) ? params.ruling : null;
@@ -369,7 +384,7 @@ export default function registerBountiesActions(registerLensAction) {
       b.dispute.status = "resolved";
       b.dispute.ruling = ruling;
       b.dispute.rulingNote = clean(params.rulingNote, 1500) || null;
-      b.dispute.arbiterId = actor(ctx);
+      b.dispute.arbiterId = userId;
       b.dispute.resolvedAt = now();
       if (ruling === "overturn") {
         b.status = (b.submissions || []).length ? "claimed" : "open";

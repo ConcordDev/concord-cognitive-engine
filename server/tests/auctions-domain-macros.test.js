@@ -8,6 +8,7 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 import registerAuctionMacros from "../domains/auctions.js";
 import { up as upAuctions } from "../migrations/220_auction_house.js";
@@ -31,6 +32,16 @@ function freshDb() {
     CREATE TABLE users (id TEXT PRIMARY KEY, concordia_credits REAL NOT NULL DEFAULT 0);
     CREATE TABLE reward_ledger (id TEXT PRIMARY KEY, user_id TEXT, kind TEXT, amount_cc REAL, ts INTEGER, ref_id TEXT);
     CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT);
+    CREATE TABLE player_inventory (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      item_type   TEXT NOT NULL DEFAULT 'material',
+      item_id     TEXT NOT NULL,
+      item_name   TEXT NOT NULL DEFAULT '',
+      quantity    INTEGER NOT NULL DEFAULT 1,
+      quality     INTEGER NOT NULL DEFAULT 50,
+      acquired_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
   `);
   return db;
 }
@@ -44,7 +55,14 @@ function ctxFor(db, userId) {
 
 describe("auctions domain macros", () => {
   let db, macros;
-  beforeEach(() => { db = freshDb(); macros = collectMacros(); });
+  beforeEach(() => {
+    db = freshDb();
+    macros = collectMacros();
+    // Seed ownership for the items the tests exercise.
+    db.prepare(`INSERT INTO dtus (id, creator_id) VALUES (?, ?)`).run("dtu_1", "seller");
+    db.prepare(`INSERT INTO dtus (id, creator_id) VALUES (?, ?)`).run("gem", "s");
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "seller", "ore", 100);
+  });
 
   it("registers the full read + write surface", () => {
     for (const name of [
@@ -84,7 +102,7 @@ describe("auctions domain macros", () => {
     assert.equal(noId.reason, "no_auction_id");
     const noUser = await macros.get("bid")({ db }, { auctionId: "x", amountCc: 10 });
     assert.equal(noUser.ok, false);
-    assert.equal(noUser.reason, "no_user");
+    assert.equal(noUser.reason, "auth_required");
   });
 
   it("place_buy_order escrows, buy_orders lists it, cancel_buy_order refunds", async () => {
@@ -110,7 +128,7 @@ describe("auctions domain macros", () => {
   it("fill_buy_order pays the seller", async () => {
     fund(db, "buyer", 1000); fund(db, "seller", 0);
     const placed = await macros.get("place_buy_order")(ctxFor(db, "buyer"), {
-      itemDescriptor: "ore", unitPriceCc: 4, quantity: 50,
+      itemKind: "inventory", itemDescriptor: "ore", unitPriceCc: 4, quantity: 50,
     });
     const filled = await macros.get("fill_buy_order")(ctxFor(db, "seller"), { buyOrderId: placed.buyOrderId, quantity: 20 });
     assert.equal(filled.ok, true);

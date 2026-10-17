@@ -24,6 +24,7 @@ import {
   reputationGateTier, reputationWageMultiplier, deriveWorkerReputation,
 } from "../lib/career-contracts.js";
 import { findEmployers } from "../lib/career-employers.js";
+import { requireActor } from "../lib/lens-authz.js";
 
 function enabled() { return process.env.CONCORD_LIVING_CAREER !== "0"; }
 function gate(ctx) {
@@ -31,7 +32,10 @@ function gate(ctx) {
   if (!ctx?.db) return { ok: false, reason: "no_db" };
   return null;
 }
-function authed(ctx) { const u = ctx?.actor?.userId; return u ? String(u) : null; }
+function authed(ctx) {
+  const auth = requireActor(ctx);
+  return auth.ok ? auth.actorId : null;
+}
 const clamp01 = (x) => Math.max(0, Math.min(1, Number(x) || 0));
 
 // Fail-CLOSED numeric guard: any present numeric field must be finite + in a

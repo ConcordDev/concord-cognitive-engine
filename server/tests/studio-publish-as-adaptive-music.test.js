@@ -120,6 +120,7 @@ describe("studio.publish-as-adaptive-music", async () => {
     assert.ok(artifact);
     assert.equal(artifact.mime_type, "audio/wav");
     assert.equal(artifact.storage_mode, "inline");
+    assert.equal(artifact.visibility, "public");
 
     const dtu = db.prepare("SELECT * FROM dtus WHERE id = ?").get(r.result.dtuId);
     assert.ok(dtu);

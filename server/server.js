@@ -120,6 +120,10 @@ import zlib from "zlib";
 import { pruneJsonStateBackups, summarizeDatedDbBackups } from "./lib/backup-retention.js";
 import { backupDatabaseOffLoop } from "./lib/sqlite-online-backup.js";
 import {
+  requireActor as lensRequireActor,
+  requireOwner as lensRequireOwner,
+} from "./lib/lens-authz.js";
+import {
   assessDbBackupDisk,
   finalizeVerifiedGzip,
   cleanStaleDbBackupTemps,
@@ -40367,11 +40371,26 @@ app.get("/api/plugins/gallery/:id", (req, res) => {
   res.json({ ok: true, plugin: { ...r.plugin, source: undefined } });
 });
 app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
-  const authorId = req.user?.id;
+  const user = req.user || {};
   const { pluginId, name, description, version, source, signature, manifest } = req.body || {};
-  res.json(_pluginGallery.publishPlugin({
-    pluginId, authorId, name, description, version, source, signature, manifest, db,
-  }));
+  const ctx = {
+    db,
+    actor: {
+      userId: user.id,
+      role: user.role,
+      isAdmin: ["admin", "owner", "sovereign", "founder"].includes(user.role),
+    },
+  };
+  const result = _pluginGallery.publishPlugin({
+    pluginId, authorId: user.id, name, description, version, source, signature, manifest, db, ctx,
+  });
+  if (!result.ok && result.reason === "forbidden") {
+    return res.status(403).json({ ok: false, error: "forbidden", reason: "forbidden" });
+  }
+  if (!result.ok && result.reason === "auth_required") {
+    return res.status(401).json({ ok: false, error: "auth_required", reason: "auth_required" });
+  }
+  res.json(result);
 });
 // Installing from the gallery genuinely LOADS the plugin — same hardened
 // path (static pattern gate + PluginSandbox worker+vm isolation + full
@@ -54577,14 +54596,26 @@ app.post("/api/inheritance/create-bequest", requireAuth(), validate("inheritance
 
 app.post("/api/inheritance/claim", requireAuth(), validate("inheritanceClaim"), async (req, res) => {
   try {
-    const userId = req.user.id;
-    const user = STATE.users?.get(userId);
-    const { bequestId } = req.body;
+    const actorCheck = lensRequireActor({ actor: { userId: req.user?.id } });
+    if (!actorCheck.ok) return res.status(403).json({ ok: false, error: "Not your bequest" });
+    const userId = actorCheck.actorId;
+
+    // Identity + verified email come from the auth DB, never the in-memory
+    // STATE.users cache that may be stale or missing for SQLite-backed accounts.
+    const user = AuthDB.getUser(userId);
+    const { bequestId } = req.validated || req.body;
 
     const bequest = STATE.bequests?.get(bequestId);
     if (!bequest) return res.status(404).json({ ok: false, error: "Not found" });
     if (bequest.status !== "active") return res.status(400).json({ ok: false, error: "Already claimed or revoked" });
-    if (user?.email && bequest.recipientEmail !== user.email) {
+
+    // Fail-closed: no verified email means we cannot confirm this caller is the
+    // intended recipient, so the claim is refused.
+    const callerEmail = String(user?.email || "").trim().toLowerCase();
+    if (!callerEmail) {
+      return res.status(403).json({ ok: false, error: "Not your bequest" });
+    }
+    if (callerEmail !== String(bequest.recipientEmail || "").trim().toLowerCase()) {
       return res.status(403).json({ ok: false, error: "Not your bequest" });
     }
 
@@ -54625,11 +54656,28 @@ app.post("/api/inheritance/claim", requireAuth(), validate("inheritanceClaim"), 
 
 app.post("/api/inheritance/revoke", requireAuth(), validate("inheritanceRevoke"), (req, res) => {
   try {
+    const actorCtx = { actor: { userId: req.user?.id } };
+    const actorCheck = lensRequireActor(actorCtx);
+    if (!actorCheck.ok) return res.status(403).json({ ok: false, error: "forbidden" });
+
     const { bequestId } = req.validated || req.body;
     const bequest = STATE.bequests?.get(bequestId);
-    if (!bequest || bequest.grantorId !== req.user.id) {
-      return res.status(403).json({ ok: false });
+    if (!bequest) return res.status(404).json({ ok: false, error: "Not found" });
+
+    // Strict grantor-only: do NOT use lensRequireOwner here; that helper lets
+    // admins/owners bypass ownership. A bequest is personal — only the grantor
+    // may revoke it (INC-108 follow-up).
+    if (String(req.user.id) !== String(bequest.grantorId)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
     }
+
+    // A claimed bequest cannot be "revoked" in any meaningful sense: the
+    // inherited DTU copies are already with the claimant. Reporting success
+    // here would be a fake-success / misleading-status bug (INC-108).
+    if (bequest.status === "claimed") {
+      return res.status(409).json({ ok: false, error: "bequest already claimed" });
+    }
+
     bequest.status = "revoked";
     saveStateDebounced();
     res.json({ ok: true });
@@ -61594,6 +61642,20 @@ app.get("/api/auctions/item/:itemId/depth", asyncHandler(async (req, res) => {
   res.json({ ok: true, ...getMarketDepth(db, req.params.itemId) });
 }));
 
+// Phase AC — public buy-order book. Must be registered BEFORE /:auctionId so
+// "buy-orders" is not captured as an auction id.
+app.get("/api/auctions/buy-orders", asyncHandler(async (req, res) => {
+  const { listOpenBuyOrders } = await import("./lib/auctions.js");
+  res.json({
+    ok: true,
+    buyOrders: listOpenBuyOrders(db, {
+      worldId: req.query.worldId,
+      itemDescriptor: req.query.itemDescriptor,
+      limit: Number(req.query.limit) || 50,
+    }),
+  });
+}));
+
 app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
   const { getAuction } = await import("./lib/auctions.js");
   const a = getAuction(db, req.params.auctionId);
@@ -61642,18 +61704,6 @@ app.post("/api/auctions/buy-orders/:buyOrderId/cancel", requireAuth(), asyncHand
   const { cancelBuyOrder } = await import("./lib/auctions.js");
   const userId = req.user?.id || req.user?.userId;
   res.json(cancelBuyOrder(db, req.params.buyOrderId, userId));
-}));
-
-app.get("/api/auctions/buy-orders", asyncHandler(async (req, res) => {
-  const { listOpenBuyOrders } = await import("./lib/auctions.js");
-  res.json({
-    ok: true,
-    buyOrders: listOpenBuyOrders(db, {
-      worldId: req.query.worldId,
-      itemDescriptor: req.query.itemDescriptor,
-      limit: Number(req.query.limit) || 50,
-    }),
-  });
 }));
 
 // ── Phase AG — district ambient chat (co-presence) ─────────────────────

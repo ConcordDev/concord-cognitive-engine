@@ -1,6 +1,8 @@
 // server/domains/accounting.js
 // Domain actions for accounting: trial balance, P&L, invoice aging, budget variance, rent roll.
 
+import { requireOwner } from "../lib/lens-authz.js";
+
 export default function registerAccountingActions(registerLensAction) {
   /**
    * trialBalance
@@ -1324,20 +1326,27 @@ export default function registerAccountingActions(registerLensAction) {
   });
 
   /**
-   * invoice-webhook-mark-paid — INTERNAL macro called by the Stripe
-   * webhook handler when an `invoice.payment_succeeded` event arrives.
-   * Looks up the local invoice by stripeInvoiceId and marks it paid.
-   * Not exposed via /api/lens/run for end users — webhook only.
+   * invoice-webhook-mark-paid — marks a Stripe-backed local invoice paid.
+   *
+   * Despite the original "webhook only" comment, this action is reachable via
+   * /api/lens/run, so the caller must own the target user bucket. The
+   * client-supplied params.userId is used only to select the bucket; identity
+   * comes from ctx.actor and is enforced with requireOwner.
    */
-  registerLensAction("accounting", "invoice-webhook-mark-paid", (_ctx, _artifact, params = {}) => {
+  registerLensAction("accounting", "invoice-webhook-mark-paid", (ctx, _artifact, params = {}) => {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const stripeInvoiceId = String(params.stripeInvoiceId || "");
     const userId = String(params.userId || "");
     if (!stripeInvoiceId || !userId) return { ok: false, error: "stripeInvoiceId + userId required" };
+
+    const authz = requireOwner(ctx, userId);
+    if (!authz.ok) return { ok: false, error: authz.reason };
+
     const list = s.invoices.get(userId) || [];
     const inv = list.find((i) => i.stripeInvoiceId === stripeInvoiceId);
     if (!inv) return { ok: false, error: "local invoice not found for stripe id" };
+
     inv.status = "paid";
     inv.paidAt = nowIso().slice(0, 10);
     inv.paidVia = "stripe";

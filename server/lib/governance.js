@@ -36,13 +36,24 @@ export const GOVERNED_CONSTANTS = Object.freeze([
   "withdrawals.hold_hours",
 ]);
 
+// Dynamic paths that may also be proposed. `kingdoms.<realmId>.ruler` is the
+// election proposal that kingdoms.takeover_election requires.
+export const GOVERNED_CONSTANT_PATTERNS = Object.freeze([
+  /^kingdoms\.[A-Za-z0-9_-]{1,64}\.ruler$/,
+]);
+
+export function isGovernedConstant(path) {
+  if (typeof path !== "string") return false;
+  return GOVERNED_CONSTANTS.includes(path) || GOVERNED_CONSTANT_PATTERNS.some((re) => re.test(path));
+}
+
 export function openProposal(db, opts) {
   if (!db) return { ok: false, reason: "no_db" };
   const { title, summary, proposerId, constantPath, currentValue, proposedValue, rationale, quorum, thresholdPct, durationS } = opts || {};
   if (!title || !summary || !proposerId || !constantPath || currentValue == null || proposedValue == null) {
     return { ok: false, reason: "missing_inputs" };
   }
-  if (!GOVERNED_CONSTANTS.includes(constantPath)) {
+  if (!isGovernedConstant(constantPath)) {
     return { ok: false, reason: "constant_not_governed", path: constantPath };
   }
 
