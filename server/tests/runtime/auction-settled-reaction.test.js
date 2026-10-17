@@ -44,6 +44,7 @@ function fund(db, userId, amount) {
 let db;
 beforeEach(() => {
   db = freshDb();
+  db.prepare(`INSERT INTO dtus (id, creator_id) VALUES (?, ?)`).run("dtu_1", "seller");
   _resetBus();
   _resetReactions();
   delete globalThis.STATE;

@@ -90,7 +90,7 @@ describe("Long-Horizon Planner (#14)", () => {
   it("planner macros round-trip", async () => {
     const d = await macros.get("planner.draft")({ db, actor: { userId: "u2" } }, { title: "macro plan", horizonDays: 7, startTs: start, milestones: ["a"] });
     assert.equal(d.ok, true);
-    const view = await macros.get("planner.plan")({ db }, { planId: d.planId, nowTs: start });
+    const view = await macros.get("planner.plan")({ db, actor: { userId: "u2" } }, { planId: d.planId, nowTs: start });
     assert.equal(view.ok, true);
     assert.equal(view.milestones.length, 1);
   });

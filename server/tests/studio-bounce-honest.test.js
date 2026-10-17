@@ -103,6 +103,7 @@ describe("studio.bounce — honest artifact production", () => {
     assert.equal(art.size_bytes, 100, "real decoded bytes persisted");
     assert.equal(art.mime_type, "audio/wav");
     assert.equal(art.storage_mode, "inline");
+    assert.equal(art.visibility, "private", "render artifacts stay private");
     assert.equal(Buffer.from(art.content_b64, "base64").length, 100, "downloadable bytes match");
   });
 
@@ -144,6 +145,7 @@ describe("studio.export-stems — honest per-stem production", () => {
       const art = db.prepare("SELECT * FROM route_artifacts WHERE artifact_id = ?").get(stem.artifactId);
       assert.ok(art, "each stem persists a real artifact");
       assert.equal(art.size_bytes, 100);
+      assert.equal(art.visibility, "private", "exported stem render artifacts stay private");
     }
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM route_artifacts").get().n, 2);
   });

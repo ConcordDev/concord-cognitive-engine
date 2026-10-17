@@ -12,6 +12,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { publish as publishRuntimeEvent } from "./runtime/event-bus.js";
+import { requireActor, requireOwner } from "./lens-authz.js";
 
 const SNIPE_WINDOW_S = Number(process.env.CONCORD_AUCTION_SNIPE_WINDOW_S) || 60;
 const SNIPE_EXTEND_S = Number(process.env.CONCORD_AUCTION_SNIPE_EXTEND_S) || 60;
@@ -19,6 +20,9 @@ const PLATFORM_FEE_RATE = 0.05;
 
 export function createAuction(db, sellerId, opts) {
   if (!db || !sellerId) return { ok: false, error: "missing_inputs" };
+  const auth = requireActor({ actor: { userId: sellerId } });
+  if (!auth.ok) return { ok: false, error: auth.reason };
+
   const itemKind = opts?.itemKind === "inventory" ? "inventory" : "dtu";
   const itemId = String(opts?.itemId || "").trim();
   if (!itemId) return { ok: false, error: "item_id_required" };
@@ -27,6 +31,31 @@ export function createAuction(db, sellerId, opts) {
   const durationS = Math.min(Math.max(60, Number(opts?.durationS) || 3600), 86_400);
   const worldId = opts?.worldId || null;
   const title = String(opts?.title || "").slice(0, 120);
+
+  // Ownership gate: the item must exist and belong to the seller.
+  if (itemKind === "dtu") {
+    let ownerId = null;
+    try {
+      ownerId = db.prepare(`SELECT creator_id FROM dtus WHERE id = ?`).get(itemId)?.creator_id ?? null;
+    } catch { /* dtus table optional on minimal builds */ }
+    if (!ownerId) return { ok: false, error: "item_not_found" };
+    const ownerCheck = requireOwner({ actor: { userId: sellerId } }, ownerId);
+    if (!ownerCheck.ok) {
+      return { ok: false, error: ownerCheck.reason === "auth_required" ? "auth_required" : "not_authorized" };
+    }
+  } else {
+    let qty = 0;
+    try {
+      qty = Number(db.prepare(`SELECT COALESCE(SUM(quantity), 0) AS qty FROM player_inventory WHERE user_id = ? AND item_id = ?`).get(sellerId, itemId)?.qty) || 0;
+    } catch { /* player_inventory table optional on minimal builds */ }
+    if (qty < 1) return { ok: false, error: "not_authorized" };
+  }
+
+  // One active listing per (seller, item); prevents duplicate escrow/ownership confusion.
+  try {
+    const dup = db.prepare(`SELECT 1 AS x FROM auctions WHERE seller_user_id = ? AND item_kind = ? AND item_id = ? AND status = 'active'`).get(sellerId, itemKind, itemId);
+    if (dup) return { ok: false, error: "already_listed" };
+  } catch { /* auctions table optional on minimal builds */ }
 
   const id = `auc_${crypto.randomBytes(6).toString("hex")}`;
   try {
@@ -147,16 +176,25 @@ export function settleAuction(db, auctionId, opts = {}) {
   const sellerPayout = winningBid - platformFee;
 
   const tx = db.transaction(() => {
+    // Re-check ownership inside the transaction: a listing created with a valid
+    // item can still be stale by settlement time (owner transferred/sold it).
+    // If ownership changed, abort before the seller is paid or the item moves.
+    if (a.item_kind === "dtu") {
+      const row = db.prepare(`SELECT creator_id FROM dtus WHERE id = ?`).get(a.item_id);
+      if (!row || row.creator_id !== a.seller_user_id) throw new Error("ownership_changed");
+    } else {
+      const row = db.prepare(`SELECT COALESCE(SUM(quantity), 0) AS qty FROM player_inventory WHERE user_id = ? AND item_id = ?`).get(a.seller_user_id, a.item_id);
+      if (!row || row.qty < 1) throw new Error("ownership_changed");
+    }
+
     // Credit seller (the winning bidder's hold was already taken).
     _walletCredit(db, a.seller_user_id, sellerPayout, `auction_payout:${auctionId}`);
 
     // Transfer item ownership.
     if (a.item_kind === "dtu") {
-      try {
-        db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
-      } catch { /* dtus optional on minimal builds */ }
+      db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
     }
-    // inventory transfers handled elsewhere — this just marks the auction settled.
+    // inventory transfers handled elsewhere — ownership was re-checked above.
 
     db.prepare(`UPDATE auctions SET status = 'sold', settled_at = unixepoch() WHERE id = ?`).run(auctionId);
 
@@ -172,6 +210,14 @@ export function settleAuction(db, auctionId, opts = {}) {
   try {
     tx();
   } catch (err) {
+    if (err?.message === "ownership_changed") {
+      // Refund the winning bidder's hold and mark the auction cancelled.
+      _walletCredit(db, a.leading_bidder_user_id, winningBid, `auction_refund:${auctionId}`);
+      try {
+        db.prepare(`UPDATE auctions SET status = 'cancelled', settled_at = unixepoch() WHERE id = ?`).run(auctionId);
+      } catch { /* table optional */ }
+      return { ok: false, error: "ownership_changed" };
+    }
     return { ok: false, error: err?.message };
   }
 
@@ -439,6 +485,33 @@ export function fillBuyOrder(db, buyOrderId, sellerId, quantity) {
            VALUES (?, ?, 'auction_credit', ?, unixepoch(), ?)`
         ).run(`led_${crypto.randomBytes(6).toString("hex")}`, sellerId, payment, `buy_order_fill:${buyOrderId}`);
       } catch { /* ledger note optional */ }
+
+      // Ownership + delivery: the seller must actually hand over the item in
+      // the same transaction that pays them. No item → the whole fill rolls back.
+      if (order.item_kind === "dtu") {
+        const item = db.prepare(`SELECT id FROM dtus WHERE id = ? AND creator_id = ?`).get(order.item_descriptor, sellerId);
+        if (!item) throw new Error("no_matching_item");
+        const moved = db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ? AND creator_id = ?`).run(order.buyer_user_id, order.item_descriptor, sellerId);
+        if (moved.changes !== 1) throw new Error("concurrent_fill");
+      } else {
+        // INC-103 — key on the real PK (user_id, item_id), not the nullable `id`
+        // column. Many live rows have id=NULL, so an UPDATE ... WHERE id=? matched
+        // nothing and made every fill fail with concurrent_fill.
+        const inv = db.prepare(`SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND quantity > 0 ORDER BY acquired_at ASC, id ASC LIMIT 1`).get(sellerId, order.item_descriptor);
+        if (!inv || inv.quantity < fillQty) throw new Error("insufficient_inventory");
+        const dec = db.prepare(`UPDATE player_inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ? AND quantity >= ?`).run(fillQty, sellerId, order.item_descriptor, fillQty);
+        if (dec.changes !== 1) throw new Error("concurrent_fill");
+        const invId = `inv_${crypto.randomBytes(6).toString("hex")}`;
+        const buyerUpd = db.prepare(`
+          UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?
+        `).run(fillQty, order.buyer_user_id, order.item_descriptor);
+        if (buyerUpd.changes === 0) {
+          db.prepare(`
+            INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality, acquired_at)
+            VALUES (?, ?, 'material', ?, ?, ?, 50, unixepoch())
+          `).run(invId, order.buyer_user_id, order.item_descriptor, order.item_descriptor, fillQty);
+        }
+      }
     });
     try {
       tx();

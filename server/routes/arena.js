@@ -5,6 +5,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { awardSparks, spendSparks } from "../lib/currency.js";
+import { actorId } from "../lib/lens-authz.js";
 
 const ARENA_SPARKS_WAGER    = 25;
 const ARENA_PLATFORM_FEE_PCT = 0.02;
@@ -14,6 +15,12 @@ const ELO_WIDEN_AFTER_MS    = 30_000; // widen to ±400 after 30s
 const ELO_ANY_AFTER_MS      = 60_000; // accept any after 60s
 
 // ── Elo helpers ──────────────────────────────────────────────────
+
+function getRating(db, userId) {
+  const row = db.prepare("SELECT * FROM player_ratings WHERE user_id = ?").get(userId);
+  if (!row) return { user_id: userId, rating: 1200, wins: 0, losses: 0, win_streak: 0 };
+  return row;
+}
 
 function getOrCreateRating(db, userId) {
   const row = db.prepare("SELECT * FROM player_ratings WHERE user_id = ?").get(userId);
@@ -70,15 +77,21 @@ function createMatch(db, userId, opponentId, realtimeEmit) {
   const wagerId = crypto.randomUUID();
   const now     = Date.now();
 
-  spendSparks(db, userId,     ARENA_SPARKS_WAGER, "arena_escrow");
-  spendSparks(db, opponentId, ARENA_SPARKS_WAGER, "arena_escrow");
+  // Escrow + wager insert must be atomic. If any step throws (e.g. the
+  // second player has insufficient Sparks), the whole transaction rolls back
+  // so no partial escrow is ever left in the DB.
+  const tx = db.transaction(() => {
+    spendSparks(db, userId,     ARENA_SPARKS_WAGER, "arena_escrow");
+    spendSparks(db, opponentId, ARENA_SPARKS_WAGER, "arena_escrow");
 
-  db.prepare(`
-    INSERT INTO wagers
-      (id, proposer_id, opponent_id, amount, currency, duel_type, status,
-       escrow_locked, world_id, proposed_at, accepted_at, expires_at)
-    VALUES (?, ?, ?, ?, 'sparks', 'arena', 'active', 1, 'concordia-hub', ?, ?, ?)
-  `).run(wagerId, opponentId, userId, ARENA_SPARKS_WAGER * 2, now, now, now + 30 * 60 * 1000);
+    db.prepare(`
+      INSERT INTO wagers
+        (id, proposer_id, opponent_id, amount, currency, duel_type, status,
+         escrow_locked, world_id, proposed_at, accepted_at, expires_at)
+      VALUES (?, ?, ?, ?, 'sparks', 'arena', 'active', 1, 'concordia-hub', ?, ?, ?)
+    `).run(wagerId, opponentId, userId, ARENA_SPARKS_WAGER * 2, now, now, now + 30 * 60 * 1000);
+  });
+  tx();
 
   // Signature is realtimeEmit(event, payload, {userId}) — the 3rd-arg options
   // object is what actually room-scopes delivery to `user:<id>`. Passing
@@ -137,8 +150,13 @@ export default function createArenaRouter({ requireAuth, db, realtimeEmit }) {
       try {
         wagerId = createMatch(db, userId, matched.user_id, realtimeEmit);
       } catch {
-        try { awardSparks(db, userId,         ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch { /* refund best-effort */ }
-        try { awardSparks(db, matched.user_id, ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch { /* refund best-effort */ }
+        // The escrow transaction rolled back, so no Sparks were actually
+        // charged. Re-queue the previously-matched user instead of minting
+        // a "refund" that would create free Sparks.
+        const nowSec = Math.floor(Date.now() / 1000);
+        db.prepare(
+          "INSERT OR REPLACE INTO arena_queue (user_id, rating, queued_at, socket_id) VALUES (?, ?, ?, ?)"
+        ).run(matched.user_id, matched.rating, nowSec, matched.socket_id ?? null);
         return res.status(402).json({ ok: false, error: "insufficient_sparks" });
       }
 
@@ -179,6 +197,9 @@ export default function createArenaRouter({ requireAuth, db, realtimeEmit }) {
 
   // POST /api/arena/matches/:id/resolve — resolve match + update Elo
   router.post("/matches/:id/resolve", requireAuth, (req, res) => {
+    const callerId = actorId({ actor: { userId: req.user?.id, role: req.user?.role, isAdmin: req.user?.isAdmin } });
+    if (!callerId) return res.status(403).json({ ok: false, error: "forbidden" });
+
     const { winnerId } = req.body;
     if (!winnerId) return res.status(400).json({ ok: false, error: "winnerId_required" });
 
@@ -186,6 +207,14 @@ export default function createArenaRouter({ requireAuth, db, realtimeEmit }) {
       "SELECT * FROM wagers WHERE id = ? AND duel_type = 'arena' AND status = 'active'"
     ).get(req.params.id);
     if (!wager) return res.status(404).json({ ok: false, error: "match_not_found" });
+
+    const participants = new Set([wager.proposer_id, wager.opponent_id]);
+    if (!participants.has(callerId)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+    if (!participants.has(winnerId)) {
+      return res.status(400).json({ ok: false, error: "winnerId_invalid" });
+    }
 
     const loserId = wager.proposer_id === winnerId ? wager.opponent_id : wager.proposer_id;
     const pot     = wager.amount;
@@ -199,22 +228,20 @@ export default function createArenaRouter({ requireAuth, db, realtimeEmit }) {
     const ratings = resolveRatings(db, winnerId, loserId);
 
     realtimeEmit?.("world:notification", {
-      userId: winnerId,
       message: `Arena victory! +${payout} Sparks  |  Rating: ${ratings.winnerRating}`,
       type: "milestone",
-    });
+    }, { userId: winnerId });
     realtimeEmit?.("world:notification", {
-      userId: loserId,
       message: `Arena defeat.  Rating: ${ratings.loserRating}`,
       type: "info",
-    });
+    }, { userId: loserId });
 
     res.json({ ok: true, winnerId, payout, fee, ratings });
   });
 
-  // GET /api/arena/rating/:userId — fetch a player's Elo rating
+  // GET /api/arena/rating/:userId — fetch a player's Elo rating (read-only)
   router.get("/rating/:userId", requireAuth, (req, res) => {
-    const row = getOrCreateRating(db, req.params.userId);
+    const row = getRating(db, req.params.userId);
     res.json({ ok: true, rating: row.rating, wins: row.wins, losses: row.losses, winStreak: row.win_streak });
   });
 

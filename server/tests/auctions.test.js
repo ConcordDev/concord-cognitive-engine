@@ -10,6 +10,7 @@ function memDb() {
     bids: [],
     wallets: new Map(),
     dtus: new Map(),
+    inventory: new Map(), // key: `${userId}:${itemId}` -> quantity
     ledger: [],
   };
   function _trim(s) { return String(s).replace(/\s+/g, " ").trim(); }
@@ -107,6 +108,22 @@ function memDb() {
           if (n.startsWith("SELECT * FROM auctions WHERE id = ?")) {
             return t.auctions.get(args[0]) || null;
           }
+          if (n.startsWith("SELECT creator_id FROM dtus WHERE id = ?")) {
+            const d = t.dtus.get(args[0]);
+            return d ? { creator_id: d.creator_id } : null;
+          }
+          if (n.startsWith("SELECT COALESCE(SUM(quantity), 0) AS qty FROM player_inventory WHERE user_id = ? AND item_id = ?")) {
+            const qty = t.inventory.get(`${args[0]}:${args[1]}`) || 0;
+            return { qty };
+          }
+          if (n.startsWith("SELECT 1 AS x FROM auctions WHERE seller_user_id = ? AND item_kind = ? AND item_id = ? AND status = 'active'")) {
+            for (const a of t.auctions.values()) {
+              if (a.seller_user_id === args[0] && a.item_kind === args[1] && a.item_id === args[2] && a.status === "active") {
+                return { x: 1 };
+              }
+            }
+            return null;
+          }
           return null;
         },
         all: (...args) => {
@@ -133,6 +150,7 @@ function memDb() {
     _t: t,
     _seedWallet(userId, balance) { t.wallets.set(userId, balance); },
     _seedDtu(id, ownerId) { t.dtus.set(id, { id, creator_id: ownerId }); },
+    _seedInventory(userId, itemId, quantity) { t.inventory.set(`${userId}:${itemId}`, quantity); },
   };
 }
 
@@ -146,7 +164,8 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("placeBid below start rejected", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     db._seedWallet("bidder", 1000);
     const r = placeBid(db, c.auctionId, "bidder", 50);
     assert.equal(r.ok, false);
@@ -154,7 +173,8 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("placeBid must exceed current bid", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     db._seedWallet("bidder1", 1000);
     db._seedWallet("bidder2", 1000);
     placeBid(db, c.auctionId, "bidder1", 100);
@@ -164,7 +184,8 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("placeBid refunds prior leader", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     db._seedWallet("bidder1", 500);
     db._seedWallet("bidder2", 500);
     placeBid(db, c.auctionId, "bidder1", 100);
@@ -175,7 +196,8 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("seller cannot bid on own", () => {
-    const c = createAuction(db, "u1", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("u1", "widget", 1);
+    const c = createAuction(db, "u1", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     db._seedWallet("u1", 500);
     const r = placeBid(db, c.auctionId, "u1", 100);
     assert.equal(r.ok, false);
@@ -209,7 +231,8 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("cancel with bids rejected", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     db._seedWallet("bidder", 500);
     placeBid(db, c.auctionId, "bidder", 100);
     const r = cancelAuction(db, c.auctionId, "seller");
@@ -218,22 +241,26 @@ describe("Phase V1 — auctions", () => {
   });
 
   it("cancel by non-seller rejected", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     const r = cancelAuction(db, c.auctionId, "rando");
     assert.equal(r.ok, false);
     assert.equal(r.error, "not_authorized");
   });
 
   it("settle with no bids → expired", () => {
-    const c = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    const c = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
     const r = settleAuction(db, c.auctionId);
     assert.equal(r.ok, true);
     assert.equal(r.expired, true);
   });
 
   it("listActiveAuctions filters expired", () => {
-    const c1 = createAuction(db, "seller", { itemId: "dtu_1", startCc: 100 });
-    const c2 = createAuction(db, "seller", { itemId: "dtu_2", startCc: 100 });
+    db._seedInventory("seller", "widget", 1);
+    db._seedInventory("seller", "gadget", 1);
+    const c1 = createAuction(db, "seller", { itemKind: "inventory", itemId: "widget", startCc: 100 });
+    const c2 = createAuction(db, "seller", { itemKind: "inventory", itemId: "gadget", startCc: 100 });
     // Force one expired.
     db._t.auctions.get(c1.auctionId).ends_at = Math.floor(Date.now() / 1000) - 1;
     const active = listActiveAuctions(db);

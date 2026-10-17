@@ -30,10 +30,7 @@ import {
   getPriceHistory,
   getMarketDepth,
 } from "../lib/auctions.js";
-
-function actorId(ctx) {
-  return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || null;
-}
+import { requireActor } from "../lib/lens-authz.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
 // silently clamp through Math.min/max or get swallowed by the lib. A caller that
@@ -125,8 +122,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "create", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     // Fail-closed on poisoned price/duration BEFORE any DB write.
     const badNum = badNumericField(input, ["startCc", "buyoutCc", "durationS"]);
     if (badNum) return { ok: false, reason: `invalid_${badNum}` };
@@ -138,8 +136,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "bid", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     if (!input.auctionId) return { ok: false, reason: "no_auction_id" };
     const r = placeBid(db, String(input.auctionId), userId, input.amountCc);
     return r.ok ? r : { ok: false, reason: r.error || "bid_failed" };
@@ -149,8 +148,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "cancel", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     if (!input.auctionId) return { ok: false, reason: "no_auction_id" };
     const r = cancelAuction(db, String(input.auctionId), userId);
     return r.ok ? r : { ok: false, reason: r.error || "cancel_failed" };
@@ -160,8 +160,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "place_buy_order", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     const r = placeBuyOrder(db, userId, {
       ...input,
       unitPriceCc: Number(input.unitPriceCc),
@@ -174,8 +175,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "fill_buy_order", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     if (!input.buyOrderId) return { ok: false, reason: "no_buy_order_id" };
     const r = fillBuyOrder(db, String(input.buyOrderId), userId, Number(input.quantity) || 1);
     return r.ok ? r : { ok: false, reason: r.error || "fill_failed" };
@@ -185,8 +187,9 @@ export default function registerAuctionMacros(register) {
   register("auctions", "cancel_buy_order", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    const userId = auth.actorId;
     if (!input.buyOrderId) return { ok: false, reason: "no_buy_order_id" };
     const r = cancelBuyOrder(db, String(input.buyOrderId), userId);
     return r.ok ? r : { ok: false, reason: r.error || "cancel_failed" };

@@ -8,10 +8,23 @@
 // overdue sweep is a single query, no N+1.
 
 import { nextActionable } from "./goal-decomposition.js";
+import { requireOwner } from "./lens-authz.js";
 
 const DAY = 86400; // seconds
 let _idc = 0;
 function pid(p) { return `${p}_${Date.now().toString(36)}_${(_idc++).toString(36)}`; }
+
+function loadPlanOwner(db, planId) {
+  const row = db.prepare(`SELECT user_id AS userId FROM lh_plans WHERE id = ?`).get(planId);
+  return row?.userId || null;
+}
+
+function loadMilestonePlanOwner(db, milestoneId) {
+  const row = db.prepare(
+    `SELECT p.user_id AS userId FROM lh_plans p JOIN lh_milestones m ON m.plan_id = p.id WHERE m.id = ?`
+  ).get(milestoneId);
+  return row?.userId || null;
+}
 
 /**
  * Draft a plan from a goal tree: spread its actionable leaves evenly across the
@@ -58,12 +71,16 @@ export function draftPlan(db, { userId, treeId = null, title, horizonDays = 30, 
 }
 
 /** Attach a contingency to a milestone. Returns { ok, id }. */
-export function addContingency(db, { milestoneId, condition = "overdue", fallback } = {}) {
+export function addContingency(db, { milestoneId, condition = "overdue", fallback, actor = null } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!milestoneId || !fallback) return { ok: false, reason: "missing_milestone_or_fallback" };
   if (!["overdue", "blocked"].includes(condition)) return { ok: false, reason: "bad_condition" };
-  const ms = db.prepare(`SELECT id FROM lh_milestones WHERE id = ?`).get(milestoneId);
-  if (!ms) return { ok: false, reason: "milestone_not_found" };
+  const ownerId = loadMilestonePlanOwner(db, milestoneId);
+  if (!ownerId) return { ok: false, reason: "milestone_not_found" };
+  if (actor) {
+    const authz = requireOwner(actor, ownerId);
+    if (!authz.ok) return authz;
+  }
   const id = pid("lhc");
   try {
     db.prepare(`INSERT INTO lh_contingencies (id, milestone_id, condition, fallback) VALUES (?, ?, ?, ?)`)
@@ -75,7 +92,7 @@ export function addContingency(db, { milestoneId, condition = "overdue", fallbac
 }
 
 /** Mark a milestone done/abandoned. Completing all live milestones completes the plan. */
-export function setMilestoneStatus(db, { planId, milestoneId, status } = {}) {
+export function setMilestoneStatus(db, { planId, milestoneId, status, actor = null } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!["pending", "done", "slipped", "abandoned"].includes(status)) return { ok: false, reason: "bad_status" };
   const ms = db.prepare(`SELECT id, plan_id FROM lh_milestones WHERE id = ?`).get(milestoneId);
@@ -85,6 +102,11 @@ export function setMilestoneStatus(db, { planId, milestoneId, status } = {}) {
   // updated (the earlier code accepted `planId` but never checked it against
   // the milestone's real plan_id).
   if (planId && ms.plan_id !== planId) return { ok: false, reason: "milestone_plan_mismatch" };
+  if (actor) {
+    const ownerId = loadPlanOwner(db, ms.plan_id);
+    const authz = requireOwner(actor, ownerId);
+    if (!authz.ok) return authz;
+  }
   let planDone = false;
   try {
     db.transaction(() => {
@@ -102,10 +124,14 @@ export function setMilestoneStatus(db, { planId, milestoneId, status } = {}) {
 }
 
 /** Full plan view (no N+1): plan + milestones + contingencies + overdue flags. */
-export function getPlan(db, planId, { nowTs = null } = {}) {
+export function getPlan(db, planId, { nowTs = null, actor = null } = {}) {
   if (!db || !planId) return { ok: false, reason: "missing_plan" };
   const plan = db.prepare(`SELECT id, user_id AS userId, tree_id AS treeId, title, horizon_days AS horizonDays, start_ts AS startTs, status FROM lh_plans WHERE id = ?`).get(planId);
   if (!plan) return { ok: false, reason: "plan_not_found" };
+  if (actor) {
+    const authz = requireOwner(actor, plan.userId);
+    if (!authz.ok) return authz;
+  }
   const now = Number(nowTs) || Math.floor(Date.now() / 1000);
   const milestones = db.prepare(`SELECT id, node_id AS nodeId, title, due_ts AS dueTs, status, ordinal FROM lh_milestones WHERE plan_id = ? ORDER BY ordinal`).all(planId)
     .map((m) => ({ ...m, overdue: m.status === "pending" && m.dueTs < now }));
@@ -125,16 +151,19 @@ export function getPlan(db, planId, { nowTs = null } = {}) {
  * fire any 'overdue' contingencies (stamp triggered_at). One bounded query set;
  * returns { slipped, triggered }.
  */
-export function sweepOverdue(db, { nowTs = null, limit = 200 } = {}) {
+export function sweepOverdue(db, { nowTs = null, limit = 200, userId = null } = {}) {
   if (!db) return { slipped: 0, triggered: 0 };
   const now = Number(nowTs) || Math.floor(Date.now() / 1000);
   const lim = Math.min(Math.max(Number(limit) || 200, 1), 1000);
   let slipped = 0, triggered = 0;
   try {
-    const due = db.prepare(
-      `SELECT m.id FROM lh_milestones m JOIN lh_plans p ON p.id = m.plan_id
-       WHERE p.status = 'active' AND m.status = 'pending' AND m.due_ts < ? LIMIT ?`
-    ).all(now, lim);
+    const sql = userId
+      ? `SELECT m.id FROM lh_milestones m JOIN lh_plans p ON p.id = m.plan_id
+         WHERE p.user_id = ? AND p.status = 'active' AND m.status = 'pending' AND m.due_ts < ? LIMIT ?`
+      : `SELECT m.id FROM lh_milestones m JOIN lh_plans p ON p.id = m.plan_id
+         WHERE p.status = 'active' AND m.status = 'pending' AND m.due_ts < ? LIMIT ?`;
+    const args = userId ? [String(userId), now, lim] : [now, lim];
+    const due = db.prepare(sql).all(...args);
     if (!due.length) return { slipped: 0, triggered: 0 };
     const markSlip = db.prepare(`UPDATE lh_milestones SET status = 'slipped', updated_at = unixepoch() WHERE id = ?`);
     const fireCon = db.prepare(`UPDATE lh_contingencies SET triggered_at = ? WHERE milestone_id = ? AND condition = 'overdue' AND triggered_at IS NULL`);

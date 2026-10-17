@@ -1515,12 +1515,26 @@ describe("accounting — bills/customers/recurring-bills/category-rules delete +
     assert.match(String(bad.result.error), /rule not found/i);
   });
 
-  it("invoice-webhook-mark-paid: rejects missing ids and an unknown stripe invoice", async () => {
-    const missing = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_123" } }, ctx);
-    assert.equal(missing.result.ok, false);
-    assert.match(String(missing.result.error), /stripeInvoiceId \+ userId required/i);
-    const notFound = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_nope", userId: "u_nope" } }, ctx);
-    assert.equal(notFound.result.ok, false);
-    assert.match(String(notFound.result.error), /local invoice not found for stripe id/i);
+  it("invoice-webhook-mark-paid: rejects missing ids, cross-user, and unknown stripe invoice", async () => {
+    // depthCtx uses makeInternalCtx which hard-codes role: "owner", defeating
+    // ownership checks. Use a non-privileged copy for this authz assertion.
+    const testCtx = { ...ctx, actor: { ...ctx.actor, role: "user" } };
+    // Lens error results may be top-level { ok, error } or nested in result.error.
+    const err = (r) => String(r.error || r.result?.error || "");
+
+    // Missing userId param: refused before lookup.
+    const missing = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_123" } }, testCtx);
+    assert.equal(missing.ok, false);
+    assert.match(err(missing), /stripeInvoiceId \+ userId required/i);
+
+    // Cross-user target: requireOwner refuses before the lookup.
+    const cross = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_123", userId: "u_nope" } }, testCtx);
+    assert.equal(cross.ok, false);
+    assert.match(err(cross), /forbidden/i);
+
+    // Authenticated caller targeting their own bucket, but no matching invoice.
+    const notFound = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_nope", userId: testCtx.actor.userId } }, testCtx);
+    assert.equal(notFound.ok, false);
+    assert.match(err(notFound), /local invoice not found for stripe id/i);
   });
 });

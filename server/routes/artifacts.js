@@ -21,6 +21,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
+import { isAdmin } from "../lib/lens-authz.js";
 import {
   STORAGE_CONSTANTS,
   ARTIFACT_STORAGE,
@@ -67,42 +68,80 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);
   `);
 
+  // Idempotently add the visibility column. Existing rows become private,
+  // preserving the previous (effectively private-by-absence) behaviour.
+  try {
+    const hasVisibility = db
+      .prepare("PRAGMA table_info(route_artifacts)")
+      .all()
+      .some((col) => col.name === "visibility");
+    if (!hasVisibility) {
+      db.exec(`ALTER TABLE route_artifacts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'`);
+    }
+  } catch (err) {
+    console.error("[artifacts] visibility column bootstrap failed:", err.message);
+  }
+
   // ── Prepared statements ─────────────────────────────────────────────────────
 
   const stmts = {
     insert: db.prepare(
-      `INSERT INTO route_artifacts (artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, content_b64, storage_path, created_by, description, tags)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO route_artifacts (artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, content_b64, storage_path, created_by, description, tags, visibility)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ),
     get: db.prepare(
-      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, storage_path, created_by, created_at, description, tags
+      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, storage_path, created_by, created_at, description, tags, visibility
        FROM route_artifacts WHERE artifact_id = ?`
     ),
     getWithContent: db.prepare(
       `SELECT * FROM route_artifacts WHERE artifact_id = ?`
     ),
     list: db.prepare(
-      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags
-       FROM route_artifacts ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags, visibility
+       FROM route_artifacts
+       WHERE visibility = 'public' OR (? IS NOT NULL AND created_by = ?)
+       ORDER BY created_at DESC LIMIT ? OFFSET ?`
     ),
     listByDtu: db.prepare(
-      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags
-       FROM route_artifacts WHERE dtu_id = ? ORDER BY created_at DESC LIMIT ?`
+      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags, visibility
+       FROM route_artifacts
+       WHERE dtu_id = ? AND (visibility = 'public' OR (? IS NOT NULL AND created_by = ?))
+       ORDER BY created_at DESC LIMIT ?`
     ),
     delete: db.prepare(
       `DELETE FROM route_artifacts WHERE artifact_id = ?`
     ),
-    getStoragePath: db.prepare(
-      `SELECT artifact_id, storage_mode, storage_path FROM route_artifacts WHERE artifact_id = ?`
+    getForDelete: db.prepare(
+      `SELECT artifact_id, storage_mode, storage_path, created_by FROM route_artifacts WHERE artifact_id = ?`
     ),
   };
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  function resolveUserId(req) {
-     
-    // eslint-disable-next-line no-restricted-syntax
-    return req.user?.id || req.body?.userId || req.query?.userId || "anonymous"; // safe: target-identifier
+  function normalizeVisibility(value) {
+    if (value === "public") return "public";
+    return "private";
+  }
+
+  function actorCtx(req) {
+    return { actor: { userId: req.user?.id, role: req.user?.role } };
+  }
+
+  // Public artifacts are readable by anyone (including anonymous callers).
+  // Private artifacts are readable only by their owner or an admin.
+  function canRead(row, req) {
+    if (row.visibility === "public") return true;
+    if (!req.user) return false; // anonymous on private
+    if (row.created_by === req.user.id) return true;
+    return isAdmin(actorCtx(req));
+  }
+
+  function readDenialResponse(row, req) {
+    if (row.visibility !== "public" && !req.user) {
+      return { status: 401, body: { ok: false, error: "auth_required" } };
+    }
+    // Signed-in non-owner/admin on a private artifact: do not leak existence.
+    return { status: 404, body: { ok: false, error: "Artifact not found" } };
   }
 
   function parseArtifact(row) {
@@ -120,6 +159,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       createdAt: row.created_at,
       description: row.description,
       tags,
+      visibility: row.visibility || "private",
     };
   }
 
@@ -130,9 +170,10 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
       const dtuId = req.query.dtuId;
+      const callerId = req.user?.id || null;
       const rows = dtuId
-        ? stmts.listByDtu.all(dtuId, limit)
-        : stmts.list.all(limit, offset);
+        ? stmts.listByDtu.all(dtuId, callerId, callerId, limit)
+        : stmts.list.all(callerId, callerId, limit, offset);
       const artifacts = rows.map(parseArtifact);
       res.json({ ok: true, artifacts, count: artifacts.length, offset });
     } catch (err) {
@@ -147,7 +188,11 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
 
   router.post("/upload", requireAuth(), async (req, res) => {
     try {
-      const userId = resolveUserId(req);
+      if (!req.user?.id) {
+        return res.status(401).json({ ok: false, error: "auth_required" });
+      }
+      const userId = req.user.id;
+      const visibility = normalizeVisibility((req.body || {}).visibility);
       const { name, mimeType, content, dtuId, description, tags } = req.body || {};
 
       if (!name || typeof name !== "string" || !name.trim()) {
@@ -217,7 +262,8 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
         storagePath,
         userId,
         safeDesc,
-        JSON.stringify(safeTags)
+        JSON.stringify(safeTags),
+        visibility
       );
 
       res.json({ ok: true, artifactId, name: safeName, sizeBytes: buf.length, storageMode });
@@ -233,6 +279,10 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     try {
       const row = stmts.get.get(req.params.id);
       if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!canRead(row, req)) {
+        const denial = readDenialResponse(row, req);
+        return res.status(denial.status).json(denial.body);
+      }
       res.json({ ok: true, artifact: parseArtifact(row) });
     } catch (err) {
       console.error("[artifacts] GET /:id error:", err);
@@ -246,6 +296,10 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     try {
       const row = stmts.get.get(req.params.id);
       if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!canRead(row, req)) {
+        const denial = readDenialResponse(row, req);
+        return res.status(denial.status).json(denial.body);
+      }
       const artifact = parseArtifact(row);
 
       // Attach DTU title if linked
@@ -273,6 +327,10 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
     try {
       const row = stmts.getWithContent.get(req.params.id);
       if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!canRead(row, req)) {
+        const denial = readDenialResponse(row, req);
+        return res.status(denial.status).json(denial.body);
+      }
 
       res.setHeader("Content-Type", row.mime_type || "application/octet-stream");
       res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(row.name)}"`);
@@ -304,12 +362,22 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
 
   router.delete("/:id", requireAuth(), (req, res) => {
     try {
-      const pathRow = stmts.getStoragePath.get(req.params.id);
-      if (!pathRow) return res.status(404).json({ ok: false, error: "Artifact not found" });
+      if (!req.user?.id) {
+        return res.status(401).json({ ok: false, error: "auth_required" });
+      }
+
+      const row = stmts.getForDelete.get(req.params.id);
+      if (!row) return res.status(404).json({ ok: false, error: "Artifact not found" });
+
+      const isOwner = row.created_by === req.user.id;
+      const admin = isAdmin(actorCtx(req));
+      if (!isOwner && !admin) {
+        return res.status(403).json({ ok: false, error: "forbidden" });
+      }
 
       // Remove disk file if present
-      if (pathRow.storage_mode === "disk" && pathRow.storage_path) {
-        try { fs.unlinkSync(pathRow.storage_path); } catch (_) { /* non-fatal */ }
+      if (row.storage_mode === "disk" && row.storage_path) {
+        try { fs.unlinkSync(row.storage_path); } catch (_) { /* non-fatal */ }
       }
 
       stmts.delete.run(req.params.id);

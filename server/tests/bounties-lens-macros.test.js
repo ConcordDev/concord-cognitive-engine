@@ -34,6 +34,7 @@ beforeEach(() => { globalThis._concordSTATE = {}; });
 const ctxOwner = { actor: { userId: "owner_1" } };
 const ctxClaimant = { actor: { userId: "claimant_1" } };
 const ctxOther = { actor: { userId: "other_1" } };
+const ctxArbiter = { actor: { userId: "arbiter_1", role: "admin" } };
 
 describe("bounties — registration", () => {
   it("registers every macro the lens calls", () => {
@@ -268,7 +269,7 @@ describe("bounties — dispute flow", () => {
     assert.equal(disp.ok, true);
     assert.equal(disp.result.bounty.status, "disputed");
 
-    const res = call("dispute-resolve", ctxOther, { bountyId: b.id, ruling: "overturn", rulingNote: "reopen it" });
+    const res = call("dispute-resolve", ctxArbiter, { bountyId: b.id, ruling: "overturn", rulingNote: "reopen it" });
     assert.equal(res.ok, true);
     assert.equal(res.result.dispute.ruling, "overturn");
     assert.equal(res.result.bounty.status, "claimed");

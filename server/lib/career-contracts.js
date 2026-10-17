@@ -15,6 +15,9 @@ import { tierInfo, isTrack } from "./professions.js";
 
 const VALID_CLAUSES = new Set(["release", "match_highest", "hazard_pay"]);
 const party = (kind, id) => `${kind}:${id}`;
+const isContractParty = (c, kind, id) =>
+  party(kind, id) === party(c.employer_kind, c.employer_id) ||
+  party(kind, id) === party(c.worker_kind, c.worker_id);
 
 /** Reputation (0..100) → the highest profession tier you can be CONTRACTED at. */
 export function reputationGateTier(reputation) {
@@ -96,7 +99,11 @@ export function offerContract(db, opts = {}) {
   if (workerReputation != null && tier > reputationGateTier(workerReputation)) return { ok: false, reason: "reputation_too_low" };
 
   const id = `ctr_${crypto.randomUUID().slice(0, 16)}`;
-  const lastOfferBy = party(offeredByKind || employerKind, offeredById || employerId);
+  const offeredBy = party(offeredByKind || employerKind, offeredById || employerId);
+  const callerIsEmployer = offeredBy === party(employerKind, employerId);
+  const callerIsWorker = offeredBy === party(workerKind, workerId);
+  if (!callerIsEmployer && !callerIsWorker) return { ok: false, reason: "not_a_party" };
+  const lastOfferBy = offeredBy;
   try {
     db.prepare(`
       INSERT INTO career_contracts
@@ -116,6 +123,7 @@ export function counterContract(db, contractId, byKind, byId, terms = {}) {
   const c = get(db, contractId);
   if (!c) return { ok: false, reason: "not_found" };
   if (!["offered", "countered"].includes(c.status)) return { ok: false, reason: "not_negotiable" };
+  if (!isContractParty(c, byKind, byId)) return { ok: false, reason: "not_a_party" };
   if (party(byKind, byId) === c.last_offer_by) return { ok: false, reason: "already_your_offer" };
   const next = {
     base_wage_sparks: terms.baseWage != null ? Math.max(0, terms.baseWage | 0) : c.base_wage_sparks,
@@ -165,6 +173,7 @@ export function rejectContract(db, contractId, byKind, byId) {
   const c = get(db, contractId);
   if (!c) return { ok: false, reason: "not_found" };
   if (!["offered", "countered"].includes(c.status)) return { ok: false, reason: "not_negotiable" };
+  if (!isContractParty(c, byKind, byId)) return { ok: false, reason: "not_a_party" };
   db.prepare(`UPDATE career_contracts SET status='rejected', updated_at=unixepoch() WHERE id=?`).run(contractId);
   logEvent(db, contractId, "reject", byKind, byId, {});
   return { ok: true, contractId, status: "rejected" };

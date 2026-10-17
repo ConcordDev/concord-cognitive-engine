@@ -58,6 +58,20 @@ function ensureRouteArtifactsTableStudio(db) {
     CREATE INDEX IF NOT EXISTS idx_route_artifacts_dtu ON route_artifacts (dtu_id);
     CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);
   `);
+
+  // Idempotently add the visibility column. Existing rows become private,
+  // preserving the previous private-by-absence behaviour for render artifacts.
+  try {
+    const hasVisibility = db
+      .prepare("PRAGMA table_info(route_artifacts)")
+      .all()
+      .some((col) => col.name === "visibility");
+    if (!hasVisibility) {
+      db.exec(`ALTER TABLE route_artifacts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'`);
+    }
+  } catch (err) {
+    console.error("[studio] visibility column bootstrap failed:", err.message);
+  }
 }
 
 // Persist a client-rendered audio buffer (decoded from a data: URL) into
@@ -1984,14 +1998,15 @@ export default function registerStudioActions(registerLensAction) {
         INSERT INTO route_artifacts (
           artifact_id, dtu_id, name, mime_type, size_bytes,
           storage_mode, content_b64, storage_path, created_by,
-          description, tags
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          description, tags, visibility
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         artifactId, dtuId, fileName, decoded.mimeType, decoded.buf.length,
         inline ? "inline" : "disk",
         contentB64, storagePath, userId,
         `Studio adaptive music — ${region}/${intensity}`,
         JSON.stringify(tagsArr),
+        "public",
       );
 
       db.prepare(`

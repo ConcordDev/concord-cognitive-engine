@@ -7,6 +7,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
 import { up as upRelationships } from "../../migrations/226_npc_relationships.js";
@@ -40,6 +41,16 @@ function bootDb() {
     CREATE TABLE users (id TEXT PRIMARY KEY, concordia_credits REAL NOT NULL DEFAULT 0);
     CREATE TABLE reward_ledger (
       id TEXT PRIMARY KEY, user_id TEXT, kind TEXT, amount_cc REAL, ts INTEGER, ref_id TEXT
+    );
+    CREATE TABLE player_inventory (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      item_type   TEXT NOT NULL DEFAULT 'material',
+      item_id     TEXT NOT NULL,
+      item_name   TEXT NOT NULL DEFAULT '',
+      quantity    INTEGER NOT NULL DEFAULT 1,
+      quality     INTEGER NOT NULL DEFAULT 50,
+      acquired_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
   return db;
@@ -77,12 +88,13 @@ describe("Phase AA-AG — depth sprint end-to-end smoke", () => {
 
     // ── AC — place buy order, sell into it ────────────────────────────
     db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`).run(player, 500);
-    // The seller must have a wallet row: fillBuyOrder's G8 checked-credit guard
-    // rolls the fill back (ok:false, seller_wallet_missing) if the seller can't be
-    // credited. The test previously omitted the seller, so the fill silently failed.
+    // The seller must have a wallet row and the item in inventory: fillBuyOrder's
+    // G8 checked-credit guard rolls the fill back if the seller can't be credited,
+    // and the authz fix now requires the seller to own + deliver the item.
     db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`).run("healer-npc", 0);
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "healer-npc", "willowbark_tea", 30);
     const buyOrder = placeBuyOrder(db, player, {
-      worldId: "tunya", itemDescriptor: "willowbark_tea",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "willowbark_tea",
       unitPriceCc: 10, quantity: 20,
     });
     assert.equal(buyOrder.ok, true);

@@ -12,6 +12,7 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 import {
   createAuction,
@@ -46,6 +47,14 @@ function freshDb() {
     CREATE TABLE dtus (
       id TEXT PRIMARY KEY, creator_id TEXT
     );
+    CREATE TABLE player_inventory (
+      id TEXT,
+      user_id TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 0,
+      acquired_at INTEGER DEFAULT (unixepoch()),
+      PRIMARY KEY (user_id, item_id)
+    );
   `);
   return db;
 }
@@ -65,7 +74,15 @@ function seedDtu(db, id, owner) {
 
 describe("auctions — real sqlite round-trip", () => {
   let db;
-  beforeEach(() => { db = freshDb(); });
+  beforeEach(() => {
+    db = freshDb();
+    // Seed ownership for the items the tests list.
+    seedDtu(db, "dtu_1", "seller");
+    seedDtu(db, "dtu_2", "seller");
+    seedDtu(db, "i", "s");
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "s1", "ore", 1);
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "s2", "ore", 1);
+  });
 
   it("createAuction persists a real row queryable by getAuction/listActive", () => {
     const c = createAuction(db, "seller", { itemKind: "dtu", itemId: "dtu_1", startCc: 100, title: "Rare scroll" });
@@ -144,7 +161,6 @@ describe("auctions — real sqlite round-trip", () => {
   it("settle pays seller bid − 5% fee, transfers DTU, writes price-history", () => {
     fund(db, "bidder", 1000);
     fund(db, "seller", 0);
-    seedDtu(db, "dtu_1", "seller");
     const c = createAuction(db, "seller", { itemKind: "dtu", itemId: "dtu_1", startCc: 100, worldId: "tunya" });
     placeBid(db, c.auctionId, "bidder", 200);
     const s = settleAuction(db, c.auctionId, { reason: "manual" });
@@ -166,7 +182,6 @@ describe("auctions — real sqlite round-trip", () => {
   it("buyout instant-settles via placeBid and ends the auction", () => {
     fund(db, "buyer", 1000);
     fund(db, "seller", 0);
-    seedDtu(db, "dtu_1", "seller");
     const c = createAuction(db, "seller", { itemKind: "dtu", itemId: "dtu_1", startCc: 100, buyoutCc: 500 });
     const r = placeBid(db, c.auctionId, "buyer", 500);
     assert.equal(r.ok, true);
@@ -178,7 +193,6 @@ describe("auctions — real sqlite round-trip", () => {
   it("sweepEndedAuctions settles past-deadline auctions", () => {
     fund(db, "bidder", 1000);
     fund(db, "seller", 0);
-    seedDtu(db, "dtu_1", "seller");
     const c = createAuction(db, "seller", { itemKind: "dtu", itemId: "dtu_1", startCc: 100 });
     placeBid(db, c.auctionId, "bidder", 200);
     db.prepare(`UPDATE auctions SET ends_at = unixepoch() - 5 WHERE id = ?`).run(c.auctionId);
@@ -215,8 +229,8 @@ describe("auctions — real sqlite round-trip", () => {
   });
 
   it("getMarketDepth reports asks from auctions and the spread", () => {
-    createAuction(db, "s1", { itemId: "ore", startCc: 50 });
-    createAuction(db, "s2", { itemId: "ore", startCc: 70 });
+    createAuction(db, "s1", { itemKind: "inventory", itemId: "ore", startCc: 50 });
+    createAuction(db, "s2", { itemKind: "inventory", itemId: "ore", startCc: 70 });
     const d = getMarketDepth(db, "ore");
     assert.ok(d.asks.length >= 1);
     assert.equal(d.bestAsk, 50, "lowest ask is best");

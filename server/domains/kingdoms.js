@@ -25,6 +25,11 @@ import {
   evaluateRebellionRisk,
   listRebellionsForKingdom,
 } from "../lib/kingdom-rebellion.js";
+import {
+  isAdmin,
+  requireActor,
+} from "../lib/lens-authz.js";
+import { tallyProposal } from "../lib/governance.js";
 
 // Dead-event-listener fix (verification-audit campaign): the frontend
 // CinematicTriggerBridge.tsx already subscribes to 'kingdom:takeover' to
@@ -151,19 +156,43 @@ export default function registerKingdomsMacros(register) {
   // Takeover paths.
   register("kingdoms", "takeover_conquest", async (ctx, input = {}) => {
     const db = ctx?.db;
-    const userId = ctx?.actor?.userId;
-    if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
-    const r = takeoverByConquest(db, userId, input.kingdomId, input.proof || {});
+    const auth = requireActor(ctx);
+    if (!auth.ok) return auth;
+    const userId = auth.actorId;
+    if (!db || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
+    const proof = input.proof || {};
+    // The `bypass` flag is a test-only shortcut; a real conquest proof must
+    // be validated server-side (ruler killed + capital held long enough).
+    if (proof.bypass) return { ok: false, reason: "invalid_proof" };
+    const r = takeoverByConquest(db, userId, input.kingdomId, proof);
     if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
     return r;
   });
 
   register("kingdoms", "takeover_inheritance", async (ctx, input = {}) => {
     const db = ctx?.db;
-    const userId = ctx?.actor?.userId;
-    if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return auth;
+    const userId = auth.actorId;
+    if (!db || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
+    const k = getKingdom(db, input.kingdomId);
+    if (!k) return { ok: false, reason: "kingdom_not_found" };
+    if (k.ruler_kind !== "npc" || !k.ruler_id) {
+      return { ok: false, reason: "not_heir" };
+    }
+    const heirOfNpcId = input.heirOfNpcId;
+    if (!heirOfNpcId || heirOfNpcId !== k.ruler_id) {
+      return { ok: false, reason: "not_heir" };
+    }
+    const heirLink = db.prepare(`
+      SELECT 1 FROM npc_inheritance_links
+      WHERE deceased_npc_id = ? AND heir_npc_id = ?
+      LIMIT 1
+    `).get(k.ruler_id, userId);
+    if (!heirLink) return { ok: false, reason: "not_heir" };
+
     const r = takeoverByInheritance(db, userId, input.kingdomId, {
-      viaSchemeId: input.viaSchemeId, heirOfNpcId: input.heirOfNpcId,
+      viaSchemeId: input.viaSchemeId, heirOfNpcId,
     });
     if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
     return r;
@@ -171,10 +200,28 @@ export default function registerKingdomsMacros(register) {
 
   register("kingdoms", "takeover_election", async (ctx, input = {}) => {
     const db = ctx?.db;
-    const userId = ctx?.actor?.userId;
-    if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
+    const auth = requireActor(ctx);
+    if (!auth.ok) return auth;
+    const userId = auth.actorId;
+    if (!db || !input.kingdomId || !input.proposalId) return { ok: false, reason: "missing_inputs" };
+    const k = getKingdom(db, input.kingdomId);
+    if (!k) return { ok: false, reason: "kingdom_not_found" };
+
+    const proposal = db.prepare(`
+      SELECT * FROM governance_proposals WHERE id = ? AND proposer_id = ?
+    `).get(input.proposalId, userId);
+    if (!proposal) return { ok: false, reason: "invalid_proposal" };
+    if (proposal.status !== "passed") return { ok: false, reason: "proposal_not_passed" };
+    if (proposal.constant_path !== `kingdoms.${input.kingdomId}.ruler` ||
+        String(proposal.proposed_value) !== userId) {
+      return { ok: false, reason: "election_requires_kingdom_ruler_proposal" };
+    }
+    const tally = tallyProposal(db, input.proposalId);
+    if (!tally || !tally.quorumMet) return { ok: false, reason: "quorum_not_met" };
+
+    // Server-side only: ignore whatever the client sent for voterTurnoutOk.
     const r = takeoverByElection(db, userId, input.kingdomId, {
-      proposalId: input.proposalId, voterTurnoutOk: input.voterTurnoutOk !== false,
+      proposalId: input.proposalId, voterTurnoutOk: true,
     });
     if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
     return r;
@@ -182,7 +229,13 @@ export default function registerKingdomsMacros(register) {
 
   register("kingdoms", "depose_ruler", async (ctx, input = {}) => {
     const db = ctx?.db;
+    const auth = requireActor(ctx);
+    if (!auth.ok) return auth;
     if (!db || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
+    const k = getKingdom(db, input.kingdomId);
+    if (!k) return { ok: false, reason: "kingdom_not_found" };
+    const isOwnRealm = k.ruler_kind === "player" && k.ruler_id === auth.actorId;
+    if (!isOwnRealm && !isAdmin(ctx)) return { ok: false, reason: "forbidden" };
     return deposeRuler(db, input.kingdomId, input.reason);
   });
 

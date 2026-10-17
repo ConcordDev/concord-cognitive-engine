@@ -6,6 +6,7 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import Database from "better-sqlite3";
 import {
   placeBuyOrder,
@@ -21,6 +22,7 @@ function freshDb() {
   upBuyOrders(db);
   // Concord Coin balances live in users.concordia_credits (migration 045) and the
   // wallet primitives in auctions.js log to reward_ledger (migration 296).
+  // player_inventory is needed for sell-side fills to prove ownership + delivery.
   db.exec(`
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
@@ -33,6 +35,16 @@ function freshDb() {
       amount_cc REAL,
       ts INTEGER,
       ref_id TEXT
+    );
+    CREATE TABLE player_inventory (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      item_type   TEXT NOT NULL DEFAULT 'material',
+      item_id     TEXT NOT NULL,
+      item_name   TEXT NOT NULL DEFAULT '',
+      quantity    INTEGER NOT NULL DEFAULT 1,
+      quality     INTEGER NOT NULL DEFAULT 50,
+      acquired_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
   return db;
@@ -51,7 +63,11 @@ function balance(db, userId) {
 
 describe("Phase AC — buy orders", () => {
   let db;
-  beforeEach(() => { db = freshDb(); });
+  beforeEach(() => {
+    db = freshDb();
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "seller", "rare_herb", 100);
+    db.prepare(`INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), "alice", "rare_herb", 100);
+  });
 
   it("placeBuyOrder escrows total = unit × qty up-front", () => {
     fund(db, "buyer", 1000);
@@ -83,7 +99,7 @@ describe("Phase AC — buy orders", () => {
     fund(db, "buyer", 1000);
     fund(db, "seller", 0); // seller needs a users row for the credit UPDATE to land
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     const f = fillBuyOrder(db, r.buyOrderId, "seller", 40);
@@ -98,7 +114,7 @@ describe("Phase AC — buy orders", () => {
     fund(db, "buyer", 500);
     fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     const f = fillBuyOrder(db, r.buyOrderId, "seller", 100);
@@ -110,7 +126,7 @@ describe("Phase AC — buy orders", () => {
     fund(db, "buyer", 500);
     fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     const f = fillBuyOrder(db, r.buyOrderId, "seller", 200);
@@ -123,7 +139,7 @@ describe("Phase AC — buy orders", () => {
     fund(db, "buyer", 1000);
     fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     fillBuyOrder(db, r.buyOrderId, "seller", 30); // 30 filled → 70 unfilled
@@ -137,7 +153,7 @@ describe("Phase AC — buy orders", () => {
   it("self-fill is rejected", () => {
     fund(db, "alice", 500);
     const r = placeBuyOrder(db, "alice", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     const f = fillBuyOrder(db, r.buyOrderId, "alice", 10);
@@ -149,7 +165,7 @@ describe("Phase AC — buy orders", () => {
     fund(db, "b1", 1000); fund(db, "b2", 1000); fund(db, "b3", 1000);
     placeBuyOrder(db, "b1", { worldId: "tunya", itemDescriptor: "herb", unitPriceCc: 3, quantity: 10 });
     placeBuyOrder(db, "b2", { worldId: "tunya", itemDescriptor: "herb", unitPriceCc: 7, quantity: 10 });
-    placeBuyOrder(db, "b3", { worldId: "cyber", itemDescriptor: "herb", unitPriceCc: 99, quantity: 10 });
+    placeBuyOrder(db, "b3", {       worldId: "cyber", itemKind: "inventory", itemDescriptor: "herb", unitPriceCc: 99, quantity: 10 });
     const open = listOpenBuyOrders(db, { worldId: "tunya", itemDescriptor: "herb" });
     assert.equal(open.length, 2);
     assert.equal(open[0].unit_price_cc, 7, "highest price first");
@@ -158,7 +174,7 @@ describe("Phase AC — buy orders", () => {
   it("sweepExpiredBuyOrders marks expired + refunds unfilled", () => {
     fund(db, "buyer", 500);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100, ttlSeconds: 1,
     });
     // Backdate.
@@ -175,7 +191,7 @@ describe("Phase AC — buy orders", () => {
   it("fill on expired order is rejected", () => {
     fund(db, "buyer", 500);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     db.prepare(`UPDATE auction_buy_orders SET expires_at = 1 WHERE id = ?`).run(r.buyOrderId);
@@ -187,7 +203,7 @@ describe("Phase AC — buy orders", () => {
   it("re-cancel returns already_cancelled", () => {
     fund(db, "buyer", 500);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     cancelBuyOrder(db, r.buyOrderId, "buyer");
@@ -199,7 +215,7 @@ describe("Phase AC — buy orders", () => {
   it("cancel by non-owner is rejected", () => {
     fund(db, "buyer", 500);
     const r = placeBuyOrder(db, "buyer", {
-      worldId: "tunya", itemDescriptor: "rare_herb",
+      worldId: "tunya", itemKind: "inventory", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
     });
     const c = cancelBuyOrder(db, r.buyOrderId, "other");

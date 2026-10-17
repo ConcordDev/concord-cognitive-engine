@@ -20,6 +20,7 @@
 import { verifyPluginPackage, computePluginHash } from "./plugin-signing.js";
 import { LruMap, LruSet } from "./lru-map.js";
 import { listBadges } from "./reputation-badges.js";
+import { actorId, requireActor, requireOwner } from "./lens-authz.js";
 import {
   loadPluginFromSource,
   getPlugin as getLoadedPlugin,
@@ -29,6 +30,14 @@ import {
 
 const _gallery = new LruMap(); // pluginId -> entry
 const _installs = new LruMap(); // pluginId -> Set<userId>
+const _votes = new LruMap(); // pluginId -> Map<userId, "up"|"down">
+
+/** Test-only reset hook so hermetic tests can clear in-memory LRU state. */
+export function __resetGalleryForTests() {
+  _gallery.clear();
+  _installs.clear();
+  _votes.clear();
+}
 
 // Capability disclosure: sanitize a publisher-supplied `manifest.macros`
 // list down to non-empty strings only. Anything malformed is dropped rather
@@ -145,10 +154,69 @@ function computeAuthorReputation(authorId, { getAuthorReputation = null } = {}) 
   return out;
 }
 
-export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, manifest = null, db = null }) {
+function _galleryEntryFromDbRow(row) {
+  return {
+    pluginId: row.plugin_id,
+    authorId: row.author_id,
+    name: row.name,
+    description: row.description ?? "",
+    version: row.version,
+    source: row.source,
+    signature: row.signature ?? null,
+    hash: row.hash,
+    trusted: !!row.trusted,
+    declaredMacros: row.declared_macros_json
+      ? JSON.parse(row.declared_macros_json)
+      : [...DEFAULT_PLUGIN_MACRO_GRANTS],
+    publishedAt: row.published_at,
+    installs: Number(row.installs) || 0,
+    rating: { up: Number(row.upvotes) || 0, down: Number(row.downvotes) || 0 },
+    loadedPluginId: null,
+    delistedAt: row.delisted_at ?? null,
+    delistedReason: row.delisted_reason ?? null,
+    delistedBy: null,
+  };
+}
+
+export function publishPlugin({ pluginId, authorId, name, description, version, source, signature, manifest = null, db = null, ctx = null }) {
   if (!pluginId || !authorId || !source) {
     return { ok: false, error: "missing_pluginId_authorId_or_source" };
   }
+
+  // Refuse anonymous/placeholder identities at the library boundary, not just
+  // in the HTTP route. When a ctx is supplied we use the shared authz helper;
+  // when it is omitted (legacy/internal callers) we still reject placeholder
+  // authorIds so a client-supplied string can never pose as anon.
+  if (ctx) {
+    const auth = requireActor(ctx);
+    if (!auth.ok) return { ok: false, error: auth.reason, reason: auth.reason };
+  } else if (!actorId({ actor: { userId: authorId } })) {
+    return { ok: false, error: "auth_required", reason: "auth_required" };
+  }
+
+  let existing = _gallery.get(pluginId) || null;
+
+  // INC-120 — the in-memory LRU can miss (eviction / restart). When a db is
+  // supplied, read the authoritative row so an attacker cannot republish a
+  // plugin they do not own simply because the cache entry is gone.
+  if (!existing && db) {
+    try {
+      const row = db.prepare(`SELECT * FROM plugin_gallery WHERE plugin_id = ?`).get(pluginId);
+      if (row) existing = _galleryEntryFromDbRow(row);
+    } catch { /* table may not exist on minimal builds — fall through to null */ }
+  }
+
+  if (existing) {
+    const authz = ctx
+      ? requireOwner(ctx, existing.authorId)
+      : String(authorId) === String(existing.authorId)
+        ? { ok: true, actorId: authorId }
+        : { ok: false, reason: "forbidden" };
+    if (!authz.ok) {
+      return { ok: false, error: authz.reason, reason: authz.reason };
+    }
+  }
+
   const verify = verifyPluginPackage({ source, signature, authorId, db });
   // Item 3/4 — capability disclosure. `declaredMacros` is the SAME grant
   // list `installFromGallery` forwards to `loadPluginFromSource` as its
@@ -160,7 +228,7 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
   // Allow unsigned publish for emergent-gen / dev plugins; just flag trust=false.
   const entry = {
     pluginId,
-    authorId,
+    authorId: existing ? existing.authorId : authorId,
     name: name ?? pluginId,
     description: description ?? "",
     version: version ?? "0.0.1",
@@ -170,8 +238,8 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
     trusted: verify.ok && verify.trusted,
     declaredMacros,
     publishedAt: new Date().toISOString(),
-    installs: 0,
-    rating: { up: 0, down: 0 },
+    installs: existing?.installs ?? 0,
+    rating: existing?.rating ?? { up: 0, down: 0 },
     // The gallery's own publish-time key (`pluginId`, e.g.
     // "gallery.install-target") and the loader's internal plugin identity
     // (the module's own exported `id`, e.g. "example.gallery-install-target")
@@ -180,23 +248,42 @@ export function publishPlugin({ pluginId, authorId, name, description, version, 
     // successful `loadPluginFromSource` call tells us what it is, so
     // `withLoadedFlag`/`installFromGallery` can look the plugin up in the
     // loader's own store correctly instead of guessing it equals `pluginId`.
-    loadedPluginId: null,
-    // Takedown path (item 5) — both null until an admin calls delistPlugin.
-    delistedAt: null,
-    delistedReason: null,
-    delistedBy: null,
+    loadedPluginId: existing?.loadedPluginId ?? null,
+    // Takedown path (item 5) — preserve delisting across republishes so an
+    // admin-delisted plugin cannot be silently un-delisted by republishing.
+    delistedAt: existing?.delistedAt ?? null,
+    delistedReason: existing?.delistedReason ?? null,
+    delistedBy: existing?.delistedBy ?? null,
   };
-  _gallery.set(pluginId, entry);
 
+  // Persist before mutating the in-memory LRU. If the DB write fails for any
+  // reason other than a missing table, do not cache the new entry — that
+  // would let a failed/duplicate insert overwrite memory with the attacker's
+  // source (INC-120).
+  let dbWriteError = null;
   if (db) {
     try {
-      db.prepare(`INSERT OR REPLACE INTO plugin_gallery
-                  (plugin_id, author_id, name, description, version, source, signature, hash, trusted, published_at, declared_macros_json)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(pluginId, authorId, entry.name, entry.description, entry.version,
-             source, signature ?? null, entry.hash, entry.trusted ? 1 : 0, entry.publishedAt,
-             JSON.stringify(declaredMacros));
-    } catch { /* table may not exist on first run, or declared_macros_json predates migration 393 */ }
+      if (existing) {
+        db.prepare(`UPDATE plugin_gallery
+                    SET name = ?, description = ?, version = ?, source = ?, signature = ?, hash = ?, trusted = ?, published_at = ?, declared_macros_json = ?
+                    WHERE plugin_id = ?`)
+          .run(entry.name, entry.description, entry.version, source, signature ?? null, entry.hash, entry.trusted ? 1 : 0, entry.publishedAt, JSON.stringify(declaredMacros), pluginId);
+      } else {
+        db.prepare(`INSERT INTO plugin_gallery
+                    (plugin_id, author_id, name, description, version, source, signature, hash, trusted, published_at, declared_macros_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+          .run(pluginId, entry.authorId, entry.name, entry.description, entry.version, source, signature ?? null, entry.hash, entry.trusted ? 1 : 0, entry.publishedAt, JSON.stringify(declaredMacros));
+      }
+    } catch (err) {
+      dbWriteError = err;
+      if (!err?.message?.toLowerCase().includes("no such table")) {
+        return { ok: false, error: err?.message || "db_write_failed", reason: "db_write_failed" };
+      }
+    }
+  }
+
+  if (!dbWriteError || dbWriteError?.message?.toLowerCase().includes("no such table")) {
+    _gallery.set(pluginId, entry);
   }
   return { ok: true, plugin: withLoadedFlag(entry, null) }; // strip source from response
 }
@@ -391,11 +478,29 @@ export async function installFromGallery(STATE, pluginId, userId, opts = {}) {
 }
 
 export function ratePlugin(pluginId, userId, vote) {
+  if (!actorId({ actor: { userId } })) {
+    return { ok: false, error: "auth_required", reason: "auth_required" };
+  }
   const entry = _gallery.get(pluginId);
   if (!entry) return { ok: false, error: "plugin_not_found" };
+  if (vote !== "up" && vote !== "down") return { ok: false, error: "invalid_vote" };
+
+  let voters = _votes.get(pluginId);
+  if (!voters) {
+    voters = new Map();
+    _votes.set(pluginId, voters);
+  }
+  const prior = voters.get(userId);
+  if (prior === vote) {
+    return { ok: true, rating: entry.rating };
+  }
+  if (prior === "up") entry.rating.up = Math.max(0, entry.rating.up - 1);
+  else if (prior === "down") entry.rating.down = Math.max(0, entry.rating.down - 1);
+
   if (vote === "up") entry.rating.up++;
-  else if (vote === "down") entry.rating.down++;
-  else return { ok: false, error: "invalid_vote" };
+  else entry.rating.down++;
+
+  voters.set(userId, vote);
   return { ok: true, rating: entry.rating };
 }
 
