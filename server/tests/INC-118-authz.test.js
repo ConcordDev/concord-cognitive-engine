@@ -19,6 +19,7 @@ import Database from "better-sqlite3";
 
 import registerKingdomsMacros from "../domains/kingdoms.js";
 import { getKingdom } from "../lib/kingdoms.js";
+import { openProposal, castVote, resolveIfDue } from "../lib/governance.js";
 import { up as up133 } from "../migrations/133_npc_legacy.js";
 import { up as up138 } from "../migrations/138_governance_proposals.js";
 import { up as up158 } from "../migrations/158_kingdoms.js";
@@ -185,14 +186,18 @@ describe("INC-118 — takeover_election authorization", () => {
 
   it("allows a passed, quorate proposal by the actor and ignores client voterTurnoutOk=false", async () => {
     const id = seedRealm(db, { rulerKind: "npc", rulerId: "npc_ruler" });
-    const pid = seedProposal(db, {
-      proposerId: "candX",
-      kingdomId: id,
-      quorum: 1,
-      yesVotes: 1,
-      constantPath: `kingdoms.${id}.ruler`,
-      proposedValue: "candX",
+    // Real flow: open the election proposal, vote, resolve.
+    const opened = openProposal(db, {
+      title: "Elect candX", summary: "candX for ruler", proposerId: "candX",
+      constantPath: `kingdoms.${id}.ruler`, currentValue: "npc_ruler", proposedValue: "candX",
+      quorum: 3, thresholdPct: 0.5,
     });
+    assert.equal(opened.ok, true, JSON.stringify(opened));
+    const pid = opened.proposalId;
+    for (const v of ["candX", "v2", "v3"]) {
+      assert.equal(castVote(db, { proposalId: pid, voterId: v, vote: "yes" }).ok, true);
+    }
+    assert.equal(resolveIfDue(db, pid).action, "passed");
     const r = await call("takeover_election", makeCtx(db, "candX"), {
       kingdomId: id,
       proposalId: pid,
@@ -202,6 +207,17 @@ describe("INC-118 — takeover_election authorization", () => {
     const after = getKingdom(db, id);
     assert.equal(after.ruler_kind, "player");
     assert.equal(after.ruler_id, "candX");
+  });
+
+  it("openProposal accepts a kingdoms.<id>.ruler path and still rejects arbitrary paths", async () => {
+    const id = seedRealm(db, { rulerKind: "npc", rulerId: "npc_ruler" });
+    const base = { title: "T", summary: "S", proposerId: "candX", currentValue: "a", proposedValue: "b" };
+    assert.equal(openProposal(db, { ...base, constantPath: `kingdoms.${id}.ruler` }).ok, true);
+    for (const bad of ["kingdoms.x.treasury", "kingdoms..ruler", "kingdoms.a.b.ruler", `kingdoms.${id}.ruler.x`]) {
+      const r = openProposal(db, { ...base, constantPath: bad });
+      assert.equal(r.ok, false, bad);
+      assert.equal(r.reason, "constant_not_governed", bad);
+    }
   });
 
   it("refuses a passed proposal with an unrelated constant_path", async () => {

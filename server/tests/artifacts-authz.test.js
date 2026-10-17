@@ -291,5 +291,11 @@ describe("ARTIFACTS-AUTHZ", () => {
     assert.equal(aliceList.status, 200);
     const aliceIds = aliceList.body.artifacts.map((a) => a.artifactId).sort();
     assert.deepEqual(aliceIds, [aPriv.artifactId, aPub.artifactId].sort());
+
+    // Admin list matches single-artifact read: admins see private artifacts too.
+    const adminList = await list("admin");
+    assert.equal(adminList.status, 200);
+    const adminIds = adminList.body.artifacts.map((a) => a.artifactId).sort();
+    assert.deepEqual(adminIds, [aPriv.artifactId, aPub.artifactId, bPriv.artifactId].sort());
   });
 });

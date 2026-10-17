@@ -108,6 +108,19 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
        WHERE dtu_id = ? AND (visibility = 'public' OR (? IS NOT NULL AND created_by = ?))
        ORDER BY created_at DESC LIMIT ?`
     ),
+    // Admin variants: admins may read private artifacts (see canRead), so the
+    // list must not hide them either.
+    listAll: db.prepare(
+      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags, visibility
+       FROM route_artifacts
+       ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ),
+    listByDtuAll: db.prepare(
+      `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags, visibility
+       FROM route_artifacts
+       WHERE dtu_id = ?
+       ORDER BY created_at DESC LIMIT ?`
+    ),
     delete: db.prepare(
       `DELETE FROM route_artifacts WHERE artifact_id = ?`
     ),
@@ -171,9 +184,12 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
       const dtuId = req.query.dtuId;
       const callerId = req.user?.id || null;
-      const rows = dtuId
-        ? stmts.listByDtu.all(dtuId, callerId, callerId, limit)
-        : stmts.list.all(callerId, callerId, limit, offset);
+      const admin = !!req.user && isAdmin(actorCtx(req));
+      const rows = admin
+        ? (dtuId ? stmts.listByDtuAll.all(dtuId, limit) : stmts.listAll.all(limit, offset))
+        : dtuId
+          ? stmts.listByDtu.all(dtuId, callerId, callerId, limit)
+          : stmts.list.all(callerId, callerId, limit, offset);
       const artifacts = rows.map(parseArtifact);
       res.json({ ok: true, artifacts, count: artifacts.length, offset });
     } catch (err) {
