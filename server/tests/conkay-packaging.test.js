@@ -146,7 +146,11 @@ describe("Car brief (v1 layout, ellipsoid shell): occupant fit, interference and
     assert.ok(ck("headroom.SEAT_1.M95").pass && ck("headroom.SEAT_1.M95").value > 0);
     assert.equal(ck("seatWidth.M95").value, 431); assert.equal(ck("seatWidth.M95").threshold, 385); assert.equal(ck("seatWidth.M95").pass, false);
     assert.equal(ck("seatWidth.F95").pass, false); assert.equal(ck("seatWidth.F5").pass, true);
-    assert.equal(ck("rearKnee.SEAT_3.M95").pass, false); assert.equal(ck("rearKnee.SEAT_3.F5").pass, true);
+    // L48 is measured at the knee pivot's height on the seatback's rear face (rear-knee pass, 2026-10-17; the standard names no height).
+    // At the v1 hand-set rear H-point the 95th male's knee used to fail against the seatback's rearmost point (its top) and now clears
+    // the face at its own height by 134 mm; the threshold (0 mm after the 51 mm allowance) is unchanged. tests/conkay-car-rear-knee.test.js
+    // proves the check still fails when the knee is pushed into that face.
+    assert.equal(ck("rearKnee.SEAT_3.M95").pass, true); assert.ok(close(ck("rearKnee.SEAT_3.M95").value, 133.9, 0.2)); assert.equal(ck("rearKnee.SEAT_3.F5").pass, true);
     assert.equal(ck("legReach.SEAT_1.F5").pass, true);
     assert.equal(ck("airbag.F5").threshold, 254); assert.equal(ck("airbag.F5").pass, true);
     assert.equal(ck("classA.H30").pass, true);
