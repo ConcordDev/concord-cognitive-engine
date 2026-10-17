@@ -81,6 +81,32 @@ describe('renderSongToWav', () => {
     expect(starts.some(r => r.start === 1 && Math.round(r.freq!) === 880)).toBe(true); // beat 2 @120bpm = 1s
   });
 
+  it('accepts the studio.compose note shape (lengthBeats) and never schedules non-finite times', async () => {
+    const times: number[] = [];
+    const orig = FakeOfflineCtx.prototype.createGain;
+    FakeOfflineCtx.prototype.createGain = function () {
+      const g = orig.call(this) as { gain: Record<string, unknown> };
+      const rec = (_v: number, t: number) => { times.push(t); return g.gain; };
+      g.gain.setValueAtTime = rec; g.gain.linearRampToValueAtTime = rec;
+      return g as never;
+    };
+    try {
+      await renderSongToWav(base({
+        tracks: [{ name: 'Bass', role: 'bass', preset: 'sub-bass', notes: [
+          { pitch: 36, startBeat: 0, lengthBeats: 0.5, velocity: 100 },
+          { pitch: 36, startBeat: 1, velocity: 100 } as never, // malformed: skipped
+        ] }],
+      }));
+    } finally {
+      FakeOfflineCtx.prototype.createGain = orig;
+    }
+    const osc = recs.filter(r => r.kind === 'osc');
+    expect(osc.length).toBeGreaterThan(0);
+    expect(osc.every(r => r.start === 0)).toBe(true);
+    expect(times.length).toBeGreaterThan(0);
+    expect(times.every(Number.isFinite)).toBe(true);
+  });
+
   it('loops the one-bar drum pattern across every bar', async () => {
     await renderSongToWav(base({ drums: { steps: 16, stepBeats: 0.25, lanes: [{ pad: 'kick', hits: [0, 8] }] } }));
     const kicks = recs.filter(r => r.kind === 'osc').map(r => r.start).sort((a, b) => a - b);

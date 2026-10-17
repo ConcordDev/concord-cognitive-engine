@@ -21,7 +21,8 @@ export interface ComposedSong {
     name: string;
     role: 'chords' | 'bass' | 'melody';
     preset: string;
-    notes: { pitch: number; startBeat: number; durationBeats: number; velocity: number }[];
+    // studio.compose emits DAW MIDINote shape (lengthBeats); durationBeats is accepted too.
+    notes: { pitch: number; startBeat: number; lengthBeats?: number; durationBeats?: number; velocity?: number }[];
   }[];
   drums: {
     steps: number;
@@ -96,9 +97,15 @@ export async function renderSongToWav(
     synthEngines.set(track.name, engine);
 
     for (const note of track.notes) {
-      const start = note.startBeat * beatDurationSec;
-      const end = start + note.durationBeats * beatDurationSec;
-      engine.noteOn(note.pitch, note.velocity, start);
+      const lengthBeats = Number(note.lengthBeats ?? note.durationBeats);
+      const startBeat = Number(note.startBeat);
+      // Web Audio throws on non-finite times; skip malformed notes instead of
+      // failing the whole render.
+      if (!Number.isFinite(startBeat) || !Number.isFinite(lengthBeats) || lengthBeats <= 0) continue;
+      const start = startBeat * beatDurationSec;
+      if (start >= durationSec) continue;
+      const end = start + lengthBeats * beatDurationSec;
+      engine.noteOn(note.pitch, Number.isFinite(note.velocity) ? (note.velocity as number) : 100, start);
       engine.noteOff(note.pitch, end);
     }
   }
