@@ -578,7 +578,10 @@ test("run_lens_action returns an actionable error for a misnamed action (strict 
       tool: "run_lens_action", params: { domain: "physics", action: "teleport" },
     });
     assert.equal(result.ok, false);
-    assert.match(result.error, /no lens action "physics\.teleport"/);
+    assert.match(result.error, /unknown lens action "physics\.teleport"/);
+    // The rejection names the real actions (from the register() map too).
+    assert.match(result.error, /Valid physics actions: power/);
+    assert.deepEqual(result.validActions, ["power"]);
     assert.match(result.retryHint, /list_lens_actions/);
   } finally {
     delete globalThis._concordMACROS;

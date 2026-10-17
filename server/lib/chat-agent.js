@@ -64,6 +64,7 @@ const MAX_TOOL_RESULT_LEN = 12_000;
 const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
+  conkay_design:     ["text"],
   run_python:        ["code"],
   browse_url:        ["url"],
   run_lens_action:   ["domain", "action"],
@@ -251,6 +252,8 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
+  Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
@@ -258,7 +261,7 @@ Available tools (with one working example each):
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
   Example: [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "dtu", "action": "search", "params": {"query": "test"}}}]
   Call these by name when they match the request (list_lens_actions ranks them first and includes input fields):
-  - conkay_design: open, from-brief, edit, get, list, export, parse-brief, feasibility, solvers, car-acceptance
+  - conkay_design: solve, open, from-brief, edit, get, list, export, parse-brief, feasibility, solvers, car-acceptance
   - productivity tasks: productivity.task-add, task-list, task-update, task-complete, today-view
   - calendar: events-create, events-list, events-update, availability-find, conflicts-check
   - music: music.render, track-list, track-add, playlist-create, play-track
@@ -295,6 +298,7 @@ Rules:
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
 - For an explicit request to make, draw, or generate an image, use generate_image. Never tell the user to use an outside image service.
 - For any math/calculation use run_compute. Never guess at numbers.
+- To design, size or check a beam, cantilever, bracket or other structural part, use conkay_design. Never invent an action name such as engineering.cantilever_bending_design; an unknown action is rejected with the list of real ones.
 - For current events / facts you don't know, use web_search.
 - For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
 - For deep cited research over Concord's substrate, use expert_mode.
@@ -350,7 +354,7 @@ const PREFERRED_LENS_ACTIONS = [
   "task-add", "task-list", "task-update", "task-complete", "task-delete", "task-quick-add", "today-view", "upcoming-view",
   "events-create", "events-list", "events-update", "events-delete", "calendars-list", "availability-find", "conflicts-check", "nl-parse-event",
   "render", "play-track", "track-list", "track-add", "playlist-create", "playlist-list",
-  "open", "from-brief", "edit", "get", "list", "export", "parse-brief", "feasibility", "solvers", "car-acceptance",
+  "solve", "open", "from-brief", "edit", "get", "list", "export", "parse-brief", "feasibility", "solvers", "car-acceptance",
   "search", "create", "save",
 ];
 const PREFERRED_LENS_RANK = new Map(PREFERRED_LENS_ACTIONS.map((name, i) => [name, i]));
@@ -371,6 +375,101 @@ function rankLensActions(actions) {
     if (aNest !== bNest) return aNest - bNest;
     return an.localeCompare(bn);
   });
+}
+
+/**
+ * Every registered action name for one domain, from BOTH registries
+ * (LENS_ACTIONS and the register() macro map / reflection catalog), ranked.
+ * Shared by list_lens_actions and run_lens_action's unknown-name error.
+ */
+async function collectDomainActions(domain, lensActions) {
+  const actions = new Map(); // action name → { action, fields? }
+  const add = (action) => {
+    const name = String(action ?? "").trim();
+    // A domain-keyed registry entry (no action half) used to land here
+    // as an empty name and sort to the front of the list.
+    if (!name || actions.has(name)) return;
+    const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
+    actions.set(name, fields ? { action: name, fields } : { action: name });
+  };
+  if (lensActions && typeof lensActions.keys === "function") {
+    for (const key of lensActions.keys()) {
+      const s = String(key);
+      const dot = s.indexOf(".");
+      if (dot < 0 || s.slice(0, dot) !== domain) continue;
+      add(s.slice(dot + 1));
+    }
+  }
+  // Live register() map is Map<domain, Map<action, entry>>. The
+  // reflection catalog (MACRO_REGISTRY) has the same shape — it is
+  // NOT a flat list of "domain.action" strings. Reading it as flat
+  // strings turned the domain key itself into an empty action.
+  const ingestBucket = (registry) => {
+    const bucket = registry?.get?.(domain);
+    if (!bucket || typeof bucket.keys !== "function") return;
+    for (const name of bucket.keys()) add(name);
+  };
+  try { ingestBucket(globalThis._concordMACROS); } catch { /* no live registry */ }
+  try {
+    const { MACRO_REGISTRY } = await import("./macro-reflection.js");
+    ingestBucket(MACRO_REGISTRY);
+  } catch { /* macro-registry not loaded — keep lensActions-only result */ }
+  return rankLensActions([...actions.values()]);
+}
+
+const nameTokens = (s) => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+
+/** Names closest to a wrong one first (shared word stems), then the rest in rank order. */
+export function closestNames(wanted, names, limit = 25) {
+  const want = nameTokens(wanted);
+  const score = (n) => {
+    const toks = nameTokens(n);
+    let hit = 0;
+    for (const w of want) if (toks.some((t) => t.startsWith(w.slice(0, 5)) || w.startsWith(t.slice(0, 5)))) hit++;
+    return hit;
+  };
+  return names
+    .map((n, i) => ({ n, i, s: score(n) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .slice(0, limit)
+    .map((x) => x.n);
+}
+
+const DESIGN_ACTION_RE = /design|cantilever|beam|bracket|bending|stress|sizing|structur|fea\b|shaft|column|truss/i;
+
+/**
+ * The error run_lens_action returns for a (domain, action) that is not
+ * registered: the real names for that domain (or the closest domains when
+ * the domain itself is unknown), and the conkay_design tool for a guessed
+ * design action.
+ */
+export async function unknownLensActionError(domain, action, lensActions) {
+  const ranked = await collectDomainActions(domain, lensActions);
+  const names = ranked.map((a) => a.action);
+  const designHint = DESIGN_ACTION_RE.test(`${domain} ${action}`)
+    ? ' For sizing or checking a beam, cantilever or bracket use the conkay_design tool: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "<the design in words>"}}] (or run_lens_action conkay_design.solve {"text": ...}).'
+    : "";
+  if (names.length) {
+    const valid = closestNames(action, names, 25);
+    return {
+      error: `unknown lens action "${domain}.${action}". Valid ${domain} actions: ${valid.join(", ")}${names.length > valid.length ? ` (+${names.length - valid.length} more; list_lens_actions shows all)` : ""}. Use one of these names exactly.${designHint}`,
+      validActions: valid,
+      totalValid: names.length,
+    };
+  }
+  const domains = new Set();
+  if (lensActions && typeof lensActions.keys === "function") {
+    for (const key of lensActions.keys()) {
+      const k = String(key);
+      const dot = k.indexOf(".");
+      if (dot > 0) domains.add(k.slice(0, dot));
+    }
+  }
+  const near = closestNames(`${domain} ${action}`, [...domains].sort(), 15);
+  return {
+    error: `unknown lens domain "${domain}" (no registered actions). ${near.length ? `Known domains include: ${near.join(", ")}.` : ""}${designHint}`.trim(),
+    validDomains: near,
+  };
 }
 
 function formatActionForModel(action) {
@@ -654,9 +753,14 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
         if (resolved.via === "none") {
           if (resolved.reason === "not_registered") {
+            // Reject with the real names, so the next turn picks one instead
+            // of guessing again (live test: engineering.cantilever_bending_design).
+            const unknown = await unknownLensActionError(domain, action, lensActions);
             return {
-              tool: call.tool, ok: false,
-              error: `no lens action "${domain}.${action}" — the name is wrong or it isn't registered`,
+              tool: call.tool, ok: false, domain, action,
+              error: unknown.error,
+              ...(unknown.validActions ? { validActions: unknown.validActions } : {}),
+              ...(unknown.validDomains ? { validDomains: unknown.validDomains } : {}),
               retryHint: `[TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "${domain}"}}]`,
             };
           }
@@ -688,6 +792,18 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
       }
+      case "conkay_design": {
+        // Deterministic ConKay sizing check: parse → hand calc + FEA → safety
+        // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
+        const text = String(call.params.text || call.params.brief || call.params.prompt || "").slice(0, 4000);
+        if (!text.trim()) return { tool: call.tool, ok: false, error: "conkay_design requires text describing the part" };
+        const { solveDesignText, summarizeDesignSolve } = await import("./conkay/nlp-design-intent.js");
+        const summary = summarizeDesignSolve(solveDesignText(text));
+        if (!summary.ok) {
+          return { tool: call.tool, ok: false, error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}` };
+        }
+        return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary };
+      }
       case "list_lens_actions": {
         // Discoverability — look up REAL macro names/params before calling
         // them via run_lens_action, instead of guessing from training-data
@@ -707,36 +823,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         if (!lensActions || typeof lensActions.keys !== "function") {
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
-        const actions = new Map(); // action name → { action, fields? }
-        const add = (action) => {
-          const name = String(action ?? "").trim();
-          // A domain-keyed registry entry (no action half) used to land here
-          // as an empty name and sort to the front of the list.
-          if (!name || actions.has(name)) return;
-          const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
-          actions.set(name, fields ? { action: name, fields } : { action: name });
-        };
-        for (const key of lensActions.keys()) {
-          const s = String(key);
-          const dot = s.indexOf(".");
-          if (dot < 0 || s.slice(0, dot) !== domain) continue;
-          add(s.slice(dot + 1));
-        }
-        // Live register() map is Map<domain, Map<action, entry>>. The
-        // reflection catalog (MACRO_REGISTRY) has the same shape — it is
-        // NOT a flat list of "domain.action" strings. Reading it as flat
-        // strings turned the domain key itself into an empty action.
-        const ingestBucket = (registry) => {
-          const bucket = registry?.get?.(domain);
-          if (!bucket || typeof bucket.keys !== "function") return;
-          for (const name of bucket.keys()) add(name);
-        };
-        try { ingestBucket(globalThis._concordMACROS); } catch { /* no live registry */ }
-        try {
-          const { MACRO_REGISTRY } = await import("./macro-reflection.js");
-          ingestBucket(MACRO_REGISTRY);
-        } catch { /* macro-registry not loaded — keep lensActions-only result */ }
-        const ranked = rankLensActions([...actions.values()]);
+        const ranked = await collectDomainActions(domain, lensActions);
         return { tool: call.tool, ok: true, domain, total: ranked.length, actions: ranked };
       }
       case "create_dtu": {
@@ -1085,6 +1172,10 @@ export function formatToolResults(results) {
       return _screenUntrusted("web_search", "web_search", webText, (t) => `[TOOL_RESULT: web_search] ${t}`);
     }
     if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "conkay_design") {
+      const v = r.result?.safety?.verdict;
+      return `[TOOL_RESULT: conkay_design]${v ? ` ${v}` : ""} Report these numbers and the pass/fail exactly; list the assumptions.\n${JSON.stringify(r.result).slice(0, 4000)}`;
+    }
     if (r.tool === "run_python") {
       const parts = [];
       if (r.stdout) parts.push(`stdout:\n${r.stdout}`);
