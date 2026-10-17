@@ -59,6 +59,7 @@ import "./physics/solvers/material-conduction.js";
 import "./physics/solvers/material-cte-multiphase.js";
 import "./physics/solvers/material-viscoelastic-composite.js";
 import "./physics/solvers/reacting-chemistry.js";
+import "./physics/solvers/solid-stress.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };
