@@ -20422,6 +20422,7 @@ import {
   finishLengthLimitedReply,
   stoppedOnLength,
   buildChatHistoryMessages,
+  withChatToneReminder,
 } from "./lib/chat-reply-policy.js";
 
 // Single-instance fallback: someone running one plain `ollama serve` (every
@@ -29152,6 +29153,7 @@ ${_operatorV6Block}` : "";
     // the session; buildChatHistoryMessages drops that copy and appends
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
+    if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
       system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
@@ -29236,7 +29238,7 @@ ${_operatorV6Block}` : "";
       }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
-        ...buildChatHistoryMessages(sess.messages, prompt),
+        ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
       const _directAc = new AbortController();
       const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
@@ -55897,10 +55899,11 @@ function initChatSocketHandlers(io) {
               entityStateBlock: "",
               affectGuidance: "",
               styleHints: buildStyleHints(_streamStyleVec),
+              actor: (() => { try { const _u = socket.data?.userId ? AuthDB.getUser(socket.data.userId) : null; return _u ? { username: _u.username, role: _u.role } : null; } catch { return null; } })(),
             }), "chat");
 
             // Prior turns once. Current user message is already on the session.
-            const _streamMessages = buildChatHistoryMessages(_streamSess.messages, String(prompt));
+            const _streamMessages = withChatToneReminder(buildChatHistoryMessages(_streamSess.messages, String(prompt)));
 
             // ===== BYO KEY ROUTING (streaming path) =====
             // Audit 2026-07-27: this path used to ignore BYO overrides

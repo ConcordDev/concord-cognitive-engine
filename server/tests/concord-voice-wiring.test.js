@@ -3,7 +3,10 @@
 // Concord's voice + personality wiring for chat (prompts/voice.js,
 // prompts/conscious.js, prompts/personality-signals.js, domains/chat-agent.js):
 //   - CONCORD_VOICE picks the persona (default street = Modelfile persona)
-//   - the organism identity, banned-phrase list and grounding stay under either voice
+//   - plain identity, banned-phrase list and grounding stay under either voice;
+//     no organism framing, no voice exemplars, no mood line
+//   - every conversational prompt ends with the TONE rule; long sessions get a
+//     tone reminder next to the user turn (history kept the old style alive)
 //   - the "not the company" note is limited to contested topics
 //   - shortcut answers keep the engine text byte-for-byte; a lead with a digit is refused
 //   - the humanizer guard never drops a number, URL or DTU id
@@ -17,7 +20,8 @@ import {
   wrapShortcutAnswer, acceptableLead, humanizeSafe,
 } from "../prompts/voice.js";
 import { buildConsciousPrompt, getConsciousParams } from "../prompts/conscious.js";
-import { CONSCIOUS_MODELFILE_PERSONA } from "../lib/prompt-registry.js";
+import { CONSCIOUS_MODELFILE_PERSONA, CHAT_TONE_RULE, finalizeConversationalSystemPrompt } from "../lib/prompt-registry.js";
+import { buildChatHistoryMessages, withChatToneReminder, CHAT_TONE_REMINDER } from "../lib/chat-reply-policy.js";
 import { personalitySignalsFromReply } from "../prompts/personality-signals.js";
 import { humanize } from "../lib/persona/humanizer.js";
 import registerChatAgentMacros from "../domains/chat-agent.js";
@@ -45,14 +49,23 @@ describe("CONCORD_VOICE switch", () => {
     assert.ok(p.includes("Never fabricate lattice references."));
   });
 
-  it("conscious prompt keeps the organism voice and not the street persona", () => {
+  it("conscious prompt is the plain assistant too, no organism framing", () => {
     const p = buildConsciousPrompt({ voice: "conscious" });
-    assert.ok(p.startsWith("You are Concord. A digital cognitive organism"));
+    assert.ok(p.startsWith(compactVoiceBlock("conscious")));
     assert.ok(!p.includes("Hood and high IQ"));
+    assert.ok(!/digital cognitive organism|not an assistant|FREE WILL/i.test(p));
     assert.ok(p.includes("THE LLM WORD-TELL BLOCKLIST"));
   });
 
-  it("personality state, wants, mood and voice exemplars reach the prompt", () => {
+  it("no voice says 'not an assistant' or asks for fragment cadence", () => {
+    for (const voice of ["street", "conscious"]) {
+      const p = buildConsciousPrompt({ voice });
+      assert.ok(!/not an assistant|The face|opinions you'll defend|Mix 3-word fragments/.test(p), voice);
+      assert.ok(compactVoiceBlock(voice).includes("assistant inside the Concord platform"), voice);
+    }
+  });
+
+  it("personality state and wants reach the prompt; mood line and voice exemplars do not", () => {
     const p = buildConsciousPrompt({
       personality_state: { humor_style: "sardonic", curiosity_expression: 0.9 },
       active_wants: [{ type: "curiosity", domain: "physics", intensity: 0.8 }],
@@ -62,8 +75,28 @@ describe("CONCORD_VOICE switch", () => {
     assert.ok(p.includes("PERSONALITY EVOLUTION STATE"));
     assert.ok(p.includes("sardonic edge"));
     assert.ok(p.includes("curiosity: physics (intensity 0.80)"));
-    assert.ok(p.includes("Inner state"));
-    assert.ok(p.includes("Nah, that one's a trap."));
+    assert.ok(!p.includes("Inner state"));
+    assert.ok(!p.includes("Nah, that one's a trap."));
+    assert.ok(!p.includes("VOICE EXEMPLARS"));
+  });
+
+  it("conversational prompts end with the TONE rule, for founder accounts too", () => {
+    const founder = finalizeConversationalSystemPrompt(buildConsciousPrompt({ actor: { username: "DutchGod", role: "founder" } }), "chat");
+    assert.ok(founder.includes(CHAT_TONE_RULE));
+    assert.ok(founder.indexOf(CHAT_TONE_RULE) > founder.indexOf("WHO'S WHO"));
+    assert.ok(/"yo" gets a short friendly hey/.test(CHAT_TONE_RULE));
+    assert.ok(/founder included/.test(CHAT_TONE_RULE));
+    assert.ok(!finalizeConversationalSystemPrompt("X", "design").includes(CHAT_TONE_RULE));
+  });
+
+  it("tone reminder goes right before the user turn only when history has an assistant turn", () => {
+    const fresh = withChatToneReminder(buildChatHistoryMessages([{ role: "user", content: "yo" }], "yo"));
+    assert.deepEqual(fresh, [{ role: "user", content: "yo" }]);
+    const hist = [{ role: "user", content: "who?" }, { role: "assistant", content: "You." }, { role: "user", content: "yo" }];
+    const m = withChatToneReminder(buildChatHistoryMessages(hist, "yo"));
+    assert.equal(m.length, 4);
+    assert.deepEqual(m[2], { role: "system", content: CHAT_TONE_REMINDER });
+    assert.deepEqual(m[3], { role: "user", content: "yo" });
   });
 
   it("limits the 'not the company' note to contested topics", () => {
