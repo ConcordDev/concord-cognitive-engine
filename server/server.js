@@ -27425,7 +27425,7 @@ function _persistDeterministicTurn(replyContent, replyMeta = {}) {
       ownerId: ctx?.actor?.userId || input?.userId || null,
       lastLens: input.lens || input.currentLens || null,
       userMsg: { role: 'user', content: prompt, ts: Date.now() - 1 },
-      assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: replyMeta },
+      assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: _clientTurnId ? { ...replyMeta, clientTurnId: String(_clientTurnId).slice(0, 80) } : replyMeta },
     });
     rememberCompletedChatTurn(sess, _clientTurnId, replyContent);
   } catch { /* never block chat on persistence failure */ }
@@ -29695,6 +29695,9 @@ ${_operatorV6Block}` : "";
           toolCallCount: _toolCallsExecuted.length,
           computed: _computedSurface,
           dtuRefs: _dtuRefs.length > 0 ? _dtuRefs : undefined,
+          // Lets the chat lens find this exact reply in the saved thread when
+          // live delivery (SSE / fallback POST) was lost.
+          clientTurnId: _clientTurnId ? String(_clientTurnId).slice(0, 80) : undefined,
         },
       },
     });

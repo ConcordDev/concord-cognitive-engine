@@ -43,7 +43,9 @@ export const PRIORITY = Object.freeze({
 
 // Mirrors server.js's `_HEALTH_PROBE_RE` exactly. Kept as a separate literal
 // so this module stays unit-testable without booting the monolith.
-const _CRITICAL_PATH_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
+// Plus /api/system/health: the frontend's connection banner polls it. Shedding
+// it during a stall turned "busy for a few seconds" into "server down".
+const _CRITICAL_PATH_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health|system\/health)(\b|\/|$)/;
 
 const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
 
