@@ -43,7 +43,6 @@ import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 import { routeComputeQuestion, composeRoutedReply } from "./chat/compute-router.js";
 import { findToolCallSpans, governancePayloads, unwrapGovernancePayload } from "./v6-observe-bridge.js";
 import { parseExplicitDtuSave } from "./chat/dtu-save-intent.js";
-import { collectAllowedUrls, enforceGroundedLinks, WEB_GROUNDING_RULE, WEB_NO_RESULTS_RULE } from "./chat/link-grounding.js";
 import {
   composeToolTurnReply,
   shouldSkipToolFollowup,
@@ -506,14 +505,9 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             snippet: String(x.snippet || x.description || x.text || "").slice(0, 500),
           })),
         };
-        // Grounding: the brain reads the rule with the results, and an empty
-        // (relevance-filtered) result set says so instead of leaving room
-        // for an answer from memory dressed up as a sourced one.
-        trimmed.instruction = trimmed.results.length ? WEB_GROUNDING_RULE : WEB_NO_RESULTS_RULE;
         return {
           tool: call.tool, ok: true,
           query: call.params.query,
-          resultCount: trimmed.results.length,
           result: JSON.stringify(trimmed).slice(0, MAX_TOOL_RESULT_LEN),
         };
       }
@@ -1224,6 +1218,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   // surface as automatic context without the brain having to ask for
   // them via run_lens_action. Best-effort — never blocks.
   let shadowContextBlock = "";
+  let contextDtus = []; // {id,title} of DTUs put in the prompt — the only DTUs a reply may cite besides tool results
   if (opts.shadowContext !== false && runMacro) {
     try {
       const harvest = await runMacro("chat", "harvest", {
@@ -1232,6 +1227,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         lens: "chat",
       }, { db, actor: { userId } });
       const dtus = Array.isArray(harvest?.dtus) ? harvest.dtus.slice(0, 8) : [];
+      contextDtus = dtus.map((d) => ({ id: d.id, title: d.title || d.id }));
       if (dtus.length > 0) {
         shadowContextBlock = `\n\n--- Active substrate context (auto-pulled) ---\n${
           dtus.map((d, i) => `[${i + 1}] ${d.title || d.id} (tier: ${d.tier || "regular"})`).join("\n")
@@ -1520,26 +1516,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     } catch { /* keep the stub answer as a last resort — never throw here */ }
   }
 
-  // Links in the reply must come from the user's own text or a tool result
-  // from this run (lib/chat/link-grounding.js). Anything else was invented.
-  let linksRemoved = [];
-  if (/https?:\/\//i.test(finalAnswer)) {
-    const allowed = collectAllowedUrls(message, history, allToolCalls, allArtifacts);
-    const g = enforceGroundedLinks(finalAnswer, allowed);
-    finalAnswer = g.text;
-    linksRemoved = g.removed;
-  }
-
   return {
     ok: true,
     answer: finalAnswer,
-    ...(linksRemoved.length ? { linksRemoved } : {}),
     toolCalls: allToolCalls,
     artifacts: allArtifacts,
     turns: turnsTaken,
     provider: lastProvider,
     model: lastModel,
     ...provenanceFrom({ provider: lastProvider, model: lastModel }),
+    contextDtus,
   };
 }
 

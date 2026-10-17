@@ -27622,6 +27622,46 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   }
 }
 
+  // ── Tool-worthy prompts → the agent tool loop (lib/chat/agent-route.js) ──
+  // The conversational path only runs a tool when the model writes a
+  // [TOOL_CALL] marker inside the persona prompt; the A40 conscious model
+  // never did, so web/DTU/compute/design questions were answered from
+  // memory (invented links, invented DTUs). Same loop as
+  // /api/chat-agent/stream. Falls through to the normal path on any failure.
+  if (prompt) {
+    try {
+      const _ar = await import("./lib/chat/agent-route.js");
+      const _agentRouteKind = _ar.chatAgentRoute(prompt);
+      const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
+      if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
+        const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind });
+        if (_agentOut) {
+          const _agentReply = visibleChatReply(_agentOut.reply, prompt);
+          const _agentMeta = {
+            llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
+            toolCallCount: _agentOut.toolCalls.length,
+            tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
+          };
+          sess.messages.push({ role: "assistant", content: _agentReply, ts: nowISO(), meta: _agentMeta });
+          _persistDeterministicTurn(_agentReply, _agentMeta);
+          saveStateDebounced();
+          ctx.log("chat", "Answered through the agent tool loop", { sessionId, route: _agentRouteKind, tools: _agentMeta.tools });
+          return {
+            ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
+            route: "chat_agent", agentRoute: _agentRouteKind,
+            toolCalls: _agentOut.toolCalls, artifacts: _agentOut.artifacts, sources: _agentOut.sources,
+            ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
+            ...(_agentOut.dtuRefsRemoved.length ? { dtuRefsRemoved: _agentOut.dtuRefsRemoved } : {}),
+            meta: { panel: "chat", sessionId, ..._agentMeta, toolCalls: _agentOut.toolCalls.length, sources: _agentOut.sources, provider: _agentOut.provider, model: _agentOut.model },
+          };
+        }
+      }
+    } catch (_agentErr) {
+      ctx.log("chat", "Agent-route failed; using the conversational path", { error: String(_agentErr?.message || _agentErr) });
+    }
+  }
+
   // Sprint 47: intentInfo is now computed earlier (see the DTU-enrichment
   // block above) — this used to be its only declaration, but that meant
   // every reference to it above this line (createInputDTU's enrichment
@@ -28303,7 +28343,15 @@ let localReply = formatCrispResponse({
 
   // Merge unified context DTUs with focus set (deduplicated)
   const _focusIds = new Set(focus.map(d => d.id));
-  const _extraUnifiedDtus = _unifiedContextDtus.filter(d => !_focusIds.has(d.id));
+  // The session working set keeps the previous query's DTUs warm. They only
+  // enter THIS prompt when they relate to the current message, otherwise a
+  // question with no matching DTUs is answered from the previous topic
+  // (lib/chat/turn-context.js).
+  let _extraUnifiedDtus = _unifiedContextDtus.filter(d => !_focusIds.has(d.id));
+  try {
+    const { filterCarryOverDtus } = await import("./lib/chat/turn-context.js");
+    _extraUnifiedDtus = filterCarryOverDtus(_extraUnifiedDtus, prompt);
+  } catch { /* keep the unfiltered set */ }
   const _enrichedFocus = [...focus, ..._extraUnifiedDtus];
   // ===== END UNIFIED CONTEXT ENGINE =====
   // ===== END CONSCIOUS BRAIN ROUTING =====
@@ -28883,6 +28931,13 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
+  // Names the message to answer at the end of the system prompt
+  // (lib/chat/turn-context.js) — the wrong-turn guard.
+  let _currentTurnAnchor = "";
+  try {
+    const { currentTurnAnchor } = await import("./lib/chat/turn-context.js");
+    _currentTurnAnchor = currentTurnAnchor(prompt);
+  } catch { /* anchor optional */ }
   let _replyDoneReason = null;
   // Conversational cap. Verbosity 0.5 (the affect default) resolves to
   // CONCORD_CHAT_MAX_TOKENS itself, default 2000 — not the old 700 base
@@ -29009,7 +29064,7 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : ""), mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -29096,7 +29151,7 @@ ${_operatorV6Block}` : "";
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt + _lensHintSuffix, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
         ...buildChatHistoryMessages(sess.messages, prompt),
@@ -29407,6 +29462,25 @@ ${_operatorV6Block}` : "";
   }
   if (_lockedReply) finalReply = _lockedReply;
 
+  // Only DTUs retrieved for this turn may be cited (lib/chat/dtu-citation-guard.js).
+  let _dtuRefsRemoved = [];
+  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply) {
+    try {
+      const { collectRetrievedDtus, guardDtuCitations } = await import("./lib/chat/dtu-citation-guard.js");
+      const _retrievedDtus = collectRetrievedDtus(
+        _enrichedFocus.map((d) => ({ id: d.id, title: d.title })),
+        (_pipelineHarvest?.consolidatedWorkingSet || []).map((d) => ({ id: d.id, title: d.title })),
+        _toolCallsExecuted,
+      );
+      const _g = guardDtuCitations(finalReply, _retrievedDtus, { prompt });
+      if (_g.removed.length) {
+        finalReply = _g.text;
+        _dtuRefsRemoved = _g.removed;
+        ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
+      }
+    } catch { /* guard optional */ }
+  }
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
@@ -29651,6 +29725,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_aiUnavailable ? {
       code: _aiUnavailable.code,
