@@ -30,13 +30,21 @@ describe('AssistantMoodChip', () => {
     });
   });
 
-  it('renders nothing when the mood is not lit', async () => {
+  it('shows a neutral "even" chip when the mood is not lit', async () => {
     global.fetch = vi.fn(async () => ({
       json: async () => ({ ok: true, result: { ok: true, lit: false, valence: 0, arousal: 0, quale: null } }),
     })) as unknown as typeof fetch;
 
-    const { container } = render(<AssistantMoodChip pollMs={60000} />);
+    render(<AssistantMoodChip pollMs={60000} />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-    expect(container.firstChild).toBeNull();
+    expect(screen.getByText('even')).toBeInTheDocument();
+  });
+
+  it('shows the neutral chip even when the mood fetch fails', async () => {
+    global.fetch = vi.fn(async () => { throw new Error('offline'); }) as unknown as typeof fetch;
+
+    render(<AssistantMoodChip pollMs={60000} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(screen.getByText('even')).toBeInTheDocument();
   });
 });

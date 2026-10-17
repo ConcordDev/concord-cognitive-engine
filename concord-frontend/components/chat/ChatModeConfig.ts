@@ -70,9 +70,9 @@ export const AI_MODES: AIMode[] = [
 export const PERSONAS: Persona[] = [
   {
     id: 'default',
-    name: 'Default Assistant',
+    name: 'Concord',
     icon: Bot,
-    description: 'Standard helpful assistant',
+    description: "Concord's own voice and personality",
     systemPrompt: '',
   },
   {

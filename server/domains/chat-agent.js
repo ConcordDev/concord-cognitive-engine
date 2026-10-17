@@ -12,6 +12,18 @@ export function resolveAgentMessage(input = {}) {
   return message || task || null;
 }
 
+/**
+ * System addendum for one chat_agent.do call. The optional voice block
+ * (prompts/voice.js, sent by lib/chat/agent-route.js) goes first; the route
+ * hint (which tool, cite only what it returned) goes last so grounding is the
+ * final word. Each part is length-capped. "" when neither is given.
+ */
+export function agentExtraSystemBlock(input = {}) {
+  const voice = typeof input?.voiceBlock === "string" ? input.voiceBlock.trim().slice(0, 2000) : "";
+  const hint = typeof input?.routeHint === "string" ? input.routeHint.trim().slice(0, 600) : "";
+  return [voice, hint].filter(Boolean).map((b) => `\n\n${b}`).join("");
+}
+
 export default function registerChatAgentMacros(register) {
   register("chat_agent", "do", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -39,9 +51,8 @@ export default function registerChatAgentMacros(register) {
         slot,
         // chat.respond's agent route (lib/chat/agent-route.js) says which
         // tool the request needs; a short system addendum, length-capped.
-        ...(typeof input.routeHint === "string" && input.routeHint.trim()
-          ? { extraSystemBlock: `\n\n${input.routeHint.trim().slice(0, 600)}` }
-          : {}),
+        // Voice block first, route hint (grounding) last: agentExtraSystemBlock.
+        ...(agentExtraSystemBlock(input) ? { extraSystemBlock: agentExtraSystemBlock(input) } : {}),
         ...(input.sessionId ? { sessionId: String(input.sessionId) } : {}),
       },
     });
