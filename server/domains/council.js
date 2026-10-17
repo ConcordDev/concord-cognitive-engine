@@ -7,6 +7,7 @@
 // same voices → same score (no flakiness). Real LLM-scored deliberation
 // is the council brain's job (see lib/council-world-bridge.js); this
 // macro is the lightweight analytical lens that doesn't pay LLM cost.
+import { isAdmin } from "../lib/lens-authz.js";
 function _voiceScoreFromLens(proposalText, lens) {
   const text = String(proposalText || "").toLowerCase();
   const tokens = String(lens || "general governance").toLowerCase().split(/\s+/).filter(t => t.length >= 4);
@@ -343,6 +344,17 @@ export default function registerCouncilActions(registerLensAction) {
     if (!cUser(ctx)) return { ok: false, error: "sign in required" };
     return null;
   }
+  // Council records are shared for reading, but only the record's author (or
+  // an admin) may change it. Legacy records without an authorId stay editable
+  // by any signed-in member.
+  function cManageGate(ctx, item) {
+    const uid = cUser(ctx);
+    if (!uid) return { ok: false, error: "sign in required" };
+    if (item && item.authorId && item.authorId !== uid && !isAdmin(ctx)) {
+      return { ok: false, error: "forbidden" };
+    }
+    return null;
+  }
   function cNextId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -400,6 +412,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.id);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     for (const k of ["title", "scheduledAt", "location", "description", "status"]) {
       if (params[k] !== undefined) m[k] = typeof params[k] === "string" ? params[k] : m[k];
     }
@@ -433,6 +446,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const topic = String(params.topic || "").trim();
     if (!topic) return { ok: false, error: "topic required" };
     const item = {
@@ -455,6 +469,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const item = m.agenda.find(a => a.id === params.itemId);
     if (!item) return { ok: false, error: "agenda item not found" };
     if (params.topic !== undefined) item.topic = String(params.topic);
@@ -472,6 +487,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const idx = m.agenda.findIndex(a => a.id === params.itemId);
     if (idx < 0) return { ok: false, error: "agenda item not found" };
     m.agenda.splice(idx, 1);
@@ -486,6 +502,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const order = Array.isArray(params.order) ? params.order : [];
     if (order.length !== m.agenda.length) return { ok: false, error: "order length mismatch" };
     const byId = new Map(m.agenda.map(a => [a.id, a]));
@@ -509,6 +526,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
     if (m.attendees.some(at => at.name.toLowerCase() === name.toLowerCase())) {
@@ -549,6 +567,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const at = m.attendees.find(a => a.id === params.attendeeId);
     if (!at) return { ok: false, error: "attendee not found" };
     at.present = params.present === undefined ? !at.present : !!params.present;
@@ -562,6 +581,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const idx = m.attendees.findIndex(a => a.id === params.attendeeId);
     if (idx < 0) return { ok: false, error: "attendee not found" };
     m.attendees.splice(idx, 1);
@@ -608,6 +628,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
     const url = String(params.url || "").trim();
@@ -629,6 +650,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
     if (!m) return { ok: false, error: "meeting not found" };
+    { const g = cManageGate(ctx, m); if (g) return g; }
     const idx = m.packet.findIndex(d => d.id === params.documentId);
     if (idx < 0) return { ok: false, error: "document not found" };
     m.packet.splice(idx, 1);
@@ -656,6 +678,11 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const description = String(params.description || "").trim();
     if (!description) return { ok: false, error: "description required" };
+    if (params.meetingId) {
+      const mtg = findMeeting(s, cUid(ctx), String(params.meetingId));
+      if (!mtg) return { ok: false, error: "meeting not found" };
+      const g = cManageGate(ctx, mtg); if (g) return g;
+    }
     const action = {
       id: cNextId("act"),
       authorId: cUid(ctx),
@@ -678,6 +705,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const a = cList(s.actions, cUid(ctx)).find(x => x.id === params.id);
     if (!a) return { ok: false, error: "action not found" };
+    { const g = cManageGate(ctx, a); if (g) return g; }
     if (params.description !== undefined) a.description = String(params.description);
     if (params.owner !== undefined) a.owner = String(params.owner);
     if (params.dueDate !== undefined) a.dueDate = String(params.dueDate);
@@ -712,10 +740,13 @@ export default function registerCouncilActions(registerLensAction) {
     const userId = cUid(ctx);
     const a = cList(s.actions, userId).find(x => x.id === params.id);
     if (!a) return { ok: false, error: "action not found" };
+    { const g = cManageGate(ctx, a); if (g) return g; }
     if (a.status !== "open") return { ok: false, error: "only open actions can be carried forward" };
     const targetMeetingId = params.targetMeetingId ? String(params.targetMeetingId) : null;
-    if (targetMeetingId && !findMeeting(s, userId, targetMeetingId)) {
-      return { ok: false, error: "target meeting not found" };
+    if (targetMeetingId) {
+      const target = findMeeting(s, userId, targetMeetingId);
+      if (!target) return { ok: false, error: "target meeting not found" };
+      const tg = cManageGate(ctx, target); if (tg) return tg;
     }
     a.status = "carried_forward";
     a.updatedAt = cNow();
@@ -956,6 +987,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (gate) return gate;
     const p = findProposal(s, params.id);
     if (!p) return { ok: false, error: "proposal not found" };
+    { const g = cManageGate(ctx, p); if (g) return g; }
     if (params.title !== undefined) {
       const title = String(params.title || "").trim();
       if (!title) return { ok: false, error: "title required" };
