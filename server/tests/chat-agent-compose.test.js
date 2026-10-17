@@ -117,3 +117,9 @@ test("tool failure replies don't end in a double period", async () => {
   const reply = composeToolTurnReply([{ tool: "run_lens_action", ok: false, error: "nothing can be played." }]);
   assert.ok(!reply.includes(".."), reply);
 });
+
+test("prompt routes real/existing music to ingest-itunes and new songs to compose, without claiming auto-play", () => {
+  assert.match(TOOL_SCHEMA_BLOCK, /REAL \/ EXISTING music[\s\S]*"action": "ingest-itunes"[\s\S]*Never compose for these/);
+  assert.match(TOOL_SCHEMA_BLOCK, /A NEW song[\s\S]*"action": "compose"/);
+  assert.match(TOOL_SCHEMA_BLOCK, /never say it is already playing/);
+});
