@@ -290,7 +290,7 @@ export function ConKayWorkspace() {
     setMobileTab((t) => (t === 'browse' ? 'chat' : t));
     push({ role: 'user', text });
     try {
-      const cmd = parseWorkspaceCommand(text, inputs.dims, materials);
+      const cmd = parseWorkspaceCommand(text, inputs.dims, materials, inputs.materialId);
       if (!cmd) { await askAgent(text); return; }
       if (cmd.changes.length === 0 && !cmd.run && !cmd.save && !cmd.keep) {
         reply(push({ role: 'assistant', text: '', pending: true }), 'No change — the study already has those values. Say “run FEA” to solve it again.');

@@ -55,8 +55,24 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
   }
 
   const util = result.utilization * 100;
+  const sc = result.safetyCheck;
   return (
     <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">
+      {sc?.stated && sc.pass !== null && (
+        <div className={`${card} col-span-2 2xl:col-span-4`} data-testid="sf-verdict">
+          {sc.pass
+            ? <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-300" aria-hidden />
+            : <ShieldAlert className="h-6 w-6 shrink-0 text-rose-300" aria-hidden />}
+          <div className="min-w-0">
+            <p className={`text-sm font-semibold ${sc.pass ? 'text-emerald-200' : 'text-rose-200'}`}>
+              {sc.pass ? 'PASS' : 'FAIL'} vs required SF {sc.requiredSafetyFactor}
+            </p>
+            <p className="truncate text-[11px] text-slate-400" title={sc.verdict}>
+              Achieved SF {sc.achievedSafetyFactor?.toFixed(2)} · margin {sc.marginPct !== null && sc.marginPct >= 0 ? '+' : ''}{sc.marginPct?.toFixed(1)}% · {sc.governing} governs
+            </p>
+          </div>
+        </div>
+      )}
       <div className={card}>
         {result.pass
           ? <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-300" aria-hidden />

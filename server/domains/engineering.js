@@ -8,6 +8,7 @@
 
 import { runFEA } from '../lib/simulation/fea-solver.js';
 import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
+import { parseSafetyFactor, safetyCheck } from '../lib/conkay/nlp-design-intent.js';
 import crypto from 'node:crypto';
 import { meshToSTL } from '../lib/asset-gen/stl-export.js';
 // boltedConnection (AISC allowable-shear) + transformerSizing (ANSI kVA
@@ -350,6 +351,23 @@ export function listBeamMaterials() {
   return Object.entries(MATERIAL_LIBRARY).map(([id, m]) => ({ id, ...m }));
 }
 
+/**
+ * A number (requiredSafetyFactor / safetyFactor) wins over text
+ * (safetyFactorText, read with the conkay_design parser). 1..20 only.
+ */
+export function beamRequiredSafetyFactor(data = {}) {
+  const raw = data.requiredSafetyFactor ?? data.safetyFactor;
+  if (raw !== undefined && raw !== null && raw !== '') {
+    const v = Number(raw);
+    if (Number.isFinite(v) && v >= 1 && v <= 20) return { value: v, source: `requiredSafetyFactor ${v}`, note: null };
+    return { value: null, source: null, note: `Ignored required safety factor ${String(raw).slice(0, 20)}: it must be between 1 and 20.` };
+  }
+  if (typeof data.safetyFactorText === 'string' && data.safetyFactorText.trim()) {
+    return parseSafetyFactor(data.safetyFactorText.slice(0, 2000));
+  }
+  return { value: null, source: null, note: null };
+}
+
 export function solveBeamStudy(data = {}, { onStage } = {}) {
   const matId = egClean(data.material || 'steel-a992', 40);
   const mat = MATERIAL_LIBRARY[matId];
@@ -361,6 +379,16 @@ export function solveBeamStudy(data = {}, { onStage } = {}) {
   const elapsedMs = Date.now() - t0;
   if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
   const summary = summarizeBeamStudy(study, fea, mat);
+  // Required safety factor (ConKay workspace: "… with a safety factor of 1.5").
+  // Same checker as conkay_design (PR #1286): achieved SF = yield / max stress
+  // from the hand calc and the FEA, the lower governs, PASS/FAIL with margin.
+  const sfReq = beamRequiredSafetyFactor(data);
+  if (sfReq.note) summary.warnings = [...(summary.warnings || []), sfReq.note];
+  summary.safetyCheck = safetyCheck(
+    { safetyFactor: sfReq.value ?? undefined, safetyFactorSource: sfReq.source, material: null },
+    { applicable: true, maxStressPa: study.handCheck.maxStressMPa * 1e6, allowablePa: mat.yield * 1e6 },
+    { ok: true, maxStressPa: summary.maxStressMPa * 1e6 },
+  );
   const utilizationByMember = fea.utilization.map((u) => ({ id: u.id, utilization: u.utilization, band: utilizationBand(u.utilization) }));
   return {
     ok: true, matId, mat, study, fea, summary, elapsedMs,
@@ -1196,6 +1224,7 @@ export default function registerEngineeringActions(registerLensAction) {
         if (jobs.length > 50) jobs.length = 50;
         s.beamStudies.set(beamStudyKey(ctx, data), {
           workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
+          requiredSafetyFactor: summary.safetyCheck?.stated ? summary.safetyCheck.requiredSafetyFactor : null,
           jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
           utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
         });

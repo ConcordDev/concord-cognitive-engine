@@ -29,6 +29,8 @@ export interface WorkspaceCommand {
   loadN?: number;
   support?: BeamSupport;
   materialId?: string;
+  /** Required safety factor stated in the prompt ("safety factor of 1.5"). */
+  requiredSafetyFactor?: number;
   run: boolean;
   save: boolean;
   keep: boolean;
@@ -64,13 +66,16 @@ const DIM_PATTERNS: Array<{ key: keyof BeamDims; re: string }> = [
 ];
 
 const NUM = '(-?\\d+(?:\\.\\d+)?)';
-const LEN_UNIT = '(mm|cm|m|ft|feet|foot|in|inch|inches|")?';
+// Longest spellings first. "3 m", "3 meter", "3 metres", "3000 mm", "10 ft".
+const LEN_UNITS = 'millimeters|millimetres|millimeter|millimetre|centimeters|centimetres|centimeter|centimetre|meters|metres|meter|metre|mm|cm|m|feet|foot|ft|inches|inch|in|"';
+const LEN_UNIT = `(${LEN_UNITS})?`;
 const G_N_PER_KG = 9.80665;
 
 function toMm(value: number, unit: string | undefined): number {
   switch ((unit || 'mm').toLowerCase()) {
-    case 'cm': return value * 10;
-    case 'm': return value * 1000;
+    case 'cm': case 'centimeter': case 'centimeters': case 'centimetre': case 'centimetres': return value * 10;
+    case 'm': case 'meter': case 'meters': case 'metre': case 'metres': return value * 1000;
+    case 'millimeter': case 'millimeters': case 'millimetre': case 'millimetres': return value;
     case 'ft': case 'feet': case 'foot': return value * 304.8;
     case 'in': case 'inch': case 'inches': case '"': return value * 25.4;
     default: return value;
@@ -107,6 +112,7 @@ export function parseWorkspaceCommand(
   text: string,
   current: BeamDims,
   materials: MaterialOption[] = [],
+  currentMaterialId?: string,
 ): WorkspaceCommand | null {
   const src = ` ${String(text || '').replace(/\s+/g, ' ').trim()} `;
   if (!src.trim()) return null;
@@ -143,9 +149,17 @@ export function parseWorkspaceCommand(
   }
 
   // "4 m span" / "4 m long" / "12 ft span" — the number comes before the word.
+  // Also "a 3 m simply supported aluminum beam": a length followed, within a
+  // few words, by beam/girder/joist, unless one of those words names another
+  // dimension ("a 300 mm deep beam" is a depth, not a span).
   if (cmd.dims.length === undefined) {
-    const trail = new RegExp(`${NUM}\\s*(mm|cm|m|ft|feet|foot|in|inch|inches|")\\s*(?:span|long|length)\\b`, 'i');
-    const t = trail.exec(src);
+    const trail = new RegExp(`${NUM}\\s*(${LEN_UNITS})\\s*(?:span|long|length)\\b`, 'i');
+    const beam = new RegExp(`${NUM}\\s*(${LEN_UNITS})(?![a-z])((?:\\s+[a-z][a-z-]*){0,4}?)\\s+(?:i-?beam|beam|girder|joist|lintel)s?\\b`, 'i');
+    let t = trail.exec(src);
+    if (!t) {
+      const b = beam.exec(src);
+      if (b && !/\b(?:deep|depth|tall|high|height|wide|width|thick|thickness|flange|web|diameter|dia)\b/i.test(b[3] || '')) t = b;
+    }
     if (t) {
       mark(t);
       const v = toMm(Number(t[1]), t[2]);
@@ -167,10 +181,19 @@ export function parseWorkspaceCommand(
   else if (/simply[\s-]*supported|pinned|pin[\s-]+roller/.test(lower)) cmd.support = 'simply-supported';
   if (cmd.support) cmd.changes.push(`support = ${SUPPORT_LABELS[cmd.support].toLowerCase()}`);
 
-  const mat = matchMaterial(lower, materials);
-  if (mat) {
+  const mat = matchMaterial(lower, materials) || matchMaterialFamily(lower, materials, currentMaterialId);
+  if (mat && mat.id !== currentMaterialId) {
     cmd.materialId = mat.id;
     cmd.changes.push(`material = ${mat.label}`);
+  } else if (mat) {
+    cmd.materialId = mat.id;
+  }
+
+  const sf = parseSafetyFactor(src);
+  if (sf.value !== null) {
+    mark(sf.match);
+    cmd.requiredSafetyFactor = sf.value;
+    cmd.changes.push(`required SF = ${sf.value}`);
   }
 
   cmd.run = /\b(?:re-?run|run|solve|re-?solve|analy[sz]e|re-?analy[sz]e|recompute)\b/i.test(src) || /^\s*fea\s*$/i.test(src);
@@ -181,7 +204,7 @@ export function parseWorkspaceCommand(
   if (!anything) return null;
 
   const unapplied: string[] = [];
-  const tokenRe = /(\d+(?:\.\d+)?)\s*(mm|cm|m|ft|feet|foot|in|inch|inches|tonnes|tonne|tons|ton|kn|mn|lbf|lbs|kips|kip|kg|lb|n|t)(?![a-z])/gi;
+  const tokenRe = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(${LEN_UNITS}|tonnes|tonne|tons|ton|kn|mn|lbf|lbs|kips|kip|kg|lb|n|t)(?![a-z])`, 'gi');
   let token: RegExpExecArray | null;
   while ((token = tokenRe.exec(src)) !== null) {
     const a = token.index;
@@ -240,17 +263,86 @@ function matchMaterial(lower: string, materials: MaterialOption[]): MaterialOpti
   return best ? best.m : null;
 }
 
+/**
+ * A material family word with no grade ("aluminum", "steel", "stainless",
+ * "timber") picks the library's default entry for that family. The current
+ * material is kept when it is already in the family ("steel" on A36 stays A36).
+ */
+const FAMILY_DEFAULTS: Array<{ re: RegExp; family: RegExp; prefer: string[] }> = [
+  { re: /\balumin(?:i)?um\b|\balu\b/, family: /alumin/, prefer: ['aluminum-6061-t6', '6061'] },
+  { re: /\bstainless\b/, family: /stainless/, prefer: ['stainless-304', '304'] },
+  { re: /\bsteel\b/, family: /^steel|structural steel|alloy steel/, prefer: ['steel-a992', 'a992', 'steel-a36'] },
+  { re: /\btitanium\b/, family: /titanium/, prefer: ['titanium-ti6al4v'] },
+  { re: /\b(?:timber|lumber|wood(?:en)?)\b/, family: /fir|wood|lumber|timber/, prefer: ['douglas-fir'] },
+  { re: /\bcarbon[\s-]+fib(?:er|re)\b|\bcfrp\b/, family: /cfrp|carbon fib/, prefer: ['cfrp'] },
+  { re: /\bconcrete\b/, family: /concrete/, prefer: ['concrete-30mpa'] },
+];
+
+function matchMaterialFamily(lower: string, materials: MaterialOption[], currentId?: string): MaterialOption | null {
+  const stainless = /\bstainless\b/.test(lower);
+  for (const f of FAMILY_DEFAULTS) {
+    if (!f.re.test(lower)) continue;
+    if (f.family.source.startsWith('^steel') && stainless) continue; // "stainless steel" is not carbon steel
+    const inFamily = materials.filter((m) => f.family.test(`${m.id} ${m.label}`.toLowerCase()) && !(f.family.source.startsWith('^steel') && /stainless/.test(`${m.id} ${m.label}`.toLowerCase())));
+    if (!inFamily.length) continue;
+    const cur = inFamily.find((m) => m.id === currentId);
+    if (cur) return cur;
+    for (const p of f.prefer) {
+      const hit = inFamily.find((m) => m.id === p) || inFamily.find((m) => m.id.includes(p) || m.label.toLowerCase().includes(p));
+      if (hit) return hit;
+    }
+    return inFamily[0];
+  }
+  return null;
+}
+
+// Same phrasings as the server's conkay_design parser
+// (server/lib/conkay/nlp-design-intent.js parseSafetyFactor, PR #1286).
+// The workspace sends the number; the server computes PASS/FAIL with it.
+const SF_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const SF_NUM = '(\\d+(?:\\.\\d+)?|one|two|three|four|five|six)';
+const SF_PATTERNS = [
+  new RegExp(`\\b(?:safety\\s+factor|factor\\s+of\\s+safety|fo?s|sf)\\s*(?:of|=|:|is|at|>=|≥)?\\s*(?:at\\s+least\\s+)?${SF_NUM}\\b`, 'i'),
+  new RegExp(`\\b${SF_NUM}\\s*(?:x|×)?\\s*(?:safety\\s+factor|factor\\s+of\\s+safety)\\b`, 'i'),
+];
+
+export function parseSafetyFactor(text: string): { value: number | null; match: RegExpExecArray | null } {
+  for (const re of SF_PATTERNS) {
+    const m = re.exec(String(text || ''));
+    if (!m) continue;
+    const w = m[1].toLowerCase();
+    const value = SF_WORDS[w] ?? Number(w);
+    if (!Number.isFinite(value) || value < 1 || value > 20) return { value: null, match: m };
+    return { value, match: m };
+  }
+  return { value: null, match: null };
+}
+
 /** Apply a parsed command to the current inputs. Validation is the server's job. */
 export function applyWorkspaceCommand(
   cmd: WorkspaceCommand,
-  current: { dims: BeamDims; loadN: number; support: BeamSupport; materialId: string },
+  current: { dims: BeamDims; loadN: number; support: BeamSupport; materialId: string; requiredSafetyFactor?: number | null },
 ) {
   return {
     dims: { ...current.dims, ...cmd.dims },
     loadN: cmd.loadN ?? current.loadN,
     support: cmd.support ?? current.support,
     materialId: cmd.materialId ?? current.materialId,
+    ...((cmd.requiredSafetyFactor ?? current.requiredSafetyFactor) != null
+      ? { requiredSafetyFactor: cmd.requiredSafetyFactor ?? current.requiredSafetyFactor }
+      : {}),
   };
+}
+
+export interface BeamSafetyCheck {
+  requiredSafetyFactor: number;
+  stated: boolean;
+  achievedSafetyFactor: number | null;
+  governing: string | null;
+  margin: number | null;
+  marginPct: number | null;
+  pass: boolean | null;
+  verdict: string;
 }
 
 export interface BeamStudyResult {
@@ -270,6 +362,8 @@ export interface BeamStudyResult {
   utilization: number;
   safetyFactor: number;
   pass: boolean;
+  /** PASS/FAIL against the required safety factor (server: engineering.beamStudy). */
+  safetyCheck?: BeamSafetyCheck;
   handCheck: {
     maxStressMPa: number;
     maxDeflectionMm: number;
@@ -336,6 +430,7 @@ export function describeStudy(r: BeamStudyResult, previous?: BeamStudyResult | n
     if (Math.abs(d) >= 0.0005) stress += ` (${d > 0 ? '+' : ''}${(d * 100).toFixed(1)}%)`;
   }
   lines.push(`FEA complete. ${stress}, deflection ${r.maxDeflectionMm.toFixed(3)} mm.`);
+  if (r.safetyCheck?.stated) lines.push(`${r.safetyCheck.verdict}`);
   lines.push(
     r.pass
       ? `Bending stress within yield for ${r.material.label}: utilization ${pct(r.utilization)}, safety factor ${r.safetyFactor.toFixed(2)}.`
