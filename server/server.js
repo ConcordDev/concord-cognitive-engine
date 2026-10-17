@@ -50427,23 +50427,22 @@ registerLensAction("music", "analyze", (ctx, artifact, _params) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("music", "render", (ctx, artifact, params) => {
-  const render = { id: uid("mrender"), trackId: artifact.id, format: params.format || "wav", status: "complete", renderedAt: nowISO() };
-  artifact.data = { ...artifact.data, lastRender: render };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, render };
+  return { ok: false, error: "Music rendering is not available: Concord cannot generate or render audio yet.", reason: "no_audio_generator" };
 });
 registerLensAction("music", "publish", (ctx, artifact, _params) => {
+  if (!artifact) return { ok: false, error: "a music artifact is required" };
   artifact.data = { ...artifact.data, status: "published", publishedAt: nowISO() };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
   return { ok: true, published: true };
 });
 registerLensAction("music", "export_stems", (ctx, artifact, _params) => {
+  if (!artifact) return { ok: false, error: "a music artifact is required" };
   const stems = (artifact.data?.stems || ["vocals", "drums", "bass", "other"]).map(s => ({ name: s, format: "wav", exportedAt: nowISO() }));
   return { ok: true, stems };
 });
 registerLensAction("music", "generate_arrangement", (ctx, artifact, params) => {
+  if (!artifact) return { ok: false, error: "a music artifact is required" };
   const bpm = artifact.data?.bpm || 120;
   const duration = artifact.data?.duration || 180;
   const genre = artifact.data?.genre || "pop";

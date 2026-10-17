@@ -7,10 +7,20 @@
  * and a plain DTU save are answered from the tool results only.
  */
 
-export function shouldSkipToolFollowup(results) {
+export function shouldSkipToolFollowup(results, opts = {}) {
   const list = Array.isArray(results) ? results : [];
   if (!list.length) return false;
-  if (list.some((r) => !r?.ok)) return true;
+  if (list.some((r) => !r?.ok)) {
+    if (opts.allowRetry) {
+      const retryable = list.every((r) => {
+        if (r?.ok) return true;
+        if (r?.retryHint || r?.validActions) return true;
+        return /unknown tool|not registered|required|missing/i.test(String(r?.error || ""));
+      });
+      if (retryable) return false;
+    }
+    return true;
+  }
   return list.every((r) => r?.tool === "create_dtu");
 }
 

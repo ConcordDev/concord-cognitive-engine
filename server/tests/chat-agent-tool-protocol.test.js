@@ -159,7 +159,8 @@ test("agent prompt names design, tasks, calendar, and music, and forbids invente
   assert.match(TOOL_SCHEMA_BLOCK, /conkay_design/);
   assert.match(TOOL_SCHEMA_BLOCK, /productivity\.task-add/);
   assert.match(TOOL_SCHEMA_BLOCK, /events-create/);
-  assert.match(TOOL_SCHEMA_BLOCK, /music\.render/);
+  assert.doesNotMatch(TOOL_SCHEMA_BLOCK, /music\.render/);
+  assert.match(TOOL_SCHEMA_BLOCK, /cannot generate song audio/);
   assert.match(TOOL_SCHEMA_BLOCK, /Never claim a source you did not actually retrieve/);
   assert.match(TOOL_SCHEMA_BLOCK, /Wikipedia/);
   assert.match(TOOL_SCHEMA_BLOCK, /official Node\.js page/);
