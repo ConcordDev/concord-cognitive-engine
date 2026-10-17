@@ -53492,6 +53492,26 @@ app.get("/api/chat/sessions", requireAuth(), async (req, res) => {
   }
 });
 
+// Delete one of the signed-in user's persisted chat sessions (and its messages).
+// Owner-only: another user's session is 403, an unknown one 404.
+app.delete("/api/chat/sessions/:id", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const sessionId = String(req.params.id || "").slice(0, 200);
+    const { deleteChatSession } = await import("./lib/chat-session-store.js");
+    const r = deleteChatSession(STATE.db, sessionId, userId);
+    if (!r.ok) return res.status(r.error === "not_found" ? 404 : r.error === "forbidden" ? 403 : 400).json(r);
+    try {
+      const mem = STATE.sessions?.get?.(sessionId);
+      if (mem && (!mem.ownerId || mem.ownerId === userId)) STATE.sessions.delete(sessionId);
+    } catch { /* in-memory copy is best-effort */ }
+    res.json({ ok: true, sessionId, deletedMessages: r.deleted });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
 // Persist a single chat turn from any lens (used by the code lens
 // AI chat for example, where llm.local doesn't auto-persist the way
 // chat.respond does). Owner-gated by stamping ownerId on session
