@@ -503,6 +503,36 @@ def pod_feature(w, x, dx, zb, W_body, top_body, P):
             "tuck": P["podTuck"], "n": P["podExponent"], "wheel": w["id"], "t": t, "crown": top, "uOut": u_out}
 
 
+def roof_debug(xs, reqs, rsrc, zd, Gs, zt_req, zt_closed, zt_sloped, zt, P):
+    """Diagnostics (CONKAY_BODY_ROOF_DEBUG=<file>): per station, the greenhouse roof requirement and which envelope or
+    point sets it (leave-one-out: the source whose removal lowers the requirement most), then the roof after each stage."""
+    rows = []
+    for i, x in enumerate(xs):
+        by = {}
+        for q, sid in zip(reqs[i], rsrc[i]):
+            by.setdefault(sid, []).append(q)
+        full = Gs[i]["zt"] if Gs[i] else zd[i]
+        drops = []
+        for sid in by:
+            rest = [q for q, s2 in zip(reqs[i], rsrc[i]) if s2 != sid]
+            up = half_hull([(abs(y), z) for q in rest for (y, z) in clip_poly(q, zd[i], False) if z > zd[i] + 1e-9])
+            G = fit_green(up, zd[i], P["upperExponent"]) if up else None
+            drops.append((full - (G["zt"] if G else zd[i]), sid))
+        drops.sort(reverse=True)
+        solo = []  # each source alone: the roof apex it would require by itself
+        for sid, qs in by.items():
+            up = half_hull([(abs(y), z) for q in qs for (y, z) in clip_poly(q, zd[i], False) if z > zd[i] + 1e-9])
+            G = fit_green(up, zd[i], P["upperExponent"]) if up else None
+            if G:
+                solo.append((G["zt"], sid, max(u for u, _ in up), max(z for _, z in up)))
+        solo.sort(reverse=True)
+        rows.append({"solo": [[round(a, 4), sid, round(u, 3), round(z, 3)] for a, sid, u, z in solo[:6]], "x": x, "deck": zd[i], "zt_req": zt_req[i], "closed": zt_closed[i], "slopeLimited": zt_sloped[i], "smoothed": zt[i],
+                     "Wg": Gs[i]["Wg"] if Gs[i] else None, "setBy": drops[0][1] if drops and drops[0][0] > 1e-6 else None,
+                     "setByDrop": drops[0][0] if drops else None})
+    with open(os.environ["CONKAY_BODY_ROOF_DEBUG"], "w") as f:
+        json.dump(rows, f)
+
+
 def solve_sections(req, extra, adj=None):
     P = req["params"]
     o = P["skinOffset"]
@@ -517,21 +547,27 @@ def solve_sections(req, extra, adj=None):
     # body requirement points per station (u = |y|, z), each inflated by the skin offset (+ any local
     # extra); the wheels are not in them: the pods carry the tyres
     reqs = []
+    rsrc = []  # the id of the envelope or point that made each polygon in reqs (for the roof requirement diagnostics)
     for x in xs:
         polys = []  # convex (y, z) polygons: each box's slab, grown by its offset; points as 1-gons
+        srcs = []
         for b, c in zip(boxes, allc):
             oo = b.get("offsetM", o) + extra.get(b["id"], 0.0)  # an envelope may set its own clearance (structure: the skin thickness)
             v = slab_vertices(c, x - dx / 2 - oo, x + dx / 2 + oo)
             if v:
                 polys.append(hull([(y + sy * oo, z + sz * oo) for (y, z) in v for sy in (-1, 1) for sz in (-1, 1)]))
+                srcs.append(b["id"])
         for p in req.get("points", []):
             if abs(p["p"][0] - x) <= dx:  # both stations either side of the point carry it
                 polys.append([(p["p"][1], p["p"][2] + extra.get(p["id"], 0.0))])
+                srcs.append(p["id"])
         reqs.append(polys)
+        rsrc.append(srcs)
     for i in range(len(reqs)):  # a station with nothing in its window takes its neighbour's points
         if not reqs[i]:
             j = min((k for k in range(len(reqs)) if reqs[k]), key=lambda k: abs(k - i))
             reqs[i] = reqs[j]
+            rsrc[i] = rsrc[j]
     # 1. floor: the lowest point less the corner allowance, smoothed from below
     zb = closing(xs, [min(z for q in p for _, z in q) - P["floorCornerAllowance"] for p in reqs], P["floorClosingRadius"], above=False)
     # 2. deck (lower-body top / greenhouse base): per-station minimum-area split, smoothed
@@ -575,8 +611,11 @@ def solve_sections(req, extra, adj=None):
         parts.append((lo, up))
     Gs = [fit_green(up, d, P["upperExponent"]) if up else None for (lo, up), d in zip(parts, zd)]
     zt_req = [G["zt"] if G else d for G, d in zip(Gs, zd)]
-    zt = closing(xs, zt_req, P["roofClosingRadius"], above=True)
-    zt = smooth_env(xs, slope_limit(xs, zt, math.tan(math.radians(P["fastbackDeg"]))), sig)
+    zt_closed = closing(xs, zt_req, P["roofClosingRadius"], above=True)
+    zt_sloped = slope_limit(xs, zt_closed, math.tan(math.radians(P["fastbackDeg"])))
+    zt = smooth_env(xs, zt_sloped, sig)
+    if os.environ.get("CONKAY_BODY_ROOF_DEBUG"):
+        roof_debug(xs, reqs, rsrc, zd, Gs, zt_req, zt_closed, zt_sloped, zt, P)
     nl, nu = P["lowerExponent"], P["upperExponent"]
     W_req, Wg_req = [], []
     for i in range(n):
