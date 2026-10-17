@@ -15957,16 +15957,20 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
       model,
       messages: [{ role:"user", content: prompt, images: [imageB64] }]
     };
+    const _visionStart = Date.now();
+    const { recordBrainCall } = await import("./lib/brain/record-brain-call.js");
     try {
       const r = await BREAKERS.ollama.call(() =>
         fetch(`${OLLAMA_URL}/api/chat`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(60000) })
       );
+      recordBrainCall(BRAIN.multimodal, { ok: !!(r && r.ok), startedAt: _visionStart });
       if (r && r.ok) {
         const j = await r.json().catch(()=>null);
         const content = j?.message?.content || j?.response || "";
         return { ok:true, content, source: "ollama_llava" };
       }
     } catch (e) {
+      recordBrainCall(BRAIN.multimodal, { ok: false, startedAt: _visionStart });
       structuredLog("warn", "ollama_call_failed", { error: String(e?.message || e), circuit: BREAKERS.ollama.getState().state });
     }
   }
@@ -59655,10 +59659,14 @@ async function processVoiceNote(audioBuffer, options = {}) {
 // ---- Image Analysis ----
 async function analyzeImage(imageBuffer, prompt = "Describe this image in detail.") {
   // 4-lane: routes through vision-inference (CF Workers AI when BRAIN_VISION_PROVIDER=cloudflare)
+  const _visionStart = Date.now();
+  const { recordBrainCall } = await import("./lib/brain/record-brain-call.js");
   try {
     const base64 = imageBuffer.toString("base64");
     const { callVision } = await import("./lib/vision-inference.js");
     const visionResult = await callVision(base64, prompt);
+    // callVision bypasses callBrain, so count the call on the multimodal slot here.
+    recordBrainCall(BRAIN.multimodal, { ok: !!visionResult.ok, startedAt: _visionStart });
     if (!visionResult.ok) {
       return { ok: false, error: visionResult.error || "vision_failed", model: visionResult.model };
     }
@@ -59669,6 +59677,7 @@ async function analyzeImage(imageBuffer, prompt = "Describe this image in detail
       source: visionResult.source,
     };
   } catch (e) {
+    recordBrainCall(BRAIN.multimodal, { ok: false, startedAt: _visionStart });
     return { ok: false, error: String(e.message || e) };
   }
 }
