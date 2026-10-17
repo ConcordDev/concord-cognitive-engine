@@ -73,3 +73,20 @@ test("agent tool calls get Chat card params and a capped result", () => {
   assert.ok(tc.result.length < 3100);
   assert.equal(tc.artifacts, undefined);
 });
+
+test("a complete tool call missing its closing bracket still runs", async () => {
+  const { parseToolCalls } = await import("../lib/chat-agent.js");
+  const call = `[TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "food", "action": "recipe-create", "params": {"title": "p"}}}`;
+  assert.equal(parseToolCalls(call).length, 1);
+  assert.equal(parseToolCalls(`${call}\nthen more`).length, 1);
+  assert.equal(parseToolCalls(`${call} trailing prose`).length, 0);
+});
+
+test("real-music term and source links", async () => {
+  const { realMusicTerm, withSourceLinks } = await import("../lib/chat/agent-route.js");
+  assert.equal(realMusicTerm("Play a real song by Daft Punk."), "Daft Punk");
+  assert.equal(realMusicTerm("play Bohemian Rhapsody"), "Bohemian Rhapsody");
+  const out = withSourceLinks("Intel news.", [{ title: "Intel", url: "https://a.example/1" }]);
+  assert.match(out, /Sources:\n1\. \[Intel\]\(https:\/\/a\.example\/1\)/);
+  assert.equal(withSourceLinks("see https://a.example/1", [{ title: "Intel", url: "https://a.example/1" }]), "see https://a.example/1");
+});

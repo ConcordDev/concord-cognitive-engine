@@ -175,11 +175,22 @@ export function findToolCallSpans(text) {
     if (endObj < 0) { i = start + TOOL_CALL_MARKER.length; continue; }
     let k = endObj;
     while (k < s.length && /\s/.test(s[k])) k++;
-    if (s[k] !== "]") { i = start + TOOL_CALL_MARKER.length; continue; }
     const json = s.slice(j, endObj);
     let parsed = null;
     try { parsed = JSON.parse(json); } catch { parsed = null; }
-    const end = k + 1;
+    let end = k + 1;
+    if (s[k] !== "]") {
+      // qwen3 sometimes drops the closing "]" of a complete call (chat-par probe:
+      // a recipe-create marker came back as the visible answer and nothing ran).
+      // Accept it only when the object is a valid call and nothing else follows
+      // on that line: end of text, a newline, or the next marker.
+      const lineEnd = k >= s.length || /[\r\n]/.test(s.slice(endObj, k)) || s.startsWith(TOOL_CALL_MARKER, k);
+      if (!(lineEnd && parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.tool)) {
+        i = start + TOOL_CALL_MARKER.length;
+        continue;
+      }
+      end = endObj;
+    }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !parsed.tool) {
       const next = s.indexOf(TOOL_CALL_MARKER, start + TOOL_CALL_MARKER.length);
       // Self-contained junk (`[TOOL_CALL: {not valid json}]`) — drop the
