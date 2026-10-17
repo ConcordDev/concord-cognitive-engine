@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { registerSolver } from "../registry.js";
 import { readRun, sha256File } from "../../cfd/run-store.js";
 import { tailStatistics, convergenceVerdict, CONVERGENCE_LIMITS, FORCE_COEFFS_VERSION } from "../../cfd/force-coeffs.js";
+import { meshStudyFromStore } from "../../cfd/mesh-study.js";
 import { AHMED_CFD_VALIDATION, AHMED_TOLERANCE, validationAccepted } from "../../cfd/validation.js";
 
 export const AERO_CFD = "aero.cfd";
@@ -103,9 +104,19 @@ export const aeroCfd = registerSolver({
         outputs: { unvalidated: { value: { meanCd: stats.mean, dragArea: stats.mean * record.case.aref }, status: "not_a_result", note: "a settled run on a template that has not passed its Ahmed acceptance" } },
       };
     }
+    // Optional: a grid-convergence study (coarse/medium/fine runs of this body). It adds an output
+    // and never changes the verdict above; with no non-medium run recorded, nothing is added.
+    let study = null;
+    try { study = meshStudyFromStore(key); } catch (e) { study = { status: "NOT_COMPUTED", reason: `cannot read the grid-study runs (${e.message})` }; }
+    const studyOut = study && {
+      value: study.status === "COMPUTED" ? { ...study.discretizationUncertainty, levels: study.levels, convergence: study.gci.convergence, asymptoticRatio: study.gci.asymptoticRatio } : { status: "NOT_COMPUTED", reason: study.reason, levels: study.levels },
+      basis: `computed: Celik et al. 2008 GCI over coarse/medium/fine runs (r = sqrt 2); ${study.basis?.h || ""}`,
+      note: "discretization uncertainty of Cd on this mesh family only; not a validation, not turbulence-model or iterative error",
+    };
     return {
       inputs,
       outputs: {
+        ...(studyOut ? { discretizationUncertainty: studyOut } : {}),
         dragCoefficient: { value: stats.mean, sd: stats.sd, unit: "1", basis: `computed: mean Cd of iterations ${stats.fromTime}..${stats.toTime} (sd/mean ${(stats.relSd * 100).toFixed(2)} %, half-window drift ${(stats.relDrift * 100).toFixed(2)} %)`, note: "body without wheels: lower than the full car's" },
         dragArea: { value: stats.mean * record.case.aref, unit: "m2", basis: "computed: Cd x the recorded reference area" },
         liftCoefficient: { value: lift.mean, sd: lift.sd, unit: "1", note: "zero yaw, moving ground, no wheels" },
@@ -116,7 +127,7 @@ export const aeroCfd = registerSolver({
       },
       warnings: [
         "body without wheels, mirrors or cooling flow: compare designs by this drag area; it is not the car's drag coefficient",
-        "steady RANS (k-omega SST) on a single mesh: no grid-convergence study",
+        study?.status === "COMPUTED" ? "steady RANS (k-omega SST); grid-convergence study attached as discretizationUncertainty (mesh-family error only)" : "steady RANS (k-omega SST) on a single mesh: no grid-convergence study",
       ],
       assumptions: [
         "Air at 40 m/s, kinematic viscosity 1.5e-5 m2/s (Re about 1.4e7 on a 5.2 m body); the road moves with the air.",
