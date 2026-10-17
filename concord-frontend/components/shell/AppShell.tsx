@@ -289,7 +289,7 @@ export function AppShell({ children }: AppShellProps) {
     // Keep children in the tree during hydration so first paint is the
     // page (not an empty main). Chrome waits until mounted.
     return (
-      <div className="flex h-screen overflow-hidden bg-lattice-void">
+      <div className="flex app-viewport-h overflow-hidden bg-lattice-void">
         <main id="main-content" role="main" className="flex-1">{children}</main>
       </div>
     );
@@ -303,7 +303,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-lattice-void">
+    <div className="flex app-viewport-h overflow-hidden bg-lattice-void">
       <ConnectionStatus />
       {/*
         FE-013: Skip-to-content link for keyboard navigation.
@@ -354,7 +354,7 @@ export function AppShell({ children }: AppShellProps) {
           id="main-content"
           role="main"
           tabIndex={-1}
-          className={`flex-1 overflow-auto transition-all duration-300 pb-16 md:pb-0 ${
+          className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad ${
             sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
         >
