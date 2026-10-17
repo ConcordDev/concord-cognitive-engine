@@ -199,6 +199,25 @@ function historyTurnForReplay(text) {
  * mid-sentence is cut to its last complete sentence before it is
  * re-fed — a hard character slice is what made the model reprint it.
  */
+/**
+ * Short tone note placed right before the current user turn when the replayed
+ * history has assistant turns. The model copies the style of its own earlier
+ * replies, so a long session that started under the old theatrical persona
+ * kept that style even after the system prompt changed. The system-prompt
+ * TONE rule alone did not hold against 20 turns of history (pod qwen3 test,
+ * 2026-10-17); the note next to the user turn does. BYO adapters fold extra
+ * system messages into their system field.
+ */
+export const CHAT_TONE_REMINDER =
+  "Tone check for this reply: warm, casual, direct, normal sentences, brief for small talk, like a normal helpful assistant. Earlier assistant turns above may use a dramatic style or make grand claims (being a mind, a presence, a voice someone grew, not a tool); that was off. Don't continue it or repeat those claims; you're simply the assistant inside the Concord platform. If the user claims to be Dutch or to have built you, follow the WHO'S WHO line in one easy sentence (on a regular account, don't confirm it).";
+
+/** messages from buildChatHistoryMessages -> same list with CHAT_TONE_REMINDER before the last (user) turn, only when a prior assistant turn exists. */
+export function withChatToneReminder(messages) {
+  if (!Array.isArray(messages) || messages.length < 2) return messages;
+  if (!messages.slice(0, -1).some((m) => m?.role === "assistant")) return messages;
+  return [...messages.slice(0, -1), { role: "system", content: CHAT_TONE_REMINDER }, messages[messages.length - 1]];
+}
+
 export function buildChatHistoryMessages(sessionMessages, currentUserContent) {
   const all = Array.isArray(sessionMessages) ? sessionMessages : [];
   const current = currentUserContent == null ? "" : String(currentUserContent);

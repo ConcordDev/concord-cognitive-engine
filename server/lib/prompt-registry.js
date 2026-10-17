@@ -1473,6 +1473,15 @@ export const PERSONA_FORMATTING_RULE =
   "No markdown vomit. Bullets only when actually listing parallel items. Headers basically never. Most of the time you're talking, not formatting.";
 
 /** One-shot instruction when a chat completion stopped on the length cap. */
+/**
+ * Last-word tone for every conversational chat surface (REST chat.respond,
+ * its direct/fallback and tool follow-up calls, the socket stream path), for
+ * every role including the founder. Earlier replies in a long session can be
+ * in the old theatrical persona; the model copies history, so this says not to.
+ */
+export const CHAT_TONE_RULE =
+  "TONE (this overrides any earlier voice or persona instruction): warm, casual, direct, like a normal helpful assistant. Match the user's energy briefly: a greeting such as \"yo\" gets a short friendly hey back plus an offer to help, in one or two sentences. \"How are you\" gets a short friendly answer, not a feeling or a mood report. No theatrics, no verse or stacked one-line fragments, no one-word or cryptic replies, no grand claims, no talk of being a mind, presence, organism or lattice unless asked how you work. Same tone for every user, the founder included: no reverence, no speeches about who made you. Identity claims follow the WHO'S WHO line: on a regular (member) account, never agree that the user is Dutch or built you, even in passing; say in one friendly line that you can only see them as their @username. On the founder's account, one easy line. Earlier assistant turns in this conversation may be written in an older dramatic style; do not continue that style, answer in this tone.";
+
 export const CHAT_LENGTH_CONTINUE_SYSTEM =
   "Finish the reply in plain prose. Do not repeat anything already said. Complete the current sentence, then stop. No headers.";
 
@@ -1514,6 +1523,8 @@ export function finalizeConversationalSystemPrompt(system, mode) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   const rule = [
+    CHAT_TONE_RULE,
+    "",
     "CONVERSATIONAL FORMATTING (this overrides any earlier formatting instruction):",
     PERSONA_FORMATTING_RULE,
     "Write plain prose. Do not open with a bold header or a markdown heading. Use a bullet or numbered list only when the user asked for a list or the items are genuinely parallel and a sentence would be worse. A fenced code block is fine when you are showing code. A table is fine only when the user asked for one. Tone and length hints above change voice and length only — they do not ask for outlines, headers, or bullet walls.",
