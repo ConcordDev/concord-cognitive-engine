@@ -1,0 +1,105 @@
+{
+ "schema_version": "1.2.1",
+ "generated_at": "2026-10-17T03:16:32+00:00",
+ "total": 8,
+ "result": [
+  {
+   "name": "go",
+   "aliases": [
+    "golang"
+   ],
+   "label": "Go",
+   "category": "lang",
+   "tags": [
+    "google",
+    "lang"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/go"
+  },
+  {
+   "name": "nodejs",
+   "aliases": [
+    "node"
+   ],
+   "label": "Node.js",
+   "category": "framework",
+   "tags": [
+    "framework",
+    "herodevs",
+    "javascript-runtime",
+    "linux-foundation"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/nodejs"
+  },
+  {
+   "name": "php",
+   "aliases": [],
+   "label": "PHP",
+   "category": "lang",
+   "tags": [
+    "lang"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/php"
+  },
+  {
+   "name": "postgresql",
+   "aliases": [
+    "postgres",
+    "pg",
+    "psql",
+    "pgsql"
+   ],
+   "label": "PostgreSQL",
+   "category": "database",
+   "tags": [
+    "database"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/postgresql"
+  },
+  {
+   "name": "python",
+   "aliases": [],
+   "label": "Python",
+   "category": "lang",
+   "tags": [
+    "lang"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/python"
+  },
+  {
+   "name": "react",
+   "aliases": [],
+   "label": "React",
+   "category": "framework",
+   "tags": [
+    "framework",
+    "javascript-runtime",
+    "meta"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/react"
+  },
+  {
+   "name": "redis",
+   "aliases": [],
+   "label": "Redis",
+   "category": "database",
+   "tags": [
+    "database"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/redis"
+  },
+  {
+   "name": "ubuntu",
+   "aliases": [
+    "ubuntu-linux"
+   ],
+   "label": "Ubuntu",
+   "category": "os",
+   "tags": [
+    "linux-distribution",
+    "os"
+   ],
+   "uri": "https://endoflife.date/api/v1/products/ubuntu"
+  }
+ ]
+}
