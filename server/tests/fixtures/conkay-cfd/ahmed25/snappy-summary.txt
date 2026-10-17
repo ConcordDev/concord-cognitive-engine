@@ -1,0 +1,11 @@
+patch       faces    layers   overall thickness
+                              [m]       [%]
+-----       -----    ------   ---       ---
+ahmed_nose  68340    2.99     0.00157   99.4    
+ahmed_slant 32360    3        0.00158   100     
+ahmed_base  30752    3        0.00158   100     
+ahmed_rest  482112   3        0.00158   100     
+
+Layer mesh : cells:5623724  faces:17599817  points:6353906
+Finished meshing in = 356.79096 s.
+Build  : 12-86e126a7bc4d
