@@ -29,7 +29,7 @@ export function composeToolTurnReply(results) {
   for (const r of Array.isArray(results) ? results : []) {
     if (!r?.ok) {
       const err = r?.error || "it failed";
-      lines.push(`I couldn't complete ${r?.tool || "that tool"}: ${err}.`);
+      lines.push(`I couldn't complete ${r?.tool || "that tool"}: ${String(err).replace(/[.!?]+\s*$/, "")}.`);
       continue;
     }
     if (r.tool === "create_dtu" && r.dtuId) {

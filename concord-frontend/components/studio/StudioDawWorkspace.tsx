@@ -642,6 +642,17 @@ export function StudioDawWorkspace() {
     projectRef.current = project;
   }, [project]);
 
+  // ---- Deep-link project load (?project=<id>) ----
+  const deepLinkLoadedRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkLoadedRef.current || typeof window === 'undefined') return;
+    const projectId = new URLSearchParams(window.location.search).get('project');
+    if (!projectId) return;
+    deepLinkLoadedRef.current = true;
+    void loadProject({ id: projectId, title: '' } as LensItem<Record<string, unknown>>);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ---- Initialize engines ----
   useEffect(() => {
     transportRef.current = new TransportEngine();

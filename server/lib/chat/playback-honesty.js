@@ -22,8 +22,8 @@ function hasAudioUrl(value, depth = 0) {
 
 function resultHasAudio(r) {
   if (!r) return false;
-  if (r.artifact?.kind === "audio") return true;
-  if (Array.isArray(r.artifacts) && r.artifacts.some((a) => a?.kind === "audio")) return true;
+  if (r.artifact?.kind === "audio" || r.artifact?.kind === "song") return true;
+  if (Array.isArray(r.artifacts) && r.artifacts.some((a) => a?.kind === "audio" || a?.kind === "song")) return true;
   return hasAudioUrl(r.result, 0);
 }
 

@@ -26,9 +26,12 @@ import {
   Bot, Send, X, Sparkles, ExternalLink, Loader2,
   Search, Calculator, Globe, Layers, FileText,
   CheckCircle2, XCircle, Hammer, MessageSquare,
-  Mic, MicOff, Cpu,
+  Mic, MicOff, Cpu, Play,
 } from 'lucide-react';
+import { useMediaStore } from '@/store/media';
+import type { ComposedSong } from '@/lib/daw/render-song';
 import MarathonPanel from './MarathonPanel';
+import { SongArtifactPlayer } from './SongArtifactPlayer';
 
 // Web Speech API types (browser-native STT). Safari + Chrome ship it.
 type SpeechRecognitionType = {
@@ -69,6 +72,15 @@ interface Artifact {
   jobId?: string;
   url?: string;
   status?: string;
+  // Audio artifacts from run_lens_action / ingest-itunes / data URLs.
+  mimeType?: string;
+  artist?: string;
+  // Song artifacts from studio.compose.
+  projectId?: string;
+  bpm?: number;
+  key?: string;
+  durationSec?: number;
+  song?: Record<string, unknown>;
 }
 
 interface AgentResponse {
@@ -351,6 +363,53 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                               {a.prompt}{a.source && <span className="ml-2 text-zinc-600">via {a.source}</span>}
                             </div>
                           )}
+                        </div>
+                      );
+                    }
+                    if (a.kind === 'song' && a.song) {
+                      return (
+                        <SongArtifactPlayer
+                          key={ai}
+                          artifact={{
+                            kind: 'song',
+                            projectId: a.projectId || '',
+                            title: a.title || 'Concord Studio Song',
+                            bpm: a.bpm || 120,
+                            key: a.key || 'C',
+                            durationSec: a.durationSec || 0,
+                            song: a.song as ComposedSong,
+                          }}
+                        />
+                      );
+                    }
+                    if (a.kind === 'audio' && a.url) {
+                      return (
+                        <div key={ai} className="rounded-lg ring-1 ring-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-zinc-100 truncate">
+                                {a.title || 'Audio'}
+                              </div>
+                              {a.artist && (
+                                <div className="text-[11px] text-zinc-400">{a.artist}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => useMediaStore.getState().play({
+                                id: `audio-${a.url}`,
+                                src: a.url!,
+                                title: a.title || 'Audio',
+                                artist: a.artist || 'Concord',
+                                lens: 'chat',
+                              })}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs"
+                              title="Play in mini-player"
+                            >
+                              <Play className="w-3 h-3" />
+                              Mini-player
+                            </button>
+                          </div>
+                          <audio controls src={a.url} className="w-full h-8" />
                         </div>
                       );
                     }

@@ -178,7 +178,7 @@ test("unknown tool music.track-list is auto-dispatched as run_lens_action", asyn
 
 test("TOOL_SCHEMA_BLOCK does not advertise music.render and states the cannot-generate limit", () => {
   assert.doesNotMatch(TOOL_SCHEMA_BLOCK, /music\.render/);
-  assert.match(TOOL_SCHEMA_BLOCK, /cannot/);
+  assert.match(TOOL_SCHEMA_BLOCK, /cannot generate recorded audio/);
 });
 
 test("runAgentLoop grants one retry then answers from tool results on second failure", async () => {

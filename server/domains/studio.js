@@ -251,7 +251,8 @@ export default function registerStudioActions(registerLensAction) {
     return { ok: true, result: { projects } };
   });
 
-  registerLensAction("studio", "project-create", (ctx, _artifact, params = {}) => {
+  let studioProjectCreateHandler = null;
+  registerLensAction("studio", "project-create", studioProjectCreateHandler = (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
@@ -282,6 +283,375 @@ export default function registerStudioActions(registerLensAction) {
     s.projects.get(userId).set(project.id, project);
     saveStudioState();
     return { ok: true, result: { project } };
+  });
+
+  // ── AI Composition (deterministic, no LLM) ──
+  //
+  // Builds a complete song from a prompt/seed and persists it as a Studio
+  // project. Every note is deterministic: same input+seed → identical
+  // project+song. The returned `song` is also rendered client-side into a
+  // playable WAV by components/chat/SongArtifactPlayer.tsx.
+
+  const COMPOSE_GENRE_DEFAULTS = {
+    lofi:    { bpm: 85,  key: "C",  scale: "major" },
+    pop:     { bpm: 120, key: "C",  scale: "major" },
+    rock:    { bpm: 130, key: "E",  scale: "minor" },
+    edm:     { bpm: 128, key: "C",  scale: "minor" },
+    hiphop:  { bpm: 95,  key: "F#", scale: "minor" },
+    jazz:    { bpm: 110, key: "Bb", scale: "major" },
+    ambient: { bpm: 70,  key: "D",  scale: "major" },
+  };
+
+  const COMPOSE_PROGRESSIONS = {
+    lofi:    ["I",  "V",  "vi", "IV"],
+    pop:     ["I",  "V",  "vi", "IV"],
+    rock:    ["i",  "VII", "VI", "v"],
+    edm:     ["i",  "VI", "III", "VII"],
+    hiphop:  ["i",  "VII"],
+    jazz:    ["ii", "V",  "I",  "IV"],
+    ambient: ["I",  "IV"],
+  };
+
+  const COMPOSE_DRUMS = {
+    lofi:    { kick: [0, 8, 12], snare: [4, 12], hat: [2, 6, 10, 14] },
+    pop:     { kick: [0, 8],      snare: [4, 12], hat: [0, 2, 4, 6, 8, 10, 12, 14] },
+    rock:    { kick: [0, 6, 10],  snare: [4, 12], hat: [2, 6, 10, 14] },
+    edm:     { kick: [0, 4, 8, 12], snare: [4, 12], hat: [0, 2, 4, 6, 8, 10, 12, 14] },
+    hiphop:  { kick: [0, 10],    snare: [4, 12], hat: [2, 6, 10, 14] },
+    jazz:    { kick: [0, 8],      snare: [4, 12], hat: [1, 3, 5, 7, 9, 11, 13, 15] },
+    ambient: { kick: [0],         snare: [],       hat: [4, 12] },
+  };
+
+  const KEY_SEMITONES = {
+    C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5,
+    "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
+  };
+
+  function mulberry32(a) {
+    return function() {
+      let t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seedFromString(s) {
+    let h = 1779033703 ^ s.length;
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return () => {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return (h >>> 0) || 1;
+    };
+  }
+
+  function scaleSemitones(scale) {
+    return scale === "minor" ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+  }
+
+  function degreeToSemitoneIndex(degree, scale) {
+    const major = { I: 0, ii: 1, iii: 2, IV: 3, V: 4, vi: 5, "vii°": 6 };
+    const minor = { i: 0, "ii°": 1, III: 2, iv: 3, v: 4, VI: 5, VII: 6 };
+    const table = scale === "minor" ? minor : major;
+    return table[degree];
+  }
+
+  function midiForDegree(rootSemi, scale, degree, octave) {
+    const idx = degreeToSemitoneIndex(degree, scale);
+    if (idx == null) return null;
+    const intervals = scaleSemitones(scale);
+    const semi = (rootSemi + intervals[idx]) % 12;
+    return (octave + 1) * 12 + semi;
+  }
+
+  function chordOffsets(degree) {
+    const s = String(degree);
+    if (s.includes("°")) return [0, 3, 6];
+    if (s === s.toLowerCase()) return [0, 3, 7]; // minor
+    return [0, 4, 7]; // major
+  }
+
+  function makeSynthPreset(id, name, category, shape, filterFreq, ampEnv, filterEnv) {
+    return {
+      id, name, type: "subtractive", category, tags: [category],
+      oscillators: [{ shape, detune: 0, octave: 0, level: 1, phase: 0 }],
+      filter: { type: "lowpass", frequency: filterFreq, resonance: 1, envelope: 0.3, keyTrack: 0.3 },
+      ampEnvelope: ampEnv,
+      filterEnvelope: filterEnv || { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.2 },
+      lfo: [], effects: [], polyphony: 8, portamento: 0, unison: 1, unisonDetune: 0,
+    };
+  }
+
+  function composeSong(params) {
+    const genre = COMPOSE_GENRE_DEFAULTS[params.genre] ? params.genre : "lofi";
+    const defaults = COMPOSE_GENRE_DEFAULTS[genre];
+    const title = String(params.title || "").trim() || `Untitled ${genre.charAt(0).toUpperCase() + genre.slice(1)}`;
+    const key = String(params.key || defaults.key).trim();
+    const scale = String(params.scale || defaults.scale).trim().toLowerCase();
+    let bpm = Number(params.bpm) || defaults.bpm;
+    bpm = Math.max(60, Math.min(180, bpm));
+    let bars = Number(params.bars) || 8;
+    bars = Math.max(4, Math.min(16, bars));
+    const seedSrc = params.seed != null ? Number(params.seed) : seedFromString(`${title}\0${genre}`)();
+    const rng = mulberry32(seedSrc || 1);
+    let noteCounter = 0;
+    const makeNoteId = () => `note_${(seedSrc || 1).toString(36)}_${(noteCounter++).toString(36)}`;
+    const rootSemi = KEY_SEMITONES[key] ?? 0;
+    const progression = COMPOSE_PROGRESSIONS[genre] || COMPOSE_PROGRESSIONS.lofi;
+    const scaleIntervals = scaleSemitones(scale);
+
+    const beatsPerBar = 4;
+    const totalBeats = bars * beatsPerBar;
+
+    // Chord pad track
+    const chordNotes = [];
+    for (let bar = 0; bar < bars; bar++) {
+      const degree = progression[bar % progression.length];
+      const root = midiForDegree(rootSemi, scale, degree, 4);
+      if (root == null) continue;
+      const offsets = chordOffsets(degree);
+      for (const offset of offsets) {
+        chordNotes.push({
+          id: makeNoteId(),
+          pitch: root + offset,
+          velocity: 70,
+          startBeat: bar * beatsPerBar,
+          lengthBeats: beatsPerBar,
+          channel: 1,
+        });
+      }
+    }
+
+    // Bass track (root movement + genre rhythm)
+    const bassNotes = [];
+    const bassRhythm = genre === "lofi" ? [0, 2] :
+      genre === "pop" ? [0, 1, 2, 3] :
+      genre === "rock" ? [0, 1.5, 2.5, 3] :
+      genre === "edm" ? [0, 1, 2, 3] :
+      genre === "hiphop" ? [0, 2.5] :
+      genre === "jazz" ? [0, 1, 2, 3] :
+      [0];
+    for (let bar = 0; bar < bars; bar++) {
+      const degree = progression[bar % progression.length];
+      const root = midiForDegree(rootSemi, scale, degree, 2);
+      if (root == null) continue;
+      for (const offset of bassRhythm) {
+        bassNotes.push({
+          id: makeNoteId(),
+          pitch: root,
+          velocity: 100,
+          startBeat: bar * beatsPerBar + offset,
+          lengthBeats: 0.5,
+          channel: 2,
+        });
+      }
+    }
+
+    // Melody track (scale-constrained, rests allowed, resolves to tonic)
+    const melodyNotes = [];
+    const tonicSemi = (rootSemi + scaleIntervals[0]) % 12;
+    const tonicOctave5 = 5 * 12 + tonicSemi;
+    for (let beat = 0; beat < totalBeats;) {
+      const bar = Math.floor(beat / beatsPerBar);
+      const isLastBar = bar === bars - 1;
+      const isLastBeat = beat >= totalBeats - 1;
+      const rest = rng() < 0.3 && !isLastBeat;
+      const degree = progression[bar % progression.length];
+      const chordRootIdx = degreeToSemitoneIndex(degree, scale);
+      if (rest) {
+        beat += 0.5;
+        continue;
+      }
+      let noteIdx;
+      if (isLastBeat) {
+        noteIdx = 0; // resolve to tonic
+      } else if (chordRootIdx != null && rng() < 0.5) {
+        noteIdx = chordRootIdx;
+      } else {
+        noteIdx = Math.floor(rng() * scaleIntervals.length);
+      }
+      const semi = scaleIntervals[noteIdx];
+      const octave = 5;
+      const pitch = (octave + 1) * 12 + ((rootSemi + semi) % 12);
+      const length = rng() < 0.6 ? 1 : 0.5;
+      melodyNotes.push({
+        id: makeNoteId(),
+        pitch: isLastBeat ? tonicOctave5 : Math.max(0, Math.min(127, pitch)),
+        velocity: 80 + Math.floor(rng() * 40),
+        startBeat: beat,
+        lengthBeats: Math.min(length, totalBeats - beat),
+        channel: 3,
+      });
+      beat += length;
+    }
+
+    // Drum pattern
+    const drumPattern = COMPOSE_DRUMS[genre] || COMPOSE_DRUMS.lofi;
+    const lanes = [
+      { pad: "kick",  hits: drumPattern.kick || [] },
+      { pad: "snare", hits: drumPattern.snare || [] },
+      { pad: "hat",   hits: drumPattern.hat || [] },
+    ];
+
+    const durationSec = (bars * beatsPerBar * 60) / bpm;
+
+    const tracks = [
+      { name: "Chords", role: "chords", preset: "pad-warm", notes: chordNotes },
+      { name: "Bass",   role: "bass",   preset: "sub-bass", notes: bassNotes },
+      { name: "Melody", role: "melody", preset: "saw-lead", notes: melodyNotes },
+    ];
+
+    return {
+      title, genre, bpm, key, scale, bars, durationSec,
+      tracks,
+      drums: { steps: 16, stepBeats: 0.25, lanes },
+    };
+  }
+
+  function buildDawSnapshot(song) {
+    const now = Date.now();
+    const trackColors = ["#7c3aed", "#10b981", "#f59e0b", "#ef4444"];
+    const tracks = song.tracks.map((t, i) => {
+      const trackId = nextStudioId("track");
+      return {
+        id: trackId,
+        name: t.name,
+        type: "midi",
+        color: trackColors[i % trackColors.length],
+        volume: 0,
+        pan: 0,
+        mute: false,
+        solo: false,
+        armed: false,
+        frozen: false,
+        height: 56,
+        instrumentId: t.preset,
+        effectChain: [],
+        sendLevels: {},
+        clips: [{
+          id: nextStudioId("clip"),
+          name: `${t.name} Clip`,
+          type: "midi",
+          trackId,
+          startBeat: 0,
+          lengthBeats: song.bars * 4,
+          offset: 0,
+          color: trackColors[i % trackColors.length],
+          looped: false,
+          loopLength: song.bars * 4,
+          fadeIn: 0,
+          fadeOut: 0,
+          gain: 0,
+          pitch: 0,
+          reversed: false,
+          timeStretch: 1,
+          midiNotes: t.notes,
+        }],
+        automationLanes: [],
+        inputSource: null,
+        outputTarget: "master",
+      };
+    });
+
+    return {
+      id: nextStudioId("proj"),
+      title: song.title,
+      bpm: song.bpm,
+      key: song.key,
+      scale: song.scale,
+      timeSignature: [4, 4],
+      genre: song.genre,
+      tracks,
+      masterBus: {
+        volume: 0,
+        inserts: [
+          { id: "master-eq", type: "eq3", name: "Master EQ", enabled: true, wet: 1, params: { lowGain: 0, midGain: 0, highGain: 0 } },
+          { id: "master-comp", type: "compressor", name: "Master Comp", enabled: true, wet: 1, params: { threshold: -12, ratio: 2, attack: 0.01, release: 0.1 } },
+          { id: "master-lim", type: "limiter", name: "Master Limiter", enabled: true, wet: 1, params: { ceiling: -1, release: 0.1 } },
+        ],
+        metering: { peakL: -60, peakR: -60, rmsL: -60, rmsR: -60, lufs: -14 },
+      },
+      masteringChain: {
+        eq: { id: "mc-eq", type: "eq3", name: "EQ", enabled: true, wet: 1, params: { lowGain: 0, midGain: 0, highGain: 0 } },
+        multibandCompressor: { id: "mc-comp", type: "multibandCompressor", name: "MB Comp", enabled: true, wet: 1, params: { threshold: -18, ratio: 3, attack: 0.01, release: 0.15 } },
+        stereoWidener: { id: "mc-stereo", type: "stereoWidener", name: "Stereo", enabled: true, wet: 1, params: { width: 1 } },
+        limiter: { id: "mc-lim", type: "limiter", name: "Limiter", enabled: true, wet: 1, params: { ceiling: -1, release: 0.1 } },
+        loudnessTarget: -14,
+        enabled: true,
+      },
+      arrangement: { lengthBars: song.bars, sections: [], markers: [], tempo: [] },
+      transport: {
+        bpm: song.bpm,
+        timeSignature: [4, 4],
+        swing: 0,
+        loopEnabled: false,
+        loopStart: 0,
+        loopEnd: song.bars * 4,
+        metronome: false,
+        preRoll: 0,
+      },
+      audioBuffers: {},
+      synthPresets: {
+        "pad-warm": makeSynthPreset("pad-warm", "Warm Pad", "pad", "sawtooth", 2000, { attack: 0.5, decay: 0.5, sustain: 0.8, release: 1.5 }, { attack: 0.8, decay: 0.5, sustain: 0.5, release: 1.0 }),
+        "sub-bass": makeSynthPreset("sub-bass", "Sub Bass", "bass", "sine", 400, { attack: 0.01, decay: 0.3, sustain: 0.8, release: 0.2 }, { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.2 }),
+        "saw-lead": makeSynthPreset("saw-lead", "Saw Lead", "lead", "sawtooth", 3000, { attack: 0.01, decay: 0.2, sustain: 0.7, release: 0.3 }, { attack: 0.05, decay: 0.3, sustain: 0.4, release: 0.3 }),
+      },
+      drumPatterns: {},
+      createdAt: now,
+      updatedAt: now,
+      sessionDTUIds: [],
+    };
+  }
+
+  registerLensAction("studio", "compose", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const rawGenre = String(params.genre || "").toLowerCase().trim();
+    const genre = COMPOSE_GENRE_DEFAULTS[rawGenre] ? rawGenre : "lofi";
+    const defaults = COMPOSE_GENRE_DEFAULTS[genre];
+    const title = String(params.title || "").trim() || `Untitled ${genre.charAt(0).toUpperCase() + genre.slice(1)}`;
+    // Accept "C", "c#", "Eb", "E minor", "Am", "F# major" — brains rarely send
+    // the bare canonical form. A mode suffix overrides the scale param.
+    const rawKey = String(params.key || defaults.key).trim().replace(/♯/g, "#").replace(/♭/g, "b");
+    const km = rawKey.match(/^([A-Ga-g])([#b]?)\s*(m|min|minor|maj|major)?$/);
+    if (!km) return { ok: false, error: "key not recognized (use e.g. C, F#, Eb, Am)" };
+    const key = km[1].toUpperCase() + (km[2] || "");
+    const modeFromKey = km[3] ? (/^maj/i.test(km[3]) ? "major" : "minor") : null;
+    const scale = (modeFromKey || String(params.scale || defaults.scale)).trim().toLowerCase();
+    if (!(key in KEY_SEMITONES)) return { ok: false, error: "key not recognized (use e.g. C, F#, Eb, Am)" };
+    if (scale !== "major" && scale !== "minor") return { ok: false, error: "scale must be major or minor" };
+    let bpm = Number(params.bpm) || defaults.bpm;
+    bpm = Math.max(60, Math.min(180, bpm));
+    let bars = Number(params.bars) || 8;
+    bars = Math.max(4, Math.min(16, bars));
+
+    const song = composeSong({ genre, title, key, scale, bpm, bars, seed: params.seed });
+    const daw = buildDawSnapshot(song);
+    const created = studioProjectCreateHandler(ctx, null, {
+      name: song.title,
+      title: song.title,
+      bpm: song.bpm,
+      key: song.key,
+      scale: song.scale,
+      genre: song.genre,
+      timeSignature: [4, 4],
+      daw,
+    });
+    if (!created.ok) return created;
+    const project = created.result.project;
+
+    return {
+      ok: true,
+      result: {
+        project: { id: project.id, name: project.name, bpm: project.bpm, key: project.key },
+        song,
+      },
+    };
   });
 
   registerLensAction("studio", "project-save", (ctx, _artifact, params = {}) => {
