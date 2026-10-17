@@ -22021,7 +22021,11 @@ ${_sharedToolRules}` : "";
         temperature: options.temperature || 0.7,
         num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500),
         num_ctx: _ollamaNumCtx(brainName),
+        ...(Number.isFinite(options.presencePenalty) ? { presence_penalty: options.presencePenalty } : {}),
       },
+      // Thinking models (qwen3.5 / concord-core-v6) otherwise spend
+      // num_predict on the hidden thinking channel and return empty content.
+      ...(typeof options.think === "boolean" ? { think: options.think } : {}),
     };
 
     const response = await fetch(`${_dispatchUrl}/api/chat`, {
@@ -23117,22 +23121,21 @@ async function entityExploreLens(entity, lens) {
   const entityId = entity.id;
   const species = entity?.species || null;
 
-  // Use utility brain prompt builder with entity context
-  const system = buildUtilityPrompt({
-    action: `Explore ${lens} domain and generate an insight`,
-    lens,
-    context: lensData,
-    dtu_count: STATE.dtus ? STATE.dtus.size : 0,
-    entity: entity || { id: entityId },
-  });
+  // Focused prompt, thinking off, low temperature, no tool catalog; the
+  // output is checked before it is saved (lib/brain/entity-explore.js has
+  // the measurements behind each setting).
+  const _ex = await import("./lib/brain/entity-explore.js");
+  const _exBrain = _ex.exploreBrainName();
+  const _exPrompt = _ex.buildEntityExplorePrompt({ lens, context: lensData, entity });
+  const result = await callBrain(_exBrain, _exPrompt.user, _ex.exploreCallOptions(_exPrompt.system));
 
-  const result = await callBrain("utility", `Explore ${lens} domain as entity ${entityId}`, {
-    system,
-    temperature: 0.8,
-    maxTokens: 400,
-    timeout: 30000,
-    enableTools: true,
-  });
+  if (result.ok) {
+    const _q = _ex.assessExploreOutput(result.content);
+    if (!_q.ok) {
+      structuredLog("info", "entity_explore_output_rejected", { entityId, lens, brain: _exBrain, reason: _q.reason, chars: String(result.content || "").length });
+      return { ok: false, error: `explore output rejected (${_q.reason})`, reason: _q.reason, source: result.source };
+    }
+  }
 
   if (result.ok && result.content) {
     try {
@@ -23142,7 +23145,7 @@ async function entityExploreLens(entity, lens) {
         creti: result.content,
         tags: [lens, "entity", species].filter(Boolean),
         source: `entity.${entityId}.explore`,
-        meta: { brainSource: "utility", confidence: 0.4, entityId, species },
+        meta: { brainSource: _exBrain, confidence: 0.4, entityId, species },
         lineage: entity?.lineage || [],
         scope: "local",
       }, ctx);
