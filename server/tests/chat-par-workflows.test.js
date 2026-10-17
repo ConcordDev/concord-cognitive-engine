@@ -90,3 +90,13 @@ test("real-music term and source links", async () => {
   assert.match(out, /Sources:\n1\. \[Intel\]\(https:\/\/a\.example\/1\)/);
   assert.equal(withSourceLinks("see https://a.example/1", [{ title: "Intel", url: "https://a.example/1" }]), "see https://a.example/1");
 });
+
+test("a lens write is reported from the stored record", async () => {
+  const { writeReceipt } = await import("../lib/chat/agent-route.js");
+  const calls = [
+    { tool: "run_lens_action", ok: false, domain: "productivity", action: "task-add", error: "task content required" },
+    { tool: "run_lens_action", ok: true, domain: "productivity", action: "task-add", result: { ok: true, result: { task: { id: "tsk_1", content: "buy oat milk", dueDate: null, priority: 4 } } } },
+  ];
+  assert.equal(writeReceipt(calls), 'Saved in productivity: "buy oat milk" (id tsk_1, no due date).');
+  assert.equal(writeReceipt([{ tool: "run_lens_action", ok: true, domain: "food", action: "recipe-list", result: {} }]), "");
+});

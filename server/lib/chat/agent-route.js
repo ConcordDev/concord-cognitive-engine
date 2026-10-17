@@ -120,7 +120,7 @@ const ROUTE_HINT = {
   save: "The user wants this saved: call create_dtu with a short title and the user's own words as the summary, then give the stored DTU id. If create_dtu fails, say it was not saved and why.",
   music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the page; do not summarize from memory.",
-  action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
+  action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Use the user's own words for the item text, unchanged. Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
   design: "This request is a ConKay design: call the conkay_design tool with the spec in words (span, load, material, supports, safety factor) and report the solver's real numbers. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
 };
 
@@ -164,6 +164,37 @@ export function clientToolCall(tc) {
   } catch { result = undefined; }
   const { artifacts: _drop, ...rest } = tc;
   return { ...rest, params, result };
+}
+
+/** The stored record inside a lens-action result ({task}, {result:{recipe}}, …). */
+function storedRecord(result, depth = 0) {
+  if (!result || typeof result !== "object" || depth > 3) return null;
+  if (typeof result.id === "string" && (result.content || result.title || result.name)) return result;
+  for (const v of Object.values(result)) {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const hit = storedRecord(v, depth + 1);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/**
+ * What a successful write actually stored, in one line, from the tool result.
+ * The model's own summary invented a due date and priority for a task that had
+ * neither, and rewrote the task text (chat-par probe 2026-10-17).
+ */
+export function writeReceipt(toolCalls) {
+  const done = [...(toolCalls || [])].reverse().find((t) => t?.tool === "run_lens_action" && t.ok !== false && t.domain && t.action
+    && /(?:add|create|new|save|book|schedule|log|set)/i.test(t.action) && !/list|search|get|view/i.test(t.action));
+  if (!done) return "";
+  const rec = storedRecord(done.result);
+  if (!rec) return `Done: ${done.domain}.${done.action} succeeded.`;
+  const name = String(rec.content || rec.title || rec.name).slice(0, 160);
+  const extra = [];
+  if ("dueDate" in rec) extra.push(rec.dueDate ? `due ${rec.dueDate}` : "no due date");
+  if (rec.start || rec.startTime) extra.push(`starts ${rec.start || rec.startTime}`);
+  return `Saved in ${done.domain}: "${name}" (id ${rec.id}${extra.length ? `, ${extra.join(", ")}` : ""}).`;
 }
 
 /**
@@ -268,6 +299,11 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       const failed = toolCalls.filter((t) => t && t.ok === false).map((t) => t.error).filter(Boolean);
       answer = `I couldn't complete that, so nothing was created or saved.${failed.length ? ` The tool said: ${String(failed[0]).slice(0, 200)}.` : (r?.error ? ` (${String(r.error).slice(0, 200)})` : "")}`;
     }
+  }
+  // A lens write reports what was stored, from the tool result, not the model's paraphrase.
+  if (route === "action" && answer) {
+    const receipt = writeReceipt(toolCalls);
+    if (receipt) answer = receipt;
   }
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
   // tool returned. Anything else is invented.
