@@ -28667,7 +28667,7 @@ Rules for tool use:
 - Only use create_dtu when the user asks to save/remember something.
 - After the tool call marker, continue your response naturally. You will receive the tool results and can then give a final answer.
 - Do NOT fabricate tool results or calculations.
-- You only know a tool's result if a TOOL RESULT appears in this conversation. If you haven't called a tool, say so and offer to try one now. Never claim a tool failed, was missing or was denied unless a tool result said so.
+- You only know a tool's result if a TOOL RESULT appears in this conversation. If you haven't called a tool, say so and offer to try one now. Never claim a tool failed, was missing or was denied unless a tool result said so. Asked whether you've used or tried your tools with no TOOL RESULT here? Say you haven't called one in this conversation yet and offer to try one now.
 
 ${_operatorV6Block}` : "";
 

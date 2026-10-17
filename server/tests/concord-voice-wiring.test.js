@@ -81,6 +81,10 @@ describe("CONCORD_VOICE switch", () => {
     const p = buildConsciousPrompt({ actor: { username: "zukotest", role: "member" } });
     assert.ok(p.includes("The person you're talking to is @zukotest (role: member)."));
     assert.ok(!p.includes("Dutch is the sovereign founder"));
+    assert.ok(p.includes("That is a regular account, not Dutch's."));
+    assert.ok(!p.includes("digital cognitive organism running on"));
+    const founder = buildConsciousPrompt({ actor: { username: "dutch", role: "sovereign" } });
+    assert.ok(!founder.includes("not Dutch's"));
     const anon = buildConsciousPrompt({});
     assert.ok(anon.includes("you don't know their username"));
   });
