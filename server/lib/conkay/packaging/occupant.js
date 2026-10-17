@@ -152,3 +152,24 @@ export function seatOccupant(key, seat) {
     leg, boxes,
   };
 }
+
+/**
+ * The rear occupant's shin and foot boxes (the rear posture models only the thighs in `boxes`, which the CAD body
+ * encloses; these two are for clearance checks and are NOT body envelopes). Posture as the model already assumes:
+ * the shin is vertical with the heel on the floor under the knee pivot (occupant.js header), the foot points forward.
+ *   shin: from the floor to the knee pivot, KNEE_SURFACE_ALLOWANCE_M (51 mm, the J1100 L48 allowance) deep ahead of the
+ *         pivot (no calf depth is in the ANSUR table in use), hip-breadth/2 wide like the thigh boxes;
+ *   foot: heel under the knee pivot to the toe footLength ahead, the malleolus height tall, foot breadth wide
+ *         (flat on the floor: the instep is taken at the malleolus height; estimated).
+ * Returns [{ id, part: "shin" | "foot", ...obb }] for both legs.
+ */
+export function rearLowerLegBoxes(o, floorZ) {
+  const d = o.dims, kx = o.landmarks.knee[0], kz = o.landmarks.knee[1], y = o.landmarks.y;
+  const out = [];
+  for (const side of [-1, 1]) {
+    const ly = y + side * (d.hipBreadthSitting / 4), tag = side < 0 ? "L" : "R";
+    out.push(obb({ id: `${o.seat}:${o.key}:shin${tag}`, part: "shin", center: [kx - KNEE_SURFACE_ALLOWANCE_M / 2, ly, (floorZ + kz) / 2], half: [KNEE_SURFACE_ALLOWANCE_M / 2, d.hipBreadthSitting / 4, (kz - floorZ) / 2], pitchDeg: 0 }));
+    out.push(obb({ id: `${o.seat}:${o.key}:foot${tag}`, part: "foot", center: [kx - d.footLength / 2, ly, floorZ + d.lateralMalleolusHeight / 2], half: [d.footLength / 2, d.footBreadthHorizontal / 2, d.lateralMalleolusHeight / 2], pitchDeg: 0 }));
+  }
+  return out;
+}

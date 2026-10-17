@@ -56,8 +56,8 @@ describe("the sourced model (SAE 980651 SAM, read from the paper)", () => {
 describe("where the layout's front seat sits in the driver population (information only)", () => {
   const p = pkg(build());
   const fsp = p.layoutRevision.inputs.frontSeatPopulation;
-  it("the layout is unchanged by this pass", () => {
-    assert.equal(p.designChoices.rearSgRPX.value, 3.458);
+  it("the front package is unchanged by this pass; the rear H-point is the rear-knee pass's (3.458 m here before L48 was measured at knee height, 3.235 m after)", () => {
+    assert.equal(p.designChoices.rearSgRPX.value, 3.235);
     assert.equal(p.firewallX, 1.4668);
     assert.equal(p.layoutRevision.inputs.sgRPFrontX, 2.6253);
     assert.equal(p.layoutRevision.inputs.frontSeatRearX, 3.1506);

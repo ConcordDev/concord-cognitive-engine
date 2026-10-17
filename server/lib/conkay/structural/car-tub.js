@@ -40,7 +40,7 @@
 // centrelines meet at rigid nodes at the stated positions, which idealises
 // the joint offsets between members of different heights (stated).
 
-import { obb, separation } from "../packaging/geometry.js";
+import { obb, separation, corners } from "../packaging/geometry.js";
 import { packageScene } from "../packaging/checks.js";
 import { openingsLayout, applyServiceCutouts } from "./car-openings.js";
 import { tubJointScenarios, ADHESIVES, EN1993_CLASSIFICATION, RIVET_NOTE, JOINT_CHOICES, JOINT_MODEL_VERSION } from "./joint-stiffness.js";
@@ -125,10 +125,18 @@ export const FRONT_ENGINE_LANDMARKS = Object.freeze({ firewall: 1.4618, radiator
 export const TUB_FIREWALL_OFFSET_M = 0.0282;
 export const TUB_GRID_M = 0.005;
 
+/** The heel cross is 80 mm deep in x (see TUB_HEEL_CROSS). */
+const HEEL_CROSS_HALF_DEPTH_M = 0.04;
+
 export function tubPositions(L) {
   const r4 = (v) => Math.round(v * 200) / 200;
   const XF = r4(L.firewall + TUB_FIREWALL_OFFSET_M);
-  const heelX = r4(L.frontSeatRear + 0.054);
+  // heel cross: behind the front seat envelopes (frontSeatRear + 54 mm). Where the rear occupants' pelvis starts ahead of
+  // that (the rear knee measured at the front seatback's knee-height face puts the rear seat close behind the front seats,
+  // 2026-10-17), the cross would sit under the sitting surface: it then goes midway between the rear heels (under the knee
+  // pivots) and the front edge of the rear pelvis, on the same 5 mm grid; package.tub-fit re-checks the clearances.
+  let heelX = r4(L.frontSeatRear + 0.054);
+  if (Number.isFinite(L.rearPelvisFrontX) && Number.isFinite(L.rearHeelX) && heelX + HEEL_CROSS_HALF_DEPTH_M > L.rearPelvisFrontX) heelX = r4((L.rearHeelX + L.rearPelvisFrontX) / 2);
   return {
     firewallX: XF,                                  // firewall plane: 28 mm behind the package firewall
     frontRailX0: r4(L.radiatorRear + 0.009),        // front rails start behind the radiator
@@ -510,12 +518,24 @@ export function tubLandmarks(ir) {
   const scene = packageScene({ pkg, centers });
   let frontSeatRear = -Infinity;
   for (const occ of Object.values(scene.scenarios)) for (const o of occ) if (o.seat === "SEAT_1" || o.seat === "SEAT_2") for (const b of o.seatBoxes || []) frontSeatRear = Math.max(frontSeatRear, ...[-1, 1].map((sg) => b.center[0] + sg * Math.abs(b.half[0] * (b.axes?.[0]?.[0] ?? 1)) + sg * Math.abs(b.half[2] * (b.axes?.[2]?.[0] ?? 0))));
+  // the rear occupants: heels under the knee pivots (shin vertical) and the front edge of the pelvis boxes
+  let rearHeelX = -Infinity, rearPelvisFrontX = Infinity;
+  for (const occ of Object.values(scene.scenarios)) {
+    for (const o of occ) {
+      if (o.seat !== "SEAT_3" && o.seat !== "SEAT_4") continue;
+      rearHeelX = Math.max(rearHeelX, o.landmarks.knee[0]);
+      for (const b of o.boxes) {
+        if (b.part === "pelvis") rearPelvisFrontX = Math.min(rearPelvisFrontX, ...corners(b).map((q) => q[0]));
+      }
+    }
+  }
   const diff = comp("DIFFERENTIAL");
   const electric = veh.props.vehicle.fuelType === "electric";
   return {
     firewall: pkg.firewallX,
     radiatorRear: comp("RADIATOR")?.max ?? FRONT_ENGINE_LANDMARKS.radiatorRear,
     frontSeatRear: Number.isFinite(frontSeatRear) ? r4(frontSeatRear) : FRONT_ENGINE_LANDMARKS.frontSeatRear,
+    ...(Number.isFinite(rearHeelX) && Number.isFinite(rearPelvisFrontX) ? { rearHeelX: r4(rearHeelX), rearPelvisFrontX: r4(rearPelvisFrontX) } : {}),
     rearAxle: num(veh.props.vehicle.rearAxleX),
     diffFront: diff ? r4(diff.min) : FRONT_ENGINE_LANDMARKS.diffFront,
     diffRear: diff ? r4(diff.max) : FRONT_ENGINE_LANDMARKS.diffRear,

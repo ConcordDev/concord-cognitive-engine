@@ -5,6 +5,7 @@
 // (car-layout.js deriveRearPackage): nothing is hand-tuned. The front seats keep F5, F95 and M95.
 //
 // Measured on 2026-10-17 (stance-2 -> 2+2): rear H-point x 3.486 -> 3.458 m, rear axle 4.309 -> 4.251 m (with the iM-375 motor module the power repair selects).
+// Then (rear-knee pass, L48 measured at the knee's height on the seatback's rear face): 3.458 -> 3.235 m and 4.251 -> 4.028 m.
 // The body kernel results (roof peak, overall length, Cd, torsion, clearances) are in the PR description: they need
 // a 20-30 minute OCC run, so this file pins the layout derivation and the packaging checks, not the kernel.
 // A passing test here is not a physical validation of the car.
@@ -55,9 +56,9 @@ describe("the cabin follows the occupant through the existing derivation", () =>
     assert.equal(pkg(full).designChoices.rearSgRPX.value, 3.486);
     assert.equal(axle(full), 4.309);
   });
-  it("the 2+2 rear H-point moves forward 28 mm and the rear axle 58 mm; the front package does not move", () => {
-    assert.equal(pkg(two).designChoices.rearSgRPX.value, 3.458);
-    assert.equal(axle(two), 4.251);
+  it("the 2+2 rear H-point moves forward 251 mm and the rear axle 281 mm against stance-2 (28 and 58 mm at this pass; the rest from measuring L48 at knee height, conkay-car-rear-knee.test.js); the front package does not move", () => {
+    assert.equal(pkg(two).designChoices.rearSgRPX.value, 3.235);
+    assert.equal(axle(two), 4.028);
     assert.equal(pkg(two).firewallX, pkg(full).firewallX);
     assert.equal(pkg(two).designChoices.ahpX.value, pkg(full).designChoices.ahpX.value);
     assert.match(pkg(two).designChoices.rearSgRPX.basis, /derived/);

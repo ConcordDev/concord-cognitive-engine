@@ -65,7 +65,9 @@
    },
    "L48": {
     "section": "6.2.27",
-    "text": "Minimum knee clearance-second: from the Knee Pivot Center to the back of the front seatback, minus 51 mm (2 in).",
+    "text": "Minimum knee clearance-second: The minimum dimension within a lateral space 127 mm either side of the occupant centerline, measured from the Knee Pivot Center to the back of the front seatback, minus 51 mm (2 in). If the second seat is adjustable, it should be positioned at the SgRP and at a back angle as specified by the manufacturer.",
+    "textSource": "SAE J1100 (Feb 2001) 6.2.27, as posted at archive.org/download/gov.law.sae.j1100.2001/sae.j1100.2001.html (text read 2026-10-17; the full quoted sentence is in the 6.2.27 paragraph)",
+    "interpretation": "The measurement location is an interpretation: the standard says 'to the back of the front seatback' from the Knee Pivot Center and names no height. It is read here as the horizontal distance to the seatback's rear face AT THE KNEE PIVOT'S HEIGHT, because that is where the knee can touch it. The rearmost point of a reclined bucket back is its top, about 0.3 m above the rear knee, so measuring there is not an interference test of the knee. The lateral band (127 mm either side of the occupant centreline) selects which front seatbacks count. The seatback is modelled by the seat box code in packaging/checks.js (seatBoxes): the occupant's back surface reclined at the torso angle (L40 = 25 deg design choice), backrest thickness frontSeatBackThicknessM (a design choice, 60 mm; not published by the seat maker), rear face = that surface offset by the thickness",
     "subtractMm": 51
    },
    "L50": {
