@@ -101,6 +101,7 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
 export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "web_search", description: "Live web search via expert_mode.web_search.", params: { query: { type: "string", required: true } } },
   { name: "run_compute", description: "Deterministic compute module.function.", params: { key: { type: "string", required: true }, input: { type: "object", required: true } } },
+  { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
   { name: "run_python", description: "Python in the isolated Pyodide worker.", params: { code: { type: "string", required: true } } },
   { name: "browse_url", description: "Fetch and read a web page.", params: { url: { type: "string", required: true } } },
   { name: "run_lens_action", description: "Invoke a registered lens action.", params: { domain: { type: "string", required: true }, action: { type: "string", required: true } } },

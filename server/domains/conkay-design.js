@@ -11,6 +11,7 @@
 //                           { designId, ops }       → or graph ops [{ node, path, value (SI) }]
 //   conkay_design.list      {}                      → your designs
 //   conkay_design.solvers   {}                      → the solver registry
+//   conkay_design.solve     { text }                → one-shot sizing check: hand calc + FEA + safety factor pass/fail (not saved)
 //   conkay_design.parse-brief { brief }             → numeric targets + unparsed intent
 //   conkay_design.feasibility { brief, bounds? }    → physics bound on whether any design could meet it
 //   conkay_design.from-brief  { brief }             → open a design: system tree + wired requirements
@@ -20,6 +21,7 @@
 import crypto from "node:crypto";
 import { attestReceipt, attestReport } from "../lib/receipts/attest.js";
 import { openDesign, listSolvers } from "../lib/conkay/index.js";
+import { solveDesignText, summarizeDesignSolve } from "../lib/conkay/nlp-design-intent.js";
 import { parseBrief } from "../lib/conkay/compiler/requirement-parser.js";
 import { checkFeasibility } from "../lib/conkay/compiler/feasibility.js";
 import { compileBrief } from "../lib/conkay/compiler/architectures.js";
@@ -81,6 +83,13 @@ export default function registerConkayDesignActions(registerLensActionRaw) {
   const actions = {};
   const registerLensAction = (domain, name, fn) => { actions[name] = fn; return registerLensActionRaw(domain, name, fn); };
   registerLensAction("conkay_design", "solvers", () => ({ ok: true, result: { solvers: listSolvers() } }));
+
+  registerLensAction("conkay_design", "solve", (_ctx, _artifact, params) => {
+    const text = String(params?.text || params?.brief || params?.prompt || "").slice(0, 4000);
+    if (!text.trim()) return { ok: false, error: "send the design in words, e.g. \"steel cantilever 2 m, 10 kN at the tip, safety factor 2\"" };
+    const r = summarizeDesignSolve(solveDesignText(text));
+    return r.ok ? { ok: true, result: r } : r;
+  });
 
   registerLensAction("conkay_design", "parse-brief", (_ctx, _artifact, params) => {
     const brief = String(params?.brief || "").slice(0, 4000);

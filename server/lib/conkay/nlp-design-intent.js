@@ -314,6 +314,15 @@ export function parseDesignIntent(text) {
   assumed.section = sectionInfo.assumed;
   if (sectionInfo.note) assumptions.push(sectionInfo.note);
 
+  // A stated safety factor ("safety factor of 2", "FoS 1.5", "SF=3") is a
+  // requirement, not a default: it is checked as pass/fail with margin in
+  // safetyCheck(). Without one, the check runs against yield (SF 1) and says so.
+  const sfInfo = parseSafetyFactor(raw);
+  if (sfInfo.note) assumptions.push(sfInfo.note);
+  if (sfInfo.value == null) {
+    assumptions.push("No safety factor stated: stresses are checked against yield only (SF 1). Say e.g. \"safety factor of 2\" to require one.");
+  }
+
   // The fallbacks above have no cited source. Each one used is listed here as an uncited default, with the
   // question the chat parser asks instead (lib/conkay/chat/brief-parser.js never applies them).
   const uncitedDefaults = [
@@ -334,6 +343,8 @@ export function parseDesignIntent(text) {
       assumed,
       assumptions,
       uncitedDefaults,
+      safetyFactor: sfInfo.value,
+      safetyFactorSource: sfInfo.source,
     },
   };
 }
@@ -431,6 +442,80 @@ export function intentToFeaModel(intent) {
 }
 
 /** Closed-form check for the three textbook cases. Other placements are FEA-only. */
+const SF_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const SF_NUM = "(\\d+(?:\\.\\d+)?|one|two|three|four|five|six)";
+const SF_PATTERNS = [
+  new RegExp(`\\b(?:safety\\s+factor|factor\\s+of\\s+safety|fo?s|sf)\\s*(?:of|=|:|is|at|>=|≥)?\\s*(?:at\\s+least\\s+)?${SF_NUM}\\b`, "i"),
+  new RegExp(`\\b${SF_NUM}\\s*(?:x|×)?\\s*(?:safety\\s+factor|factor\\s+of\\s+safety)\\b`, "i"),
+];
+
+/**
+ * Read a stated safety factor from design text. Same phrasings as
+ * lib/conkay/chat/brief-parser.js readSafetyFactor, plus "SF ≥ 2",
+ * "a 2x safety factor" and small number words ("safety factor of two").
+ * Returns { value: number|null, source: string|null, note: string|null }.
+ */
+export function parseSafetyFactor(text) {
+  const t = String(text || "");
+  for (const re of SF_PATTERNS) {
+    const m = t.match(re);
+    if (!m) continue;
+    const word = String(m[1]).toLowerCase();
+    const value = SF_WORDS[word] ?? Number(word);
+    if (!Number.isFinite(value) || value < 1 || value > 20) {
+      return { value: null, source: null, note: `Ignored safety factor "${m[0].trim()}": it must be between 1 and 20.` };
+    }
+    return { value, source: `"${m[0].trim()}"`, note: null };
+  }
+  return { value: null, source: null, note: null };
+}
+
+/**
+ * Pass/fail against the required safety factor, with margin.
+ * achieved SF = yield / max stress (the hand check and the FEA each give
+ * one; the lower governs). margin = achieved / required − 1.
+ */
+export function safetyCheck(intent, hand, fea) {
+  const stated = Number.isFinite(intent?.safetyFactor) ? intent.safetyFactor : null;
+  const required = stated ?? 1;
+  const yieldPa = hand?.allowablePa ?? materialProps(intent?.material).allowable;
+  const sfOf = (stress) => (Number.isFinite(stress) && stress > 0 ? yieldPa / stress : null);
+  const handSF = hand?.applicable ? sfOf(hand.maxStressPa) : null;
+  const feaSF = fea?.ok ? sfOf(fea.maxStressPa) : null;
+  const candidates = [
+    handSF != null && { by: "hand", sf: handSF },
+    feaSF != null && { by: "fea", sf: feaSF },
+  ].filter(Boolean);
+  const round = (x, d = 3) => (x == null ? null : Math.round(x * 10 ** d) / 10 ** d);
+  if (!candidates.length) {
+    return {
+      requiredSafetyFactor: required, stated: stated != null, source: intent?.safetyFactorSource ?? null,
+      yieldPa, allowablePa: yieldPa / required, achievedSafetyFactor: null, governing: null,
+      margin: null, marginPct: null, pass: null, verdict: "No stress result to check the safety factor against.",
+    };
+  }
+  const gov = candidates.reduce((a, b) => (b.sf < a.sf ? b : a));
+  const margin = gov.sf / required - 1;
+  const pass = gov.sf >= required;
+  const label = stated != null ? `required SF ${required}` : "yield (no safety factor stated, SF 1)";
+  return {
+    requiredSafetyFactor: required,
+    stated: stated != null,
+    source: intent?.safetyFactorSource ?? null,
+    yieldPa,
+    allowablePa: yieldPa / required,
+    achievedSafetyFactor: round(gov.sf),
+    handSafetyFactor: round(handSF),
+    feaSafetyFactor: round(feaSF),
+    governing: gov.by,
+    utilizationAtRequiredSF: round(required / gov.sf, 4),
+    margin: round(margin, 4),
+    marginPct: round(margin * 100, 1),
+    pass,
+    verdict: `${pass ? "PASS" : "FAIL"}: achieved SF ${round(gov.sf, 2)} vs ${label}, margin ${margin >= 0 ? "+" : ""}${round(margin * 100, 1)}% (${gov.by} governs).`,
+  };
+}
+
 export function screeningHand(intent) {
   const L = intent.spans?.[0] ?? 1;
   const P = Math.abs(intent.loads?.[0]?.forceN ?? DEFAULT_LOAD_N);
@@ -454,6 +539,7 @@ export function screeningHand(intent) {
   }
   const stress = applicable ? (M * c) / I : null;
   const utilization = applicable ? stress / props.allowable : null;
+  const sf = Number.isFinite(intent.safetyFactor) ? intent.safetyFactor : 1;
   return {
     applicable,
     formula: placement.formula,
@@ -463,7 +549,10 @@ export function screeningHand(intent) {
     utilization,
     allowablePa: props.allowable,
     elasticModulusPa: props.E,
-    allPass: applicable ? utilization <= 1 : null,
+    // utilization is against yield; utilizationAtSF against yield / SF.
+    utilizationAtSF: applicable ? utilization * sf : null,
+    requiredSafetyFactor: sf,
+    allPass: applicable ? utilization * sf <= 1 : null,
     area: intent.section?.area ?? null,
     momentI: I ?? null,
   };
@@ -500,7 +589,47 @@ export function solveDesignText(text) {
   } catch (e) {
     feaReport = { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
-  return { ok: true, intent, mesh, model, hand, fea: feaReport };
+  if (feaReport.ok && Number.isFinite(intent.safetyFactor)) {
+    // runFEA checks against yield; a stated SF tightens the pass line.
+    feaReport.utilizationAtSF = feaReport.maxUtilization == null ? null : feaReport.maxUtilization * intent.safetyFactor;
+    feaReport.allPass = feaReport.allPass && feaReport.utilizationAtSF != null && feaReport.utilizationAtSF <= 1;
+  }
+  const safety = safetyCheck(intent, hand, feaReport);
+  return { ok: true, intent, mesh, model, hand, fea: feaReport, safety };
+}
+
+/**
+ * The parts of a solveDesignText result a model or a chat reply needs: no
+ * mesh arrays, no FEA model. Used by the agent's conkay_design tool and the
+ * conkay_design.solve lens action.
+ */
+export function summarizeDesignSolve(solved) {
+  if (!solved?.ok) {
+    return { ok: false, error: solved?.error || "design_not_understood", code: solved?.code, supportedParts: solved?.supportedParts };
+  }
+  const { intent, hand, fea, safety } = solved;
+  return {
+    ok: true,
+    part: intent.part,
+    support: intent.support,
+    material: intent.material,
+    spansM: intent.spans,
+    loads: intent.loads,
+    section: intent.section,
+    safetyFactor: intent.safetyFactor,
+    assumptions: intent.assumptions,
+    uncitedDefaults: intent.uncitedDefaults,
+    hand: hand && {
+      applicable: hand.applicable, formula: hand.formula, maxStressPa: hand.maxStressPa,
+      maxDeflectionM: hand.maxDeflectionM, utilization: hand.utilization,
+      utilizationAtSF: hand.utilizationAtSF, allPass: hand.allPass,
+    },
+    fea: fea?.ok
+      ? { ok: true, maxStressPa: fea.maxStressPa, maxDeflectionM: fea.maxDeflectionM, maxUtilization: fea.maxUtilization, utilizationAtSF: fea.utilizationAtSF ?? null, allPass: fea.allPass }
+      : { ok: false, error: fea?.error || "runFEA failed" },
+    safety,
+    pass: safety?.pass ?? null,
+  };
 }
 
 /** Mirror engineering.partMesh i-beam / box / cylinder builders (deterministic). */
