@@ -13,7 +13,7 @@
 // definitions (references.json), at screening fidelity.
 
 import { obb, aabb, separation, ellipsoid, rayToEllipsoid, widthAt, topAt, boxClearanceToShell, bounds, corners } from "./geometry.js";
-import { seatOccupant, occupantDims, hPointOffsets, PACKAGING_REFERENCES as REFS } from "./occupant.js";
+import { seatOccupant, occupantDims, hPointOffsets, rearLowerLegBoxes, PACKAGING_REFERENCES as REFS } from "./occupant.js";
 
 const J = REFS.saeJ1100.definitions;
 const mm = (m) => Math.round(m * 1000 * 10) / 10;
@@ -55,8 +55,13 @@ export function seatBoxes(id, seatDims, h, torsoDeg, floorZ, backThickness = 0) 
   const backLen = (topZ - cushionTop) / Math.cos(th);
   const n = [Math.cos(th), 0, -Math.sin(th)]; // rearward normal of the reclined back surface
   const bc = [backAtCushion + (backLen / 2) * Math.sin(th) + n[0] * t / 2, h.y, cushionTop + (backLen / 2) * Math.cos(th) + n[2] * t / 2];
+  // The back's REAR face at height z (m): the back surface line (reclined at torsoDeg, through the back surface at cushion
+  // height) offset rearward by the thickness; clamped to the back's extent (cushion-top height up to the published max
+  // height). Below the cushion top the line's value at the cushion top is used (the cushion is further forward, so this
+  // is conservative).
+  const rearXAt = (z) => backAtCushion + (Math.min(Math.max(z, cushionTop), topZ) - cushionTop) * Math.tan(th) + t / Math.cos(th);
   return {
-    rearX, frontX,
+    rearX, frontX, rearXAt, cushionRearX: backAtCushion, cushionTopZ: cushionTop,
     boxes: [
       aabb({ id: `${id}:cushion`, part: "seat", min: [frontX, h.y - w / 2, floorZ], max: [backAtCushion, h.y + w / 2, cushionTop] }),
       // The back: on the occupant's back surface, reclined at the torso angle, backThickness deep.
@@ -64,6 +69,32 @@ export function seatBoxes(id, seatDims, h, torsoDeg, floorZ, backThickness = 0) 
     ],
     method: `estimated: the seat's back = the occupant's back surface (the 50th male's H-point-to-back distance, Hybrid III scaled) reclined at the torso angle up to the published ${Math.round(seatDims.maxHeightM * 1000)} mm max height, ${Math.round(t * 1000)} mm thick behind it (${t > 0 ? "a design allowance: the backrest thickness is not published" : "a plane: the backrest thickness is not published, so the seat's rear extent is a lower bound"}); cushion front = the back surface at cushion height minus the published ${Math.round(seatDims.maxCushionDepthM * 1000)} mm max cushion depth; cushion top = the 50th male's sitting surface; width = ${Math.round(w * 1000)} mm (the published maximum); mounting hardware (not in the published dimensions) ignored`,
   };
+}
+
+/** SAE J1100 6.2.27 L48 lateral space: 127 mm either side of the occupant centreline. */
+export const L48_LATERAL_BAND_M = 0.127;
+
+/** The two front seats with the driver SgRP-front (J1100 4.1: rearmost normal driving position), seat centrelines at +-frontSeatY. */
+export function sgrpFrontSeats(seatDims, { x, hz, torsoDeg, floorZ, backT, frontSeatY }) {
+  return [-1, 1].map((sg) => ({ y: sg * frontSeatY, widthM: seatDims.maxWidthM, ...seatBoxes(`SgRP${sg < 0 ? "L" : "R"}`, seatDims, { x, y: sg * frontSeatY, z: hz }, torsoDeg, floorZ, backT) }));
+}
+
+/**
+ * J1100 L48 at the knee: the horizontal distance from the rear occupant's Knee Pivot Center to the REAR FACE OF THE FRONT
+ * SEATBACK AT THE KNEE PIVOT'S HEIGHT, minus the 51 mm allowance (m), the minimum over the front seats whose back lies
+ * in the 127 mm lateral band either side of the occupant centreline. null when no front seat back is in the band.
+ */
+export function rearKneeL48(o, seats, allowanceM) {
+  const [kx, kz] = o.landmarks.knee, y = o.landmarks.y;
+  const vals = seats.filter((st) => Math.min(y + L48_LATERAL_BAND_M, st.y + st.widthM / 2) > Math.max(y - L48_LATERAL_BAND_M, st.y - st.widthM / 2)).map((st) => kx - st.rearXAt(kz) - allowanceM);
+  return vals.length ? Math.min(...vals) : null;
+}
+
+/** Smallest separation (m) of the rear occupant's shin and feet from the front seats' boxes (cushion/base down to the floor, and back). */
+export function rearLegsToFrontSeats(o, seats, floorZ) {
+  let m = Infinity;
+  for (const lb of rearLowerLegBoxes(o, floorZ)) for (const st of seats) for (const sb of st.boxes) m = Math.min(m, separation(lb, sb).separation);
+  return m;
 }
 
 function check(list, c) {
@@ -274,7 +305,8 @@ export function evaluatePackaging({ pkg, centers, shell, body, frontAxleX, rearA
   check(checks, { id: "classA.W9", group: "SAE J1100 Class A", value: mm(dc.steeringWheelDiameter), threshold: cA.W9MaxMm, unit: "mm", comparator: "<", thresholdBasis: { state: "sourced", source: SOURCE.j1100, section: cA.section } });
   check(checks, { id: "classA.L23", group: "SAE J1100 Class A", value: mm(dc.seatTrackTravel), threshold: cA.L23MinMm, unit: "mm", comparator: ">", thresholdBasis: { state: "sourced", source: SOURCE.j1100, section: cA.section } });
 
-  const sgSeatRearX = seatDims ? seatBoxes("SgRP", seatDims, { x: sgRPFront.x, y: 0, z: hz }, dc.torsoDeg, floorZ, dc.frontSeatBackThicknessM || 0).rearX : null;
+  const sgSeats = seatDims ? sgrpFrontSeats(seatDims, { x: sgRPFront.x, hz, torsoDeg: dc.torsoDeg, floorZ, backT: dc.frontSeatBackThicknessM || 0, frontSeatY: dc.frontSeatY }) : null;
+  const sgSeatRearX = sgSeats ? sgSeats[0].rearX : null;
   for (const key of keys) {
     const d = occupantDims(key);
     const occ = scenarios[key];
@@ -296,10 +328,14 @@ export function evaluatePackaging({ pkg, centers, shell, body, frontAxleX, rearA
         check(checks, { id: `legReach.${o.seat}.${key}`, group: "legroom", occupant: key, seat: o.seat, value: mm(o.leg.D), threshold: mm(o.leg.reach), unit: "mm", comparator: "<=", note: "hip (H-point) to ankle (malleolus height above the AHP) against thigh link + calf link", thresholdBasis: { state: "sourced", source: SOURCE.ansur, basis: "ANSUR II thigh link + calf link of this percentile" } });
       }
       if (!isFront && sgSeatRearX != null) {
-        // J1100 L48: knee pivot to the back of the front seatback minus 51 mm, front seat at the SgRP.
-        const l48 = o.landmarks.knee[0] - sgSeatRearX - J.L48.subtractMm / 1000;
-        check(checks, { id: `rearKnee.${o.seat}.${key}`, group: "legroom", occupant: key, seat: o.seat, value: mm(l48), threshold: 0, unit: "mm", comparator: ">=", note: "SAE J1100 L48: knee pivot to the back of the front seatback (front seat at the SgRP-front, backrest allowance included), minus 51 mm", thresholdBasis: { state: "geometric", basis: "0 mm after the J1100 L48 51 mm knee allowance", source: SOURCE.j1100 } });
-        j1100.rear[`L48_${key}`] = { mm: mm(l48), def: J.L48.section };
+        // J1100 6.2.27 L48 (text read): Knee Pivot Center to the back of the front seatback, minus 51 mm, within +-127 mm laterally.
+        // Measured at the knee pivot's height on the rear face of the reclined seatback (interpretation: the standard names no height).
+        const l48 = rearKneeL48(o, sgSeats, J.L48.subtractMm / 1000);
+        if (l48 == null) notes.push(`${o.seat}.${key}: no front seatback within 127 mm of the rear occupant's centreline: L48 not constrained`);
+        else check(checks, { id: `rearKnee.${o.seat}.${key}`, group: "legroom", occupant: key, seat: o.seat, value: mm(l48), threshold: 0, unit: "mm", comparator: ">=", note: `SAE J1100 L48 (6.2.27): knee pivot to the rear face of the front seatback AT THE KNEE PIVOT'S HEIGHT (${mm(o.landmarks.knee[1] - floorZ)} mm above the floor; reclined ${dc.torsoDeg} deg, ${mm(dc.frontSeatBackThicknessM || 0)} mm thick), front seat at the SgRP-front, minus 51 mm`, thresholdBasis: { state: "geometric", basis: "0 mm after the J1100 L48 51 mm knee allowance", source: SOURCE.j1100 } });
+        const fs = rearLegsToFrontSeats(o, sgSeats, floorZ);
+        check(checks, { id: `rearFoot.${o.seat}.${key}`, group: "legroom", occupant: key, seat: o.seat, value: mm(fs), threshold: 0, unit: "mm", comparator: ">=", note: "the rear occupant's shin (vertical, 51 mm deep ahead of the knee pivot) and feet (heel under the knee pivot, toe ahead by the foot length) to the front seats' cushion/base boxes (solid from the floor to the sitting surface; rails and mounting hardware are not modelled) and seatbacks; the front seat at the SgRP-front", thresholdBasis: GEOMETRIC });
+        if (l48 != null) j1100.rear[`L48_${key}`] = { mm: mm(l48), def: J.L48.section };
       }
       // Entry space (estimated): roof height at the occupant's outboard shoulder line on the H-point X plane,
       // above the H-point, against the seated head-top height above the H-point.

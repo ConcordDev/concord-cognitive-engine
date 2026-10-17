@@ -59,9 +59,12 @@ describe("Layout revision: the rear package derived from the envelopes", () => {
     const b2 = buildCarFromLibrary(BRIEF, { cadBody: false });
     assert.deepEqual(b2.ir.nodes.find((n) => n.id === "VEH").props.vehicle.packaging.layoutRevision, rev);
     const m = LAYOUT_REVISION_CHOICES;
-    // L48 sits at the knee margin for the governing percentile (within the 1 mm rounding).
+    // This car seats every checked occupant in the rear, so its rear H-point is derived against the front seatback's rearmost point
+    // (the earlier reference, kept so its tub is unchanged; car-layout.js rearSgRPGovernor). L48 measured at the knee's height on the
+    // seatback's rear face is larger than the knee margin for every percentile (188.8 mm for the governing one), never smaller.
     const l48 = Math.min(...["F5", "F95", "M95"].map((k) => ck(`rearKnee.SEAT_3.${k}`).value));
-    assert.ok(l48 >= m.rearKneeMarginM.value * 1000 - 0.05 && l48 <= m.rearKneeMarginM.value * 1000 + 1.05, `${l48}`);
+    assert.match(rev.inputs.rearSgRPGovernor, /seatback top/);
+    assert.ok(l48 >= m.rearKneeMarginM.value * 1000 - 0.05 && close(l48, 188.8, 0.2), `${l48}`);
     // The differential clears the rear occupants by the margin (within the 1 mm rounding), not more.
     const diffGap = Math.min(...itf.outputs.closest.value.concat(itf.outputs.interferences.value).filter((p) => /DIFFERENTIAL/.test(p.a + p.b) && /SEAT_[34]/.test(p.a + p.b)).map((p) => p.separationMm));
     assert.ok(diffGap >= m.diffClearanceM.value * 1000 - 0.05 && diffGap <= m.diffClearanceM.value * 1000 + 1.5, `${diffGap}`);
