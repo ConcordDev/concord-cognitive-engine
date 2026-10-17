@@ -1720,7 +1720,14 @@ def build(req):
             if over > 1e-5:
                 e_ = bracketed_extents(raw, axes=(1,))
                 over = (e_["max"][1] - e_["min"][1]) - P["maxWidth"]
+            tick(f"iteration {it}: width over the cap by {over:.6f} m (trim {adj['widthTrim']:.6f} m)")
             if over <= 1e-5:
+                break
+            # the cap never cuts into a requirement: once trimming stops shrinking the excess, the requirements
+            # alone are wider than maxWidth; stop re-lofting and let the solver report the width (no futile loops)
+            prev = [e["widthOverM"] for e in adj_log if e["iteration"] == it]
+            if prev and over > prev[-1] - 1e-4:
+                adj_log.append({"iteration": it, "widthOverM": r6(over), "widthTrimM": r6(adj["widthTrim"]), "stopped": "requirements alone exceed maxWidth"})
                 break
             adj["widthTrim"] += 0.5 * over + 2e-4
             adj_log.append({"iteration": it, "widthOverM": r6(over), "widthTrimM": r6(adj["widthTrim"])})
@@ -1736,7 +1743,7 @@ def build(req):
             for b, (c, _) in zip(enc, clearances_for("fast", enc, solid, shell, surf)):
                 if c < b.get("offsetM", o) - TOL:
                     short[b["id"]] = (b.get("offsetM", o) - c) + 0.002
-            tick(f"screening clearances ({len(short)} short)")
+            tick(f"screening clearances ({len(short)} short): " + ", ".join(f"{k} +{v:.4f}" for k, v in sorted(short.items())))
         cl = []
         if not short:
             for b, (c, ins) in zip(req["envelopes"], clearances_for("exact", req["envelopes"], solid, shell, surf)):
@@ -1748,7 +1755,7 @@ def build(req):
                 if not inside(solid, p["p"]):
                     dp = distance(BRepBuilderAPI_MakeVertex(gp_Pnt(*p["p"])).Vertex(), shell)
                     short[p["id"]] = dp + 0.002
-            tick(f"exact clearances ({len(short)} short)")
+            tick(f"exact clearances ({len(short)} short): " + ", ".join(f"{k} +{v:.4f}" for k, v in sorted(short.items())))
         history.append({"iteration": it, "short": len(short), "exact": bool(cl), "worstM": r6(min([x["clearanceM"] for x in cl if x["enclose"]] or [0])) if cl else None})
         if not short or last:
             if not cl:
