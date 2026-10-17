@@ -55,6 +55,10 @@ export const CAD_BODY_DEFAULTS = Object.freeze({
  * front-engine car and the default tail falls more steeply.
  */
 export const ELECTRIC_BODY_CHOICES = Object.freeze({
+  fairSigmaThetaTop: { value: 0.02, basis: "design choice (2026-10-16 stance pass 2: sculpted hood): the hood between the fender pods is solved at ~0.745 m at the front axle under 0.797 m fender crowns, but the global 0.1 rad around-section fairing lifted it to 0.817 m (one flat slab with the fenders). 0.02 rad on the top rays (band 25-50 deg), with a 0.6 m hood fillet, leaves it at 0.773 m under 0.839 m crowns (a 66 mm valley); measured on the kernel's fairness windows: hood/fender around-section max dk/ds 50.6 (24.6 before; a global 0.05 rad gave 316), door unchanged (97.3)" },
+  fairTopBandStartDeg: { value: 25, basis: "design choice: the top-ray fairing blends back to the global angle from 25 deg from straight up (with fairTopBandEndDeg 50: the hood and roof tops, not the fender shoulders or the doors)" },
+  fairTopBandEndDeg: { value: 50, basis: "design choice: the blend to the global fairing angle is complete at 50 deg from straight up" },
+  fairHoodCloseRadiusM: { value: 0.6, basis: "design choice (stance pass 2): the hood-to-fender fill rolls a 0.6 m disc (was 6 m, which filled the hood valley back up to the crowns): the valley keeps a 0.6 m fillet into each fender" },
   fenderCoverM: { value: 0.005, basis: "design choice (2026-10-16 stance pass): the fender side 5 mm beyond the 20 in tyre's outer face (was 20 mm), so the wheels fill the arches near flush with the body side; with the 275/35ZR20 tyre the 20 mm cover put the lofted body 15 mm over maxWidth 1.95 m, 5 mm brings it 9 mm under. A regulatory wheel-coverage rule is not checked here (none read)" },
   tailExtensionM: { value: 0.6, basis: "design choice (measured 2026-10-15, cad.body + aero.drag-buildup on the electric package): with 0.6 m on the final package (firewall 1.44 m, body enclosing the tub) the rear slant measures 10.8 deg, Cd 0.101..0.148..0.216, no slant term; the body is 5.16 m long. On that same final package the 0.22 m default measures 12.39 deg, just under Ahmed's 12.5 deg onset (Cd centre 0.145, body 4.78 m), so the longer tail buys slant margin (1.7 deg) for 0.38 m of length, not the slant term itself; the chat orchestrator, starting from 0.22 m, keeps 0.22 m (chat/repair-rules.js). (An earlier package revision, firewall 1.42 m, measured 13.2 deg at 0.22 m.) Not a wind-tunnel result: the slant onset is Ahmed's, transferred to this shape" },
 });
@@ -96,6 +100,9 @@ export const CAD_BODY_BASIS = Object.freeze({
   fairSigmaTheta: "design choice: fairing angle around each section (Gaussian sigma, radians); fills the concave creases between the fender pods, the lower body and the greenhouse with a fillet of roughly this angle",
   fairSigmaXSide: "design choice (kernel 2.2): fairing length along the car on the side-facing rays (the door and flanks; the roof, hood and floor keep fairSigmaX, so the roof line does not lift); removed the 2.1 door bump (a 28-43 mm dip in the side behind the front occupants' shoulders)",
   fairHoodCloseRadius: "design choice (kernel 2.2): rolling-disc radius closing the top outline of each front-pod station (weighted by the pod's blend) before the fairing; fills the valley where the hood dome meets the fender pods (the 2.1 S-bend). Outward only: every envelope keeps its skin offset",
+  fairSigmaThetaTop: "design choice (optional; 2026-10-16): around-section fairing angle on the near-vertical rays (the hood and roof tops), blending to fairSigmaTheta across fairTopBandStartDeg..fairTopBandEndDeg from up. The fairing works on a radius field polar about a point inside each section, where a flat or dished hood is convex in angle, so the global fairing lifts it; a smaller angle here lets the hood sit below the fender crowns. Unset: every ray keeps fairSigmaTheta",
+  fairTopBandStartDeg: "design choice (optional): where the top-ray fairing angle starts blending back to fairSigmaTheta (degrees from straight up)",
+  fairTopBandEndDeg: "design choice (optional): where the blend to fairSigmaTheta is complete (degrees from straight up)",
   fairPoleSpacing: "design choice: control-point spacing of the surface along the car (a least-squares cubic B-spline, about one control point per this length, instead of interpolating every section); larger is smoother and follows the sections less closely, so the exact clearance pass re-checks the result",
   maxWidth: "design choice (requirement-like bound, from the brief's sports 2+2 band): overall body width; the fairing's width cap is tightened until the lofted body is within it, never below what the tyres and envelopes need (then the solver fails)",
 });
@@ -104,7 +111,7 @@ const mm = (m) => `${Math.round(m * 1e6) / 1e3} mm`;
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
 const LENGTHS = ["noseExtension", "noseTipHeight", "tailExtension", "archClearance", "fenderSkin", "fenderCover", "floorCornerAllowance", "beltMin", "beltMax", "beltSigma", "profileSigma", "lowerOverlap", "podBlend", "podMinHalfWidth", "podTuck", "blendRadius", "inletAllowance", "planClosingRadius", "roofClosingRadius", "floorClosingRadius", "fairSigmaX", "fairSigmaXSide", "fairHoodCloseRadius", "fairPoleSpacing", "maxWidth"];
-const NUMBERS = ["stationCount", "sectionPoints", "upperExponent", "lowerExponent", "fastbackDeg", "floorRiseDeg", "noseShapeExponent", "noseRoundExponent", "kammAreaRatio", "podExponent", "fairSigmaTheta"];
+const NUMBERS = ["stationCount", "sectionPoints", "upperExponent", "lowerExponent", "fastbackDeg", "floorRiseDeg", "noseShapeExponent", "noseRoundExponent", "kammAreaRatio", "podExponent", "fairSigmaTheta", "fairSigmaThetaTop", "fairTopBandStartDeg", "fairTopBandEndDeg"];
 
 /** The BODY_SHELL geometry (design-graph form, with units) for these parameters. */
 export function cadBodyGeometry(bp) {
