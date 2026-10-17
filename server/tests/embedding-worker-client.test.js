@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { startEmbeddingWorker } from "../lib/embedding-worker-client.js";
+import { startEmbeddingWorker, buildWorkerExecArgv } from "../lib/embedding-worker-client.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "embed-worker-"));
 function fakeWorker(name, body) {
@@ -67,4 +67,25 @@ test("terminate rejects further requests", async () => {
   const w = await startEmbeddingWorker({ workerUrl: echo });
   await w.terminate();
   await assert.rejects(w.embed("abc"), /terminated/);
+});
+
+test("buildWorkerExecArgv replaces inherited max-old-space-size and keeps other flags in order", () => {
+  const parentArgv = ["--expose-gc", "--max-old-space-size=3072", "--import=x"];
+  const res = buildWorkerExecArgv(parentArgv, 1024);
+  assert.deepEqual(res, ["--expose-gc", "--import=x", "--max-old-space-size=1024"]);
+  const maxOldFlags = res.filter((flag) => /^--max[_-]old[_-]space[_-]size/i.test(flag));
+  assert.equal(maxOldFlags.length, 1);
+});
+
+test("buildWorkerExecArgv strips underscore form --max_old_space_size=3072", () => {
+  const parentArgv = ["--max_old_space_size=3072"];
+  const res = buildWorkerExecArgv(parentArgv, 512);
+  assert.deepEqual(res, ["--max-old-space-size=512"]);
+});
+
+test("buildWorkerExecArgv clamps out-of-range heapMb and falls back to 1024 for NaN", () => {
+  assert.deepEqual(buildWorkerExecArgv([], 10), ["--max-old-space-size=256"]);
+  assert.deepEqual(buildWorkerExecArgv([], 99999), ["--max-old-space-size=4096"]);
+  assert.deepEqual(buildWorkerExecArgv([], NaN), ["--max-old-space-size=1024"]);
+  assert.deepEqual(buildWorkerExecArgv([], "invalid"), ["--max-old-space-size=1024"]);
 });
