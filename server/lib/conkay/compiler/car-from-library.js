@@ -28,7 +28,7 @@ import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, d
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, ELECTRIC_BODY_CHOICES, cadBodyGeometry } from "../cad/body-params.js";
-import { withStructuralTub } from "../structural/car-tub.js";
+import { withStructuralTub, ELECTRIC_TUB_WALLS } from "../structural/car-tub.js";
 import { carChatSummary } from "../assembly/summary.js";
 
 const OCCUPANT_KG = 77; // matches the architecture's occupant payload (assumption)
@@ -79,7 +79,7 @@ export function vehicleConfiguration(parsed, overrides = {}) {
     frontSuspension: "Ford S550 Mustang front (2015-2023)",
     rearSuspension: "Ford S550 IRS (2015-2023 Mustang)",
     boltPattern: "5x114.3",
-    wheelDiameterIn: 18,
+    wheelDiameterIn: electric ? 20 : 18,
     vehicleMassKg: massMax,
     requiredTopSpeedKmh: Number.isFinite(vReq) ? vReq * 3.6 : null,
     loadPerTyreKg: Number.isFinite(massMax) && Number.isFinite(seats) ? (massMax + seats * OCCUPANT_KG) / 4 : null,
@@ -94,7 +94,7 @@ export function vehicleConfiguration(parsed, overrides = {}) {
     frontSuspension: overrides.frontSuspension ? "given" : "design choice: S550 Mustang running gear, so suspension, steering, brakes and axle have published fitment to each other",
     rearSuspension: overrides.rearSuspension ? "given" : "design choice: S550 Mustang IRS (see frontSuspension)",
     boltPattern: overrides.boltPattern ? "given" : "design choice (5x114.3 hub pattern)",
-    wheelDiameterIn: overrides.wheelDiameterIn ? "given" : "design choice (18 in wheels)",
+    wheelDiameterIn: overrides.wheelDiameterIn ? "given" : electric ? "design choice (20 in wheels, 2026-10-16 stance pass: a larger wheel fills the arches and lowers the body-to-wheel height ratio; the 18 in set left ~15 cm of body above each tyre)" : "design choice (18 in wheels)",
     vehicleMassKg: "brief: mass target (max)",
     requiredTopSpeedKmh: "brief: top-speed target (min)",
     loadPerTyreKg: `(mass target + ${seats ?? "?"} occupants × ${OCCUPANT_KG} kg) / 4, static, even split (screening)`,
@@ -443,7 +443,9 @@ function buildCarOnce(brief, { config: overrides, speedLimiter = true, packaging
   let out = ir, tubChange = null;
   if (chassis === "tub") {
     if (!packaging) return { error: "the structural tub is laid out in the package: it needs packaging" };
-    const t = withStructuralTub(ir, tub);
+    // the electric car's thicker rail and kick walls (car-tub.js ELECTRIC_TUB_WALLS) unless the caller gives walls
+    const evWalls = config.fuelType === "electric" ? Object.fromEntries(Object.entries(ELECTRIC_TUB_WALLS).map(([k, v]) => [k, v.value])) : {};
+    const t = withStructuralTub(ir, { ...tub, walls: { ...evWalls, ...(tub.walls || {}) } });
     out = t.ir;
     tubChange = t.change;
     sources.chassis = `design change: ${t.change.new} (replaces ${t.change.old})`;

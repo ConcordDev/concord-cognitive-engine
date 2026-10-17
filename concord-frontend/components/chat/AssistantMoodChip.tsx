@@ -34,17 +34,22 @@ export function AssistantMoodChip({ pollMs = 20000 }: { pollMs?: number }) {
     return () => { cancelled = true; clearInterval(id); };
   }, [pollMs]);
 
-  if (!mood || !mood.lit || !mood.quale) return null;
-
-  const v = mood.valence;
+  // Always shown: a neutral "even" chip until the felt state moves off
+  // neutral (lit), then the qualeOf label.
+  const lit = Boolean(mood?.lit && mood?.quale);
+  const label = lit && mood?.quale ? mood.quale : 'even';
+  const v = mood?.valence ?? 0;
+  const arousal = mood?.arousal ?? 0;
   const dot = v > 0.15 ? 'bg-emerald-400' : v < -0.15 ? 'bg-rose-400' : 'bg-zinc-400';
   return (
     <span
-      title={`The assistant's felt state — valence ${v >= 0 ? '+' : ''}${v.toFixed(2)}, arousal ${mood.arousal.toFixed(2)}. A correlate of its affect substrate, not a consciousness claim.`}
+      title={lit
+        ? `Concord's felt state — valence ${v >= 0 ? '+' : ''}${v.toFixed(2)}, arousal ${arousal.toFixed(2)}. A correlate of its affect substrate, not a consciousness claim.`
+        : `Concord's felt state is neutral right now. It shifts as the conversation goes. A correlate of its affect substrate, not a consciousness claim.`}
       className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/[0.08] px-2 py-0.5 text-[10px] text-fuchsia-200"
     >
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-      feeling: <span className="font-medium capitalize">{mood.quale}</span>
+      feeling: <span className="font-medium capitalize">{label}</span>
     </span>
   );
 }

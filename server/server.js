@@ -2115,7 +2115,9 @@ import { persistIdiolect as personaPersistIdiolect, getIdiolectSamples as person
 import { buildSubconsciousPrompt, getSubconsciousParams, SUBCONSCIOUS_MODES } from "./prompts/subconscious.js";
 import { buildUtilityPrompt, getUtilityParams } from "./prompts/utility.js";
 import { buildRepairPrompt, getRepairParams } from "./prompts/repair.js";
-import { getPersonality, recordInteraction as recordPersonalityInteraction, getPersonalityHistory } from "./prompts/personality.js";
+import { getPersonality, recordInteraction as recordPersonalityInteraction, getPersonalityHistory, serializePersonality, restorePersonality } from "./prompts/personality.js";
+import { wrapShortcutAnswer as _wrapShortcutAnswer, humanizeSafe as _humanizeSafe } from "./prompts/voice.js";
+import { personalitySignalsFromReply as _personalitySignalsFromReply } from "./prompts/personality-signals.js";
 import { getActiveWants, getWantMetrics, createWant, decayAllWants, WANT_TYPES, WANT_ORIGINS } from "./prompts/want-engine.js";
 import { selectSubconsciousTask, checkSpontaneousTrigger, generateWantFromInteraction, amplifyGoalPriority } from "./prompts/want-integration.js";
 import { enqueueMessage, processQueue as processSpQueue, getQueueStatus, setUserSpontaneousEnabled, startTicker, stopTicker } from "./prompts/spontaneous-queue.js";
@@ -12532,6 +12534,35 @@ if (USE_SQLITE_STATE) {
   }
 }
 
+
+// ── Concord personality wiring for chat (prompts/personality.js, want-engine.js,
+// lib/persona/idiolect-store.js). The evolving traits live in STATE._personality
+// and STATE._wants; these read them for the conscious prompt.
+function _activeWantsForPrompt(limit = 3) {
+  try {
+    return (getActiveWants(STATE)?.wants || [])
+      .filter((w) => w && typeof w.intensity === "number" && w.type && w.domain)
+      .slice(0, limit);
+  } catch { return []; }
+}
+// getIdiolectSamples scans every DTU, so chat reuses a sample for 10 minutes.
+let _voiceExemplarCache = { at: 0, samples: [] };
+function _voiceExemplarsForPrompt(n = 4) {
+  const now = Date.now();
+  if (now - _voiceExemplarCache.at < 10 * 60 * 1000) return _voiceExemplarCache.samples;
+  let samples = [];
+  try { samples = personaGetIdiolectSamples({ STATE, n }) || []; } catch { samples = []; }
+  _voiceExemplarCache = { at: now, samples };
+  return samples;
+}
+/** Feed one finished Concord reply into the personality evolution tracker. */
+function _recordChatPersonality(reply, domain) {
+  try {
+    if (typeof reply !== "string" || !reply.trim()) return;
+    recordPersonalityInteraction(STATE, { type: "chat", domain: domain || "chat", signals: _personalitySignalsFromReply(reply) });
+  } catch { /* evolution is best-effort */ }
+}
+
 function _serializeState() {
   const toArr = (m) => {
     if (typeof m?.values === "function") return Array.from(m.values());
@@ -12635,6 +12666,8 @@ function _serializeState() {
     // extended; hard restarts lost user data. Generic helper in
     // server/lib/lens-state-persistence.js handles nested Map/Set.
     lensState: serializeLensState(STATE),
+    // Concord's evolving personality traits + recent evolution log.
+    personality: (() => { try { return JSON.parse(serializePersonality(STATE)); } catch { return null; } })(),
     // Excluded from save: _caches, _derivedIndexes, _repairCaches, _styleVectors (transient)
   };
 }
@@ -12797,6 +12830,9 @@ function _hydrateState(obj) {
   }
 
   // Autogen Pipeline state
+  if (obj.personality && typeof obj.personality === "object") {
+    try { restorePersonality(STATE, obj.personality); } catch { /* keep defaults */ }
+  }
   if (obj._autogenPipeline && typeof obj._autogenPipeline === "object") {
     STATE._autogenPipeline = obj._autogenPipeline;
   }
@@ -27425,7 +27461,7 @@ function _persistDeterministicTurn(replyContent, replyMeta = {}) {
       ownerId: ctx?.actor?.userId || input?.userId || null,
       lastLens: input.lens || input.currentLens || null,
       userMsg: { role: 'user', content: prompt, ts: Date.now() - 1 },
-      assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: replyMeta },
+      assistantMsg: { role: 'assistant', content: replyContent, ts: Date.now(), meta: _clientTurnId ? { ...replyMeta, clientTurnId: String(_clientTurnId).slice(0, 80) } : replyMeta },
     });
     rememberCompletedChatTurn(sess, _clientTurnId, replyContent);
   } catch { /* never block chat on persistence failure */ }
@@ -27644,7 +27680,13 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
         const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
         const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind });
         if (_agentOut) {
-          const _agentReply = visibleChatReply(_agentOut.reply, prompt);
+          let _agentReply = visibleChatReply(_agentOut.reply, prompt);
+          if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
+            try {
+              const _ah = _humanizeSafe(_agentReply, personaHumanize, { intensity: "light" });
+              if (_ah.applied) _agentReply = _ah.text;
+            } catch { /* humanizer optional */ }
+          }
           const _agentMeta = {
             llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
             toolCallCount: _agentOut.toolCalls.length,
@@ -27652,6 +27694,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           };
           sess.messages.push({ role: "assistant", content: _agentReply, ts: nowISO(), meta: _agentMeta });
           _persistDeterministicTurn(_agentReply, _agentMeta);
+          _recordChatPersonality(_agentReply, currentLens || mode);
           saveStateDebounced();
           ctx.log("chat", "Answered through the agent tool loop", { sessionId, route: _agentRouteKind, tools: _agentMeta.tools });
           return {
@@ -28368,6 +28411,9 @@ let localReply = formatCrispResponse({
   let _pipelineBudget = null;
   let _pipelineDtuCount = 0;
   let _entityBlock = "";
+  // The chat mood line (lib/chat-self.js) is built inside the pipeline below
+  // and used again by the final conscious prompt.
+  let _chatMoodColor = "";
   try {
     // Phase 1: Context Harvest (4 sources)
     _pipelineHarvest = runContextHarvest(STATE, {
@@ -28437,6 +28483,7 @@ let localReply = formatCrispResponse({
         }
       }
     } catch { /* mood coloring optional */ }
+    _chatMoodColor = _moodColor;
     const _baseSystem = _composed.system + _moodColor;
 
     // DHTP — apply preset compression (Sprint 60+)
@@ -28960,8 +29007,11 @@ ${_operatorV6Block}` : "";
     finalReply = _deterministicAnswer.text;
   } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
+    // Conversational chat speaks at the conscious brain's temperature
+    // (prompts/conscious.js getConsciousParams, 0.75); task modes keep 0.35.
     const _llmTemp = clamp(
-      0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
+      (_conversationalChat ? (getConsciousParams().temperature ?? 0.75) : 0.35)
+        + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
       0.1, 0.9
     );
     // DHTP-aware max tokens: preset specifies what it needs
@@ -29063,14 +29113,16 @@ ${_operatorV6Block}` : "";
       context: dtuContext,
       webContext: "",
       conversation_history: (sess.messages || []).slice(-20),
-      personality_state: STATE.personality || null,
-      active_wants: STATE.wants?.active || [],
+      personality_state: getPersonality(STATE),
+      active_wants: _activeWantsForPrompt(),
       crossDomainContext: sess.crossDomainContext || {},
       sessionLensHistory: (sess.lensHistory || []).map(l => ({ lens: l.lens || l })),
       entityStateBlock: _entityBlock || "",
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
+      voice_exemplars: _voiceExemplarsForPrompt(),
+      moodColor: _chatMoodColor,
     }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
@@ -29151,13 +29203,15 @@ ${_operatorV6Block}` : "";
         lens: currentLens || mode || "general",
         context: _directDtuContext,
         conversation_history: (sess.messages || []).slice(-20),
-        personality_state: STATE.personality || null,
-        active_wants: STATE.wants?.active || [],
+        personality_state: getPersonality(STATE),
+        active_wants: _activeWantsForPrompt(),
         crossDomainContext: sess.crossDomainContext || {},
         sessionLensHistory: (sess.lensHistory || []).map(l => ({ lens: l.lens || l })),
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
+        voice_exemplars: _voiceExemplarsForPrompt(),
+        moodColor: _chatMoodColor,
       }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
@@ -29394,6 +29448,41 @@ ${_operatorV6Block}` : "";
     if (!_carries) finalReply = _deterministicAnswer.text;
   }
 
+  // Shortcut answers (an engine answered outright, the brain was skipped):
+  // one short lead in Concord's voice, then the engine's text byte-for-byte.
+  // The lead may not contain digits (prompts/voice.js acceptableLead), so it
+  // can never restate or alter a computed number.
+  if (!_lockedReply && _deterministicAnswer && !_deterministicAnswer.image
+      && typeof finalReply === "string" && finalReply === _deterministicAnswer.text
+      && process.env.CONCORD_SHORTCUT_VOICE !== "0") {
+    try {
+      const _canWrite = Boolean(brainUrl && brainModel) && process.env.CONCORD_SHORTCUT_VOICE_LLM !== "0";
+      const _wrapped = await _wrapShortcutAnswer({
+        text: finalReply,
+        prompt,
+        route: _deterministicAnswer.route || "",
+        writeLead: _canWrite ? async (leadSystem, leadPrompt) => {
+          const _lr = await fetch(`${brainUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: brainModel,
+              messages: [{ role: "system", content: leadSystem }, { role: "user", content: leadPrompt }],
+              stream: false,
+              think: false,
+              options: { temperature: 0.8, num_predict: 48 },
+            }),
+          });
+          if (!_lr.ok) return null;
+          const _lj = await _lr.json().catch(() => ({}));
+          return String(_lj.message?.content || "");
+        } : null,
+      });
+      finalReply = _wrapped.text;
+      _deterministicAnswer.text = finalReply;
+    } catch { /* the bare engine answer stands */ }
+  }
+
   // The brain was requested and produced no reply (pod down, 503, circuit
   // open). Say so. Do not dress retrieved notes up as an answer. Callers
   // that passed llm:false opted out on purpose — that local path stays below.
@@ -29488,8 +29577,20 @@ ${_operatorV6Block}` : "";
     } catch { /* guard optional */ }
   }
 
+  // AI-tell strip (lib/persona/humanizer.js, light). humanizeSafe keeps the
+  // original whenever a number, URL or DTU id would not survive, and skips
+  // code, lists and tables.
+  if (!_lockedReply && llmUsed && !_deterministicAnswer && typeof finalReply === "string" && finalReply
+      && process.env.CONCORD_CHAT_HUMANIZE !== "0") {
+    try {
+      const _h = _humanizeSafe(finalReply, personaHumanize, { intensity: "light" });
+      if (_h.applied) finalReply = _h.text;
+    } catch { /* humanizer optional */ }
+  }
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  if (llmUsed && !_aiUnavailable) _recordChatPersonality(finalReply, currentLens || mode);
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
@@ -29695,6 +29796,9 @@ ${_operatorV6Block}` : "";
           toolCallCount: _toolCallsExecuted.length,
           computed: _computedSurface,
           dtuRefs: _dtuRefs.length > 0 ? _dtuRefs : undefined,
+          // Lets the chat lens find this exact reply in the saved thread when
+          // live delivery (SSE / fallback POST) was lost.
+          clientTurnId: _clientTurnId ? String(_clientTurnId).slice(0, 80) : undefined,
         },
       },
     });
@@ -55701,8 +55805,8 @@ function initChatSocketHandlers(io) {
               lens: lens || "general",
               context: _streamDtuContext + (_webContext ? `\n\nWeb search results (use to inform your answer, cite sources naturally):\n${_webContext}` : ""),
               conversation_history: (_streamSess.messages || []).slice(-20),
-              personality_state: STATE.personality || null,
-              active_wants: STATE.wants?.active || [],
+              personality_state: getPersonality(STATE),
+              active_wants: _activeWantsForPrompt(),
               crossDomainContext: _streamSess.crossDomainContext || {},
               sessionLensHistory: (_streamSess.lensHistory || []).map(l => ({ lens: l.lens || l })),
               entityStateBlock: "",

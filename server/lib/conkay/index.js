@@ -39,6 +39,7 @@ import "./physics/solvers/show-solid.js";
 import "./physics/solvers/tub-fit.js";
 import "./physics/solvers/aero-drag.js";
 import "./physics/solvers/aero-shape.js";
+import "./physics/solvers/aero-cfd.js";
 import "./physics/solvers/ga-drawing.js";
 import "./physics/solvers/vehicle-assembly.js";
 import "./physics/solvers/assembly-ga-drawing.js";
@@ -58,6 +59,10 @@ import "./physics/solvers/material-multiphase.js";
 import "./physics/solvers/material-conduction.js";
 import "./physics/solvers/material-cte-multiphase.js";
 import "./physics/solvers/material-viscoelastic-composite.js";
+import "./physics/solvers/reacting-chemistry.js";
+import "./physics/solvers/solid-stress.js";
+import "./physics/solvers/em-fdtd.js";
+import "./physics/solvers/em-magnetostatic.js";
 import "./safety-case/solvers.js";
 
 export { listSolvers };

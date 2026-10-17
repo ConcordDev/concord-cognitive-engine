@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
-import { DesignResult } from '@/components/conkay/designs/DesignResult';
+import { DesignBuilder } from '@/components/conkay/designs/DesignBuilder';
 
 export const metadata: Metadata = {
-  title: 'ConKay design result — Concord',
-  description: 'A ConKay showcase design: drawings, solver checks with margins, values with sources and status, mass by state, and the physical tests still needed.',
+  title: 'ConKay design — Concord',
+  description: 'One ConKay design as a working surface: the 3D model beside ConKay chat (real check counts from every edit), the live build stream, the workbench knobs, and the snapshot’s solver checks, values and mass.',
 };
 
 export default async function ConKayDesignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <DesignResult id={id} />;
+  return <DesignBuilder id={id} />;
 }

@@ -28,12 +28,17 @@ export function readChatMessages(db, { userId, sessionId, limit = 200 } = {}) {
 
   let rows;
   try {
+    // Newest `cap` rows, returned oldest-first. ORDER BY ts ASC LIMIT n
+    // returned the OLDEST n, so a long thread never showed its latest turns
+    // (and the chat lens could not find a just-saved reply).
     rows = db.prepare(`
-      SELECT role, content, ts, meta_json
-      FROM chat_messages
-      WHERE session_id = ?
-      ORDER BY ts ASC
-      LIMIT ?
+      SELECT role, content, ts, meta_json FROM (
+        SELECT id, role, content, ts, meta_json
+        FROM chat_messages
+        WHERE session_id = ?
+        ORDER BY ts DESC, id DESC
+        LIMIT ?
+      ) ORDER BY ts ASC, id ASC
     `).all(sid, cap);
   } catch {
     return { status: 503, body: { ok: false, error: "db_query_failed" } };

@@ -716,8 +716,14 @@ def _taps_x(xs, sigma):
 
 
 def _taps_theta(m, dth, sigma):
-    """Gaussian around the half section (sigma in radians), mirrored at theta = 0 and pi (the section is
-    symmetric), as per-output tap lists [(source index, weight)] (mirrored taps merged)."""
+    """Gaussian around the half section (sigma in radians, or a per-output-ray list of sigmas), mirrored at
+    theta = 0 and pi (the section is symmetric), as per-output tap lists [(source index, weight)] (mirrored taps
+    merged)."""
+    if isinstance(sigma, (list, tuple)):
+        rows = []
+        for k, sg in enumerate(sigma):
+            rows.append(_taps_theta(m, dth, sg)[k])
+        return rows
     if sigma <= 0:
         return [[(k, 1.0)] for k in range(m)]
     h = int(3 * sigma / dth) + 1
@@ -788,7 +794,17 @@ def fair_sections(secs, xs, zb, P, adj=None, iters=2000, tol=1e-5):
     sig_k = [round((sx + (sxs - sx) * _band(th)) / 0.005) * 0.005 for th in ths]
     taps_by = {sg: _taps_x(xs, sg) for sg in sorted(set(sig_k))}
     src_by = {sg: _transpose(t, len(xs)) for sg, t in taps_by.items()}
-    tt = _taps_theta(len(ths), dth, st)
+    # The radius field is polar about a centre inside the section, so a flat or dished top (a hood between the
+    # fender pods) is convex in theta and a Gaussian around the section lifts it. fairSigmaThetaTop (2026-10-16,
+    # optional) fairs the near-vertical rays less: sigma_k = top + (st - top) * smoothstep(fairTopBand deg from up);
+    # unset, every ray keeps fairSigmaTheta (the kernel's earlier behaviour).
+    stt = P.get("fairSigmaThetaTop")
+    if stt is not None and stt != st:
+        t1, t2 = P.get("fairTopBand") or (P.get("fairTopBandStartDeg") or 20, P.get("fairTopBandEndDeg") or 45)
+        st_k = [stt + (st - stt) * _smoothstep(t1, t2, math.degrees(th)) for th in ths]
+        tt = _taps_theta(len(ths), dth, st_k)
+    else:
+        tt = _taps_theta(len(ths), dth, st)
     srct = _transpose(tt, len(ths))
     # G (R_req + c), G = (around the section) o (along the car, per source ray); c grows only where the clamped
     # field min(G(.), U) is short of R_req. G is linear, so after the first full pass the field is updated
@@ -1678,7 +1694,7 @@ DEFAULTS = {
     "archClearance": 0.04, "fenderSkin": 0.03, "fenderCover": 0.02,
     "podExponent": 2.5, "podShoulder": 0.10, "podShoulderDrop": 0.08, "podBlend": 0.8, "podMinHalfWidth": 0.30, "blendRadius": 0.08, "sectionSmoothing": 0.5, "rowSigma": 0.07, "podTuck": 0.10,
     "fairSigmaX": 0.25, "fairSigmaTheta": 0.10, "fairAngles": 4, "fairEnds": True, "endTipWidthFraction": 0.24, "fairPolesX": 0, "fairPoleSpacing": 0.24, "fairLambda": 0.0, "maxWidth": None,
-    "fairSigmaXSide": 0.45, "fairSideBand": None, "fairHoodCloseRadius": 6.0,
+    "fairSigmaXSide": 0.45, "fairSideBand": None, "fairHoodCloseRadius": 6.0, "fairSigmaThetaTop": None, "fairTopBand": None, "fairTopBandStartDeg": None, "fairTopBandEndDeg": None,
     "noseTipHeight": 0.22, "noseShapeExponent": 1.6, "noseRoundExponent": 3.0, "kammAreaRatio": 0.5, "tailRound": 0.0,
     "floorCornerAllowance": 0.015, "maxIterations": 4, "frontalSlices": 240, "meshLinear": 0.004, "meshAngular": 0.25,
 }
@@ -1720,7 +1736,14 @@ def build(req):
             if over > 1e-5:
                 e_ = bracketed_extents(raw, axes=(1,))
                 over = (e_["max"][1] - e_["min"][1]) - P["maxWidth"]
+            tick(f"iteration {it}: width over the cap by {over:.6f} m (trim {adj['widthTrim']:.6f} m)")
             if over <= 1e-5:
+                break
+            # the cap never cuts into a requirement: once trimming stops shrinking the excess, the requirements
+            # alone are wider than maxWidth; stop re-lofting and let the solver report the width (no futile loops)
+            prev = [e["widthOverM"] for e in adj_log if e["iteration"] == it]
+            if prev and over > prev[-1] - 1e-4:
+                adj_log.append({"iteration": it, "widthOverM": r6(over), "widthTrimM": r6(adj["widthTrim"]), "stopped": "requirements alone exceed maxWidth"})
                 break
             adj["widthTrim"] += 0.5 * over + 2e-4
             adj_log.append({"iteration": it, "widthOverM": r6(over), "widthTrimM": r6(adj["widthTrim"])})
@@ -1736,7 +1759,7 @@ def build(req):
             for b, (c, _) in zip(enc, clearances_for("fast", enc, solid, shell, surf)):
                 if c < b.get("offsetM", o) - TOL:
                     short[b["id"]] = (b.get("offsetM", o) - c) + 0.002
-            tick(f"screening clearances ({len(short)} short)")
+            tick(f"screening clearances ({len(short)} short): " + ", ".join(f"{k} +{v:.4f}" for k, v in sorted(short.items())))
         cl = []
         if not short:
             for b, (c, ins) in zip(req["envelopes"], clearances_for("exact", req["envelopes"], solid, shell, surf)):
@@ -1748,7 +1771,7 @@ def build(req):
                 if not inside(solid, p["p"]):
                     dp = distance(BRepBuilderAPI_MakeVertex(gp_Pnt(*p["p"])).Vertex(), shell)
                     short[p["id"]] = dp + 0.002
-            tick(f"exact clearances ({len(short)} short)")
+            tick(f"exact clearances ({len(short)} short): " + ", ".join(f"{k} +{v:.4f}" for k, v in sorted(short.items())))
         history.append({"iteration": it, "short": len(short), "exact": bool(cl), "worstM": r6(min([x["clearanceM"] for x in cl if x["enclose"]] or [0])) if cl else None})
         if not short or last:
             if not cl:

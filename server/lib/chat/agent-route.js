@@ -17,6 +17,7 @@
 // CONCORD_CHAT_AGENT_ROUTE=0 turns the routing off.
 
 import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js";
+import { compactVoiceBlock } from "../../prompts/voice.js";
 
 const WEB_RE = [
   /\b(?:search|check|look)\s+(?:the\s+)?(?:web|internet|online)\b/i,
@@ -117,6 +118,8 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     history: (history || []).slice(-12),
     maxTurns: 5,
     routeHint: routeHint(route),
+    // Concord's voice for the reply (CONCORD_VOICE); the route hint stays last.
+    voiceBlock: compactVoiceBlock(),
   }, ctx);
   if (!r?.ok || !String(r.answer || "").trim()) return null;
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
