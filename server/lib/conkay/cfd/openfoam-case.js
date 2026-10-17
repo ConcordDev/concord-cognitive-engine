@@ -16,8 +16,10 @@ export function cfdPython() {
 }
 
 /** { ok, preset, files, caseSha256, kernelSha256, ... } or { ok:false, error }. outDir omitted = hashes only. */
-export async function writeCase({ preset, outDir, nproc, endTime, aref, lref }) {
-  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input: { preset, outDir, nproc, endTime, aref, lref }, timeoutMs: 60000 });
+export async function writeCase({ preset, outDir, nproc, endTime, aref, lref, turbulence, flowThroughsDiscard, flowThroughsAverage, cflTarget }) {
+  // undefined fields are dropped by JSON; the kernel treats an absent "turbulence" as "rans" and refuses unknown values
+  const input = { preset, outDir, nproc, endTime, aref, lref, turbulence, flowThroughsDiscard, flowThroughsAverage, cflTarget };
+  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input, timeoutMs: 60000 });
   if (r.ok) r.kernelSha256 = sha256File(CASE_SCRIPT);
   return r;
 }
