@@ -156,6 +156,14 @@ function queryTerms(query) {
   return terms;
 }
 
+// A sentence that only asks for citations: "Give the source link.",
+// "Please include sources", "Cite your sources", "With links".
+const SOURCE_REQUEST_SENTENCE = /^(?:please\s+)?(?:(?:give|include|provide|cite|show|add|list|share|send|post|attach)\b[^.?!]*\b(?:sources?|links?|citations?|urls?|references?)\b|with\s+(?:a\s+|the\s+)?(?:sources?|links?|citations?)\b)/i;
+// The same request glued to the question: "…Node.js and give the source link".
+const SOURCE_REQUEST_TAIL = /[\s,;]+(?:and\s+)?(?:please\s+)?(?:(?:give|include|provide|cite|show|add|share)\s+(?:me\s+)?(?:the\s+|a\s+|your\s+|some\s+)?(?:sources?|links?|citations?|urls?|references?)(?:\s+links?)?|with\s+(?:a\s+|the\s+)?(?:sources?|links?|citations?))\b[^?!]*[.?!]*\s*$/i;
+// "Search the web: …", "Look up …", "Google …". The directive is not the topic.
+const LEADING_DIRECTIVE = /^(?:(?:please|can you|could you|would you)\s+)*(?:(?:do\s+a\s+)?(?:web\s+)?search(?:\s+(?:the\s+)?(?:web|internet|online|net))?(?:\s+(?:for|about|on))?|look\s+up|google|bing|find\s+out)\s*(?:[:,.\-\u2013\u2014]\s*|\s+)/i;
+
 function stripInstructionTail(s) {
   s = s.replace(/([?!])(?=\S)/g, "$1 ");
   const parts = s.split(/(?<=[.?!])\s+/);
@@ -165,10 +173,15 @@ function stripInstructionTail(s) {
       const part = parts[i];
       if (i > 0 && /^(?:please\s+)?(?:answer|respond|reply|explain|summarize|summarise|keep|be)\b/i.test(part)) break;
       if (i > 0 && /^in\s+(?:one|a|1)\s+sentence\b/i.test(part)) break;
+      // "Give the source link." / "Include sources." asks HOW to answer, not
+      // WHAT to search. Left in, it sent Bing "… Give the source link" and
+      // the only hits were search-engine home pages (live test 2026-10-17).
+      if (i > 0 && SOURCE_REQUEST_SENTENCE.test(part)) break;
       kept.push(part);
     }
     s = kept.join(" ").trim();
   }
+  s = s.replace(SOURCE_REQUEST_TAIL, "");
   s = s.replace(/\s+(?:please\s+)?(?:answer|respond|reply)\s+in\s+(?:one|a|1)\s+sentence\b[\s\S]*$/i, "");
   s = s.replace(/\s+(?:in\s+(?:one|a|1)\s+sentence|briefly|in\s+\d+\s+words|keep it (?:short|brief)|be (?:brief|concise))\s*[.?!]*\s*$/i, "");
   return s.trim();
@@ -184,6 +197,10 @@ export function shapeSearchQuery(raw) {
   if (!s) return "";
   s = stripInstructionTail(s);
   s = s.replace(LEADING_ID, "").trim();
+  {
+    const next = s.replace(LEADING_DIRECTIVE, "").trim();
+    if (/[a-z0-9]/i.test(next)) s = next;
+  }
   for (let i = 0; i < 4; i++) {
     const next = s.replace(LEADING_FRAME, "").replace(LEADING_ARTICLE, "").trim();
     if (next === s) break;
@@ -233,9 +250,36 @@ const OPTIONAL_TERMS = new Set(
     .split(/\s+/).filter(Boolean),
 );
 
+// Words that say WHICH ASPECT of the thing is wanted. nodejs.org's
+// "Download Node.js" page answers "latest stable version of Node.js" without
+// repeating "stable" or "version"; requiring them dropped every official hit
+// (live test 2026-10-17). They still go into the search string.
+const QUALIFIER_TERMS = new Set(
+  `version release stable lts newest official link source number info information detail`
+    .split(/\s+/).filter(Boolean),
+);
+
 function requiredTerms(terms) {
-  const req = terms.filter((t) => !OPTIONAL_TERMS.has(t) && !/^(?:19|20)\d\d$/.test(t));
-  return req.length ? req : terms;
+  const req = terms.filter((t) => !OPTIONAL_TERMS.has(t) && !QUALIFIER_TERMS.has(t) && !/^(?:19|20)\d\d$/.test(t));
+  if (req.length) return req;
+  const q = terms.filter((t) => !OPTIONAL_TERMS.has(t) && !/^(?:19|20)\d\d$/.test(t));
+  return q.length ? q : terms;
+}
+
+/**
+ * Words a hit "says": title + snippet, plus the result host. Two adjacent
+ * query terms written as one word ("node" + "js" → nodejs.org) both count.
+ */
+function hitWords(terms, title, snippet, url) {
+  const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
+  let host = "";
+  try { host = url ? new URL(url).hostname.replace(/^www\./, "") : ""; } catch { host = ""; }
+  for (const w of contentWords(host.replace(/\.[a-z]+$/i, ""))) blob.add(w);
+  for (let i = 0; i + 1 < terms.length; i++) {
+    const joined = `${terms[i]}${terms[i + 1]}`;
+    if (blob.has(joined) || blob.has(stemToken(joined))) { blob.add(terms[i]); blob.add(terms[i + 1]); }
+  }
+  return blob;
 }
 
 // Questions whose answer changes over time (prices, scores, weather, news).
@@ -247,11 +291,11 @@ export function isFreshnessQuery(query) {
   return FRESHNESS_RE.test(String(query || "")) || /\b20\d\d\b/.test(String(query || ""));
 }
 
-export function isWebSourceRelevant(query, title, snippet) {
+export function isWebSourceRelevant(query, title, snippet, url) {
   const shaped = shapeSearchQuery(query);
   const terms = requiredTerms(queryTerms(shaped));
   if (!terms.length) return false;
-  const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
+  const blob = hitWords(terms, title, snippet, url);
   const matched = terms.filter((t) => blob.has(t));
   if (matched.length === 0) return false;
   if (hasCompoundClash(terms, title) && !hasOrderedTightMatch(terms, `${title || ""} ${snippet || ""}`)) {
@@ -265,7 +309,7 @@ export function isWebSourceRelevant(query, title, snippet) {
 }
 
 function keepRelevant(query, rows) {
-  return (rows || []).filter((r) => isWebSourceRelevant(query, r.title, r.snippet || r.content || ""));
+  return (rows || []).filter((r) => isWebSourceRelevant(query, r.title, r.snippet || r.content || "", r.url));
 }
 
 // Courtesy pause between Wikipedia article fetches. Skipped under the test
@@ -449,22 +493,33 @@ async function bingSearch(query) {
  * Future of Banking" mentions "price" but not "copper". Both terms of a
  * two-term query; at least two thirds of a longer one.
  */
-export function coversQuery(query, title, snippet) {
+export function coversQuery(query, title, snippet, url) {
   const req = requiredTerms(queryTerms(shapeSearchQuery(query)));
   if (!req.length) return false;
   if (hasCompoundClash(req, title) && !hasOrderedTightMatch(req, `${title || ""} ${snippet || ""}`)) return false;
-  const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
+  const blob = hitWords(req, title, snippet, url);
   const hit = req.filter((t) => blob.has(t)).length;
   return req.length <= 2 ? hit === req.length : hit / req.length >= 2 / 3;
 }
 
 function keepCovering(query, rows) {
-  return (rows || []).filter((r) => coversQuery(query, r.title, r.snippet || r.content || ""));
+  return (rows || []).filter((r) => coversQuery(query, r.title, r.snippet || r.content || "", r.url));
 }
 
-/** Required content words only ("current copper price today" → "copper price"). */
+/**
+ * Keyword form of the query without freshness filler
+ * ("current copper price today" → "copper price",
+ *  "latest stable version of Node.js" → "node js stable version").
+ * Bing's keyless page answers "latest …" with news home pages.
+ */
 export function compactSearchQuery(query) {
-  return requiredTerms(queryTerms(shapeSearchQuery(query))).slice(0, 5).join(" ");
+  const terms = queryTerms(shapeSearchQuery(query));
+  const kept = terms.filter((t) => !OPTIONAL_TERMS.has(t) && !/^(?:19|20)\d\d$/.test(t));
+  // The keyless page ranks on the leading word ("stable version node js" →
+  // dictionary entries for "stable"), so the subject goes first.
+  const subject = kept.filter((t) => !QUALIFIER_TERMS.has(t));
+  const ordered = [...subject, ...kept.filter((t) => QUALIFIER_TERMS.has(t))];
+  return (ordered.length ? ordered : terms).slice(0, 5).join(" ");
 }
 
 async function generalWebResults(query) {
@@ -489,6 +544,139 @@ async function generalWebResults(query) {
   });
 }
 
+// ── Software release status (endoflife.date open API, keyless) ─────────────
+// "What is the latest stable version of Node.js?" is a lookup, not a ranking
+// problem. endoflife.date publishes a documented public JSON API for ~480
+// products (Node.js, Python, PostgreSQL, Ubuntu, …) with each release line,
+// its newest patch, LTS status and the project's official release page. It
+// runs before the general web index and only for version/release questions
+// that name a product it tracks. Turn it off with CONCORD_WEB_SEARCH_RELEASES=0.
+
+const EOL_API = "https://endoflife.date/api/v1";
+const EOL_PRODUCTS_TTL_MS = 12 * 60 * 60 * 1000;
+let _eolProducts = null; // { at, list }
+
+const VERSION_QUESTION_RE = /\b(?:versions?|releases?|lts|end[- ]of[- ]life|eol|support(?:ed)?\s+until)\b/i;
+const VERSION_WORDS = new Set(
+  `latest current newest recent stable lts version versions release releases
+   most new last official what which is the of for a an`.split(/\s+/).filter(Boolean),
+);
+
+export function isVersionQuery(query) {
+  return VERSION_QUESTION_RE.test(String(query || ""));
+}
+
+const normKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/** Find the endoflife.date product a query names. Longest phrase wins. */
+export function matchReleaseProduct(query, products) {
+  const index = new Map();
+  for (const p of products || []) {
+    for (const k of [p.name, p.label, ...(p.aliases || [])]) {
+      const n = normKey(k);
+      if (n.length >= 2 && !index.has(n)) index.set(n, p);
+    }
+  }
+  const words = String(query || "").split(/\s+/).map((w) => w.replace(/^[^a-z0-9]+|[^a-z0-9+#]+$/gi, "")).filter(Boolean);
+  for (let len = Math.min(3, words.length); len >= 1; len--) {
+    for (let i = 0; i + len <= words.length; i++) {
+      const gram = words.slice(i, i + len);
+      if (gram.every((w) => VERSION_WORDS.has(w.toLowerCase()))) continue;
+      if (len === 1 && (VERSION_WORDS.has(gram[0].toLowerCase()) || SEARCH_STOP.has(gram[0].toLowerCase()))) continue;
+      const hit = index.get(normKey(gram.join("")));
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+async function eolProducts() {
+  if (_eolProducts && Date.now() - _eolProducts.at < EOL_PRODUCTS_TTL_MS) return _eolProducts.list;
+  const res = await fetch(`${EOL_API}/products`, {
+    headers: { Accept: "application/json", "User-Agent": CHAT_USER_AGENT },
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  const list = Array.isArray(data?.result) ? data.result : [];
+  if (list.length) _eolProducts = { at: Date.now(), list };
+  return list;
+}
+
+/** Test hook: forget the cached product list. */
+export function _resetReleaseCache() { _eolProducts = null; }
+
+function describeRelease(r) {
+  const latest = r?.latest?.name ? `${r.latest.name}${r.latest.date ? ` (${r.latest.date})` : ""}` : r?.name;
+  const status = [];
+  if (r.isLts) status.push("LTS");
+  else if (r.ltsFrom) status.push(`becomes LTS ${r.ltsFrom}`);
+  if (r.isEol) status.push("end of life");
+  else if (r.eolFrom) status.push(`supported until ${r.eolFrom}`);
+  return `${latest}${status.length ? ` [${r.label || r.name}: ${status.join(", ")}]` : ""}`;
+}
+
+/** Turn an endoflife.date product document into cited search rows. */
+export function releaseRowsFromProduct(product, query) {
+  const label = product?.label || product?.name || "";
+  const releases = (product?.releases || []).filter((r) => r && r.latest?.name);
+  if (!label || !releases.length) return [];
+  const maintained = releases.filter((r) => r.isMaintained !== false && !r.isEol);
+  const newest = (maintained[0] || releases[0]);
+  const newestLts = releases.find((r) => r.isLts && !r.isEol);
+  const parts = [`Newest ${label} release: ${describeRelease(newest)}.`];
+  if (newestLts && newestLts !== newest) parts.push(`Newest LTS release: ${describeRelease(newestLts)}.`);
+  const summary = parts.join(" ");
+  const lines = maintained.slice(0, 4).map((r) => `- ${describeRelease(r)}`);
+  const official = product.links?.releasePolicy || "";
+  const html = product.links?.html || `https://endoflife.date/${encodeURIComponent(product.name)}`;
+  const fetchedAt = new Date().toISOString();
+  const content = [summary, lines.length ? `Maintained release lines:\n${lines.join("\n")}` : "", official ? `Official release page: ${official}` : ""]
+    .filter(Boolean).join("\n").slice(0, 2000);
+  const rows = [];
+  if (official && /^https?:\/\//i.test(official) && !isBlockedUrl(official)) {
+    rows.push({
+      title: `${label} releases (official release schedule)`,
+      url: official,
+      snippet: `${summary} Release schedule published by the ${label} project.`.slice(0, 300),
+      content,
+      source: hostOf(official),
+      provider: "endoflife",
+      query,
+      fetchedAt,
+    });
+  }
+  rows.push({
+    title: `${label} release and support status | endoflife.date`,
+    url: html,
+    snippet: summary.slice(0, 300),
+    content,
+    source: "endoflife.date",
+    provider: "endoflife",
+    query,
+    fetchedAt,
+  });
+  return rows;
+}
+
+async function releaseInfoResults(query) {
+  if (String(process.env.CONCORD_WEB_SEARCH_RELEASES || "1") === "0") return [];
+  if (!isVersionQuery(query)) return [];
+  try {
+    const product = matchReleaseProduct(query, await eolProducts());
+    if (!product?.name) return [];
+    const res = await fetch(`${EOL_API}/products/${encodeURIComponent(product.name)}`, {
+      headers: { Accept: "application/json", "User-Agent": CHAT_USER_AGENT },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return releaseRowsFromProduct(data?.result, query);
+  } catch (_e) {
+    return [];
+  }
+}
+
 export async function webSearchForChat(queries) {
   const allResults = [];
 
@@ -496,10 +684,15 @@ export async function webSearchForChat(queries) {
     const query = shapeSearchQuery(raw);
     if (!query) continue;
 
+    // 0. Release lookups ("latest stable version of Node.js") from a
+    //    structured, keyless public API, before any results page.
+    const releaseRows = await releaseInfoResults(query);
+    allResults.push(...releaseRows);
+
     // 1. DuckDuckGo instant answer. Empty for natural questions; useful once
     //    the query has been reduced to an entity name.
     const ddgResult = await duckduckgoInstant(query);
-    if (ddgResult && isWebSourceRelevant(query, ddgResult.title, ddgResult.snippet || ddgResult.content)) {
+    if (ddgResult && isWebSourceRelevant(query, ddgResult.title, ddgResult.snippet || ddgResult.content, ddgResult.url)) {
       allResults.push(ddgResult);
     }
 
@@ -508,6 +701,10 @@ export async function webSearchForChat(queries) {
     //    index, so they come before the Wikipedia fallback.
     const webRows = await generalWebResults(query);
     allResults.push(...webRows.slice(0, 5));
+    logger.info('emergent:conscious-web-search', 'web_search', {
+      event: "web_search", query: query.slice(0, 120), release: releaseRows.length, web: webRows.length,
+      providers: [...new Set(webRows.map((r) => r.provider || "web"))],
+    });
     if (allResults.length >= 5) break; // enough results
 
     // 3. Wikipedia is an encyclopedia fallback. It only runs when the web
@@ -589,7 +786,7 @@ export async function webSearchForChat(queries) {
                 query,
                 fetchedAt: new Date().toISOString(),
               };
-              if (isWebSourceRelevant(query, row.title, row.snippet)) allResults.push(row);
+              if (isWebSourceRelevant(query, row.title, row.snippet, row.url)) allResults.push(row);
             }
           }
         } catch (_e) { logger.debug('emergent:conscious-web-search', 'HN is supplementary — silent fail', { error: _e?.message }); }
