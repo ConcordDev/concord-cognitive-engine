@@ -75,7 +75,7 @@ const ROUTE_HINT = {
   web: "This request needs live web information: call web_search first and answer only from its results.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
-  design: "This request is a ConKay design: use run_lens_action with domain conkay_design (e.g. from-brief or feasibility), and report the solver's real numbers.",
+  design: "This request is a ConKay design: call the conkay_design tool with the spec in words (span, load, material, supports, safety factor) and report the solver's real numbers. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
 };
 
 /** One-line system hint for the agent loop, by route. */
