@@ -69,8 +69,8 @@ describe('parseWorkspaceCommand', () => {
     expect(parseWorkspaceCommand('switch to 6061', DIMS, MATERIALS)!.materialId).toBe('aluminum-6061');
     expect(parseWorkspaceCommand('use stainless 304', DIMS, MATERIALS)!.materialId).toBe('stainless-304');
     expect(parseWorkspaceCommand('try concrete', DIMS, MATERIALS)!.materialId).toBe('concrete');
-    // "aluminum" and "steel" are shared — no guess.
-    expect(parseWorkspaceCommand('make it aluminum', DIMS, MATERIALS)).toBeNull();
+    // A bare family word picks the family default ("aluminum" → 6061-T6).
+    expect(parseWorkspaceCommand('make it aluminum', DIMS, MATERIALS)!.materialId).toBe('aluminum-6061');
     // A quantity is never read as a grade, and "3D" is not PLA.
     expect(parseWorkspaceCommand('load 304 kN', DIMS, MATERIALS)!.materialId).toBeUndefined();
     expect(parseWorkspaceCommand('show me the 3D view', DIMS, MATERIALS)).toBeNull();

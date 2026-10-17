@@ -27,6 +27,8 @@ export interface StudyInputs {
   loadN: number;
   support: BeamSupport;
   materialId: string;
+  /** Required safety factor; null/undefined = check against yield (SF 1). */
+  requiredSafetyFactor?: number | null;
 }
 
 export interface Material extends MaterialOption {
@@ -76,7 +78,8 @@ export function inputsMatchResult(inputs: StudyInputs, r: BeamStudyResult | null
   return (Object.keys(d) as Array<keyof BeamDims>).every((k) => Math.abs(d[k] - r.dims[k]) < 1e-9)
     && Math.abs(inputs.loadN - r.loadN) < 1e-9
     && inputs.support === r.support
-    && inputs.materialId === r.material.id;
+    && inputs.materialId === r.material.id
+    && (inputs.requiredSafetyFactor ?? null) === (r.safetyCheck?.stated ? r.safetyCheck.requiredSafetyFactor : null);
 }
 
 export function useConKayWorkspace(workspaceId: string | null) {
@@ -120,7 +123,10 @@ export function useConKayWorkspace(workspaceId: string | null) {
     setResult(study);
     setPrevious(null);
     setInputs(study
-      ? { name: study.name, dims: study.dims, loadN: study.loadN, support: study.support, materialId: study.material.id }
+      ? {
+        name: study.name, dims: study.dims, loadN: study.loadN, support: study.support, materialId: study.material.id,
+        requiredSafetyFactor: study.safetyCheck?.stated ? study.safetyCheck.requiredSafetyFactor : null,
+      }
       : NEW_STUDY);
     setStatus('idle');
     return study;
@@ -139,6 +145,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
       loadN: run.loadN,
       support: run.support,
       material: run.materialId,
+      ...(run.requiredSafetyFactor ? { requiredSafetyFactor: run.requiredSafetyFactor } : {}),
       ...(workspaceId ? { workspaceId } : {}),
     });
     const res = r.data?.result;
