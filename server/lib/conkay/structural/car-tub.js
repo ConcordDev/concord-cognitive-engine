@@ -89,6 +89,8 @@ export const TUB_DESIGN_CHOICES = Object.freeze({
   roofRailRear: { value: [0.45, 1.06], basis: "design choice: the rail's rear end (|y|, z) at the C-post, outboard of the rear heads (|y| ≤ 0.394) and inside the fastback" },
   roofLiner: { value: 0.0015, basis: "design choice: a 1.5 mm 6061-T6 roof liner bonded to the skin's inner face between the windscreen header, the roof rails and the B-bow, working in shear (the CFRP skin is not credited: the HexPly 8552 / AS4 plain-weave data sheet publishes no in-plane shear modulus); the roof is skin, not glazing" },
   aPillarBaseY: { value: 0.60, basis: "design choice: A-pillar foot on the scuttle at |y| 0.60, inboard enough that the pillar stays inside the skin along the windscreen base (measured: half width 0.53-0.62 m at z 0.9, x 1.7-1.9)" },
+  roofFallDeg: { value: 8.0, basis: "design choice: behind the front seat backs the roof rails fall at 8 deg. The finished roof falls about 1.5-2 deg faster than its rails, and its rear slant, measured from the roof's crest to the tail, has to stay under the 12.5 deg onset of the Ahmed-body drag rise (aero.drag-buildup). Kernel runs of the 4.90 m EV (2026-10-17): rails 9 deg -> slant 13.0 deg, 8 deg -> 12.14, 7 deg -> 11.76 (an earlier 12 deg rail, anchored on the heads: 13.5). 8 deg leaves 0.36 deg of margin" },
+  roofRailSeatGapM: { value: 0.02, basis: "design choice: the rail's underside clears the front seat backs' top by 20 mm at the crest (package.tub-fit requires >= 0 over the whole rail; 12 mm left the tilted rail 0.2 mm into the seat back, 20 mm leaves ~6 mm; the earlier fixed 1.15 m rail cleared by ~9 mm)" },
   bHoopX: { value: 3.30, basis: "design choice: B-hoop between the front seat backs / heads (x ≤ 3.146) and the rear torsos (x ≥ 3.448)" },
 });
 
@@ -152,6 +154,26 @@ export function tubPositions(L) {
     rearBulkheadX: r4((L.driveFront ?? L.diffFront) - 0.036), // ahead of the drive unit (electric) or the differential
     rearCrossX: r4(L.diffRear + 0.069),             // behind the differential
   };
+}
+
+/**
+ * The roof rails when the rear occupants sit lower than the front ones (the 2+2): the rail crests over the front seat
+ * backs' top (the highest the rail has to be: it passes beside the seat back, outboard of the head, and must clear
+ * it) and falls from there at roofFallDeg through the B-hoop to the C-post. The earlier rail was fixed at z 1.15 m
+ * at the B-hoop and 1.06 m at the C-post whatever the occupants; with the rear seat moved forward those held the
+ * roof's peak at the B-hoop, 0.35 m behind the front heads. Returns { s: [x, z], b, c } (the crest, and the rail's
+ * z at the B-hoop and the C-post), or null: the earlier fixed rail, for a car whose rear occupants are as tall as the
+ * front ones.
+ */
+export function derivedRoofRail(landmarks, c, xB, xC) {
+  const L = landmarks;
+  if (!L || ![L.frontHeadTopZ, L.rearHeadTopZ, L.frontSeatBackTopX, L.frontSeatBackTopZ].every(Number.isFinite)) return null;
+  if (!(L.rearHeadTopZ <= L.frontHeadTopZ - 0.05)) return null;
+  const k = Math.tan((c.roofFallDeg * Math.PI) / 180);
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+  const sz = L.frontSeatBackTopZ + c.roofSection.height / 2 + c.roofRailSeatGapM, sx = L.frontSeatBackTopX;
+  const z = (x) => r3(sz - k * Math.max(0, x - sx));
+  return { s: [sx, r3(sz)], b: z(xB), c: z(xC) };
 }
 
 export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES, walls = {}, landmarks = null }) {
@@ -303,7 +325,10 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
   // pillar ring (roof): A-pillars, roof rails, B-hoop posts and bow, windscreen header
   if (c.roofRing) {
     const rsn = c.roofSection, YRR = c.roofRailY, XB = c.bHoopX;
-    const A0 = [XF, c.aPillarBaseY, ZU], R0 = [pos.roofHeaderX, YRR, 1.06], R1 = [XB, YRR, 1.15];
+    const A0 = [XF, c.aPillarBaseY, ZU], R0 = [pos.roofHeaderX, YRR, 1.06];
+    const rf = derivedRoofRail(landmarks, c, XB, rearAxleX);
+    const R1 = [XB, YRR, rf ? rf.b : 1.15];
+    const Rs = rf && rf.s[0] < XB ? [rf.s[0], YRR, rf.s[1]] : null;
     const yAtKick = (x) => YS + (YQ - YS) * ((x - KX) / (Q0X - KX));
     const B0 = [XB, yAtKick(XB), ZN];
     const seg = (id, name, a, b, sg, sec = rsn) => {
@@ -320,14 +345,18 @@ export function tubLayout({ frontAxleX, rearAxleX, choices = TUB_DESIGN_CHOICES,
       members.splice(sc, 1, { id: `scuttle-${s}1`, i: `FWU.${s}`, j: `FWA.${s}`, part: members[sc].part }, { id: `scuttle-${s}2`, i: `FWA.${s}`, j: "FWUC", part: members[sc].part });
       N(`RR0.${s}`, R0[0], sg * R0[1], R0[2]); N(`RR1.${s}`, R1[0], sg * R1[1], R1[2]); N(`BK.${s}`, B0[0], sg * B0[1], B0[2]);
       mem(`a-pillar-${s}`, `FWA.${s}`, `RR0.${s}`, seg(`TUB_A_PILLAR_${s}`, `A-pillar ${s}`, A0, R0, sg));
-      mem(`roof-rail-${s}`, `RR0.${s}`, `RR1.${s}`, seg(`TUB_ROOF_RAIL_${s}`, `Roof rail ${s}`, R0, R1, sg));
+      if (Rs) { // the rail crests over the front seat backs, then falls through the B-hoop (derivedRoofRail)
+        N(`RRS.${s}`, Rs[0], sg * Rs[1], Rs[2]);
+        mem(`roof-rail-${s}`, `RR0.${s}`, `RRS.${s}`, seg(`TUB_ROOF_RAIL_${s}`, `Roof rail ${s}`, R0, Rs, sg));
+        mem(`roof-rail-s-${s}`, `RRS.${s}`, `RR1.${s}`, seg(`TUB_ROOF_RAIL_S_${s}`, `Roof rail crest to B-hoop ${s}`, Rs, R1, sg));
+      } else mem(`roof-rail-${s}`, `RR0.${s}`, `RR1.${s}`, seg(`TUB_ROOF_RAIL_${s}`, `Roof rail ${s}`, R0, R1, sg));
       // the B-post's foot is a node on the sill kick: split the kick there
       const k1 = members.findIndex((mm) => mm.id === `kick-${s}2`);
       const kickPart = members[k1].part;
       members.splice(k1, 1, { id: `kick-${s}2`, i: `K.${s}`, j: `BK.${s}`, part: kickPart }, { id: `kick-${s}3`, i: `BK.${s}`, j: `Q0.${s}`, part: kickPart });
       mem(`b-post-${s}`, `BK.${s}`, `RR1.${s}`, seg(`TUB_B_POST_${s}`, `B-post ${s}`, B0, R1, sg, c.postSection));
       // rear roof rail to the C-post at the rear axle line, C-post down to the quarter box
-      const R2 = [rearAxleX, c.roofRailRear[0], c.roofRailRear[1]];
+      const R2 = [rearAxleX, c.roofRailRear[0], rf ? rf.c : c.roofRailRear[1]];
       N(`RR2.${s}`, R2[0], sg * R2[1], R2[2]);
       mem(`roof-rail-r-${s}`, `RR1.${s}`, `RR2.${s}`, seg(`TUB_ROOF_RAIL_R_${s}`, `Rear roof rail ${s}`, R1, R2, sg));
       mem(`c-post-${s}`, `QA.${s}`, `RR2.${s}`, seg(`TUB_C_POST_${s}`, `C-post ${s}`, [rearAxleX, YQ, Z0 + qs.height], R2, sg, c.postSection));
@@ -529,6 +558,34 @@ export function tubLandmarks(ir) {
       }
     }
   }
+  // the heads: the front seats' (the roof's crest) and the rear seats' top planes; the front seat backs' top (rear-top corner)
+  let frontHeadTopZ = -Infinity, rearHeadTopZ = -Infinity, frontSeatBackTopZ = -Infinity, frontSeatBackTopX = NaN;
+  for (const occ of Object.values(scene.scenarios)) {
+    for (const o of occ) {
+      if (o.seat !== "SEAT_1" && o.seat !== "SEAT_2") continue;
+      for (const b of o.seatBoxes || []) {
+        if (!/:back(@|$)/.test(b.id)) continue;
+        for (const q of corners(b)) {
+          if (q[2] > frontSeatBackTopZ + 1e-9 || (Math.abs(q[2] - frontSeatBackTopZ) <= 1e-9 && q[0] > frontSeatBackTopX)) {
+            frontSeatBackTopZ = q[2];
+            frontSeatBackTopX = q[0];
+          }
+        }
+      }
+    }
+  }
+  for (const occ of Object.values(scene.scenarios)) {
+    for (const o of occ) {
+      const front = o.seat === "SEAT_1" || o.seat === "SEAT_2", rear = o.seat === "SEAT_3" || o.seat === "SEAT_4";
+      if (!front && !rear) continue;
+      for (const b of o.boxes) {
+        if (b.part !== "head") continue;
+        const cs = corners(b);
+        const top = Math.max(...cs.map((q) => q[2]));
+        if (front) frontHeadTopZ = Math.max(frontHeadTopZ, top); else rearHeadTopZ = Math.max(rearHeadTopZ, top);
+      }
+    }
+  }
   const diff = comp("DIFFERENTIAL");
   const electric = veh.props.vehicle.fuelType === "electric";
   return {
@@ -541,6 +598,7 @@ export function tubLandmarks(ir) {
     diffRear: diff ? r4(diff.max) : FRONT_ENGINE_LANDMARKS.diffRear,
     driveFront: electric && comp("ENGINE") ? r4(comp("ENGINE").min) : null,
     electric,
+    ...(Number.isFinite(frontHeadTopZ) && Number.isFinite(rearHeadTopZ) ? { frontHeadTopZ: r4(frontHeadTopZ), rearHeadTopZ: r4(rearHeadTopZ), ...(Number.isFinite(frontSeatBackTopX) ? { frontSeatBackTopX: r4(frontSeatBackTopX), frontSeatBackTopZ: r4(frontSeatBackTopZ) } : {}) } : {}),
     ...wellLandmarks(ir, pkg),
   };
 }
