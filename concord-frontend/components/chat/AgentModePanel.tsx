@@ -377,7 +377,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                             bpm: a.bpm || 120,
                             key: a.key || 'C',
                             durationSec: a.durationSec || 0,
-                            song: a.song as ComposedSong,
+                            song: a.song as unknown as ComposedSong,
                           }}
                         />
                       );
