@@ -157,6 +157,13 @@ describe('Auth Middleware', () => {
       const app = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
       expect(app.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
     });
+
+    it('allows blob: audio so client-rendered Studio songs play inline (INC-127)', () => {
+      const app = middleware(makeRequest('/lenses/chat')) as { headers: { get: (k: string) => string | undefined } };
+      const media = (app.headers.get('Content-Security-Policy') || '').split(';').map(d => d.trim()).find(d => d.startsWith('media-src')) || '';
+      expect(media).toContain('blob:');
+      expect(media).toContain('https:');
+    });
   });
 
   describe('protected routes', () => {

@@ -80,8 +80,11 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
     `img-src 'self' data: blob: https:`,
     // Music lens streams from external free-API sources (iTunes/Jamendo/
     // Audius — see CLAUDE.md's music-lens section) whose CDN hosts aren't
-    // enumerable in advance.
-    `media-src 'self' https:`,
+    // enumerable in advance. blob:/data: — chat/agent song artifacts are
+    // rendered client-side by Concord Studio (lib/daw/render-song.ts) into a
+    // WAV blob URL; without blob: the <audio> refuses it ("no supported
+    // sources") and the inline player never plays (INC-127).
+    `media-src 'self' data: blob: https:`,
     // Monaco's codicon icon font ships next to its CSS on jsdelivr.
     `font-src 'self' data: https://cdn.jsdelivr.net`,
     // Web Workers (avatar animator, physics offload) are blob: URLs.
