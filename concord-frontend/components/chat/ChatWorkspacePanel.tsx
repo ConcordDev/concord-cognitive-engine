@@ -153,6 +153,7 @@ import dynamicSprint11 from 'next/dynamic';
 const AgentModePanel = dynamicSprint11(() => import('@/components/chat/AgentModePanel'), { ssr: false });
 const InitiativeBell = dynamicSprint11(() => import('@/components/chat/InitiativeBell'), { ssr: false });
 import { useEvent } from '@/lib/realtime/event-bus';
+import { createSseParser, waitForSavedReply, fetchSessionMessages, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
 import {
   recommendLenses,
   createSessionContext,
@@ -1207,6 +1208,41 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       const IDLE_STALL_MS = 45000;
       let idleStalled = false;
 
+      // If delivery fails after the server already finished the turn (stream
+      // cut, proxy drop, busy 503 on the fallback), the reply is in the saved
+      // thread. Read it back by clientTurnId instead of losing it until reload.
+      const sentAtMs = Date.now();
+      const turnRef = { clientTurnId: userMsg.id, userContent: messageContent, sentAtMs };
+      const recoverSavedReply = async (): Promise<Record<string, unknown> | null> => {
+        if (!activeSessionId) return null;
+        setStreamActive(true);
+        setStreamingContent('');
+        try {
+          const saved: SavedChatMessage | null = await waitForSavedReply(turnRef, {
+            fetchMessages: () => fetchSessionMessages(activeSessionId as string),
+            // The stream's controller may be the one the stall watchdog
+            // aborted; the live one is in the ref (unmount still cancels).
+            signal: (chatAbortControllerRef.current ?? abortController).signal,
+          });
+          if (!saved) return null;
+          const meta = (saved.meta || {}) as Record<string, unknown>;
+          if (meta.code === 'ai_unavailable') {
+            return { ok: false, code: 'ai_unavailable', llmUsed: false, notice: saved.content, reply: saved.content, recovered: true };
+          }
+          return {
+            reply: saved.content,
+            sources: meta.sources,
+            webAugmented: meta.webAugmented,
+            toolCalls: meta.toolCalls,
+            computed: meta.computed,
+            dtuRefs: meta.dtuRefs,
+            recovered: true,
+          };
+        } finally {
+          setStreamActive(false);
+        }
+      };
+
       try {
         setStreamActive(true);
         setStreamingContent('');
@@ -1229,7 +1265,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           const reader = streamRes.body?.getReader();
           const decoder = new TextDecoder();
           let accumulated = '';
-          let finalOut: Record<string, unknown> | null = null;
+          // Assigned inside the SSE parser callback; the cast keeps TS from narrowing it to null.
+          let finalOut = null as Record<string, unknown> | null;
+          let gotDone = false;
+          const sse = createSseParser((data) => {
+            if (typeof data.chunk === 'string' && data.chunk) {
+              accumulated += data.chunk;
+              setStreamingContent(accumulated);
+            }
+            if (data.done) {
+              gotDone = true;
+              if (data.out && typeof data.out === 'object') finalOut = data.out as Record<string, unknown>;
+            }
+          });
 
           if (reader) {
             let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1247,24 +1295,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 const { done, value } = await reader.read();
                 if (done) break;
                 armIdle(); // bytes arrived — reset the stall clock
-                const text = decoder.decode(value, { stream: true });
-              const lines = text.split('\n');
-              for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                try {
-                  const data = JSON.parse(line.slice(6));
-                  if (data.chunk) {
-                    accumulated += data.chunk;
-                    setStreamingContent(accumulated);
-                  }
-                  if (data.done && data.out) {
-                    finalOut = data.out;
-                  }
-                } catch {
-                  // Malformed SSE chunk, skip
-                }
+                // Lines can be split across reads; the parser keeps the tail.
+                sse.push(decoder.decode(value, { stream: true }));
               }
-              }
+              sse.push(decoder.decode());
+              sse.end();
             } finally {
               if (idleTimer) clearTimeout(idleTimer);
             }
@@ -1272,6 +1307,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
           setStreamActive(false);
           setStreamingContent('');
+          // Stream closed without a reply (cut mid-turn / proxy drop). Fall
+          // through to the buffered POST: same clientTurnId, so the server
+          // joins the in-flight turn or returns the completed reply instead
+          // of answering twice. If that fails too, the saved thread is read.
+          if (!gotDone && !accumulated) {
+            throw new Error('stream_closed_without_reply');
+          }
           const down = unavailableNotice(finalOut as { code?: unknown; notice?: unknown; reply?: unknown; retrieval?: unknown } | null);
           if (down) {
             return {
@@ -1299,6 +1341,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         // Non-SSE response: fall back to regular JSON
         setStreamActive(false);
         setStreamingContent('');
+        // 503 busy_retry / service_overloaded from admission control: the turn
+        // never started. Use the buffered POST below, whose client retries on
+        // Retry-After, instead of rendering "Error: service_overloaded".
+        if (streamRes.status === 503 || streamRes.status === 502 || streamRes.status === 504) {
+          throw new Error(`stream_status_${streamRes.status}`);
+        }
         const data = await streamRes.json();
         return data;
       } catch (err) {
@@ -1315,19 +1363,29 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         // fresh controller (still cancellable on unmount) for the fallback.
         const fbController = idleStalled ? new AbortController() : abortController;
         if (idleStalled) chatAbortControllerRef.current = fbController;
-        const response = await api.post(
-          '/api/chat',
-          {
-            message: messageContent,
-            mode: aiMode.id,
-            sessionId: activeSessionId,
-            clientTurnId: userMsg.id,
-            ...(systemPrompt ? { systemPrompt } : {}),
-            ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
-          },
-          { signal: fbController.signal }
-        );
-        return response.data;
+        try {
+          const response = await api.post(
+            '/api/chat',
+            {
+              message: messageContent,
+              mode: aiMode.id,
+              sessionId: activeSessionId,
+              clientTurnId: userMsg.id,
+              ...(systemPrompt ? { systemPrompt } : {}),
+              ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
+            },
+            { signal: fbController.signal }
+          );
+          return response.data;
+        } catch (fbErr) {
+          if (fbController.signal.aborted) throw fbErr;
+          // The POST failed (busy after retries, proxy timeout on a long
+          // turn) but the stream request may have completed the turn on the
+          // server. Show the saved reply if it lands.
+          const recovered = await recoverSavedReply();
+          if (recovered) return recovered;
+          throw fbErr;
+        }
       }
     },
     onSuccess: (data) => {
