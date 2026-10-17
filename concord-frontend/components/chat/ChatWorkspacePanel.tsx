@@ -65,6 +65,7 @@ import {
   GitBranch,
   Key,
   FolderOpen,
+  Volume2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay is its own lens (/lenses/conkay); choosing it here routes there.
@@ -84,6 +85,8 @@ import { SyncedBranchesSection, type SyncedBranch } from '@/components/chat/Sync
 import { ChatHandoffMenu } from '@/components/chat/ChatHandoffMenu';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
+import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
+import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
 import CitationChips from '@/components/chat/CitationChips';
 import AnonNudge from '@/components/chat/AnonNudge';
@@ -218,6 +221,8 @@ interface Message {
     engineCount?: number;
   } | null;
   dtuRefs?: Array<{ id: string; title: string | null; tier: string | null }>;
+  /** Playable/viewable results (song, audio preview, image) from Chat's tools. INC-128. */
+  artifacts?: ChatArtifact[];
   /** Brain was unreachable. Render as a notice, not an assistant answer. */
   aiUnavailable?: boolean;
   retrieval?: {
@@ -773,6 +778,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             computed: (meta.computed && typeof meta.computed === 'object') ? (meta.computed as Message['computed']) : undefined,
             dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as Message['dtuRefs']) : undefined,
             sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
+            artifacts: Array.isArray(meta.artifacts) ? (meta.artifacts as ChatArtifact[]) : undefined,
             webAugmented: !!meta.webAugmented,
           };
         });
@@ -1236,6 +1242,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             toolCalls: meta.toolCalls,
             computed: meta.computed,
             dtuRefs: meta.dtuRefs,
+            artifacts: meta.artifacts,
             recovered: true,
           };
         } finally {
@@ -1334,6 +1341,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             toolCalls: (finalOut as Record<string, unknown>)?.toolCalls,
             computed: (finalOut as Record<string, unknown>)?.computed,
             dtuRefs: (finalOut as Record<string, unknown>)?.dtuRefs,
+            artifacts: (finalOut as Record<string, unknown>)?.artifacts,
             streamed: true,
           };
         }
@@ -1445,6 +1453,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           : undefined,
         dtuRefs: Array.isArray(data.dtuRefs)
           ? (data.dtuRefs as Message['dtuRefs'])
+          : undefined,
+        artifacts: Array.isArray(data.artifacts)
+          ? (data.artifacts as ChatArtifact[])
           : undefined,
         reasoningSessionId:
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
@@ -1822,6 +1833,26 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   const handleSend = useCallback(() => {
     if (!input.trim() || sendMutation.isPending) return;
 
+    // "Read your last answer out loud": speak it here, inside the tap, since
+    // iOS Safari only allows speech from a user gesture and the server has no TTS.
+    if (isReadAloudRequest(input)) {
+      const last = [...localMessages].reverse().find((m) => m.role === 'assistant' && m.content);
+      const spoke = last ? speakText(last.content) : false;
+      const note = !last
+        ? 'There is no answer in this chat to read yet.'
+        : spoke
+          ? 'Reading the last answer aloud.'
+          : 'This browser cannot read aloud (speech is not available here).';
+      const now = Date.now();
+      setLocalMessages((prev) => [
+        ...prev,
+        { id: `user-${now}`, role: 'user', content: input.trim(), timestamp: new Date(now).toISOString() },
+        { id: `notice-tts-${now}`, role: 'system', content: note, timestamp: new Date(now).toISOString() },
+      ]);
+      setInput('');
+      return;
+    }
+
     // Check for slash commands
     if (input.trim().startsWith('/')) {
       executeSlashCommand(input);
@@ -1829,7 +1860,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     }
 
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand]);
+  }, [input, sendMutation, executeSlashCommand, localMessages]);
 
   // Lens-scoped keyboard commands. Send via mod+enter is the power-user
   // shortcut (Enter still sends from inside the textarea); slash focuses
@@ -2336,6 +2367,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   </div>
                 )}
 
+                {/* Songs, previews and images the tools returned (INC-128) */}
+                {message.role === 'assistant' && message.artifacts && message.artifacts.length > 0 && (
+                  <ChatArtifacts artifacts={message.artifacts} />
+                )}
+
                 {/* Compute provenance (compute-preflight ground truth) */}
                 {message.role === 'assistant' && message.computed && (
                   <ComputeBadge computed={message.computed} />
@@ -2400,6 +2436,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <Copy className="w-3 h-3" />
                 )}
               </button>
+
+              {/* Read aloud — assistant replies, browser speech */}
+              {message.role === 'assistant' && canSpeak() && (
+                <button
+                  onClick={() => speakText(message.content)}
+                  className="hover:text-white transition-colors"
+                  title="Read aloud"
+                  aria-label="Read message aloud"
+                >
+                  <Volume2 className="w-3 h-3" />
+                </button>
+              )}
 
               {/* Pin button — available on ALL messages */}
               <button

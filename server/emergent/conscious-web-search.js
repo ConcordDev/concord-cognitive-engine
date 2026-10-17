@@ -544,6 +544,105 @@ async function generalWebResults(query) {
   });
 }
 
+// ── News (Bing News results page, keyless; Google News RSS fallback) ───────
+// "today's top tech news" went to Bing's general web page as "top tech" and
+// cited a Ford technician program, a plumbing company and an Amazon listing
+// (live test 2026-10-17). News questions need a news index: Bing News cards
+// carry the publisher's article URL, title, outlet and age directly.
+// CONCORD_WEB_SEARCH_NEWS=0 turns this off.
+
+const NEWS_QUERY_RE = /\b(?:news|headlines?|breaking|happening|stories|story|announced|announcement)\b/i;
+const NEWS_FILLER = new Set(
+  `news headline headlines top biggest big latest breaking today todays tonight current recent
+   happening going story stories world week right now this day update updates major important
+   whats what give tell show me any some new`.split(/\s+/).filter(Boolean),
+);
+const NEWS_TOPIC_ALIASES = { tech: "technology", ai: "artificial intelligence" };
+
+export function isNewsQuery(query) {
+  return NEWS_QUERY_RE.test(String(query || ""));
+}
+
+/** Topic of a news question ("today's top tech news" → "technology"); "" = general headlines. */
+export function newsTopic(query) {
+  const words = tokenize(String(query || "").replace(/[’‘]/g, "'").replace(/'s\b/gi, ""))
+    .filter((w) => !SEARCH_STOP.has(w) && !NEWS_FILLER.has(w) && !/^(?:19|20)\d\d$/.test(w));
+  return words.map((w) => NEWS_TOPIC_ALIASES[w] || w).slice(0, 6).join(" ");
+}
+
+function attr(tag, name) {
+  const m = String(tag || "").match(new RegExp(`\\s${name}="([^"]*)"`, "i"));
+  return m ? decodeHtmlEntities(m[1]).trim() : "";
+}
+
+/** Parse news cards out of a Bing News results page. */
+export function parseBingNewsResults(html, query, limit = 6) {
+  const out = [];
+  const seen = new Set();
+  const parts = String(html || "").split(/<div class="news-card newsitem/i).slice(1);
+  for (const part of parts) {
+    const open = part.slice(0, part.indexOf(">") + 1);
+    const url = attr(open, "data-url") || attr(open, "url");
+    const title = attr(open, "data-title") || attr(open, "title");
+    if (!/^https?:\/\//i.test(url) || !title || seen.has(url) || isBlockedUrl(url)) continue;
+    const outlet = attr(open, "data-author");
+    const age = (part.match(/class="ns_sc_tm"[^>]*>([^<]{1,20})</i) || [])[1] || "";
+    const snipM = part.match(/<div class="snippet"[^>]*>([\s\S]*?)<\/div>/i);
+    const snippet = snipM ? stripTags(snipM[1]) : "";
+    seen.add(url);
+    const lead = [outlet, age ? `${age.trim()} ago` : ""].filter(Boolean).join(", ");
+    const text = `${lead ? `${lead}: ` : ""}${snippet || title}`;
+    out.push({
+      title: title.slice(0, 200), url, snippet: text.slice(0, 300), content: text.slice(0, 2000),
+      source: hostOf(url), outlet, age: age.trim(), provider: "bing-news", query, fetchedAt: new Date().toISOString(),
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/** Parse a Google News RSS feed (fallback; links are news.google.com redirects). */
+export function parseGoogleNewsRss(xml, query, limit = 6) {
+  const out = [];
+  for (const item of String(xml || "").split(/<item>/i).slice(1)) {
+    const get = (t) => { const m = item.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`, "i")); return m ? decodeHtmlEntities(m[1].replace(/<!\[CDATA\[|\]\]>/g, "")).trim() : ""; };
+    const url = get("link");
+    let title = get("title");
+    const outlet = get("source");
+    if (outlet && title.endsWith(` - ${outlet}`)) title = title.slice(0, -(outlet.length + 3));
+    if (!/^https?:\/\//i.test(url) || !title) continue;
+    const date = get("pubDate");
+    const text = `${[outlet, date].filter(Boolean).join(", ")}: ${title}`;
+    out.push({ title: title.slice(0, 200), url, snippet: text.slice(0, 300), content: text.slice(0, 2000), source: outlet || "news.google.com", outlet, provider: "google-news", query, fetchedAt: new Date().toISOString() });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+async function newsResults(rawQuery) {
+  if (String(process.env.CONCORD_WEB_SEARCH_NEWS || "1") === "0") return [];
+  const topic = newsTopic(rawQuery);
+  const q = topic || "world news"; // "top stories" returned lifestyle filler
+  try {
+    const res = await fetch(`https://www.bing.com/news/search?q=${encodeURIComponent(q)}&setlang=en&cc=US`, {
+      headers: { "User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const rows = parseBingNewsResults(await res.text(), q);
+      if (rows.length) return rows;
+    }
+  } catch (_e) { /* fall back to the RSS feed */ }
+  try {
+    const url = topic
+      ? `https://news.google.com/rss/search?q=${encodeURIComponent(`${topic} when:2d`)}&hl=en-US&gl=US&ceid=US:en`
+      : "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en";
+    const res = await fetch(url, { headers: { "User-Agent": CHAT_USER_AGENT }, signal: AbortSignal.timeout(8000) });
+    if (res.ok) return parseGoogleNewsRss(await res.text(), q);
+  } catch (_e) { /* no news source reachable */ }
+  return [];
+}
+
 // ── Software release status (endoflife.date open API, keyless) ─────────────
 // "What is the latest stable version of Node.js?" is a lookup, not a ranking
 // problem. endoflife.date publishes a documented public JSON API for ~480
@@ -688,6 +787,15 @@ export async function webSearchForChat(queries) {
     //    structured, keyless public API, before any results page.
     const releaseRows = await releaseInfoResults(query);
     allResults.push(...releaseRows);
+
+    // 0b. News questions go to a news index first; a general web page ranks
+    //     "top tech news" on brand names (TopTech Electric & Plumbing).
+    if (isNewsQuery(raw) || isNewsQuery(query)) {
+      const newsRows = await newsResults(raw);
+      allResults.push(...newsRows.slice(0, 6));
+      logger.info('emergent:conscious-web-search', 'web_search', { event: "web_search_news", query: query.slice(0, 120), news: newsRows.length, providers: [...new Set(newsRows.map((r) => r.provider))] });
+      if (newsRows.length >= 3) break;
+    }
 
     // 1. DuckDuckGo instant answer. Empty for natural questions; useful once
     //    the query has been reduced to an entity name.

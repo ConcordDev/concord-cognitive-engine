@@ -27615,7 +27615,10 @@ const _isTimeQuery = (s) => {
   if (t.includes("time complexity") || t.includes("runtime")) return false;
   return /\b(what time|current time|time is it|date today|today's date|what day|day is it)\b/i.test(String(s||""));
 };
-const _isWeatherQuery = (s) => /\b(weather|forecast|temperature|temp|rain|snow|wind)\b/i.test(String(s||""));
+// "Generate an image of a red fox in fresh snow" is not a weather question
+// (chat-par probe 2026-10-17: it answered "Weather lookup failed for fresh snow at sunrise").
+const _CREATIVE_ASK_RE = /\b(image|picture|photo|drawing|draw|paint|painting|illustrat\w*|render|wallpaper|sketch|logo|song|poem|story|lyrics|haiku|music|recipe)\b/i;
+const _isWeatherQuery = (s) => /\b(weather|forecast|temperature|temp|rain|snow|wind)\b/i.test(String(s||"")) && !_CREATIVE_ASK_RE.test(String(s||""));
 const _extractLocation = (s) => {
   const m = String(s||"").match(/\b(?:in|for|at)\s+([a-zA-Z][^,.;!?]{2,60})/i);
   return m ? String(m[1]).trim() : "";
@@ -27678,7 +27681,14 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   if (prompt) {
     try {
       const _ar = await import("./lib/chat/agent-route.js");
-      const _agentRouteKind = _ar.chatAgentRoute(prompt);
+      // The previous assistant turn's route lets a follow-up ("what's the source link?")
+      // stay on web search instead of the conversational path's retrieved notes.
+      let _prevAgentRoute = null;
+      for (let _i = sess.messages.length - 1; _i >= 0; _i--) {
+        const _m = sess.messages[_i];
+        if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; break; }
+      }
+      const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute });
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
       if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
         const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
@@ -27696,8 +27706,16 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             toolCallCount: _agentOut.toolCalls.length,
             tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
           };
+          // Saved with the message so a reload (or another device) still shows the
+          // cited sources, the tool cards and any playable song/preview/image.
+          const _persistMeta = {
+            ..._agentMeta,
+            sources: _agentOut.sources.slice(0, 8),
+            toolCalls: _agentOut.toolCalls.slice(0, 10).map((t) => ({ tool: t.tool, ok: t.ok !== false, ...(t.key ? { key: t.key } : {}), ...(t.error ? { error: String(t.error).slice(0, 300) } : {}) })),
+            ...(_agentOut.artifacts.length ? { artifacts: _agentOut.artifacts.slice(0, 4).filter((a) => JSON.stringify(a).length < 200000) } : {}),
+          };
           sess.messages.push({ role: "assistant", content: _agentReply, ts: nowISO(), meta: _agentMeta });
-          _persistDeterministicTurn(_agentReply, _agentMeta);
+          _persistDeterministicTurn(_agentReply, _persistMeta);
           _recordChatPersonality(_agentReply, currentLens || mode);
           saveStateDebounced();
           ctx.log("chat", "Answered through the agent tool loop", { sessionId, route: _agentRouteKind, tools: _agentMeta.tools });
@@ -28848,15 +28866,12 @@ ${_operatorV6Block}` : "";
           }
         }
         case "run_lens_action": {
-          const domain = String(call.params.domain || "");
-          const action = String(call.params.action || "");
-          const key = `${domain}.${action}`;
-          const handler = LENS_ACTIONS.get(key);
-          if (!handler) {
-            return { tool: call.tool, ok: false, error: `Unknown lens action: ${key}. Check run_compute for math/science.` };
-          }
-          const lensResult = await handler(ctx, null, call.params.params || {});
-          return { tool: call.tool, ok: true, result: lensResult };
+          // INC-128: this used to call the LENS_ACTIONS handler (no macros) and
+          // return ok:true even when the action itself failed. The agent loop's
+          // implementation resolves both registries, reports result.ok===false
+          // as a failure, and lifts song/preview/image artifacts.
+          const { executeToolCall: _lensTool } = await import("./lib/chat-agent.js");
+          return _lensTool(ctx, runMacro, LENS_ACTIONS, call);
         }
         case "generate_image": {
           // Same GPU-only path as the agent loop. Never the old

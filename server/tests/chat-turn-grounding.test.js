@@ -41,7 +41,9 @@ describe("chatAgentRoute", () => {
     ["My test codeword is GREEN-OTTER-5. Just say noted.", null],
     ["Say hi.", null],
     ["How do I solve conflicts with my coworker?", null],
-    ["Save this as a DTU about my substrate notes", null],
+    // chat-par 2026-10-17: a loose save (not "titled … with content …") goes to the
+    // agent's create_dtu; chat.respond's CSL gate rejected it as not_formal_intent.
+    ["Save this as a DTU about my substrate notes", "save"],
   ];
   for (const [p, want] of cases) {
     it(`${want ?? "none"} ← ${p.slice(0, 50)}`, () => assert.equal(chatAgentRoute(p), want));
@@ -51,7 +53,7 @@ describe("chatAgentRoute", () => {
     assert.equal(chatAgentRoute(HEAT_PROMPT), null);
   });
   it("has a tool hint for every route", () => {
-    for (const r of ["web", "dtu", "compute", "design"]) assert.ok(routeHint(r).length > 20);
+    for (const r of ["web", "dtu", "compute", "design", "save", "music", "browse", "action"]) assert.ok(routeHint(r).length > 20);
   });
 });
 
@@ -159,11 +161,11 @@ describe("chat.respond wiring (server.js)", () => {
   const src = readFileSync(new URL("../server.js", import.meta.url), "utf8");
   const impl = src.slice(src.indexOf("async function __chatRespondImpl("), src.indexOf('register("chat", "respond"'));
   it("routes tool-worthy prompts to the agent loop before the conversational brain call", () => {
-    const route = impl.indexOf("_ar.chatAgentRoute(prompt)");
+    const route = impl.indexOf("_ar.chatAgentRoute(prompt");
     const brain = impl.indexOf("const r = await ctx.llm.chat({");
     assert.ok(route > 0 && brain > 0 && route < brain);
     assert.ok(impl.indexOf("sess.messages.push({ role: \"user\", content: prompt") < route, "user turn is recorded first");
-    assert.match(impl, /_persistDeterministicTurn\(_agentReply, _agentMeta\)/);
+    assert.match(impl, /_persistDeterministicTurn\(_agentReply, _persistMeta\)/);
   });
   it("filters carried-over DTUs, anchors the current turn and guards DTU citations", () => {
     assert.match(impl, /filterCarryOverDtus\(_extraUnifiedDtus, prompt\)/);
