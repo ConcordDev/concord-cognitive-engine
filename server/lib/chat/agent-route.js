@@ -47,7 +47,7 @@ const MATH_CONTENT_RE = /\d|[\^=+*/]|\b(?:integral|derivative|equation|matrix|sq
 
 const DESIGN_RE = [
   /\bconkay\b/i,
-  /\b(?:design|size|sizing)\b[^.?!]{0,60}\b(?:cantilever|beam|bracket|shaft|gear|truss|column|spring|bolt|weld|plate|frame|part)\b/i,
+  /\b(?:design|size|sizing)\b[^.?!]{0,60}\b(?:cantilever|beam|bracket|shaft|gear|truss|bridge|footbridge|car|vehicle|column|spring|bolt|weld|plate|frame|part)\b/i,
   /\bsafety\s+factor\b/i,
 ];
 

@@ -20,7 +20,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Boxes, ChevronDown, ChevronUp, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal,
 } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
+import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-intent';
+import { DesignPane, StartScreen, type BriefClaim, type TrussAnswer, type WorkspaceDesign } from './DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, streamConKayAgent } from '@/lib/conkay/agent-stream';
 import {
@@ -119,6 +121,10 @@ export function ConKayWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [messages, setMessages] = useState<WsMessage[]>([]);
   const [busy, setBusy] = useState(false);
+  /** A new design opened from the box (showcase or solved brief); null = the I-beam study. */
+  const [design, setDesign] = useState<WorkspaceDesign | null>(null);
+  /** A brief the workbench answered with questions: the next message adds to it. */
+  const pendingBrief = useRef<string | null>(null);
   const [keeping, setKeeping] = useState(false);
   const [view, setView] = useState<ViewPreset>('isometric');
   const [display, setDisplay] = useState<DisplayMode>('wire-stress');
@@ -284,14 +290,80 @@ export function ConKayWorkspace() {
     if (resolved) { await ws.reload(); setRefreshKey((k) => k + 1); }
   }, [inputs, materials, patch, push, reply, result, workspaceId, ws]);
 
+  // A new design from the box: a showcase result, or a brief for the workbench
+  // (car -> the car pipeline and its workbench page; truss / bracket / part ->
+  // the class-problem solvers, drawn here).
+  const startDesign = useCallback(async (intent: NewDesignIntent, text: string) => {
+    if (intent.kind === 'showcase') {
+      setDesign({ kind: 'showcase', id: intent.id, label: intent.label });
+      setMobileTab('model');
+      reply(push({ role: 'assistant', text: '', pending: true }), `Opened the ${intent.label} showcase design. It is a precomputed result with its checks, values and sources; the full page is /conkay/designs/${intent.id}.`);
+      return;
+    }
+    const id = push({ role: 'assistant', text: intent.domain === 'car' ? 'Designing the car (this runs the full car pipeline and can take a minute)…' : `Designing the ${intent.label}…`, pending: true });
+    let data: Record<string, unknown> | null = null;
+    try {
+      data = (await api.post('/api/conkay/workbench', { prompt: text.slice(0, 4000) })).data as Record<string, unknown>;
+    } catch (e) {
+      const res = (e as { response?: { status?: number; data?: Record<string, unknown> } })?.response;
+      if (res?.status === 401) { reply(id, 'Sign in to design here. The showcase designs open without an account: say "show me the car".', { error: true }); return; }
+      data = res?.data ?? null;
+      if (!data) { reply(id, `The design did not run: ${e instanceof Error ? e.message : 'network error'}.`, { error: true }); return; }
+    }
+    const errs = Array.isArray(data?.errors) ? (data.errors as Array<{ error?: string }>).map((x) => x.error).filter(Boolean) : [];
+    if (data?.ok === false) { reply(id, `The design did not run: ${errs.join('; ') || String(data?.error || 'no reason given')}.`, { error: true }); return; }
+    if (data?.stage === 'questions') {
+      pendingBrief.current = text;
+      const qs = (data.questions as Array<{ question: string }> | undefined) ?? [];
+      reply(id, `To design this ${String(data.domain || intent.label)} I need:\n${qs.map((q) => `• ${q.question}`).join('\n')}\nAnswer here and I will add it to the brief.`);
+      return;
+    }
+    if (data?.stage === 'designed' && typeof data.id === 'string') {
+      reply(id, 'Designed. Opening it in the workbench, where you can move its knobs, lock variables and ask follow-ups.');
+      router.push(`/conkay/workbench/${data.id}`);
+      return;
+    }
+    if (data?.stage === 'solved' && data.answer && typeof data.answer === 'object') {
+      const claims = (Array.isArray(data.claims) ? data.claims : []) as BriefClaim[];
+      setDesign({ kind: 'solved', domain: String(data.domain || intent.domain), prompt: text, answer: data.answer as Record<string, unknown>, claims });
+      setMobileTab('model');
+      const defaults = claims.filter((c) => c.status === 'default').map((c) => `${c.label} = ${c.display ?? c.value} (default: ${c.note || c.source})`);
+      let summary = `Solved the ${String(data.domain)}.`;
+      if (data.domain === 'truss') {
+        const a = data.answer as unknown as TrussAnswer;
+        const t = Math.max(0, ...a.forces.map((f) => f.N));
+        const c = Math.min(0, ...a.forces.map((f) => f.N));
+        summary = `Solved the truss: ${a.geometry.joints.length} joints, ${a.forces.length} bars. Max tension ${(t / 1000).toFixed(2)} kN, max compression ${(-c / 1000).toFixed(2)} kN${a.maxDisplacementM != null ? `, max displacement ${(a.maxDisplacementM * 1000).toFixed(2)} mm` : ''}. Member buckling and connections are not checked.`;
+      }
+      reply(id, defaults.length ? `${summary}\nAssumed: ${defaults.join('; ')}.` : summary);
+      return;
+    }
+    reply(id, data?.stage === 'infeasible' ? 'No design met the brief within the search budget; see the workbench for what bound it.' : 'The design returned nothing to show.', { error: data?.stage !== 'infeasible' });
+  }, [push, reply, router]);
+
   const send = useCallback(async (text: string) => {
     if (busy) return;
     setBusy(true);
     setMobileTab((t) => (t === 'browse' ? 'chat' : t));
     push({ role: 'user', text });
     try {
+      const intent = detectNewDesign(text);
+      if (intent) { pendingBrief.current = null; await startDesign(intent, text); return; }
+      if (pendingBrief.current && /^\s*(?:cancel|never ?mind|stop)\b/i.test(text)) {
+        pendingBrief.current = null;
+        reply(push({ role: 'assistant', text: '', pending: true }), 'Dropped that brief.');
+        return;
+      }
+      if (pendingBrief.current && !/\b(?:run fea|save|keep|i-?beam|beam|t_w|t_f|flange|web)\b/i.test(text)) {
+        // Answering the questions a brief came back with ("3 m tall, 6 panels").
+        const brief = `${pendingBrief.current}. ${text}`;
+        pendingBrief.current = null;
+        await startDesign({ kind: 'workbench', domain: 'truss', label: 'design' }, brief);
+        return;
+      }
       const cmd = parseWorkspaceCommand(text, inputs.dims, materials, inputs.materialId);
       if (!cmd) { await askAgent(text); return; }
+      setDesign(null);
       if (cmd.changes.length === 0 && !cmd.run && !cmd.save && !cmd.keep) {
         reply(push({ role: 'assistant', text: '', pending: true }), 'No change — the study already has those values. Say “run FEA” to solve it again.');
         return;
@@ -310,7 +382,7 @@ export function ConKayWorkspace() {
     } finally {
       setBusy(false);
     }
-  }, [askAgent, busy, inputs, keep, materials, persistModel, push, reply, runStudy]);
+  }, [askAgent, busy, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign]);
 
   // Open a DTU in the workspace: read it, and when it is a kept beam study,
   // load the exact inputs it recorded (results stay hidden until re-solved).
@@ -332,6 +404,8 @@ export function ConKayWorkspace() {
       const m = dtu.machine;
       if (m?.kind === 'conkay_beam_study' && m.dims && Number.isFinite(m.loadN)) {
         setInputs({ name: name.split(':')[0].slice(0, 80) || inputs.name, dims: m.dims, loadN: m.loadN, support: m.support, materialId: m.material });
+        setDesign(null);
+        ws.startBeam();
         setMobileTab('model');
         reply(id, `Opened “${name}”. Its inputs are loaded. When it was kept (sim job ${m.jobId}), the solver gave ${Number(m.maxStressMPa).toFixed(1)} MPa at ${(Number(m.utilization) * 100).toFixed(1)}% utilization. Say “run FEA” to solve it again here.`);
         return;
@@ -342,7 +416,7 @@ export function ConKayWorkspace() {
       setBusy(false);
     }
     await askAgent(`I opened DTU ${dtuId}${title ? ` (“${title}”)` : ''} in the ConKay workspace. What does it mean for the current study?`);
-  }, [askAgent, busy, inputs.name, push, reply, setInputs]);
+  }, [askAgent, busy, inputs.name, push, reply, setInputs, ws]);
 
   const onChip = useCallback(async (chip: Chip) => {
     if (chip.kind === 'edit-tw') {
@@ -424,8 +498,9 @@ export function ConKayWorkspace() {
       onCreateWorkspace={createWorkspace}
       materials={materials}
       materialId={inputs.materialId}
-      onMaterial={(id) => { setInputs({ ...inputs, materialId: id }); setMobileTab('model'); }}
-      onOpenModel={(name, dims, materialId) => { setInputs({ ...inputs, name, dims, materialId: materialId || inputs.materialId }); setMobileTab('model'); }}
+      onMaterial={(id) => { setInputs({ ...inputs, materialId: id }); setDesign(null); ws.startBeam(); setMobileTab('model'); }}
+      onOpenModel={(name, dims, materialId) => { setInputs({ ...inputs, name, dims, materialId: materialId || inputs.materialId }); setDesign(null); ws.startBeam(); setMobileTab('model'); }}
+      onOpenShowcase={(id, label) => { setDesign({ kind: 'showcase', id, label }); setMobileTab('model'); }}
       onAskAboutDtu={(d) => void openDtu(d.id, d.title)}
       refreshKey={refreshKey}
     />
@@ -555,6 +630,10 @@ export function ConKayWorkspace() {
           </form>
         )}
 
+        {design && <DesignPane design={design} onClose={() => setDesign(null)} />}
+        {!design && ws.fresh && status !== 'loading' && (
+          <StartScreen busy={busy} onPick={(t) => void send(t)} onBeam={ws.startBeam} />
+        )}
         <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} />
 
         <div className="absolute left-3 top-11 z-10 w-48 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur">

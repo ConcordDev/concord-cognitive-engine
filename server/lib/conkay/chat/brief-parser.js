@@ -32,10 +32,14 @@ function normalizeNumberWords(text) {
   return text.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?=[\s-]+([a-z]+)\b)/gi, (w, _n, next) => (COUNT_NOUNS.has(String(next).toLowerCase()) ? String(NUMBER_WORDS[w.toLowerCase()]) : w));
 }
 
+const BRIDGE_RE = /\b(?:foot)?bridges?\b/;
+
 export function detectDomain(text) {
   const t = text.toLowerCase();
   if (/\bsentinel\b|\bm1\b/.test(t) && /\b(knee|hip|ankle|actuator|bracket|mount|link|part)\b/.test(t)) return "sentinel-part";
   if (/\btruss\b|\bwarren\b|\bpratt\b|\bhowe\b/.test(t)) return "truss";
+  // A bridge / footbridge / pedestrian bridge is designed as a planar truss (Pratt unless named); a "beam bridge" stays a beam.
+  if (BRIDGE_RE.test(t) && !/\b(?:beam|girder)\s+bridge\b/.test(t)) return "truss";
   if (/\bbracket\b|\bcantilever(?:ed)?\s+plate\b/.test(t)) return "bracket";
   if (/\bbeam\b|\bjoist\b|\bgirder\b/.test(t)) return "beam";
   if (/\b(car|vehicle|sedan|coupe|hatchback|suv|ev|roadster|supercar)\b/.test(t)) return "car";
@@ -212,6 +216,10 @@ function parseTruss(text, scan) {
   const lower = text.toLowerCase();
   const type = lower.match(/\b(warren|pratt|howe)\b/);
   if (type) claims.type = claim("type", "truss type", type[1], { source: `"${type[0]}"` });
+  else if (BRIDGE_RE.test(lower)) {
+    const d = CITED_DEFAULTS.bridgeTrussType;
+    claims.type = claim("type", "truss type", d.value, { status: STATUS.DEFAULT, source: d.source, note: d.applies });
+  }
   const panels = scan.counts.find((c) => /^(panels?|bays?)$/.test(c.noun));
   if (panels) claims.panels = claim("panels", "panels", panels.value, { unit: "1", source: `"${panels.raw}"` });
   const L = lengthsByRole(text, scan);

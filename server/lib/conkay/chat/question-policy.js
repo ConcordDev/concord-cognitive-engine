@@ -28,6 +28,11 @@ export const CITED_DEFAULTS = Object.freeze({
     source: "R. C. Hibbeler, Structural Analysis: a planar truss on one pin and one roller has three independent reactions and is externally statically determinate",
     applies: "a simple planar truss",
   },
+  bridgeTrussType: {
+    value: "pratt",
+    source: "R. C. Hibbeler, Structural Analysis (common bridge trusses): in a Pratt truss under gravity load the diagonals are in tension and the shorter verticals in compression, the usual form for a short-span steel footbridge",
+    applies: "a bridge or footbridge brief that names no truss form (say Warren or Howe to change it)",
+  },
   standardGravity: {
     value: 9.80665,
     source: "3rd CGPM (1901): standard acceleration of gravity gn = 9.80665 m/s²",
