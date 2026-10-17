@@ -3,6 +3,7 @@
 //
 //   node scripts/conkay-cfd.mjs case --body <cadRequestHash> --out <dir> [--nproc 7] [--end 4000]
 //                                    [--aref <m2> --aref-basis "<text>"]
+//                                    [--refinement coarse|medium|fine]
 //   node scripts/conkay-cfd.mjs case --ahmed --out <dir> [--nproc 7] [--end 4000]
 //   node scripts/conkay-cfd.mjs import --body <cadRequestHash> --run <finished case dir>
 //
@@ -67,12 +68,13 @@ async function cmdCase(a) {
   if (fs.existsSync(a.out) && fs.readdirSync(a.out).length) throw new Error(`${a.out} is not empty`);
   const nproc = intArg(a.nproc, "nproc", 7);
   const endTime = intArg(a.end, "end", 4000);
+  const refinement = a.refinement === undefined ? undefined : String(a.refinement); // validated by the kernel (unknown = error)
   if (a.ahmed) {
-    const r = await writeCase({ preset: "ahmed", outDir: a.out, nproc, endTime });
+    const r = await writeCase({ preset: "ahmed", outDir: a.out, nproc, endTime, refinement });
     if (!r.ok) throw new Error(r.error);
     const geo = new URL("../lib/conkay/cfd/ahmed.geo", import.meta.url);
     fs.copyFileSync(geo, path.join(a.out, "ahmed.geo"));
-    fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify({ preset: "ahmed", nproc, endTime, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, geometry: "ahmed.geo: gmsh ahmed.geo -2 -format stl -o constant/geometry/ahmed.stl" }, null, 2));
+    fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify({ preset: "ahmed", nproc, endTime, refinement: r.refinement, blockCells: r.blockCells, domainVolumeM3: r.domainVolumeM3, solverSetupSha256: r.solverSetupSha256, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, geometry: "ahmed.geo: gmsh ahmed.geo -2 -format stl -o constant/geometry/ahmed.stl" }, null, 2));
     return r;
   }
   const key = a.body;
@@ -91,7 +93,7 @@ async function cmdCase(a) {
     arefBasis = String(a["aref-basis"]);
   }
   const lref = m.lengthM;
-  const r = await writeCase({ preset: "car5m", outDir: a.out, nproc, endTime, aref, lref });
+  const r = await writeCase({ preset: "car5m", outDir: a.out, nproc, endTime, aref, lref, refinement });
   if (!r.ok) throw new Error(r.error);
   if (!fitsPreset(bbox, r.fits)) throw new Error(`the body box ${JSON.stringify(bbox)} is outside the car5m preset's refinement box ${JSON.stringify(r.fits)}`);
   fs.mkdirSync(path.join(a.out, "constant/geometry"), { recursive: true });
@@ -99,6 +101,7 @@ async function cmdCase(a) {
   fs.writeFileSync(path.join(a.out, "tessellate.sh"), tessellateScript("car"), { mode: 0o755 });
   const caseJson = {
     preset: "car5m", cadRequestHash: key, stepSha256: sha256File(step), nproc, endTime, aref, lref,
+    refinement: r.refinement, blockCells: r.blockCells, domainVolumeM3: r.domainVolumeM3, solverSetupSha256: r.solverSetupSha256,
     frontalAreaBasis: arefBasis, caseSha256: r.caseSha256, kernelSha256: r.kernelSha256, files: r.files, tessellation: TESSELLATION,
   };
   fs.writeFileSync(path.join(a.out, "case.json"), JSON.stringify(caseJson, null, 2));
@@ -130,12 +133,12 @@ function cmdImport(a) {
   }
   const rec = importRun(key, { postProcessingDir: path.join(a.run, "postProcessing"), snappySummaryFile: summary }, {
     stepSha256: cj.stepSha256,
-    case: { preset: cj.preset, nproc: cj.nproc, endTime: cj.endTime, aref: cj.aref, lref: cj.lref, caseSha256: cj.caseSha256, kernelSha256: cj.kernelSha256 },
+    case: { preset: cj.preset, nproc: cj.nproc, endTime: cj.endTime, aref: cj.aref, lref: cj.lref, refinement: cj.refinement ?? null, blockCells: cj.blockCells ?? null, domainVolumeM3: cj.domainVolumeM3 ?? null, solverSetupSha256: cj.solverSetupSha256 ?? null, caseSha256: cj.caseSha256, kernelSha256: cj.kernelSha256 },
     frontalAreaBasis: cj.frontalAreaBasis,
     surface,
     host: a.host || null,
   });
-  return { stored: path.join(cfdStoreDir(), key), files: Object.keys(rec.files).length };
+  return { stored: path.join(cfdStoreDir(), cj.refinement && cj.refinement !== "medium" ? `${key}.${cj.refinement}` : key), files: Object.keys(rec.files).length };
 }
 
 const a = args(process.argv.slice(2));
