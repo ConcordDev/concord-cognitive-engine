@@ -776,6 +776,16 @@ button, a, input, textarea, select {
   }
 }
 
+/* INC-129: mobile viewport height + nav-safe bottom padding.
+   100vh fallback for legacy browsers; 100dvh matches the dynamic visible
+   viewport on iOS Safari / Android Chrome so the shell doesn't extend under
+   the browser toolbar. mobile-nav-pad reserves the MobileNav height (h-14 =
+   56px ≈ 3.5rem) plus the home indicator safe-area inset; 4rem gives the
+   same 64px Tailwind pb-16 baseline on devices without an inset. */
+.app-viewport-h { height: 100vh; height: 100dvh; }
+.mobile-nav-pad { padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) { .mobile-nav-pad { padding-bottom: 0; } }
+
 /* ── Phase 8 — combat polish time-dilation overlay ───────────────────────
    Applied to <body> by CombatTimeDilationOverlay when a perfect dodge fires
    on a high-dilation profile (Cyberpunk = 0.35, Sifu = 0.15, etc).
