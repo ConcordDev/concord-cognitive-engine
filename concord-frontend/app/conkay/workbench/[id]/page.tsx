@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
-import { WorkbenchById } from '@/components/conkay/workbench/WorkbenchPages';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'ConKay Workbench — Concord', description: 'Design variables, locks, the design graph and every check’s receipt.' };
-
+// The Workbench lives on the design page now: /conkay/designs/<id> loads the
+// workbench session when the id is one (its chat starts or resumes it).
 export default async function WorkbenchDesignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <WorkbenchById id={id} />;
+  redirect(`/conkay/designs/${id}`);
 }

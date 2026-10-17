@@ -15957,16 +15957,20 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
       model,
       messages: [{ role:"user", content: prompt, images: [imageB64] }]
     };
+    const _visionStart = Date.now();
+    const { recordBrainCall } = await import("./lib/brain/record-brain-call.js");
     try {
       const r = await BREAKERS.ollama.call(() =>
         fetch(`${OLLAMA_URL}/api/chat`, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(60000) })
       );
+      recordBrainCall(BRAIN.multimodal, { ok: !!(r && r.ok), startedAt: _visionStart });
       if (r && r.ok) {
         const j = await r.json().catch(()=>null);
         const content = j?.message?.content || j?.response || "";
         return { ok:true, content, source: "ollama_llava" };
       }
     } catch (e) {
+      recordBrainCall(BRAIN.multimodal, { ok: false, startedAt: _visionStart });
       structuredLog("warn", "ollama_call_failed", { error: String(e?.message || e), circuit: BREAKERS.ollama.getState().state });
     }
   }
@@ -20372,6 +20376,7 @@ const _combatSocketLimiter = makeSocketRateLimiter({
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
+import { ensureSocketChatSession, persistSocketChatTurn } from "./lib/chat/socket-session.js";
 import {
   resolveChatMaxTokens,
   finishLengthLimitedReply,
@@ -22016,7 +22021,11 @@ ${_sharedToolRules}` : "";
         temperature: options.temperature || 0.7,
         num_predict: options.maxTokens || (brainName === "conscious" ? resolveChatMaxTokens() : 500),
         num_ctx: _ollamaNumCtx(brainName),
+        ...(Number.isFinite(options.presencePenalty) ? { presence_penalty: options.presencePenalty } : {}),
       },
+      // Thinking models (qwen3.5 / concord-core-v6) otherwise spend
+      // num_predict on the hidden thinking channel and return empty content.
+      ...(typeof options.think === "boolean" ? { think: options.think } : {}),
     };
 
     const response = await fetch(`${_dispatchUrl}/api/chat`, {
@@ -23112,22 +23121,21 @@ async function entityExploreLens(entity, lens) {
   const entityId = entity.id;
   const species = entity?.species || null;
 
-  // Use utility brain prompt builder with entity context
-  const system = buildUtilityPrompt({
-    action: `Explore ${lens} domain and generate an insight`,
-    lens,
-    context: lensData,
-    dtu_count: STATE.dtus ? STATE.dtus.size : 0,
-    entity: entity || { id: entityId },
-  });
+  // Focused prompt, thinking off, low temperature, no tool catalog; the
+  // output is checked before it is saved (lib/brain/entity-explore.js has
+  // the measurements behind each setting).
+  const _ex = await import("./lib/brain/entity-explore.js");
+  const _exBrain = _ex.exploreBrainName();
+  const _exPrompt = _ex.buildEntityExplorePrompt({ lens, context: lensData, entity });
+  const result = await callBrain(_exBrain, _exPrompt.user, _ex.exploreCallOptions(_exPrompt.system));
 
-  const result = await callBrain("utility", `Explore ${lens} domain as entity ${entityId}`, {
-    system,
-    temperature: 0.8,
-    maxTokens: 400,
-    timeout: 30000,
-    enableTools: true,
-  });
+  if (result.ok) {
+    const _q = _ex.assessExploreOutput(result.content);
+    if (!_q.ok) {
+      structuredLog("info", "entity_explore_output_rejected", { entityId, lens, brain: _exBrain, reason: _q.reason, chars: String(result.content || "").length });
+      return { ok: false, error: `explore output rejected (${_q.reason})`, reason: _q.reason, source: result.source };
+    }
+  }
 
   if (result.ok && result.content) {
     try {
@@ -23137,7 +23145,7 @@ async function entityExploreLens(entity, lens) {
         creti: result.content,
         tags: [lens, "entity", species].filter(Boolean),
         source: `entity.${entityId}.explore`,
-        meta: { brainSource: "utility", confidence: 0.4, entityId, species },
+        meta: { brainSource: _exBrain, confidence: 0.4, entityId, species },
         lineage: entity?.lineage || [],
         scope: "local",
       }, ctx);
@@ -27621,6 +27629,46 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   }
 }
 
+  // ── Tool-worthy prompts → the agent tool loop (lib/chat/agent-route.js) ──
+  // The conversational path only runs a tool when the model writes a
+  // [TOOL_CALL] marker inside the persona prompt; the A40 conscious model
+  // never did, so web/DTU/compute/design questions were answered from
+  // memory (invented links, invented DTUs). Same loop as
+  // /api/chat-agent/stream. Falls through to the normal path on any failure.
+  if (prompt) {
+    try {
+      const _ar = await import("./lib/chat/agent-route.js");
+      const _agentRouteKind = _ar.chatAgentRoute(prompt);
+      const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
+      if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
+        const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind });
+        if (_agentOut) {
+          const _agentReply = visibleChatReply(_agentOut.reply, prompt);
+          const _agentMeta = {
+            llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
+            toolCallCount: _agentOut.toolCalls.length,
+            tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
+          };
+          sess.messages.push({ role: "assistant", content: _agentReply, ts: nowISO(), meta: _agentMeta });
+          _persistDeterministicTurn(_agentReply, _agentMeta);
+          saveStateDebounced();
+          ctx.log("chat", "Answered through the agent tool loop", { sessionId, route: _agentRouteKind, tools: _agentMeta.tools });
+          return {
+            ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
+            route: "chat_agent", agentRoute: _agentRouteKind,
+            toolCalls: _agentOut.toolCalls, artifacts: _agentOut.artifacts, sources: _agentOut.sources,
+            ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
+            ...(_agentOut.dtuRefsRemoved.length ? { dtuRefsRemoved: _agentOut.dtuRefsRemoved } : {}),
+            meta: { panel: "chat", sessionId, ..._agentMeta, toolCalls: _agentOut.toolCalls.length, sources: _agentOut.sources, provider: _agentOut.provider, model: _agentOut.model },
+          };
+        }
+      }
+    } catch (_agentErr) {
+      ctx.log("chat", "Agent-route failed; using the conversational path", { error: String(_agentErr?.message || _agentErr) });
+    }
+  }
+
   // Sprint 47: intentInfo is now computed earlier (see the DTU-enrichment
   // block above) — this used to be its only declaration, but that meant
   // every reference to it above this line (createInputDTU's enrichment
@@ -28302,7 +28350,15 @@ let localReply = formatCrispResponse({
 
   // Merge unified context DTUs with focus set (deduplicated)
   const _focusIds = new Set(focus.map(d => d.id));
-  const _extraUnifiedDtus = _unifiedContextDtus.filter(d => !_focusIds.has(d.id));
+  // The session working set keeps the previous query's DTUs warm. They only
+  // enter THIS prompt when they relate to the current message, otherwise a
+  // question with no matching DTUs is answered from the previous topic
+  // (lib/chat/turn-context.js).
+  let _extraUnifiedDtus = _unifiedContextDtus.filter(d => !_focusIds.has(d.id));
+  try {
+    const { filterCarryOverDtus } = await import("./lib/chat/turn-context.js");
+    _extraUnifiedDtus = filterCarryOverDtus(_extraUnifiedDtus, prompt);
+  } catch { /* keep the unfiltered set */ }
   const _enrichedFocus = [...focus, ..._extraUnifiedDtus];
   // ===== END UNIFIED CONTEXT ENGINE =====
   // ===== END CONSCIOUS BRAIN ROUTING =====
@@ -28882,6 +28938,13 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
+  // Names the message to answer at the end of the system prompt
+  // (lib/chat/turn-context.js) — the wrong-turn guard.
+  let _currentTurnAnchor = "";
+  try {
+    const { currentTurnAnchor } = await import("./lib/chat/turn-context.js");
+    _currentTurnAnchor = currentTurnAnchor(prompt);
+  } catch { /* anchor optional */ }
   let _replyDoneReason = null;
   // Conversational cap. Verbosity 0.5 (the affect default) resolves to
   // CONCORD_CHAT_MAX_TOKENS itself, default 2000 — not the old 700 base
@@ -29008,7 +29071,7 @@ ${_operatorV6Block}` : "";
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : ""), mode);
+    }) + _toolSystemPrompt + _lensHintSuffix + (_identityContextNote ? ("\n\n" + _identityContextNote) : "") + _currentTurnAnchor, mode);
     const _userContent = _computeGroundTruth
       ? `${_computeGroundTruth.groundTruthBlock}\n\n${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`
       : `${prompt}${_pipelineMeta ? `\n${_pipelineMeta}` : ""}`;
@@ -29095,7 +29158,7 @@ ${_operatorV6Block}` : "";
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt + _lensHintSuffix, mode);
+      }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
         ...buildChatHistoryMessages(sess.messages, prompt),
@@ -29406,6 +29469,25 @@ ${_operatorV6Block}` : "";
   }
   if (_lockedReply) finalReply = _lockedReply;
 
+  // Only DTUs retrieved for this turn may be cited (lib/chat/dtu-citation-guard.js).
+  let _dtuRefsRemoved = [];
+  if (!_lockedReply && llmUsed && typeof finalReply === "string" && finalReply) {
+    try {
+      const { collectRetrievedDtus, guardDtuCitations } = await import("./lib/chat/dtu-citation-guard.js");
+      const _retrievedDtus = collectRetrievedDtus(
+        _enrichedFocus.map((d) => ({ id: d.id, title: d.title })),
+        (_pipelineHarvest?.consolidatedWorkingSet || []).map((d) => ({ id: d.id, title: d.title })),
+        _toolCallsExecuted,
+      );
+      const _g = guardDtuCitations(finalReply, _retrievedDtus, { prompt });
+      if (_g.removed.length) {
+        finalReply = _g.text;
+        _dtuRefsRemoved = _g.removed;
+        ctx.log("chat", "Removed DTU references that were not retrieved", { sessionId, count: _g.removed.length });
+      }
+    } catch { /* guard optional */ }
+  }
+
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
@@ -29650,6 +29732,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_aiUnavailable ? {
       code: _aiUnavailable.code,
@@ -55544,22 +55627,22 @@ function initChatSocketHandlers(io) {
             // Ensure session exists. Capture ownerId from the socket auth
             // metadata (set by the io.use middleware in initRealtime) so
             // assertSessionAccessible can later refuse cross-user reads.
-            if (!STATE.sessions.has(sessionId)) {
-              const _ownerId = socket.data?.userId || null;
-              STATE.sessions.set(sessionId, {
-                ownerId: _ownerId,
-                participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
-                createdAt: nowISO(),
-                messages: [],
-                currentLens: null,
-                lensHistory: [],
-                crossDomainContext: {},
-              });
+            // If the session isn't in memory (backend restart, cache
+            // trim), load its saved history from the chat session store
+            // (SQLite) first, so the conversation doesn't start from scratch.
+            const _streamDb = db || STATE.db || globalThis._concordSTATE?.db || null;
+            const _streamOwnerId = socket.data?.userId || null;
+            const _ensured = ensureSocketChatSession(_streamDb, STATE, sessionId, { ownerId: _streamOwnerId, now: nowISO });
+            if (!_ensured.ok) {
+              ack?.({ ok: false, error: _ensured.error });
+              socket.emit("chat:status", { sessionId, status: "error", lens, error: _ensured.error });
+              return;
             }
-            const _streamSess = STATE.sessions.get(sessionId);
+            const _streamSess = _ensured.session;
 
             // Record user message in session
-            _streamSess.messages.push({ role: "user", content: String(prompt), ts: nowISO() });
+            const _streamUserTs = nowISO();
+            _streamSess.messages.push({ role: "user", content: String(prompt), ts: _streamUserTs });
             if (_streamSess.messages.length > 60) _streamSess.messages.splice(0, _streamSess.messages.length - 60);
 
             // ── Web Search Integration (best-effort) ──────────────────────
@@ -55786,6 +55869,16 @@ function initChatSocketHandlers(io) {
                 content: (streamResult.content = visibleChatReply(streamResult.content, String(prompt || ""))),
                 ts: nowISO(),
                 meta: { llmUsed: true, source: "ollama-stream", model: streamResult.model },
+              });
+
+              // Persist the user/assistant turn so it survives a restart.
+              persistSocketChatTurn(_streamDb, sessionId, {
+                ownerId: _streamSess.ownerId || _streamOwnerId,
+                lens,
+                userText: String(prompt),
+                userTs: _streamUserTs,
+                assistantText: streamResult.content,
+                source: streamResult.source || "ollama-stream",
               });
 
               // Update brain stats
@@ -59644,10 +59737,14 @@ async function processVoiceNote(audioBuffer, options = {}) {
 // ---- Image Analysis ----
 async function analyzeImage(imageBuffer, prompt = "Describe this image in detail.") {
   // 4-lane: routes through vision-inference (CF Workers AI when BRAIN_VISION_PROVIDER=cloudflare)
+  const _visionStart = Date.now();
+  const { recordBrainCall } = await import("./lib/brain/record-brain-call.js");
   try {
     const base64 = imageBuffer.toString("base64");
     const { callVision } = await import("./lib/vision-inference.js");
     const visionResult = await callVision(base64, prompt);
+    // callVision bypasses callBrain, so count the call on the multimodal slot here.
+    recordBrainCall(BRAIN.multimodal, { ok: !!visionResult.ok, startedAt: _visionStart });
     if (!visionResult.ok) {
       return { ok: false, error: visionResult.error || "vision_failed", model: visionResult.model };
     }
@@ -59658,6 +59755,7 @@ async function analyzeImage(imageBuffer, prompt = "Describe this image in detail
       source: visionResult.source,
     };
   } catch (e) {
+    recordBrainCall(BRAIN.multimodal, { ok: false, startedAt: _visionStart });
     return { ok: false, error: String(e.message || e) };
   }
 }

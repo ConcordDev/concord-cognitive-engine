@@ -51,28 +51,33 @@ export function DesignResult({ id }: { id: string }) {
   );
 }
 
-function DesignBody({ d }: { d: DesignSnapshot }) {
+/** The design's title, verdict chip, brief and disclaimers. */
+export function DesignHead({ d }: { d: DesignSnapshot }) {
   const nuclear = d.kind === 'nuclear';
   return (
-    <>
-      <section className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">{d.title}</h1>
-          <span className={`rounded-md border px-2 py-0.5 text-[11px] ${CHECK_STYLE[d.headline.status] || CHECK_STYLE.NOT_COMPUTED}`}>
-            {CHECK_LABEL[d.headline.status] || d.headline.status} · {String(d.headline.verdict).replace(/_/g, ' ')}
-          </span>
-        </div>
-        <p className="max-w-4xl text-sm leading-relaxed text-slate-400">{d.brief}</p>
-        <div
-          role="note"
-          className={`flex gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed ${nuclear ? 'border-rose-400/30 bg-rose-500/[0.07] text-rose-100' : 'border-amber-400/25 bg-amber-400/[0.06] text-amber-100'}`}
-        >
-          {nuclear ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
-          <ul className="space-y-0.5">{d.disclaimers.map((x) => <li key={x}>{x}</li>)}</ul>
-        </div>
-      </section>
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">{d.title}</h1>
+        <span className={`rounded-md border px-2 py-0.5 text-[11px] ${CHECK_STYLE[d.headline.status] || CHECK_STYLE.NOT_COMPUTED}`}>
+          {CHECK_LABEL[d.headline.status] || d.headline.status} · {String(d.headline.verdict).replace(/_/g, ' ')}
+        </span>
+      </div>
+      <p className="max-w-4xl text-sm leading-relaxed text-slate-400">{d.brief}</p>
+      <div
+        role="note"
+        className={`flex gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed ${nuclear ? 'border-rose-400/30 bg-rose-500/[0.07] text-rose-100' : 'border-amber-400/25 bg-amber-400/[0.06] text-amber-100'}`}
+      >
+        {nuclear ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
+        <ul className="space-y-0.5">{d.disclaimers.map((x) => <li key={x}>{x}</li>)}</ul>
+      </div>
+    </section>
+  );
+}
 
-      <DrawingsPanel designId={d.id} drawings={d.drawings} model3d={d.model3d} assembly={d.assembly} />
+/** The detail panels below the viewer: packaging fit, checks, values, mass, tests, repairs, caveats, review queue. */
+export function DesignDetails({ d }: { d: DesignSnapshot }) {
+  return (
+    <>
       {d.assembly?.checks && (
         <section className={PANEL} aria-label="Packaging fit">
           <h2 className="text-sm font-semibold">Packaging fit</h2>
@@ -127,6 +132,17 @@ function DesignBody({ d }: { d: DesignSnapshot }) {
           <p className="px-1 font-mono text-[10px] text-slate-600" title={d.snapshotSha256}>snapshot {d.snapshotSha256.slice(0, 16)}… · {d.pipeline}</p>
         </aside>
       </div>
+    </>
+  );
+}
+
+/** Head + drawings + details — the whole snapshot page body, reused by DesignResult. */
+export function DesignBody({ d }: { d: DesignSnapshot }) {
+  return (
+    <>
+      <DesignHead d={d} />
+      <DrawingsPanel designId={d.id} drawings={d.drawings} model3d={d.model3d} assembly={d.assembly} />
+      <DesignDetails d={d} />
     </>
   );
 }

@@ -223,9 +223,33 @@ function hasOrderedTightMatch(terms, text) {
  * Drops "Capital punishment" for a capital-of-France question.
  * Keeps a keyword hit whose title is the thing that was asked about.
  */
+// Words that say WHEN or HOW FRESH, not WHAT. A hit about copper prices
+// does not have to repeat "current" or "2026" to be about copper prices,
+// so these never count as required terms.
+const OPTIONAL_TERMS = new Set(
+  `current latest today now recent recently live update updated news
+   tonight yesterday week month year
+   january february march april may june july august september october november december`
+    .split(/\s+/).filter(Boolean),
+);
+
+function requiredTerms(terms) {
+  const req = terms.filter((t) => !OPTIONAL_TERMS.has(t) && !/^(?:19|20)\d\d$/.test(t));
+  return req.length ? req : terms;
+}
+
+// Questions whose answer changes over time (prices, scores, weather, news).
+// An encyclopedia lead cannot answer them; citing "2000s commodities boom"
+// for "copper prices" is worse than saying the search found nothing.
+const FRESHNESS_RE = /\b(?:price|prices|pricing|cost|costs|quote|rate|rates|stock|stocks|share price|market|score|scores|weather|forecast|news|latest|current|today|tonight|this week|right now|live)\b/i;
+
+export function isFreshnessQuery(query) {
+  return FRESHNESS_RE.test(String(query || "")) || /\b20\d\d\b/.test(String(query || ""));
+}
+
 export function isWebSourceRelevant(query, title, snippet) {
   const shaped = shapeSearchQuery(query);
-  const terms = queryTerms(shaped);
+  const terms = requiredTerms(queryTerms(shaped));
   if (!terms.length) return false;
   const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
   const matched = terms.filter((t) => blob.has(t));
@@ -304,6 +328,167 @@ async function braveSearch(query) {
   }
 }
 
+// ── SearXNG (optional, self-hosted, SEARXNG_URL) ────────────────────────────
+
+async function searxngSearch(query) {
+  const base = String(process.env.SEARXNG_URL || "").replace(/\/+$/, "");
+  if (!base) return [];
+  try {
+    const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&language=en`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": CHAT_USER_AGENT },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.results || []).slice(0, 6).map((r) => ({
+      title: decodeHtmlEntities(r.title || ""),
+      url: r.url || "",
+      snippet: decodeHtmlEntities(r.content || "").slice(0, 300),
+      content: decodeHtmlEntities(r.content || "").slice(0, 2000),
+      source: hostOf(r.url, "searxng"),
+      provider: "searxng",
+      query,
+      fetchedAt: new Date().toISOString(),
+    })).filter((r) => /^https?:\/\//i.test(r.url));
+  } catch (_e) {
+    return [];
+  }
+}
+
+// ── Bing web results page (keyless fallback) ────────────────────────────────
+// Without BRAVE_API_KEY / SEARXNG_URL the only "web search" used to be
+// Wikipedia full-text search, which matches any article that mentions the
+// words: "copper prices" cited "2000s commodities boom" and "Islamic State".
+// DuckDuckGo's HTML endpoint answers bots with a 202 anomaly page, so the
+// keyless general-web fallback is Bing's results page. Turn it off with
+// CONCORD_WEB_SEARCH_BING=0 (then set BRAVE_API_KEY or SEARXNG_URL).
+
+const BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+function hostOf(url, fallback = "web") {
+  try { return new URL(url).hostname; } catch { return fallback; }
+}
+
+/** Bing wraps result links in /ck/a?...&u=a1<base64url(target)>. */
+export function decodeBingHref(href) {
+  const h = decodeHtmlEntities(href || "").trim();
+  let u;
+  try { u = new URL(h); } catch { return ""; }
+  if (!/(^|\.)bing\.com$/i.test(u.hostname)) return /^https?:$/.test(u.protocol) ? h : "";
+  if (!u.pathname.startsWith("/ck/")) return "";
+  const enc = u.searchParams.get("u") || "";
+  if (!enc.startsWith("a1")) return "";
+  try {
+    const b64 = enc.slice(2).replace(/-/g, "+").replace(/_/g, "/");
+    const target = Buffer.from(b64, "base64").toString("utf8");
+    return /^https?:\/\/[^\s]+$/i.test(target) ? target : "";
+  } catch {
+    return "";
+  }
+}
+
+function stripTags(html) {
+  return decodeHtmlEntities(String(html || "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+/** Parse organic results (li.b_algo) out of a Bing results page. */
+export function parseBingResults(html, query, limit = 6) {
+  const out = [];
+  const seen = new Set();
+  const blocks = String(html || "").split(/<li class="b_algo"/i).slice(1);
+  for (const block of blocks) {
+    const a = block.match(/<h2[^>]*>\s*<a\b[^>]*\bhref="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const url = decodeBingHref(a[1]);
+    if (!url || seen.has(url) || isBlockedUrl(url)) continue;
+    const title = stripTags(a[2]);
+    if (!title) continue;
+    const cap = block.match(/<div class="b_caption"[^>]*>([\s\S]*?)<\/div>/i);
+    const p = (cap ? cap[1] : block).match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    const snippet = p
+      ? stripTags(p[1].replace(/<span class="news_dt">([\s\S]*?)<\/span>/i, "$1 ")).replace(/^[\s·•-]+/, "")
+      : "";
+    seen.add(url);
+    out.push({
+      title: title.slice(0, 200),
+      url,
+      snippet: snippet.slice(0, 300),
+      content: snippet.slice(0, 2000),
+      source: hostOf(url),
+      provider: "bing",
+      query,
+      fetchedAt: new Date().toISOString(),
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+async function bingSearch(query) {
+  if (String(process.env.CONCORD_WEB_SEARCH_BING || "1") === "0") return [];
+  try {
+    const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en&cc=US`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    return parseBingResults(await res.text(), query);
+  } catch (_e) {
+    return [];
+  }
+}
+
+/**
+ * Live web results for one already-shaped query from the general-web
+ * providers (Brave → SearXNG → Bing), relevance-filtered and de-duplicated.
+ */
+/**
+ * Web-index hits must cover the query, not one shared word: "Current |
+ * Future of Banking" mentions "price" but not "copper". Both terms of a
+ * two-term query; at least two thirds of a longer one.
+ */
+export function coversQuery(query, title, snippet) {
+  const req = requiredTerms(queryTerms(shapeSearchQuery(query)));
+  if (!req.length) return false;
+  if (hasCompoundClash(req, title) && !hasOrderedTightMatch(req, `${title || ""} ${snippet || ""}`)) return false;
+  const blob = new Set(contentWords(`${title || ""} ${snippet || ""}`));
+  const hit = req.filter((t) => blob.has(t)).length;
+  return req.length <= 2 ? hit === req.length : hit / req.length >= 2 / 3;
+}
+
+function keepCovering(query, rows) {
+  return (rows || []).filter((r) => coversQuery(query, r.title, r.snippet || r.content || ""));
+}
+
+/** Required content words only ("current copper price today" → "copper price"). */
+export function compactSearchQuery(query) {
+  return requiredTerms(queryTerms(shapeSearchQuery(query))).slice(0, 5).join(" ");
+}
+
+async function generalWebResults(query) {
+  const rows = [];
+  if (process.env.BRAVE_API_KEY) rows.push(...keepCovering(query, (await braveSearch(query)).map((r) => ({ provider: "brave", ...r }))));
+  if (rows.length < 3) rows.push(...keepCovering(query, await searxngSearch(query)));
+  if (rows.length < 3) {
+    rows.push(...keepCovering(query, await bingSearch(query)));
+    // Bing's keyless page sometimes ranks on the first word only when the
+    // query carries filler ("current copper price today" → the bank named
+    // Current). Retry once with just the required terms.
+    const compact = compactSearchQuery(query);
+    if (rows.length < 2 && compact && compact !== query.toLowerCase()) {
+      rows.push(...keepCovering(query, await bingSearch(compact)));
+    }
+  }
+  const seen = new Set();
+  return rows.filter((r) => {
+    if (!r.url || seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+}
+
 export async function webSearchForChat(queries) {
   const allResults = [];
 
@@ -318,12 +503,18 @@ export async function webSearchForChat(queries) {
       allResults.push(ddgResult);
     }
 
-    // 2. Try Brave Search if API key is configured
-    if (process.env.BRAVE_API_KEY) {
-      const braveResults = keepRelevant(query, await braveSearch(query));
-      allResults.push(...braveResults);
-      if (allResults.length >= 5) break; // enough results
-    }
+    // 2. General web search (Brave if keyed, SearXNG if configured, else
+    //    the keyless Bing results page). These are ranked by a real web
+    //    index, so they come before the Wikipedia fallback.
+    const webRows = await generalWebResults(query);
+    allResults.push(...webRows.slice(0, 5));
+    if (allResults.length >= 5) break; // enough results
+
+    // 3. Wikipedia is an encyclopedia fallback. It only runs when the web
+    //    providers gave fewer than two hits, and never for time-sensitive
+    //    questions (prices, scores, news): its full-text search matches any
+    //    article that merely mentions the words.
+    if (webRows.length >= 2 || isFreshnessQuery(raw) || isFreshnessQuery(query)) continue;
 
     try {
       // 3. Wikipedia. Pull a wider candidate set than we will cite, drop
@@ -370,6 +561,7 @@ export async function webSearchForChat(queries) {
             snippet: decodeHtmlEntities((result.snippet || "").replace(/<[^>]+>/g, "")).slice(0, 300),
             content: decodeHtmlEntities(page.extract).slice(0, 2000),
             source: "en.wikipedia.org",
+            provider: "wikipedia",
             query,
             fetchedAt: new Date().toISOString(),
           });
