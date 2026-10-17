@@ -12,8 +12,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Activity, Boxes, ChevronLeft, Database, FolderKanban, Library, Loader2, MessageSquare, Pencil, Plus, Search, Trash2,
+  Activity, Boxes, ChevronDown, ChevronLeft, ChevronRight, Database, FolderKanban, Library, Loader2, MessageSquare, Pencil, Plus, Search, Sparkles, Trash2,
 } from 'lucide-react';
+import { SHOWCASE_LINKS, type ShowcaseId } from '@/lib/conkay/new-design-intent';
 import { api, lensRun } from '@/lib/api/client';
 import type { BeamDims } from '@/lib/conkay/workspace-commands';
 import type { Material } from './useConKayWorkspace';
@@ -38,6 +39,8 @@ interface Props {
   onMaterial: (id: string) => void;
   onOpenModel: (name: string, dims: BeamDims, materialId: string | null) => void;
   onAskAboutDtu: (dtu: { id: string; title: string }) => void;
+  /** Open a showcase design in the workspace (New design / Gallery picker). Without it the items link to /conkay/designs/<id>. */
+  onOpenShowcase?: (id: ShowcaseId, label: string) => void;
   /** Bumped after a save/solve so open lists refetch. */
   refreshKey: number;
 }
@@ -327,6 +330,34 @@ function LibraryPanel({ materials, materialId, onMaterial }: { materials: Materi
   );
 }
 
+/** "New design / Gallery": the showcase designs, the workbench and the no-login demo. */
+function NewDesignPicker({ onOpenShowcase }: { onOpenShowcase?: (id: ShowcaseId, label: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const sub = 'block w-full rounded-md px-3 py-1.5 text-left text-xs text-slate-300 hover:bg-white/5 hover:text-white';
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={`${itemCls} flex items-center gap-3 text-slate-200 hover:bg-white/5`}>
+        <Sparkles className="h-4 w-4 text-slate-400" aria-hidden /> New design / Gallery
+        {open ? <ChevronDown className="ml-auto h-3.5 w-3.5 text-slate-500" aria-hidden /> : <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-500" aria-hidden />}
+      </button>
+      {open && (
+        <ul aria-label="New design and gallery" className="mb-1 ml-7 border-l border-white/5 pl-1">
+          <li><Link href="/conkay/workbench" className={sub}>New design in the workbench</Link></li>
+          <li><Link href="/conkay/demo" className={sub}>Demo (no sign-in)</Link></li>
+          <li><Link href="/conkay/designs" className={sub}>Gallery: all showcase designs</Link></li>
+          {SHOWCASE_LINKS.map((d) => (
+            <li key={d.id}>
+              {onOpenShowcase
+                ? <button type="button" onClick={() => onOpenShowcase(d.id, d.label)} className={sub}>{d.label}</button>
+                : <Link href={`/conkay/designs/${d.id}`} className={sub}>{d.label}</Link>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function WorkspaceNav(props: Props) {
   const { section, onSection } = props;
   const [creating, setCreating] = useState(false);
@@ -372,6 +403,7 @@ export function WorkspaceNav(props: Props) {
           <Icon className="h-4 w-4 text-slate-400" aria-hidden /> {label}
         </button>
       ))}
+      <NewDesignPicker onOpenShowcase={props.onOpenShowcase} />
 
       <div className="mt-5 flex items-center justify-between px-3">
         <h2 className="text-xs font-medium uppercase tracking-wide text-slate-400">Workspaces</h2>

@@ -29,11 +29,17 @@ vi.mock('@/lib/conkay/agent-stream', async (orig) => ({
 
 const lensRun = vi.fn();
 const apiGet = vi.fn();
+const apiPost = vi.fn();
+const fetchDesignMock = vi.fn();
+vi.mock('@/lib/conkay/designs-api', async (orig) => ({
+  ...(await orig<typeof import('@/lib/conkay/designs-api')>()),
+  fetchDesign: (...a: unknown[]) => fetchDesignMock(...a),
+}));
 const listMock = vi.fn();
 const downloadMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...a: unknown[]) => lensRun(...a),
-  api: { get: (...a: unknown[]) => apiGet(...a) },
+  api: { get: (...a: unknown[]) => apiGet(...a), post: (...a: unknown[]) => apiPost(...a) },
   apiHelpers: { lens: { list: (...a: unknown[]) => listMock(...a) } },
 }));
 vi.mock('@/lib/utils', async (orig) => ({
@@ -97,6 +103,8 @@ beforeEach(() => {
   appended = [];
   lensRun.mockReset();
   apiGet.mockReset();
+  apiPost.mockReset();
+  fetchDesignMock.mockReset();
   listMock.mockReset();
   listMock.mockResolvedValue({ data: { items: [] } });
   downloadMock.mockReset();
@@ -461,5 +469,107 @@ describe('ConKay workspace — save, export, delete', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Shop beam' }));
     await waitFor(() => expect(screen.getByText('This model belongs to another account.')).toBeTruthy());
     expect(screen.getByText('Shop beam')).toBeTruthy();
+  });
+});
+
+describe('ConKay workspace — new designs from the box', () => {
+  const TRUSS = {
+    geometry: { joints: [{ id: 'L0', x: 0, y: 0 }, { id: 'L1', x: 15, y: 0 }, { id: 'L2', x: 30, y: 0 }, { id: 'U1', x: 15, y: 3 }], bars: [] },
+    forces: [
+      { id: 'L0-L1', i: 'L0', j: 'L1', lengthM: 15, N: 12500, sense: 'tension' },
+      { id: 'L1-L2', i: 'L1', j: 'L2', lengthM: 15, N: 12500, sense: 'tension' },
+      { id: 'L0-U1', i: 'L0', j: 'U1', lengthM: 15.3, N: -25500, sense: 'compression' },
+      { id: 'U1-L2', i: 'U1', j: 'L2', lengthM: 15.3, N: -25500, sense: 'compression' },
+    ],
+    reactions: [{ joint: 'L0', Rx: 0, Ry: 2500 }, { joint: 'L2', Rx: 0, Ry: 2500 }],
+    maxDisplacementM: 0.0042, note: 'statically determinate',
+  };
+
+  it('a new workspace starts on "What do you want to build?"; picking the I-beam dismisses it', async () => {
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText('What do you want to build?')).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Show me the car' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Start from a blank I-beam study' }));
+    expect(screen.queryByText('What do you want to build?')).toBeNull();
+  });
+
+  it('a saved study opens on the beam, not the start screen', async () => {
+    routes({ 'engineering.beamStudy-get': () => ok({ study: {
+      name: 'Frame beam', dims: DIMS, support: 'cantilever', loadN: 5000, jobId: 'sim_9', updatedAt: new Date().toISOString(),
+      section: solved().section, utilizationByMember: [], loadNode: 'N8', materialInfo: solved().material,
+      summary: { maxStressMPa: 12.5, maxDeflectionMm: 0.2, utilization: 0.036, safetyFactor: 27.6, pass: true, handCheck: solved().handCheck, warnings: [] },
+    } }) });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText('FEA util. 3.6%')).toBeTruthy());
+    expect(screen.queryByText('What do you want to build?')).toBeNull();
+  });
+
+  it('"design me a pedestrian bridge…" goes to the workbench as a truss, not to the beam parser', async () => {
+    apiPost.mockResolvedValue({ data: { ok: true, stage: 'solved', domain: 'truss', answer: TRUSS, claims: [
+      { field: 'type', label: 'truss type', value: 'pratt', display: 'pratt', status: 'default', note: 'a bridge brief that names no truss form' },
+      { field: 'span', label: 'span', value: 30, display: '30 m', status: 'input' },
+    ] } });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText('What do you want to build?')).toBeTruthy());
+    send('design me a pedestrian bridge 30 m span 5 kN steel');
+    await waitFor(() => expect(within(convo()).getByText(/Solved the truss: 4 joints, 4 bars\. Max tension 12\.50 kN, max compression 25\.50 kN/)).toBeTruthy());
+    expect(apiPost).toHaveBeenCalledWith('/api/conkay/workbench', { prompt: 'design me a pedestrian bridge 30 m span 5 kN steel' });
+    expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
+    expect(within(convo()).getByText(/truss type = pratt \(default/)).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Truss elevation with bar forces' })).toBeTruthy();
+    expect(screen.queryByText('What do you want to build?')).toBeNull();
+  });
+
+  it('questions from the workbench are asked, and the answer is added to the brief', async () => {
+    apiPost.mockResolvedValueOnce({ data: { ok: true, stage: 'questions', domain: 'truss', questions: [{ question: 'How tall is the truss?' }, { question: 'How many panels (bays) along the span?' }] } });
+    apiPost.mockResolvedValueOnce({ data: { ok: true, stage: 'solved', domain: 'truss', answer: TRUSS, claims: [] } });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('design me a pedestrian bridge 30 m span 5 kN steel');
+    await waitFor(() => expect(within(convo()).getByText(/How tall is the truss\?/)).toBeTruthy());
+    send('3 m tall, 6 panels');
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(apiPost.mock.calls[1][1]).toEqual({ prompt: 'design me a pedestrian bridge 30 m span 5 kN steel. 3 m tall, 6 panels' });
+    await waitFor(() => expect(within(convo()).getByText(/Solved the truss/)).toBeTruthy());
+  });
+
+  it('"show me the car" opens the showcase car in the workspace', async () => {
+    fetchDesignMock.mockResolvedValue({ id: 'car', title: 'Four-seat 180 mph car', kind: 'vehicle', brief: 'four seats, 180 mph', headline: { verdict: 'PASS_WITH_WARNINGS', status: 'WARN' }, drawings: [], model3d: { name: 'body.stl', format: 'stl', bytes: 1000, sha256: 'x', source: 'cad.body' }, assembly: null, checks: [] });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('show me the car');
+    await waitFor(() => expect(screen.getByText('Four-seat 180 mph car', { selector: 'h2' })).toBeTruthy());
+    expect(fetchDesignMock).toHaveBeenCalledWith('car');
+    expect(screen.getByRole('button', { name: /Load CAD model/ })).toBeTruthy();
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
+  });
+
+  it('designing a car runs the workbench and opens its page', async () => {
+    apiPost.mockResolvedValue({ data: { ok: true, stage: 'designed', id: 'wb_1', view: {} } });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('design a four-seat electric car that holds 140 mph');
+    await waitFor(() => expect(routerPush).toHaveBeenCalledWith('/conkay/workbench/wb_1'));
+  });
+
+  it('"3 m aluminum beam SF 1.5" is still a beam edit', async () => {
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('3 m aluminum beam SF 1.5');
+    await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(true));
+    const call = lensRun.mock.calls.find((c) => c[1] === 'beamStudy');
+    expect(call?.[2]).toMatchObject({ dims: { length: 3000 }, requiredSafetyFactor: 1.5 });
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it('the nav has a New design / Gallery picker', async () => {
+    render(<ConKayWorkspace />);
+    fireEvent.click(await screen.findByRole('button', { name: /New design \/ Gallery/ }));
+    const list = screen.getByRole('list', { name: 'New design and gallery' });
+    expect(within(list).getByText('New design in the workbench').closest('a')?.getAttribute('href')).toBe('/conkay/workbench');
+    expect(within(list).getByText('Demo (no sign-in)').closest('a')?.getAttribute('href')).toBe('/conkay/demo');
+    expect(within(list).getByText('Gallery: all showcase designs').closest('a')?.getAttribute('href')).toBe('/conkay/designs');
+    expect(within(list).getByRole('button', { name: 'NuScale US600 facility screening' })).toBeTruthy();
   });
 });

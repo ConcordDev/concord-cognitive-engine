@@ -9,6 +9,8 @@
  * so nothing is guessed. Pure functions, no I/O.
  */
 
+import { namesNonBeamObject } from './new-design-intent';
+
 export type BeamSupport = 'simply-supported' | 'cantilever' | 'fixed';
 
 export interface BeamDims {
@@ -116,6 +118,8 @@ export function parseWorkspaceCommand(
 ): WorkspaceCommand | null {
   const src = ` ${String(text || '').replace(/\s+/g, ' ').trim()} `;
   if (!src.trim()) return null;
+  // "show me the car", "a 30 m footbridge": another object, not an edit of this beam.
+  if (namesNonBeamObject(src) && !/\b(?:i-?beam|beam|girder|joist|lintel)s?\b/i.test(src)) return null;
   const lower = src.toLowerCase();
   const cmd: WorkspaceCommand = { dims: {}, run: false, save: false, keep: false, changes: [] };
   const consumed: Array<[number, number]> = [];

@@ -7,6 +7,8 @@
 // dropped).
 //
 //   POST /api/conkay/workbench            { prompt, screening? } -> { id, view } | { questions, pendingId, history }
+//                                         a truss / bridge, bracket, beam or Sentinel-part brief is solved by the
+//                                         class-problem solvers (chat/session.js) -> { stage: "solved", domain, answer }
 //   POST /api/conkay/workbench            { pendingId, text }    -> continues the questions conversation
 //   GET  /api/conkay/workbench/:id        -> { view }
 //   POST /api/conkay/workbench/:id/knob   { variable, value }   -> { reply, view }
@@ -23,6 +25,8 @@
 import express from "express";
 import crypto from "node:crypto";
 import { designFromChat } from "../lib/conkay/chat/run.js";
+import { parseChatBrief } from "../lib/conkay/chat/brief-parser.js";
+import { ChatSession } from "../lib/conkay/chat/session.js";
 import { DesignConversation } from "../lib/conkay/chat/what-if.js";
 import { workbenchView } from "../lib/conkay/chat/workbench.js";
 import { carEvaluator } from "../lib/conkay/chat/orchestrator.js";
@@ -78,7 +82,15 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       evict();
       return res.json({ ok: true, stage: "designed", id, outcome: r.outcome, view: workbenchView(conv) });
     }
-    const prompt = String(req.body?.prompt || "");
+    const prompt = String(req.body?.prompt || "").slice(0, 4000);
+    // Not a car: the class-problem solvers answer it in one turn (no orchestrator, no conversation kept).
+    const pre = parseChatBrief(prompt);
+    if (pre.domain && pre.domain !== "car") {
+      const t = new ChatSession().ask(prompt);
+      if (t.kind === "questions") return res.json({ ok: true, stage: "questions", domain: t.domain, questions: t.questions, claims: t.claims });
+      if (t.kind === "answer") return res.json({ ok: true, stage: "solved", domain: t.domain, answer: plain(t.answer), claims: t.claims, assumptions: t.assumptions, ...(t.followUps ? { followUps: t.followUps } : {}) });
+      return res.status(400).json({ ok: false, stage: t.kind, domain: t.domain, errors: t.errors || [{ error: "the solver did not answer" }], claims: t.claims });
+    }
     const screening = !!req.body?.screening;
     const r = await designFromChat(prompt, { evaluate: makeEvaluator(screening) });
     if (!r.ok) return res.status(400).json({ ok: false, stage: r.stage, errors: r.errors });
@@ -86,7 +98,7 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       const id = crypto.randomUUID();
       store.set(id, { pending: true, id, turns: [prompt], owner: userOf(req), touched: Date.now(), screening });
       evict();
-      return res.json({ ok: true, stage: "questions", questions: r.questions, claims: r.claims, pendingId: id, history: historyOf([prompt]) });
+      return res.json({ ok: true, stage: "questions", domain: r.domain, questions: r.questions, claims: r.claims, pendingId: id, history: historyOf([prompt]) });
     }
     if (r.stage !== "designed") return res.json({ ok: true, stage: r.stage, outcome: r.outcome });
     const conv = new DesignConversation({ evaluate: makeEvaluator(screening), rules: REPAIR_RULES, requirements: r.ir.requirements, state: r.state, final: r.final });

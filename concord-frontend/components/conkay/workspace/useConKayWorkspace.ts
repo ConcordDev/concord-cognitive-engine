@@ -89,6 +89,9 @@ export function useConKayWorkspace(workspaceId: string | null) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [status, setStatus] = useState<SolveStatus>('loading');
   const [error, setError] = useState('');
+  /** No saved study for this workspace: the UI starts on "What do you want to build?". */
+  const [fresh, setFresh] = useState(false);
+  const startBeam = useCallback(() => setFresh(false), []);
   const resultRef = useRef<BeamStudyResult | null>(null);
   useEffect(() => { resultRef.current = result; }, [result]);
 
@@ -120,6 +123,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
       return null;
     }
     const study = studyFromSaved(r.data?.result?.study);
+    setFresh(!study);
     setResult(study);
     setPrevious(null);
     setInputs(study
@@ -138,6 +142,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
     const run = next ?? inputs;
     if (next) setInputs(next);
     setStatus('solving');
+    setFresh(false);
     setError('');
     const r = await lensRun<BeamStudyResult>('engineering', 'beamStudy', {
       name: run.name,
@@ -234,6 +239,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
   return {
     inputs, setInputs, result, previous, materials, status, error,
     solve, sweep, saveModel, suggestName, keepAsDtu, reload,
+    fresh, startBeam,
     stale: Boolean(result) && !inputsMatchResult(inputs, result),
   };
 }
