@@ -52,7 +52,7 @@ function compileBracketBrief(brief, parsed, name) {
     unmapped: [],
     assumed: solved.intent.assumed,
     assumptions: solved.intent.assumptions,
-    solve: { hand: solved.hand, fea: solved.fea, section: s },
+    solve: { hand: solved.hand, fea: solved.fea, section: s, safety: solved.safety },
     mesh: {
       positions: solved.mesh.positions,
       indices: solved.mesh.indices,

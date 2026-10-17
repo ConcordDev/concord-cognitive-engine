@@ -90,15 +90,20 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
           ...(solved.supportedParts ? { supportedParts: solved.supportedParts } : {}),
         });
       }
-      const { intent, mesh, hand, fea: feaReport } = solved;
+      const { intent, mesh, hand, fea: feaReport, safety } = solved;
       const maxUtilization = Number(feaReport?.maxUtilization);
-      const utilColor = feaUtilToColor(Number.isFinite(maxUtilization) ? maxUtilization : 0);
+      // Colour against the required safety factor when one was stated, so a
+      // part that passes yield but misses SF 2 does not paint green.
+      const bandUtil = Number(feaReport?.utilizationAtSF ?? maxUtilization);
+      const utilColor = feaUtilToColor(Number.isFinite(bandUtil) ? bandUtil : 0);
       const fea = feaReport?.ok
         ? {
           ok: true,
           maxUtilization: Number.isFinite(maxUtilization) ? maxUtilization : null,
           maxStressPa: feaReport.maxStressPa,
           maxDeflectionM: feaReport.maxDeflectionM,
+          utilizationAtSF: feaReport.utilizationAtSF ?? null,
+          allPass: feaReport.allPass ?? null,
           jobId: feaReport.jobId ?? null,
           band: utilColor.band,
           summary: feaReport.summary ?? null,
@@ -113,6 +118,9 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
         assumptions: intent.assumptions,
         hand,
         fea,
+        // Pass/fail against the stated safety factor (SF 1 = yield when none was stated).
+        safety,
+        pass: safety?.pass ?? null,
         mesh: {
           positions: mesh.positions,
           indices: mesh.indices,

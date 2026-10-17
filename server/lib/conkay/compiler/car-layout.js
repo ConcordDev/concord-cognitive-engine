@@ -285,6 +285,7 @@ export const GROUND_CLEARANCE_CHOICES = Object.freeze({
  * differential's pinion axis ahead of it (deriveRearPackage's driveUnit).
  */
 export const EV_LAYOUT_CHOICES = Object.freeze({
+  radiatorCenterZ: { value: 0.40, basis: "design choice (2026-10-16 stance pass 2): the electric car's cooling core 50 mm lower than the front-engine car's 0.45 m (bottom at 0.15 m, the lowest-envelope allowance engineBottomZ uses), so the hood can fall below the fender crowns: with no engine the radiator top was the only requirement under the hood line" },
   footwellDepthM: { value: 0.3382, basis: "design choice: firewall to accelerator heel point, kept equal to the front-engine car's (ahpX 1.8 - firewall 1.4618), so the seating geometry is the same, only moved" },
   sweepClearanceM: { value: 0.025, basis: "design choice: the front occupants' feet to the front tyres' steering sweep (over the inner lock), separating-axis gap" },
   couplingGapM: { value: 0.02, basis: "design choice: motor module face to the differential's nose (coupling / flange adapter; the adapter is not designed)" },

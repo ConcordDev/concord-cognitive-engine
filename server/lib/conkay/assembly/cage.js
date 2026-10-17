@@ -37,7 +37,10 @@ function sectionRows(spec, profileAt, x) {
     ? Math.sin(Math.PI * clamp((x - spec.noseX) / Math.max(0.2, spec.cowlX - spec.noseX), 0, 1))
     : 0;
   const crownZ = p.crownZ + 0.011 * hoodT;
-  const shoulderY = p.shoulderY * (1 + 0.045 * archW);
+  // fender flare over each arch: 7.5 % of the shoulder half width (was 4.5 %; 2026-10-16 stance pass, measured on the
+  // off-crease panel highlight bend, design-quality flags > 8°: EV 20 in 8.6° → 7.9°, EV 18 in 6.9° → 6.2°, front-engine
+  // 8.2° → 7.6°; a weaker flare left the larger 20 in arch turning too hard into the nose)
+  const shoulderY = p.shoulderY * (1 + 0.075 * archW);
   let shoulderZ = p.shoulderZ + 0.014 * archW;
   let beltZ = Math.min(p.beltZ, Math.max(shoulderZ, p.shoulderZ) - 0.004);
   if (shoulderZ > beltZ - 0.006) beltZ = shoulderZ - 0.012;
@@ -102,8 +105,10 @@ function stationList(spec) {
   const back = spec.backlightX || Math.min(kamm - 0.2, rx - R);
   const raw = [
     { x: spec.noseX, id: "nose", collapse: true, pin: true },
-    { x: spec.noseX + 0.055, id: "nose2" },
-    { x: spec.noseX + 0.12, id: "nose3" },
+    // nose wrap rows (2026-10-16: +0.045 / +0.11 m, was +0.055 / +0.12; with the 7.5 % flare the nose-tip edge
+    // was the next worst at 8.2°, these spacings bring every car under 8°; nearby values were measured worse)
+    { x: spec.noseX + 0.045, id: "nose2" },
+    { x: spec.noseX + 0.11, id: "nose3" },
     { x: spec.noseX + 0.2, id: "flare" },
     { x: spec.noseX + 0.28, id: "flare2" },
     { x: spec.noseX + 0.36, id: "nose4" },
@@ -680,6 +685,7 @@ function highlightMetric(positions, facesOrIdx, hard) {
   }
   let max = 0;
   let panelMax = 0;
+  let panelAt = null;
   let over = 0;
   let samples = 0;
   for (const [k, fs] of uses) {
@@ -702,12 +708,16 @@ function highlightMetric(positions, facesOrIdx, hard) {
       positions[a * 3 + 1] - positions[b * 3 + 1],
       positions[a * 3 + 2] - positions[b * 3 + 2],
     );
-    if (len >= 0.028 && ang > panelMax) panelMax = ang;
+    if (len >= 0.028 && ang > panelMax) {
+      panelMax = ang;
+      panelAt = [0, 1, 2].map((d) => Math.round(((positions[a * 3 + d] + positions[b * 3 + d]) / 2) * 1000) / 1000);
+    }
     if (ang > 8) over++;
   }
   return {
     maxDeg: Math.round(max * 10) / 10,
     panelMaxDeg: Math.round(panelMax * 10) / 10,
+    panelMaxAt: panelAt, // midpoint of the edge with the largest off-crease bend (m), to find it
     over8: over,
     samples,
   };
@@ -894,6 +904,7 @@ export function buildCageBody(spec, profileAt) {
   spec.highlightContinuity = {
     maxDeg: built.highlight.maxDeg,
     panelMaxDeg: built.highlight.panelMaxDeg,
+    panelMaxAt: built.highlight.panelMaxAt,
     over8: built.highlight.over8,
     samples: built.highlight.samples,
   };

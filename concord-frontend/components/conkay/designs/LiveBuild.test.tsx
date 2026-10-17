@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { LiveBuild } from './LiveBuild';
+import { LiveBuild, LiveBuildStream } from './LiveBuild';
 import { liveReducer, LIVE_INITIAL, latestSnapshot, liveStreamUrl, type LiveEvent } from '@/lib/conkay/live-api';
 
 vi.mock('next/dynamic', () => ({ default: () => (props: { url: string }) => <div data-testid="stl" data-url={props.url} /> }));
@@ -88,5 +88,31 @@ describe('LiveBuild', () => {
     const es = MockEventSource.last!;
     act(() => { es.readyState = 2; es.onerror?.(); });
     expect(screen.getByRole('alert').textContent).toMatch(/No live run/);
+  });
+});
+
+describe('LiveBuildStream embedded (hideViewer)', () => {
+  beforeEach(() => { (globalThis as unknown as { EventSource: unknown }).EventSource = MockEventSource; });
+  afterEach(() => { delete (globalThis as unknown as { EventSource?: unknown }).EventSource; });
+
+  it('hideViewer drops the side-panel body: an embedding page draws the body once', () => {
+    render(<LiveBuildStream id="ev-180" hideViewer />);
+    const es = MockEventSource.last!;
+    act(() => { for (const e of EVENTS) es.emit(e); });
+    // the timeline still streams...
+    expect(screen.getByTestId('live-timeline')).toBeTruthy();
+    expect(screen.getByTestId('live-step-3')).toBeTruthy();
+    expect(screen.getByTestId('live-outcome').textContent).toMatch(/Every check passes/);
+    // ...but no viewer of its own: no StlViewer, no snapshot caption
+    expect(screen.queryByTestId('stl')).toBeNull();
+    expect(screen.queryByTestId('live-snapshot')).toBeNull();
+  });
+
+  it('without hideViewer the stream keeps its side-panel viewer (the standalone page)', () => {
+    render(<LiveBuildStream id="ev-180" />);
+    const es = MockEventSource.last!;
+    act(() => { for (const e of EVENTS) es.emit(e); });
+    expect(screen.getByTestId('stl').getAttribute('data-url')).toBe('/api/conkay/demo/designs/ev-180/live/files/b90b1f523394.stl');
+    expect(screen.getByTestId('live-snapshot').textContent).toMatch(/15396 triangles/);
   });
 });
