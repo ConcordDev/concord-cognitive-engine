@@ -253,6 +253,14 @@ export const frameStructure = registerSolver({
       outputs[`${c.id}.maxTranslation`] = { value: c.maxTranslation, unit: "m" };
       outputs[`${c.id}.maxRotation`] = { value: c.maxRotation, unit: "rad" };
       outputs[`${c.id}.reactionSum`] = { value: ["x", "y", "z"].map((d) => c.reactions.filter((r) => r.dof === d).reduce((s, r) => s + r.value, 0)), unit: "N" };
+      // The solve's own per-node result on the real (non-subdivision) nodes, and
+      // the resolved loads this case applied (weight / force reads already
+      // turned into numbers). Additive reporting of what analyzeFrame computed —
+      // exposed so a view can honestly carry one frame case's model + result
+      // (chat/workbench.js feaFrame) without re-solving anything.
+      outputs[`${c.id}.nodeDisplacements`] = { value: c.displacements, unit: "m", note: "per real node (subdivision nodes excluded): translation u [m] then rotation r [rad], from the same solve" };
+      const src = loadCases.find((x) => x.id === c.id);
+      if (src) outputs[`${c.id}.appliedLoads`] = { value: { nodal: src.nodal, udl: src.udl }, unit: "N", note: "the resolved loads this case applied: nodal F [N] / M [N·m] arrays and member udl w [N/m] arrays, with every weight and force read already resolved to numbers" };
       let bucklingFactor = null;
       if (c.buckling) {
         if (!c.buckling.ok) warnings.push(`${c.id}: ${c.buckling.error}`);
