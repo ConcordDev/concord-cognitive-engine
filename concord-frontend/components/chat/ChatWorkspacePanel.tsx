@@ -1636,11 +1636,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      // Try to delete on server (best-effort), but always remove locally
+      // Delete the persisted session too; before, only the browser copy went
+      // and the chat came back from /api/chat/sessions on reload or another
+      // device. Best-effort: always remove locally.
       try {
-        await apiHelpers.lens.delete('chat', sessionId);
+        await api.delete(`/api/chat/sessions/${encodeURIComponent(sessionId)}`);
       } catch {
-        // Server deletion failed — still remove locally
+        // Not persisted (404) or offline — still remove locally
       }
       return sessionId;
     },

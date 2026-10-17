@@ -48,7 +48,15 @@ function _serialiseMeta(meta) {
       dtuRefs: meta.dtuRefs,
       sources: meta.sources,
       webAugmented: meta.webAugmented,
+      agentRoute: meta.agentRoute,
     };
+    // Playable/viewable results (studio song, iTunes preview, image) so a reload
+    // or another device still shows the player. A song is ~7 KB; anything that
+    // would bloat the row (inline data URLs) is left out.
+    if (Array.isArray(meta.artifacts) && meta.artifacts.length) {
+      const keep = meta.artifacts.slice(0, 4).filter((a) => a && typeof a === "object" && JSON.stringify(a).length < 60000);
+      if (keep.length) slim.artifacts = keep;
+    }
     return JSON.stringify(slim);
   } catch {
     return null;
@@ -244,3 +252,26 @@ export const CHAT_SESSION_STORE_DEFAULTS = Object.freeze({
   HYDRATE_LIMIT,
   TITLE_MAX_LEN,
 });
+
+/**
+ * Delete one persisted chat session and its messages, owner-scoped.
+ * Chat's "delete conversation" used to remove only the browser copy, so the
+ * session came back from /api/chat/sessions on the next load or device.
+ * @returns {{ok:true, deleted:number} | {ok:false, error:"not_found"|"forbidden"|string}}
+ */
+export function deleteChatSession(db, sessionId, ownerId) {
+  if (!db || !sessionId || !ownerId) return { ok: false, error: "bad_request" };
+  try {
+    const row = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
+    if (!row) return { ok: false, error: "not_found" };
+    if (row.owner_id && row.owner_id !== ownerId) return { ok: false, error: "forbidden" };
+    let deleted = 0;
+    db.transaction(() => {
+      deleted = db.prepare(`DELETE FROM chat_messages WHERE session_id = ?`).run(sessionId).changes;
+      db.prepare(`DELETE FROM chat_sessions WHERE session_id = ?`).run(sessionId);
+    })();
+    return { ok: true, deleted };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
