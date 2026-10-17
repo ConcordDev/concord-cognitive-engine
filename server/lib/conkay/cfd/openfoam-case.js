@@ -15,9 +15,11 @@ export function cfdPython() {
   return process.env.CONKAY_CFD_PYTHON || "python3";
 }
 
-/** refinement: "coarse" | "medium" (default) | "fine" (r = sqrt 2 per step, see openfoam_case.py). { ok, preset, files, caseSha256, kernelSha256, ... } or { ok:false, error }. outDir omitted = hashes only. */
-export async function writeCase({ preset, outDir, nproc, endTime, aref, lref, refinement }) {
-  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input: { preset, outDir, nproc, endTime, aref, lref, ...(refinement === undefined ? {} : { refinement }) }, timeoutMs: 60000 });
+/** refinement: "coarse" | "medium" (default) | "fine" (r = sqrt 2 per step). turbulence: "rans" (default) | "ddes"; flowThroughsDiscard, flowThroughsAverage and cflTarget apply only with "ddes". { ok, preset, files, caseSha256, kernelSha256, ... } or { ok:false, error }. outDir omitted = hashes only. */
+export async function writeCase({ preset, outDir, nproc, endTime, aref, lref, refinement, turbulence, flowThroughsDiscard, flowThroughsAverage, cflTarget }) {
+  // undefined fields are dropped by JSON; the kernel treats an absent "refinement" as "medium" and an absent "turbulence" as "rans", and refuses unknown values
+  const input = { preset, outDir, nproc, endTime, aref, lref, turbulence, flowThroughsDiscard, flowThroughsAverage, cflTarget, ...(refinement === undefined ? {} : { refinement }) };
+  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input, timeoutMs: 60000 });
   if (r.ok) r.kernelSha256 = sha256File(CASE_SCRIPT);
   return r;
 }

@@ -12,8 +12,8 @@ exact body and re-derives the drag from the run's copied force files.
 | run store (receipts keyed by the cad.body request hash) | `server/lib/conkay/cfd/run-store.js` |
 | Ahmed acceptance gate | `server/lib/conkay/cfd/validation.js` |
 | solver | `server/lib/conkay/physics/solvers/aero-cfd.js` |
-| CLI (`case`, `import`) | `server/scripts/conkay-cfd.mjs` |
-| tests + fixtures | `server/tests/conkay-aero-cfd.test.js`, `server/tests/fixtures/conkay-cfd/` |
+| CLI (`case`, `import`; `--turbulence ddes`) | `server/scripts/conkay-cfd.mjs` |
+| tests + fixtures | `server/tests/conkay-aero-cfd.test.js`, `server/tests/conkay-cfd-des.test.js`, `server/tests/fixtures/conkay-cfd/` |
 
 ## The case
 
@@ -124,3 +124,82 @@ sized to 48–88 ranks time-sliced to a crawl. On that pod the 5.6 M-cell Ahmed 
 - `potentialFoam` needs a `Phi` solver entry;
 - OpenFOAM 12's `reconstructParMesh` is a stub that prints a notice and exits 0: do not delete
   `processor*` after it (a finished mesh was lost this way).
+
+## Transient DES (`--turbulence ddes`) — template written, NEVER RUN
+
+Why: the steady k-ω SST run on Ahmed 25° did not settle (slant Cd 0.146 → 0.115 and base 0.123 →
+0.138 between iterations 2000 and 2300: the slant flow progressively separating at Ahmed's critical,
+bistable angle). A steady solver has no one answer there; the usual remedy is a scale-resolving
+run with time-averaged forces. **Passing tests does not validate this template**: no DES case has
+been made, `AHMED_DES_VALIDATION` is `pending`, and until a DES Ahmed run passes the same ±5 % gate
+no DES car result is reported.
+
+**Model.** `kOmegaSSTDES` with `FSST 2` and `CDES 0.61`, written explicitly. OpenFOAM 12 has no
+separately named SST-DDES: its `FDES()` switch `FSST 2` is `Lt·(1 − F2)/(CDES·Δ)`, the F2-shielded
+(delayed) form of Menter, Kuntz & Langtry (2003) (`src/MomentumTransportModels/momentumTransportModels/LES/kOmegaSSTDES/kOmegaSSTDES.C`,
+default `FSST 2`, `CDES 0.61`). `SpalartAllmarasDDES`/`IDDES` also exist in OpenFOAM 12 but need
+`nuTilda` fields, so they could not start from the k-ω SST RANS solution the template already makes;
+`iddes` is therefore refused. **Δ:** `maxDeltaxyz` with `deltaCoeff 2` — the maximum cell edge
+(`LES/LESdeltas/maxDeltaxyz`: for a regular hex the delta is half the width, so 2 gives the full
+edge). The OpenFOAM 12 `motorBike/lesFiles` tutorial uses `cubeRootVol`; the maximum edge is the
+classical DES length scale, so it is used here. Both the delta type and `FSST 2` are choices.
+
+**Numerics** (mirroring `tutorials/incompressibleFluid/motorBike/lesFiles/{fvSchemes,fvSolution}`):
+`backward` in time; `div(phi,U) Gauss LUST unlimitedGrad(U)`; `limitedLinear 1` on k and ω (the
+tutorial gives k; ω is the same choice); `limited corrected 0.33` for Laplacian and snGrad (the
+snappyHexMesh mesh allows 65° non-orthogonality); PIMPLE `nCorrectors 3`, `pFinal relTol 0`.
+
+**Time step.** Fixed (so the force series is uniformly spaced, which the statistics require):
+`Δt = cflTarget · h_fine / (1.5 · U)`, rounded **down** to two significant digits; `h_fine` is the
+blockMesh cell divided by `2^level`, both read from the files the kernel writes (Ahmed medium:
+0.1 m / 64 = 1.5625 mm, `Δt = 2.6e-5 s`). `--refinement` scales that blockMesh cell (the snappy
+level stays put), so a `fine` or `coarse` DDES case gets a smaller or larger `Δt` than the medium
+figures above. `cflTarget` defaults to 1 and the 1.5 is an assumed peak local speed
+(a choice, not computed from the mesh). Δt is not adaptive: the request's Courant bound holds only
+at that assumed speed, and the first run must read the real maximum Courant number from its log.
+
+**Start.** From the steady RANS solution, as the OpenFOAM 12 `motorBike` LES tutorial does:
+`./Allrun` (RANS, `--end` iterations, a multiple of 500), then `./AllrunDES` moves the last RANS
+time into `0` in every `processor*`, drops `uniform`, moves the RANS `postProcessing` to
+`postProcessing.rans`, copies the `des/` dictionaries over `system/` and `constant/`, and runs
+`foamRun -parallel`. The forceCoeffs objects write every time step.
+
+**Averaging.** `flowThroughsDiscard` (default 5) flow-throughs of `L_ref/U` are discarded, then
+`flowThroughsAverage` (default 10) are averaged — choices, not published values; the statistics
+decide whether they were enough. `case.json` records the window in seconds (`des.discardTimeS`,
+`des.windowTimeS`) and the record's `case.turbulence` selects the reducer in `aero.cfd`.
+
+**Statistics** (`timeWindowStatistics`, `timeWindowVerdict` in `force-coeffs.js`). Mean and sd over
+the window; the uncertainty of the mean by non-overlapping **batch means** (Conway 1963; batch count
+per Schmeiser 1982 — cited from memory, not re-read): 20 batches, standard error
+`sd(batch means)/√20`, 95 % Student-t half-width (t = 2.093, 19 d.f.). That accounts for
+autocorrelation; the naive `sd/√n` is reported beside it, along with the effective sample count
+(`sd²/Var(mean)`) and the integral time scale (`Var(mean)·T/(2 sd²)`). The window counts as settled
+only when (a) the two halves' means differ by less than the 95 % interval of their difference
+(per-half batch standard errors, t = 2.262, 9 d.f.), (b) the 95 % half-width is ≤ 2 % of the mean, and
+(c) the lag-1 autocorrelation of the batch means is ≤ 0.5 (else batches are shorter than the
+integral time scale and the interval is not trustworthy). All limits are choices (`TRANSIENT_LIMITS`).
+A batch shorter than a dominant oscillation period makes the interval wide — honestly so.
+
+**Gate.** `validationFor("ddes")` is a separate record from the RANS one, and `validationAccepted`
+refuses a record of the other model, so neither validation unlocks the other's result.
+
+**Cost (an estimate, not a measurement).** Ahmed: ~5.6 M cells, `Δt = 2.6e-5 s`, 15 flow-throughs
+of 0.0261 s ≈ 15 000 steps. The steady run took ~4.4 s per iteration on 7 cores (0.8 µs per cell per
+iteration); a PIMPLE step with 3 pressure correctors and an implicit `backward` scheme is
+assumed to cost about 2–4× a SIMPLE iteration, i.e. ~9–18 s per step → roughly **40–75 hours** for the
+DES stage, plus ~5 h for 4000 RANS iterations. The car preset (~8 M cells, Δt 1e-4 s, 19 400 steps at
+~5 s per SIMPLE iteration) would be roughly **80–160 hours**. The step cost multiplier is a guess; the first
+100 steps of a real run replace this paragraph. `--ft-average 5` halves the averaging cost at the
+price of a wider interval.
+
+```bash
+node server/scripts/conkay-cfd.mjs case --ahmed --out /tmp/ahmed-des --nproc 7 --end 4000 --turbulence ddes \
+  [--ft-discard 5] [--ft-average 10] [--cfl 1]
+# on the CFD machine: ./tessellate.sh (car only) && ./Allrun && ./AllrunDES   # AllrunDES writes DONE.des
+```
+
+Not verified against a real OpenFOAM: the dictionaries were checked keyword by keyword against
+the OpenFOAM 12 sources and tutorials named above, not run. Note also that `kernelSha256` changes
+whenever `openfoam_case.py` changes, so records made before this change must be re-imported with
+their case regenerated before `aero.cfd` will accept them.
