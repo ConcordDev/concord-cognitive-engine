@@ -19,6 +19,7 @@
 import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js";
 import { compactVoiceBlock } from "../../prompts/voice.js";
 import { parseExplicitDtuSave } from "./dtu-save-intent.js";
+import { CHAT_HISTORY_TURNS } from "../chat-reply-policy.js";
 
 const WEB_RE = [
   /\b(?:search|check|look)\s+(?:the\s+)?(?:web|internet|online)\b/i,
@@ -298,6 +299,8 @@ export function writeReceipt(toolCalls) {
 // Routes that create something for the user. If the loop fails on one of these,
 // the conversational fallback used to answer "Task added" with nothing stored.
 const WRITE_ROUTES = new Set(["action", "save", "music"]);
+/** A reply that says a lens write happened. */
+export const WRITE_CLAIM_RE = /\b(?:added|created|saved|scheduled|booked|logged|set up|is on your (?:list|calendar)|(?:task|event|recipe|reminder) (?:is )?(?:done|ready))\b|\bID:\s*\w+_/i;
 
 const PLAYABLE_CLAIM_RE = /\b(?:ready to play|play(?:able)? (?:it )?below|tap play|press play|is playing|now playing|here(?:'s| is) (?:your|the) (?:song|track|preview))\b/i;
 const REAL_MUSIC_RE = /\b(?:play|listen to|put on|queue|find)\b/i;
@@ -341,7 +344,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   try {
     r = await runMacro("chat_agent", "do", {
       message: route === "web" ? webAgentMessage(prompt, history) : prompt,
-      history: (history || []).slice(-12),
+      history: (history || []).slice(-CHAT_HISTORY_TURNS),
       maxTurns: 5,
       routeHint: routeHint(route),
       // Concord's voice for the reply (CONCORD_VOICE); the route hint stays last.
@@ -392,6 +395,9 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   if (route === "action" && answer) {
     const receipt = writeReceipt(toolCalls);
     if (receipt) answer = receipt;
+    // No write ran, yet the reply says it did: "Task added (ID: tsk_…)" with an
+    // invented id and nothing stored (long-chat probe 2026-10-17).
+    else if (WRITE_CLAIM_RE.test(answer)) answer = "I couldn't complete that, so nothing was created or saved. No write tool ran. Try again and I'll add it.";
   }
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
   // tool returned. Anything else is invented.
