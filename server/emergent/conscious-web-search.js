@@ -921,8 +921,15 @@ const LEAGUE_WORDS = { nfl: "NFL", football: "NFL", mlb: "MLB", baseball: "MLB",
 // Words in a scores question that are not a team name ("game last night winner").
 const SPORT_FILLER_RE = /^(?:who|won|win|wins|winner|winners|winning|lose|lost|loser|the|game|games|last|night|score|scores|scored|final|finals|yesterday|tonight|today|did|beat|beats|result|results|match|matches|matchup|recap|recaps|highlights|play|played|playing|team|teams|sports|sport|major|league|leagues|big|pro|american|latest|recent|just|now|this|weekend|week|what|was|were|how|happened|over|against|versus)$/;
 
+// "latest SpaceX Starship flight result", "election results today", "lab results": result/win
+// words with no sports noun. The live ESPN rows replaced every query in a space-news ask
+// (chat-output-depth live verify 2026-10-18), so a clearly non-sports topic opts out unless a
+// strong sports term is also present.
+const NON_SPORTS_TOPIC_RE = /\b(?:launch(?:es|ed)?|flight|rocket|starship|spacex|nasa|artemis|blue origin|new glenn|satellite|orbit|election|elections|poll|polls|primary|vote|votes|ballot|stock|stocks|earnings|market|exam|lab|test results?|search results?|study|trial|survey|lottery)\b/i;
+const STRONG_SPORTS_RE = /\b(?:who won the game|final score|scores?|game|games|matchup|nfl|nba|mlb|nhl|wnba|mls|ncaa|playoffs?|super bowl|world series|stanley cup|world cup)\b/i;
 export function isSportsResultQuery(query) {
   const q = String(query || "");
+  if (NON_SPORTS_TOPIC_RE.test(q) && !STRONG_SPORTS_RE.test(q)) return false;
   return SPORTS_Q_RE.test(q) && SPORTS_WHEN_RE.test(q) && !/\b(?:video ?game|board ?game|game of thrones|game show)\b/i.test(q);
 }
 

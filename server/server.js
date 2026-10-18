@@ -27883,7 +27883,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
           }
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}) });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -27913,6 +27913,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
           return {
             ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
             route: "chat_agent", agentRoute: _agentRouteKind,
+            ...(_agentOut.selfContinuation ? { selfContinuation: _agentOut.selfContinuation } : {}),
             toolCalls: _agentOut.toolCalls, artifacts: _agentOut.artifacts, sources: _agentOut.sources,
             ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
             ...(_agentOut.dtuRefsRemoved.length ? { dtuRefsRemoved: _agentOut.dtuRefsRemoved } : {}),
@@ -29212,6 +29213,21 @@ ${_operatorV6Block}` : "";
     verbosity: _affStyle.verbosity ?? styleVec?.verbosity ?? 0.5,
   });
   const _conversationalChat = isConversationalChatMode(mode);
+  // Self-continuation (lib/chat/self-continuation.js). Off unless CONCORD_CHAT_SELF_CONTINUE=1;
+  // CONCORD_SELF_CONTINUE_KILL=1 or the kill file (default /tmp/concord-self-continue.off) stops it live.
+  // When on, the first call is time-boxed to roundTokens and a checkpoint block carries the rest.
+  let _selfContLib = null;
+  let _selfContActive = false;
+  let _selfContCfg = null;
+  let _selfContMeta = null;
+  try {
+    _selfContLib = await import("./lib/chat/self-continuation.js");
+    _selfContActive = !!_selfContLib.selfContinueActive(process.env, input || {});
+    if (_selfContActive) _selfContCfg = _selfContLib.selfContinueConfig();
+  } catch { _selfContActive = false; }
+  const _selfContBlock = _selfContActive ? "\n\n" + _selfContLib.checkpointProtocolBlock(_selfContCfg.roundTokens) : "";
+  const _selfContFirstTokens = (n) => (_selfContActive ? Math.min(n, _selfContCfg.roundTokens) : n);
+  let _selfContSystem = "";
   if (_lockedReply) {
     finalReply = _lockedReply;
   } else if (_deterministicAnswer) {
@@ -29347,8 +29363,9 @@ ${_operatorV6Block}` : "";
     if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
+    _selfContSystem = system + _selfContBlock;
     const r = await ctx.llm.chat({
-      system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
+      system: _selfContSystem, messages, temperature: _llmTemp, maxTokens: _selfContFirstTokens(_llmMaxTokens),
       dtuRefs: _dtuTitles,
       macroRefs: ["chat.respond"],
       grcMode: mode,
@@ -29375,10 +29392,10 @@ ${_operatorV6Block}` : "";
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: brainModel,
-            messages: [{ role: "system", content: system }, ...messages],
+            messages: [{ role: "system", content: _selfContSystem }, ...messages],
             stream: false,
             think: false,
-            options: { temperature: _llmTemp, num_predict: _llmMaxTokens }
+            options: { temperature: _llmTemp, num_predict: _selfContFirstTokens(_llmMaxTokens) }
           }),
           signal: _fbAc.signal
         }).finally(() => clearTimeout(_fbTimeout));
@@ -29428,8 +29445,9 @@ ${_operatorV6Block}` : "";
         voice_exemplars: _voiceExemplarsForPrompt(),
         moodColor: _chatMoodColor,
       }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
+      _selfContSystem = _directSystem + _selfContBlock;
       const _directMessages = [
-        { role: "system", content: _directSystem },
+        { role: "system", content: _selfContSystem },
         ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
         ...(_chatTodayLine ? [{ role: "system", content: _chatTodayLine }] : []),
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
@@ -29445,7 +29463,7 @@ ${_operatorV6Block}` : "";
           messages: _directMessages,
           stream: false,
           think: false,
-          options: { temperature: _directParams.temperature || 0.75, num_predict: _chatMaxTokens }
+          options: { temperature: _directParams.temperature || 0.75, num_predict: _selfContFirstTokens(_chatMaxTokens) }
         }),
         signal: _directAc.signal
       }).finally(() => clearTimeout(_directTimeout));
@@ -29729,6 +29747,50 @@ ${_operatorV6Block}` : "";
   // A length stop is not a finished reply. One short continuation, then
   // trim to the last complete sentence or list item. Persist only that
   // text — the next turn must not be handed a mid-sentence stub.
+  if (_selfContActive && !_lockedReply && llmUsed && !_deterministicAnswer && finalReply) {
+    try {
+      const _scGenerate = async (msgs, o) => {
+        const _scTimeoutMs = resolveChatTimeoutMs(o.maxTokens);
+        if (llm && ctx.llm?.enabled && typeof ctx.llm.chat === "function") {
+          const _g = await ctx.llm.chat({
+            system: msgs[0]?.content || "", messages: msgs.slice(1), temperature: 0.4, maxTokens: o.maxTokens,
+            macroRefs: ["chat.respond.continue"], grcMode: mode, think: false, timeout: _scTimeoutMs,
+          });
+          if (_g?.ok) return { ok: true, text: String(_g.content || ""), doneReason: _g.doneReason || _g.raw?.done_reason || null };
+        }
+        const _scAc = new AbortController();
+        const _scT = setTimeout(() => _scAc.abort(), _scTimeoutMs);
+        try {
+          const _scRes = await fetch(`${brainUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: brainModel, messages: msgs, stream: false, think: false, options: { temperature: 0.4, num_predict: o.maxTokens } }),
+            signal: _scAc.signal,
+          });
+          const _scJson = await _scRes.json().catch(() => ({}));
+          return { ok: _scRes.ok, text: String(_scJson.message?.content || ""), doneReason: _scJson.done_reason || null };
+        } finally {
+          clearTimeout(_scT);
+        }
+      };
+      const _sc = await _selfContLib.runSelfContinuation({
+        generate: _scGenerate,
+        firstText: finalReply,
+        firstDoneReason: _replyDoneReason,
+        systemPrompt: _selfContSystem,
+        originalPrompt: prompt,
+      });
+      finalReply = _sc.text || finalReply;
+      _selfContMeta = { rounds: _sc.rounds, stoppedBy: _sc.stoppedBy, incomplete: _sc.incomplete };
+      if (_sc.rounds > 0 || _sc.incomplete) _replyDoneReason = null; // handled: skip the legacy one-shot finish
+      ctx.log("chat", "self-continuation", { sessionId, ..._selfContMeta, chars: finalReply.length });
+    } catch (_scErr) {
+      ctx.log("chat", "self-continuation failed; legacy length finish applies", { error: String(_scErr?.message || _scErr) });
+    }
+  }
+  // A checkpoint control block is never shown or saved, flag on or off.
+  if (llmUsed && finalReply && _selfContLib) finalReply = _selfContLib.stripControl(finalReply);
+
   if (!_lockedReply && llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
     try {
       const _finished = await finishLengthLimitedReply(finalReply, {
@@ -30054,6 +30116,7 @@ ${_operatorV6Block}` : "";
 
   return {
     ok: !_aiUnavailable, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
+    ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
     ...(_aiUnavailable ? {

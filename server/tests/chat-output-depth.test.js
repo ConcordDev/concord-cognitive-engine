@@ -239,3 +239,72 @@ describe("runAgentLoop depth/cap behavior", () => {
     }
   });
 });
+
+// Live verify 2026-10-18: "most recent SpaceX Starship flight result" + "latest" was read as a
+// sports-score ask, so every web_search in the turn was replaced with ESPN rows.
+describe("sports-result detector does not hijack non-sports asks", async () => {
+  const { isSportsResultQuery } = await import("../emergent/conscious-web-search.js");
+  it("space / election / lab results are not sports", () => {
+    for (const q of [
+      "the most recent SpaceX Starship flight result, latest news",
+      "SpaceX Starship flight test latest result October",
+      "election results today",
+      "my lab results came back today what does it mean",
+    ]) assert.equal(isSportsResultQuery(q), false, q);
+  });
+  it("real sports asks still are", () => {
+    for (const q of ["who won the game last night", "did the yankees win last night", "lakers score tonight", "latest result of the Jets game", "game last night winner"]) {
+      assert.equal(isSportsResultQuery(q), true, q);
+    }
+  });
+});
+
+// Live verify 2026-10-18: 24 near-identical searches in one turn. An exact repeat of a research
+// call is answered from the first run instead of being executed again.
+describe("repeated research calls in one turn are not re-run", async () => {
+  const { researchRepeatKey } = await import("../lib/chat-agent.js");
+  it("researchRepeatKey normalizes query case/punctuation and ignores non-research tools", () => {
+    assert.equal(researchRepeatKey({ tool: "web_search", params: { query: "NASA  Artemis, II!" } }), researchRepeatKey({ tool: "web_search", params: { query: "nasa artemis ii" } }));
+    assert.notEqual(researchRepeatKey({ tool: "web_search", params: { query: "nasa artemis ii" } }), researchRepeatKey({ tool: "web_search", params: { query: "nasa artemis ii crew" } }));
+    assert.equal(researchRepeatKey({ tool: "run_python", params: { code: "1" } }), null);
+    assert.equal(researchRepeatKey({ tool: "web_search", params: {} }), null);
+  });
+  it("the loop executes a repeated search once and tells the model it was not repeated", async () => {
+    let executed = 0;
+    let brainCalls = 0;
+    let sawNote = false;
+    const runMacro = async (domain, name, input) => {
+      if (domain === "expert_mode" && name === "web_search") {
+        executed += 1;
+        return { ok: true, summary: `answer for ${input.query} with plenty of detail `.repeat(60), results: [{ title: "T", url: "https://x.com/a", snippet: "s" }, { title: "U", url: "https://y.com/b", snippet: "s" }] };
+      }
+      return { ok: false, error: "unexpected" };
+    };
+    const brain = async ({ messages }) => {
+      brainCalls += 1;
+      if (messages.some((m) => /NOT repeated/.test(String(m.content)))) sawNote = true;
+      if (brainCalls <= 2) {
+        return { ok: true, provider: "test", model: "m", text: `[TOOL_CALL: {"tool": "web_search", "params": {"query": "Starship flight 15"}}]` };
+      }
+      return { ok: true, provider: "test", model: "m", text: "final" };
+    };
+    const r = await runAgentLoop({
+      db: null, userId: "u1", message: "starship news",
+      runMacro, lensActions: new Map(), history: [],
+      opts: { maxTurns: 5, brainChat: brain },
+    });
+    assert.equal(executed, 1);
+    assert.equal(sawNote, true);
+    assert.equal(r.answer, "final");
+  });
+});
+
+describe("checkpoint control text never reaches the user (visibleChatReply)", async () => {
+  const { visibleChatReply } = await import("../lib/chat-governance-leak.js");
+  it("strips complete and dangling blocks on every path", () => {
+    const full = "Part one.\n\n<<<CONCORD_CHECKPOINT\n{\"done\":[\"a\"],\"remaining\":[\"b\"]}\nCONCORD_CHECKPOINT>>>";
+    assert.equal(visibleChatReply(full, "q"), "Part one.");
+    assert.equal(visibleChatReply("Text here.\n<<<CONCORD_CHECKPOINT\n{\"done\":", "q"), "Text here.");
+    assert.equal(visibleChatReply("Plain answer.", "q"), "Plain answer.");
+  });
+});

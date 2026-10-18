@@ -1,3 +1,4 @@
+import { stripControl } from "./chat/self-continuation.js";
 /**
  * Strip GRC / ethos envelopes the conscious model echoes into a user-visible
  * chat reply.
@@ -196,7 +197,9 @@ const HONEST_EMPTY = "I couldn't put together an answer for that one — could y
  * cold-start fallback, and never the envelope.
  */
 export function visibleChatReply(text, userText) {
-  const raw = String(text ?? "");
+  // A self-continuation checkpoint block (lib/chat/self-continuation.js) is control text:
+  // never shown or saved, on any path (agent, chat.respond, socket stream, BYO), flag on or off.
+  const raw = stripControl(String(text ?? ""));
   const clean = stripGovernanceLeak(raw, { userText });
   if (!clean.trim() && raw.trim() && isGovernanceLeakFragment(raw)) return HONEST_EMPTY;
   return clean;
