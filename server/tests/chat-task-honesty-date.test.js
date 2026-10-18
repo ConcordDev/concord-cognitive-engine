@@ -90,3 +90,19 @@ test("'Note:' prose survives unless the user asked about their notes", () => {
   assert.equal(guardDtuCitations(r, collectRetrievedDtus([]), { prompt: "what did we do so far" }).text, r);
   assert.match(guardDtuCitations("- Note: Heat Pump Metrics — x", collectRetrievedDtus([]), { prompt: "what's in my notes about heat pumps" }).text, /didn't find any DTUs|_Removed 1/);
 });
+
+test("the same lens write twice in one turn runs once", async () => {
+  const { runAgentLoop, lensWriteKey } = await import("../lib/chat-agent.js");
+  const Database = (await import("better-sqlite3")).default;
+  assert.equal(lensWriteKey({ tool: "run_lens_action", params: { domain: "productivity", action: "task-list", params: {} } }), null);
+  const db = new Database(":memory:");
+  const call = '[TOOL_CALL: {"tool":"run_lens_action","params":{"domain":"productivity","action":"task-add","params":{"content":"call mom sunday"}}}]';
+  const texts = [call, call, call, "Saved."];
+  const brain = async () => ({ ok: true, text: texts.shift() ?? "done", provider: "test", model: "test" });
+  let n = 0;
+  const lensActions = new Map([["productivity.task-add", async (ctx, _a, input) => { n++; return { ok: true, result: { task: { id: "tsk_" + n, content: input.content } } }; }]]);
+  const out = await runAgentLoop({ db, userId: "u1", message: "add a task: call mom sunday", runMacro: async () => ({ ok: true }), lensActions, opts: { brainChat: brain, shadowContext: false, actionMemory: false } });
+  assert.equal(n, 1);
+  assert.equal(out.toolCalls.filter((t) => t.tool === "run_lens_action").length, 1);
+  db.close();
+});
