@@ -9,6 +9,7 @@ import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
 import { ctxMayReadDtu, viewerIdFromCtx, privateDtuHiddenFrom } from "../lib/dtu-read-access.js";
+import { withPublicArtifact } from "../lib/artifact-access.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate, requireRole }) {
 
@@ -69,6 +70,12 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
         domain: req.query.domain || null,
         kind: req.query.kind || null,
       }, ctx);
+      // INC-141: list rows are the stored DTUs. Their artifact refs carry
+      // absolute server disk paths; the wire copy drops them (same shape as
+      // the single-DTU response). Storage is not mutated.
+      if (out && Array.isArray(out.dtus)) {
+        return res.json({ ...out, dtus: out.dtus.map(withPublicArtifact) });
+      }
       res.json(out);
     } catch (e) {
       const { status, clientMsg } = sanitizeMacroError(e, "dtu.list");

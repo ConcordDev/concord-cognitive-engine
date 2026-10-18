@@ -59,4 +59,14 @@ export function publicArtifactRef(artifact) {
   return out;
 }
 
-export default { artifactDtuForViewer, publicArtifactRef };
+/**
+ * Wire copy of a DTU whose artifact has no server paths. Returns the same
+ * object when there is no artifact, so list rows without one are untouched.
+ * Never mutates the stored DTU.
+ */
+export function withPublicArtifact(dtu) {
+  if (!dtu || typeof dtu !== "object" || !dtu.artifact || typeof dtu.artifact !== "object") return dtu;
+  return { ...dtu, artifact: publicArtifactRef(dtu.artifact) };
+}
+
+export default { artifactDtuForViewer, publicArtifactRef, withPublicArtifact };
