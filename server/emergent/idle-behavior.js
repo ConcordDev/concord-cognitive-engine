@@ -5,6 +5,7 @@
 import { infer } from "../lib/inference/index.js";
 import { initiateCommunication } from "./communication.js";
 import { wouldAdmitCreation } from "../lib/background-governor.js";
+import { assessCreation, maybeCritique } from "../lib/emergents/quality/creation-gate.js";
 import { emitFeedEvent } from "./feed.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
@@ -206,6 +207,22 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         }, db);
         const message = result?.finalText?.trim()?.slice(0, 200);
         if (!message) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
+        const assessment = assessCreation({
+          kind: "communication",
+          text: message,
+          emergentId: emergentIdentity.id,
+          db,
+        });
+        if (assessment.status === "rejected") {
+          return { action, skipped: "quality:" + assessment.reasons.join(",") };
+        }
+        maybeCritique({
+          kind: "communication",
+          text: message,
+          emergentId: emergentIdentity.id,
+          historyId: assessment.historyId,
+          db,
+        }).catch(() => {});
         const ex = initiateCommunication({ from: emergentIdentity, to: targetIdentity, intent: message, context: { initiator: "idle" }, db, realtimeEmit });
         if (ex?.status === "refused") return { action, skipped: `governor:${ex.refused_reason}` };
         return { action, observation: `Reached out to ${targetIdentity.given_name}` };

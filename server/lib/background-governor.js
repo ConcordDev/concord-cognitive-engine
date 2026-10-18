@@ -108,6 +108,13 @@ const S = {
   startedAt: Date.now(),
 };
 
+let _qualityStatsProvider = null;
+
+/** Allow an external module to supply a quality stats snapshot without creating a static import cycle. */
+export function registerQualityStatsProvider(fn) {
+  _qualityStatsProvider = fn;
+}
+
 function newCounters() {
   return {
     exec: { allowed: 0, denied: {}, shadowDenied: {} },
@@ -526,7 +533,7 @@ async function _maybeExpire() {
       expired += r.expired;
       if (!r.expired) break;
       if (ms > slowMs) { stoppedSlow = true; break; }
-      await new Promise((res) => setImmediate(res));
+      await new Promise((res) => { setImmediate(res); });
     }
   } finally { S.expiryRunning = false; }
   S.expiryLastRun = { expired, ms: Date.now() - t0, maxChunkMs, stoppedSlow, error, at: new Date().toISOString() };
@@ -545,6 +552,7 @@ export function getGovernorStatus() {
     pending: S.pending,
     counters: JSON.parse(JSON.stringify(S.counters)),
     expiry: { enabled: expiryEnabled(), ttlHours: governorConfig().taskTtlMs / 3600_000, lastRun: S.expiryLastRun || null },
+    quality: _qualityStatsProvider ? _qualityStatsProvider() : null,
     recentDenials: S.recent.slice(-25),
     config: { ...cfg, killFile: undefined, statusFile: undefined },
     startedAt: new Date(S.startedAt).toISOString(),
