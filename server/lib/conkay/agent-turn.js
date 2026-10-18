@@ -87,6 +87,11 @@ export function conkayTurnPlan(message, history = []) {
   if (!p) return null;
   const prevReply = [...(history || [])].reverse().find((h) => h?.role === "assistant")?.content || "";
   const route = chatAgentRoute(p, { prevReply });
+  // Background jobs: started / reported deterministically by the stream route
+  // (lib/chat/agent-route.js#answerLongTaskRoute), no model turn needed.
+  if (route === "long" || route === "jobs") {
+    return { route, hint: routeHint(route), fallbackCall: route === "long" ? { tool: "start_long_task", params: { goal: p.slice(0, 2000) } } : { tool: "check_long_task", params: {} } };
+  }
   // "create a task: call the machinist about the bracket" is a lens write, not a design.
   const writeFirst = route === "action" || route === "save" || route === "music" || route === "browse";
 

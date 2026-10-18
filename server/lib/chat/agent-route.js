@@ -23,6 +23,7 @@ import { parseExplicitDtuSave } from "./dtu-save-intent.js";
 import { CHAT_HISTORY_TURNS } from "../chat-reply-policy.js";
 import { isRecallAsk, formulaContextBlock, memoryDtuRefs } from "./session-memory.js";
 import { stripToolCalls } from "../chat-agent.js";
+import { isLongTaskAsk, isLongTaskStatusAsk, startLongTask, kickLongTask, longTaskStartedReply, longTaskStatus, formatLongTaskStatus } from "../long-task.js";
 
 const WEB_RE = [
   /\b(?:search|check|look)\s+(?:the\s+)?(?:web|internet|online)\b/i,
@@ -163,6 +164,10 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (String(process.env.CONCORD_CHAT_AGENT_ROUTE || "1") === "0") return null;
   // "save a DTU titled X with content Y" is minted deterministically in chat.respond.
   if (parseExplicitDtuSave(p)) return null;
+  // Background jobs (lib/long-task.js): "how's my job going?" and asks too big
+  // for one reply ("research X and write me a report").
+  if (isLongTaskStatusAsk(p)) return "jobs";
+  if (isLongTaskAsk(p)) return "long";
   if (DESIGN_RE.some((r) => r.test(p))) return "design";
   if (DTU_SAVE_RE.test(p) || NOTE_SAVE_RE.test(p)) return "save";
   if (MUSIC_RE.some((r) => r.test(p))) return "music";
@@ -189,6 +194,8 @@ export function chatAgentRoute(prompt, opts = {}) {
 }
 
 const ROUTE_HINT = {
+  long: "This is a big multi-step job. Call start_long_task with the user's goal in their own words (mode research, plan, code or general). Then tell the user the job id, that it keeps working in the background, and that the result will be posted here. Don't try to do the whole job in this reply.",
+  jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
   lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   recall: "The user is asking about something they said, saved or made earlier. Answer from the chat memory note and the earlier messages above, and from the user's own DTUs listed in the system notes (cite their ids). If the notes do not cover it, call run_lens_action dtu.search with the key words before answering. Only if none of these has it, say plainly that you don't see it; never say they did not mention something that appears above.",
@@ -357,8 +364,29 @@ export function withSourceLinks(reply, sources) {
  * @param {Map}      [deps.lensActions] LENS_ACTIONS, for the iTunes preview fallback
  * @returns {Promise<null | {reply, toolCalls, artifacts, sources, provider, model, linksRemoved, dtuRefsRemoved}>}
  */
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [] }) {
+/**
+ * Background jobs, answered without a model call: start one, or report on them.
+ * @returns {object|null} the answerViaAgent result shape, or null for other routes
+ */
+export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions = null, sessionId = null, surface = "chat" }) {
+  if (route !== "long" && route !== "jobs") return null;
+  const userId = ctx?.actor?.userId;
+  if (!ctx?.db || !userId) return null;
+  const base = { toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
+  if (route === "jobs") {
+    const jobId = /\bmar_[a-z0-9-]+\b/i.exec(prompt)?.[0] || null;
+    const st = longTaskStatus(ctx.db, userId, jobId);
+    return { ...base, reply: formatLongTaskStatus(st), toolCalls: [{ tool: "check_long_task", ok: !!st.ok, jobs: (st.jobs || []).map((j) => ({ jobId: j.jobId, status: j.status, steps: j.steps, turns: j.turns })) }] };
+  }
+  const r = startLongTask(ctx.db, { userId, goal: prompt, origin: { surface, sessionId } });
+  if (r.ok) kickLongTask({ db: ctx.db, jobId: r.jobId, runMacro, lensActions });
+  return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
+}
+
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
+  const longOut = answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions, sessionId, surface: "chat" });
+  if (longOut) return longOut;
   const recap = recapReply(prompt, history, memoryBlock);
   if (recap) return { reply: recap, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const status = writeStatusReply(prompt, history);
@@ -373,6 +401,8 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       routeHint: routeHint(route),
       // Concord's voice for the reply (CONCORD_VOICE); the route hint stays last.
       voiceBlock: compactVoiceBlock(),
+      surface: "chat",
+      ...(sessionId ? { sessionId } : {}),
     }, ctx);
   } catch (e) {
     r = { ok: false, error: String(e?.message || e) };

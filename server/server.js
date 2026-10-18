@@ -27751,7 +27751,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
           }
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus });
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -31919,7 +31919,9 @@ import { buildKingdomSnapshot } from "./lib/concordia-kingdom-snapshot.js";
 import { makeGodotMoveRateGate } from "./lib/godot-move-rate.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
-  frequency: 12,
+  // ~1 min (was 12, ~3 min): Chat/ConKay long tasks (lib/long-task.js) wait on
+  // this between ticks. A pass with nothing due is a couple of indexed reads.
+  frequency: 4,
   // Track A — marathon agent sessions are user chat-agent tasks, not scoped
   // to any game world. Parent-only.
   scope: "global",
