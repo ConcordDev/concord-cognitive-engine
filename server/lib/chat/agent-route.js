@@ -570,14 +570,28 @@ export function writeStatusReply(prompt, history = []) {
   if (!WRITE_STATUS_RE.test(String(prompt || ""))) return null;
   const wantsTask = /\b(?:task|todo|to-do|reminder)\b/i.test(prompt);
   if (!wantsTask) return null;
-  for (const h of [...(history || [])].reverse()) {
+  // "did the MOM task get added" names the item: match the receipt (or failed ask) that shares its words.
+  const STOPW = new Set("did does was has have the a an my that this task todo to-do reminder actually get got added saved created it go through made".split(" "));
+  const words = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOPW.has(w));
+  const want = words(prompt);
+  const turns = [...(history || [])];
+  let fallback = null;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const h = turns[i];
     if (h?.role !== "assistant") continue;
     const c = String(h.content || "");
     const saved = c.match(/Saved in ([\w-]+): "([^"\n]{1,160})" \(id ([\w-]+)([^)]*)\)/);
-    if (saved && (!wantsTask || saved[1] === "productivity")) return `Yes. "${saved[2]}" was saved in ${saved[1]} (id ${saved[3]}${saved[4] || ""}).`;
-    if (NOTHING_SAVED_RE.test(c)) return "No. Nothing was saved for that request: no write succeeded, so there's no task or error to report. Want me to add it now?";
+    const ask = [...turns.slice(0, i)].reverse().find((t) => t?.role === "user");
+    const about = `${saved ? saved[2] : ""} ${ask?.content || ""}`.toLowerCase();
+    const hit = want.length && want.some((w) => about.includes(w));
+    let reply = null;
+    if (saved && saved[1] === "productivity") reply = `Yes. "${saved[2]}" was saved in ${saved[1]} (id ${saved[3]}${saved[4] || ""}).`;
+    else if (NOTHING_SAVED_RE.test(c)) reply = "No. Nothing was saved for that request: no write succeeded, so there's no task or error to report. Want me to add it now?";
+    if (!reply) continue;
+    if (hit || !want.length) return reply;
+    fallback = fallback || reply;
   }
-  return null;
+  return want.length ? null : fallback;
 }
 
 // "The system returned an error: missing required field" with no failed tool this turn is invented.

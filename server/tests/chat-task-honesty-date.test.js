@@ -34,7 +34,7 @@ test("task asks parse to the user's words plus a due date", () => {
 test("'did the task get added' is answered from this chat's receipts", () => {
   const saved = [{ role: "user", content: "add a task: x" }, { role: "assistant", content: 'Saved in productivity: "call mom sunday" (id tsk_1, due 2026-10-18).' }];
   assert.match(writeStatusReply("did the mom task get added", saved), /^Yes\. "call mom sunday" was saved in productivity \(id tsk_1, due 2026-10-18\)\.$/);
-  const failed = [{ role: "assistant", content: "I couldn't complete that, so nothing was created or saved. No write tool ran." }];
+  const failed = [{ role: "user", content: "add a task to my tasks: call mom sunday" }, { role: "assistant", content: "I couldn't complete that, so nothing was created or saved. No write tool ran." }];
   const r = writeStatusReply("did the mom task actually get added?", failed);
   assert.match(r, /^No\./);
   assert.ok(!/dueDate|error:/i.test(r));
@@ -70,4 +70,23 @@ test("action route: no write from the model → the server adds the task itself"
   assert.equal(added.length, 1);
   assert.match(out.reply, /Saved in productivity: "buy dog food" \(id tsk_real/);
 
+});
+
+test("status ask matches the named task, not just the newest receipt", () => {
+  const hist = [
+    { role: "user", content: "add a task to my tasks: call mom sunday" },
+    { role: "assistant", content: 'Saved in productivity: "call mom sunday" (id tsk_mom, due 2026-10-18).' },
+    { role: "user", content: "add a task to buy dog food" },
+    { role: "assistant", content: 'Saved in productivity: "buy dog food" (id tsk_dog, no due date).' },
+  ];
+  assert.match(writeStatusReply("did the mom task actually get added", hist), /tsk_mom/);
+  assert.match(writeStatusReply("did the dog food task get added", hist), /tsk_dog/);
+  assert.match(writeStatusReply("did that task get added", hist), /tsk_dog/);
+  assert.equal(writeStatusReply("did the dentist task get added", hist), null);
+});
+
+test("'Note:' prose survives unless the user asked about their notes", () => {
+  const r = "So far:\n- Note: you saved a film reminder\n- Made a song";
+  assert.equal(guardDtuCitations(r, collectRetrievedDtus([]), { prompt: "what did we do so far" }).text, r);
+  assert.match(guardDtuCitations("- Note: Heat Pump Metrics — x", collectRetrievedDtus([]), { prompt: "what's in my notes about heat pumps" }).text, /didn't find any DTUs|_Removed 1/);
 });
