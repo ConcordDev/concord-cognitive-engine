@@ -30,6 +30,7 @@ import crypto from "node:crypto";
 import logger from "../../logger.js";
 import { appraiseExperience, peakEnd, classifyFragment } from "../felt-per.js";
 import { qualeOf } from "../qualia-space.js";
+import { governedBackgroundChat } from "../inference/background-chat.js";
 
 export const WINDOW_HOURS = Number(process.env.CONCORD_DREAM_WINDOW_HOURS) || 12;
 export const MIN_FRAGMENTS = Number(process.env.CONCORD_DREAM_MIN_FRAGMENTS) || 5;
@@ -406,7 +407,8 @@ export function getRecentDreams(db, userId, limit = 10) {
 
 /**
  * LLM-enhanced compose. Optional. Falls back silently on any failure.
- * Routes through the subconscious brain (qwen2.5:7b on port 11435).
+ * Routes through the background governor, preferring the dedicated
+ * background brain when configured and falling back to the subconscious.
  */
 async function _composeWithSubconsciousBrain({ fragments, summary, userId: _userId }) {
   // Brain-wiring audit (2026-07-20) — this used to dynamically import
@@ -419,19 +421,14 @@ async function _composeWithSubconsciousBrain({ fragments, summary, userId: _user
   // lib/inference/ollama-client.js#ollamaChat directly — a real, standalone,
   // already-proven Ollama caller (used by expert_mode/translation.batch/BYO
   // fallback) with no dependency on server.js's private internals.
-  let chat;
-  try {
-    const { ollamaChat } = await import("../inference/ollama-client.js");
-    chat = async (sys, user) => {
-      const r = await ollamaChat("subconscious", [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ]);
-      if (!r?.ok) return null;
-      return { text: r.text };
-    };
-  } catch { /* ollama client not available */ }
-  if (!chat) return null;
+  const chat = async (sys, user) => {
+    const r = await governedBackgroundChat("dream", [
+      { role: "system", content: sys },
+      { role: "user", content: user },
+    ], { timeoutMs: 8000 });
+    if (!r?.ok) return null;
+    return { text: r.text };
+  };
 
   const sys = `You compose dream-fragments. The user has experienced the events listed. Write 2-4 sentences in second person, evocative but grounded — never invent events outside the list. No headers, no lists. Plain prose.`;
   const userMsg = `Today: ${JSON.stringify(summary)}\nFragments: ${fragments.slice(0, 12).map(f => f.kind).join(', ')}`;

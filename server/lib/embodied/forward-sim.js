@@ -23,6 +23,7 @@
 
 import crypto from "node:crypto";
 import logger from "../../logger.js";
+import { governedBackgroundChat } from "../inference/background-chat.js";
 
 export const PREDICTION_TTL_S = Number(process.env.CONCORD_PREDICTION_TTL_S) || 48 * 3600;
 export const MAX_PREDICTIONS_PER_PASS = Number(process.env.CONCORD_PREDICTIONS_PER_PASS) || 3;
@@ -266,23 +267,16 @@ export function composeDeterministicPrediction(subject) {
 }
 
 async function _llmPrediction(subject) {
-  // Brain-wiring audit (2026-07-20) — see the matching fix + explanation in
-  // lib/embodied/dream-engine.js#_composeWithSubconsciousBrain:
-  // "../brain-router.js" never exported `callBrain`, so
-  // CONCORD_FORWARD_SIM_LLM=true silently always fell back to deterministic.
-  let chat;
-  try {
-    const { ollamaChat } = await import("../inference/ollama-client.js");
-    chat = async (sys, user) => {
-      const r = await ollamaChat("subconscious", [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ]);
-      if (!r?.ok) return null;
-      return { text: r.text };
-    };
-  } catch { /* ollama client not available */ }
-  if (!chat) return null;
+  // Routes through the background governor, preferring the dedicated
+  // background brain when configured and falling back to the subconscious.
+  const chat = async (sys, user) => {
+    const r = await governedBackgroundChat("forward_sim", [
+      { role: "system", content: sys },
+      { role: "user", content: user },
+    ], { timeoutMs: 6000 });
+    if (!r?.ok) return null;
+    return { text: r.text };
+  };
 
   const sys = `You compose forward-sim predictions for a player who is offline. ` +
               `Output one short second-person sentence (max 30 words) describing what they ` +
