@@ -106,3 +106,13 @@ test("the same lens write twice in one turn runs once", async () => {
   assert.equal(out.toolCalls.filter((t) => t.tool === "run_lens_action").length, 1);
   db.close();
 });
+
+test("song recall names the song instead of 'no audio was produced'", async () => {
+  const { songRecallFix } = await import("../lib/chat/agent-route.js");
+  const hist = [{ role: "assistant", content: '"Late Night Drives" is ready to play below \u2014 a short lofi track.' }];
+  const out = songRecallFix("It's ready to play below.\n\nNote: no audio was produced in this chat, so nothing is playing.", hist);
+  assert.equal(out, 'The song I made you is "Late Night Drives". Its player is on the earlier message where I made it.');
+  assert.match(songRecallFix("x\n\nNote: no audio was produced in this chat, so nothing is playing.", [], '- song "Rain Loop"'), /"Rain Loop"/);
+  const none = "Sure.\n\nNote: no audio was produced in this chat, so nothing is playing.";
+  assert.equal(songRecallFix(none, []), none);
+});

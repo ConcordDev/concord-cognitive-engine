@@ -488,6 +488,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   // tool returned. Anything else is invented.
   // DTUs named in the chat memory note or the recall list are real and may be cited.
   answer = stripInventedToolErrors(answer, toolCalls);
+  answer = songRecallFix(answer, history, memoryBlock);
   const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || [], historyItemTitles(history)), { prompt });
   const sources = sourcesFromToolCalls(toolCalls);
   let replyText = g.text;
@@ -600,6 +601,24 @@ export function stripInventedToolErrors(answer, toolCalls = []) {
   if ((toolCalls || []).some((t) => t && t.ok === false)) return answer;
   const out = String(answer || "").replace(TOOL_ERROR_CLAIM_RE, "").replace(/[ \t]{2,}/g, " ").trim();
   return out === String(answer || "").trim() ? answer : (out || "No tool ran for that, so there's no error to report.");
+}
+
+/**
+ * "what song did you make me" has no audio in THIS turn, so the playback guard appended
+ * "Note: no audio was produced in this chat" and cut the song's name (live verify of #1336).
+ * When this chat did make a song, say which one and where its player is.
+ */
+export function songRecallFix(answer, history = [], memoryBlock = "") {
+  const a = String(answer || "");
+  if (!/no audio was produced in this chat/i.test(a)) return a;
+  const titles = historyItemTitles(history).filter((x) => !x.id).map((x) => x.title);
+  for (const m of String(memoryBlock || "").matchAll(/\bsong "([^"\n]{1,120})"/g)) titles.push(m[1]);
+  if (!titles.length) return a;
+  const title = titles[titles.length - 1];
+  let body = a.replace(/\s*Note: no audio was produced in this chat, so nothing is playing\.?/i, "")
+    .replace(/\s*(?:it'?s|it\u2019s)\s+ready to play below\.?/gi, "").replace(/\s*ready to play below\.?/gi, "").trim();
+  if (!body.toLowerCase().includes(title.toLowerCase())) body = `The song I made you is "${title}".${body ? ` ${body}` : ""}`;
+  return `${body} Its player is on the earlier message where I made it.`;
 }
 
 /** Titles of songs/items this chat already made, from earlier receipts in the history. */
