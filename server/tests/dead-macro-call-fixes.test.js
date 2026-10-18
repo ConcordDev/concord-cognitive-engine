@@ -116,15 +116,14 @@ describe("code.exec — real macro the retargeted 'Run Script' button now calls"
     registerCodeActions(register);
   });
 
-  it("executes real JS and returns stdout (when CONCORD_CODE_EXEC_ENABLED)", async () => {
+  it("refuses host JS even with CONCORD_CODE_EXEC_ENABLED=1 (INC-145: host exec retired)", async () => {
     const prevEnv = process.env.CONCORD_CODE_EXEC_ENABLED;
     process.env.CONCORD_CODE_EXEC_ENABLED = "1";
     try {
-      // code.exec became async when real Python execution (Pyodide) was
-      // added alongside the pre-existing node:vm JS path (2026-08-02).
       const r = await call("code", "exec", {}, { code: "console.log(2 + 2)", language: "javascript" });
-      assert.equal(r.ok, true);
-      assert.match(r.result.stdout, /4/);
+      assert.equal(r.ok, false);
+      assert.equal(r.error, "code_exec_host_retired");
+      assert.equal(r.result.stdout, "");
     } finally {
       if (prevEnv === undefined) delete process.env.CONCORD_CODE_EXEC_ENABLED;
       else process.env.CONCORD_CODE_EXEC_ENABLED = prevEnv;

@@ -57,19 +57,20 @@ describe("code — deterministic analysis macros (exact values)", () => {
     assert.equal(r.result.bytesOut, 12);                // "  let x = 1\n" = 2+9 chars + newline
   });
 
-  it("exec: node:vm evaluates the last expression — `1 + 2 + 3` → stdout `6`, exit 0", async () => {
+  it("exec: host JavaScript execution is retired (INC-145)", async () => {
     const r = await lensRun("code", "exec", { params: { code: "1 + 2 + 3", language: "javascript" } });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.stdout, "6");
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.supported, true);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.result.supported, false);
+    assert.equal(r.result.stdout, "");
   });
 
-  it("exec: console.log output is captured verbatim", async () => {
+  it("exec: console.log JavaScript is also refused on the host", async () => {
     const r = await lensRun("code", "exec", { params: { code: "console.log('hi'); console.log(2*21)", language: "js" } });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.stdout, "hi\n42");
-    assert.equal(r.result.exitCode, 0);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.result.supported, false);
+    assert.equal(r.result.stdout, "");
   });
 
   it("search-project: stateless file array yields exact line/column hits", async () => {
@@ -236,15 +237,13 @@ describe("code — analysis + diagnostics (wave 7 top-up)", () => {
     assert.ok(r.result.todos.some((t) => t.tag === "FIXME" && t.line === 3));
   });
 
-  it("debug-run: breakpoint probe captures the hit line + console output", async () => {
+  it("debug-run: host step debugger is retired (INC-145)", async () => {
     const r = await lensRun("code", "debug-run", {
       params: { code: "let x = 5;\nconsole.log(x * 2);\nlet y = x + 1;", language: "javascript", breakpoints: [2] },
     });
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.hitCount, 1);
-    assert.equal(r.result.frames[0].line, 2);
-    assert.equal(r.result.stdout, "10");
-    assert.ok(r.result.breakpoints.includes(2));
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.status, 403);
   });
 
   it("lsp-completions: prefix filter returns project symbols starting with the prefix", async () => {

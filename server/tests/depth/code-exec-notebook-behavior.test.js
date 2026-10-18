@@ -1,55 +1,71 @@
 // tests/depth/code-exec-notebook-behavior.test.js
 //
-// Behavioral coverage for the productivity-notebook code execution wire (lens-audit:
-// the lens called code.execute with a `source` param; the real sandbox is code.exec
-// reading `code`). Asserts the node:vm sandbox runs real JS, accepts the `source`
-// alias, and stays isolated (no process/require/Buffer/global).
+// Behavioral coverage for the productivity-notebook code execution wire after
+// INC-145: host JavaScript execution is retired, the source alias still works,
+// and Python routes through the WASM sandbox gate.
 
-import { test } from "node:test";
+import { test, before, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun } from "./_harness.js";
 
-test("code.exec runs real JS and captures stdout", async () => {
+before(() => {
+  process.env.CONCORD_CODE_EXEC_ENABLED = "1";
+  process.env.CONCORD_PYTHON_EXEC_ENABLED = "1";
+  process.env.CONCORD_POD_JOBS = "1";
+});
+
+afterEach(() => {
+  delete process.env.CONCORD_CODE_EXEC_ENABLED;
+  delete process.env.CONCORD_PYTHON_EXEC_ENABLED;
+  delete process.env.CONCORD_POD_JOBS;
+  delete process.env.CONCORD_WASM_EXEC_ENABLED;
+});
+
+test("code.exec retires host JS and returns code_exec_host_retired", async () => {
   const r = await lensRun("code", "exec", { params: { language: "javascript", code: "console.log(2 + 2)" } });
   const res = r.result ?? r;
-  assert.equal(res.supported, true);
-  assert.deepStrictEqual(res.stdout.trim(), "4");
-  assert.equal(res.exitCode, 0);
+  assert.equal(res.supported, false);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "code_exec_host_retired");
+  assert.equal(res.stdout, "");
+  assert.match(res.stderr, /INC-145/);
 });
 
-test("code.exec accepts the `source` alias (productivity notebook shape)", async () => {
+test("code.exec source alias still resolves and refuses retired JS", async () => {
   const r = await lensRun("code", "exec", { params: { language: "javascript", source: "console.log('hi from notebook')" } });
   const res = r.result ?? r;
-  assert.match(res.stdout, /hi from notebook/);
-  assert.equal(res.exitCode, 0);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "code_exec_host_retired");
+  assert.equal(res.supported, false);
 });
 
-test("code.exec sandbox is isolated — no host globals leak", async () => {
+test("code.exec no longer exposes a JS sandbox for host globals checks", async () => {
   const r = await lensRun("code", "exec", {
-    params: { language: "javascript", code: "console.log(typeof process + ',' + typeof require + ',' + typeof Buffer + ',' + typeof globalThis.fetch)" },
+    params: { language: "javascript", code: "typeof process" },
   });
   const res = r.result ?? r;
-  // process/require/Buffer must be undefined inside the sandbox
-  assert.match(res.stdout, /^undefined,undefined,undefined,/);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "code_exec_host_retired");
+  assert.equal(res.supported, false);
 });
 
-test("code.exec respects the CONCORD_CODE_EXEC_ENABLED kill-switch (H2)", async () => {
-  const prev = process.env.CONCORD_CODE_EXEC_ENABLED;
-  process.env.CONCORD_CODE_EXEC_ENABLED = "0";
-  try {
-    const r = await lensRun("code", "exec", { params: { language: "javascript", code: "console.log(1)" } });
-    const res = r.result ?? r;
-    assert.deepStrictEqual(res.supported, false);
-    assert.match(res.stderr, /disabled/i);
-  } finally {
-    if (prev === undefined) delete process.env.CONCORD_CODE_EXEC_ENABLED;
-    else process.env.CONCORD_CODE_EXEC_ENABLED = prev;
-  }
-});
-
-test("code.exec surfaces thrown errors as stderr with a non-zero exit", async () => {
-  const r = await lensRun("code", "exec", { params: { language: "javascript", code: "throw new Error('boom')" } });
+test("code.exec ignores CONCORD_CODE_EXEC_ENABLED for JS and still retires it", async () => {
+  process.env.CONCORD_CODE_EXEC_ENABLED = "1";
+  const r = await lensRun("code", "exec", { params: { language: "javascript", code: "console.log(1)" } });
   const res = r.result ?? r;
-  assert.match(res.stderr, /boom/);
-  assert.equal(res.exitCode, 1);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "code_exec_host_retired");
+  assert.equal(res.supported, false);
+});
+
+test("code.exec routes python through the WASM gate (member/anon forbidden in lens.run layer)", async () => {
+  const r = await lensRun("code", "exec", { params: { language: "python", code: "print(6*7)" } });
+  const res = r.result ?? r;
+  // The depth harness creates an internal ctx with a non-founder role, so the
+  // WASM gate should deny it with code_exec_forbidden — proving it reached the
+  // WASM layer rather than Pyodide on the host.
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "code_exec_forbidden");
+  assert.equal(res.sandbox, "wasm");
+  assert.ok(!res.stdout?.includes("42"), "python must not fall back to host Pyodide");
 });

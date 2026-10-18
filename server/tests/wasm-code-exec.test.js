@@ -394,27 +394,34 @@ describe("code.js wasm wiring", () => {
     assert.equal(r.result.supported, true);
   });
 
-  it("keeps the old javascript path untouched without sandbox param", async () => {
+  it("retires the old javascript path even when CONCORD_CODE_EXEC_ENABLED=1", async () => {
     process.env.CONCORD_POD_JOBS = "1";
-    process.env.CONCORD_CODE_EXEC_ENABLED = "0";
+    process.env.CONCORD_CODE_EXEC_ENABLED = "1";
     process.env.CONCORD_CODE_EXEC_AUDIT = path.join(os.tmpdir(), `wasm-audit-code-${process.pid}-${Date.now()}.jsonl`);
 
-    const r = await call("exec", founderCtx(), { language: "javascript", code: "1+1" });
+    const r = await call("exec", founderCtx(), { language: "javascript", code: "console.log(1+1)" });
     assert.equal(r.ok, false);
-    assert.equal(r.error, "code_exec_disabled");
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.status, 403);
     assert.equal(r.result.supported, false);
+    assert.equal(r.result.stdout, "");
   });
 
   it("exec-status reports wasm.enabled and wasm.allowed per role", () => {
     process.env.CONCORD_POD_JOBS = "1";
     const founder = call("exec-status", founderCtx());
+    assert.equal(founder.result.enabled, true);
     assert.equal(founder.result.wasm.enabled, true);
     assert.equal(founder.result.wasm.allowed, true);
     assert.deepEqual(founder.result.wasm.languages, ["python", "wat"]);
     assert.deepEqual(founder.result.wasm.roles, ["founder", "sovereign"]);
+    assert.equal(founder.result.hostExec.enabled, false);
+    assert.equal(founder.result.hostExec.retired, "INC-145");
 
     const member = call("exec-status", memberCtx());
+    assert.equal(member.result.enabled, false);
     assert.equal(member.result.wasm.enabled, true);
     assert.equal(member.result.wasm.allowed, false);
+    assert.equal(member.result.hostExec.enabled, false);
   });
 });

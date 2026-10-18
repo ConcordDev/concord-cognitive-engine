@@ -182,89 +182,42 @@ describe("code.search-project", () => {
   });
 });
 
-// code.exec became `async` when real Python execution (Pyodide) was added
-// alongside the pre-existing node:vm JavaScript path (2026-08-02) — every
-// call site, including these tests, must now await it. And the language
-// this block probes for "genuinely unsupported" can no longer be Python:
-// that's now a real, intentional third supported language (see
-// server/lib/python-sandbox.js), not an example of the sandbox's boundary.
-describe("code.exec (JS sandbox)", () => {
-  it("runs JS and captures console.log", async () => {
+// INC-145: raw host execution (node:vm JS / Pyodide-on-host Python) is retired.
+// code.exec refuses JS/TS outright and routes Python to the WASM sandbox gate
+// (founder/sovereign only), so a plain user gets a clear refusal, never a host run.
+describe("code.exec (host execution retired — INC-145)", () => {
+  it("refuses JavaScript with code_exec_host_retired (never runs on the host)", async () => {
     const r = await call("exec", ctxFor(userA), { code: "console.log('hi'); console.log(1 + 2)", language: "javascript" });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.stdout, "hi\n3");
-    assert.equal(r.result.supported, true);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.result.stdout, "");
+    assert.equal(r.result.supported, false);
   });
 
-  it("captures thrown errors as stderr with exitCode=1", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "throw new Error('boom')", language: "javascript" });
-    assert.equal(r.result.exitCode, 1);
-    assert.match(r.result.stderr, /Error: boom/);
+  it("refuses TypeScript the same way", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "const a: number = 1; console.log(a)", language: "typescript" });
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.result.stdout, "");
   });
 
-  it("times out runaway loops", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "while(true){}", language: "javascript" });
-    assert.equal(r.result.exitCode, 1);
-    assert.match(r.result.stderr, /timed?\s*out|Script execution timed out/i);
+  it("does not leak host globals because nothing executes", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "typeof process", language: "javascript" });
+    assert.equal(r.error, "code_exec_host_retired");
+    assert.equal(r.result.stdout, "");
   });
 
-  it("returns the last expression value when no logs", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "1 + 2 + 3", language: "javascript" });
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.stdout, "6");
+  it("routes Python to the WASM sandbox gate (non-founder refused), not Pyodide", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "print(6*7)", language: "python", packages: ["numpy"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "code_exec_forbidden");
+    assert.equal(r.result.sandbox, "wasm");
+    assert.equal(r.result.stdout, "");
   });
 
-  it("strips simple TS annotations before running", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "function add(a: number, b: number) { return a + b; }\nconsole.log(add(2, 3))", language: "typescript" });
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.stdout, "5");
-  });
-
-  it("returns supported:false for a language genuinely outside the sandbox (javascript/typescript/python are all real now)", async () => {
+  it("returns supported:false for a language outside the sandbox", async () => {
     const r = await call("exec", ctxFor(userA), { code: "puts 'x'", language: "ruby" });
     assert.equal(r.result.supported, false);
     assert.equal(r.result.exitCode, -1);
-  });
-
-  it("does not expose process / require / Buffer / global", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "typeof process + ',' + typeof require + ',' + typeof Buffer + ',' + typeof global", language: "javascript" });
-    assert.equal(r.result.exitCode, 0);
-    // All four are undefined in the sandbox
-    assert.equal(r.result.stdout, "undefined,undefined,undefined,undefined");
-  });
-
-  // Scientific packages (numpy/pandas/matplotlib/scipy/sympy) — vendored
-  // offline via scripts/fetch-pyodide-packages.mjs, never CDN-fetched (see
-  // lib/pyodide-packages.js). In this test environment nothing has been
-  // vendored (no network access to do so — see that script's header), which
-  // is exactly the real-world state until an operator runs the fetch
-  // script. That makes "requested but not vendored" the actual, honestly
-  // reproducible case to pin here, not a workaround.
-  it("packages param requesting an unknown package fails honestly, naming it", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "1+1", language: "python", packages: ["os"] });
-    assert.equal(r.ok, false);
-    assert.equal(r.error, "python_package_not_allowed");
-    assert.deepEqual(r.result.unknown, ["os"]);
-    assert.match(r.result.stderr, /os/);
-  });
-
-  it("packages param requesting a real-but-unvendored package fails honestly, naming exactly what's missing", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "import numpy", language: "python", packages: ["numpy"] });
-    assert.equal(r.ok, false);
-    assert.equal(r.error, "python_package_not_vendored");
-    assert.deepEqual(r.result.missing, ["numpy"]);
-    assert.match(r.result.stderr, /numpy/);
-    assert.match(r.result.stderr, /fetch-pyodide-packages/);
-  });
-
-  it("packages param with pandas honestly reports pandas's full real dependency closure as missing, not just pandas itself", async () => {
-    const r = await call("exec", ctxFor(userA), { code: "1+1", language: "python", packages: ["pandas"] });
-    assert.equal(r.ok, false);
-    assert.equal(r.error, "python_package_not_vendored");
-    for (const dep of ["pandas", "numpy", "python-dateutil", "pytz"]) {
-      assert.ok(r.result.missing.includes(dep), `expected ${dep} in the missing list`);
-    }
   });
 });
 
@@ -883,40 +836,14 @@ describe("code — LSP IntelliSense (lsp-hover / lsp-signature / lsp-completions
   });
 });
 
-describe("code — step debugger (debug-run)", () => {
-  it("captures a frame for every breakpoint hit with watch values", () => {
-    const r = call("debug-run", ctxC, {
-      code: "let x = 1;\nx = x + 1;\nx = x * 3;\nconsole.log(x);\n",
-      breakpoints: [2, 3],
-      watch: ["x"],
-    });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.exitCode, 0);
-    assert.equal(r.result.hitCount, 2);
-    assert.deepEqual(r.result.frames.map((f) => f.line), [2, 3]);
-    assert.ok("x" in r.result.frames[0].watch);
-  });
-
-  it("records a call stack at each frame", () => {
-    const r = call("debug-run", ctxC, {
-      code: "function inner(){ return 1; }\nfunction outer(){ return inner(); }\nouter();\n",
-      breakpoints: [1],
-    });
-    assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.result.frames[0]?.callStack));
-  });
-
-  it("reports exitCode 1 + stderr on a runtime error", () => {
-    const r = call("debug-run", ctxC, { code: "throw new Error('boom');\n", breakpoints: [1] });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.exitCode, 1);
-    assert.match(r.result.stderr, /boom/);
-  });
-
-  it("rejects non-JS/TS languages", () => {
-    const r = call("debug-run", ctxC, { code: "print('x')", language: "python", breakpoints: [1] });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /JS\/TS/);
+describe("code — step debugger (debug-run) retired — INC-145", () => {
+  it("refuses unconditionally (host node:vm debugger removed)", () => {
+    for (const language of ["javascript", "typescript", "python"]) {
+      const r = call("debug-run", ctxC, { code: "let x = 1;\nconsole.log(x);\n", language, breakpoints: [1], watch: ["x"] });
+      assert.equal(r.ok, false);
+      assert.equal(r.error, "code_exec_host_retired");
+      assert.equal(r.result, undefined);
+    }
   });
 });
 
