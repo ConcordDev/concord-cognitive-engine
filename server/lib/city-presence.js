@@ -18,6 +18,7 @@ import {
   shouldRunHeavyMaintenance,
   registerIdleGate,
   markLagProbe,
+  recordLagWork,
 } from "./presence-idle.js";
 
 // Speedster S3 — last observed speed per user, for the speed-scaled interest
@@ -1492,36 +1493,45 @@ export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
   // cities that never received a mutation stay silent until someone moves
   // or a presence field changes.
   const timer = setInterval(() => {
-    // Sprint 60+ — lag probe attribution
-    try { markLagProbe("city_presence_broadcast"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
+    // INC-100: gate FIRST, then attribute by measured duration. Stamping the
+    // probe before the idle-gate return made this 100ms timer the "culprit"
+    // of every stall even when it did nothing.
     if (!shouldRunHeavyMaintenance()) return;
-    // Snapshot the dirty set — broadcastPositions deletes entries as it goes.
-    const dirtyCities = [..._broadcastDirtyCities];
-    for (const cityId of dirtyCities) {
-      broadcastPositions(cityId, realtimeEmit);
-    }
-    // Stamina regen — 1 point per second
-    staminaRegenCounter++;
-    if (staminaRegenCounter >= 10) {
-      regenStamina();
-      staminaRegenCounter = 0;
+    try { markLagProbe("city_presence_broadcast"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
+    const _t0 = performance.now();
+    try {
+      // Snapshot the dirty set — broadcastPositions deletes entries as it goes.
+      const dirtyCities = [..._broadcastDirtyCities];
+      for (const cityId of dirtyCities) {
+        broadcastPositions(cityId, realtimeEmit);
+      }
+      // Stamina regen — 1 point per second
+      staminaRegenCounter++;
+      if (staminaRegenCounter >= 10) {
+        regenStamina();
+        staminaRegenCounter = 0;
+      }
+    } finally {
+      try { recordLagWork("city_presence_broadcast", performance.now() - _t0); } catch (_e) { /* attribution is informational */ }
     }
   }, intervalMs);
 
   // Periodic flush of dirty positions to SQLite — survives restart.
   if (!_flushTimer && _db) {
     _flushTimer = setInterval(() => {
-      // Sprint 60+ — lag probe attribution. Mark this subsystem as
-      // "just ran" so the lag detector can attribute spikes to it.
-      try { markLagProbe("city_presence_flush"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
       // Idle gate — skip flush entirely when no users present. flushDirtyPositions
       // already early-exits on empty _userPositions, but skipping the timer body
       // also avoids the bookkeeping overhead.
       if (!shouldRunHeavyMaintenance()) return;
+      // INC-100: attribute by measured duration, after the gate.
+      try { markLagProbe("city_presence_flush"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
+      const _t0 = performance.now();
       try {
         flushDirtyPositions();
       } catch (err) {
         logger.warn?.("city-presence", `periodic flush failed: ${err.message}`);
+      } finally {
+        try { recordLagWork("city_presence_flush", performance.now() - _t0); } catch (_e) { /* informational */ }
       }
     }, FLUSH_INTERVAL_MS);
     _flushTimer.unref?.();
