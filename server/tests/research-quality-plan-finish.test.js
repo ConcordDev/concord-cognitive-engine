@@ -171,4 +171,20 @@ describe("plan jobs end with a dated plan document", () => {
     assert.equal(r.status, "running");
     assert.equal(JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id=?`).get(job.jobId).meta_json).finalStepFailures, 1);
   });
+
+  it("a plan job that says [TASK_COMPLETE] early still gets the forced write-up", async () => {
+    const db = setup();
+    const job = startLongTask(db, { userId: "u1", goal: "plan a 2-week build of a desktop robot arm", maxTurns: 40 });
+    const m = fakeMacros();
+    const plan = `# Desktop robot arm\n${"Tue Oct 20: print the base and shoulder parts. ".repeat(12)}`;
+    const replies = ["Progress notes: made a lofi track and a PDF.\n[TASK_COMPLETE]", plan];
+    let finalAsk = "";
+    const brainChat = async ({ messages }) => { finalAsk = messages[messages.length - 1].content; return { ok: true, text: replies.shift() ?? "x" }; };
+    const r = await tickMarathon({ db, sessionId: job.jobId, runMacro: m, lensActions: new Map(), opts: { tickTurns: 1, brainChat } });
+    assert.equal(r.status, "completed");
+    assert.equal(r.finalStep, "model_complete");
+    assert.match(finalAsk, /FINAL STEP/);
+    assert.match(m.docs[0].input.body, /Tue Oct 20: print the base/);
+    assert.doesNotMatch(m.docs[0].input.body, /lofi/);
+  });
 });
