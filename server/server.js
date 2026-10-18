@@ -26384,7 +26384,11 @@ register("dtu", "get", async (ctx, input) => {
           // in-memory path before the body leaves this macro. visibility
           // "internal" (boot-stamped ownerless oracle answers) is included.
           if (!ctxMayReadDtu(ctx, r.dtu)) return { ok: false, error: "DTU not found" };
-          return { ok: true, dtu: r.dtu };
+          // INC-141: same wire copy as the in-memory path below (raw owner
+          // uuids scrubbed, artifact disk paths dropped). The sidecar row is
+          // the stored DTU.
+          if (isShadowDTU(r.dtu)) return { ok: false, error: "DTU not found" };
+          return { ok: true, dtu: _presentDtuPublic(r.dtu, ctx) };
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar get unavailable — inline fallback", { error: _e?.message }); }

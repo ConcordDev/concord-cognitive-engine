@@ -77,6 +77,18 @@ describe("INC-141 server.js publish routes use the gate", () => {
   });
 });
 
+describe("INC-141 dtu.get sidecar branch uses the wire presenter", () => {
+  it("the sidecar hit returns _presentDtuPublic(r.dtu, ctx), never the raw row", () => {
+    const start = SERVER_SRC.indexOf('register("dtu", "get"');
+    assert.ok(start > 0);
+    const end = SERVER_SRC.indexOf("register(", start + 10);
+    const body = SERVER_SRC.slice(start, end);
+    assert.doesNotMatch(body, /return \{ ok: true, dtu: r\.dtu \}/);
+    assert.match(body, /return \{ ok: true, dtu: _presentDtuPublic\(r\.dtu, ctx\) \}/);
+    assert.match(body, /return \{ ok: true, dtu: _presentDtuPublic\(dtu, ctx\) \}/);
+  });
+});
+
 describe("INC-141 GET /api/dtus has no disk paths", () => {
   const artifact = {
     type: "image/png", filename: "a.png", sizeBytes: 70, hash: "sha256:x",
