@@ -109,10 +109,18 @@ const S = {
 };
 
 let _qualityStatsProvider = null;
+const _statusProviders = new Map();
 
 /** Allow an external module to supply a quality stats snapshot without creating a static import cycle. */
 export function registerQualityStatsProvider(fn) {
   _qualityStatsProvider = fn;
+}
+
+/** Allow external modules to attach data to `getGovernorStatus()` without creating import cycles. */
+export function registerStatusProvider(name, fn) {
+  if (typeof name !== "string" || !name) throw new Error("registerStatusProvider: name required");
+  if (typeof fn !== "function") throw new Error("registerStatusProvider: fn required");
+  _statusProviders.set(name, fn);
 }
 
 function newCounters() {
@@ -543,6 +551,14 @@ async function _maybeExpire() {
 // ── status ────────────────────────────────────────────────────────────────
 export function getGovernorStatus() {
   const cfg = governorConfig();
+  const providers = {};
+  for (const [name, fn] of _statusProviders) {
+    try {
+      providers[name] = fn();
+    } catch (e) {
+      providers[name] = { error: e?.message || String(e) };
+    }
+  }
   return {
     mode: isKilled() ? "killed" : governorMode(),
     killFile: { path: cfg.killFile, present: (() => { try { return fs.existsSync(cfg.killFile); } catch { return false; } })() },
@@ -553,6 +569,7 @@ export function getGovernorStatus() {
     counters: JSON.parse(JSON.stringify(S.counters)),
     expiry: { enabled: expiryEnabled(), ttlHours: governorConfig().taskTtlMs / 3600_000, lastRun: S.expiryLastRun || null },
     quality: _qualityStatsProvider ? _qualityStatsProvider() : null,
+    providers,
     recentDenials: S.recent.slice(-25),
     config: { ...cfg, killFile: undefined, statusFile: undefined },
     startedAt: new Date(S.startedAt).toISOString(),
@@ -608,6 +625,7 @@ export function _resetGovernorForTest({ db = null, signals = {} } = {}) {
   S.pending = { total: null, byKind: {}, at: 0 }; S.outcomes = []; S.http = { api: [], chat: [] };
   S.chatActive = 0; S.bgProbe = { ok: null, fails: 0, at: 0, latencyMs: null }; S.counters = newCounters(); S.recent = [];
   S.log = () => {};
+  _statusProviders.clear();
 }
 export function _setSignalsForTest(sig) { S.signals = { ...S.signals, ...sig }; }
 export function _setBreakerForTest(state, reason = null, since = Date.now()) { S.breaker.state = state; S.breaker.reason = reason; S.breaker.since = since; S.breaker.probesOk = 0; }

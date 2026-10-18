@@ -141,7 +141,7 @@ import { fileURLToPath as __serverFileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
-import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
@@ -1939,7 +1939,7 @@ import { createLLMQueue } from "./lib/llm-queue.js";
 import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
-import { shouldPauseHeavyBackground, shouldRunConsolidation } from "./lib/host-profile.js";
+import { shouldPauseHeavyBackground, shouldRunConsolidation, shouldPauseBackgroundOrchestration } from "./lib/host-profile.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
@@ -2236,6 +2236,7 @@ import {
   setGovernorMode as setBgGovernorMode,
   recordHttp as bgGovernorRecordHttp,
   chatStarted as bgGovernorChatStarted,
+  registerStatusProvider,
 } from "./lib/background-governor.js";
 // Shard activation (ensureWorldActive/markWorldUserCount/recordWorldActivity) now
 // lives on the live worlds router (routes/worlds.js); the parent only needs the
@@ -32044,6 +32045,16 @@ try {
   startBackgroundGovernor({ db: STATE?.db || globalThis._concordDB || null, log: (level, event, data) => structuredLog(level, event, data) });
 } catch (e) { structuredLog("warn", "bg_governor_start_failed", { error: String(e?.message || e) }); }
 
+// PR-5: expose heartbeat-registry schedule + skip stats through the background
+// governor status endpoint (no admin auth required).
+try {
+  registerStatusProvider("heartbeats", () => ({
+    ...getRegistryScheduleSummary({ tickMs: Number(process.env.HEARTBEAT_MS) || 15000 }),
+    skips: getRegistrySkipStats(),
+    remoteOrch: { enabled: !shouldPauseBackgroundOrchestration(), skips: _remoteOrchSkips },
+  }));
+} catch (e) { structuredLog("warn", "bg_governor_heartbeat_provider_failed", { error: String(e?.message || e) }); }
+
 // Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
 // character has drifted from the values anchor, flag (never correct) past threshold for
 // human review. scope:'global' (cross-world agent governance), slow cadence (~25 min).
@@ -42515,6 +42526,9 @@ async function runHeartbeatModule(name, fn) {
 }
 
 let _governorTickRunning = false;
+// PR-5 remote-orchestration skip accounting: surfaced by the background-governor
+// heartbeat status provider so operators can see why the registry did not run.
+const _remoteOrchSkips = {};
 // Causal-closure per-tick capture — remembers the prior tick's levels so the
 // capture can log real deltas (see the tick tail + lib/causal-closure.js).
 let _causalTickPrev = null;
@@ -42568,6 +42582,37 @@ async function governorTick(reason="heartbeat") {
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
+    // PR-5 remote orchestration: shared registry dispatch used by both the
+    // normal path and the low-memory path, so the two cannot drift.
+    async function _dispatchHeartbeatRegistry(dispatchReason, extraCtx = {}) {
+      try {
+        if (shardingEnabled()) {
+          await tickAllRegistered({
+            state: STATE,
+            db,
+            tickCount: STATE.__bgTickCounter || 0,
+            reason: dispatchReason,
+            scope: "global",
+            ...extraCtx,
+          });
+          broadcastShardTick({
+            tickCount: STATE.__bgTickCounter || 0,
+            reason: dispatchReason,
+            settings: STATE.settings || {},
+          });
+        } else {
+          await tickAllRegistered({
+            state: STATE,
+            db,
+            tickCount: STATE.__bgTickCounter || 0,
+            reason: dispatchReason,
+            ...extraCtx,
+          });
+        }
+      } catch (e) {
+        observe(e, "governor_heartbeat_registry");
+      }
+    }
     // Low-memory is a flag, not a return. The old return sat above jobs,
     // the queue, and consolidation, so a 16GB host never compressed and
     // user-awaited background jobs stalled. Autogen/dream/ingest still pause.
@@ -42593,13 +42638,34 @@ async function governorTick(reason="heartbeat") {
       include: ["jobs", "queue", "system"],
     });
     if (lowMemoryPause) {
+      // The liveness counter was bumped above, but the real __bgTickCounter
+      // increment lives in kernelTick — which this path returns before
+      // reaching. Increment it here so the tick counter never freezes on a
+      // low-memory host.
+      STATE.__bgTickCounter = (STATE.__bgTickCounter || 0) + 1;
       // Users are present (the idle return already left). Compression follows
       // isIdle(), so this host still consolidates unless
       // CONCORD_CONSOLIDATION_ON_LOW_MEMORY=0.
       if (shouldRunConsolidation() && !presenceIdle.isIdle() && await _consolidationDue()) {
         try { await _runDtuConsolidationCycle(ctx); } catch (e) { observe(e, "governor_consolidation_low_memory"); }
       }
-      return { ok: true, skipped: "low_memory_host" };
+      // PR-5: when heavy work is remote, keep the heartbeat registry running
+      // on the Mac host, but skip CPU-class modules and any configured ids.
+      let registry = "not_remote";
+      if (shouldPauseBackgroundOrchestration() === false) {
+        const g = getBgGovernorStatus();
+        if (g.mode === "killed" || g.breaker.state === "open") {
+          registry = g.mode === "killed" ? "governor_killed" : "governor_open";
+          _remoteOrchSkips[registry] = (_remoteOrchSkips[registry] || 0) + 1;
+        } else {
+          await _dispatchHeartbeatRegistry(reason, {
+            skipCosts: ["cpu"],
+            skipIds: (process.env.CONCORD_REMOTE_ORCH_SKIP || "").split(",").map((s) => s.trim()).filter(Boolean),
+          });
+          registry = "ran";
+        }
+      }
+      return { ok: true, skipped: "low_memory_host", registry };
     }
     await tickGovernorOptionalMacros({
       macros: MACROS,
@@ -43523,34 +43589,7 @@ async function governorTick(reason="heartbeat") {
     // Phase F: when CONCORD_SHARD_WORLDS=true, parent runs scope='global'
     // modules only and broadcasts a tick to each world shard which runs
     // its own scope='world' subset.
-    try {
-      if (shardingEnabled()) {
-        // Parent: run global heartbeats only.
-        await tickAllRegistered({
-          state: STATE,
-          db,
-          tickCount: STATE.__bgTickCounter || 0,
-          reason,
-          scope: "global",
-        });
-        // Fan out to world shards. Each shard runs its scope='world' set
-        // against its own DB handle. Non-blocking: shard ticks are
-        // independent and emit results back via IPC.
-        broadcastShardTick({
-          tickCount: STATE.__bgTickCounter || 0,
-          reason,
-          settings: STATE.settings || {},
-        });
-      } else {
-        // Default in-process path — run everything inline.
-        await tickAllRegistered({
-          state: STATE,
-          db,
-          tickCount: STATE.__bgTickCounter || 0,
-          reason,
-        });
-      }
-    } catch (e) { observe(e, "governor_heartbeat_registry"); }
+    await _dispatchHeartbeatRegistry(reason);
 
     // Causal-closure per-tick capture (opt-in, best-effort, never blocks the
     // tick). When CONCORD_CAUSAL_TICK_LOG is set, append the system's in-basis

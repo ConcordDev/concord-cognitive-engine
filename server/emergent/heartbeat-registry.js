@@ -67,6 +67,7 @@ try {
  * @property {boolean} [worker]      Route through heartbeat worker pool.
  * @property {'global'|'world'} [scope]  Phase-F sharding scope. Default 'world'.
  * @property {boolean} [lowPriority]  Track C: skip this tick (not delay it) when the event loop is under pressure.
+ * @property {'db'|'llm'|'cpu'} [cost]  Resource class: db (default), llm, or cpu.
  */
 
 /** @type {Map<string, RegistryEntry>} */
@@ -97,7 +98,9 @@ export function setHeartbeatPool(pool) { _heartbeatPool = pool; }
  * @param {'global'|'world'} [opts.scope] - 'global' runs on parent only, 'world' (default) inside world shards.
  * @param {boolean} [opts.lowPriority] - Track C: genuinely deferrable work (codebase scans, detector sweeps) — skips its due tick under event-loop pressure instead of running.
  */
-export function registerHeartbeat(id, { frequency, handler, neverDisable = false, serial = false, worker = false, scope = "world", lowPriority = false }) {
+const VALID_COSTS = new Set(["db", "llm", "cpu"]);
+
+export function registerHeartbeat(id, { frequency, handler, neverDisable = false, serial = false, worker = false, scope = "world", lowPriority = false, cost = "db" }) {
   if (!id || typeof id !== "string") throw new Error("registerHeartbeat: id required");
   if (!Number.isInteger(frequency) || frequency < 1) {
     throw new Error(`registerHeartbeat(${id}): frequency must be a positive integer`);
@@ -106,7 +109,10 @@ export function registerHeartbeat(id, { frequency, handler, neverDisable = false
   if (scope !== "global" && scope !== "world") {
     throw new Error(`registerHeartbeat(${id}): scope must be 'global' or 'world'`);
   }
-  REGISTRY.set(id, { id, frequency, handler, neverDisable, serial, worker, scope, lowPriority });
+  if (!VALID_COSTS.has(cost)) {
+    throw new Error(`registerHeartbeat(${id}): cost must be one of ${[...VALID_COSTS].join("|")}`);
+  }
+  REGISTRY.set(id, { id, frequency, handler, neverDisable, serial, worker, scope, lowPriority, cost });
 }
 
 /**
@@ -139,9 +145,12 @@ export async function tickAllRegistered(ctx) {
   const reason = ctx?.reason ?? "heartbeat";
   const filterScope = ctx?.scope ?? "all";
   const disabled = new Set(ctx?.state?.settings?.disabledHeartbeats ?? []);
+  const skipCosts = new Set(ctx?.skipCosts ?? []);
+  const skipIds = new Set(ctx?.skipIds ?? []);
 
   const due = [];
   const dueSerial = [];
+  _skipStats.lastSkipped = [];
 
   const worldId = ctx?.worldId ?? null;
   for (const entry of REGISTRY.values()) {
@@ -161,6 +170,16 @@ export async function tickAllRegistered(ctx) {
     // tick lets the later one still run.
     if (entry.lowPriority && isUnderPressure()) {
       try { globalThis._concordPromMetrics?.heartbeatLowPrioritySkipped?.inc({ module: entry.id }); } catch { /* prom best-effort */ }
+      continue;
+    }
+    if (skipCosts.has(entry.cost)) {
+      _skipStats.byReason.set(`cost:${entry.cost}`, (_skipStats.byReason.get(`cost:${entry.cost}`) || 0) + 1);
+      _skipStats.lastSkipped.push(entry.id);
+      continue;
+    }
+    if (skipIds.has(entry.id)) {
+      _skipStats.byReason.set("id", (_skipStats.byReason.get("id") || 0) + 1);
+      _skipStats.lastSkipped.push(entry.id);
       continue;
     }
     (entry.serial ? dueSerial : due).push(entry);
@@ -274,6 +293,17 @@ const _timingHistory = new Map();
 /** @type {Map<string, { lastMs: number, lastAt: number, totalRuns: number, totalErrors: number }>} */
 const _timingMeta = new Map();
 
+// Module-level skip accounting for optional cost/id filtering (PR-5 remote orchestration).
+const _skipStats = { byReason: new Map(), lastSkipped: [] };
+
+/** Expose skip counts from the most recent `tickAllRegistered` call. */
+export function getRegistrySkipStats() {
+  return {
+    byReason: Object.fromEntries(_skipStats.byReason),
+    lastSkipped: [..._skipStats.lastSkipped],
+  };
+}
+
 function _recordTiming(moduleId, ms) {
   let arr = _timingHistory.get(moduleId);
   if (!arr) { arr = []; _timingHistory.set(moduleId, arr); }
@@ -315,6 +345,7 @@ export function getHeartbeatTimingStats() {
       id: entry.id,
       frequency: entry.frequency,
       scope: entry.scope,
+      cost: entry.cost,
       serial: !!entry.serial,
       worker: !!entry.worker,
       sampleCount: samples.length,
@@ -358,7 +389,47 @@ export function listHeartbeatModules() {
     worker: !!e.worker,
     scope: e.scope,
     lowPriority: !!e.lowPriority,
+    cost: e.cost,
   }));
+}
+
+/**
+ * Schedule health summary: how many modules have run, are on schedule,
+ * or are late relative to their configured frequency and the tick interval.
+ *
+ * @param {{ tickMs: number, now?: number }} opts
+ */
+export function getRegistryScheduleSummary({ tickMs, now = Date.now() }) {
+  const intervalMs = Number(tickMs) || 0;
+  const summary = {
+    modules: 0,
+    ran: 0,
+    neverRan: 0,
+    onSchedule: 0,
+    late: 0,
+    lateIds: [],
+    tickMs: intervalMs,
+  };
+  for (const entry of REGISTRY.values()) {
+    summary.modules++;
+    const meta = _timingMeta.get(entry.id);
+    const totalRuns = meta?.totalRuns || 0;
+    if (totalRuns > 0) {
+      summary.ran++;
+      const expectedMs = entry.frequency * intervalMs;
+      const onSchedule = (now - meta.lastAt) <= 2 * expectedMs + intervalMs;
+      if (onSchedule) {
+        summary.onSchedule++;
+      } else {
+        summary.late++;
+        summary.lateIds.push(entry.id);
+      }
+    } else {
+      summary.neverRan++;
+    }
+  }
+  if (summary.lateIds.length > 20) summary.lateIds.length = 20;
+  return summary;
 }
 
 /**
