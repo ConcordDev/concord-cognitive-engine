@@ -38,7 +38,9 @@ function parseMeta(m) {
   return {};
 }
 
-const SAVED_TEXT_RE = /\bSaved (?:a private DTU titled|in [\w-]+:) "([^"]{1,160})" \((?:id:?\s*)?([\w-]{4,80})/i;
+const SAVED_DTU_TEXT_RE = /\bSaved a private DTU titled "([^"]{1,160})" \((?:id:?\s*)?([\w-]{4,80})/i;
+// The action-route receipt: 'Saved in productivity: "call mom sunday" (id tsk_…, due …)'. A task, not a DTU.
+const SAVED_LENS_TEXT_RE = /\bSaved in ([\w-]+): "([^"]{1,160})" \((?:id:?\s*)?([\w-]{4,80})/i;
 
 /** Items this chat actually stored or made, from tool results and receipts. */
 export function savedItemsFromRows(rows) {
@@ -69,8 +71,10 @@ export function savedItemsFromRows(rows) {
     for (const a of Array.isArray(meta.artifacts) ? meta.artifacts : []) {
       if (a && (a.type === "song" || a.kind === "song") && a.title) add(`song "${clip(a.title, 100)}"`);
     }
-    const hit = String(m.content || "").match(SAVED_TEXT_RE);
+    const hit = String(m.content || "").match(SAVED_DTU_TEXT_RE);
     if (hit) add(`note (DTU) "${clip(hit[1], 120)}" id ${hit[2]}`);
+    const lens = String(m.content || "").match(SAVED_LENS_TEXT_RE);
+    if (lens) add(`${lens[1] === "productivity" ? "task" : `${lens[1]} item`} "${clip(lens[2], 120)}" id ${lens[3]}`);
   }
   return out;
 }
@@ -265,6 +269,10 @@ export function rankRecallDtus(dtus, prompt, { limit = 8 } = {}) {
 /** DTUs the memory note names ("note (DTU) "title" id dtu_…"), so a reply may cite them. */
 export function memoryDtuRefs(text) {
   const out = [];
-  for (const m of String(text || "").matchAll(/"([^"\n]{1,160})" id (dtu_[\w-]{4,80})/g)) out.push({ id: m[2], title: m[1] });
+  const t = String(text || "");
+  for (const m of t.matchAll(/"([^"\n]{1,160})" id (dtu_[\w-]{4,80})/g)) out.push({ id: m[2], title: m[1] });
+  // Every item in the "Saved or made" list is real (songs, tasks): its title may be named.
+  const sec = t.split(/\n\n/).find((p) => p.startsWith("Saved or made in this chat")) || "";
+  for (const m of sec.matchAll(/^- (?!note \(DTU\))[^"\n]*"([^"\n]{1,160})"/gm)) out.push({ title: m[1] });
   return out;
 }
