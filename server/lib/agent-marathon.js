@@ -516,7 +516,7 @@ function mergeCheckpointState(prevState, newBatchTurns, coversThroughTurnIndex) 
  *
  * @returns {{ ok: boolean, compressed?: boolean, reason?: string, turnsCompacted?: number, coversThroughTurnIndex?: number }}
  */
-export function compressMarathonHistory(db, sessionId) {
+export function compressMarathonHistory(db, sessionId, copts = {}) {
   try {
     if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
 
@@ -550,11 +550,13 @@ export function compressMarathonHistory(db, sessionId) {
       ORDER BY turn_index ASC
     `).all(sessionId, coveredThrough);
 
-    if (uncovered.length <= MARATHON_HISTORY_THRESHOLD) {
+    const threshold = Number(copts.threshold) || MARATHON_HISTORY_THRESHOLD;
+    const batch = Number(copts.batch) || MARATHON_COMPRESSION_BATCH;
+    if (uncovered.length <= threshold) {
       return { ok: true, compressed: false, reason: "below_threshold" };
     }
 
-    const toCompress = uncovered.slice(0, MARATHON_COMPRESSION_BATCH);
+    const toCompress = uncovered.slice(0, batch);
     const newCoversThrough = toCompress[toCompress.length - 1].turn_index;
     const state = mergeCheckpointState(prevState, toCompress, newCoversThrough);
     const rendered = renderCheckpoint(state);
@@ -576,7 +578,10 @@ export function compressMarathonHistory(db, sessionId) {
       `).run(sessionId, toCompress[0].turn_index, rendered, stateJson);
     }
 
-    return { ok: true, compressed: true, turnsCompacted: toCompress.length, coversThroughTurnIndex: newCoversThrough };
+    return {
+      ok: true, compressed: true, turnsCompacted: toCompress.length, coversThroughTurnIndex: newCoversThrough,
+      fromTurnIndex: toCompress[0].turn_index, findings: extractFindings(toCompress),
+    };
   } catch (err) {
     // Never let a compaction bug stop the marathon itself.
     return { ok: false, reason: "compression_error", error: err?.message };
@@ -597,8 +602,8 @@ export function compressMarathonHistory(db, sessionId) {
  * @param {string} fallbackMessage - used as lastMessage if no turns exist yet
  * @returns {{ history: Array<{role:string, content:string}>, lastMessage: string }}
  */
-export function buildMarathonHistory(db, sessionId, fallbackMessage) {
-  compressMarathonHistory(db, sessionId);
+export function buildMarathonHistory(db, sessionId, fallbackMessage, copts = {}) {
+  const compression = compressMarathonHistory(db, sessionId, copts);
 
   let cols = [];
   try { cols = db.prepare(`PRAGMA table_info(agent_marathon_turns)`).all().map((c) => c.name); } catch { /* handled by hasCheckpointColumn below */ }
@@ -637,7 +642,59 @@ export function buildMarathonHistory(db, sessionId, fallbackMessage) {
   const history = priorTurns.slice(0, -1);
   const lastMessage = priorTurns[priorTurns.length - 1]?.content || fallbackMessage;
   const lastRole = priorTurns[priorTurns.length - 1]?.role || "user";
-  return { history, lastMessage, lastRole };
+  return { history, lastMessage, lastRole, compression };
+}
+
+/**
+ * What a compressed batch found: the agent's "Progress notes" (or, without
+ * them, its replies), newest last, de-duplicated. Feeds the findings DTU.
+ */
+export function extractFindings(turns) {
+  const notes = [];
+  for (const t of turns || []) {
+    if (t.role !== "assistant") continue;
+    let c = String(t.content || "").replace(/\[TOOL_CALL:[\s\S]*?\]\s*$/gm, "").trim();
+    const i = c.search(/progress notes:/i);
+    if (i >= 0) c = c.slice(i + "progress notes:".length).trim();
+    if (c.length >= 40 && !notes.includes(c)) notes.push(c);
+  }
+  // The latest notes are the most complete; keep the last two.
+  return notes.slice(-2).join("\n\n").slice(0, 4000);
+}
+
+/**
+ * Save what a compression step folded away as a private findings DTU owned
+ * by the session's user, so it outlives the checkpoint and later turns (and
+ * other chats) can recall it. Ids go to meta_json.findingsDtuIds.
+ */
+async function saveFindingsDtu(db, session, compression, runMacro) {
+  if (!compression?.compressed || !compression.findings || typeof runMacro !== "function") return null;
+  let meta = {};
+  try { meta = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(session.id)?.meta_json || "{}") || {}; } catch { meta = {}; }
+  const n = (Array.isArray(meta.findingsDtuIds) ? meta.findingsDtuIds.length : 0) + 1;
+  const title = `Findings ${n}: ${String(session.title || session.goal || "marathon").slice(0, 100)}`;
+  let r;
+  try {
+    r = await runMacro("dtu", "create", {
+      title,
+      human: { summary: compression.findings.slice(0, 600), bullets: [] },
+      content: compression.findings,
+      creti: compression.findings,
+      tags: ["marathon-findings", meta.mode || "marathon"],
+      tier: "regular",
+      source: "agent_tool",
+      visibility: "private",
+      meta: { marathonSessionId: session.id, turns: [compression.fromTurnIndex, compression.coversThroughTurnIndex] },
+    }, { db, actor: { userId: session.user_id, role: "member", sessionId: session.id }, userId: session.user_id, reqMeta: { sessionId: session.id }, log: () => {} });
+  } catch { return null; }
+  const id = r?.id || r?.dtu?.id;
+  if (!r?.ok || !id) return null;
+  try {
+    const fresh = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(session.id)?.meta_json || "{}") || {};
+    fresh.findingsDtuIds = [...(Array.isArray(fresh.findingsDtuIds) ? fresh.findingsDtuIds : []), id];
+    db.prepare(`UPDATE agent_marathon_sessions SET meta_json = ? WHERE id = ?`).run(JSON.stringify(fresh), session.id);
+  } catch { /* the DTU stands either way */ }
+  return id;
 }
 
 // One tick per session at a time. Long ticks outlive the heartbeat's module
@@ -731,9 +788,6 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
   // bounded no matter how many days a marathon runs. Below the threshold
   // this is byte-identical to the pre-387 "every prior turn" query.
   // The first user-turn is the goal; subsequent are tool-result responses.
-  const built = buildMarathonHistory(db, sessionId, session.goal);
-  let history = built.history;
-  let lastMessage = built.lastMessage;
   // Long tasks (lib/long-task.js): a job brief in the system prompt, and a
   // real "continue" user turn instead of feeding the agent's own last reply
   // back to it as if the user had said it.
@@ -742,6 +796,17 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     const m = session.meta_json ? JSON.parse(session.meta_json) : null;
     if (m && m.longTask) longMeta = m;
   } catch { longMeta = null; }
+  // Long tasks compress much earlier (each tick is two rows, and a small local
+  // model's context is short), so their findings reach a DTU while they run.
+  const copts = longMeta
+    ? { threshold: Number(process.env.CONCORD_LONG_TASK_HISTORY_THRESHOLD) || 8, batch: Number(process.env.CONCORD_LONG_TASK_COMPRESSION_BATCH) || 6 }
+    : {};
+  const built = buildMarathonHistory(db, sessionId, session.goal, copts);
+  let history = built.history;
+  let lastMessage = built.lastMessage;
+  if (built.compression?.compressed) {
+    try { await saveFindingsDtu(db, session, built.compression, runMacro); } catch { /* best-effort */ }
+  }
   let longBlock = "";
   if (longMeta) {
     try {
@@ -794,6 +859,8 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     opts: {
       maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat,
       marathonSessionId: sessionId,
+      // Memory recall keys off the goal, not "Continue the background job".
+      memoryQuery: String(session.goal || session.title || "").slice(0, 1000),
       // A long task's tick ends with progress notes, not a premature final answer.
       ...(longMeta ? { wrapUpPrompt: "This work session is ending. Don't call any more tools. Write your 'Progress notes:' now: what you found so far, with source links, and what is left to do. Only write the final deliverable and [TASK_COMPLETE] if the whole goal is truly finished." } : {}),
       extraSystemBlock: [planCtx?.ok ? planCtx.block : "", longBlock].filter(Boolean).map((b) => `\n\n${b}`).join(""),

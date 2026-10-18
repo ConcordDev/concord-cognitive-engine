@@ -22468,6 +22468,40 @@ ${_sharedToolRules}` : "";
  * @param {number} maxDTUs - Maximum DTUs to include
  * @returns {string} Formatted context string
  */
+/**
+ * Agent-loop memory (lib/chat-agent.js#runAgentLoop): the user's own DTUs
+ * most relevant to this turn (scopedEmbeddingSearch: personal scope only, no
+ * global commons, no consent prompts, no synced copies), with snippets, plus
+ * the latest conversation-memory DTUs of this chat session once its window
+ * has been compressed. Read-only.
+ */
+globalThis.__concordRecallMemory = async ({ query, userId, sessionId = null, limit = 5, minScore = 0.35 } = {}) => {
+  const out = { dtus: [], session: [] };
+  if (!userId || userId === "anon") return out;
+  const snip = (d, n) => _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || d.creti || (typeof d.content === "string" ? d.content : "") || "")).replace(/\s+/g, " ").trim().slice(0, n);
+  try {
+    const hits = await scopedEmbeddingSearch(String(query || "").slice(0, 2000), userId, { limit: limit + 4, minScore });
+    out.dtus = (Array.isArray(hits) ? hits : [])
+      .filter((d) => d && d.id && d.machine?.kind !== "conversation_memory")
+      .slice(0, limit)
+      .map((d) => ({ id: d.id, title: _sanitizeDtuText(d.title || d.id), tier: d.tier || "regular", score: Math.round((d._semanticScore || 0) * 1000) / 1000, snippet: snip(d, 360) }));
+  } catch (_e) { /* memory is best-effort */ }
+  if (sessionId) {
+    try {
+      const sess = STATE.sessions?.get?.(sessionId);
+      if (sess?._compressionHistory?.length) {
+        const mem = [];
+        for (const d of STATE.dtus.values()) {
+          if (d?.machine?.kind === "conversation_memory" && d.machine.sessionId === sessionId) mem.push(d);
+        }
+        mem.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+        out.session = mem.slice(0, 2).map((d) => ({ id: d.id, title: _sanitizeDtuText(d.title || d.id), snippet: snip(d, 600) }));
+      }
+    } catch (_e) { /* best-effort */ }
+  }
+  return out;
+};
+
 async function buildBrainContext(query, lens = null, maxDTUs = 10, sessionId = null, userId = null) {
   // Sovereignty: if userId provided, route through scoped context
   if (userId && userId !== "anon") {
