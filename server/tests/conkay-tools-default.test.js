@@ -71,6 +71,28 @@ describe("runAgentLoop fallbackCall", () => {
   });
 });
 
+describe("runAgentLoop echoed tool result", () => {
+  it("asks for a summary instead of showing a raw [TOOL_RESULT] dump", async () => {
+    const db = new Database(":memory:");
+    const texts = ['[TOOL_CALL: {"tool":"web_search","params":{"query":"6061-T6 yield"}}]', "[TOOL_RESULT: web_search] 1. raw dump", "6061-T6 yields at about 276 MPa (https://e.com/al)."];
+    const brain = async () => ({ ok: true, text: texts.shift() ?? "[TOOL_RESULT: x] again", provider: "test", model: "test" });
+    const runMacro = async () => ({ ok: true, results: [{ title: "Al 6061-T6", url: "https://e.com/al", snippet: "6061-T6 yield 276 MPa" }] });
+    const out = await runAgentLoop({ db, userId: "u1", message: "6061-T6 yield?", runMacro, lensActions: new Map(), opts: { brainChat: brain, shadowContext: false, actionMemory: false } });
+    assert.match(out.answer, /276 MPa/);
+    assert.doesNotMatch(out.answer, /TOOL_RESULT/);
+    db.close();
+  });
+  it("never returns the dump even when the summary also echoes", async () => {
+    const db = new Database(":memory:");
+    const texts = ['[TOOL_CALL: {"tool":"web_search","params":{"query":"q"}}]'];
+    const brain = async () => ({ ok: true, text: texts.shift() ?? "[TOOL_RESULT: web_search] dump", provider: "test", model: "test" });
+    const runMacro = async () => ({ ok: true, results: [{ title: "q hit", url: "https://e.com/q", snippet: "q" }] });
+    const out = await runAgentLoop({ db, userId: "u1", message: "q?", runMacro, lensActions: new Map(), opts: { brainChat: brain, shadowContext: false, actionMemory: false } });
+    assert.doesNotMatch(out.answer, /TOOL_RESULT/);
+    db.close();
+  });
+});
+
 describe("conkay_design returns a 3D model artifact", () => {
   it("carries the part mesh", async () => {
     const r = await executeToolCall({ actor: { userId: "u1" } }, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "design a bracket that holds 50 kg, aluminum" } });

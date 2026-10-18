@@ -54,6 +54,8 @@ import { guardFeaClaim } from "./chat/fea-honesty.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
+// A reply that starts with a raw tool-result block is an echo, not an answer.
+const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 
 // Per-tool required-param schema. When the model emits a tool call missing
 // required fields, the validator intercepts BEFORE the macro call and returns
@@ -1695,6 +1697,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     if (calls.length === 0) {
       // No more tool calls — this is the final answer.
       finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls);
+      // The model sometimes echoes a raw [TOOL_RESULT: ...] block back as its
+      // answer. Ask once more for a real summary instead of showing the dump.
+      if (allToolCalls.length && ECHOED_TOOL_RESULT_RE.test(finalAnswer)) ranOutOfTurnsWithPendingCalls = true;
       break;
     }
 
@@ -1856,6 +1861,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   // A failed FEA run is never reported as a pass (INC-128).
   finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
+  if (ECHOED_TOOL_RESULT_RE.test(finalAnswer)) {
+    finalAnswer = "I ran the tools but couldn't write a summary of the results. The sources I found are listed below.";
+  }
 
   return {
     ok: true,
