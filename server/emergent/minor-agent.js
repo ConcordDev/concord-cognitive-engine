@@ -113,6 +113,16 @@ export class EmergentMinorAgent {
   async executeTask(task) {
     try {
       const result = await this._routeTask(task);
+      // Background governor deferral → back to the queue, untouched.
+      if (result?.error && String(result.error).startsWith("bg_governor_denied")) {
+        this._requeue(task.id);
+        return { deferred: String(result.error) };
+      }
+      // A brain error / empty output is a failure with a reason, not a
+      // "completed" task with no text.
+      if (result && typeof result === "object" && (result.error || !String(result.finalText || "").trim())) {
+        throw new Error(String(result.error || "empty_output").slice(0, 200));
+      }
       this._markCompleted(task.id, result);
       this._recordObservation(task, result);
       if (shouldProduceArtifact(task, result)) {
@@ -146,6 +156,7 @@ export class EmergentMinorAgent {
         data: { task_type: task.task_type, task_id: task.id },
       }, this.db, this.realtimeEmit);
     } catch (err) {
+      if (err?.code === "bg_governor_deferred") { this._requeue(task.id); return { deferred: err.message }; }
       this._markFailed(task.id, err.message);
       emitFeedEvent({
         type: "task_failed",
@@ -227,6 +238,16 @@ export class EmergentMinorAgent {
       this.db.prepare(
         "UPDATE emergent_tasks SET status = 'completed', completed_at = ?, result = ? WHERE id = ?"
       ).run(Date.now(), JSON.stringify({ finalText: result?.finalText?.slice(0, 500) }), taskId);
+    } catch { /* non-fatal */ }
+  }
+
+  /** Return a claimed task to the queue (governor said "not now"). */
+  _requeue(taskId) {
+    if (!this.db) return;
+    try {
+      this.db.prepare(
+        "UPDATE emergent_tasks SET status = 'pending', started_at = NULL WHERE id = ? AND status = 'active'"
+      ).run(taskId);
     } catch { /* non-fatal */ }
   }
 
