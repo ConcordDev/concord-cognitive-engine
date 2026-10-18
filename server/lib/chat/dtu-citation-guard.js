@@ -101,6 +101,8 @@ export function guardDtuCitations(reply, retrieved, { prompt = "" } = {}) {
   let dropping = false;
   for (const line of lines) {
     const m = line.match(LABELLED_LINE);
+    // "Note: …" is ordinary prose ("Note: I can't play audio"); only judge it when the user asked about their notes/DTUs.
+    if (m && /^\s*(?:[-*•+]|\d+[.)])?\s*(?:#{1,6}\s*)?\**\s*Note\b/i.test(line) && !asksAboutOwnDtus(prompt)) { out.push(line); dropping = false; continue; }
     if (m) {
       if (titleMatches(m[1], titles) || RECEIPT_LINE.test(line) || namesKnownTitle(line, titles)) { kept++; dropping = false; out.push(line); }
       else { removed.push(m[1].trim()); dropping = true; }
