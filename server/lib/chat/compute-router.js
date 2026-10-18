@@ -177,12 +177,43 @@ const ROUTES = [
     run: ({ m: mass, v }) => { const value = 0.5 * mass * v * v; return { value, text: `Kinetic energy = ${fmt(value)} J, from KE = ½·m·v².`, engine: "physics (KE = ½mv²)" }; },
   },
   {
+    // "180 miles in 2.5 hours, average speed?" is distance ÷ time, not the mean of [180, 2.5]
+    // (INC-134: the stats path answered 91.25 and called it engine-computed).
+    id: "average-speed",
+    detect: (t) => {
+      if (!/\b(?:speed|how fast|velocity|mph|km\/h|kph|per hour|an hour)\b/i.test(t)) return null;
+      const D = [...t.matchAll(new RegExp(`${NUM}\\s*(miles?|mi|kilometers?|kilometres?|km|meters?|metres?|m)\\b`, "gi"))];
+      const T = [...t.matchAll(new RegExp(`${NUM}\\s*(hours?|hrs?|h|minutes?|mins?|seconds?|secs?|s)\\b`, "gi"))];
+      if (D.length !== 1 || T.length !== 1) return null;
+      const d = num(D[0][1]), tt = num(T[0][1]);
+      if (!(d >= 0) || !(tt > 0)) return null;
+      const du = /^mi/i.test(D[0][2]) ? "mi" : /^k/i.test(D[0][2]) ? "km" : "m";
+      const tu = /^h/i.test(T[0][2]) ? "h" : /^min/i.test(T[0][2]) ? "min" : "s";
+      return { d, t: tt, du, tu };
+    },
+    run: ({ d, t, du, tu }) => {
+      // miles or km per hour; metres per second
+      const hours = tu === "h" ? t : tu === "min" ? t / 60 : t / 3600;
+      const secs = tu === "s" ? t : tu === "min" ? t * 60 : t * 3600;
+      const [value, unit] = du === "m" ? [d / secs, "m/s"] : [d / hours, du === "mi" ? "mph" : "km/h"];
+      const shown = tu === "h" || du === "m" && tu === "s" ? "" : ` (${t} ${tu} = ${fmt(du === "m" ? secs : hours, 6)} ${du === "m" ? "s" : "h"})`;
+      return { value, text: `Average speed = ${fmt(value, 6)} ${unit}, from speed = distance ÷ time = ${d} ${du} ÷ ${t} ${tu}${shown}.`, engine: "kinematics (v = d/t)" };
+    },
+  },
+  {
     id: "stats",
     detect: (t) => {
       const kind = /standard deviation|std\.? ?dev|stdev/i.test(t) ? "sd" : /variance/i.test(t) ? "var" : /\bmedian\b/i.test(t) ? "median" : /\bmean\b|\baverage\b/i.test(t) ? "mean" : null;
       if (!kind) return null;
-      const list = (t.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-      if (list.length < 2) return null;
+      // Only an explicit list of plain values: "average of 4, 8 and 12", "median of 3, 9, 1, 7",
+      // "standard deviation of these numbers: 2 4 4 5". Any other number in the message (a unit-bearing
+      // quantity, a day number, a clock time) means it's a word problem: decline (INC-134).
+      if (/\b(?:speed|per|rate|mph|km\/h|velocity|hours?|minutes?|miles?|km|degrees?|day|days|pm|am|o'clock)\b|[$%°]/i.test(t)) return null;
+      const L = t.match(/(?:\b(?:of|for|are|were|is|values?|numbers?|data(?:\s*set)?|scores?|list|set)\b\s*:?\s*|:\s*)[([]?((?:-?\d+(?:\.\d+)?\s*(?:,\s*(?:and\s+)?|\s+and\s+|;\s*|\s+))+-?\d+(?:\.\d+)?)[)\]]?\s*(?:[?.!]\s*)?$/i);
+      if (!L) return null;
+      const list = (L[1].match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      const all = t.match(/-?\d+(?:\.\d+)?/g) || [];
+      if (list.length < 2 || all.length !== list.length) return null;
       const sample = /\bsample\b/i.test(t);
       const population = /\bpopulation\b/i.test(t);
       if ((kind === "sd" || kind === "var") && !sample && !population) return { kind, list, sample: false, assumed: ["population (not sample) statistic"] };

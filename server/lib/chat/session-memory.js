@@ -229,9 +229,14 @@ export function loadFormulaDtus(db) {
 /** test seam */
 export function _setFormulaCache(rows) { _formulaCache = rows ? rows.map((r) => ({ ...r, tokens: formulaTokens(`${r.title} ${(r.tags || []).join(" ")}`) })) : null; }
 
-/** Up to two formula DTUs whose title/tags share a real term with the prompt. */
+// Everyday words that name no formula: "If 3 pencils cost $1.20" matched "Opportunity cost" and
+// "CAPM & cost of capital" on "cost" alone (INC-134). They never count toward a match.
+const FORMULA_GENERIC = new Set(["cost", "price", "total", "rate", "average", "mean", "amount", "number", "speed", "distance",
+  "car", "train", "hour", "minute", "second", "mile", "day", "week", "month", "buy", "pay", "spend", "sell", "each", "unit",
+  "capital", "return", "risk", "state", "general", "work", "power", "energy", "change", "first", "free", "market", "system"].map(stem));
+/** Up to two formula DTUs that share a specific (non-generic) term with the prompt. */
 export function findFormulaDtus(db, prompt, { limit = 2 } = {}) {
-  const q = formulaTokens(prompt);
+  const q = new Set([...formulaTokens(prompt)].filter((t) => !FORMULA_GENERIC.has(t)));
   if (!q.size) return [];
   const scored = [];
   for (const d of loadFormulaDtus(db)) {

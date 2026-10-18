@@ -167,3 +167,20 @@ test("answerViaAgent runs web_search itself when the loop answered a price from 
   const out = await answerViaAgent({ runMacro, ctx: { db: {}, actor: { userId: "u1" } }, history: [{ role: "user", content: "bitcoin price rn" }], prompt: "and eth?", route: "lookup", lensActions: new Map() });
   assert.ok(!/3,241\.18/.test(out.reply), out.reply);
 });
+
+test("INC-134: formula DTUs are cited only on a specific match (no CAPM for pencils)", async () => {
+  const sm = await import("../lib/chat/session-memory.js");
+  sm._setFormulaCache([
+    { id: "grounding_econ_opportunity_cost", title: "Opportunity cost & comparative advantage", tags: ["economics", "cost"], summary: "" },
+    { id: "grounding_fin_capm", title: "CAPM & cost of capital", tags: ["finance", "capm", "risk"], summary: "" },
+    { id: "grounding_fin_compound_interest", title: "Compound interest", tags: ["finance", "interest", "compound"], summary: "" },
+    { id: "grounding_phys_newton", title: "Newton's laws", tags: ["physics", "newton", "force"], summary: "" },
+  ]);
+  try {
+    assert.deepEqual(sm.findFormulaDtus(null, "If 3 pencils cost $1.20, how much do 7 pencils cost?"), []);
+    assert.deepEqual(sm.findFormulaDtus(null, "A train travels 180 miles in 2.5 hours. What is its average speed?"), []);
+    assert.equal(sm.findFormulaDtus(null, "5000 at 6% compounded yearly for 10 years")[0]?.id, "grounding_fin_compound_interest");
+    assert.equal(sm.findFormulaDtus(null, "a 1200 kg car accelerates at 3 m/s^2, how much force is that")[0]?.id, "grounding_phys_newton");
+    assert.equal(sm.findFormulaDtus(null, "what is the cost of capital under CAPM")[0]?.id, "grounding_fin_capm");
+  } finally { sm._setFormulaCache(null); }
+});
