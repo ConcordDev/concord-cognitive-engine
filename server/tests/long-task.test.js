@@ -183,3 +183,33 @@ describe("agent tools", () => {
     assert.equal(answerLongTaskRoute({ runMacro: null, ctx, prompt: "x", route: "web" }), null);
   });
 });
+
+describe("long-task pump (runs while the site is idle)", () => {
+  it("ticks due long tasks only, capped by concurrency, and skips non-long marathons", async () => {
+    const { pumpLongTasks, findDueLongTasks } = await import("../lib/long-task.js");
+    const { startMarathon } = await import("../lib/agent-marathon.js");
+    const db = setup();
+    const a = startLongTask(db, { userId: "u1", goal: "research servos and write me a report" });
+    const b = startLongTask(db, { userId: "u1", goal: "research motors and write me a report" });
+    const c = startLongTask(db, { userId: "u2", goal: "research gears and write me a report" });
+    const plain = startMarathon(db, { userId: "u3", title: "plain", goal: "plain marathon" });
+    db.prepare(`UPDATE agent_marathon_sessions SET status='running', next_tick_at=0 WHERE id=?`).run(plain.sessionId);
+    const due = findDueLongTasks(db, 10).map((r) => r.id);
+    assert.ok(due.includes(a.jobId) && due.includes(b.jobId) && due.includes(c.jobId));
+    assert.ok(!due.includes(plain.sessionId));
+    const ticked = [];
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const tick = async ({ sessionId, opts }) => { ticked.push(sessionId); assert.equal(opts.tickTurns, LONG_TASK_DEFAULTS.tickTurns); await gate; return { ok: true }; };
+    const n1 = await pumpLongTasks({ db, runMacro: harvestOnly, maxConcurrent: 2, tick });
+    assert.equal(n1, 2);
+    // the two in flight are skipped; the cap holds
+    const n2 = await pumpLongTasks({ db, runMacro: harvestOnly, maxConcurrent: 2, tick });
+    assert.equal(n2, 0);
+    release();
+    await new Promise((r) => setTimeout(r, 10));
+    const n3 = await pumpLongTasks({ db, runMacro: harvestOnly, maxConcurrent: 2, tick });
+    assert.ok(n3 >= 1);
+    assert.ok(!ticked.includes(plain.sessionId));
+  });
+});
