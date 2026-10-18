@@ -181,23 +181,38 @@ export async function embed(text, type = "passage", { timeoutMs = EMBED_TIMEOUT_
   const start = Date.now();
 
   try {
-    const response = await fetch(`${embeddingState.ollamaUrl}/api/embeddings`, {
+    // /api/embed with truncate:true — mxbai-embed-large has a 512-token
+    // context and the legacy /api/embeddings endpoint answers HTTP 500
+    // "input length exceeds the context length" for any longer DTU (that was
+    // >50% of backfill calls on 2026-10-18). Fall back to the legacy
+    // endpoint only on an Ollama too old to have /api/embed (404).
+    const signal = AbortSignal.timeout(timeoutMs);
+    let response = await fetch(`${embeddingState.ollamaUrl}/api/embed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: embeddingState.model,
-        prompt: textWithPrefix,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({ model: embeddingState.model, input: textWithPrefix, truncate: true }),
+      signal,
     });
+    let legacy = false;
+    if (response.status === 404) {
+      legacy = true;
+      response = await fetch(`${embeddingState.ollamaUrl}/api/embeddings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: embeddingState.model, prompt: textWithPrefix }),
+        signal,
+      });
+    }
 
     if (!response.ok) {
       embeddingState.stats.totalErrors++;
+      embeddingState.stats.lastError = `HTTP ${response.status}`;
+      if (_log) _log("warn", "embed_http_error", { status: response.status, legacy });
       return null;
     }
 
     const data = await response.json();
-    const vec = data.embedding;
+    const vec = legacy ? data.embedding : (Array.isArray(data.embeddings) ? data.embeddings[0] : data.embedding);
 
     if (!Array.isArray(vec) || vec.length === 0) {
       embeddingState.stats.totalErrors++;
@@ -430,7 +445,7 @@ export function removeEmbedding(dtuId) {
  * @returns {Promise<void>}
  */
 export async function embedDTU(dtu) {
-  if (!embeddingState.available || !dtu?.id) return;
+  if (!embeddingState.available || !dtu?.id) return "unavailable";
 
   // Build embedding text from DTU content
   const parts = [
@@ -442,18 +457,25 @@ export async function embedDTU(dtu) {
     Array.isArray(dtu.core?.definitions) ? dtu.core.definitions.join(" ") : "",
     Array.isArray(dtu.core?.claims) ? dtu.core.claims.join(" ") : "",
     dtu.machine?.notes || "",
+    // Fallbacks for DTU shapes that carry their text outside human/core.
+    typeof dtu.content === "string" ? dtu.content : "",
+    typeof dtu.body === "string" ? dtu.body : "",
+    typeof dtu.summary === "string" ? dtu.summary : "",
   ];
 
   const text = parts.filter(Boolean).join(" ").slice(0, 8192);
-  if (!text.trim()) return;
+  if (!text.trim()) return "empty";
 
   try {
     const vec = await embed(text);
     if (vec) {
       storeEmbedding(dtu.id, vec);
+      return "embedded";
     }
+    return "embed_failed";
   } catch (e) {
     if (_log) _log("warn", "embed_dtu_failed", { dtuId: dtu.id, error: String(e?.message || e) });
+    return "embed_threw";
   }
 }
 
@@ -494,7 +516,7 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
     return { embedded: 0, skipped: allDTUs.length, errors: 0 };
   }
 
-  let embedded = 0, errors = 0;
+  let embedded = 0, errors = 0, empty = 0;
   const failures = {};
   const delayMs = Number(process.env.CONCORD_EMBED_BACKFILL_DELAY_MS) || 50;
   const maxPauseMs = Number(process.env.CONCORD_EMBED_BACKFILL_MAX_PAUSE_MS) || 6 * 3600_000;
@@ -525,10 +547,15 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
     }
     let ok = false;
     try {
-      await embedDTU(unembedded[i]);
-      ok = embeddingCache.has(unembedded[i].id);
-      if (ok) embedded++;
-      else { errors++; failures.embed_failed_or_empty = (failures.embed_failed_or_empty || 0) + 1; }
+      const st = await embedDTU(unembedded[i]);
+      // A DTU with no embeddable text is a skip, not a brain failure — it
+      // must not count against the governor's error-rate breaker.
+      if (st === "empty") { empty++; ok = true; }
+      else {
+        ok = embeddingCache.has(unembedded[i].id);
+        if (ok) embedded++;
+        else { errors++; failures[st || "embed_failed"] = (failures[st || "embed_failed"] || 0) + 1; }
+      }
     } catch (e) {
       errors++;
       const k = String(e?.message || "error").slice(0, 40);
@@ -561,12 +588,13 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
   embeddingState.stats.backfillComplete = true;
   embeddingState.stats.backfillProgress = unembedded.length;
   embeddingState.stats.backfillFailures = failures;
+  embeddingState.stats.backfillEmpty = empty;
 
   if (_log) {
-    _log("info", "backfill_complete", { embedded, errors, total: unembedded.length, governed: !!governed, pauses: embeddingState.stats.backfillPauses, failures });
+    _log("info", "backfill_complete", { embedded, errors, empty, total: unembedded.length, governed: !!governed, pauses: embeddingState.stats.backfillPauses, failures });
   }
 
-  return { embedded, skipped: allDTUs.length - unembedded.length, errors, failures };
+  return { embedded, skipped: allDTUs.length - unembedded.length, errors, empty, failures };
 }
 
 // ── Status & Monitoring ────────────────────────────────────────────────────
@@ -595,6 +623,7 @@ export function getEmbeddingStatus(totalDTUs = 0) {
       pauses: embeddingState.stats.backfillPauses || 0,
       pauseReasons: embeddingState.stats.backfillPauseReasons || {},
       failures: embeddingState.stats.backfillFailures || {},
+      empty: embeddingState.stats.backfillEmpty || 0,
     },
     stats: {
       totalEmbedded: embeddingState.stats.totalEmbedded,
