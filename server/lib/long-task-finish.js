@@ -42,7 +42,7 @@ export function finalStepPrompt(meta, { planText = "", today = new Date() } = {}
       "3. Parts and tools list with quantities and approximate prices (say 'approx.' where you're estimating).",
       "4. Checkpoints: what must work at the end of each milestone.",
       "5. Risks and fallbacks.",
-      "Use what the earlier turns found; where you didn't verify something, say it's an estimate. End with [TASK_COMPLETE].",
+      "Use what the earlier turns found; where you didn't verify something, say it's an estimate. Don't mention files, PDFs, music, models or anything else unless a tool in this job actually created it. Don't write progress notes: write the plan itself. End with [TASK_COMPLETE].",
     ].filter(Boolean).join("\n");
   }
   return [

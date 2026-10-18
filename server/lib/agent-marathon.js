@@ -964,10 +964,10 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
       ...(longMeta && !opts.brainChat ? { wrapUpBrainChat: _plannerBrain } : {}),
       // Memory recall keys off the goal, not "Continue the background job".
       memoryQuery: String(session.goal || session.title || "").slice(0, 1000),
-      // Research jobs keep the user's personal memory out of their findings
+      // Research and plan jobs keep the user's personal memory out of their findings
       // unless the goal asks for it: recall is limited to this job's own
       // citation / findings DTUs and the substrate auto-pull is off.
-      ...(longMeta?.mode === "research" && !wantsPersonalMemory(session.goal) ? { shadowContext: false, recallMemory: _jobOnlyRecall(db, sessionId) } : {}),
+      ...((longMeta?.mode === "research" || longMeta?.mode === "plan") && !wantsPersonalMemory(session.goal) ? { shadowContext: false, recallMemory: _jobOnlyRecall(db, sessionId) } : {}),
       // A long task's tick ends with progress notes, not a premature final answer.
       ...(longMeta ? { wrapUpPrompt: "This work session is ending. Don't call any more tools. Write your 'Progress notes:' now: what you found so far, with source links, and what is left to do. Only write the final deliverable and [TASK_COMPLETE] if the whole goal is truly finished." } : {}),
       extraSystemBlock: [planCtx?.ok ? planCtx.block : "", longBlock].filter(Boolean).map((b) => `\n\n${b}`).join(""),
@@ -1050,6 +1050,22 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     nextStatus = result.haltReason === "revoked" ? "revoked" : "failed";
   } else if (COMPLETE_MARKER.test(result.answer || "")) {
     nextStatus = "completed";
+    // A plan job that declares itself done on its own still ends with the
+    // forced write-up, so the document is the dated plan and not a
+    // progress-notes turn (lib/long-task-finish.js).
+    if (longMeta?.mode === "plan" && !longMeta.finalStep && !opts.skipFinalStep) {
+      try {
+        db.prepare(`UPDATE agent_marathon_sessions SET total_turns = ?, updated_at = unixepoch() WHERE id = ?`).run(totalTurns, sessionId);
+        const fin = await import("./long-task-finish.js");
+        const fresh = getMarathon(db, sessionId) || { ...session, total_turns: totalTurns };
+        const done = await _finishLongTask(db, { ...session, ...fresh, total_turns: totalTurns }, longMeta, {
+          why: "model_complete", fin,
+          history: [...(Array.isArray(history) ? history : []), ...(lastMessage ? [{ role: "user", content: String(lastMessage) }] : []), { role: "assistant", content: String(result.answer || "").replace(COMPLETE_MARKER, "").trim() }],
+          lastMessage: null, longBlock, runMacro, opts,
+        });
+        if (done) return done;
+      } catch { /* keep the model's own completion */ }
+    }
   } else if (BLOCKED_MARKER.test(result.answer || "")) {
     nextStatus = "paused";
   }
