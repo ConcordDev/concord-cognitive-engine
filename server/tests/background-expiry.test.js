@@ -108,3 +108,35 @@ describe("traceable task outcomes", () => {
     delete process.env.CONCORD_BG_GOVERNOR;
   });
 });
+
+describe("expiry under event-loop pressure", () => {
+  it("keeps draining in small chunks while the loop is pressured (was: skipped entirely)", async () => {
+    process.env.CONCORD_BG_EXPIRY = "1";
+    const db = mkDb();
+    for (let i = 0; i < 1200; i++) ins(db, `old_${i}`, { ageH: 24 * 14 });
+    G._resetGovernorForTest({ db, signals: { eventLoopPressure: true } });
+    const run = await G._runExpiryForTest();
+    assert.equal(run.pressured, true);
+    assert.equal(run.chunk, 100);
+    assert.ok(run.expired > 0 && run.expired <= 500, `expired ${run.expired}`);
+    const left = db.prepare("SELECT COUNT(*) n FROM emergent_tasks WHERE status='pending'").get().n;
+    assert.equal(left, 1200 - run.expired);
+  });
+  it("CONCORD_BG_EXPIRY_UNDER_PRESSURE=0 restores the old skip", async () => {
+    process.env.CONCORD_BG_EXPIRY = "1"; process.env.CONCORD_BG_EXPIRY_UNDER_PRESSURE = "0";
+    const db = mkDb();
+    for (let i = 0; i < 50; i++) ins(db, `old_${i}`, { ageH: 48 });
+    G._resetGovernorForTest({ db, signals: { eventLoopPressure: true } });
+    await G._runExpiryForTest();
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM emergent_tasks WHERE status='pending'").get().n, 50);
+    delete process.env.CONCORD_BG_EXPIRY_UNDER_PRESSURE;
+  });
+  it("unpressured sweeps keep the normal chunk size", async () => {
+    process.env.CONCORD_BG_EXPIRY = "1";
+    const db = mkDb();
+    for (let i = 0; i < 300; i++) ins(db, `old_${i}`, { ageH: 48 });
+    G._resetGovernorForTest({ db, signals: { eventLoopPressure: false } });
+    const run = await G._runExpiryForTest();
+    assert.equal(run.pressured, false); assert.equal(run.chunk, 250); assert.equal(run.expired, 300);
+  });
+});

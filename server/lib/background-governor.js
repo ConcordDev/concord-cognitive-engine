@@ -519,16 +519,28 @@ export function expireStaleTasks({ db = _db(), now = Date.now(), batch = _num("C
 
 async function _maybeExpire() {
   if (!expiryEnabled() || isKilled() || S.expiryRunning) return;
-  if (S.signals.eventLoopPressure) return; // a big UPDATE is the last thing a lagging loop needs
+  // Under event-loop pressure we used to skip expiry entirely. With the loop
+  // under near-constant pressure that meant expired rows (weeks past TTL)
+  // never drained, and the stale backlog itself feeds the pressure. Instead,
+  // keep draining under pressure in small chunks with a tight stop-if-slow
+  // budget (CONCORD_BG_EXPIRY_UNDER_PRESSURE=0 restores the old skip).
+  const pressured = !!S.signals.eventLoopPressure;
+  if (pressured && ["0", "off", "false"].includes(String(process.env.CONCORD_BG_EXPIRY_UNDER_PRESSURE ?? "").toLowerCase())) return;
   const every = _num("CONCORD_BG_EXPIRY_INTERVAL_MS", 10_000);
   if (Date.now() - (S.expiryAt || 0) < every) return;
   S.expiryAt = Date.now();
   S.expiryRunning = true;
   // Small chunks with a yield between them; stop the sweep early if a chunk
   // was slow (cold pages / checkpoint) so the event loop never stalls long.
-  const total = _num("CONCORD_BG_EXPIRY_BATCH", 1000);
-  const chunk = _num("CONCORD_BG_EXPIRY_CHUNK", 250);
-  const slowMs = _num("CONCORD_BG_EXPIRY_SLOW_MS", 150);
+  let total = _num("CONCORD_BG_EXPIRY_BATCH", 1000);
+  let chunk = _num("CONCORD_BG_EXPIRY_CHUNK", 250);
+  let slowMs = _num("CONCORD_BG_EXPIRY_SLOW_MS", 150);
+  if (pressured) {
+    total = Math.min(total, _num("CONCORD_BG_EXPIRY_PRESSURE_BATCH", 500));
+    chunk = Math.min(chunk, _num("CONCORD_BG_EXPIRY_PRESSURE_CHUNK", 100));
+    slowMs = Math.min(slowMs, _num("CONCORD_BG_EXPIRY_PRESSURE_SLOW_MS", 40));
+  }
+  chunk = Math.max(1, chunk);
   const t0 = Date.now();
   let expired = 0, maxChunkMs = 0, stoppedSlow = false, error = null;
   try {
@@ -544,7 +556,7 @@ async function _maybeExpire() {
       await new Promise((res) => { setImmediate(res); });
     }
   } finally { S.expiryRunning = false; }
-  S.expiryLastRun = { expired, ms: Date.now() - t0, maxChunkMs, stoppedSlow, error, at: new Date().toISOString() };
+  S.expiryLastRun = { expired, ms: Date.now() - t0, maxChunkMs, stoppedSlow, pressured, chunk, error, at: new Date().toISOString() };
   if (error) S.log("warn", "bg_governor_expiry_error", { error });
 }
 
@@ -630,3 +642,5 @@ export function _resetGovernorForTest({ db = null, signals = {} } = {}) {
 export function _setSignalsForTest(sig) { S.signals = { ...S.signals, ...sig }; }
 export function _setBreakerForTest(state, reason = null, since = Date.now()) { S.breaker.state = state; S.breaker.reason = reason; S.breaker.since = since; S.breaker.probesOk = 0; }
 export function _setBgProbeForTest(p) { S.bgProbe = { ...S.bgProbe, ...p }; }
+/** Test-only: run one expiry sweep now (bypasses the interval gate). */
+export async function _runExpiryForTest() { S.expiryAt = 0; await _maybeExpire(); return S.expiryLastRun || null; }
