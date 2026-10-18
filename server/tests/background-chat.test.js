@@ -1,7 +1,7 @@
 // Background chat: governor-gated LLM calls for non-user-facing work.
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { governedBackgroundChat } from "../lib/inference/background-chat.js";
+import { governedBackgroundChat, workerGate } from "../lib/inference/background-chat.js";
 
 const ENV_KEYS = ["CONCORD_BG_BRAIN", "BRAIN_BACKGROUND_URL"];
 let saved;
@@ -141,5 +141,25 @@ describe("governedBackgroundChat", () => {
     assert.equal(chatCalls[0].brain, "subconscious");
     assert.equal(releaseCalls.length, 1);
     assert.equal(releaseCalls[0].ok, true);
+  });
+});
+
+
+describe("worker-thread gate (main governor status file)", () => {
+  it("denies in a worker when the main breaker is open", async () => {
+    let called = false;
+    const r = await governedBackgroundChat("dream", [], {
+      _inWorker: true, _workerGate: () => "main_breaker_open",
+      _admit: () => ({ allow: true, release() {} }), _chat: async () => { called = true; return { ok: true, text: "x" }; },
+    });
+    assert.equal(r.ok, false); assert.equal(r.error, "bg_governor_denied:main_breaker_open"); assert.equal(called, false);
+  });
+  it("workerGate reads the status file", () => {
+    const now = Date.parse("2026-10-18T18:00:30Z");
+    const mk = (o) => () => JSON.stringify({ generatedAt: "2026-10-18T18:00:00Z", mode: "enforce", breaker: { state: "closed" }, ...o });
+    assert.equal(workerGate({ now, read: mk({}) }), null);
+    assert.equal(workerGate({ now, read: mk({ breaker: { state: "open" } }) }), "main_breaker_open");
+    assert.equal(workerGate({ now: now + 120000, read: mk({}) }), "main_status_stale");
+    assert.equal(workerGate({ now, read: () => { throw new Error("nope"); } }), "main_status_unreadable");
   });
 });
