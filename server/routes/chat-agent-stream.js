@@ -28,6 +28,8 @@
 
 import { runAgentLoop } from "../lib/chat-agent.js";
 import { startSSE } from "../lib/sse.js";
+import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
+import { sourcesFromToolCalls, withSourceLinks, writeReceipt } from "../lib/chat/agent-route.js";
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
@@ -44,8 +46,14 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
     // byte-identically to before. Length-capped defensively since this rides
     // straight into a system-role LLM message.
     const { message = "", history = [], maxTurns, slot, persona } = req.body || {};
+    // ConKay (the persona names her): tools are the default. The route hint
+    // says which tool this ask needs and the fallback call runs it if the
+    // model answers from memory (lib/conkay/agent-turn.js).
+    const isConKay = typeof persona === "string" && /\bConKay\b/.test(persona);
+    let plan = null;
+    if (isConKay) { try { plan = conkayTurnPlan(message, Array.isArray(history) ? history : []); } catch { plan = null; } }
     const extraSystemBlock = typeof persona === "string" && persona.trim()
-      ? `\n\n${persona.trim().slice(0, 4000)}`
+      ? `\n\n${persona.trim().slice(0, 4000)}${isConKay ? `\n\n${conkayToolPolicy()}` : ""}${plan?.hint ? `\n\n${plan.hint}` : ""}`
       : undefined;
     const userId = req.user?.id || req.auth?.userId;
     if (!message) return res.status(400).json({ ok: false, error: "missing_message" });
@@ -70,7 +78,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         runMacro,
         lensActions,
         history,
-        opts: { maxTurns, slot, extraSystemBlock },
+        opts: { maxTurns, slot, extraSystemBlock, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
         onEvent: (type, payload) => {
@@ -89,7 +97,17 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
       // already fully known at this point, so pacing it out server-side
       // only adds latency. Any typing-effect animation the UI wants is a
       // client-side concern, not something the server should sleep for.
-      const answer = String(result.answer || "");
+      let answer = String(result.answer || "");
+      if (isConKay && result.ok) {
+        // A lens write reports what was stored, not the model's paraphrase
+        // (live: an invented "due Friday, October 22"); web answers carry
+        // their links.
+        if (plan?.route === "action") {
+          const receipt = writeReceipt(result.toolCalls || []);
+          if (receipt) answer = receipt;
+        }
+        answer = withSourceLinks(answer, sourcesFromToolCalls(result.toolCalls || []));
+      }
       const step = 80;
       for (let i = 0; i < answer.length; i += step) {
         send("token", { chunk: answer.slice(i, i + step) });

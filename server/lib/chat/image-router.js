@@ -29,7 +29,10 @@ const OFFLINE_REASONS = new Set(["local_gpu_unreachable", "weights_missing"]);
 const OUTSIDE_SERVICE = /\b(?:dall[- ]?e(?:\s*\d)?|midjourney|stable diffusion|pollinations(?:\.ai)?|comfyui|automatic1111)\b/gi;
 
 const LEAD_IN = /^(?:(?:please|hey|hi|ok|okay|now|just)\s+|(?:can|could|would)\s+you\s+|i\s+(?:want|need)\s+(?:you\s+)?to\s+|i(?:'d| would)\s+like\s+(?:you\s+)?to\s+)*/i;
-const MAKE = /^(?:make|generate|create|paint|render)\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+)?(?:image|picture|photo|photograph|illustration|drawing)s?\s+(?:of\s+|showing\s+)?(.+)$/i;
+// "render a concept image of a futuristic car", "make a quick photorealistic picture of…":
+// up to three describing words may sit before the picture noun.
+const MAKE = /^(?:make|generate|create|paint|render|design)\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+|the\s+)?((?:(?!of\b|showing\b)[\w-]+\s+){0,3}?)(?:image|picture|photo|photograph|illustration|drawing|concept\s+art|artwork|render(?:ing)?|wallpaper|poster)s?\s+(?:of\s+|showing\s+|for\s+)(.+)$/i;
+const MAKE_BARE = /^(?:make|generate|create|paint|render)\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+)?(?:image|picture|photo|photograph|illustration|drawing)s?\s+(?:of\s+|showing\s+)?(.+)$/i;
 const DRAW = /^draw\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+)?(?:(?:image|picture|photo|photograph|illustration|drawing)s?\s+(?:of\s+|showing\s+)?)?(.+)$/i;
 // "draw a conclusion", "draw attention", "draw on experience" are not pictures.
 const DRAW_IDIOM = /^(?:a\s+)?(?:conclusion|distinction|comparison|parallel|blank|attention|inference|analogy|line\b|from\b|on\b|upon\b)/i;
@@ -54,9 +57,12 @@ export function explicitImagePrompt(message) {
   if (/\b(?:do not|don't|dont)\s+(?:make|generate|create|draw|paint|render)\b/i.test(text)) return null;
   text = text.replace(/[.!?]+$/, "").replace(/\s+(?:please|thanks|thank you)$/i, "").trim();
   text = text.replace(LEAD_IN, "").trim();
-  const made = text.match(MAKE);
+  const styled = text.match(MAKE);
+  const made = styled || text.match(MAKE_BARE);
   const drawn = made ? null : text.match(DRAW);
-  let subject = (made || drawn)?.[1] || "";
+  let subject = (styled ? styled[2] : (made || drawn)?.[1]) || "";
+  // Keep the style words ("concept", "photorealistic") with the subject.
+  const style = styled ? String(styled[1] || "").replace(/\b(?:quick|simple|nice|cool|new|short)\b/gi, "").trim() : "";
   subject = subject.replace(/^(?:of\s+)/i, "").trim();
   if (!subject || subject.length < 3) return null;
   if (drawn && DRAW_IDIOM.test(subject)) return null;
@@ -69,6 +75,7 @@ export function explicitImagePrompt(message) {
     subject = subject.replace(size[0], "").replace(/\s{2,}/g, " ").trim();
   }
   if (subject.length < 3) return null;
+  if (style) subject = `${subject}, ${style.replace(/^concept$/i, "concept art")}`;
   return {
     prompt: subject,
     ...(width ? { width, height } : {}),

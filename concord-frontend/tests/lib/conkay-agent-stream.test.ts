@@ -75,3 +75,31 @@ describe('streamConKayAgent', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('artifacts and tool-call leaks (ConKay tools-by-default)', () => {
+  const enc = new TextEncoder();
+  it('relays artifact events to onArtifact', async () => {
+    const { streamConKayAgent } = await import('@/lib/conkay/agent-stream');
+    const chunks = [
+      'event: artifact\ndata: {"kind":"song","projectId":"p1","title":"T"}\n\nevent: arti',
+      'fact\ndata: {"kind":"mesh","positions":[0,0,0,1,0,0,0,1,0],"indices":[0,1,2]}\n\nevent: done\ndata: {"ok":true}\n\n',
+    ];
+    let i = 0;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      body: { getReader: () => ({ read: async () => (i < chunks.length ? { value: enc.encode(chunks[i++]), done: false } : { value: undefined, done: true }) }) },
+    }));
+    const got: Array<Record<string, unknown>> = [];
+    await streamConKayAgent({ message: 'm', history: [], persona: 'p', onToken: () => {}, onToolCall: () => {}, onArtifact: (a) => got.push(a) });
+    expect(got.map((a) => a.kind)).toEqual(['song', 'mesh']);
+  });
+
+  it('strips raw [TOOL_CALL: …] markers and reports the leak', async () => {
+    const { stripToolCallLeak, artifactKey } = await import('@/lib/conkay/agent-stream');
+    expect(stripToolCallLeak('[TOOL_CALL: {"tool":"run_lens_action","params":{"domain":"music","action":"track-list","params":{}}}]'))
+      .toEqual({ text: '', leaked: true });
+    expect(stripToolCallLeak('Here you go. [TOOL_CALL: {"tool":"x","params":{"a":[1,2]}}] Done.')).toEqual({ text: 'Here you go.  Done.', leaked: true });
+    expect(stripToolCallLeak('plain')).toEqual({ text: 'plain', leaked: false });
+    expect(artifactKey({ kind: 'song', projectId: 'p1' })).toBe(artifactKey({ kind: 'song', projectId: 'p1', title: 'x' }));
+  });
+});

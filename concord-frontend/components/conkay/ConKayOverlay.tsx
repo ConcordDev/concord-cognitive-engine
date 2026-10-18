@@ -1,6 +1,8 @@
 'use client';
 
 import { getApiBase } from '@/lib/api/base';
+import { artifactKey, parseSseBuffer, stripToolCallLeak } from '@/lib/conkay/agent-stream';
+import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 
 // concord-frontend/components/conkay/ConKayOverlay.tsx
 //
@@ -141,6 +143,8 @@ const ConKayArtifactExploded = dynamic(
 interface OverlayMsg extends ConKayReplyFields {
   id: string;
   role: 'user' | 'assistant';
+  /** Songs, audio previews and 3D models from the agent's tools (images go inline in the text). */
+  artifacts?: ChatArtifact[];
 }
 
 function stripFence(s: string): string {
@@ -1489,6 +1493,18 @@ export function ConKayOverlay() {
     let liveText = '';
     const liveToolCalls: unknown[] = [];
     const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null; content?: string | null }> = [];
+    const liveArtifacts: ChatArtifact[] = [];
+    const seenArtifacts = new Set<string>();
+    const addArtifact = (a: unknown) => {
+      if (!a || typeof a !== 'object') return;
+      const rec = a as Record<string, unknown>;
+      const kind = String(rec.kind ?? rec.type ?? '');
+      if (kind === 'image' || kind === 'dtu') return; // rendered inline / as a DTU ref already
+      const k = artifactKey(rec);
+      if (seenArtifacts.has(k)) return;
+      seenArtifacts.add(k);
+      liveArtifacts.push(rec as ChatArtifact);
+    };
     let toolCount = 0;
     // A4 — run outcome, hoisted so the `finally` can report it to the run store.
     let finalOk = true;
@@ -1499,9 +1515,9 @@ export function ConKayOverlay() {
     const syncMessage = () => {
       if (!placed) {
         placed = true;
-        append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() });
+        append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice(), artifacts: liveArtifacts.slice() });
       } else {
-        setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() } : m)));
+        setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice(), artifacts: liveArtifacts.slice() } : m)));
       }
     };
     try {
@@ -1529,15 +1545,15 @@ export function ConKayOverlay() {
         const { value, done: streamDone } = await reader.read();
         if (streamDone) break;
         buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        let event = '';
-        for (const line of lines) {
-          if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
-          if (!line.startsWith('data: ')) continue;
-          let data: Record<string, unknown> = {};
-          try { data = JSON.parse(line.slice(6)); } catch { continue; }
-          if (event === 'tool_call') {
+        // Whole SSE blocks only: a large tool_call/artifact payload split
+        // across network chunks used to lose its `event:` line and vanish.
+        const parsed = parseSseBuffer(buf);
+        buf = parsed.rest;
+        for (const { event, data } of parsed.events) {
+          if (event === 'artifact') {
+            addArtifact(data);
+            syncMessage();
+          } else if (event === 'tool_call') {
             // Unit A2 — deliberately NO pre-execution confirm on this path.
             // `tool_call` is a RECEIPT: the server's runAgentLoop
             // (server/lib/chat-agent.js) already invoked this tool —
@@ -1570,6 +1586,10 @@ export function ConKayOverlay() {
               artifact?: { kind?: string; id?: string; title?: string; content?: string; image_b64?: string; url?: string; prompt?: string };
             };
             const toolName = String(tc.tool || 'tool');
+            if (tc.ok !== false) {
+              addArtifact(tc.artifact);
+              for (const a of ((data as { artifacts?: unknown[] }).artifacts ?? [])) addArtifact(a);
+            }
             setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: tc.ok === false ? 'error' : 'done' }]);
             // Render, don't just narrate: an agent-created DTU becomes a real
             // citable reference; a generated image renders inline; a
@@ -1609,12 +1629,17 @@ export function ConKayOverlay() {
         }
       }
       setStep('agent', finalOk ? 'done' : 'error', finalOk ? 'Done' : 'Hit a snag');
+      const clean = stripToolCallLeak(liveText);
+      if (clean.leaked) {
+        liveText = clean.text || 'I tried to call a tool but the call didn’t run. Please ask again.';
+        syncMessage();
+      }
       if (!liveText.trim()) {
         // A tool call may have already placed an (empty-text) message shell —
         // finalize its content either way instead of leaving it blank or
         // silently duplicating a message.
         liveText = finalOk
-          ? (liveToolCalls.length ? 'Done.' : "I didn't have anything to add.")
+          ? (liveArtifacts.length ? 'Here it is below.' : liveToolCalls.length ? 'Done.' : "I didn't have anything to add.")
           : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`;
         syncMessage();
       } else if (looksProvable(liveText)) {
@@ -2038,7 +2063,7 @@ export function ConKayOverlay() {
                 ? 'max-w-[80%] rounded-2xl rounded-br-md bg-cyan-500/15 border border-cyan-400/25 px-3.5 py-2 text-sm text-cyan-50'
                 : 'max-w-[85%] rounded-2xl rounded-bl-md bg-black/40 border border-cyan-400/15 px-3.5 py-2 text-sm text-cyan-50'}>
                 {m.role === 'assistant'
-                  ? <ConKayMessage fields={m} renderProse={(t) => <MessageRenderer content={t} />} />
+                  ? <><ConKayMessage fields={m} renderProse={(t) => <MessageRenderer content={t} />} /><ChatArtifacts artifacts={m.artifacts} /></>
                   : m.content}
               </div>
             </div>

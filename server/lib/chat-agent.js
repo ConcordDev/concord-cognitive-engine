@@ -50,6 +50,7 @@ import {
   followUpFailureReply,
 } from "./chat/tool-turn-reply.js";
 import { guardPlaybackClaim } from "./chat/playback-honesty.js";
+import { guardFeaClaim } from "./chat/fea-honesty.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -955,12 +956,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
         const text = String(call.params.text || call.params.brief || call.params.prompt || "").slice(0, 4000);
         if (!text.trim()) return { tool: call.tool, ok: false, error: "conkay_design requires text describing the part" };
-        const { solveDesignText, summarizeDesignSolve } = await import("./conkay/nlp-design-intent.js");
-        const summary = summarizeDesignSolve(solveDesignText(text));
+        const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
+        const solved = solveDesignText(text);
+        const summary = summarizeDesignSolve(solved);
         if (!summary.ok) {
           return { tool: call.tool, ok: false, error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}` };
         }
-        return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary };
+        // The solved part's triangle mesh (same arrays POST /api/conkay/design
+        // returns), so the ConKay UI can show the 3D model. Rides on the
+        // artifact only; the model reads the numeric summary.
+        const mesh = solved.mesh;
+        let artifact = null;
+        if (Array.isArray(mesh?.positions) && Array.isArray(mesh?.indices) && mesh.positions.length >= 9) {
+          const util = Number(solved.fea?.utilizationAtSF ?? solved.fea?.maxUtilization ?? summary.hand?.utilizationAtSF ?? summary.hand?.utilization);
+          let color = null;
+          try { color = feaUtilToColor(Number.isFinite(util) ? util : 0)?.hex || null; } catch { color = null; }
+          artifact = {
+            kind: "mesh", source: "conkay_design",
+            title: `${String(summary.part || mesh.kind || "part")} model`,
+            meshKind: mesh.kind || summary.part || null,
+            positions: mesh.positions, indices: mesh.indices,
+            vertexCount: mesh.vertexCount ?? Math.floor(mesh.positions.length / 3),
+            triangleCount: mesh.triangleCount ?? Math.floor(mesh.indices.length / 3),
+            color, pass: summary.pass, feaOk: summary.fea?.ok === true,
+          };
+        }
+        return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary, ...(artifact ? { artifact } : {}) };
       }
       case "find_lens_actions": {
         // Cross-domain discovery by intent: one search over every registered
@@ -1630,7 +1651,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     turnsTaken++;
     emit("turn_start", { turn: turnsTaken });
     const _turnStart = Date.now();
-    const r = await brain({
+    let r = await brain({
       db, userId,
       slot: opts.slot || "conscious",
       messages,
@@ -1658,8 +1679,18 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     lastModel = r.model;
 
     const calls = parseToolCalls(r.text);
-    const visibleAnswer = stripToolCalls(r.text);
+    let visibleAnswer = stripToolCalls(r.text);
     emit("turn_end", { turn: turnsTaken, text: visibleAnswer, willCallTools: calls.length > 0 });
+
+    // Tool use is the default for asks that need one (ConKay: web search,
+    // design/FEA, music). When the model answers the first turn from memory
+    // instead, run the caller's planned call and continue from its result.
+    if (calls.length === 0 && turn === 0 && allToolCalls.length === 0 && opts.fallbackCall?.tool) {
+      calls.push({ tool: String(opts.fallbackCall.tool), params: opts.fallbackCall.params || {} });
+      r = { ...r, text: `[TOOL_CALL: ${JSON.stringify({ tool: opts.fallbackCall.tool, params: opts.fallbackCall.params || {} })}]` };
+      visibleAnswer = "";
+      emit("status", { phase: "fallback_tool", tool: opts.fallbackCall.tool });
+    }
 
     if (calls.length === 0) {
       // No more tool calls — this is the final answer.
@@ -1822,6 +1853,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     finalAnswer = g.text;
     linksRemoved = g.removed;
   }
+
+  // A failed FEA run is never reported as a pass (INC-128).
+  finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
 
   return {
     ok: true,
