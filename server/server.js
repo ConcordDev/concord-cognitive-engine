@@ -2087,6 +2087,8 @@ const infrastructureConfig = _require("./config/infrastructure.cjs");
 
 // ---- Route modules (ESM) ----
 import registerSystemRoutes from "./routes/system.js";
+import { createPodJobsRouter, podJobsEnabled } from "./routes/pod-jobs.js";
+import { podJobs } from "./lib/pod-jobs.js";
 import createAuthRouter from "./routes/auth.js";
 import { registerBrainModeRoutes } from "./routes/brain-mode.js";
 import createPersonalLockerRouter from "./routes/personal-locker.js";
@@ -32063,6 +32065,12 @@ try {
     ...getRegistryScheduleSummary({ tickMs: Number(process.env.HEARTBEAT_MS) || 15000 }),
     skips: getRegistrySkipStats(),
     remoteOrch: { enabled: !shouldPauseBackgroundOrchestration(), skips: _remoteOrchSkips },
+    // Slowest modules by total main-thread time (evidence for cost:"cpu" tagging).
+    slowest: (() => { try {
+      return getHeartbeatTimingStats().filter((m) => m.totalRuns > 0)
+        .map((m) => ({ id: m.id, cost: m.cost, worker: m.worker, runs: m.totalRuns, p50: m.p50, p99: m.p99, max: m.max }))
+        .sort((a, b) => (b.p50 * b.runs) - (a.p50 * a.runs)).slice(0, 15);
+    } catch { return []; } })(),
   }));
 } catch (e) { structuredLog("warn", "bg_governor_heartbeat_provider_failed", { error: String(e?.message || e) }); }
 
@@ -37970,6 +37978,26 @@ const app = express();
 // upload) and routes/auth.js checkLoginRateLimit / the register cap all
 // key on req.ip, so they follow this. See lib/trusted-client-ip.js.
 installTrustedClientIp(app);
+
+// Pull-based pod job API (dark-launched). Mounted before global auth/CSRF/rate-limit
+// so the bearer token is the only auth surface; the route itself enforces loopback.
+if (podJobsEnabled()) {
+  app.use("/api/internal/pod-jobs", createPodJobsRouter());
+  setInterval(() => podJobs.sweep(), 5000).unref();
+  // Round-trip self-test every 5 min (sha256 on the pod) so the status file
+  // proves jobs really execute remotely.
+  const _podSelfTest = { runs: 0, ok: 0, last: null };
+  const _runPodSelfTest = async () => {
+    const t0 = Date.now();
+    const r = await podJobs.enqueue("sha256", { text: "concord-pod-selftest", rounds: 1000 }, { timeoutMs: 20000 });
+    _podSelfTest.runs++; if (r.ok) _podSelfTest.ok++;
+    _podSelfTest.last = { at: new Date().toISOString(), ok: !!r.ok, ms: Date.now() - t0, error: r.error || null, hex: r.result?.hex ? String(r.result.hex).slice(0, 12) : null };
+  };
+  setTimeout(() => { _runPodSelfTest().catch(() => {}); }, 30_000).unref();
+  setInterval(() => { _runPodSelfTest().catch(() => {}); }, 300_000).unref();
+  try { registerStatusProvider("podJobs", () => ({ ...podJobs.stats(), selfTest: _podSelfTest })); } catch { /* status only */ }
+  structuredLog("info", "pod_jobs_enabled", {});
+}
 
 // Shutting-down guard. Mounted before auth and routes so a request that
 // arrives after beginShutdownHttp() does not touch SQLite on its way to
