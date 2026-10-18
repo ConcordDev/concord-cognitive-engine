@@ -252,7 +252,7 @@ export function formatLongTaskStatus(status) {
 
 const MODE_RULES = {
   research: "- Research: use web_search with short queries (3-6 plain words, e.g. 'MG90S servo review'; long keyword lists find nothing) and vary them, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
-  plan: "- Planning: the goal tree, dated milestones and calendar tasks were created when the job started (see the linked project plan). Work through the subgoals: for each, research what's needed (parts with prices, tools, steps, risks) and mark it done with its [SUBGOAL_COMPLETE: id] marker. The final deliverable is the full day-by-day plan with real dates, parts list and checkpoints.",
+  plan: "- Planning: the goal tree, dated milestones and calendar tasks were created when the job started (see the linked project plan). Work through the subgoals: for each, research what's needed (parts with prices, tools, steps, risks) and mark it done with its [SUBGOAL_COMPLETE: id] marker. The final deliverable is the full day-by-day plan with real dates, parts list and checkpoints. You are writing this plan: don't hunt for a ready-made schedule online, and never stop because you couldn't find one. Use searches only for facts (part specs, prices, how-tos).",
   code: "- Coding: write the code and run it (run_python, or run_lens_action code.build) to check it works before you report it. Show the final code.",
   general: "",
 };
@@ -266,7 +266,7 @@ export function longTaskSystemBlock(session, meta) {
     "- Make real progress every time with tools (search, read pages, compute, save). Don't just restate the plan.",
     "- End every reply with a 'Progress notes:' section: what you found so far, with source links, and what is left. Those notes are all you'll see of this work next time.",
     "- When the goal is fully done, write the complete final deliverable (the full answer or report, not a summary of it) and put [TASK_COMPLETE] on its own last line.",
-    "- If you truly can't continue, explain why and end with [TASK_BLOCKED: reason].",
+    "- Only if the goal is impossible without something from the user (an account, a file, a decision), explain why and end with [TASK_BLOCKED: reason]. Thin search results are never a reason to stop: work from what you know, say what you assumed, and keep going.",
     MODE_RULES[meta.mode] || "",
     `- You have about ${left} turns left in this job. Finish before then.`,
     "- Never call start_long_task or check_long_task inside a background job.",

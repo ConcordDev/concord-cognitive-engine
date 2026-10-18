@@ -22480,11 +22480,33 @@ globalThis.__concordRecallMemory = async ({ query, userId, sessionId = null, lim
   if (!userId || userId === "anon") return out;
   const snip = (d, n) => _sanitizeDtuText(String(d.cretiHuman || d.human?.summary || d.creti || (typeof d.content === "string" ? d.content : "") || "")).replace(/\s+/g, " ").trim().slice(0, n);
   try {
-    const hits = await scopedEmbeddingSearch(String(query || "").slice(0, 2000), userId, { limit: limit + 4, minScore });
-    out.dtus = (Array.isArray(hits) ? hits : [])
-      .filter((d) => d && d.id && d.machine?.kind !== "conversation_memory")
-      .slice(0, limit)
-      .map((d) => ({ id: d.id, title: _sanitizeDtuText(d.title || d.id), tier: d.tier || "regular", score: Math.round((d._semanticScore || 0) * 1000) / 1000, snippet: snip(d, 360) }));
+    // The user's OWN DTUs, whatever their scope ("local" chat saves,
+    // "personal", synced copies): never anyone else's, never system rows,
+    // never the global commons. Embedding similarity where a vector exists,
+    // keyword overlap otherwise.
+    const q = String(query || "").slice(0, 2000);
+    const qTokens = tokensNoStop(q);
+    let qVec = null;
+    if (EMBEDDINGS.enabled) {
+      try { const e = await generateEmbedding(q); if (e?.ok) qVec = new Float32Array(e.embedding); } catch (_e) { qVec = null; }
+    }
+    const scored = [];
+    for (const d of STATE.dtus.values()) {
+      if (!d || !d.id) continue;
+      const owner = d.ownerId || d.author || d.userId || d.createdBy;
+      if (owner !== userId) continue;
+      if (d.scope === "system" || d.machine?.kind === "conversation_memory" || _SYSTEM_DTU_SOURCES.has(d.source)) continue;
+      let score = 0;
+      const vec = qVec ? EMBEDDINGS.store.get(d.id) : null;
+      if (vec) score = cosineSimilarity(qVec, vec);
+      else {
+        const j = qTokens.length ? jaccard(qTokens, tokensNoStop([d.title || "", snip(d, 1500)].join(" "))) : 0;
+        score = j >= 0.08 ? 0.35 + j : 0;
+      }
+      if (score >= minScore) scored.push({ d, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    out.dtus = scored.slice(0, limit).map(({ d, score }) => ({ id: d.id, title: _sanitizeDtuText(d.title || d.id), tier: d.tier || "regular", score: Math.round(score * 1000) / 1000, snippet: snip(d, 360) }));
   } catch (_e) { /* memory is best-effort */ }
   if (sessionId) {
     try {
