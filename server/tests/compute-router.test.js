@@ -92,3 +92,11 @@ describe("INC-134 stats fast path only takes a plain list", () => {
     assert.equal(R("What is 15% of 240?").value, 36);
   });
 });
+
+it("INC-134: a stats word problem with day numbers routes to the compute agent, not weather", async () => {
+  const { isWordProblem, chatAgentRoute } = await import("../lib/chat/agent-route.js");
+  const q = "The average temperature was 70 degrees on day 1 and 80 on day 2 at 3 pm. What was the mean?";
+  assert.equal(isWordProblem(q), true);
+  assert.equal(chatAgentRoute(q), "compute");
+  assert.equal(routeComputeQuestion(q), null);
+});

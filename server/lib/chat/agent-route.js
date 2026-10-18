@@ -133,7 +133,7 @@ const COMPUTE_RE = [
 // "if i drive 260 miles at 31 mpg and gas is 3.49 a gallon how much is gas", "5k at 6%
 // compounded yearly, how much after 10 years": two or more numbers and a quantity question.
 // The model did these in its head (long-chat probe 2026-10-17).
-const WORD_PROBLEM_ASK_RE = /\b(?:how much|how many|how long|how far|how fast|what(?:'?s| is| will| would) (?:the )?(?:total|cost|price|amount|balance|speed|distance|force|energy)|total|cost|worth|compounded|interest|mpg|per (?:gallon|hour|month|year|day)|at \d+(?:\.\d+)?\s?%)\b/i;
+const WORD_PROBLEM_ASK_RE = /\b(?:what (?:was|is|were|'?s) (?:the |its |their )?(?:mean|average|median)|(?:mean|average|median) (?:of|was|is)|how much|how many|how long|how far|how fast|what(?:'?s| is| will| would) (?:the )?(?:total|cost|price|amount|balance|speed|distance|force|energy)|total|cost|worth|compounded|interest|mpg|per (?:gallon|hour|month|year|day)|at \d+(?:\.\d+)?\s?%)\b/i;
 const NOT_WORD_PROBLEM_RE = /\b(?:plan|trip|itinerary|recommend|best|news|price of|bitcoin|btc|eth|stock|score|weather)\b/i;
 export function isWordProblem(prompt) {
   const p = String(prompt || "");
