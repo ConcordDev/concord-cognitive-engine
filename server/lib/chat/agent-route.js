@@ -162,12 +162,15 @@ export function chatAgentRoute(prompt, opts = {}) {
   // "solve conflicts with my coworker" is not a computation: needs math content too.
   if (COMPUTE_RE.some((r) => r.test(p)) && MATH_CONTENT_RE.test(p)) return "compute";
   if (opts?.prevRoute === "lookup" && WEB_FOLLOWUP_RE.test(p)) return "lookup";
+  // A bare topic right after a search turn ("Trump") is the next search.
+  if ((opts?.prevRoute === "web" || opts?.prevRoute === "lookup") && p.split(/\s+/).length <= 3
+    && !SMALLTALK_RE.test(p) && !ABOUT_ASSISTANT_RE.test(p) && contentWords(p).length >= 1) return opts.prevRoute;
   if (needsToolByDefault(p)) return "lookup";
   return null;
 }
 
 const ROUTE_HINT = {
-  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query, then answer from its results with each item's link (you may explain the results in your own words). The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
+  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",

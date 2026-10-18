@@ -698,10 +698,27 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // never actually wired the search backend, so every agent call
         // silently failed. The expert_mode one is the real, working
         // implementation (domains/expert-mode.js#L357).
-        const r = await runMacro("expert_mode", "web_search", {
-          query: String(call.params.query || ""),
-          limit: Number(call.params.limit) || 5,
-        }, ctx);
+        let _q = String(call.params.query || "");
+        // The model tacks a guessed year onto queries ("latest iPhone price 2025",
+        // "game last night winner 2026") and gets nothing back. Drop a year the
+        // user never typed.
+        const _userText = String(ctx?.userPrompt || "");
+        _q = _q.replace(/\b(?:19|20)\d\d\b/g, (y) => (_userText.includes(y) ? y : "")).replace(/\s{2,}/g, " ").trim() || _q;
+        let r = await runMacro("expert_mode", "web_search", { query: _q, limit: Number(call.params.limit) || 5 }, ctx);
+        // News-shaped queries get fresh headlines (Google/Bing News) ahead of the
+        // general results, which were Wikipedia/hub pages from 2024 for "trump news".
+        try {
+          const ws = await import("../emergent/conscious-web-search.js");
+          if (ws.isNewsQuery?.(_q) || /\b(?:latest|lately|recent(?:ly)?|today|tonight|last night|this week|right now|news)\b/i.test(_q)) {
+            const news = await ws.webSearchForChat([_q]);
+            if (Array.isArray(news) && news.length) {
+              const base = r?.ok ? (Array.isArray(r.results) ? r.results : (Array.isArray(r.sources) ? r.sources : [])) : [];
+              const seen = new Set(news.map((n) => n.url));
+              r = { ...(r?.ok ? r : {}), ok: true, query: _q,
+                results: [...news.map((n) => ({ title: n.title, url: n.url, snippet: n.snippet || String(n.content || "").slice(0, 300) })), ...base.filter((b) => !seen.has(b.url || b.link))] };
+            }
+          }
+        } catch { /* news is best-effort; keep the general results */ }
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "web_search failed" };
         // Keep only the fields the model needs, and bound the payload —
         // expert_mode.web_search can return a large object (full snippets,
@@ -711,7 +728,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // slice to 4000).
         const _results = Array.isArray(r.results) ? r.results : (Array.isArray(r.sources) ? r.sources : []);
         const trimmed = {
-          query: r.query || call.params.query,
+          query: r.query || _q,
           answer: typeof r.summary === "string" ? r.summary.slice(0, 2000)
             : (typeof r.answer === "string" ? r.answer.slice(0, 2000) : undefined),
           results: _results.slice(0, 6).map((x) => ({
