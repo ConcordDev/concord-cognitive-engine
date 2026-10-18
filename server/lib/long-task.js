@@ -211,7 +211,7 @@ export function formatLongTaskStatus(status) {
 }
 
 const MODE_RULES = {
-  research: "- Research: use web_search with short queries (3-6 plain words, e.g. "MG90S servo review"; long keyword lists find nothing) and vary them, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
+  research: "- Research: use web_search with short queries (3-6 plain words, e.g. 'MG90S servo review'; long keyword lists find nothing) and vary them, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
   plan: "- Planning: break the goal into concrete, dated steps with durations. Put real dates on them (today is in the system note above).",
   code: "- Coding: write the code and run it (run_python, or run_lens_action code.build) to check it works before you report it. Show the final code.",
   general: "",
