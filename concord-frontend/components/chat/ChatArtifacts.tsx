@@ -44,6 +44,9 @@ export interface ChatArtifact {
   pass?: boolean | null;
   vertexCount?: number;
   triangleCount?: number;
+  /** Robot / assembly parts with sizes (mm), for the workspace parts panel. */
+  partList?: Array<{ name: string; size_mm?: number[] }>;
+  bbox_mm?: { length?: number; height?: number; width?: number };
 }
 
 const SAFE_SRC = /^(?:https?:\/\/|\/|data:(?:image|audio)\/)/i;

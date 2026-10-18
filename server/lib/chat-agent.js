@@ -1045,7 +1045,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // A robot / multi-part machine: a concept assembly the UI can show in 3D.
         const { ROBOT_RE, buildRobotAssembly } = await import("./conkay/robot-assembly.js");
         if (ROBOT_RE.test(text)) {
-          const asm = buildRobotAssembly(text);
+          // Part counts come from the user's own words, not the model's
+          // rewrite (live: "a two-arm robot" came back with 8 wheels).
+          const own = typeof ctx?.userPrompt === "string" && ROBOT_RE.test(ctx.userPrompt) ? ctx.userPrompt : text;
+          const asm = buildRobotAssembly(own);
           const { mesh, ...rest } = asm;
           return {
             tool: call.tool, ok: true, key: "conkay_design.robot-assembly",
@@ -1053,7 +1056,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               instruction: "Say the robot concept model is shown below. List its parts with their sizes in mm and the overall size. Say plainly it is a layout concept: no structural, motor or battery sizing was run." },
             artifact: { kind: "mesh", source: "conkay_design", title: "robot concept assembly", meshKind: mesh.kind,
               positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
-              color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name) },
+              color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name),
+              partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm },
           };
         }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
