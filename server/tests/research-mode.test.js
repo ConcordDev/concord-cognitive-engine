@@ -104,7 +104,9 @@ describe("a research job end to end (scripted)", () => {
     assert.equal(m.docs.length, 1);
     assert.equal(m.docs[0].input.format, "md");
     assert.match(m.docs[0].input.body, /# Best small hobby servos/);
-    assert.match(m.docs[0].input.body, /## Sources\n\n1\. \[MG90S review\]\(https:\/\/example\.com\/mg90s\) \(citation DTU dtu_c1\)/);
+    // The search hit is saved as a lead but never cited: no page was read.
+    assert.match(m.docs[0].input.body, /## Sources\n\nNo web pages were successfully read/);
+    assert.doesNotMatch(m.docs[0].input.body, /citation DTU dtu_c1/);
     assert.doesNotMatch(m.docs[0].input.body, /Progress notes/);
     meta = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id=?`).get(job.jobId).meta_json);
     assert.equal(meta.report.downloadUrl, "/api/artifact/dtu_doc_1/download");
