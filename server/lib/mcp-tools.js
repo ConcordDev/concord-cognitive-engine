@@ -89,6 +89,22 @@ function boolProp(desc, def) { return { type: "boolean", description: desc, defa
 function enumProp(desc, values) { return { type: "string", enum: values, description: desc }; }
 
 export const MCP_TOOLS = [
+  // ── AGENT RUNTIME HEARTBEAT ────────────────────────────────────────────
+  {
+    name: "rt_tick",
+    description: "Agent runtime heartbeat: fire qualia hooks, update drives, record a tick for one runtime entity (hermes-agent, dila, zuko, concord-root). Local or authenticated callers only.",
+    inputSchema: jsonSchema({ entity_id: textProp("Runtime entity id") }, ["entity_id"])
+  },
+  {
+    name: "rt_drives",
+    description: "Agent runtime: read the current drive state for one runtime entity. Local or authenticated callers only.",
+    inputSchema: jsonSchema({ entity_id: textProp("Runtime entity id") }, ["entity_id"])
+  },
+  {
+    name: "rt_tick_history",
+    description: "Agent runtime: recent heartbeat ticks for one runtime entity. Local or authenticated callers only.",
+    inputSchema: jsonSchema({ entity_id: textProp("Runtime entity id"), limit: intProp("Max ticks (default 20, max 100)", 20) }, ["entity_id"])
+  },
   // ── DTU OPERATIONS ─────────────────────────────────────────────────────
   {
     name: "dtu_search",
@@ -2335,6 +2351,26 @@ try {
 
 export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
   switch (toolName) {
+    // === Agent runtime heartbeat (lib/agent-runtime.js) ===
+    // Ticked every 60s by launchd com.concord.entity-heartbeat. These cases
+    // were never wired, so every heartbeat call since 2026-08-31 returned
+    // "Unknown tool: rt_tick". /mcp/call limits them to direct-local or real
+    // auth (lib/mcp-local-guard.js).
+    case "rt_tick":
+    case "rt_drives":
+    case "rt_tick_history": {
+      const rt = await import("./agent-runtime.js");
+      const entityId = typeof args?.entity_id === "string" ? args.entity_id.trim() : "";
+      if (!entityId) return { ok: false, status: "error", error: "entity_id is required" };
+      if (!rt.runtimeEntityIds().has(entityId)) {
+        return { ok: false, status: "error", error: "unknown_runtime_entity", entity_id: entityId };
+      }
+      let r;
+      if (toolName === "rt_tick") r = await rt.rtTick(entityId);
+      else if (toolName === "rt_drives") r = await rt.rtDrives(entityId);
+      else r = await rt.rtTickHistory(entityId, Math.max(1, Math.min(100, Number(args?.limit) || 20)));
+      return { ok: r?.status === "available", ...r };
+    }
     // === 2026-10-12 MCP EXECUTION BRIDGE ===
     case "run_lens_action": {
       const { runLensActionMcp } = await import("./mcp-execution-bridge.js");

@@ -468,6 +468,46 @@ export function getTopOrgans(entity, n) {
 
 export const ORGAN_LEVELS = ["Dormant", "Awakened", "Developing", "Proficient", "Expert", "Master"];
 
+/**
+ * One autonomy/growth pass for the governor heartbeat (server.js 2.2).
+ *
+ * The heartbeat iterates live emergents (STATE.__emergent.emergents). Those
+ * objects have no homeostasis/knowledge/organs; the growth organism lives in
+ * this module's store, keyed by entity id. Passing the raw emergent made
+ * decideBehavior fall through to "explore", then ageEntity/processExperience
+ * threw on `homeostasis.energy` / `homeostasis.curiosity` once per emergent per
+ * tick (2,894 caught errors per maintenance tick on prod with 1,447 emergents)
+ * and `entity.age++` turned the emergent's own age field into NaN. This pass
+ * works on the stored growth profile and skips ids without one.
+ *
+ * @param {Iterable<{id:string}>} emergents
+ * @param {{ onCreate?: (profile: object) => (void|Promise<void>) }} [hooks]
+ * @returns {Promise<{ considered:number, ticked:number, skippedNoProfile:number, errors:number }>}
+ */
+export async function runGrowthAutonomyTick(emergents, hooks = {}) {
+  const stats = { considered: 0, ticked: 0, skippedNoProfile: 0, errors: 0 };
+  for (const e of emergents || []) {
+    stats.considered++;
+    const profile = e?.id ? entityGrowthStore.get(e.id) : null;
+    if (!profile || !profile.homeostasis || !profile.knowledge) { stats.skippedNoProfile++; continue; }
+    try {
+      const decision = decideBehavior(profile);
+      if (!decision?.action) continue;
+      ageEntity(profile);
+      if (decision.action === "explore" || decision.action === "learn") {
+        processExperience(profile, { type: decision.action, topic: decision.topic || decision.lens || "general", quality: 0.5 });
+      }
+      if (decision.action === "create" && typeof hooks.onCreate === "function") {
+        await hooks.onCreate(profile);
+      }
+      stats.ticked++;
+    } catch {
+      stats.errors++;
+    }
+  }
+  return stats;
+}
+
 // ── Store Accessors ─────────────────────────────────────────────────────────
 
 export function getGrowthProfile(entityId) {
