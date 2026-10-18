@@ -51,6 +51,7 @@ import {
 } from "./chat/tool-turn-reply.js";
 import { guardPlaybackClaim } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
+import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -1063,7 +1064,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(book ? { books: [book] } : {}),
           waitMs: 20_000,
         });
-        if (!r.ok) return { tool: call.tool, ok: false, error: r.error || "textbook lookup failed",
+        if (!r.ok) return { tool: call.tool, ok: false, query: String(call.params.query || ""), error: r.error || "textbook lookup failed",
           retryHint: "Say the textbook lookup was unavailable; use web_search if the user still wants a source." };
         return { tool: call.tool, ok: true, query: r.query, results: r.results.map((x) => ({
           book: x.book, section: x.section, url: x.url, passage: x.passage, attribution: x.attribution })),
@@ -1885,6 +1886,20 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
           output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
           tool: call.tool, outcome: result.ok ? "ok" : "error",
         })).catch(() => {});
+      }
+    }
+
+    // A textbook lookup that doesn't state the fact is backed by a web search
+    // in the same turn, so the model never fills the gap from memory.
+    const thinBook = results.find(textbookNeedsWeb);
+    if (thinBook && !results.some((x) => x?.tool === "web_search")) {
+      const q = String(thinBook.query || "").replace(/\b(?:(?:per|according to|from|in)\s+)?(?:an?\s+|the\s+)?(?:openstax\s+)?(?:text\s?book|openstax)s?\b/gi, " ").replace(/\s+/g, " ").trim();
+      if (q) {
+        const web = await executeToolCall(ctx, runMacro, lensActions, { tool: "web_search", params: { query: q } });
+        results.push(web);
+        allToolCalls.push(web);
+        emit("tool_call", web);
+        if (thinBook.ok) thinBook.instruction = "These OpenStax passages do not state this fact. Answer from the web_search results that follow and cite them; if they don't have it either, say so. Never fill it in from memory.";
       }
     }
 
