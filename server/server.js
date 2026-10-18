@@ -20467,6 +20467,8 @@ import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 import { ensureSocketChatSession, persistSocketChatTurn } from "./lib/chat/socket-session.js";
 import {
   resolveChatMaxTokens,
+  resolveChatTimeoutMs,
+  CHAT_CONTINUE_TOKENS,
   finishLengthLimitedReply,
   stoppedOnLength,
   buildChatHistoryMessages,
@@ -22121,7 +22123,8 @@ ${_sharedToolRules}` : "";
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
+      // chat-output-depth: the conscious slot's abort scales with num_predict (~14 tok/s pod).
+      signal: AbortSignal.timeout(options.timeout || (brainName === "conscious" ? Math.max(Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000), resolveChatTimeoutMs(payload.options.num_predict)) : Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000))),
     });
 
     brain.stats.requests++;
@@ -22424,7 +22427,7 @@ ${_sharedToolRules}` : "";
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(_followUpPayload),
-            signal: AbortSignal.timeout(options.timeout || Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000)),
+            signal: AbortSignal.timeout(options.timeout || (brainName === "conscious" ? Math.max(Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000), resolveChatTimeoutMs(_followUpPayload.options.num_predict)) : Number(process.env.CONCORD_LLM_TIMEOUT_FLOOR_MS || 120000))),
           });
           if (_fuResponse.ok) {
             const _fuData = await _fuResponse.json();
@@ -29354,7 +29357,7 @@ ${_operatorV6Block}` : "";
       // When ctx.llm.chat() fails, fall back to a direct Ollama call using BRAIN.conscious config
       try {
         const _fbAc = new AbortController();
-        const _fbTimeout = setTimeout(() => _fbAc.abort(), 120000);
+        const _fbTimeout = setTimeout(() => _fbAc.abort(), resolveChatTimeoutMs(_chatMaxTokens));
         const _fbStart = Date.now();
         const _fbRes = await fetch(`${brainUrl}/api/chat`, {
           method: "POST",
@@ -29421,7 +29424,7 @@ ${_operatorV6Block}` : "";
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
       const _directAc = new AbortController();
-      const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
+      const _directTimeout = setTimeout(() => _directAc.abort(), resolveChatTimeoutMs(_chatMaxTokens));
       const _directStart = Date.now();
       const _directRes = await fetch(`${brainUrl}/api/chat`, {
         method: "POST",
@@ -29721,7 +29724,8 @@ ${_operatorV6Block}` : "";
         doneReason: _replyDoneReason,
         continueOnce: async (partial) => {
           const _cAc = new AbortController();
-          const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+          const _cTokens = Math.min(CHAT_CONTINUE_TOKENS, _chatMaxTokens);
+          const _cTimeout = setTimeout(() => _cAc.abort(), resolveChatTimeoutMs(_cTokens));
           try {
             const _cRes = await fetch(`${brainUrl}/api/chat`, {
               method: "POST",
@@ -29735,7 +29739,7 @@ ${_operatorV6Block}` : "";
                 ],
                 stream: false,
                 think: false,
-                options: { temperature: 0.3, num_predict: Math.min(600, _chatMaxTokens) },
+                options: { temperature: 0.3, num_predict: _cTokens },
               }),
               signal: _cAc.signal,
             });
@@ -56331,6 +56335,7 @@ function initChatSocketHandlers(io) {
                     {
                       temperature: _streamConsciousParams.temperature || 0.75,
                       maxTokens: _streamMaxTokens,
+                      timeout: resolveChatTimeoutMs(_streamMaxTokens),
                     }
                   ),
                   _llmQueue.PRIORITY.CRITICAL
@@ -56343,7 +56348,8 @@ function initChatSocketHandlers(io) {
                     doneReason: streamResult.doneReason,
                     continueOnce: async (partial) => {
                       const _cAc = new AbortController();
-                      const _cTimeout = setTimeout(() => _cAc.abort(), 60000);
+                      const _cTokens = Math.min(CHAT_CONTINUE_TOKENS, _streamMaxTokens);
+                      const _cTimeout = setTimeout(() => _cAc.abort(), resolveChatTimeoutMs(_cTokens));
                       try {
                         const _cRes = await fetch(`${_streamBrainUrl}/api/chat`, {
                           method: "POST",
@@ -56357,7 +56363,7 @@ function initChatSocketHandlers(io) {
                             ],
                             stream: false,
                             think: false,
-                            options: { temperature: 0.3, num_predict: Math.min(600, _streamMaxTokens) },
+                            options: { temperature: 0.3, num_predict: _cTokens },
                           }),
                           signal: _cAc.signal,
                         });

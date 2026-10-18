@@ -5,12 +5,18 @@
  * That reply was already grounded in retrieved DTUs, so a failed tool
  * (create_dtu → not_formal_intent) came back as unrelated notes. Failures
  * and a plain DTU save are answered from the tool results only.
+ *
+ * A mixed batch (some ok, some failed) is NOT skipped: the model gets the
+ * good results and is told about the failure. create_dtu-only batches still
+ * skip the follow-up because the visible reply is synthesized directly.
  */
 
 export function shouldSkipToolFollowup(results, opts = {}) {
   const list = Array.isArray(results) ? results : [];
   if (!list.length) return false;
   if (list.some((r) => !r?.ok)) {
+    // Mixed batch: let the model use the good results and note the failure.
+    if (list.some((r) => r?.ok && r?.tool !== "create_dtu")) return false;
     if (opts.allowRetry) {
       const retryable = list.every((r) => {
         if (r?.ok) return true;

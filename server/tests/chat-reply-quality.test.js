@@ -1,7 +1,8 @@
 // server/tests/chat-reply-quality.test.js
 //
 // INC-20261010-07. Conversational /api/chat (mode "chat"):
-//   (a) the reply cap comes from CONCORD_CHAT_MAX_TOKENS, default 2000
+//   (a) the reply cap comes from CONCORD_CHAT_MAX_TOKENS, default 4096
+//       (chat-output-depth 2026-10-18 raised the default)
 //   (b) a length-truncated completion is finished or trimmed to a sentence
 //   (c) a two-turn session sends the prior assistant reply exactly once
 //   (d) the chat system prompt keeps the persona formatting rule and does
@@ -26,23 +27,23 @@ import { buildConsciousPrompt } from "../prompts/conscious.js";
 
 const PRIOR_REPLY = "Fire is a reaction. It needs fuel, heat, and oxygen. That's the whole story.";
 
-test("(a) chat max tokens defaults to about 2000 and reads CONCORD_CHAT_MAX_TOKENS", () => {
+test("(a) chat max tokens defaults to 4096 and reads CONCORD_CHAT_MAX_TOKENS", () => {
   const prev = process.env.CONCORD_CHAT_MAX_TOKENS;
   try {
     delete process.env.CONCORD_CHAT_MAX_TOKENS;
-    assert.equal(CHAT_MAX_TOKENS_DEFAULT, 2000);
-    assert.equal(resolveChatMaxTokens(), 2000);
-    assert.equal(resolveChatMaxTokens({ verbosity: 0.5 }), 2000);
-    assert.equal(resolveChatMaxTokens({ verbosity: undefined }), 2000);
-    assert.equal(resolveChatMaxTokens({ env: "" }), 2000);
-    assert.equal(resolveChatMaxTokens({ env: "nope" }), 2000);
-    assert.equal(resolveChatMaxTokens({ env: "0" }), 2000);
+    assert.equal(CHAT_MAX_TOKENS_DEFAULT, 4096);
+    assert.equal(resolveChatMaxTokens(), 4096);
+    assert.equal(resolveChatMaxTokens({ verbosity: 0.5 }), 4096);
+    assert.equal(resolveChatMaxTokens({ verbosity: undefined }), 4096);
+    assert.equal(resolveChatMaxTokens({ env: "" }), 4096);
+    assert.equal(resolveChatMaxTokens({ env: "nope" }), 4096);
+    assert.equal(resolveChatMaxTokens({ env: "0" }), 4096);
     assert.equal(resolveChatMaxTokens({ verbosity: 0.5, env: "3200" }), 3200);
     assert.equal(resolveChatMaxTokens({ verbosity: 1, env: "2000" }), 2800);
     assert.equal(resolveChatMaxTokens({ verbosity: 0, env: "2000" }), 1200);
     process.env.CONCORD_CHAT_MAX_TOKENS = "2400";
     assert.equal(resolveChatMaxTokens({ verbosity: 0.5 }), 2400);
-    assert.ok(resolveChatMaxTokens({ env: "999999" }) <= 8192);
+    assert.ok(resolveChatMaxTokens({ env: "999999" }) <= 16384);
     assert.ok(resolveChatMaxTokens({ env: "10" }) >= 256);
   } finally {
     if (prev == null) delete process.env.CONCORD_CHAT_MAX_TOKENS;

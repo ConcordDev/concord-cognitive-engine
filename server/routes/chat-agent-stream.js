@@ -31,6 +31,7 @@ import { startSSE } from "../lib/sse.js";
 import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
 import { sourcesFromToolCalls, withSourceLinks, writeReceipt, answerLongTaskRoute } from "../lib/chat/agent-route.js";
 import { takePendingLongTaskNotices } from "../lib/long-task.js";
+import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
@@ -104,7 +105,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         runMacro,
         lensActions,
         history,
-        opts: { maxTurns, slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
+        opts: { maxTurns: resolveAgentMaxTurns({ requested: maxTurns }), slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
         onEvent: (type, payload) => {
