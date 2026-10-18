@@ -16,6 +16,7 @@ import { runBuildLoop } from "../lib/build-loop.js";
 // Item 6 — CaMeL: file content fed to the LLM is untrusted data, never instructions.
 import { scanForInjection } from "../lib/provenance-guard.js";
 import { runPython } from "../lib/python-sandbox.js";
+import { runWasmCodeExec, wasmExecEnabled, isCodeExecRole } from "../lib/wasm-code-exec.js";
 // GH-3a — real ranked code retrieval (replaces naive @-mention-or-recency
 // selection in codebase-chat; also the file-manifest source for multi-file-plan
 // when the caller opts into useRetrieval instead of supplying an explicit list).
@@ -607,7 +608,7 @@ export default function registerCodeActions(registerLensAction) {
    * return `{ supported: false }` so the caller can fall back to the broader
    * runner pipeline.
    */
-  registerLensAction("code", "exec-status", () => {
+  registerLensAction("code", "exec-status", (ctx) => {
     const enabled = codeExecEnabled();
     return {
       ok: true,
@@ -616,17 +617,29 @@ export default function registerCodeActions(registerLensAction) {
         reason: enabled
           ? ""
           : "Live code execution is disabled in this environment. Enable with CONCORD_CODE_EXEC_ENABLED=1 (node:vm is not a hardened sandbox).",
+        wasm: {
+          enabled: wasmExecEnabled(),
+          allowed: isCodeExecRole(ctx),
+          languages: ["python", "wat"],
+          roles: ["founder", "sovereign"],
+        },
       },
     };
   });
 
-  registerLensAction("code", "exec", async (_ctx, _artifact, params = {}) => {
+  registerLensAction("code", "exec", async (ctx, _artifact, params = {}) => {
     // Accept `source` as an alias for `code` (the productivity notebook + some callers
     // use `source`). node:vm here is the accepted boundary for a personal JS notebook —
     // no I/O globals + a 4s timeout — not a hardened multi-tenant sandbox.
     const code = String(params.code ?? params.source ?? "");
     const language = String(params.language || "javascript").toLowerCase();
     if (!code.trim()) return { ok: true, result: { stdout: "", stderr: "", exitCode: 0, supported: true } };
+
+    // Founder/sovereign WASM sandbox path (pod-side wasmtime). Takes precedence
+    // when explicitly requested, or when the language is unambiguously WASM-text.
+    if (params.sandbox === "wasm" || language === "wat" || language === "wasm-text") {
+      return runWasmCodeExec(ctx, { code, language: params.language ? language : undefined, timeoutMs: params.timeoutMs });
+    }
 
     if (language === "javascript" || language === "js" || language === "typescript" || language === "ts") {
       if (!codeExecEnabled()) {
@@ -682,6 +695,11 @@ export default function registerCodeActions(registerLensAction) {
       },
     };
   });
+
+  /** Founder/sovereign WASM sandbox path. */
+  registerLensAction("code", "sandbox-exec", (ctx, _artifact, params = {}) =>
+    runWasmCodeExec(ctx, { code: params.code ?? params.source, language: params.language, timeoutMs: params.timeoutMs })
+  );
 
   /**
    * multi-file-plan — Ask the LLM to propose a coherent multi-file edit plan.

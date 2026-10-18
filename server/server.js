@@ -2089,6 +2089,7 @@ const infrastructureConfig = _require("./config/infrastructure.cjs");
 import registerSystemRoutes from "./routes/system.js";
 import { createPodJobsRouter, podJobsEnabled } from "./routes/pod-jobs.js";
 import { podJobs } from "./lib/pod-jobs.js";
+import { wasmExecEnabled, wasmExecSelfTest, CODE_EXEC_ROLES } from "./lib/wasm-code-exec.js";
 import createAuthRouter from "./routes/auth.js";
 import { registerBrainModeRoutes } from "./routes/brain-mode.js";
 import createPersonalLockerRouter from "./routes/personal-locker.js";
@@ -38010,6 +38011,16 @@ if (podJobsEnabled()) {
   setTimeout(() => { _runPodSelfTest().catch(() => {}); }, 30_000).unref();
   setInterval(() => { _runPodSelfTest().catch(() => {}); }, 300_000).unref();
   try { registerStatusProvider("podJobs", () => ({ ...podJobs.stats(), selfTest: _podSelfTest })); } catch { /* status only */ }
+  // PR-10 (WASM code-exec, founder/sovereign only): end-to-end self-test of the WIRED path
+  // (role gate -> pod job "exec" -> pod worker -> wasmtime launcher) incl. no-network / no-env /
+  // no-host-fs / timeout probes. Results only in the status file; kill switch CONCORD_WASM_EXEC_ENABLED=0.
+  if (wasmExecEnabled()) {
+    const _wasmSelfTest = { runs: 0, last: null };
+    const _runWasmSelfTest = async () => { _wasmSelfTest.runs++; _wasmSelfTest.last = await wasmExecSelfTest(); };
+    setTimeout(() => { _runWasmSelfTest().catch(() => {}); }, 60_000).unref();
+    setInterval(() => { _runWasmSelfTest().catch(() => {}); }, 6 * 3600_000).unref();
+    try { registerStatusProvider("codeExec", () => ({ enabled: wasmExecEnabled(), sandbox: "wasm", roles: CODE_EXEC_ROLES, selfTest: _wasmSelfTest })); } catch { /* status only */ }
+  }
   structuredLog("info", "pod_jobs_enabled", {});
 }
 
