@@ -94,6 +94,7 @@ import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
+import { publishableDtuForCaller } from "./lib/public-lattice-access.js";
 import { lookupUserIdentity } from "./lib/user-identity.js";
 import {
   addSpoFact as _inferenceAddSpoFact,
@@ -59787,8 +59788,22 @@ app.get("/api/timeline/diff", (req, res) => {
 });
 
 // ---- Wave 7: Public Lattice Endpoints ----
+// INC-141: publish/unpublish require the DTU write rule (owner, or a
+// platform admin role). Anyone else, and a missing id, get the same 404, so
+// a private DTU can no longer be pushed into GET /api/public[/:id] by a
+// member who does not own it.
+function _publishableDtuOr404(req, res) {
+  const dtu = publishableDtuForCaller(STATE.dtus, req.params.id, makeCtx(req), { authMode: AUTH_MODE });
+  if (!dtu) {
+    res.status(404).json({ ok: false, error: "DTU not found" });
+    return null;
+  }
+  return dtu;
+}
+
 app.post("/api/dtus/:id/publish", requireRole("owner", "admin", "member"), (req, res) => {
   try {
+    if (!_publishableDtuOr404(req, res)) return;
     const result = publishDTU(req.params.id);
     res.json(result);
   } catch (e) {
@@ -59798,6 +59813,7 @@ app.post("/api/dtus/:id/publish", requireRole("owner", "admin", "member"), (req,
 
 app.delete("/api/dtus/:id/publish", requireRole("owner", "admin", "member"), (req, res) => {
   try {
+    if (!_publishableDtuOr404(req, res)) return;
     const result = unpublishDTU(req.params.id);
     res.json(result);
   } catch (e) {
