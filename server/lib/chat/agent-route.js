@@ -373,22 +373,37 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     r = { ok: false, error: String(e?.message || e) };
   }
   // A price/score/news answer with no tool at all is from memory ("Ethereum is at $3,241.18 on
-  // Coinbase as of 10:05 PM" with zero tool calls; invented ESPN finals). Search once more.
+  // Coinbase as of 10:05 PM" with zero tool calls; invented ESPN finals). Run web_search
+  // ourselves and have the loop answer from those results; if that fails, refuse to guess.
   if ((route === "lookup" || route === "web") && r?.ok && !(r.toolCalls || []).some((t) => t && t.ok !== false)
     && needsFreshData(prompt, history)) {
+    const failed = { ...r, answer: "I couldn't get live data for that just now, so I won't guess a number. Try again in a moment." };
+    try {
+      const { executeToolCall } = await import("../chat-agent.js");
+      const query = freshSearchQuery(prompt, history);
+      const tc = await executeToolCall(ctx, runMacro, lensActions, { tool: "web_search", params: { query } });
+      if (tc?.ok) {
+        let listing = "";
+        try { listing = (typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result)).slice(0, 6000); } catch { listing = ""; }
+        const retry = await runMacro("chat_agent", "do", {
+          message: prompt,
+          history: [...agentHistory, { role: "system", content: `web_search results for "${query}" (already run for you; answer only from these rows, name the source and time, include links; do not call web_search again):\n${listing}` }],
+          maxTurns: 2,
+          routeHint: routeHint("web"),
+          voiceBlock: compactVoiceBlock(),
+        }, ctx);
+        r = retry?.ok && String(retry.answer || "").trim() ? { ...retry, toolCalls: [tc, ...(retry.toolCalls || [])] } : { ...failed, toolCalls: [tc] };
+      } else r = failed;
+    } catch { r = failed; }
+  }
+  // Action route: the model answered without trying any write. One more try.
+  if (route === "action" && r?.ok !== undefined && !(r?.toolCalls || []).some((t) => t?.tool === "run_lens_action")) {
     try {
       const retry = await runMacro("chat_agent", "do", {
-        // The prompt alone: an appended instruction was copied into the search query
-        // ("else call web search answer only"). The web route hint carries the instruction.
-        message: webAgentMessage(prompt, history),
-        history: agentHistory,
-        maxTurns: 5,
-        routeHint: routeHint("web"),
-        voiceBlock: compactVoiceBlock(),
+        message: prompt, history: agentHistory, maxTurns: 5, routeHint: routeHint("action"), voiceBlock: compactVoiceBlock(),
       }, ctx);
-      if (retry?.ok && (retry.toolCalls || []).some((t) => t && t.ok !== false)) r = retry;
-      else if (retry?.ok || r) r = { ...r, answer: "I couldn't get live data for that just now, so I won't guess a number. Try again in a moment.", toolCalls: [...(r.toolCalls || []), ...(retry?.toolCalls || [])] };
-    } catch { /* keep the first answer path below */ }
+      if (retry?.ok && (retry.toolCalls || []).some((t) => t?.tool === "run_lens_action")) r = retry;
+    } catch { /* keep the honest failure below */ }
   }
   // The model invented a solver name ("finance.compound_interest", "physics.fuelCost"):
   // retry once on the general evaluator with an explicit expression.
@@ -489,6 +504,20 @@ export function needsFreshData(prompt, history = []) {
   if (p.trim().split(/\s+/).length > 4) return false;
   const prevUser = [...(history || [])].reverse().find((h) => h?.role === "user");
   return Boolean(prevUser && FRESH_RE.test(String(prevUser.content || "")));
+}
+
+const COIN_RE = /\b(?:bitcoin|btc|ethereum|eth|solana|sol|dogecoin|doge|xrp)\b/i;
+/** Search words for a fresh-data retry: "and eth?" after "bitcoin price rn" → "eth price rn". */
+export function freshSearchQuery(prompt, history = []) {
+  const p = String(prompt || "").replace(/^\s*(?:and|what about|how about|ok|so)\s+/i, "").replace(/[?!.]+\s*$/, "").trim();
+  if (p.split(/\s+/).length > 4) return p.slice(0, 200);
+  const prevUser = [...(history || [])].reverse().find((h) => h?.role === "user");
+  if (!prevUser) return p;
+  const have = new Set(p.toLowerCase().split(/\s+/));
+  const extra = String(prevUser.content || "").toLowerCase().split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9']/g, ""))
+    .filter((w) => w && FRESH_RE.test(w) && !COIN_RE.test(w) && !have.has(w));
+  return [p, ...extra].join(" ").slice(0, 200);
 }
 
 /** Chat memory first, then replayed turns, then this turn's DTU notes (formula / recall). */
