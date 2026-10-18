@@ -61,6 +61,14 @@ function titleMatches(candidate, titles) {
 }
 
 const LABELLED_LINE = /^\s*(?:[-*•+]|\d+[.)])?\s*(?:#{1,6}\s*)?\**\s*(?:DTU|Note)\s*(?:#\s*\d+\s*)?[:–—-]\s*\**\s*([^*\n]{2,160}?)\s*\**\s*(?:[—–:]\s|\s-\s|\(|$)/i;
+// A song/receipt line names a real thing the chat made ("Late Night Drives" is ready to play below;
+// Saved in productivity: … id tsk_…). The long-chat probe lost exactly that line on "what song".
+const RECEIPT_LINE = /\bready to play below\b|^\s*Saved in [\w-]+:|\bid (?:tsk|proj|evt|media)[_-]/i;
+function namesKnownTitle(line, titles) {
+  const l = String(line || "").toLowerCase();
+  for (const t of titles) { const s = String(t || "").trim().toLowerCase(); if (s.length >= 4 && l.includes(s)) return true; }
+  return false;
+}
 const QUOTED_REF = /\bDTU\s+(?:titled\s+|called\s+|named\s+)?["“'‘]([^"”'’\n]{3,140})["”'’]/gi;
 
 /** True when the user is asking what their DTUs/substrate contain. */
@@ -94,7 +102,7 @@ export function guardDtuCitations(reply, retrieved, { prompt = "" } = {}) {
   for (const line of lines) {
     const m = line.match(LABELLED_LINE);
     if (m) {
-      if (titleMatches(m[1], titles)) { kept++; dropping = false; out.push(line); }
+      if (titleMatches(m[1], titles) || RECEIPT_LINE.test(line) || namesKnownTitle(line, titles)) { kept++; dropping = false; out.push(line); }
       else { removed.push(m[1].trim()); dropping = true; }
       continue;
     }

@@ -52,6 +52,12 @@ import {
 import { guardPlaybackClaim } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
+import { todayLine } from "./chat/today.js";
+
+/** The user's local date for the agent prompt (never the UTC date). */
+function _agentTodayBlock(opts = {}) {
+  try { return "\n\n" + todayLine(opts.now instanceof Date ? opts.now : new Date(), opts.timeZone || "America/New_York"); } catch { return ""; }
+}
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -1058,7 +1064,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary, ...(artifact ? { artifact } : {}) };
       }
       case "textbook_lookup": {
-        const { textbookLookup } = await import("./openstax-lookup.js");
+        const textbookLookup = typeof ctx?.textbookLookup === "function" ? ctx.textbookLookup : (await import("./openstax-lookup.js")).textbookLookup;
         const book = String(call.params.book || "").trim();
         const r = await textbookLookup(String(call.params.query || ""), {
           ...(book ? { books: [book] } : {}),
@@ -1658,7 +1664,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const extraSystemBlock = typeof opts.extraSystemBlock === "string" ? opts.extraSystemBlock : "";
 
   const messages = [
-    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock + extraSystemBlock }) },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock + _agentTodayBlock(opts) + extraSystemBlock }) },
     ...history,
     { role: "user", content: message },
   ];
@@ -1710,6 +1716,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
   const ctx = {
     db,
+    // Tests inject a fixed OpenStax lookup; production uses openstax-lookup.js.
+    ...(typeof opts.textbookLookup === "function" ? { textbookLookup: opts.textbookLookup } : {}),
     // Original user sentence — create_dtu reads this to keep an explicit
     // "titled … with content …" title/body verbatim when the model shortens them.
     userPrompt: message,

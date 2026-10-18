@@ -32,7 +32,10 @@ describe("runAgentLoop textbook → web_search", () => {
       if (d === "expert_mode" && a === "web_search") { seen.push(input.query); return { ok: true, results: [{ title: "Steel modulus", url: "https://e.com/steel", snippet: "Young's modulus of steel 200 GPa" }] }; }
       return { ok: true };
     };
-    const out = await runAgentLoop({ db, userId: "u1", message: "Young's modulus of steel per a textbook?", runMacro, lensActions: new Map(), opts: { brainChat: brain, shadowContext: false, actionMemory: false } });
+    // Fixed OpenStax result (the live index now returns a passage that names steel's modulus,
+    // which made this test depend on the network and fail on main).
+    const textbookLookup = async (query) => ({ ok: true, query, results: [{ book: "University Physics Volume 1", section: "12.3 Stress, Strain, and Elastic Modulus", url: "https://openstax.org/x", passage: "a large value of elastic modulus means the effect of stress is small", attribution: "OpenStax" }] });
+    const out = await runAgentLoop({ db, userId: "u1", message: "Young's modulus of steel per a textbook?", runMacro, lensActions: new Map(), opts: { brainChat: brain, shadowContext: false, actionMemory: false, textbookLookup } });
     const tools = out.toolCalls.map((t) => t.tool);
     assert.deepEqual(tools, ["textbook_lookup", "web_search"]);
     assert.equal(seen[0], "Young's modulus of steel");

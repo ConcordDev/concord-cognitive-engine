@@ -27462,6 +27462,8 @@ sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
 // whole persisted transcript (chat_messages), not just the 60 in-memory rows. Injected as a
 // system note on both the agent route and the conversational path.
 let _chatMemory = { text: "", userTurns: 0 };
+let _chatTodayLine = "";
+try { _chatTodayLine = (await import("./lib/chat/today.js")).todayLine(new Date(), String(localSettings?.timezone || "America/New_York")); } catch { _chatTodayLine = ""; }
 let _chatMemoryLib = null;
 try {
   _chatMemoryLib = await import("./lib/chat/session-memory.js");
@@ -27654,7 +27656,7 @@ const _lowPrompt = tokenish(prompt);
 const _isTimeQuery = (s) => {
   const t = tokenish(s);
   if (t.includes("time complexity") || t.includes("runtime")) return false;
-  return /\b(what time|current time|time is it|date today|today's date|what day|day is it)\b/i.test(String(s||""));
+  return /\b(what time|current time|time is it|date today|today'?s date|what(?:'?s| is) the date|what day|day is it)\b/i.test(String(s||""));
 };
 // "Generate an image of a red fox in fresh snow" is not a weather question
 // (chat-par probe 2026-10-17: it answered "Weather lookup failed for fresh snow at sunrise").
@@ -27664,9 +27666,8 @@ const _extractLocation = (s) => _extractWeatherLocation(s);
 
 if (_isTimeQuery(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
-  const t = getTimeInfo(tz);
-  const reply = `Local time (${tz}): ${t.localTime}
-ISO: ${t.nowISO}`;
+  const { timeReply } = await import("./lib/chat/today.js");
+  const reply = timeReply(new Date(), tz);
   sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"time" } });
   _persistDeterministicTurn(reply, { llmUsed: false, source: "time" });
   saveStateDebounced();
@@ -29207,6 +29208,7 @@ ${_operatorV6Block}` : "";
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
     if (_chatMemory.text) messages = [{ role: "system", content: _chatMemory.text }, ...messages];
+    if (_chatTodayLine) messages = [{ role: "system", content: _chatTodayLine }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
@@ -29293,6 +29295,7 @@ ${_operatorV6Block}` : "";
       const _directMessages = [
         { role: "system", content: _directSystem },
         ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
+        ...(_chatTodayLine ? [{ role: "system", content: _chatTodayLine }] : []),
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
       const _directAc = new AbortController();
