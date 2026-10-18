@@ -1619,6 +1619,11 @@ export function formatToolResults(results) {
  *   but a bad callback must never abort the agent's actual work.
  * @returns {Promise<{ok, answer, toolCalls, artifacts, turns, provider, model, error?}>}
  */
+function _dtuSnippet(d, n) {
+  const raw = d?.snippet || d?.human?.summary || d?.cretiHuman || d?.creti || (typeof d?.content === "string" ? d.content : "") || "";
+  return String(raw).replace(/\s+/g, " ").trim().slice(0, n);
+}
+
 export async function runAgentLoop({ db, userId, message, runMacro, lensActions, history = [], opts = {}, onEvent = null }) {
   // A recap may say "I made you a song" when this chat really did (earlier receipt / memory note).
   const _priorSong = historyHasSong(history);
@@ -1704,10 +1709,40 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       contextDtus = dtus.map((d) => ({ id: d.id, title: d.title || d.id }));
       if (dtus.length > 0) {
         shadowContextBlock = `\n\n--- Active substrate context (auto-pulled) ---\n${
-          dtus.map((d, i) => `[${i + 1}] ${d.title || d.id} (tier: ${d.tier || "regular"})`).join("\n")
+          dtus.map((d, i) => {
+            const sn = _dtuSnippet(d, 200);
+            return `[${i + 1}] ${d.title || d.id} (tier: ${d.tier || "regular"})${sn ? `: ${sn}` : ""}`;
+          }).join("\n")
         }\n--- end context ---`;
       }
     } catch { /* harvest optional */ }
+  }
+
+  // Real memory: the user's own most relevant DTUs WITH their content
+  // (semantic search over personal scope) and this chat session's
+  // compressed conversation memory — not just titles. Best-effort; a
+  // missing recall function or an embeddings outage just skips it.
+  let memoryBlock = "";
+  if (opts.memory !== false && userId) {
+    try {
+      const recall = opts.recallMemory || globalThis.__concordRecallMemory;
+      if (typeof recall === "function") {
+        const mem = await recall({ query: opts.memoryQuery || message, userId, sessionId: opts.sessionId || null, limit: Number(opts.memoryK) || 5 });
+        const seen = new Set(contextDtus.map((d) => d.id));
+        const dtusM = (mem?.dtus || []).filter((d) => d?.id && !seen.has(d.id));
+        const lines = [];
+        if (dtusM.length) {
+          lines.push("--- From your saved DTUs (most relevant first; use them when they help, cite by title) ---");
+          dtusM.forEach((d, i) => lines.push(`[M${i + 1}] ${d.title}${d.snippet ? `: ${d.snippet}` : ""}`));
+          contextDtus = [...contextDtus, ...dtusM.map((d) => ({ id: d.id, title: d.title }))];
+        }
+        if (Array.isArray(mem?.session) && mem.session.length) {
+          lines.push("--- Earlier in this conversation (compressed memory) ---");
+          mem.session.forEach((d) => lines.push(`- ${d.snippet || d.title}`));
+        }
+        if (lines.length) memoryBlock = `\n\n${lines.join("\n").slice(0, 4000)}\n--- end memory ---`;
+      }
+    } catch { /* memory optional */ }
   }
 
   // Item 2 — long-term action memory recall ("last time you did X" grounding,
@@ -1729,7 +1764,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const extraSystemBlock = typeof opts.extraSystemBlock === "string" ? opts.extraSystemBlock : "";
 
   const messages = [
-    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock + _agentTodayBlock(opts) + extraSystemBlock }) },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + memoryBlock + actionRecallBlock + _agentTodayBlock(opts) + extraSystemBlock }) },
     ...history,
     { role: "user", content: message },
   ];

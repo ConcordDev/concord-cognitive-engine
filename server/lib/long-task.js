@@ -196,6 +196,7 @@ function summarizeJob(db, session) {
     ...(meta.report ? { report: meta.report } : {}),
     ...(meta.goalTreeId ? { goalTreeId: meta.goalTreeId, plan: _planSummary ? _planSummary(db, meta) : null } : {}),
     ...(Array.isArray(meta.citationDtuIds) ? { citationDtus: meta.citationDtuIds.length } : {}),
+    ...(Array.isArray(meta.findingsDtuIds) ? { findingsDtus: meta.findingsDtuIds.length } : {}),
   };
 }
 
@@ -241,7 +242,7 @@ export function formatLongTaskStatus(status) {
   if (!status?.ok) return status?.reason === "job_not_found" ? "I couldn't find that background job." : "I couldn't read your background jobs right now.";
   if (!status.jobs.length) return "You don't have any background jobs yet.";
   return status.jobs.map((j) => {
-    const head = `• "${j.title}" (job ${j.jobId}) is ${j.status}: ${j.steps} tool step${j.steps === 1 ? "" : "s"} over ${j.turns} of ${j.maxTurns} turns${j.budgetCap ? `, budget ${j.budgetSpent}/${j.budgetCap}` : ""}${j.citationDtus ? `, ${j.citationDtus} citation DTU${j.citationDtus === 1 ? "" : "s"}` : ""}.`;
+    const head = `• "${j.title}" (job ${j.jobId}) is ${j.status}: ${j.steps} tool step${j.steps === 1 ? "" : "s"} over ${j.turns} of ${j.maxTurns} turns${j.budgetCap ? `, budget ${j.budgetSpent}/${j.budgetCap}` : ""}${j.citationDtus ? `, ${j.citationDtus} citation DTU${j.citationDtus === 1 ? "" : "s"}` : ""}${j.findingsDtus ? `, ${j.findingsDtus} findings DTU${j.findingsDtus === 1 ? "" : "s"} saved` : ""}.`;
     const tail = j.report?.downloadUrl ? `\n  Report: ${j.report.filename || "report"} ${j.report.downloadUrl}` : "";
     const planLines = j.plan ? `\n  ${formatPlanLines(j.plan)}` : "";
     const note = j.lastNote ? `\n  Latest: ${j.lastNote.replace(/\s+/g, " ").slice(0, 400)}` : "";
