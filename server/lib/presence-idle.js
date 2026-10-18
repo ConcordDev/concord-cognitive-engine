@@ -201,6 +201,68 @@ export function markLagProbe(name) {
   globalThis.__lastLagProbeName = name;
 }
 
+// INC-100 — real lag attribution.
+//
+// "Last timer that fired" is the wrong culprit: the 100ms presence timer
+// fires ~50x per 5s window, so it was blamed for every stall even when it
+// returned at its idle gate in microseconds (and the 30s detector stamped
+// itself just before reading, so it always blamed "lag_detector"). Instead,
+// instrumented subsystems record how long their synchronous work actually
+// ran (recordLagWork / timeLagWork), HTTP requests record their wall span
+// (recordLagHttp), and getLagCulprit() picks the longest synchronous run that
+// ended inside the stall window. If nothing instrumented ran long enough to
+// explain the stall, the culprit is "unattributed" and the overlapping
+// requests are listed as candidates (a sync better-sqlite3 scan inside a
+// request handler shows up there).
+const _LAG_RING = 128;
+const _lagWork = [];   // { name, ms, end }
+const _lagHttp = [];   // { name, start, end }
+const _push = (arr, e) => { arr.push(e); if (arr.length > _LAG_RING) arr.shift(); };
+
+/** Record that `name` ran synchronously for `ms` (ending now). Sub-5ms runs are ignored. */
+export function recordLagWork(name, ms, end = Date.now()) {
+  const v = Number(ms);
+  if (!Number.isFinite(v) || v < 5) return;
+  _push(_lagWork, { name: String(name || "unknown"), ms: Math.round(v), end });
+}
+
+/** Run `fn` synchronously and record its duration under `name`. Returns fn's result. */
+export function timeLagWork(name, fn) {
+  const t0 = performance.now();
+  try { return fn(); } finally { recordLagWork(name, performance.now() - t0); }
+}
+
+/** Record one HTTP request's wall-clock span (start/end ms epoch). */
+export function recordLagHttp(name, start, end = Date.now()) {
+  if (!Number.isFinite(start) || end - start < 50) return;
+  _push(_lagHttp, { name: String(name || "?").slice(0, 96), start, end });
+}
+
+/**
+ * Attribute a stall of `stallMs` observed in the last `windowMs`.
+ * @returns {{ culprit: string, culpritMs: number|null, candidates: string[] }}
+ */
+export function getLagCulprit({ windowMs = 5000, stallMs = 0, now = Date.now() } = {}) {
+  const since = now - windowMs - Math.max(0, stallMs);
+  let best = null;
+  for (const w of _lagWork) {
+    if (w.end < since) continue;
+    if (!best || w.ms > best.ms) best = w;
+  }
+  // A run explains the stall only if it is a meaningful share of it.
+  const floor = Math.max(50, Math.min(stallMs * 0.25, 1000));
+  const culprit = best && best.ms >= floor ? best.name : "unattributed";
+  const candidates = _lagHttp
+    .filter((h) => h.end >= since)
+    .sort((a, b) => (b.end - b.start) - (a.end - a.start))
+    .slice(0, 3)
+    .map((h) => `${h.name} (${h.end - h.start}ms)`);
+  return { culprit, culpritMs: best ? best.ms : null, candidates };
+}
+
+/** Test-only. */
+export function _resetLagAttributionForTest() { _lagWork.length = 0; _lagHttp.length = 0; }
+
 
 /**
  * Wrap a function so it both runs and records it as the most recent

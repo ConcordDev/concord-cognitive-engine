@@ -9511,6 +9511,12 @@ initMetrics();
 
 // Metrics middleware
 function metricsMiddleware(req, res, next) {
+  // INC-100: record each request's wall span so a loop stall can list the
+  // requests that overlapped it (sync better-sqlite3 scans inside handlers).
+  const _lagStart = Date.now();
+  res.on("finish", () => {
+    try { presenceIdle.recordLagHttp(`${req.method} ${String(req.originalUrl || req.url || "").split("?")[0]}`, _lagStart); } catch (_e) { /* informational */ }
+  });
   if (!METRICS.enabled) return next();
   const start = Date.now();
   res.on("finish", () => {
@@ -9527,9 +9533,13 @@ function metricsMiddleware(req, res, next) {
 // when no users are present, defer them too. Saves one synchronous
 // STATE.dtus.values() + world_npcs SQL query every 30 seconds.
 _unrefInTest(setInterval(() => {
-  // Sprint 60+ — lag probe
-  try { presenceIdle.markLagProbe("density_gauges"); } catch (_e) { /* observed: presenceIdle not initialized yet — defensive guard */ }
   if (!presenceIdle.shouldRunHeavyMaintenance()) return;
+  // INC-100: mark after the idle gate; duration recorded below.
+  try { presenceIdle.markLagProbe("density_gauges"); } catch (_e) { /* observed: presenceIdle not initialized yet — defensive guard */ }
+  const _lagT0 = performance.now();
+  try { _densityGaugesTick(); } finally { try { presenceIdle.recordLagWork("density_gauges", performance.now() - _lagT0); } catch (_e) { /* informational */ } }
+}, 30_000));
+function _densityGaugesTick() {
   // Report real DTU count (excluding shadow/repair/system DTUs) to Prometheus
   if (METRICS.gauges.dtuCount) {
     const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
@@ -9566,7 +9576,7 @@ _unrefInTest(setInterval(() => {
       METRICS.gauges.worldShardActiveCount.set(active);
     }
   } catch { /* density gauges best-effort */ }
-}, 30_000));
+}
 
 // ---- Backup & Restore ----
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(DATA_DIR, "backups");
@@ -75613,21 +75623,22 @@ try {
   // means each tick has a fresh window to be observed in.
   setInterval(() => {
     try {
-      // Sprint 60+ — lag probe self-attribute
-      try { presenceIdle.markLagProbe("lag_detector"); } catch (_e) { /* observed: presenceIdle not initialized yet — defensive guard */ }
+      // INC-100: no self-stamp here (it made every spike blame "lag_detector");
+      // attribute by measured synchronous duration instead.
       const maxNs = histogram.max;
       if (Number.isFinite(maxNs) && maxNs > LAG_THRESHOLD_NS) {
-        // Sprint 60+ — capture which subsystem was running. globalThis
-        // __lastLagProbeName is set by registerLagProbe callers.
-        const culprit = (globalThis.__lastLagProbeName && (Date.now() - (globalThis.__lastLagProbeTs || 0) < 30_000))
-          ? globalThis.__lastLagProbeName
-          : "unknown";
+        const maxMs = Math.round(maxNs / 1e6);
+        let attr = { culprit: "unknown", culpritMs: null, candidates: [] };
+        try { attr = presenceIdle.getLagCulprit({ windowMs: 30_000, stallMs: maxMs }); } catch (_e) { /* informational */ }
         structuredLog("warn", "event_loop_lag_spike", {
-          maxMs: Math.round(maxNs / 1e6),
+          maxMs,
           meanMs: Math.round(histogram.mean / 1e6),
           p99Ms: Math.round(histogram.percentile(99) / 1e6),
           windowSeconds: 30,
-          culprit,
+          culprit: attr.culprit,
+          culpritMs: attr.culpritMs,
+          candidates: attr.candidates,
+          lastTimer: globalThis.__lastLagProbeName || null,
         });
       }
       histogram.reset();
@@ -75651,14 +75662,18 @@ try {
         // log the first spike, then every 6th (~30s) while it persists, so a
         // sustained overload is one line/30s not a flood.
         if (_burstSpikeStreak === 1 || _burstSpikeStreak % 6 === 0) {
-          const culprit = (globalThis.__lastLagProbeName && (Date.now() - (globalThis.__lastLagProbeTs || 0) < 10_000))
-            ? globalThis.__lastLagProbeName : "concurrent_request_load?";
+          const maxMs = Math.round(maxNs / 1e6);
+          let attr = { culprit: "unknown", culpritMs: null, candidates: [] };
+          try { attr = presenceIdle.getLagCulprit({ windowMs: 5_000, stallMs: maxMs }); } catch (_e) { /* informational */ }
           structuredLog("warn", "event_loop_burst_lag", {
-            maxMs: Math.round(maxNs / 1e6),
+            maxMs,
             p99Ms: Math.round(_burstHist.percentile(99) / 1e6),
             windowSeconds: 5,
             consecutiveWindows: _burstSpikeStreak,
-            culprit,
+            culprit: attr.culprit,
+            culpritMs: attr.culpritMs,
+            candidates: attr.candidates,
+            lastTimer: globalThis.__lastLagProbeName || null,
           });
         }
       } else {
