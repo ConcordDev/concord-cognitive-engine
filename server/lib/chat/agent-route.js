@@ -16,6 +16,7 @@
 // loop (chat_agent.do). Everything else keeps the conversational path.
 // CONCORD_CHAT_AGENT_ROUTE=0 turns the routing off.
 
+import { resolveDueDate } from "./today.js";
 import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js";
 import { compactVoiceBlock } from "../../prompts/voice.js";
 import { parseExplicitDtuSave } from "./dtu-save-intent.js";
@@ -358,6 +359,8 @@ export function withSourceLinks(reply, sources) {
  */
 export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [] }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
+  const status = writeStatusReply(prompt, history);
+  if (status) return { reply: status, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus });
   let r = null;
   try {
@@ -404,6 +407,19 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       }, ctx);
       if (retry?.ok && (retry.toolCalls || []).some((t) => t?.tool === "run_lens_action")) r = retry;
     } catch { /* keep the honest failure below */ }
+  }
+  if (route === "action" && !(r?.toolCalls || []).some((t) => t?.tool === "run_lens_action" && t.ok !== false) && isTaskAddAsk(prompt)) {
+    const fields = parseTaskAsk(prompt);
+    if (fields) {
+      try {
+        const { executeToolCall } = await import("../chat-agent.js");
+        const tc = await executeToolCall(ctx, runMacro, lensActions, { tool: "run_lens_action", params: { domain: "productivity", action: "task-add", params: fields } });
+        const prior = (r?.toolCalls || []).filter(Boolean);
+        r = tc?.ok !== false
+          ? { ...(r || {}), ok: true, answer: "done", toolCalls: [...prior, { ...tc, domain: tc.domain || "productivity", action: tc.action || "task-add" }] }
+          : { ...(r || {}), ok: true, answer: `I couldn't add that task, so nothing was created. The tasks tool said: ${String(tc?.error || "unknown error").slice(0, 200)}.`, toolCalls: [...prior, tc] };
+      } catch { /* fall through to the honest failure */ }
+    }
   }
   // The model invented a solver name ("finance.compound_interest", "physics.fuelCost"):
   // retry once on the general evaluator with an explicit expression.
@@ -466,12 +482,13 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     if (receipt) answer = receipt;
     // No write ran, yet the reply says it did: "Task added (ID: tsk_…)" with an
     // invented id and nothing stored (long-chat probe 2026-10-17).
-    else if (WRITE_CLAIM_RE.test(answer)) answer = "I couldn't complete that, so nothing was created or saved. No write tool ran. Try again and I'll add it.";
+    else if (WRITE_CLAIM_RE.test(answer) && !NOTHING_SAVED_RE.test(answer)) answer = "I couldn't complete that, so nothing was created or saved. No write tool ran. Try again and I'll add it.";
   }
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
   // tool returned. Anything else is invented.
   // DTUs named in the chat memory note or the recall list are real and may be cited.
-  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || []), { prompt });
+  answer = stripInventedToolErrors(answer, toolCalls);
+  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || [], historyItemTitles(history)), { prompt });
   const sources = sourcesFromToolCalls(toolCalls);
   let replyText = g.text;
   // Math/physics: cite the formula DTU when a solver actually produced the numbers.
@@ -518,6 +535,69 @@ export function freshSearchQuery(prompt, history = []) {
     .map((w) => w.replace(/[^a-z0-9']/g, ""))
     .filter((w) => w && FRESH_RE.test(w) && !COIN_RE.test(w) && !have.has(w));
   return [p, ...extra].join(" ").slice(0, 200);
+}
+
+const NOTHING_SAVED_RE = /\bnothing was (?:created|saved|added)\b|\bcouldn'?t (?:add|save|create|complete)\b/i;
+const TASK_ADD_RE = /\b(?:add|create|make|put|set)\b[^.?!]{0,30}\b(?:task|todo|to-do|reminder)s?\b/i;
+/** "add a task to my tasks: call mom sunday" — a plain task-creation ask. */
+export function isTaskAddAsk(prompt) {
+  const p = String(prompt || "");
+  return TASK_ADD_RE.test(p) && !/\b(?:did|was|has|list|show|delete|remove|complete|done with)\b/i.test(p.split(/[:]/)[0]);
+}
+/** {content, dueDate?} from a task ask; the user's own words for the content. */
+export function parseTaskAsk(prompt, now = new Date(), timeZone = "America/New_York") {
+  const p = String(prompt || "").trim();
+  let content = "";
+  const colon = p.match(/\b(?:task|todo|to-do|reminder)s?\b[^:]{0,40}:\s*(.+)$/i);
+  if (colon) content = colon[1];
+  else {
+    const m = p.match(/\b(?:task|todo|to-do|reminder)s?\s+(?:(?:to|for)\s+(?:me\s+)?(?:to\s+)?)?(.+)$/i);
+    if (m) content = m[1];
+  }
+  content = content.replace(/\s+(?:to|on|in)\s+my\s+(?:tasks?|list|to-?do(?:\s+list)?)\s*$/i, "").replace(/[.!]+$/, "").trim();
+  if (!content) return null;
+  const dueDate = resolveDueDate(content, now, timeZone);
+  return { content: content.slice(0, 500), ...(dueDate ? { dueDate } : {}) };
+}
+
+const WRITE_STATUS_RE = /\b(?:did|was|has|have)\b[^?.!]{0,60}\b(?:get|got|been|actually|go)?\s*(?:added|saved|created|stored|go(?:ne)? through|made it)\b/i;
+/**
+ * "did the mom task get added?" answered from this chat's own receipts, not the model:
+ * the long-chat probe got an invented 'missing required field "dueDate"' for a write
+ * that never ran.
+ */
+export function writeStatusReply(prompt, history = []) {
+  if (!WRITE_STATUS_RE.test(String(prompt || ""))) return null;
+  const wantsTask = /\b(?:task|todo|to-do|reminder)\b/i.test(prompt);
+  if (!wantsTask) return null;
+  for (const h of [...(history || [])].reverse()) {
+    if (h?.role !== "assistant") continue;
+    const c = String(h.content || "");
+    const saved = c.match(/Saved in ([\w-]+): "([^"\n]{1,160})" \(id ([\w-]+)([^)]*)\)/);
+    if (saved && (!wantsTask || saved[1] === "productivity")) return `Yes. "${saved[2]}" was saved in ${saved[1]} (id ${saved[3]}${saved[4] || ""}).`;
+    if (NOTHING_SAVED_RE.test(c)) return "No. Nothing was saved for that request: no write succeeded, so there's no task or error to report. Want me to add it now?";
+  }
+  return null;
+}
+
+// "The system returned an error: missing required field" with no failed tool this turn is invented.
+const TOOL_ERROR_CLAIM_RE = /[^.!?\n]*(?:\b(?:returned|threw|gave|got|hit|failed with)\s+(?:an?\s+)?error\b|missing required (?:field|param\w*)|\bvalidation error\b)[^.!?\n]*[.!?]?/gi;
+export function stripInventedToolErrors(answer, toolCalls = []) {
+  if ((toolCalls || []).some((t) => t && t.ok === false)) return answer;
+  const out = String(answer || "").replace(TOOL_ERROR_CLAIM_RE, "").replace(/[ \t]{2,}/g, " ").trim();
+  return out === String(answer || "").trim() ? answer : (out || "No tool ran for that, so there's no error to report.");
+}
+
+/** Titles of songs/items this chat already made, from earlier receipts in the history. */
+export function historyItemTitles(history = []) {
+  const out = [];
+  for (const h of history || []) {
+    if (h?.role !== "assistant") continue;
+    const c = String(h.content || "");
+    for (const m of c.matchAll(/["“]([^"”\n]{2,120})["”] (?:is|are) ready to play below/g)) out.push({ title: m[1] });
+    for (const m of c.matchAll(/Saved in [\w-]+: "([^"\n]{1,160})" \(id ([\w-]+)/g)) out.push({ title: m[1], id: m[2] });
+  }
+  return out;
 }
 
 /** Chat memory first, then replayed turns, then this turn's DTU notes (formula / recall). */
