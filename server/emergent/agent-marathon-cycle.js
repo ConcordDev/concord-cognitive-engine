@@ -17,6 +17,14 @@ import { LruMap } from "../lib/lru-map.js";
 const MAX_PER_PASS = 3;
 const MAX_REGOAL_PER_PASS = 2;
 const MAX_LONG_TICKS_PER_PASS = 2;
+
+/** The project a marathon is linked to (newest link), or null. */
+export function linkedProjectId(db, sessionId) {
+  try {
+    const row = db.prepare(`SELECT project_id AS projectId FROM project_marathon_links WHERE marathon_session_id = ? ORDER BY linked_at DESC LIMIT 1`).get(sessionId);
+    return row?.projectId || null;
+  } catch { return null; }
+}
 const TERMINAL_STATUSES = new Set(["completed", "abandoned", "failed", "revoked"]);
 
 // Wave 7 / E2 — per-session prior affect cache so the salience gate can detect spikes
@@ -144,9 +152,13 @@ export async function runAgentMarathonCycle({ db } = {}) {
         // agent stays on cheap instinct (no LLM loop); a spike/dilemma wakes it. The
         // gate also drives the B6 awareness loop. Null gate (human marathon) → ungated.
         const salienceGate = buildSalienceGate(db, id);
+        // A marathon linked to a project (project_marathon_links, mig 378)
+        // ticks against that project's goal tree: plan context, plan-sync
+        // and the replanner all key off opts.projectId.
+        const projectId = linkedProjectId(db, id);
         const r = await tickMarathon({
           db, sessionId: id, runMacro, lensActions,
-          opts: { tickTurns: 3, ...(salienceGate ? { salienceGate } : {}) },
+          opts: { tickTurns: 3, ...(salienceGate ? { salienceGate } : {}), ...(projectId ? { projectId } : {}) },
         });
         if (r.ok) advanced++;
         if (r.deliberated === false) onInstinct++;

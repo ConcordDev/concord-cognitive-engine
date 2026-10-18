@@ -192,8 +192,9 @@ describe("long-task pump (runs while the site is idle)", () => {
     const a = startLongTask(db, { userId: "u1", goal: "research servos and write me a report" });
     const b = startLongTask(db, { userId: "u1", goal: "research motors and write me a report" });
     const c = startLongTask(db, { userId: "u2", goal: "research gears and write me a report" });
-    const plain = startMarathon(db, { userId: "u3", title: "plain", goal: "plain marathon" });
+    const plain = startMarathon(db, "u3", { title: "plain", goal: "plain marathon" });
     db.prepare(`UPDATE agent_marathon_sessions SET status='running', next_tick_at=0 WHERE id=?`).run(plain.sessionId);
+    assert.ok(plain.sessionId);
     const due = findDueLongTasks(db, 10).map((r) => r.id);
     assert.ok(due.includes(a.jobId) && due.includes(b.jobId) && due.includes(c.jobId));
     assert.ok(!due.includes(plain.sessionId));

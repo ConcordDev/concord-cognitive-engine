@@ -117,10 +117,31 @@ export function kickLongTask({ db, jobId, runMacro, lensActions }) {
   if (!db || !jobId || typeof runMacro !== "function") return false;
   setTimeout(() => {
     import("./agent-marathon.js")
-      .then(({ tickMarathon }) => tickMarathon({ db, sessionId: jobId, runMacro, lensActions: lensActions || new Map(), opts: { tickTurns: LONG_TASK_DEFAULTS.tickTurns } }))
-      .catch(() => { /* the heartbeat retries */ });
+      .then(({ tickMarathon }) => tickLongTask({ db, jobId, runMacro, lensActions, tick: tickMarathon }))
+      .catch(() => { /* the pump retries */ });
   }, 50);
   return true;
+}
+
+/**
+ * One tick of a long task. The first time, the goal is decomposed into a goal
+ * tree + linked project + dated plan (lib/long-task-plan.js) so this and every
+ * later tick runs with the plan context, plan-sync and the replanner.
+ */
+export async function tickLongTask({ db, jobId, runMacro, lensActions, tick, brainChat = null, planner = null }) {
+  let meta = {};
+  try { meta = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(jobId)?.meta_json || "{}") || {}; } catch { meta = {}; }
+  if (!meta.planAttemptedAt && process.env.CONCORD_LONG_TASK_PLAN !== "0") {
+    try {
+      const planFn = planner || (await import("./long-task-plan.js")).planLongTask;
+      const r = await planFn(db, { jobId, lensActions, ...(brainChat ? { brain: brainChat } : {}) });
+      if (r?.projectId) meta.projectId = r.projectId;
+    } catch { /* the job runs unplanned */ }
+  }
+  return tick({
+    db, sessionId: jobId, runMacro, lensActions: lensActions || new Map(),
+    opts: { tickTurns: LONG_TASK_DEFAULTS.tickTurns, ...(meta.projectId ? { projectId: meta.projectId } : {}), ...(brainChat ? { brainChat } : {}) },
+  });
 }
 
 /** Real tool calls the job has dispatched (forensic log, else the stored turns). */
@@ -173,9 +194,26 @@ function summarizeJob(db, session) {
     completedAt: session.completed_at || null,
     lastNote: last ? cleanAnswer(last.content).slice(0, session.status === "completed" ? 6000 : 800) : "",
     ...(meta.report ? { report: meta.report } : {}),
-    ...(meta.goalTreeId ? { goalTreeId: meta.goalTreeId } : {}),
+    ...(meta.goalTreeId ? { goalTreeId: meta.goalTreeId, plan: _planSummary ? _planSummary(db, meta) : null } : {}),
     ...(Array.isArray(meta.citationDtuIds) ? { citationDtus: meta.citationDtuIds.length } : {}),
   };
+}
+
+let _planSummary = null;
+import("./long-task-plan.js").then((m) => { _planSummary = m.planSummary; }).catch(() => {});
+
+/** Plan lines (subgoal progress, dated milestones, tasks) for replies. */
+export function formatPlanLines(plan, { full = false } = {}) {
+  if (!plan) return "";
+  const out = [`Plan: ${plan.done}/${plan.total} subgoals done${plan.tasks ? `, ${plan.tasks} task${plan.tasks === 1 ? "" : "s"} on your calendar` : ""}${plan.timeBlocks ? ` (${plan.timeBlocks} time-blocked)` : ""}.`];
+  const fmt = (ts) => new Date(ts * 1000).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  if (plan.milestones?.length) {
+    const ms = full ? plan.milestones : plan.milestones.slice(0, 8);
+    for (const m of ms) out.push(`  - ${fmt(m.dueTs)}: ${m.title}${m.status && m.status !== "pending" ? ` (${m.status})` : ""}`);
+  } else if (plan.next?.length) {
+    out.push(`  Next: ${plan.next.join("; ")}`);
+  }
+  return out.join("\n");
 }
 
 /** Status of one job (owner only) or the user's 3 most recent long tasks. */
@@ -205,14 +243,15 @@ export function formatLongTaskStatus(status) {
   return status.jobs.map((j) => {
     const head = `• "${j.title}" (job ${j.jobId}) is ${j.status}: ${j.steps} tool step${j.steps === 1 ? "" : "s"} over ${j.turns} of ${j.maxTurns} turns${j.budgetCap ? `, budget ${j.budgetSpent}/${j.budgetCap}` : ""}${j.citationDtus ? `, ${j.citationDtus} citation DTU${j.citationDtus === 1 ? "" : "s"}` : ""}.`;
     const tail = j.report?.downloadUrl ? `\n  Report: ${j.report.filename || "report"} ${j.report.downloadUrl}` : "";
+    const planLines = j.plan ? `\n  ${formatPlanLines(j.plan)}` : "";
     const note = j.lastNote ? `\n  Latest: ${j.lastNote.replace(/\s+/g, " ").slice(0, 400)}` : "";
-    return head + tail + note;
+    return head + tail + planLines + note;
   }).join("\n");
 }
 
 const MODE_RULES = {
   research: "- Research: use web_search with short queries (3-6 plain words, e.g. 'MG90S servo review'; long keyword lists find nothing) and vary them, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
-  plan: "- Planning: break the goal into concrete, dated steps with durations. Put real dates on them (today is in the system note above).",
+  plan: "- Planning: the goal tree, dated milestones and calendar tasks were created when the job started (see the linked project plan). Work through the subgoals: for each, research what's needed (parts with prices, tools, steps, risks) and mark it done with its [SUBGOAL_COMPLETE: id] marker. The final deliverable is the full day-by-day plan with real dates, parts list and checkpoints.",
   code: "- Coding: write the code and run it (run_python, or run_lens_action code.build) to check it works before you report it. Show the final code.",
   general: "",
 };
@@ -269,7 +308,9 @@ export async function deliverLongTaskResult(db, sessionId) {
   else head = `Background job ended early: "${session.title}" (job ${sessionId}) hit its turn or budget limit after ${steps} tool steps. Here is what it had so far.`;
   const reportLine = meta.report?.downloadUrl ? `\n\nReport: ${meta.report.filename || "report"} ${meta.report.downloadUrl}` : "";
   const citeLine = Array.isArray(meta.citationDtuIds) && meta.citationDtuIds.length ? `\nSaved ${meta.citationDtuIds.length} citation DTU${meta.citationDtuIds.length === 1 ? "" : "s"}.` : "";
-  const text = `${head}${reportLine}${citeLine}\n\n${body}`.trim().slice(0, 12000);
+  let planBlock = "";
+  try { const ps = meta.goalTreeId && _planSummary ? _planSummary(db, meta) : null; if (ps) planBlock = `\n${formatPlanLines(ps, { full: true })}`; } catch { /* optional */ }
+  const text = `${head}${reportLine}${citeLine}${planBlock}\n\n${body}`.trim().slice(0, 12000);
 
   let postedTo = null;
   const origin = meta.origin || {};
@@ -321,6 +362,9 @@ const LONG_RES = [
   /\b(?:research|investigate|look into|dig into)\b[^.?!]{3,200}\b(?:and|then)\s+(?:write|give|make|send|put together|compile|prepare)\b[^.?!]{0,30}\b(?:report|write-?up|summary|brief|doc(?:ument)?|comparison|review)\b/i,
   /\b(?:deep|thorough|in-?depth|comprehensive|full)\s+(?:research|dive|analysis|report|review)\b/i,
   /\b(?:write|make|put together|compile|prepare)\s+(?:me\s+)?(?:a|an)\s+(?:detailed\s+|full\s+|thorough\s+|comprehensive\s+)?(?:research\s+)?report\s+(?:on|about|comparing)\b/i,
+  /\bplan (?:out )?(?:a|an|my|the)\s+(?:\d{1,3}|one|two|three|four|six|couple of|few)[- ](?:day|week|month)s?\b/i,
+  /\b(?:make|create|draw up|put together|build|give|write)\s+(?:me\s+)?(?:a|an)\s+(?:\d{1,3}[- ](?:day|week|month)\s+)?(?:project plan|roadmap|build plan|week[- ]by[- ]week plan|milestone plan)\b/i,
+  /\bbreak (?:this|it|that|the (?:project|goal|build)) (?:down )?into (?:subgoals|milestones|phases)\b/i,
   /\b(?:in the background|background (?:job|task)|long[- ](?:task|job|running)|keep working on|work on (?:it|this) (?:for a while|overnight|in the background)|over the next (?:hour|few hours|day|couple of hours))\b/i,
 ];
 const JOB_STATUS_RES = [
@@ -351,7 +395,8 @@ export function longTaskStartedReply(r, goal) {
     return `I couldn't start a background job for that${r?.reason ? ` (${r.reason})` : ""}.`;
   }
   const kind = r.mode === "research" ? "research job" : r.mode === "plan" ? "planning job" : r.mode === "code" ? "coding job" : "background job";
-  return `Started a ${kind} for "${String(goal).slice(0, 160)}" (job ${r.jobId}). It keeps working in the background (up to ${r.maxTurns} turns and ${r.budgetCap} tool steps) and I'll post the result here when it's done. Ask "how's my job going?" any time for progress.`;
+  const planNote = r.mode === "plan" ? " First it breaks the goal into subgoals, a dated plan and calendar tasks." : "";
+  return `Started a ${kind} for "${String(goal).slice(0, 160)}" (job ${r.jobId}).${planNote} It keeps working in the background (up to ${r.maxTurns} turns and ${r.budgetCap} tool steps) and I'll post the result here when it's done. Ask "how's my job going?" any time for progress.`;
 }
 
 // ── Long-task pump ──────────────────────────────────────────────────────────
@@ -381,7 +426,7 @@ export function findDueLongTasks(db, limit = 5) {
 }
 
 /** One pump pass. Returns how many ticks it started. Exported for tests. */
-export async function pumpLongTasks({ db, runMacro, lensActions, maxConcurrent = 2, tick = null } = {}) {
+export async function pumpLongTasks({ db, runMacro, lensActions, maxConcurrent = 2, tick = null, planner = null } = {}) {
   if (!db || typeof runMacro !== "function") return 0;
   const mod = await import("./agent-marathon.js");
   const tickFn = tick || mod.tickMarathon;
@@ -395,10 +440,12 @@ export async function pumpLongTasks({ db, runMacro, lensActions, maxConcurrent =
     _pumpTicking.add(row.id);
     started++;
     Promise.resolve()
-      .then(() => tickFn({
-        db, sessionId: row.id, runMacro, lensActions: lensActions || new Map(),
-        opts: { tickTurns: LONG_TASK_DEFAULTS.tickTurns, ...(meta.projectId ? { projectId: meta.projectId } : {}) },
-      }))
+      .then(() => (planner || meta.planAttemptedAt || !tick
+        ? tickLongTask({ db, jobId: row.id, runMacro, lensActions, tick: tickFn, planner })
+        : tickFn({
+          db, sessionId: row.id, runMacro, lensActions: lensActions || new Map(),
+          opts: { tickTurns: LONG_TASK_DEFAULTS.tickTurns, ...(meta.projectId ? { projectId: meta.projectId } : {}) },
+        })))
       .catch(() => { /* tickMarathon records its own failures */ })
       .finally(() => { _pumpTicking.delete(row.id); });
   }
