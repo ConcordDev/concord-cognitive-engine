@@ -166,18 +166,45 @@ export async function saveCitationDtus(db, session, toolCalls, runMacro) {
   return saved.map((s) => s.id);
 }
 
-/** The deliverable part of a final answer: drop loop markers and a leading progress-notes block. */
+// A "Progress notes:" label at the start of a line (optionally bold), or a
+// "## Progress notes" heading line. The long-task prompt asks every reply to
+// end with one. Prose that merely starts with the words does not match.
+const PROGRESS_NOTES_RE = /^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__)?[ \t]*progress notes[ \t]*(?::|(?:\*\*|__)[ \t]*:|(?:\*\*|__)?[ \t]*$)/im;
+
+/** Cut a trailing "Progress notes:" section off one block of text. */
+function withoutProgressNotes(block) {
+  const m = PROGRESS_NOTES_RE.exec(block);
+  if (!m) return block;
+  return block.slice(0, m.index).trim();
+}
+
+/**
+ * The deliverable part of a final answer: drop loop markers and progress
+ * notes, keep every section of the report.
+ *
+ * INC-140: this used to split on markdown "---" rules and keep only the last
+ * part when it was 400+ chars. Reports that put "---" between sections lost
+ * everything but the final one (the saved report was "Sources" plus progress
+ * notes, no summary or findings). Now every "---" part is kept except parts
+ * that are progress notes, and a trailing notes section inside a part is cut.
+ * When nothing but notes is left (a job that stopped early), the notes are
+ * what it had, so they are kept.
+ */
 export function reportBody(answer) {
-  let t = String(answer || "")
+  const t = String(answer || "")
     .replace(/\[TASK_COMPLETE\]/gi, "")
     .replace(/\[TASK_BLOCKED:[^\]]*\]/gi, "")
     .replace(/\[SUBGOAL_COMPLETE:[^\]]*\]/gi, "")
     .replace(/\[TOOL_CALL:[\s\S]*?\]\s*$/gm, "")
     .trim();
-  const parts = t.split(/\n\s*-{3,}\s*\n/);
-  const tail = parts[parts.length - 1].trim();
-  if (parts.length > 1 && tail.length >= 400) t = tail;
-  return t;
+  const parts = t.split(/\n[ \t]*-{3,}[ \t]*\n/);
+  const kept = [];
+  for (const raw of parts) {
+    const part = withoutProgressNotes(raw.trim());
+    if (part) kept.push(part);
+  }
+  const body = kept.join("\n\n---\n\n").trim();
+  return body || t;
 }
 
 // Numeric specs: a number with a unit (servo torque, voltage, speed, weight,
