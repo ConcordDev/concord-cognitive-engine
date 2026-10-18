@@ -536,12 +536,43 @@ async function generalWebResults(query) {
       rows.push(...keepCovering(query, await bingSearch(compact)));
     }
   }
+  // Bing's keyless page now ranks on the first word only from this host
+  // ("lightest carbon bike frames 2026" -> dictionary pages), so the relevance
+  // filter rightly drops everything and web_search came back empty. Google
+  // News' RSS search is keyless and ranks the whole query (reviews, buyer's
+  // guides, spec pages); it fills in when the web index gave fewer than two.
+  if (rows.length < 3) rows.push(...keepHalfCovering(query, await googleRssSearch(query)).slice(0, 5));
   const seen = new Set();
   return rows.filter((r) => {
     if (!r.url || seen.has(r.url)) return false;
     seen.add(r.url);
     return true;
   });
+}
+
+/** Article titles name the topic, not every query word: half the required terms (all of a two-term query). */
+function keepHalfCovering(query, rows) {
+  const req = requiredTerms(queryTerms(shapeSearchQuery(query)));
+  if (!req.length) return [];
+  return (rows || []).filter((r) => {
+    const blob = hitWords(req, r.title, r.snippet || "", "");
+    const hit = req.filter((t) => blob.has(t)).length;
+    return req.length <= 2 ? hit === req.length : hit / req.length >= 0.5;
+  });
+}
+
+async function googleRssSearch(query) {
+  if (String(process.env.CONCORD_WEB_SEARCH_GNEWS || "1") === "0") return [];
+  const q = shapeSearchQuery(query) || query;
+  try {
+    const res = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`, {
+      headers: { "User-Agent": CHAT_USER_AGENT }, signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    return parseGoogleNewsRss(await res.text(), query, 8).map((r) => ({ ...r, provider: "google-rss" }));
+  } catch (_e) {
+    return [];
+  }
 }
 
 // ── News (Bing News results page, keyless; Google News RSS fallback) ───────

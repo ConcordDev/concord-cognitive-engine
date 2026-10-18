@@ -8,10 +8,17 @@
  * image shows inline. Unknown kinds render nothing.
  */
 
+import dynamic from 'next/dynamic';
 import { Play } from 'lucide-react';
 import { useMediaStore } from '@/store/media';
 import type { ComposedSong } from '@/lib/daw/render-song';
 import { SongArtifactPlayer } from './SongArtifactPlayer';
+
+// three.js only loads when a reply actually carries a 3D model.
+const MeshArtifactView = dynamic(() => import('./MeshArtifactView'), {
+  ssr: false,
+  loading: () => <div className="h-56 w-full animate-pulse rounded-lg bg-white/5" />,
+});
 
 export interface ChatArtifact {
   kind?: string;
@@ -30,6 +37,13 @@ export interface ChatArtifact {
   key?: string;
   durationSec?: number;
   song?: Record<string, unknown>;
+  /** kind 'mesh' (ConKay conkay_design): triangle mesh of the solved part. */
+  positions?: number[];
+  indices?: number[];
+  color?: string | null;
+  pass?: boolean | null;
+  vertexCount?: number;
+  triangleCount?: number;
 }
 
 const SAFE_SRC = /^(?:https?:\/\/|\/|data:(?:image|audio)\/)/i;
@@ -92,6 +106,19 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src || `data:image/png;base64,${a.image_b64}`} alt={a.prompt || a.title || 'Generated image'} className="w-full h-auto" />
               {a.prompt && <div className="px-3 py-1.5 text-[11px] text-zinc-400 bg-zinc-900">{a.prompt}</div>}
+            </div>
+          );
+        }
+        if (kind === 'mesh' && Array.isArray(a.positions) && Array.isArray(a.indices) && a.positions.length >= 9) {
+          return (
+            <div key={i} className="max-w-md space-y-1">
+              <MeshArtifactView positions={a.positions} indices={a.indices} color={a.color} title={a.title} />
+              <div className="text-[11px] text-zinc-400">
+                {a.title || '3D model'}
+                {typeof a.triangleCount === 'number' ? ` · ${a.triangleCount} triangles` : ''}
+                {a.pass === true ? ' · passes' : a.pass === false ? ' · fails the check' : ''}
+                {' · drag to orbit'}
+              </div>
             </div>
           );
         }

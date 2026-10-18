@@ -24,7 +24,10 @@ import { api, lensRun } from '@/lib/api/client';
 import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-intent';
 import { DesignPane, StartScreen, type BriefClaim, type TrussAnswer, type WorkspaceDesign } from './DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
-import { agentFailure, streamConKayAgent } from '@/lib/conkay/agent-stream';
+import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
+import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
+import MessageRenderer from '@/components/chat/MessageRenderer';
+import { ConKayMessage } from '@/components/conkay/ConKayViz';
 import {
   DIM_LABELS,
   applyWorkspaceCommand,
@@ -51,8 +54,8 @@ const BeamViewport = dynamic(() => import('./BeamViewport'), {
   ),
 });
 
-type ChipKind = 'review' | 'sweep' | 'edit-tw' | 'apply';
-interface Chip { kind: ChipKind; label: string; dims?: Partial<BeamDims> }
+type ChipKind = 'review' | 'sweep' | 'edit-tw' | 'apply' | 'defaults';
+interface Chip { kind: ChipKind; label: string; dims?: Partial<BeamDims>; brief?: string }
 interface WsMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -63,6 +66,8 @@ interface WsMessage {
   chips?: Chip[];
   tools?: Array<{ name: string; ok: boolean }>;
   sweep?: SweepResult;
+  /** Songs, images, audio previews and 3D models the agent's tools returned. */
+  artifacts?: ChatArtifact[];
 }
 
 const STUDY_CHIPS: Chip[] = [
@@ -163,7 +168,10 @@ export function ConKayWorkspace() {
     if (fresh.length === 0) return;
     for (const m of fresh) persisted.current.add(m.id);
     void lensRun('engineering', 'workspaceLog-append', {
-      messages: fresh.map(({ pending: _p, ...m }) => m),
+      messages: fresh.map(({ pending: _p, artifacts, ...m }) => {
+        const light = (artifacts ?? []).filter((a) => typeof a.url === 'string' && a.url && !a.song && !a.positions);
+        return light.length ? { ...m, artifacts: light } : m;
+      }),
       ...(workspaceId ? { workspaceId } : {}),
     }).then((r) => {
       // Not stored: let the next change retry these.
@@ -268,6 +276,17 @@ export function ConKayWorkspace() {
     const history = messagesRef.current.filter((m) => !m.pending && m.text).slice(-12).map((m) => ({ role: m.role, content: m.text }));
     let live = '';
     const tools: Array<{ name: string; ok: boolean }> = [];
+    const artifacts: ChatArtifact[] = [];
+    const seenArtifacts = new Set<string>();
+    const addArtifact = (a: unknown) => {
+      if (!a || typeof a !== 'object') return;
+      const rec = a as Record<string, unknown>;
+      const k = artifactKey(rec);
+      if (seenArtifacts.has(k)) return;
+      seenArtifacts.add(k);
+      artifacts.push(rec as ChatArtifact);
+      patch(id, { artifacts: artifacts.slice() });
+    };
     let resolved = false;
     try {
       const done = await streamConKayAgent({
@@ -280,10 +299,17 @@ export function ConKayWorkspace() {
           tools.push({ name, ok: c.ok !== false });
           if (c.domain === 'engineering' && c.action === 'beamStudy' && c.ok !== false) resolved = true;
           patch(id, { tools: tools.slice() });
+          if (c.ok !== false) {
+            addArtifact(c.artifact);
+            for (const a of c.artifacts ?? []) addArtifact(a);
+          }
         },
+        onArtifact: addArtifact,
       });
-      if (!done.ok && !live.trim()) reply(id, agentFailure(done.error), { error: true, tools });
-      else reply(id, live.trim() || 'Done.', { tools });
+      const clean = stripToolCallLeak(live);
+      if (!done.ok && !clean.text) reply(id, agentFailure(done.error), { error: true, tools, artifacts });
+      else if (clean.leaked && !clean.text) reply(id, 'ConKay tried to call a tool but the call didn’t run. Please ask again.', { error: true, tools, artifacts });
+      else reply(id, clean.text || (artifacts.length ? 'Here it is below.' : 'Done.'), { tools, artifacts });
     } catch (e) {
       reply(id, agentFailure(e instanceof Error ? e.message : 'network error'), { error: true, tools });
     }
@@ -315,7 +341,9 @@ export function ConKayWorkspace() {
     if (data?.stage === 'questions') {
       pendingBrief.current = text;
       const qs = (data.questions as Array<{ question: string }> | undefined) ?? [];
-      reply(id, `To design this ${String(data.domain || intent.label)} I need:\n${qs.map((q) => `• ${q.question}`).join('\n')}\nAnswer here and I will add it to the brief.`);
+      reply(id, `To design this ${String(data.domain || intent.label)} I need:\n${qs.map((q) => `• ${q.question}`).join('\n')}\nAnswer here and I will add it to the brief, or solve it now with stated defaults.`, {
+        chips: [{ kind: 'defaults', label: 'Solve now with defaults', brief: text }],
+      });
       return;
     }
     if (data?.stage === 'designed' && typeof data.id === 'string') {
@@ -349,6 +377,12 @@ export function ConKayWorkspace() {
     try {
       const intent = detectNewDesign(text);
       if (intent) { pendingBrief.current = null; await startDesign(intent, text); return; }
+      if ((design || pendingBrief.current) && /\b(?:fea|finite[- ]element|stress analysis)\b/i.test(text) && !/\b(?:i-?beam|t_w|t_f|flange|web)\b/i.test(text)) {
+        // "run FEA on it" means the bracket/part just designed, not the I-beam study.
+        pendingBrief.current = null;
+        await askAgent(text);
+        return;
+      }
       if (pendingBrief.current && /^\s*(?:cancel|never ?mind|stop)\b/i.test(text)) {
         pendingBrief.current = null;
         reply(push({ role: 'assistant', text: '', pending: true }), 'Dropped that brief.');
@@ -382,7 +416,7 @@ export function ConKayWorkspace() {
     } finally {
       setBusy(false);
     }
-  }, [askAgent, busy, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign]);
+  }, [askAgent, busy, design, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign]);
 
   // Open a DTU in the workspace: read it, and when it is a kept beam study,
   // load the exact inputs it recorded (results stay hidden until re-solved).
@@ -425,6 +459,16 @@ export function ConKayWorkspace() {
       setTimeout(() => paramRef.current?.focus('webThickness'), 50);
       return;
     }
+    if (chip.kind === 'defaults' && chip.brief) {
+      if (busy) return;
+      setBusy(true);
+      pendingBrief.current = null;
+      try {
+        push({ role: 'user', text: 'Solve it now with defaults' });
+        await askAgent(chip.brief);
+      } finally { setBusy(false); }
+      return;
+    }
     if (chip.kind === 'review') { void send('Review the stress results of this study: where is the peak, what governs it, and what would you change?'); return; }
     if (chip.kind === 'apply' && chip.dims) {
       if (busy) return;
@@ -459,7 +503,7 @@ export function ConKayWorkspace() {
         setRefreshKey((k) => k + 1);
       } finally { setBusy(false); }
     }
-  }, [busy, inputs, push, reply, runStudy, send, ws]);
+  }, [askAgent, busy, inputs, push, reply, runStudy, send, ws]);
 
   // Cross-lens handoff: /lenses/conkay?ask=… or ?dtu=<id>&title=… opens the
   // workspace and sends that request once.
@@ -546,9 +590,14 @@ export function ConKayWorkspace() {
                 ))}
               </ul>
             )}
-            <p className={`whitespace-pre-wrap leading-relaxed ${m.error ? 'text-rose-200' : 'text-slate-200'}`}>
-              {m.text || (m.pending ? 'Thinking…' : '')}
-            </p>
+            {m.role === 'assistant' && !m.error && m.text ? (
+              <div className="leading-relaxed text-slate-200"><ConKayMessage fields={{ content: m.text }} renderProse={(t) => <MessageRenderer content={t} streaming={m.pending} />} /></div>
+            ) : (
+              <p className={`whitespace-pre-wrap leading-relaxed ${m.error ? 'text-rose-200' : 'text-slate-200'}`}>
+                {m.text || (m.pending ? 'Thinking…' : '')}
+              </p>
+            )}
+            {m.role === 'assistant' && <ChatArtifacts artifacts={m.artifacts} />}
             {m.pending && (
               <div className="mt-2 h-1 overflow-hidden rounded bg-white/5" role="progressbar" aria-label="Working">
                 <div className="h-full w-1/3 animate-conkay-indeterminate motion-reduce:animate-none rounded bg-sky-400/70" />

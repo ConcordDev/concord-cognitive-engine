@@ -15,6 +15,8 @@ export interface AgentToolCall {
   input?: Record<string, unknown>;
   result?: unknown;
   error?: string;
+  artifact?: Record<string, unknown>;
+  artifacts?: Array<Record<string, unknown>>;
 }
 
 export interface AgentDone {
@@ -63,6 +65,8 @@ export async function streamConKayAgent(args: {
   signal?: AbortSignal;
   onToken: (chunk: string) => void;
   onToolCall: (call: AgentToolCall) => void;
+  /** A song, image, audio preview or 3D model the server attached to this turn. */
+  onArtifact?: (artifact: Record<string, unknown>) => void;
 }): Promise<AgentDone> {
   const res = await fetch(`${getApiBase()}/api/chat-agent/stream`, {
     method: 'POST',
@@ -89,6 +93,7 @@ export async function streamConKayAgent(args: {
     for (const { event, data } of parsed.events) {
       if (event === 'token') args.onToken(String((data as { chunk?: unknown }).chunk ?? ''));
       else if (event === 'tool_call') args.onToolCall(data as AgentToolCall);
+      else if (event === 'artifact') args.onArtifact?.(data);
       else if (event === 'done') {
         done = {
           ok: data.ok !== false,
@@ -100,6 +105,40 @@ export async function streamConKayAgent(args: {
     }
   }
   return done ?? { ok: false, error: 'stream_ended_without_done' };
+}
+
+/** Same artifact twice (once on its tool_call, once as an `artifact` event)? */
+export function artifactKey(a: Record<string, unknown>): string {
+  const kind = String(a.kind ?? a.type ?? '');
+  const id = a.url ?? a.projectId ?? a.id ?? a.mediaId ?? (Array.isArray(a.positions) ? `${a.positions.length}:${String(a.title ?? '')}` : a.title);
+  return `${kind}:${String(id ?? '')}`;
+}
+
+/**
+ * Raw `[TOOL_CALL: {...}]` markers the model wrote but the loop did not run
+ * (INC-128: ConKay answered with one). Removed, and reported so the UI can
+ * say the call didn't run instead of showing the marker.
+ */
+export function stripToolCallLeak(text: string): { text: string; leaked: boolean } {
+  let out = '';
+  let leaked = false;
+  let i = 0;
+  const src = String(text || '');
+  while (i < src.length) {
+    const at = src.indexOf('[TOOL_CALL:', i);
+    if (at < 0) { out += src.slice(i); break; }
+    out += src.slice(i, at);
+    leaked = true;
+    let depth = 0;
+    let j = at;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (c === '[' || c === '{') depth++;
+      else if (c === ']' || c === '}') { depth--; if (depth === 0) { j++; break; } }
+    }
+    i = j;
+  }
+  return { text: out.replace(/\n{3,}/g, '\n\n').trim(), leaked };
 }
 
 /** The agent's failure, said plainly. Study edits never depend on the model. */
