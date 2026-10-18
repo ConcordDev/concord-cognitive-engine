@@ -541,8 +541,14 @@ async function generalWebResults(query) {
     // query carries filler ("current copper price today" → the bank named
     // Current). Retry once with just the required terms.
     const compact = compactSearchQuery(query);
-    if (rows.length < 2 && compact && compact !== query.toLowerCase()) {
+    if (rows.length < 2 && compact && compact !== query.toLowerCase() && compact !== lead) {
       rows.push(...keepCovering(query, await bingSearch(compact)));
+    }
+    // Still nothing: the head of the subject ("ramen recipe homemade broth" ->
+    // "ramen recipe") finds the standard pages; they must cover that head.
+    const head = compact.split(" ").slice(0, 2).join(" ");
+    if (rows.length < 2 && head && head !== compact && head.includes(" ")) {
+      rows.push(...keepCovering(head, await bingSearch(head)));
     }
   }
   // Bing's keyless page now ranks on the first word only from this host
@@ -595,13 +601,14 @@ const NEWS_QUERY_RE = /\b(?:news|headlines?|breaking|happening|stories|story|ann
 const NEWS_FILLER = new Set(
   `news headline headlines top biggest big latest breaking today todays tonight current recent
    happening going story stories world week right now this day update updates major important
-   whats what give tell show me any some new`.split(/\s+/).filter(Boolean),
+   whats what give tell show me any some new lately recently doing activities activity actions
+   moves developments events happenings been has have`.split(/\s+/).filter(Boolean),
 );
 const NEWS_TOPIC_ALIASES = { tech: "technology", ai: "artificial intelligence" };
 
 // "what's trump doing lately", "Trump latest", "any update on the strike": recent events about a
 // subject, answered from a news index (dated headlines), not a general web page.
-const RECENT_EVENTS_RE = /\b(?:lately|recently|these days|this week|past week|latest on|latest with|update on|updates on)\b|\b(?:doing|up to)\b[^.?!]{0,20}\b(?:now|today|lately)\b|^\s*[a-z][\w.'-]*(?:\s+[a-z][\w.'-]*){0,2}\s+(?:latest|lately|today)\s*\??\s*$/i;
+const RECENT_EVENTS_RE = /\b(?:lately|recently|these days|this week|past week|latest on|latest with|update on|updates on)\b|\b(?:recent|current|latest)\s+(?:activities|activity|actions|moves|statements|developments|events|happenings|headlines|stories)\b|\b(?:doing|up to)\b[^.?!]{0,20}\b(?:now|today|lately)\b|^\s*[a-z][\w.'-]*(?:\s+[a-z][\w.'-]*){0,2}\s+(?:latest|lately|today)\s*\??\s*$/i;
 const NOT_NEWS_RE = /\b(?:price|prices|cost|weather|forecast|score|scores|who won|recipe|version|release)\b/i;
 export function isNewsQuery(query) {
   const q = String(query || "");
@@ -746,8 +753,21 @@ export function mergeNewest(rows, limit = 8) {
     seen.add(r.url); if (key) seen.add(key);
     out.push(r);
   }
-  out.sort((a, b) => (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0));
-  return out.slice(0, limit);
+  const byDate = (a, b) => (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0);
+  out.sort(byDate);
+  // Bing's date sort is mostly tabloids and syndication; Google News ranks
+  // prominent outlets. When both answered, each provider gets half the slots.
+  const providers = [...new Set(out.map((r) => r.provider || ""))];
+  if (providers.length < 2) return out.slice(0, limit);
+  const cap = Math.ceil(limit / providers.length);
+  const counts = new Map();
+  const picked = [];
+  const rest = [];
+  for (const r of out) {
+    const n = counts.get(r.provider || "") || 0;
+    if (n < cap) { picked.push(r); counts.set(r.provider || "", n + 1); } else rest.push(r);
+  }
+  return [...picked, ...rest].slice(0, limit).sort(byDate);
 }
 
 // ── Software release status (endoflife.date open API, keyless) ─────────────
@@ -898,6 +918,9 @@ const ESPN_LEAGUES = [
 ];
 const LEAGUE_WORDS = { nfl: "NFL", football: "NFL", mlb: "MLB", baseball: "MLB", nba: "NBA", basketball: "NBA", nhl: "NHL", hockey: "NHL", college: "College football", ncaa: "College football", wnba: "WNBA", mls: "MLS", soccer: "MLS" };
 
+// Words in a scores question that are not a team name ("game last night winner").
+const SPORT_FILLER_RE = /^(?:who|won|win|wins|winner|winners|winning|lose|lost|loser|the|game|games|last|night|score|scores|scored|final|finals|yesterday|tonight|today|did|beat|beats|result|results|match|matches|matchup|recap|recaps|highlights|play|played|playing|team|teams|sports|sport|major|league|leagues|big|pro|american|latest|recent|just|now|this|weekend|week|what|was|were|how|happened|over|against|versus)$/;
+
 export function isSportsResultQuery(query) {
   const q = String(query || "");
   return SPORTS_Q_RE.test(q) && SPORTS_WHEN_RE.test(q) && !/\b(?:video ?game|board ?game|game of thrones|game show)\b/i.test(q);
@@ -952,7 +975,7 @@ async function sportsResults(query, now = Date.now()) {
   }
   let rows = (await Promise.all(jobs)).flat();
   // A team named in the question narrows it ("did the Yankees win last night").
-  const words = q.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !SEARCH_STOP.has(w) && !LEAGUE_WORDS[w] && !/^(?:who|won|win|the|game|games|last|night|score|scores|final|yesterday|tonight|today|did|beat|result|results|match)$/.test(w));
+  const words = q.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !SEARCH_STOP.has(w) && !LEAGUE_WORDS[w] && !SPORT_FILLER_RE.test(w));
   const team = words.length ? rows.filter((r) => r._teams.some((t) => words.some((w) => t.includes(w)))) : [];
   if (words.length && !team.length && rows.length) {
     // Named a team with no game on those dates: say so, then let news answer.

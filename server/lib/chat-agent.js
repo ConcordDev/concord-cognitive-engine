@@ -737,6 +737,15 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // user never typed.
         const _userText = String(ctx?.userPrompt || "");
         _q = _q.replace(/\b(?:19|20)\d\d\b/g, (y) => (_userText.includes(y) ? y : "")).replace(/\s{2,}/g, " ").trim() || _q;
+        // Keep the user's intent when the model's query drops it: "what's trump doing
+        // lately" searched as "Donald Trump recent activities" came back as 2024 hub
+        // pages; "who won the game last night" as "game last night winner" lost the
+        // scoreboard rows.
+        try {
+          const ws = await import("../emergent/conscious-web-search.js");
+          if (_userText && ws.isSportsResultQuery?.(_userText) && !ws.isSportsResultQuery(_q)) _q = ws.shapeSearchQuery(_userText) || _q;
+          else if (_userText && ws.isNewsQuery?.(_userText) && !ws.isNewsQuery(_q)) _q = `${_q} news`;
+        } catch { /* keep the model's query */ }
         let r = await runMacro("expert_mode", "web_search", { query: _q, limit: Number(call.params.limit) || 5 }, ctx);
         // News, sports scores and crypto prices come back dated and newest-first
         // from webSearchForChat inside expert_mode.web_search (one search, not two).
