@@ -119,3 +119,14 @@ test("loadSessionRows is bounded and never throws", () => {
   assert.equal(seen, 400);
   assert.deepEqual(loadSessionRows({ prepare: () => { throw new Error("x"); } }, "s"), []);
 });
+
+test("follow-ups: chat-history price recall, note recall, memory DTU refs, compute hint", async () => {
+  const { memoryDtuRefs } = await import("../lib/chat/session-memory.js");
+  const { routeHint } = await import("../lib/chat/agent-route.js");
+  assert.ok(!needsFreshData("how much was bitcoin when i asked earlier"));
+  assert.ok(isRecallAsk("how much was bitcoin when i asked earlier"));
+  assert.ok(isRecallAsk("tell me what my film note says"));
+  const mem = buildSessionMemory(longSession());
+  assert.deepEqual(memoryDtuRefs(mem.text), [{ id: "dtu_058af9596eb3511e91d9", title: "Pick up film from lab" }]);
+  assert.match(routeHint("compute"), /symbolic\.evaluate/);
+});
