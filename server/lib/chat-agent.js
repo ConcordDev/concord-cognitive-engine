@@ -718,6 +718,17 @@ async function _browseFallback(url, listed) {
   } catch { return null; }
 }
 
+/** domain.action + item text for a lens write ("productivity.task-add|call mom sunday"); null for reads. */
+export function lensWriteKey(call) {
+  if (!call || call.tool !== "run_lens_action") return null;
+  const p = call.params || {};
+  const action = String(p.action || "");
+  if (!/(?:add|create|new|save|book|schedule|log)/i.test(action) || /list|search|get|view|find/i.test(action)) return null;
+  const inner = p.params && typeof p.params === "object" ? p.params : {};
+  const item = String(inner.content ?? inner.title ?? inner.name ?? inner.text ?? JSON.stringify(inner)).toLowerCase().replace(/\s+/g, " ").trim();
+  return `${String(p.domain || "").toLowerCase()}.${action.toLowerCase()}|${item}`;
+}
+
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
@@ -1843,7 +1854,19 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
           continue; // refused just this call — brain sees the error, loop continues
         }
       }
+      // The same lens write twice in one turn is a loop, not a request: the live verify of #1334
+      // got five identical "call mom sunday" tasks from one ask. Hand the model the first result.
+      const dupKey = lensWriteKey(call);
+      const prior = dupKey && allToolCalls.find((t) => t && t.ok !== false && t.tool === "run_lens_action" && t._writeKey === dupKey);
+      if (prior) {
+        results.push({ tool: call.tool, ok: true, domain: prior.domain, action: prior.action, result: prior.result,
+          note: "Already done earlier in this turn; it was NOT repeated. Report the first result and stop." });
+        continue;
+      }
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
+      if (dupKey && result && typeof result === "object" && result.ok !== false) {
+        Object.defineProperty(result, "_writeKey", { value: dupKey, enumerable: false });
+      }
       // ConKay-E — tool-call fingerprint log (crash-forensics primitive;
       // see agent-marathon.js#createToolGate + marathon-tick-durability.js).
       // `gate.recordOutcome` only exists when opts.toolGate is a marathon's
