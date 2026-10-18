@@ -148,3 +148,22 @@ test("task receipts are tasks, not DTUs; saved songs/tasks are citable titles", 
   const g = guardDtuCitations('You saved:\n- **Note**: "Pick up film from lab" (dtu_058af9596eb3511e91d9)\n- **Note**: call mom sunday\n- Song: Late Night Drives', collectRetrievedDtus(refs), { prompt: "what did i save earlier" });
   assert.deepEqual(g.removed, []);
 });
+
+test("fresh-data retry query resolves short follow-ups", async () => {
+  const { freshSearchQuery } = await import("../lib/chat/agent-route.js");
+  assert.equal(freshSearchQuery("and eth?", [{ role: "user", content: "bitcoin price rn" }]), "eth price rn");
+  assert.equal(freshSearchQuery("who won the games last night"), "who won the games last night");
+});
+
+test("answerViaAgent runs web_search itself when the loop answered a price from memory", async () => {
+  const { answerViaAgent } = await import("../lib/chat/agent-route.js");
+  const calls = [];
+  const runMacro = async (domain, name, input) => {
+    calls.push(input);
+    if (calls.length === 1) return { ok: true, answer: "Ethereum is at $3,241.18 on Coinbase.", toolCalls: [] };
+    return { ok: true, answer: "ETH is $2,419.60 (Coinbase, 11:41 PM ET).", toolCalls: [] };
+  };
+  // executeToolCall's web_search needs the network; without it the retry must refuse, not guess.
+  const out = await answerViaAgent({ runMacro, ctx: { db: {}, actor: { userId: "u1" } }, history: [{ role: "user", content: "bitcoin price rn" }], prompt: "and eth?", route: "lookup", lensActions: new Map() });
+  assert.ok(!/3,241\.18/.test(out.reply), out.reply);
+});
