@@ -36,7 +36,8 @@ describe("chat agent route", () => {
   it("bridge and car design requests go to the design tools", () => {
     assert.equal(chatAgentRoute("design me a pedestrian bridge 30 m span"), "design");
     assert.equal(chatAgentRoute("can you design a four-seat electric car"), "design");
-    assert.equal(chatAgentRoute("what is a bridge"), null);
+    // A factual question is a tool lookup (web/textbook), not a design.
+    assert.equal(chatAgentRoute("what is a bridge"), "lookup");
   });
 });
 

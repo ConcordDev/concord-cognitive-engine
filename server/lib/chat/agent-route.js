@@ -170,7 +170,7 @@ export function chatAgentRoute(prompt, opts = {}) {
 }
 
 const ROUTE_HINT = {
-  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
+  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
@@ -203,10 +203,25 @@ export function routeHint(route) {
 }
 
 /** Pull web sources out of agent tool calls for the chat envelope. */
+// Textbook asks: OpenStax by name, "a textbook source", or a named law/constant.
+const TEXTBOOK_RE = /\b(?:openstax|textbooks?|text book)\b|\b(?:young['’]?s modulus|bulk modulus|shear modulus|specific heat|latent heat|thermal conductivity|coefficient of (?:friction|thermal expansion|restitution)|bernoulli['’]?s|archimedes['’]? principle|le ch[aâ]telier|ideal gas law|ohm['’]?s law|hooke['’]?s law|kirchhoff['’]?s|newton['’]?s (?:first|second|third) law|faraday['’]?s law|snell['’]?s law|stefan[- ]boltzmann)\b/i;
+/** True for an ask textbook_lookup (OpenStax) should answer. */
+export function isTextbookAsk(text) {
+  return TEXTBOOK_RE.test(String(text || ""));
+}
+
 export function sourcesFromToolCalls(toolCalls) {
   const out = [];
   const seen = new Set();
   for (const tc of Array.isArray(toolCalls) ? toolCalls : []) {
+    if (tc?.tool === "textbook_lookup" && tc.ok) {
+      for (const r of tc.results || []) {
+        if (!r?.url || seen.has(r.url)) continue;
+        seen.add(r.url);
+        out.push({ type: "web", title: `${r.book} — ${r.section}`, url: r.url, snippet: String(r.passage || "").slice(0, 300) });
+      }
+      continue;
+    }
     if (tc?.tool !== "web_search" || !tc.ok) continue;
     let parsed = null;
     try { parsed = typeof tc.result === "string" ? JSON.parse(tc.result) : tc.result; } catch { parsed = null; }
