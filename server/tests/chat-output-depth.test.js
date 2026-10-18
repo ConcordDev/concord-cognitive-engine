@@ -308,3 +308,29 @@ describe("checkpoint control text never reaches the user (visibleChatReply)", as
     assert.equal(visibleChatReply("Plain answer.", "q"), "Plain answer.");
   });
 });
+
+describe("gap follow-up: a draft that admits missing facts gets one targeted search turn", async () => {
+  const { answerAdmitsGaps, GAP_NUDGE } = await import("../lib/chat-agent.js");
+  it("answerAdmitsGaps", () => {
+    for (const t of ["Note: Japan and Brazil's latest GDP growth figures were not found in the search results.", "I couldn't find the 2026 figure.", "The search results do not include Nigeria's GDP.", "No recent data was found for that."]) assert.equal(answerAdmitsGaps(t), true, t);
+    for (const t of ["Japan's population is 123.4 million (source).", "Found it: GDP grew 1.2%."]) assert.equal(answerAdmitsGaps(t), false, t);
+  });
+  it("the loop nudges once, then answers", async () => {
+    let brainCalls = 0;
+    let nudges = 0;
+    const runMacro = async (domain, name, input) => ({ ok: true, summary: `result for ${input.query} `.repeat(80), results: [{ title: "T", url: "https://a.com/x", snippet: "s" }, { title: "U", url: "https://b.com/y", snippet: "s" }] });
+    const brain = async ({ messages }) => {
+      brainCalls += 1;
+      nudges = messages.filter((m) => m.content === GAP_NUDGE).length;
+      if (brainCalls === 1) return { ok: true, provider: "t", model: "m", text: `[TOOL_CALL: {"tool": "web_search", "params": {"query": "japan gdp"}}]\n[TOOL_CALL: {"tool": "web_search", "params": {"query": "brazil gdp"}}]` };
+      if (brainCalls === 2) return { ok: true, provider: "t", model: "m", text: "Japan 1%. Brazil's GDP growth was not found." };
+      if (brainCalls === 3) return { ok: true, provider: "t", model: "m", text: `[TOOL_CALL: {"tool": "web_search", "params": {"query": "Brazil GDP growth 2026 IBGE"}}]` };
+      return { ok: true, provider: "t", model: "m", text: "Japan 1%. Brazil 2.1% (IBGE). Still not found: nothing." };
+    };
+    const r = await runAgentLoop({ db: null, userId: "u1", message: "gdp japan brazil", runMacro, lensActions: new Map(), history: [], opts: { maxTurns: 8, brainChat: brain } });
+    assert.equal(nudges, 1);
+    assert.equal(brainCalls, 4);
+    assert.equal(r.toolCalls.length, 3);
+    assert.match(r.answer, /IBGE/);
+  });
+});

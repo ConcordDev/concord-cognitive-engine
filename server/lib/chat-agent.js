@@ -1633,6 +1633,18 @@ export function formatToolResults(results) {
 export const DEEPEN_NUDGE =
   "Your evidence so far is thin. Before answering, run another search from a different angle (different keywords, or add news/latest/official), or browse_url the most relevant source from the results. Use tool calls now; answer only after you have read the new results. If nothing more can be found, say what you could and could not confirm.";
 
+export const GAP_NUDGE =
+  "Your draft says some of the requested facts were not found. Before answering, run targeted searches for exactly those missing facts: one tool call per missing fact, with specific keywords (the exact figure or name, the place, 'latest' or the year, or an official source such as a statistics office, IMF, World Bank or the government site). You may issue several tool calls at once. Answer only after reading the new results; if a fact still cannot be found, say so plainly.";
+
+/**
+ * The draft answer admits a gap ("GDP growth was not found in the search results"). Live verify of
+ * chat-output-depth (2026-10-18): three good searches, then "not found" for two of nine facts and
+ * no follow-up search — the thin-evidence nudge never fires when the batch itself succeeded.
+ */
+export function answerAdmitsGaps(text) {
+  return /\b(?:not (?:found|available|listed|included|mentioned|provided|confirmed)\b|(?:could|did|was|were)n[’']?t (?:find|locate|confirm|turn up)|(?:could|did) not (?:find|locate|confirm)|unable to (?:find|locate|confirm)|no (?:recent |current |specific )?(?:data|information|figures?|numbers?|results?) (?:(?:was|were) )?(?:found|available)|(?:search )?results (?:do not|don[’']t|did not|didn[’']t) (?:include|contain|mention|show|provide))/i.test(String(text || ""));
+}
+
 /** Decide whether the agent should search deeper before answering. */
 export function evidenceIsThin(toolCalls) {
   const researchTools = new Set(["web_search", "browse_url", "expert_mode", "textbook_lookup"]);
@@ -1700,6 +1712,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _deepenEnabled = String(process.env.CONCORD_AGENT_DEEPEN ?? "1") !== "0" && opts.deepen !== false && typeof opts.toolGate !== "function";
   const _deepenMax = Math.max(0, Math.min(3, Number(process.env.CONCORD_AGENT_DEEPEN_MAX ?? 1) || 0));
   let _deepenUsed = 0;
+  // CONCORD_AGENT_GAP_NUDGE (default on): one targeted follow-up when the draft admits missing facts.
+  const _gapEnabled = String(process.env.CONCORD_AGENT_GAP_NUDGE ?? "1") !== "0";
+  let _gapUsed = false;
   let toolBudgetExhausted = false;
   const _researchSeen = new Set();
   const _selfCont = selfContinueActive(process.env, { selfContinue: opts.selfContinue });
@@ -1985,6 +2000,21 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         messages.push({ role: "assistant", content: r.text });
         messages.push({ role: "user", content: DEEPEN_NUDGE });
         emit("status", { phase: "deepen" });
+        continue;
+      }
+      // Gap follow-up: the draft says requested facts were not found -> one targeted search turn.
+      if (
+        _gapEnabled &&
+        !_gapUsed &&
+        !toolBudgetExhausted &&
+        turn < maxTurns - 1 &&
+        allToolCalls.some((t) => t && t.ok !== false && (t.tool === "web_search" || t.tool === "browse_url")) &&
+        answerAdmitsGaps(visibleAnswer)
+      ) {
+        _gapUsed = true;
+        messages.push({ role: "assistant", content: r.text });
+        messages.push({ role: "user", content: GAP_NUDGE });
+        emit("status", { phase: "gap_followup" });
         continue;
       }
       // No more tool calls — this is the final answer.
