@@ -52,6 +52,32 @@ export function conkayToolPolicy() {
   return POLICY;
 }
 
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * The calendar dates the user's words point at, worked out here so the model
+ * doesn't do weekday arithmetic (live: "friday" on Sat Oct 17 stored as Oct 22).
+ * Server local time, which is the user's zone.
+ */
+export function relativeDateHint(message, now = new Date()) {
+  const p = String(message || "").toLowerCase();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const at = (n) => { const d = new Date(today); d.setDate(d.getDate() + n); return d; };
+  const parts = [];
+  if (/\btoday\b|\btonight\b/.test(p)) parts.push(`today = ${ymd(today)}`);
+  if (/\btomorrow\b/.test(p)) parts.push(`tomorrow = ${ymd(at(1))}`);
+  for (const [i, name] of WEEKDAYS.entries()) {
+    const m = new RegExp(`\\b(next\\s+)?${name}\\b`).exec(p);
+    if (!m) continue;
+    let n = (i - today.getDay() + 7) % 7;
+    if (m[1] && n === 0) n = 7;
+    parts.push(`${m[0]} = ${WEEKDAYS[at(n).getDay()]} ${ymd(at(n))}`);
+  }
+  if (!parts.length) return "";
+  return `Dates (use these exactly, do not work them out): today is ${WEEKDAYS[today.getDay()]} ${ymd(today)}; ${parts.join("; ")}.`;
+}
+
 /**
  * @returns {{ route: string, hint: string, fallbackCall: object|null, brief?: string } | null}
  */
@@ -79,7 +105,11 @@ export function conkayTurnPlan(message, history = []) {
   }
 
   if (!route) return null;
-  const hint = route === "design" ? DESIGN_HINT : routeHint(route);
+  let hint = route === "design" ? DESIGN_HINT : routeHint(route);
+  if (route === "action") {
+    const dates = relativeDateHint(p);
+    if (dates) hint = `${hint || ""}\n${dates}`.trim();
+  }
   let fallbackCall = null;
   if ((route === "lookup" || route === "web") && isTextbookAsk(p)) {
     fallbackCall = { tool: "textbook_lookup", params: { query: p.slice(0, 200) } };
