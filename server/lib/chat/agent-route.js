@@ -359,6 +359,8 @@ export function withSourceLinks(reply, sources) {
  */
 export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [] }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
+  const recap = recapReply(prompt, history, memoryBlock);
+  if (recap) return { reply: recap, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const status = writeStatusReply(prompt, history);
   if (status) return { reply: status, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus });
@@ -619,6 +621,47 @@ export function songRecallFix(answer, history = [], memoryBlock = "") {
     .replace(/\s*(?:it'?s|it\u2019s)\s+ready to play below\.?/gi, "").replace(/\s*ready to play below\.?/gi, "").trim();
   if (!body.toLowerCase().includes(title.toLowerCase())) body = `The song I made you is "${title}".${body ? ` ${body}` : ""}`;
   return `${body} Its player is on the earlier message where I made it.`;
+}
+
+const RECAP_RE = /\b(?:what (?:did|have) we (?:do|done|talk(?:ed)? about|cover(?:ed)?)|what have we been doing|sum (?:it |this |everything |that )?up|recap|summari[sz]e (?:this|our|the) (?:chat|conversation))\b/i;
+const RECAP_SMALLTALK_RE = /^(?:yo|hi|hey|hello|sup|lol|ok(?:ay)?|thanks?|ty|cool|nice)\b[\s!.?]*\S{0,12}$/i;
+/** "what did we do so far" → this chat's receipts (tasks, songs, notes), the date check and other asks,
+ *  from the replayed turns plus the chat-memory note, not just the last turn. */
+export function recapReply(prompt, history = [], memoryBlock = "") {
+  if (!RECAP_RE.test(String(prompt || ""))) return null;
+  const turns = (history || []).filter((h) => h && (h.role === "user" || h.role === "assistant"));
+  const tasks = new Map(); const songs = new Set(); const other = []; let dateLine = "";
+  // Memory note (older turns that fell out of the replayed window).
+  const mem = String(memoryBlock || "");
+  for (const m of mem.matchAll(/^- task "([^"\n]{1,160})"[^\n]*/gm)) tasks.set(m[1].toLowerCase(), `"${m[1]}"`);
+  for (const m of mem.matchAll(/\bsong "([^"\n]{1,120})"/g)) songs.add(m[1]);
+  const notes = [...mem.matchAll(/^- note \(DTU\) "([^"\n]{1,160})"/gm)].map((m) => m[1]);
+  const memAsks = (mem.split(/\n\n/).find((p) => p.startsWith("Other things the user asked for")) || "").split("\n").slice(1)
+    .map((l) => l.replace(/^- turn \d+:\s*/, "").trim()).filter(Boolean);
+  for (let i = 0; i < turns.length; i++) {
+    const t = turns[i];
+    if (t.role !== "user") continue;
+    const u = String(t.content || "").trim();
+    const a = String(turns[i + 1]?.role === "assistant" ? turns[i + 1].content : "");
+    if (RECAP_RE.test(u)) continue;
+    const saved = a.match(/Saved in ([\w-]+): "([^"\n]{1,160})" \(id [\w-]+(?:, ([^)]*))?\)/);
+    const song = a.match(/["“]([^"”\n]{2,120})["”] (?:is|are) ready to play below/);
+    const date = a.match(/^It's (\w+day, \w+ \d{1,2}, \d{4})/);
+    if (saved && saved[1] === "productivity") tasks.set(saved[2].toLowerCase(), `"${saved[2]}"${saved[3] ? ` (${saved[3]})` : ""}`);
+    else if (song) songs.add(song[1]);
+    else if (date) dateLine = date[1];
+    else if (/nothing was (?:created|saved)/i.test(a)) other.push(`${u.slice(0, 80)} (nothing was saved)`);
+    else if (!RECAP_SMALLTALK_RE.test(u) && !/^did\b/i.test(u)) other.push(u.slice(0, 80));
+  }
+  const asks = [...new Set([...memAsks.filter((x) => !/\b(?:task|song)\b/i.test(x)), ...other])].slice(-6);
+  const lines = [];
+  if (tasks.size) lines.push(`- Saved ${tasks.size} task${tasks.size === 1 ? "" : "s"}: ${[...tasks.values()].join(", ")}`);
+  if (songs.size) lines.push(`- Made ${songs.size === 1 ? "a song" : `${songs.size} songs`}: ${[...songs].map((x) => `"${x}"`).join(", ")} (the player is on the message where I made it)`);
+  if (notes.length) lines.push(`- Saved note${notes.length === 1 ? "" : "s"}: ${notes.map((x) => `"${x}"`).join(", ")}`);
+  if (dateLine) lines.push(`- Checked the date: ${dateLine}`);
+  for (const x of asks) lines.push(`- You asked: ${x}`);
+  if (!lines.length) return null;
+  return `Here's what we've done in this chat so far:\n${lines.join("\n")}`;
 }
 
 /** Titles of songs/items this chat already made, from earlier receipts in the history. */

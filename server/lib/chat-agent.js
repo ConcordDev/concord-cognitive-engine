@@ -49,7 +49,7 @@ import {
   shouldSkipToolFollowup,
   followUpFailureReply,
 } from "./chat/tool-turn-reply.js";
-import { guardPlaybackClaim } from "./chat/playback-honesty.js";
+import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
 import { todayLine } from "./chat/today.js";
@@ -1569,6 +1569,9 @@ export function formatToolResults(results) {
  * @returns {Promise<{ok, answer, toolCalls, artifacts, turns, provider, model, error?}>}
  */
 export async function runAgentLoop({ db, userId, message, runMacro, lensActions, history = [], opts = {}, onEvent = null }) {
+  // A recap may say "I made you a song" when this chat really did (earlier receipt / memory note).
+  const _priorSong = historyHasSong(history);
+  const guardPlaybackClaim = (answer, results) => _guardPlaybackClaimRaw(answer, results, { priorSong: _priorSong });
   const emit = (type, payload) => {
     if (typeof onEvent !== "function") return;
     try { onEvent(type, payload); } catch { /* a bad listener must never break the agent loop */ }

@@ -28,18 +28,34 @@ function resultHasAudio(r) {
 }
 
 /**
+ * True when this chat already made a song: an earlier "… is ready to play below" receipt, or the
+ * chat-memory note's saved list (song "…"). A recap may then say a song was made.
+ */
+export function historyHasSong(history) {
+  return (Array.isArray(history) ? history : []).some((m) => {
+    const c = String(m?.content || "");
+    return (m?.role === "assistant" && /\bready to play below\b/i.test(c)) || (m?.role === "system" && /\bsong "[^"\n]{1,120}"/.test(c));
+  });
+}
+
+/**
  * @param {string} answer
  * @param {Array} results - tool results from the whole run
+ * @param {{priorSong?: boolean}} [opts] - priorSong: this chat really made a song earlier, so
+ *   "I made you a song" in a recap is true; only "is playing" claims are still removed.
  * @returns {string} answer, possibly corrected
  */
-export function guardPlaybackClaim(answer, results) {
+export function guardPlaybackClaim(answer, results, { priorSong = false } = {}) {
   const text = String(answer || "");
   if (!text.trim()) return text;
-  if (!PLAYING_CLAIM_RE.test(text) && !CREATION_CLAIM_RE.test(text)) return text;
+  const creation = !priorSong && CREATION_CLAIM_RE.test(text);
+  if (!PLAYING_CLAIM_RE.test(text) && !creation) return text;
   if (Array.isArray(results) && results.some(resultHasAudio)) return text;
   const parts = text.split(/(?<=[.!?])\s+/);
-  const kept = parts.filter((p) => !PLAYING_CLAIM_RE.test(p) && !CREATION_CLAIM_RE.test(p));
+  const kept = parts.filter((p) => !PLAYING_CLAIM_RE.test(p) && (priorSong || !CREATION_CLAIM_RE.test(p)));
+  if (priorSong && kept.length === parts.length) return text;
   const cleaned = kept.join("").trim();
+  if (priorSong) return cleaned || "The song is on the earlier message where I made it; nothing auto-plays.";
   return cleaned ? `${cleaned}${NOTE}` : NOTE.trim();
 }
 

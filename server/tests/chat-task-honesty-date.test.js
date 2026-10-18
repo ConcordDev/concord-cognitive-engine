@@ -116,3 +116,32 @@ test("song recall names the song instead of 'no audio was produced'", async () =
   const none = "Sure.\n\nNote: no audio was produced in this chat, so nothing is playing.";
   assert.equal(songRecallFix(none, []), none);
 });
+
+test("playback guard keeps 'I made you a song' when this chat made one; still drops 'is playing'", async () => {
+  const { guardPlaybackClaim, historyHasSong } = await import("../lib/chat/playback-honesty.js");
+  const hist = [{ role: "assistant", content: '"Late Night Drives" is ready to play below.' }];
+  assert.ok(historyHasSong(hist));
+  assert.ok(historyHasSong([{ role: "system", content: 'Saved or made in this chat:\n- song "Rain Loop"' }]));
+  const recap = "We added two tasks. I made you a song called Late Night Drives.";
+  assert.equal(guardPlaybackClaim(recap, [], { priorSong: true }), recap);
+  assert.match(guardPlaybackClaim(recap, []), /no audio was produced/);
+  assert.equal(guardPlaybackClaim("Late Night Drives is playing now. Enjoy!", [], { priorSong: true }), "Enjoy!");
+});
+
+test("recap draws on receipts, the date check and the memory note", async () => {
+  const { recapReply } = await import("../lib/chat/agent-route.js");
+  const hist = [
+    { role: "user", content: "yo" }, { role: "assistant", content: "hey" },
+    { role: "user", content: "whats todays date" }, { role: "assistant", content: "It's Sunday, October 18, 2026, 12:41 AM (America/New_York)." },
+    { role: "user", content: "add a task to my tasks: call mom sunday" }, { role: "assistant", content: 'Saved in productivity: "call mom sunday" (id tsk_1, due 2026-10-18).' },
+    { role: "user", content: "make me a short song about late night drives" }, { role: "assistant", content: '"Late Night Drives" is ready to play below \u2014 lofi.' },
+  ];
+  const r = recapReply("what did we do so far", hist, 'Saved or made in this chat (confirmed by tools):\n- note (DTU) "Pick up film from lab" id dtu_x\n\nOther things the user asked for:\n- turn 4: what trump doing lately');
+  assert.match(r, /Saved 1 task: "call mom sunday" \(due 2026-10-18\)/);
+  assert.match(r, /Made a song: "Late Night Drives"/);
+  assert.match(r, /Checked the date: Sunday, October 18, 2026/);
+  assert.match(r, /Saved note: "Pick up film from lab"/);
+  assert.match(r, /You asked: what trump doing lately/);
+  assert.ok(!/You asked: yo\b/.test(r));
+  assert.equal(recapReply("whats the weather", hist), null);
+});
