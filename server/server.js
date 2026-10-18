@@ -18133,7 +18133,7 @@ function makeCtx(req=null) {
             });
             return { ok: true, content: fc.text, raw: fc, brain: slot, source: "free_cloud", provider: fc.provider, model: fc.model };
           }
-          structuredLog("warn", "llm_free_cloud_failed", { slot, provider: fc?.provider || null, error: fc?.error || "free_cloud_error" });
+          structuredLog("warn", "llm_free_cloud_failed", { slot, provider: fc?.provider || null, error: String(fc?.error || "free_cloud_error").slice(0, 300), attempts: (fc?.attempts || []).map((a) => `${a.provider}/${a.model || "-"}:${String(a.error || "").slice(0, 40)}`) });
         }
 
         // ===== OLLAMA-ONLY ROUTING =====
