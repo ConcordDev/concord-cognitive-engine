@@ -258,6 +258,7 @@ export async function evaluate() {
     at: Date.now(),
   };
   _refreshPending();
+  _maybeExpire().catch(() => { S.expiryRunning = false; });
   const trips = currentTrips(cfg);
   const b = S.breaker;
   if (trips.length) {
@@ -450,8 +451,87 @@ export function admitExecution(req = {}) {
   return out;
 }
 
-/** Note an expiry sweep result (used by PR-3's TTL expiry). */
+/** Note an expiry sweep result. */
 export function noteExpired(n) { S.counters.expired += Number(n) || 0; if (n) _refreshPending(true); }
+
+// ── TTL expiry (reversible) ───────────────────────────────────────────────
+// Background tasks older than the TTL (default 6h) that are still pending —
+// or 'active' (claimed but never finished) — are marked status='expired'.
+// Nothing is deleted. result keeps everything needed to undo it:
+//   {"expired_by":"bg-governor","prev_status":..,"prev_result":..,"expired_at":..}
+// Undo (while the backend is stopped, on a copy first):
+//   UPDATE emergent_tasks SET status = json_extract(result,'$.prev_status'),
+//     result = json_extract(result,'$.prev_result'), completed_at = NULL
+//   WHERE status = 'expired' AND json_extract(result,'$.expired_by') = 'bg-governor';
+export function expiryEnabled() {
+  const v = String(process.env.CONCORD_BG_EXPIRY ?? "").toLowerCase();
+  if (["0", "off", "false"].includes(v)) return false;
+  if (["1", "on", "true"].includes(v)) return true;
+  return governorMode() === "enforce"; // default: on with enforcement
+}
+
+export function expireStaleTasks({ db = _db(), now = Date.now(), batch = _num("CONCORD_BG_EXPIRY_BATCH", 4000) } = {}) {
+  if (!db) return { expired: 0, reason: "no_db" };
+  const cutoff = now - governorConfig().taskTtlMs;
+  let expired = 0;
+  const byStatus = {};
+  try {
+    const kinds = db.prepare("SELECT DISTINCT task_type AS k FROM emergent_tasks WHERE status IN ('pending','active')").all().map((r) => r.k);
+    const upd = db.prepare(`
+      UPDATE emergent_tasks
+         SET status = 'expired', completed_at = ?,
+             result = json_object('expired_by', 'bg-governor', 'prev_status', status,
+                                  'prev_result', result, 'expired_at', ?)
+       WHERE rowid IN (SELECT rowid FROM emergent_tasks
+                        WHERE status = ? AND task_type = ? AND created_at < ?
+                        LIMIT ?)`);
+    for (const st of ["pending", "active"]) {
+      for (const k of kinds) {
+        if (expired >= batch) break;
+        const n = upd.run(now, now, st, k, cutoff, batch - expired).changes;
+        if (n) { expired += n; byStatus[st] = (byStatus[st] || 0) + n; }
+      }
+    }
+  } catch (e) {
+    return { expired, error: String(e?.message || e) };
+  }
+  if (expired) {
+    noteExpired(expired);
+    S.expiryLast = { at: now, expired, byStatus };
+  }
+  return { expired, byStatus, cutoff };
+}
+
+async function _maybeExpire() {
+  if (!expiryEnabled() || isKilled() || S.expiryRunning) return;
+  if (S.signals.eventLoopPressure) return; // a big UPDATE is the last thing a lagging loop needs
+  const every = _num("CONCORD_BG_EXPIRY_INTERVAL_MS", 10_000);
+  if (Date.now() - (S.expiryAt || 0) < every) return;
+  S.expiryAt = Date.now();
+  S.expiryRunning = true;
+  // Small chunks with a yield between them; stop the sweep early if a chunk
+  // was slow (cold pages / checkpoint) so the event loop never stalls long.
+  const total = _num("CONCORD_BG_EXPIRY_BATCH", 1000);
+  const chunk = _num("CONCORD_BG_EXPIRY_CHUNK", 250);
+  const slowMs = _num("CONCORD_BG_EXPIRY_SLOW_MS", 150);
+  const t0 = Date.now();
+  let expired = 0, maxChunkMs = 0, stoppedSlow = false, error = null;
+  try {
+    while (expired < total) {
+      const c0 = Date.now();
+      const r = expireStaleTasks({ batch: Math.min(chunk, total - expired) });
+      const ms = Date.now() - c0;
+      maxChunkMs = Math.max(maxChunkMs, ms);
+      if (r.error) { error = r.error; break; }
+      expired += r.expired;
+      if (!r.expired) break;
+      if (ms > slowMs) { stoppedSlow = true; break; }
+      await new Promise((res) => setImmediate(res));
+    }
+  } finally { S.expiryRunning = false; }
+  S.expiryLastRun = { expired, ms: Date.now() - t0, maxChunkMs, stoppedSlow, error, at: new Date().toISOString() };
+  if (error) S.log("warn", "bg_governor_expiry_error", { error });
+}
 
 // ── status ────────────────────────────────────────────────────────────────
 export function getGovernorStatus() {
@@ -464,6 +544,7 @@ export function getGovernorStatus() {
     inflight: { total: S.inflight, byKind: { ...S.inflightByKind } },
     pending: S.pending,
     counters: JSON.parse(JSON.stringify(S.counters)),
+    expiry: { enabled: expiryEnabled(), ttlHours: governorConfig().taskTtlMs / 3600_000, lastRun: S.expiryLastRun || null },
     recentDenials: S.recent.slice(-25),
     config: { ...cfg, killFile: undefined, statusFile: undefined },
     startedAt: new Date(S.startedAt).toISOString(),

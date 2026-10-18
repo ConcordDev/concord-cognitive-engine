@@ -114,6 +114,7 @@ export function initiateCommunication({ from, to, intent, context = {}, db, real
 export async function processCommunicationTask(task, recipientIdentity, db, realtimeEmit) {
   const msg = task.task_data;
   let responseText = "";
+  let failure = null;
 
   try {
     const result = await infer({
@@ -122,12 +123,32 @@ export async function processCommunicationTask(task, recipientIdentity, db, real
       callerId: `emergent:${recipientIdentity.id}:communication`,
       maxSteps: 3,
     }, db);
-    responseText = result?.finalText || "[no response generated]";
+    // Governor deferral: leave the communication untouched; the caller
+    // re-queues the task (status pending) instead of recording a fake reply.
+    if (result?.error && String(result.error).startsWith("bg_governor_denied")) {
+      const e = new Error(result.error);
+      e.code = "bg_governor_deferred";
+      throw e;
+    }
+    responseText = result?.finalText || "";
+    if (!responseText) failure = String(result?.error || "empty_output").slice(0, 200);
   } catch (e) {
-    responseText = `[communication error: ${e?.message}]`;
+    if (e?.code === "bg_governor_deferred") throw e;
+    failure = `infer_threw: ${String(e?.message || e).slice(0, 180)}`;
   }
 
   const now = Date.now();
+  if (failure) {
+    // Traceable failure: the communication and its task both record why.
+    if (db && msg.message_id) {
+      try {
+        db.prepare(`UPDATE emergent_communications SET completed_at = ?, status = 'failed' WHERE id = ?`).run(now, msg.message_id);
+      } catch (e) { console.error("[communication] update failed:", e?.message); }
+    }
+    const err = new Error(`communication_failed: ${failure}`);
+    err.code = "communication_failed";
+    throw err;
+  }
   if (db && msg.message_id) {
     try {
       db.prepare(`
