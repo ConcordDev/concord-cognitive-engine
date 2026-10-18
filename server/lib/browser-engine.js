@@ -910,8 +910,9 @@ export async function fetchHtmlFallback(url, options = {}) {
       signal: ctrl.signal,
       redirect: "follow",
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": typeof options.userAgent === "string" && options.userAgent ? options.userAgent.slice(0, 300) : USER_AGENT,
         Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     }, typeof options.fetchImpl === "function" ? { fetchImpl: options.fetchImpl } : {});
     if (!res?.ok) {

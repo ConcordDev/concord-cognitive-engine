@@ -48,7 +48,8 @@ test("Bing News cards parse to publisher article URLs", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].url, "https://ex.com/a");
   assert.equal(rows[0].title, "Chip & AI deal");
-  assert.match(rows[0].snippet, /Reuters, 3h ago: A deal was signed\./);
+  assert.match(rows[0].snippet, /^Reuters, [A-Z][a-z]{2} \d{1,2}, 20\d\d: A deal was signed\./);
+  assert.ok(rows[0].publishedAt);
 });
 
 test("Google News RSS fallback strips the outlet suffix", () => {

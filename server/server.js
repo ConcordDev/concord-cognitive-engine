@@ -1993,6 +1993,7 @@ import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridg
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
 import { stripGovernanceLeak, visibleChatReply, createGovernanceLeakFilter } from "./lib/chat-governance-leak.js";
+import { extractWeatherLocation as _extractWeatherLocation } from "./lib/chat/weather-location.js";
 import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
@@ -27620,10 +27621,7 @@ const _isTimeQuery = (s) => {
 // (chat-par probe 2026-10-17: it answered "Weather lookup failed for fresh snow at sunrise").
 const _CREATIVE_ASK_RE = /\b(image|picture|photo|drawing|draw|paint|painting|illustrat\w*|render|wallpaper|sketch|logo|song|poem|story|lyrics|haiku|music|recipe)\b/i;
 const _isWeatherQuery = (s) => /\b(weather|forecast|temperature|temp|rain|snow|wind)\b/i.test(String(s||"")) && !_CREATIVE_ASK_RE.test(String(s||""));
-const _extractLocation = (s) => {
-  const m = String(s||"").match(/\b(?:in|for|at)\s+([a-zA-Z][^,.;!?]{2,60})/i);
-  return m ? String(m[1]).trim() : "";
-};
+const _extractLocation = (s) => _extractWeatherLocation(s);
 
 if (_isTimeQuery(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");

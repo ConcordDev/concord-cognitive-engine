@@ -678,6 +678,36 @@ function dedupeArtifacts(artifacts) {
  * @param {object} call              { tool, params }
  * @returns {Promise<{tool, ok, result?, error?, artifact?}>}
  */
+const _BROWSE_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+function _publishedLabel(iso) {
+  const t = Date.parse(String(iso || ""));
+  if (!Number.isFinite(t)) return "";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" }).format(new Date(t));
+}
+
+/**
+ * A page that 403/405s the renderer, or a Google News redirect wrapper: resolve
+ * the publisher link from the listed headline, then retry a plain GET with a
+ * browser user agent. Returns a browse_url-shaped result or null.
+ */
+async function _browseFallback(url, listed) {
+  try {
+    const { fetchHtmlFallback } = await import("./browser-engine.js");
+    let target = url;
+    if (/^https?:\/\/news\.google\.com\//i.test(String(url)) && listed?.title) {
+      const ws = await import("../emergent/conscious-web-search.js");
+      target = (await ws.resolveNewsLink?.(listed.title, listed.outlet)) || null;
+      if (!target) return null;
+    }
+    const page = await fetchHtmlFallback(target, { userAgent: _BROWSE_UA, timeout: 8000 });
+    const text = String(page?.text || "").trim();
+    if (!page?.ok || text.length < 200) return null;
+    return { ok: true, url: target, title: page.title || listed?.title || "", text: text.slice(0, 4000),
+      fallback: "fetch", label: target !== url ? `publisher page (resolved from ${new URL(url).hostname})` : "fetch fallback (browser UA)" };
+  } catch { return null; }
+}
+
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
@@ -708,20 +738,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const _userText = String(ctx?.userPrompt || "");
         _q = _q.replace(/\b(?:19|20)\d\d\b/g, (y) => (_userText.includes(y) ? y : "")).replace(/\s{2,}/g, " ").trim() || _q;
         let r = await runMacro("expert_mode", "web_search", { query: _q, limit: Number(call.params.limit) || 5 }, ctx);
-        // News-shaped queries get fresh headlines (Google/Bing News) ahead of the
-        // general results, which were Wikipedia/hub pages from 2024 for "trump news".
-        try {
-          const ws = await import("../emergent/conscious-web-search.js");
-          if (ws.isNewsQuery?.(_q) || /\b(?:latest|lately|recent(?:ly)?|today|tonight|last night|this week|right now|news)\b/i.test(_q)) {
-            const news = await ws.webSearchForChat([_q]);
-            if (Array.isArray(news) && news.length) {
-              const base = r?.ok ? (Array.isArray(r.results) ? r.results : (Array.isArray(r.sources) ? r.sources : [])) : [];
-              const seen = new Set(news.map((n) => n.url));
-              r = { ...(r?.ok ? r : {}), ok: true, query: _q,
-                results: [...news.map((n) => ({ title: n.title, url: n.url, snippet: n.snippet || String(n.content || "").slice(0, 300) })), ...base.filter((b) => !seen.has(b.url || b.link))] };
-            }
-          }
-        } catch { /* news is best-effort; keep the general results */ }
+        // News, sports scores and crypto prices come back dated and newest-first
+        // from webSearchForChat inside expert_mode.web_search (one search, not two).
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "web_search failed" };
         // Keep only the fields the model needs, and bound the payload —
         // expert_mode.web_search can return a large object (full snippets,
@@ -738,8 +756,17 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             title: String(x.title || x.name || "").slice(0, 200),
             url: String(x.url || x.link || x.href || "").slice(0, 400),
             snippet: String(x.snippet || x.description || x.text || "").slice(0, 500),
+            ...(x.outlet ? { outlet: String(x.outlet).slice(0, 120) } : {}),
+            ...(_publishedLabel(x.published_at || x.publishedAt) ? { published: _publishedLabel(x.published_at || x.publishedAt) } : {}),
           })),
         };
+        // browse_url falls back to this listing when a page will not load.
+        try {
+          if (ctx && typeof ctx === "object") {
+            if (!(ctx._webListing instanceof Map)) ctx._webListing = new Map();
+            for (const it of trimmed.results) if (it.url) ctx._webListing.set(it.url, it);
+          }
+        } catch { /* listing memory is best-effort */ }
         // Grounding: the brain reads the rule with the results, and an empty
         // (relevance-filtered) result set says so instead of leaving room
         // for an answer from memory dressed up as a sourced one.
@@ -842,8 +869,18 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               _browseTimer = setTimeout(() => rej(new Error("timeout")), 15_000);
             }),
           ]);
-          if (!page || page.ok === false) {
-            return { tool: call.tool, ok: false, url, error: page?.error || "browse_url failed" };
+          const _listed = ctx?._webListing instanceof Map ? ctx._webListing.get(url) : null;
+          if (!page || page.ok === false || String(page.text || page.content || "").trim().length < 200 || /^https?:\/\/news\.google\.com\//i.test(String(url))) {
+            const alt = await _browseFallback(url, _listed);
+            if (alt) return { tool: call.tool, ...alt };
+            if (_listed) {
+              return { tool: call.tool, ok: true, url, title: _listed.title || "", fallback: "search-listing", label: "search listing only (page could not be fetched)",
+                text: `The page could not be fetched (${page?.error || "no readable text"}). Only the search listing is available; answer from it and say so.\nTitle: ${_listed.title || ""}\nOutlet: ${_listed.outlet || ""}\nPublished: ${_listed.published || "unknown"}\nSnippet: ${_listed.snippet || ""}` };
+            }
+            if (!page || page.ok === false) {
+              return { tool: call.tool, ok: false, url, error: page?.error || "browse_url failed",
+                retryHint: "Could not read this page. If it was in earlier web_search results, answer from that listing (title, outlet, date, link) and say the full page was unavailable." };
+            }
           }
           return {
             tool: call.tool, ok: true, url,

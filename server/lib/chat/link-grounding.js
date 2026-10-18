@@ -126,7 +126,7 @@ export function enforceGroundedLinks(text, allowed, { note = true } = {}) {
 
 /** Instruction appended to every web_search result the brain reads. */
 export const WEB_GROUNDING_RULE =
-  "Answer only from these results. Cite only these URLs, exactly as given. If the results do not contain the answer, say the search did not find it; do not fill in figures, dates or links from memory.";
+  "Answer only from these results. Cite only these URLs, exactly as given. Where results carry a published date, lead with the newest items and say each one's outlet and date (for example \"Reuters, Oct 16\"); never present an older item as current. If the results do not contain the answer, say the search did not find it; do not fill in figures, dates or links from memory.";
 
 /** Tool result text for a search that found nothing relevant. */
 export const WEB_NO_RESULTS_RULE =
