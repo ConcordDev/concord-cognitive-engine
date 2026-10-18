@@ -2,7 +2,7 @@
 // agent tool loop, news search, compute precedence, Chat tool-card shape.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chatAgentRoute, clientToolCall } from "../lib/chat/agent-route.js";
+import { chatAgentRoute, clientToolCall, webAgentMessage } from "../lib/chat/agent-route.js";
 import { routeComputeQuestion } from "../lib/chat/compute-router.js";
 import { isNewsQuery, newsTopic, parseBingNewsResults, parseGoogleNewsRss } from "../emergent/conscious-web-search.js";
 
@@ -99,4 +99,56 @@ test("a lens write is reported from the stored record", async () => {
   ];
   assert.equal(writeReceipt(calls), 'Saved in productivity: "buy oat milk" (id tsk_1, no due date).');
   assert.equal(writeReceipt([{ tool: "run_lens_action", ok: true, domain: "food", action: "recipe-list", result: {} }]), "");
+});
+
+// Ramaj's iPhone asks, 2026-10-17 20:09-20:11 ET (role founder, long pre-fix session):
+// all answered from memory with toolCallCount 0 because none matched a route.
+test("casual phone asks reach the tools", () => {
+  const cases = [
+    ["What trump doing lately", "web"],
+    ["Use web search", "web"],
+    ["use web search to find what trump is doing", "web"],
+    ["what's Elon been up to", "web"],
+    ["any updates on the writers strike?", "web"],
+    ["whats the latest on the hurricane", "web"],
+    ["google it", "web"],
+    ["Can you make music", "music"],
+    ["make me some beats", "music"],
+  ];
+  for (const [p, want] of cases) assert.equal(chatAgentRoute(p), want, p);
+  for (const p of ["Yo", "Yo wassup", "What are you?", "Okay what can you do?", "What else can you do",
+    "what are you doing lately", "what have you been up to", "what's new with you", "how do I make my song more catchy?",
+    "what's my brother been up to"]) {
+    assert.equal(chatAgentRoute(p), null, p);
+  }
+});
+
+test("a short reply to 'what should I look up?' is the search topic", () => {
+  const prevReply = "Got it — I'll run a web search for you. What would you like me to look up?";
+  assert.equal(chatAgentRoute("Trump", { prevReply }), "web");
+  assert.equal(chatAgentRoute("nah never mind", { prevReply }), null);
+  assert.equal(chatAgentRoute("Trump", { prevReply: "Hey. What's good?" }), null);
+  assert.equal(chatAgentRoute("Trump", {}), null);
+});
+
+test("a bare 'use web search' searches the question just asked", () => {
+  const history = [{ role: "user", content: "What trump doing lately" }, { role: "assistant", content: "From memory: ..." }];
+  for (const p of ["Use web search", "use web search ", "google it", "look it up", "search the web", "ok search it up please"]) {
+    assert.match(webAgentMessage(p, history), /search the web for: What trump doing lately$/, p);
+  }
+  assert.equal(webAgentMessage("search the web for mars rover news", history), "search the web for mars rover news");
+  assert.equal(webAgentMessage("Use web search", []), "Use web search");
+});
+
+test("unpunctuated user turns stay in chat history", async () => {
+  const { buildChatHistoryMessages } = await import("../lib/chat-reply-policy.js");
+  const sess = [
+    { role: "user", content: "What trump doing lately" },
+    { role: "assistant", content: "From memory he has been campaigning." },
+    { role: "user", content: "Use web search " },
+  ];
+  const h = buildChatHistoryMessages(sess, "Use web search ");
+  assert.deepEqual(h.map((m) => m.role), ["user", "assistant", "user"]);
+  assert.equal(h[0].content, "What trump doing lately");
+  assert.match(webAgentMessage("Use web search ", h.slice(0, -1)), /search the web for: What trump doing lately$/);
 });

@@ -27685,11 +27685,12 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       // The previous assistant turn's route lets a follow-up ("what's the source link?")
       // stay on web search instead of the conversational path's retrieved notes.
       let _prevAgentRoute = null;
+      let _prevReply = "";
       for (let _i = sess.messages.length - 1; _i >= 0; _i--) {
         const _m = sess.messages[_i];
-        if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; break; }
+        if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; _prevReply = String(_m.content || ""); break; }
       }
-      const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute });
+      const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute, prevReply: _prevReply });
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
       if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
         const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
