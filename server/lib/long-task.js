@@ -211,7 +211,7 @@ export function formatLongTaskStatus(status) {
 }
 
 const MODE_RULES = {
-  research: "- Research: use web_search, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
+  research: "- Research: use web_search with short queries (3-6 plain words, e.g. "MG90S servo review"; long keyword lists find nothing) and vary them, then browse_url the best results and quote real numbers from the pages. Every claim in your notes and final report needs its source URL. Prefer several independent sources.",
   plan: "- Planning: break the goal into concrete, dated steps with durations. Put real dates on them (today is in the system note above).",
   code: "- Coding: write the code and run it (run_python, or run_lens_action code.build) to check it works before you report it. Show the final code.",
   general: "",
@@ -352,4 +352,88 @@ export function longTaskStartedReply(r, goal) {
   }
   const kind = r.mode === "research" ? "research job" : r.mode === "plan" ? "planning job" : r.mode === "code" ? "coding job" : "background job";
   return `Started a ${kind} for "${String(goal).slice(0, 160)}" (job ${r.jobId}). It keeps working in the background (up to ${r.maxTurns} turns and ${r.budgetCap} tool steps) and I'll post the result here when it's done. Ask "how's my job going?" any time for progress.`;
+}
+
+// ── Long-task pump ──────────────────────────────────────────────────────────
+// Long tasks must keep running after the user closes the tab. The governor
+// heartbeat can't carry them: governorTick skips everything while the site is
+// idle (presence-idle), and the registry's cadence keys off __bgTickCounter,
+// which only kernelTick events advance. So long tasks get their own small,
+// unref'd interval: each pass ticks up to `maxConcurrent` due jobs in the
+// background. tickMarathon's in-flight guard keeps one tick per job.
+const _pumpTicking = new Set();
+let _pumpTimer = null;
+
+export function longTaskPumpActive() { return !!_pumpTimer; }
+
+/** Find due long tasks (oldest due first). Exported for tests. */
+export function findDueLongTasks(db, limit = 5) {
+  try {
+    return db.prepare(`
+      SELECT id, meta_json FROM agent_marathon_sessions
+      WHERE status IN ('pending','running') AND revoked_at IS NULL
+        AND (next_tick_at IS NULL OR next_tick_at <= unixepoch())
+        AND json_extract(meta_json, '$.longTask') = 1
+      ORDER BY COALESCE(next_tick_at, 0) ASC
+      LIMIT ?
+    `).all(limit);
+  } catch { return []; }
+}
+
+/** One pump pass. Returns how many ticks it started. Exported for tests. */
+export async function pumpLongTasks({ db, runMacro, lensActions, maxConcurrent = 2, tick = null } = {}) {
+  if (!db || typeof runMacro !== "function") return 0;
+  const mod = await import("./agent-marathon.js");
+  const tickFn = tick || mod.tickMarathon;
+  let started = 0;
+  for (const row of findDueLongTasks(db, 5)) {
+    if (_pumpTicking.size >= maxConcurrent) break;
+    if (_pumpTicking.has(row.id) || mod.isMarathonTicking(row.id)) continue;
+    let meta = {};
+    try { meta = JSON.parse(row.meta_json || "{}") || {}; } catch { meta = {}; }
+    try { db.prepare(`UPDATE agent_marathon_sessions SET status = 'running' WHERE id = ? AND status = 'pending'`).run(row.id); } catch { /* best-effort */ }
+    _pumpTicking.add(row.id);
+    started++;
+    Promise.resolve()
+      .then(() => tickFn({
+        db, sessionId: row.id, runMacro, lensActions: lensActions || new Map(),
+        opts: { tickTurns: LONG_TASK_DEFAULTS.tickTurns, ...(meta.projectId ? { projectId: meta.projectId } : {}) },
+      }))
+      .catch(() => { /* tickMarathon records its own failures */ })
+      .finally(() => { _pumpTicking.delete(row.id); });
+  }
+  return started;
+}
+
+/**
+ * Start the pump. getDb / getRunMacro / getLensActions are read on every pass
+ * so a late-initialised DB or macro registry is picked up. Off in tests unless
+ * forced; CONCORD_LONG_TASK_PUMP=0 turns it off.
+ */
+export function startLongTaskPump({ getDb, getRunMacro, getLensActions, intervalMs, maxConcurrent } = {}) {
+  if (_pumpTimer) return false;
+  if (process.env.CONCORD_LONG_TASK_PUMP === "0") return false;
+  if (process.env.NODE_ENV === "test" && process.env.CONCORD_LONG_TASK_PUMP !== "1") return false;
+  const every = Number(intervalMs || process.env.CONCORD_LONG_TASK_PUMP_MS) || 15000;
+  const conc = Number(maxConcurrent || process.env.CONCORD_LONG_TASK_CONCURRENCY) || 2;
+  let busy = false;
+  _pumpTimer = setInterval(async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      await pumpLongTasks({
+        db: getDb?.(),
+        runMacro: getRunMacro?.() || globalThis.__concordRunMacro,
+        lensActions: getLensActions?.() || globalThis.__concordLensActions,
+        maxConcurrent: conc,
+      });
+    } catch { /* next pass retries */ } finally { busy = false; }
+  }, every);
+  _pumpTimer.unref?.();
+  return true;
+}
+
+export function stopLongTaskPump() {
+  if (_pumpTimer) clearInterval(_pumpTimer);
+  _pumpTimer = null;
 }

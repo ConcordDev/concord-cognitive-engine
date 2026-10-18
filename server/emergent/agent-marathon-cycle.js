@@ -8,6 +8,7 @@
 // Bounded at MAX_PER_PASS to keep tick cost predictable.
 
 import { findDueMarathons, tickMarathon, startMarathon, isMarathonTicking } from "../lib/agent-marathon.js";
+import { longTaskPumpActive } from "../lib/long-task.js";
 import { kickstartLinkedMarathon } from "../lib/mission-marathon-bridge.js";
 import { loadOrCreate } from "../lib/affect-bridge.js";
 import { formGoalForAgent } from "../lib/agent-goals.js";
@@ -128,6 +129,8 @@ export async function runAgentMarathonCycle({ db } = {}) {
         if (m?.longTask) longMeta = m;
       } catch { longMeta = null; }
       if (longMeta) {
+        // The long-task pump (lib/long-task.js) owns these when it's running.
+        if (longTaskPumpActive()) continue;
         if (isMarathonTicking(id) || longStarted >= MAX_LONG_TICKS_PER_PASS) continue;
         longStarted++;
         tickMarathon({

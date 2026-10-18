@@ -31927,6 +31927,11 @@ registerHeartbeat("agent-marathon-cycle", {
   scope: "global",
   handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
 });
+// Chat/ConKay long tasks get their own unref'd pump: the governor tick above
+// skips while the site is idle, and a background job must keep going after
+// the user closes the tab.
+import { startLongTaskPump } from "./lib/long-task.js";
+startLongTaskPump({ getDb: () => STATE?.db || globalThis._concordDB });
 
 // Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
 // character has drifted from the values anchor, flag (never correct) past threshold for
