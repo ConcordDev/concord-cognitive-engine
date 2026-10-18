@@ -25,6 +25,7 @@ globalThis.fetch = async (url, init = {}) => {
   const body = init.body ? JSON.parse(init.body) : null;
   calls.push({ url: String(url), body });
   const u = String(url);
+  if (u.endsWith("/api/embed")) return new Response(JSON.stringify({ embeddings: [Array.from({ length: 1024 }, (_, i) => (i % 5) / 5)] }), { status: 200 });
   if (u.endsWith("/api/embeddings")) return new Response(JSON.stringify({ embedding: Array.from({ length: 1024 }, (_, i) => (i % 7) / 7) }), { status: 200 });
   if (u.endsWith("/api/chat")) return new Response(JSON.stringify({ message: { role: "assistant", content: "hello from bg" }, prompt_eval_count: 3, eval_count: 4 }), { status: 200 });
   if (u.endsWith("/api/tags") || u.endsWith("/api/version")) return new Response("{}", { status: 200 });
@@ -108,5 +109,23 @@ describe("governed embedding backfill", () => {
     assert.ok(r.reasons["breaker_open:chat_p95"] >= 1);
     assert.ok(r.waited >= 5000);
     assert.equal(r.gov.allowed, 25);
+  });
+});
+
+describe("governed backfill skips", () => {
+  it("counts DTUs with no text as skipped, not as brain errors", () => {
+    const r = run(`${STUB_FETCH}
+      const G = await import("./lib/background-governor.js");
+      G._resetGovernorForTest({});
+      const E = await import("./embeddings.js");
+      await E.initEmbeddings({ db: null, ollamaUrls: ["http://127.0.0.1:11436"], structuredLog: () => {} });
+      const dtus = new Map([["a", { id: "a", title: "Has text" }], ["b", { id: "b" }], ["c", { id: "c", content: "body only" }]]);
+      const res = await E.backfillEmbeddings(dtus, { governed: true });
+      console.log("RESULT " + JSON.stringify({ res, out: G.getGovernorStatus().counters.outcomes }));`,
+    { BRAIN_BACKGROUND_URL: "", CONCORD_EMBED_BACKFILL_DELAY_MS: "1" });
+    assert.equal(r.res.embedded, 2);
+    assert.equal(r.res.empty, 1);
+    assert.equal(r.res.errors, 0);
+    assert.equal(r.out.error, 0);
   });
 });
