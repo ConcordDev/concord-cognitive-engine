@@ -27458,6 +27458,18 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
 
 sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
 
+// Long-chat memory (lib/chat/session-memory.js): facts, saved items and requests from the
+// whole persisted transcript (chat_messages), not just the 60 in-memory rows. Injected as a
+// system note on both the agent route and the conversational path.
+let _chatMemory = { text: "", userTurns: 0 };
+let _chatMemoryLib = null;
+try {
+  _chatMemoryLib = await import("./lib/chat/session-memory.js");
+  const _memRows = _chatMemoryLib.loadSessionRows(ctx?.db || globalThis._concordSTATE?.db, sessionId);
+  _memRows.push({ role: "user", content: prompt });
+  _chatMemory = _chatMemoryLib.buildSessionMemory(_memRows);
+} catch (_e) { logger.debug('server', 'chat memory build failed', { error: _e?.message }); }
+
 // Persist user msg + a deterministic assistant reply when the chat takes
 // any of the early-return paths (math, time, weather, identity, etc.).
 // The full LLM path persists at its own return site with richer meta.
@@ -27563,7 +27575,34 @@ function _persistDeterministicTurn(replyContent, replyMeta = {}) {
     localSettings = applyStyleToSettings(baseSettings, v);
     saveStateDebounced();
   }
+  const _memEvicted = sess.messages.length > 60;
   if (sess.messages.length > 60) sess.messages.splice(0, sess.messages.length - 60);
+  // Private per-session "chat memory" DTU, refreshed every 10 user turns or when rows leave
+  // the in-memory window. Fire-and-forget; never blocks the reply.
+  try {
+    const _memUid = ctx?.actor?.userId || null;
+    if (_chatMemoryLib && _memUid && _chatMemory.text && _chatMemoryLib.memoryDtuDue(_chatMemory.userTurns, { evicted: _memEvicted && !sess._memoryDtuEvictWritten })) {
+      if (_memEvicted) sess._memoryDtuEvictWritten = true;
+      const _memTitle = _chatMemoryLib.memoryDtuTitle(sessionId);
+      let _memId = sess.memoryDtuId && STATE.dtus.has(sess.memoryDtuId) ? sess.memoryDtuId : null;
+      if (!_memId && !sess._memoryDtuLooked) {
+        sess._memoryDtuLooked = true;
+        for (const _d of STATE.dtus.values()) { if (_d?.ownerId === _memUid && _d?.title === _memTitle) { _memId = _d.id; break; } }
+      }
+      const _memText = _chatMemory.text;
+      (async () => {
+        try {
+          if (_memId) {
+            await runMacro("dtu", "update", { id: _memId, content: _memText, summary: _memText }, ctx);
+          } else {
+            const _created = await runMacro("dtu", "create", { ..._chatMemoryLib.memoryDtuCreateInput(sessionId, _memText), skipAutoTag: true }, ctx);
+            const _newId = _created?.dtu?.id || _created?.id;
+            if (_newId) sess.memoryDtuId = _newId;
+          }
+        } catch (_e) { logger.debug('server', 'chat memory dtu write failed', { error: _e?.message }); }
+      })();
+    }
+  } catch (_e) { logger.debug('server', 'chat memory dtu skipped', { error: _e?.message }); }
 
   // Deterministic micro-kernel: basic arithmetic (LLM not required)
   // Answers only when the prompt is unambiguously a simple arithmetic query.
@@ -27692,7 +27731,22 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
       if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
         const _agentHistory = buildChatHistoryMessages(sess.messages, prompt).slice(0, -1);
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS });
+        // Math/physics: formula DTUs for the solver. Recall: the user's own DTUs.
+        let _formulaDtus = [];
+        let _recallDtus = [];
+        try {
+          if (_chatMemoryLib && _agentRouteKind === "compute") _formulaDtus = _chatMemoryLib.findFormulaDtus(_agentCtx.db, prompt);
+          if (_chatMemoryLib && _agentRouteKind === "recall") {
+            const _uid = _agentCtx.actor.userId;
+            const _mine = [];
+            for (const _d of STATE.dtus.values()) {
+              if (_d?.ownerId !== _uid || (Array.isArray(_d.tags) && _d.tags.includes("chat-memory"))) continue;
+              _mine.push(_d);
+            }
+            _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
+          }
+        } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -29152,6 +29206,7 @@ ${_operatorV6Block}` : "";
     // the session; buildChatHistoryMessages drops that copy and appends
     // _userContent last so the request never ends on an assistant prefill.
     messages = buildChatHistoryMessages(sess.messages, _userContent);
+    if (_chatMemory.text) messages = [{ role: "system", content: _chatMemory.text }, ...messages];
     if (_conversationalChat) messages = withChatToneReminder(messages);
     const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
     const r = await ctx.llm.chat({
@@ -29237,6 +29292,7 @@ ${_operatorV6Block}` : "";
       }) + _toolSystemPrompt + _lensHintSuffix + _currentTurnAnchor, mode);
       const _directMessages = [
         { role: "system", content: _directSystem },
+        ...(_chatMemory.text ? [{ role: "system", content: _chatMemory.text }] : []),
         ...(isConversationalChatMode(mode) ? withChatToneReminder(buildChatHistoryMessages(sess.messages, prompt)) : buildChatHistoryMessages(sess.messages, prompt)),
       ];
       const _directAc = new AbortController();
