@@ -718,6 +718,11 @@ export function isMarathonTicking(sessionId) {
   return _ticking.has(sessionId);
 }
 
+async function _plannerBrain(args) {
+  const { plannerBrainChat } = await import("./byo-router.js");
+  return plannerBrainChat(args);
+}
+
 async function _deliverIfLongTask(db, sessionId, runMacro = null) {
   // Research jobs end with a real report file (lib/research-mode.js).
   if (typeof runMacro === "function") {
@@ -866,6 +871,10 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     opts: {
       maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat,
       marathonSessionId: sessionId,
+      // Long tasks: the progress-notes wrap-up (the tick's summary turn) runs
+      // on the planner slot (byo-router.js#plannerBrainChat). Tests that
+      // script brainChat keep it for every turn.
+      ...(longMeta && !opts.brainChat ? { wrapUpBrainChat: _plannerBrain } : {}),
       // Memory recall keys off the goal, not "Continue the background job".
       memoryQuery: String(session.goal || session.title || "").slice(0, 1000),
       // A long task's tick ends with progress notes, not a premature final answer.
@@ -975,7 +984,7 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
           treeId: planCtx.goalTreeId,
           userId: session.user_id,
           reason: decision.reason,
-          brain: opts.replanBrainChat || opts.brainChat,
+          brain: opts.replanBrainChat || opts.brainChat || (longMeta ? _plannerBrain : undefined),
           slot: opts.slot,
         });
       }

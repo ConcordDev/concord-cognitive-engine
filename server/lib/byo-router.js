@@ -215,6 +215,42 @@ async function _brainChatDispatch({ db, userId, slot, messages, opts = {}, brain
   };
 }
 
+/**
+ * Planner slot — the heavier model for long-task planning and summary turns
+ * (goal decomposition, replan checkpoints, each tick's progress-notes wrap-up).
+ *  1. A user with their own key (BYO override on the conscious slot) or in
+ *     High Power mode gets brainChat's normal routing: their frontier model,
+ *     then the operator's platform providers.
+ *  2. Otherwise, when CONCORD_PLANNER_MODEL names a model on the conscious
+ *     Ollama host (e.g. a bigger qwen), use it (Private mode included; it is
+ *     local). CONCORD_PLANNER_TIMEOUT_MS bounds it (default 240 s).
+ *  3. Otherwise, or when that call fails: the conscious slot, as before.
+ * Returns brainChat's shape plus `plannerRoute` (byo|high_power|planner_model|conscious).
+ */
+export async function plannerBrainChat({ db, userId, messages, opts = {}, brainMode = null }, deps = {}) {
+  const chat = deps.brainChat || brainChat;
+  const ollama = deps.ollamaChat || ollamaChat;
+  const env = deps.env || process.env;
+  let mode = brainMode;
+  try { if (!mode) mode = getBrainMode(db, userId); } catch { mode = null; }
+  let override = null;
+  try { override = userId && mode !== "private" ? getOverride(db, userId, "conscious") : null; } catch { override = null; }
+  const hasByo = !!(override && override.provider && override.provider !== "concord_default" && override.provider !== "ollama");
+  if (hasByo || mode === "high_power") {
+    const r = await chat({ db, userId, slot: "conscious", messages, opts, brainMode: mode });
+    return { ...r, plannerRoute: hasByo ? "byo" : "high_power" };
+  }
+  const plannerModel = String(env.CONCORD_PLANNER_MODEL || "").trim();
+  if (plannerModel) {
+    try {
+      const r = await ollama("conscious", messages, { ...opts, model: plannerModel, timeoutMs: Number(env.CONCORD_PLANNER_TIMEOUT_MS) || 240000 });
+      if (r?.ok && r.text) return { ...r, provider: "concord_default", model: plannerModel, plannerRoute: "planner_model" };
+    } catch { /* fall back to conscious */ }
+  }
+  const r = await chat({ db, userId, slot: "conscious", messages, opts, brainMode: mode });
+  return { ...r, plannerRoute: "conscious" };
+}
+
 /** Provenance helper for DTU mint paths. */
 export function provenanceFrom(brainResult) {
   return {

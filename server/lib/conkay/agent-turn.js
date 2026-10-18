@@ -12,7 +12,7 @@
 // ConKay engineering cases (design → conkay_design, FEA on "it" → the last
 // design brief).
 
-import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk } from "../chat/agent-route.js";
+import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk, CODE_TEST_RE } from "../chat/agent-route.js";
 
 import { ROBOT_RE } from "./robot-assembly.js";
 const PART_RE = /\b(?:bracket|beam|i-?beam|cantilever|shaft|truss|column|plate|frame|part|mount|bridge|footbridge|joist|girder|lintel|shelf|hook|axle|spring|rod|bar)s?\b/i;
@@ -124,6 +124,8 @@ export function conkayTurnPlan(message, history = []) {
     fallbackCall = { tool: "textbook_lookup", params: { query: p.slice(0, 200) } };
   } else if (route === "web" || route === "lookup") {
     fallbackCall = { tool: "web_search", params: { query: webAgentMessage(p, history).replace(/^\s*(?:please\s+)?(?:search\s+(?:the\s+)?(?:web|internet|online)\s+for|look\s+up|google)\s+/i, "").slice(0, 200) } };
+  } else if (route === "code" && !CODE_TEST_RE.test(p)) {
+    fallbackCall = { tool: "run_lens_action", params: { domain: "code", action: "build", params: { request: p.slice(0, 2000) } } };
   } else if (route === "design") {
     fallbackCall = { tool: "conkay_design", params: { text: p } };
   } else if (route === "music") {

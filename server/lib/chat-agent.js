@@ -2063,7 +2063,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   // happened, not a fresh guess.
   if (ranOutOfTurnsWithPendingCalls) {
     try {
-      const wrapUp = await brain({
+      // Long-task ticks pass the planner slot for this summary turn.
+      const wrapBrain = typeof opts.wrapUpBrainChat === "function" ? opts.wrapUpBrainChat : brain;
+      const wrapUp = await wrapBrain({
         db, userId,
         slot: opts.slot || "conscious",
         messages: [
