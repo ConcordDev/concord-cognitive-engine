@@ -9,8 +9,11 @@
 //   POD_WORKER_KINDS          default "echo,sha256"
 //   POD_WORKER_CONCURRENCY    default 4
 
+import child_process from "node:child_process";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const HANDLERS = {
@@ -30,6 +33,111 @@ export const HANDLERS = {
     return { hex: digest };
   },
 };
+
+/**
+ * Create a pod-side handler that shells out to the wasmtime launcher.
+ * Injectible for tests: launcher path, python cwasm path, execFile impl, env.
+ */
+export function makeExecHandler({
+  launcher = process.env.POD_WASM_LAUNCHER || "/opt/concord-wasm/run-wasm-sandbox.sh",
+  pythonModule = process.env.POD_WASM_PYTHON || "/opt/concord-wasm/runtimes/python-3.12.0.cwasm",
+  execFileImpl = child_process.execFile,
+  env = process.env,
+} = {}) {
+  function clamp(n, min, max) {
+    return Math.min(Math.max(n, min), max);
+  }
+
+  return async function exec({ language, code, timeoutS = 10, memMb = 64, actor = "-", role = "-", codeSha256 = "" } = {}) {
+    if (env.POD_EXEC_DISABLED === "1") {
+      throw new Error("exec_disabled_on_pod");
+    }
+
+    if (typeof code !== "string" || code.length > 20000) {
+      throw new Error("exec_invalid_code");
+    }
+    if (language !== "python" && language !== "wat") {
+      throw new Error("exec_invalid_language");
+    }
+
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "concord-exec-"));
+    try {
+      fs.chmodSync(tmp, 0o700);
+      const isPython = language === "python";
+      let file;
+      let module;
+      let args = [];
+      if (isPython) {
+        file = path.join(tmp, "main.py");
+        fs.writeFileSync(file, code);
+        module = pythonModule;
+        args = ["-"];
+      } else {
+        file = path.join(tmp, "module.wat");
+        fs.writeFileSync(file, code);
+        module = file;
+      }
+
+      const clampedTimeoutS = clamp(Number(timeoutS), 1, 30);
+      const clampedMemMb = clamp(Number(memMb), 8, 512);
+      const argv = [
+        "--timeout", String(clampedTimeoutS),
+        "--mem-mb", String(clampedMemMb),
+        "--actor", String(actor),
+        "--role", String(role),
+        "--language", language,
+        "--code-sha256", String(codeSha256),
+        ...(isPython ? ["--stdin", file] : []),
+        "--", module, ...args,
+      ];
+
+      const childEnv = { PATH: "/usr/bin:/bin" };
+      const stdout = await new Promise((resolve, reject) => {
+        execFileImpl(launcher, argv, {
+          env: childEnv,
+          timeout: (clampedTimeoutS + 15) * 1000,
+          maxBuffer: 1024 * 1024,
+        }, (error, stdout, _stderr) => {
+          // Resolve with stdout even when the launcher exits non-zero.
+          resolve(stdout);
+        });
+      });
+
+      // Parse the LAST line that starts with "{".
+      const lines = String(stdout || "").split("\n");
+      let parsed = null;
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith("{")) {
+          try {
+            parsed = JSON.parse(line);
+            break;
+          } catch {
+            // keep scanning backward for a valid JSON line
+          }
+        }
+      }
+
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("exec_launcher_no_result");
+      }
+
+      if (typeof parsed.stdout !== "string" && parsed.error) {
+        throw new Error(parsed.error);
+      }
+
+      return parsed;
+    } finally {
+      try {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      } catch {
+        /* best-effort cleanup */
+      }
+    }
+  };
+}
+
+HANDLERS.exec = makeExecHandler();
 
 export default HANDLERS;
 
