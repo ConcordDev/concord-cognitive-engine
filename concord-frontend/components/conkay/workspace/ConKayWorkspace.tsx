@@ -54,6 +54,15 @@ const BeamViewport = dynamic(() => import('./BeamViewport'), {
   ),
 });
 
+const MeshArtifactView = dynamic(() => import('@/components/chat/MeshArtifactView'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-sm text-slate-400">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Loading model…
+    </div>
+  ),
+});
+
 type ChipKind = 'review' | 'sweep' | 'edit-tw' | 'apply' | 'defaults';
 interface Chip { kind: ChipKind; label: string; dims?: Partial<BeamDims>; brief?: string }
 interface WsMessage {
@@ -128,6 +137,8 @@ export function ConKayWorkspace() {
   const [busy, setBusy] = useState(false);
   /** A new design opened from the box (showcase or solved brief); null = the I-beam study. */
   const [design, setDesign] = useState<WorkspaceDesign | null>(null);
+  /** The latest ConKay-designed 3D model (conkay_design mesh): shown in the main viewport in place of the I-beam study. */
+  const [viewMesh, setViewMesh] = useState<ChatArtifact | null>(null);
   /** A brief the workbench answered with questions: the next message adds to it. */
   const pendingBrief = useRef<string | null>(null);
   const [keeping, setKeeping] = useState(false);
@@ -286,6 +297,10 @@ export function ConKayWorkspace() {
       seenArtifacts.add(k);
       artifacts.push(rec as ChatArtifact);
       patch(id, { artifacts: artifacts.slice() });
+      if (rec.kind === 'mesh' && Array.isArray(rec.positions) && Array.isArray(rec.indices) && rec.positions.length >= 9) {
+        setDesign(null);
+        setViewMesh(rec as ChatArtifact);
+      }
     };
     let resolved = false;
     try {
@@ -297,7 +312,7 @@ export function ConKayWorkspace() {
         onToolCall: (c) => {
           const name = c.tool === 'run_lens_action' && c.domain ? `${c.domain}.${c.action}` : String(c.tool || 'tool');
           tools.push({ name, ok: c.ok !== false });
-          if (c.domain === 'engineering' && c.action === 'beamStudy' && c.ok !== false) resolved = true;
+          if (c.domain === 'engineering' && c.action === 'beamStudy' && c.ok !== false) { resolved = true; setViewMesh(null); }
           patch(id, { tools: tools.slice() });
           if (c.ok !== false) {
             addArtifact(c.artifact);
@@ -454,6 +469,7 @@ export function ConKayWorkspace() {
 
   const onChip = useCallback(async (chip: Chip) => {
     if (chip.kind === 'edit-tw') {
+      setViewMesh(null);
       setParamsOpen(true);
       setMobileTab('model');
       setTimeout(() => paramRef.current?.focus('webThickness'), 50);
@@ -625,12 +641,16 @@ export function ConKayWorkspace() {
         <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className={`h-2 w-2 shrink-0 rounded-full ${status === 'solving' ? 'animate-pulse bg-amber-300' : result && !ws.stale ? 'bg-emerald-400' : 'bg-slate-500'}`} aria-hidden />
+            {viewMesh ? (
+              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-slate-100" data-testid="viewport-model-title">{viewMesh.title || 'ConKay model'}</span>
+            ) : (
             <input
               value={inputs.name}
               onChange={(e) => setInputs({ ...inputs, name: e.target.value.slice(0, 80) })}
               aria-label="Study name"
               className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-400/40"
             />
+            )}
             <span className="hidden truncate text-[11px] text-slate-500 sm:inline">· {workspaceName} · mm / N / MPa</span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -680,12 +700,45 @@ export function ConKayWorkspace() {
         )}
 
         {design && <DesignPane design={design} onClose={() => setDesign(null)} />}
-        {!design && ws.fresh && status !== 'loading' && (
+        {!design && !viewMesh && ws.fresh && status !== 'loading' && (
           <StartScreen busy={busy} onPick={(t) => void send(t)} onBeam={ws.startBeam} />
         )}
-        <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} />
+        {viewMesh && Array.isArray(viewMesh.positions) && Array.isArray(viewMesh.indices) ? (
+          <>
+            <MeshArtifactView
+              positions={viewMesh.positions}
+              indices={viewMesh.indices}
+              color={viewMesh.color}
+              title={viewMesh.title}
+              className="absolute inset-0"
+              testId="viewport-model"
+            />
+            <div className="absolute right-3 top-11 z-10 flex max-h-[calc(100%-4.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur" data-testid="viewport-parts">
+              <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2 text-xs font-medium text-slate-200">
+                <span className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5" aria-hidden /> Parts{viewMesh.partList?.length ? ` (${viewMesh.partList.length})` : ''}</span>
+                <button type="button" onClick={() => setViewMesh(null)} className="rounded px-1.5 py-0.5 text-[11px] text-sky-300 hover:bg-white/10">Back to study</button>
+              </div>
+              {viewMesh.partList?.length ? (
+                <ul className="min-h-0 overflow-y-auto px-3 py-2 text-[11px] text-slate-300">
+                  {viewMesh.partList.map((pt, i) => (
+                    <li key={`${pt.name}-${i}`} className="flex justify-between gap-2 py-0.5">
+                      <span className="truncate capitalize">{pt.name}</span>
+                      {Array.isArray(pt.size_mm) && <span className="shrink-0 tabular-nums text-slate-500">{pt.size_mm.join('×')}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="border-t border-white/5 px-3 py-1.5 text-[10px] text-slate-500">
+                {viewMesh.bbox_mm ? `Overall ${viewMesh.bbox_mm.length}×${viewMesh.bbox_mm.height}×${viewMesh.bbox_mm.width} mm (L×H×W) · ` : ''}
+                {typeof viewMesh.triangleCount === 'number' ? `${viewMesh.triangleCount} triangles · ` : ''}drag to orbit
+              </p>
+            </div>
+          </>
+        ) : (
+          <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} />
+        )}
 
-        <div className="absolute left-3 top-11 z-10 w-48 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur">
+        {!viewMesh && <div className="absolute left-3 top-11 z-10 w-48 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur">
           <button type="button" onClick={() => setParamsOpen((v) => !v)} aria-expanded={paramsOpen} className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-slate-200">
             <span className="flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Parameters</span>
             {paramsOpen ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
@@ -703,9 +756,9 @@ export function ConKayWorkspace() {
               </button>
             </div>
           )}
-        </div>
+        </div>}
 
-        <div className="absolute bottom-2 right-2 z-10 flex flex-wrap items-center justify-end gap-1.5">
+        <div className={`absolute bottom-2 right-2 z-10 flex-wrap items-center justify-end gap-1.5 ${viewMesh ? 'hidden' : 'flex'}`}>
           {utilization && (display === 'stress' || display === 'wire-stress') && (
             <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-[#06101c]/85 px-2 py-1 text-[10px] text-slate-300">
               Utilization

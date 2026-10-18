@@ -39,3 +39,22 @@ describe("robot assembly", () => {
     assert.equal(conkayTurnPlan("what is a robot", []).route, "lookup");
   });
 });
+
+describe("robot part counts come from the user's words", () => {
+  it("defaults to 4 wheels (2 per side) and ignores the model's rewritten count", async () => {
+    assert.equal(parseRobotAsk(ASK).wheels, 4);
+    assert.equal(parseRobotAsk("a robot with 3 wheels per side").wheels, 6);
+    const ctx = { actor: { userId: "u1" }, userPrompt: ASK };
+    const r = await executeToolCall(ctx, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "two-arm robot on an 8 wheel base, torso, head with camera" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.spec.wheels, 4);
+    assert.equal(r.result.parts.filter((p) => p.name.startsWith("wheel")).length, 4);
+    assert.ok(r.artifact.partList.every((p) => p.name && p.size_mm.length === 3));
+    assert.ok(r.artifact.bbox_mm.height > 0);
+  });
+  it("still uses the tool text when the user's message isn't a robot ask", async () => {
+    const r = await executeToolCall({ actor: { userId: "u1" }, userPrompt: "yes go ahead" }, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "robot with 6 wheels and one arm" } });
+    assert.equal(r.result.spec.wheels, 6);
+    assert.equal(r.result.spec.arms, 1);
+  });
+});

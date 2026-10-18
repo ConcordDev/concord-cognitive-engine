@@ -17,6 +17,9 @@ export interface MeshArtifact {
   indices: number[];
   color?: string | null;
   title?: string;
+  /** Container classes; defaults to the chat card size. */
+  className?: string;
+  testId?: string;
 }
 
 function Part({ positions, indices, color }: MeshArtifact) {
@@ -35,9 +38,9 @@ function Part({ positions, indices, color }: MeshArtifact) {
   );
 }
 
-export default function MeshArtifactView(props: MeshArtifact) {
+export default function MeshArtifactView({ className, testId, ...props }: MeshArtifact) {
   return (
-    <div className="h-56 w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_center,#0b2340_0%,#050b14_70%)] ring-1 ring-sky-400/20" data-testid="mesh-artifact">
+    <div className={className ?? 'h-56 w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_center,#0b2340_0%,#050b14_70%)] ring-1 ring-sky-400/20'} data-testid={testId ?? 'mesh-artifact'}>
       <Canvas camera={{ position: [1, 0.8, 1.2], fov: 40 }} dpr={[1, 2]}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[3, 5, 4]} intensity={1.1} />

@@ -25,7 +25,8 @@ export function parseRobotAsk(text) {
   return {
     scale,
     base: legs ? "legs" : tracked ? "tracks" : "wheels",
-    wheels: legs || tracked ? 0 : countOf(t, "wheels?", 4),
+    // Default 4 wheels (2 per side); "3 wheels per side" means 6.
+    wheels: legs || tracked ? 0 : countOf(t, "wheels?", 4) * (/\bwheels?\s+(?:per|on each|each)\s+side\b/.test(t) ? 2 : 1),
     arms: countOf(t, "arms?", /\barms?\b/.test(t) ? 2 : 0),
     head: /\bhead\b/.test(t) || /\bcamera\b/.test(t) || !/\bno head\b/.test(t),
     camera: /\bcamera|vision|eyes?\b/.test(t),
