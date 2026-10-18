@@ -31986,7 +31986,7 @@ registerHeartbeat("agent-marathon-cycle", {
 // Chat/ConKay long tasks get their own unref'd pump: the governor tick above
 // skips while the site is idle, and a background job must keep going after
 // the user closes the tab.
-import { startLongTaskPump } from "./lib/long-task.js";
+import { startLongTaskPump, startLongTask as _startResearchJob, kickLongTask as _kickResearchJob, longTaskStatus as _researchJobStatus } from "./lib/long-task.js";
 startLongTaskPump({ getDb: () => STATE?.db || globalThis._concordDB });
 
 // Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
@@ -55238,11 +55238,31 @@ app.post("/api/research/conduct", requireAuth(), validate("researchConduct"), as
 
   realtimeEmit("research:started", { userId, topic });
 
+  // Web research runs as a background research job (lib/long-task.js, mode
+  // "research"): web sources become citation DTUs and it ends with a report
+  // file. The substrate scan below still answers right away. Opt out with
+  // {"background": false}.
+  let job = null;
+  if (req.body?.background !== false && STATE.db) {
+    try {
+      const r = _startResearchJob(STATE.db, {
+        userId, goal: `Research ${String(topic).slice(0, 1500)} and write me a report with sources`,
+        title: `Research: ${String(topic).slice(0, 100)}`, mode: "research", origin: { surface: "research" },
+      });
+      if (r.ok) {
+        _kickResearchJob({ db: STATE.db, jobId: r.jobId, runMacro, lensActions: LENS_ACTIONS });
+        job = { jobId: r.jobId, status: "running", mode: "research", statusUrl: `/api/research/jobs/${r.jobId}` };
+      } else {
+        job = { ok: false, reason: r.reason, ...(r.limit ? { limit: r.limit } : {}) };
+      }
+    } catch (_e) { job = { ok: false, reason: "start_failed" }; }
+  }
+
   try {
     const result = await conductResearch(userId, topic);
     // INC-SWEEP research F3 — wire body uses a public label; ownership key
     // on the in-memory execution stays the raw userId for authz/routing.
-    const research = { ...result, userId: _publicActorLabel(ctx, userId) };
+    const research = { ...result, userId: _publicActorLabel(ctx, userId), ...(job ? { job } : {}) };
 
     realtimeEmit("research:completed", {
       userId,
@@ -55254,6 +55274,18 @@ app.post("/api/research/conduct", requireAuth(), validate("researchConduct"), as
     res.json({ ok: true, research });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+  }
+});
+
+// Status of a background research job started by /api/research/conduct
+// (owner only): steps, citation DTU count, report link, latest notes.
+app.get("/api/research/jobs/:id", requireAuth(), (req, res) => {
+  try {
+    const st = _researchJobStatus(STATE.db, req.user.id, String(req.params.id || ""));
+    if (!st.ok) return res.status(404).json({ ok: false, error: st.reason || "job_not_found" });
+    res.json({ ok: true, job: st.jobs[0] });
+  } catch (_e) {
+    res.status(500).json({ ok: false, error: "An unexpected error occurred" });
   }
 });
 
