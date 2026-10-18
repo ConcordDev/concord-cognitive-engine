@@ -718,9 +718,80 @@ export function isMarathonTicking(sessionId) {
   return _ticking.has(sessionId);
 }
 
+/** Personal-memory opt-in: the research goal asks to use the user's own notes/memory. */
+export function wantsPersonalMemory(goal) {
+  return /\b(my|our)\s+(own\s+)?(notes?|dtus?|memory|memories|saved|files?|docs?|documents?|journal|research|bookmarks?|history)\b|\bwhat i(?:'ve| have)?\s+(saved|written|noted|told you)\b|\bfrom (my )?memory\b|\bremember(ed)?\b/i.test(String(goal || ""));
+}
+
+/** Memory recall restricted to DTUs this job created (citations, findings). */
+function _jobOnlyRecall(db, sessionId) {
+  return async (args = {}) => {
+    const recall = globalThis.__concordRecallMemory;
+    if (typeof recall !== "function") return { dtus: [], session: [] };
+    let allowed = new Set();
+    try {
+      const m = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(sessionId)?.meta_json || "{}") || {};
+      allowed = new Set([...(Array.isArray(m.citationDtuIds) ? m.citationDtuIds : []), ...(Array.isArray(m.findingsDtuIds) ? m.findingsDtuIds : [])]);
+    } catch { allowed = new Set(); }
+    if (!allowed.size) return { dtus: [], session: [] };
+    const mem = await recall({ ...args, limit: 60 });
+    const limit = Number(args.limit) || 5;
+    return { dtus: (mem?.dtus || []).filter((d) => allowed.has(d.id)).slice(0, limit), session: mem?.session || [] };
+  };
+}
+
 async function _plannerBrain(args) {
   const { plannerBrainChat } = await import("./byo-router.js");
   return plannerBrainChat(args);
+}
+
+async function _finishLongTask(db, session, meta, { why, fin, history, lastMessage, longBlock, runMacro, opts }) {
+  const sessionId = session.id;
+  let planText = "";
+  if (meta.mode === "plan") {
+    try {
+      const [{ planSummary }, { formatPlanLines }] = await Promise.all([import("./long-task-plan.js"), import("./long-task.js")]);
+      const ps = planSummary(db, meta);
+      if (ps) planText = formatPlanLines(ps, { full: true });
+    } catch { planText = ""; }
+  }
+  const brain = opts.brainChat || _plannerBrain;
+  const messages = [
+    { role: "system", content: `You are finishing a background job for the user.${longBlock ? `\n${longBlock}` : ""}` },
+    ...(Array.isArray(history) ? history : []),
+    ...(lastMessage ? [{ role: "user", content: String(lastMessage) }] : []),
+    { role: "user", content: fin.finalStepPrompt(meta, { planText }) },
+  ];
+  let r = null;
+  try {
+    r = await brain({ db, userId: session.user_id, slot: opts.slot || "conscious", messages, opts: { temperature: 0.3, maxTokens: 4096 } });
+  } catch { r = null; }
+  const text = r?.ok ? fin.finalizeText(r.text || r.content || "") : "";
+  const patch = (fn) => {
+    try {
+      const fresh = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(sessionId)?.meta_json || "{}") || {};
+      db.prepare(`UPDATE agent_marathon_sessions SET meta_json = ? WHERE id = ?`).run(JSON.stringify(fn(fresh)), sessionId);
+    } catch { /* best-effort */ }
+  };
+  if (text.replace("[TASK_COMPLETE]", "").trim().length < 300) {
+    patch((m) => ({ ...m, finalStepFailures: (Number(m.finalStepFailures) || 0) + 1 }));
+    return null;
+  }
+  const turnIndex = session.total_turns + 1;
+  db.prepare(`
+    INSERT INTO agent_marathon_turns
+      (session_id, turn_index, role, content, tool_calls_json, artifacts_json, provider, model)
+    VALUES (?, ?, 'assistant', ?, '[]', '[]', ?, ?)
+  `).run(sessionId, turnIndex, text, r.provider || null, r.model || null);
+  patch((m) => ({ ...m, finalStep: { why, at: new Date().toISOString() } }));
+  db.prepare(`
+    UPDATE agent_marathon_sessions
+    SET total_turns = ?, status = 'completed', updated_at = unixepoch(), completed_at = unixepoch(), next_tick_at = unixepoch()
+    WHERE id = ?
+  `).run(turnIndex, sessionId);
+  try { emitMarathonStatus(session, sessionId, "completed", turnIndex); } catch { /* telemetry */ }
+  await _deliverIfLongTask(db, sessionId, runMacro);
+  return { ok: true, sessionId, status: "completed", finalStep: why, newTurns: 1, totalTurns: turnIndex, answer: text, toolCalls: [], artifacts: [], provider: r.provider, model: r.model };
 }
 
 async function _deliverIfLongTask(db, sessionId, runMacro = null) {
@@ -728,7 +799,8 @@ async function _deliverIfLongTask(db, sessionId, runMacro = null) {
   if (typeof runMacro === "function") {
     try {
       const { createResearchReport } = await import("./research-mode.js");
-      await createResearchReport(db, sessionId, runMacro);
+      const [{ planSummary }, { formatPlanLines }] = await Promise.all([import("./long-task-plan.js"), import("./long-task.js")]);
+      await createResearchReport(db, sessionId, runMacro, { planSummary, formatPlan: formatPlanLines });
     } catch { /* the chat result still goes out */ }
   }
   try {
@@ -831,6 +903,21 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     } catch { longBlock = ""; }
   }
 
+  // Plan / research jobs: with ~6 turns left (or every subgoal done) this
+  // tick writes the final deliverable instead of running more tools
+  // (lib/long-task-finish.js). On a failed write-up the normal loop runs and
+  // the next tick tries again (twice at most).
+  if (longMeta && !opts.skipFinalStep) {
+    try {
+      const fin = await import("./long-task-finish.js");
+      const why = fin.shouldFinish(db, session, longMeta);
+      if (why) {
+        const done = await _finishLongTask(db, session, longMeta, { why, fin, history, lastMessage, longBlock, runMacro, opts });
+        if (done) return done;
+      }
+    } catch { /* fall through to the normal tick */ }
+  }
+
   const tickTurns = Math.min(opts.tickTurns || DEFAULT_TICK_TURNS, session.max_turns - session.total_turns);
 
   // Governance envelope (mig 379) — the real, enforced gate. Passed into
@@ -877,6 +964,10 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
       ...(longMeta && !opts.brainChat ? { wrapUpBrainChat: _plannerBrain } : {}),
       // Memory recall keys off the goal, not "Continue the background job".
       memoryQuery: String(session.goal || session.title || "").slice(0, 1000),
+      // Research jobs keep the user's personal memory out of their findings
+      // unless the goal asks for it: recall is limited to this job's own
+      // citation / findings DTUs and the substrate auto-pull is off.
+      ...(longMeta?.mode === "research" && !wantsPersonalMemory(session.goal) ? { shadowContext: false, recallMemory: _jobOnlyRecall(db, sessionId) } : {}),
       // A long task's tick ends with progress notes, not a premature final answer.
       ...(longMeta ? { wrapUpPrompt: "This work session is ending. Don't call any more tools. Write your 'Progress notes:' now: what you found so far, with source links, and what is left to do. Only write the final deliverable and [TASK_COMPLETE] if the whole goal is truly finished." } : {}),
       extraSystemBlock: [planCtx?.ok ? planCtx.block : "", longBlock].filter(Boolean).map((b) => `\n\n${b}`).join(""),

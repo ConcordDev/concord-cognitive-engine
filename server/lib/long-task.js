@@ -307,7 +307,7 @@ export async function deliverLongTaskResult(db, sessionId) {
   else if (session.status === "paused") head = `Background job paused: "${session.title}" (job ${sessionId}) after ${steps} tool steps${blocked ? `. It got stuck: ${blocked}` : ""}.`;
   else if (session.status === "revoked") head = `Background job stopped: "${session.title}" (job ${sessionId}) was revoked after ${steps} tool steps.`;
   else head = `Background job ended early: "${session.title}" (job ${sessionId}) hit its turn or budget limit after ${steps} tool steps. Here is what it had so far.`;
-  const reportLine = meta.report?.downloadUrl ? `\n\nReport: ${meta.report.filename || "report"} ${meta.report.downloadUrl}` : "";
+  const reportLine = meta.report?.downloadUrl ? `\n\n${meta.report.kind === "plan" ? "Plan document" : "Report"}: ${meta.report.filename || "report"} ${meta.report.downloadUrl}` : "";
   const citeLine = Array.isArray(meta.citationDtuIds) && meta.citationDtuIds.length ? `\nSaved ${meta.citationDtuIds.length} citation DTU${meta.citationDtuIds.length === 1 ? "" : "s"}.` : "";
   let planBlock = "";
   try { const ps = meta.goalTreeId && _planSummary ? _planSummary(db, meta) : null; if (ps) planBlock = `\n${formatPlanLines(ps, { full: true })}`; } catch { /* optional */ }
