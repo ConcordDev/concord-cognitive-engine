@@ -60,6 +60,14 @@ const PROVIDER_ENV_KEY = Object.freeze({
   mistral: "CONCORD_PLATFORM_MISTRAL_API_KEY",
 });
 
+// INC-138: same-family fallback model tried after one short retry on 503/429/5xx.
+const PLATFORM_FALLBACK_MODELS = Object.freeze({ google: ["gemini-3.5-flash-lite"] });
+const PLATFORM_RETRY_STATUS = /_(429|500|502|503|504):/;
+function platformRetryDelayMs() {
+  const v = Number(process.env.CONCORD_PLATFORM_RETRY_MS);
+  return Number.isFinite(v) && v >= 0 ? v : 1000;
+}
+
 function providerForSlot(slot) {
   const override = process.env[`CONCORD_PLATFORM_PROVIDER_${slot.toUpperCase()}`];
   if (override && PROVIDER_ENV_KEY[override]) return override;
@@ -125,7 +133,22 @@ export async function platformProviderChat({ slot, messages, opts = {} }) {
     };
   }
 
-  const r = await providerChat({ provider, apiKey, slot, modelId: null, messages, opts });
+  let r = await providerChat({ provider, apiKey, slot, modelId: null, messages, opts });
+  let usedModel = null;
+
+  // INC-138: Gemini's "high demand" 503 (and 429) is usually momentary. One ~1 s retry on the
+  // same model, then the lighter Gemini model, before reporting failure (and cooling down).
+  if (!r.ok && PLATFORM_FALLBACK_MODELS[provider] && PLATFORM_RETRY_STATUS.test(String(r.error || ""))) {
+    await new Promise((res) => setTimeout(res, platformRetryDelayMs()));
+    r = await providerChat({ provider, apiKey, slot, modelId: null, messages, opts });
+    const primary = BYO_PROVIDERS.defaultModels[provider]?.[slot];
+    for (const fb of PLATFORM_FALLBACK_MODELS[provider]) {
+      if (r.ok || !PLATFORM_RETRY_STATUS.test(String(r.error || ""))) break;
+      if (fb === primary) continue;
+      r = await providerChat({ provider, apiKey, slot, modelId: fb, messages, opts });
+      if (r.ok) usedModel = fb;
+    }
+  }
 
   // Upstream 429 / 402 / 503 with Retry-After — record the cooldown so the
   // NEXT call to this (provider, slot) fails fast through
@@ -155,6 +178,6 @@ export async function platformProviderChat({ slot, messages, opts = {} }) {
   // clarity (see server/lib/byo-router.js#provenanceFrom, unchanged).
   // Adapters don't return which model they used, so re-derive it the same
   // way byo-router.js#brainChat does for BYO calls.
-  const resolvedModel = BYO_PROVIDERS.defaultModels[provider]?.[slot] || provider;
+  const resolvedModel = usedModel || BYO_PROVIDERS.defaultModels[provider]?.[slot] || provider;
   return { ...r, provider: `${provider}_platform`, model: resolvedModel };
 }

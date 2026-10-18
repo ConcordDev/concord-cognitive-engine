@@ -89,3 +89,97 @@ test("/api/brain-mode enforces the High Power allowlist and stores seconds", asy
     if (prev === undefined) delete process.env.CONCORD_HIGH_POWER_ALLOWLIST; else process.env.CONCORD_HIGH_POWER_ALLOWLIST = prev;
   }
 });
+
+// ── INC-138: the free-cloud chain survives a dead slug, a busy Gemini, and a dead provider ──
+import { freeCloudProviderChat } from "../lib/free-cloud-router-extended.js";
+import { _testing as fcr, modelsFor } from "../lib/free-cloud-router.js";
+import { platformProviderChat } from "../lib/platform-providers.js";
+import { BYO_PROVIDERS } from "../lib/byo-providers.js";
+
+const Q = [{ role: "user", content: "What is the boiling point of water at sea level?" }];
+const okQuota = { fcfsTryConsumeDb: () => ({ allowed: true }), fcfsRecordUsageDb: () => {} };
+function scripted(script) {
+  const calls = [];
+  const providerChat = async (a) => {
+    calls.push(`${a.provider}/${a.modelId}`);
+    const next = script(a, calls.length);
+    return typeof next === "string" ? { ok: false, text: "", error: next } : { ok: true, text: next.text, tokensIn: 1, tokensOut: 1 };
+  };
+  return { calls, providerChat };
+}
+
+test("INC-138: no withdrawn OpenRouter slug is a default, and OpenRouter has 2-3 ordered free models", () => {
+  const dead = /llama-3\.3-70b-instruct:free|qwen-2\.5-72b-instruct:free|llama-3\.1-8b-instruct:free|qwen-2\.5-coder-32b-instruct:free|llama-3\.2-90b-vision-instruct:free/;
+  for (const m of [...Object.values(fcr.DEFAULT_MODELS.openrouter), ...Object.values(BYO_PROVIDERS.defaultModels.openrouter)]) assert.doesNotMatch(m, dead);
+  const list = modelsFor("openrouter", "conscious");
+  assert.ok(list.length >= 2 && list.length <= 3, String(list));
+  assert.ok(list.every((m) => m.endsWith(":free")));
+});
+
+test("INC-138: OpenRouter 404 on the first slug -> next free slug answers", async () => {
+  const { calls, providerChat } = scripted((a, n) => (n === 1 ? "openrouter_404: unavailable for free" : { text: "100 °C" }));
+  const r = await freeCloudProviderChat({ db: {}, userId: "u1", slot: "conscious", messages: Q }, {
+    ...okQuota, providerChat,
+    freeCloudCandidates: () => [{ provider: "openrouter", models: ["a:free", "b:free", "c:free"], apiKey: "k" }],
+  });
+  assert.equal(r.ok, true); assert.equal(r.model, "b:free");
+  assert.deepEqual(calls, ["openrouter/a:free", "openrouter/b:free"]);
+});
+
+test("INC-138: every OpenRouter model 404/429/5xx -> next provider (groq) answers; cerebras without adapter is skipped", async () => {
+  const errs = ["openrouter_404: gone", "openrouter_429: rate", "openrouter_502: bad gw"];
+  const { calls, providerChat } = scripted((a, n) => (a.provider === "openrouter" ? errs[n - 1] : { text: "100 °C at 1 atm" }));
+  const r = await freeCloudProviderChat({ db: {}, userId: "u1", slot: "conscious", messages: Q }, {
+    ...okQuota, providerChat,
+    freeCloudCandidates: () => [
+      { provider: "openrouter", models: ["a:free", "b:free", "c:free"], apiKey: "k" },
+      { provider: "cerebras", models: ["x"], apiKey: "k" },
+      { provider: "groq", models: ["llama-3.3-70b-versatile"], apiKey: "k" },
+    ],
+  });
+  assert.equal(r.ok, true); assert.equal(r.provider, "groq");
+  assert.equal(calls.length, 4); assert.ok(!calls.some((c) => c.startsWith("cerebras")));
+});
+
+test("INC-138: free-cloud Gemini 503 high demand -> one retry, then the lighter Gemini model", async () => {
+  process.env.CONCORD_FREE_CLOUD_RETRY_MS = "0";
+  try {
+    const { calls, providerChat } = scripted((a, n) => (n <= 2 ? "google_503: high demand" : { text: "100 °C" }));
+    const r = await freeCloudProviderChat({ db: {}, userId: "u1", slot: "conscious", messages: Q }, {
+      ...okQuota, providerChat,
+      freeCloudCandidates: () => [{ provider: "gemini", models: ["gemini-3.6-flash", "gemini-3.5-flash-lite"], apiKey: "k" }],
+    });
+    assert.equal(r.ok, true); assert.equal(r.model, "gemini-3.5-flash-lite");
+    assert.deepEqual(calls, ["google/gemini-3.6-flash", "google/gemini-3.6-flash", "google/gemini-3.5-flash-lite"]);
+  } finally { delete process.env.CONCORD_FREE_CLOUD_RETRY_MS; }
+});
+
+test("INC-138: all providers down -> honest failure with the attempt trail", async () => {
+  const { providerChat } = scripted(() => "groq_500: down");
+  const r = await freeCloudProviderChat({ db: {}, userId: "u1", slot: "conscious", messages: Q }, {
+    ...okQuota, providerChat, freeCloudCandidates: () => [{ provider: "groq", models: ["m"], apiKey: "k" }],
+  });
+  assert.equal(r.ok, false); assert.equal(r.attempts.length, 1); assert.match(r.error, /groq_500/);
+});
+
+test("INC-138: platform Gemini 503 -> retried once after a short backoff, then gemini-3.5-flash-lite answers", async () => {
+  const saved = { k: process.env.CONCORD_PLATFORM_GOOGLE_API_KEY, p: process.env.CONCORD_PLATFORM_PROVIDER_CONSCIOUS, d: process.env.CONCORD_PLATFORM_RETRY_MS };
+  const realFetch = globalThis.fetch; const realState = globalThis._concordSTATE;
+  process.env.CONCORD_PLATFORM_GOOGLE_API_KEY = "test-key"; delete process.env.CONCORD_PLATFORM_PROVIDER_CONSCIOUS;
+  process.env.CONCORD_PLATFORM_RETRY_MS = "0"; globalThis._concordSTATE = {};
+  const models = [];
+  globalThis.fetch = async (url) => {
+    const m = /models\/([^:]+):generateContent/.exec(decodeURIComponent(String(url)));
+    models.push(m?.[1]);
+    if (m?.[1] !== "gemini-3.5-flash-lite") return { ok: false, status: 503, headers: new Map(), text: async () => '{"error":{"code":503,"message":"high demand"}}' };
+    return { ok: true, status: 200, headers: new Map(), json: async () => ({ candidates: [{ content: { parts: [{ text: "100 °C" }] } }], usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } }) };
+  };
+  try {
+    const r = await platformProviderChat({ slot: "conscious", messages: Q });
+    assert.equal(r.ok, true, r.error); assert.equal(r.model, "gemini-3.5-flash-lite");
+    assert.deepEqual(models, ["gemini-3.6-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]);
+  } finally {
+    globalThis.fetch = realFetch; globalThis._concordSTATE = realState;
+    for (const [k, v] of [["CONCORD_PLATFORM_GOOGLE_API_KEY", saved.k], ["CONCORD_PLATFORM_PROVIDER_CONSCIOUS", saved.p], ["CONCORD_PLATFORM_RETRY_MS", saved.d]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+});

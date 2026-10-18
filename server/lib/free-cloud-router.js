@@ -32,12 +32,15 @@ const ENV_KEYS = {
 };
 
 const DEFAULT_MODELS = {
+  // INC-138: the old meta-llama/qwen ':free' slugs were withdrawn by OpenRouter (404 "unavailable
+  // for free"). Checked live against https://openrouter.ai/api/v1/models on 2026-10-18.
+  // The primary slug per slot; FALLBACK_MODELS.openrouter is the ordered list actually tried.
   openrouter: {
-    conscious: 'meta-llama/llama-3.3-70b-instruct:free',
-    subconscious: 'qwen/qwen-2.5-72b-instruct:free',
-    utility: 'meta-llama/llama-3.1-8b-instruct:free',
-    repair: 'qwen/qwen-2.5-coder-32b-instruct:free',
-    multimodal: 'llama-3.2-90b-vision-instruct:free',
+    conscious: 'google/gemma-4-31b-it:free',
+    subconscious: 'google/gemma-4-31b-it:free',
+    utility: 'google/gemma-4-26b-a4b-it:free',
+    repair: 'google/gemma-4-31b-it:free',
+    multimodal: 'google/gemma-4-31b-it:free',
   },
   cerebras: {
     conscious: 'llama-3.3-70b',
@@ -75,6 +78,35 @@ const DEFAULT_MODELS = {
     multimodal: '@cf/meta/llama-3.2-11b-vision-instruct',
   },
 };
+
+// INC-138: ordered model lists per provider. The free-cloud chain tries each in turn on
+// 404 / 408 / 429 / 5xx / timeout before moving to the next provider. The slot default
+// (DEFAULT_MODELS) is always tried first. Operator override for OpenRouter:
+// CONCORD_OPENROUTER_FREE_MODELS=slug1,slug2,...
+const FALLBACK_MODELS = {
+  openrouter: [
+    'google/gemma-4-31b-it:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'google/gemma-4-26b-a4b-it:free',
+  ],
+  // groq llama-3.3-70b-versatile now 404s and mistral-large-latest 403s on this account
+  // (checked 2026-10-18); live ids from each provider's /v1/models follow the slot default.
+  groq: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'],
+  gemini: ['gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+  mistral: ['mistral-small-latest', 'mistral-medium-latest'],
+  cloudflare: ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct'],
+};
+
+/** Ordered, de-duplicated model ids to try for (provider, slot). */
+export function modelsFor(provider, slot = 'conscious') {
+  const primary = DEFAULT_MODELS[provider]?.[slot] || DEFAULT_MODELS[provider]?.conscious || null;
+  let extra = FALLBACK_MODELS[provider] || [];
+  if (provider === 'openrouter' && process.env.CONCORD_OPENROUTER_FREE_MODELS) {
+    extra = process.env.CONCORD_OPENROUTER_FREE_MODELS.split(',').map((m) => m.trim()).filter(Boolean);
+    return [...new Set(extra)];
+  }
+  return [...new Set([primary, ...extra].filter(Boolean))];
+}
 
 const SKIPPED_PROVIDERS = (process.env.CONCORD_FREE_CLOUD_SKIP || '').split(',').filter(Boolean);
 
@@ -124,6 +156,28 @@ export function pickFreeCloudProvider({ userId, slot = 'conscious', intent = nul
 }
 
 /**
+ * INC-138: every usable free-cloud provider for (user, slot), in priority order, each with its
+ * ordered model list. Same gates as pickFreeCloudProvider (key configured, not skipped, FCFS
+ * quota not exhausted). The caller tries them one after another.
+ * @returns {Array<{provider, models: string[], apiKey, slot}>}
+ */
+export function freeCloudCandidates({ userId, slot = 'conscious', providerOrder = null } = {}) {
+  const order = providerOrder || PROVIDERS;
+  const userStatus = userId ? fcfsGetStatus(userId) : null;
+  const out = [];
+  for (const provider of order) {
+    if (SKIPPED_PROVIDERS.includes(provider)) continue;
+    const apiKey = getApiKey(provider);
+    if (!apiKey) continue;
+    if (userStatus?.perProvider?.[provider]?.exhausted) continue;
+    const models = modelsFor(provider, slot);
+    if (!models.length) continue;
+    out.push({ provider, models, apiKey, slot });
+  }
+  return out;
+}
+
+/**
  * List all configured providers (regardless of quota).
  * Used by UI to show "available providers" picker.
  */
@@ -144,10 +198,11 @@ export function getDefaultModel(provider, slot) {
   return DEFAULT_MODELS[provider]?.[slot] || null;
 }
 
-export const _testing = { PROVIDERS, ENV_KEYS, DEFAULT_MODELS };
+export const _testing = { PROVIDERS, ENV_KEYS, DEFAULT_MODELS, FALLBACK_MODELS };
 
 export default {
   pickFreeCloudProvider,
+  freeCloudCandidates,
   listAvailableProviders,
   getDefaultModel,
 };

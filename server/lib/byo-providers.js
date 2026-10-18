@@ -59,7 +59,8 @@ const DEFAULT_MODELS = Object.freeze({
   // Matched 1:1 against that file's DEFAULT_MODELS.openrouter table so the
   // two don't drift; that file only PICKS the provider, this file is what
   // actually calls it.
-  openrouter: { conscious: "meta-llama/llama-3.3-70b-instruct:free", subconscious: "qwen/qwen-2.5-72b-instruct:free", utility: "meta-llama/llama-3.1-8b-instruct:free", repair: "qwen/qwen-2.5-coder-32b-instruct:free", vision: "llama-3.2-90b-vision-instruct:free" },
+  // INC-138: the old meta-llama/qwen ":free" slugs 404 now; live slugs checked 2026-10-18.
+  openrouter: { conscious: "google/gemma-4-31b-it:free", subconscious: "google/gemma-4-31b-it:free", utility: "google/gemma-4-26b-a4b-it:free", repair: "google/gemma-4-31b-it:free", vision: "google/gemma-4-31b-it:free" },
   // Cloudflare Workers AI — platform / free-cloud path (also BRAIN_VISION_PROVIDER=cloudflare).
   cloudflare: {
     conscious: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",

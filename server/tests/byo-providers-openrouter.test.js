@@ -54,7 +54,7 @@ describe("providerChat() dispatches 'openrouter' instead of erroring unknown_pro
     assert.equal(lastCall.url, "https://openrouter.ai/api/v1/chat/completions");
     assert.equal(lastCall.init.headers["Authorization"], "Bearer sk-or-test-key");
     const body = JSON.parse(lastCall.init.body);
-    assert.equal(body.model, "meta-llama/llama-3.1-8b-instruct:free"); // utility default
+    assert.equal(body.model, "google/gemma-4-26b-a4b-it:free"); // utility default
   });
 
   it("falls back to the conscious default when slot has no explicit mapping", async () => {
@@ -66,7 +66,7 @@ describe("providerChat() dispatches 'openrouter' instead of erroring unknown_pro
       messages: [{ role: "user", content: "ping" }],
     });
     const body = JSON.parse(lastCall.init.body);
-    assert.equal(body.model, "meta-llama/llama-3.3-70b-instruct:free"); // conscious default
+    assert.equal(body.model, "google/gemma-4-31b-it:free"); // conscious default
   });
 
   it("still fails closed with a clear error for a truly unknown provider", async () => {
