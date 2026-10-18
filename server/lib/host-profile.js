@@ -126,6 +126,26 @@ export function shouldPauseHeavyBackground() {
   return _liveProfile().lowMemory;
 }
 
+/** True when heavy LLM/compute work runs on a remote GPU pod. */
+export function isHeavyWorkRemote(env = process.env) {
+  return env.CONCORD_HEAVY_WORK_REMOTE === "1";
+}
+
+/** Alias for `shouldPauseHeavyBackground()` — local CPU-heavy work stays paused. */
+export function shouldPauseLocalHeavyCompute() {
+  return shouldPauseHeavyBackground();
+}
+
+/**
+ * Orchestration (heartbeat registry) should pause only when the host is
+ * memory-pressed AND heavy work is not remote. When heavy work is remote, the
+ * Mac host keeps the registry running while CPU-heavy modules are skipped.
+ */
+export function shouldPauseBackgroundOrchestration(env = process.env) {
+  if (isHeavyWorkRemote(env)) return false;
+  return shouldPauseHeavyBackground();
+}
+
 /**
  * Consolidation stays on by default, including on a low-memory host. It is
  * the memory-management pass; pausing it left a 16GB box with zero megas.
