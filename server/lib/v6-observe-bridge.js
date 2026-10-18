@@ -154,6 +154,41 @@ export function governancePayloads(text) {
 }
 
 /**
+ * Best-effort repair of a tool-call object missing closing braces. Returns
+ * { json, parsed, markerClosed } when the repaired object parses with a tool,
+ * else null. markerClosed: the trailing "]" was the marker's own close.
+ */
+export function repairToolCallJson(raw) {
+  let t = String(raw || "").trim();
+  let markerClosed = false;
+  const counts = (x) => {
+    let curly = 0; let square = 0; let inStr = false; let esc = false;
+    for (const c of x) {
+      if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === "{") curly++;
+      else if (c === "}") curly--;
+      else if (c === "[") square++;
+      else if (c === "]") square--;
+    }
+    return { curly, square, inStr };
+  };
+  let c = counts(t);
+  if (c.inStr) return null;
+  while (c.square < 0 && t.endsWith("]")) { t = t.slice(0, -1).trimEnd(); markerClosed = true; c = counts(t); }
+  if (c.curly <= 0 && c.square <= 0) return null;
+  if (c.curly > 4 || c.square > 2 || c.curly < 0 || c.square < 0) return null;
+  const candidate = t + "]".repeat(c.square) + "}".repeat(c.curly);
+  try {
+    const parsed = JSON.parse(candidate);
+    // Only a call with its params object is worth running; `{"tool":"web_search" ]` stays junk.
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.tool
+      && parsed.params && typeof parsed.params === "object") return { json: candidate, parsed, markerClosed };
+  } catch { /* not repairable */ }
+  return null;
+}
+
+/**
  * Locate `[TOOL_CALL: {…}]` spans with a bracket- and string-aware scan.
  * A nested `"files":[{…}]` or a `}` inside a string is part of the call,
  * not the end of it. Malformed markers that close before the next marker
@@ -175,9 +210,23 @@ export function findToolCallSpans(text) {
     if (endObj < 0) { i = start + TOOL_CALL_MARKER.length; continue; }
     let k = endObj;
     while (k < s.length && /\s/.test(s[k])) k++;
-    const json = s.slice(j, endObj);
+    let json = s.slice(j, endObj);
     let parsed = null;
     try { parsed = JSON.parse(json); } catch { parsed = null; }
+    if (!parsed) {
+      // qwen3 dropped one "}" of a nested call, so the marker's "]" closed the object
+      // (long-chat probe 2026-10-17: a travel itinerary-create call was the visible reply).
+      const fixed = repairToolCallJson(json);
+      if (fixed) {
+        json = fixed.json;
+        parsed = fixed.parsed;
+        if (fixed.markerClosed) {
+          spans.push({ start, end: endObj, raw: s.slice(start, endObj), json, parsed });
+          i = endObj;
+          continue;
+        }
+      }
+    }
     let end = k + 1;
     if (s[k] !== "]") {
       // qwen3 sometimes drops the closing "]" of a complete call (chat-par probe:
