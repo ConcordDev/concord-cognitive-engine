@@ -61,6 +61,12 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     body.tools = opts.tools;
   }
 
+  // Thinking control for thinking-family models (e.g. concord-core-v6 on the
+  // background brain): a brain can pin `think` in its config; callers can
+  // override per call.
+  const think = opts.think ?? config.think;
+  if (typeof think === "boolean") body.think = think;
+
   // Structured output (Ollama JSON-schema constrained decoding). Pass a JSON
   // schema object (or the string "json") to force the model to emit a JSON
   // document matching the schema — the load-bearing primitive for the

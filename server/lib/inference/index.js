@@ -22,6 +22,7 @@ import { acquire } from "./semaphore.js";
 import { emit as traceEmit } from "./tracer.js";
 import { emitRoyaltyEvent, computeContributors } from "./royalty-hook.js";
 import { parseCallerId, admitExecution } from "../background-governor.js";
+import { BRAIN_CONFIG } from "../brain-config.js";
 
 /**
  * @param {import('./types.js').InferRequest} req
@@ -35,7 +36,12 @@ export async function infer(req, db) {
   // so every existing caller's `result.error` handling records it.
   const bg = req && !req.brainOverride ? parseCallerId(req.callerId) : null;
   if (!bg) return _infer(req, db);
-  const gate = admitExecution({ kind: bg.kind, agentId: bg.agentId });
+  // Route to the dedicated background brain when one is configured
+  // (BRAIN_BACKGROUND_URL). CONCORD_BG_BRAIN=0 keeps the caller's role.
+  // Routed calls are new under the governor, so they are enforced even in
+  // shadow mode: a down background brain pauses them (no fallback).
+  const toBackground = !!BRAIN_CONFIG.background && process.env.CONCORD_BG_BRAIN !== "0";
+  const gate = admitExecution({ kind: bg.kind, agentId: bg.agentId, enforce: toBackground });
   if (!gate.allow) {
     return {
       inferenceId: req.traceId || `inf_${crypto.randomBytes(8).toString("hex")}`,
@@ -45,8 +51,9 @@ export async function infer(req, db) {
       governor: { reason: gate.reason, mode: gate.mode },
     };
   }
+  const routed = toBackground ? { ...req, role: "background" } : req;
   try {
-    const out = await _infer(req, db);
+    const out = await _infer(routed, db);
     gate.release({ ok: !out?.error, error: out?.error });
     return out;
   } catch (err) {
