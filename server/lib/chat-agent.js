@@ -75,6 +75,7 @@ const TOOL_REQUIRED_PARAMS = {
   run_lens_action:   ["domain", "action"],
   list_lens_actions: ["domain"],
   find_lens_actions: ["query"],
+  textbook_lookup:   ["query"],
   create_dtu:        ["title"],
   create_document:   ["title"],
   export_dtu:        ["dtuId", "format"],
@@ -273,6 +274,8 @@ Available tools (with one working example each):
   - music — pick by intent. (a) REAL / EXISTING music (the user says "real", "existing", "actual", names an artist or song, or asks to play/find/listen to some kind of music without asking you to make it): [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "music", "action": "ingest-itunes", "params": {"term": "lofi", "limit": 3}}}] — returns real tracks with 30-second iTunes previews that play inline. Never compose for these. (b) A NEW song (the user asks you to make/compose/write/create/generate one): [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "studio", "action": "compose", "params": {"genre": "lofi", "key": "C", "bpm": 85, "bars": 8, "title": "..."}}}] — an instrumental arrangement made with Concord's Studio synths; the user can play it inline, save it, and open it in Studio. track-add only creates a library entry with no audio.
 - list_lens_actions: Look up the REAL action names and their input fields for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Results rank top-level and common actions first. Params: {"domain": "domain_name"}
   Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
+- textbook_lookup: Look up a fact or explanation in OpenStax open textbooks (physics, chemistry, biology, anatomy, microbiology, astronomy, calculus, statistics, computer science, additive manufacturing). Use it for textbook, science and engineering facts (material constants, laws, definitions, derivations) and whenever the user asks for a textbook or OpenStax source. Returns book, section, link and the passage. Params: {"query": "the fact in a few words", "book": "optional OpenStax book slug, e.g. college-physics-2e"}
+  Example: [TOOL_CALL: {"tool": "textbook_lookup", "params": {"query": "Young's modulus aluminum"}}]
 - find_lens_actions: Search ALL of Concord's lens actions (every domain) by what you want to do, when you don't know which domain has it. Returns the best domain.action matches with their input fields; then call run_lens_action with one. Params: {"query": "what the user wants, in a few words"}
   Example: [TOOL_CALL: {"tool": "find_lens_actions", "params": {"query": "add item to shopping list"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
@@ -1053,6 +1056,22 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         }
         return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary, ...(artifact ? { artifact } : {}) };
       }
+      case "textbook_lookup": {
+        const { textbookLookup } = await import("./openstax-lookup.js");
+        const book = String(call.params.book || "").trim();
+        const r = await textbookLookup(String(call.params.query || ""), {
+          ...(book ? { books: [book] } : {}),
+          waitMs: 20_000,
+        });
+        if (!r.ok) return { tool: call.tool, ok: false, error: r.error || "textbook lookup failed",
+          retryHint: "Say the textbook lookup was unavailable; use web_search if the user still wants a source." };
+        return { tool: call.tool, ok: true, query: r.query, results: r.results.map((x) => ({
+          book: x.book, section: x.section, url: x.url, passage: x.passage, attribution: x.attribution })),
+          ...(r.note ? { note: r.note } : {}),
+          instruction: r.results.length
+            ? "Answer from these OpenStax passages. Quote numbers exactly with their units as printed, name the book and section, and link the section URL. If the passages do not contain the fact, say so."
+            : "OpenStax had no matching section. Say so; use web_search if a source is still needed." };
+      }
       case "find_lens_actions": {
         // Cross-domain discovery by intent: one search over every registered
         // lens action (LENS_ACTIONS + register() macros), so the model can reach
@@ -1461,6 +1480,11 @@ export function formatToolResults(results) {
       if (r.returnValue != null) parts.push(`return value: ${r.returnValue}`);
       if (r.imageCount) parts.push(`${r.imageCount} figure(s) generated — attached as artifact(s), do not re-describe them from imagination.`);
       return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
+    }
+    if (r.tool === "textbook_lookup") {
+      const body = (r.results || []).map((x, i) => `${i + 1}. ${x.book} — ${x.section}\n   ${x.url}\n   ${x.passage}`).join("\n");
+      return _screenUntrusted("textbook_lookup", "openstax", body, (t) =>
+        `[TOOL_RESULT: textbook_lookup] ${r.results?.length || 0} OpenStax section(s) for "${r.query}" (CC BY 4.0).${r.note ? ` ${r.note}` : ""}\n${t}\n${r.instruction || ""}`);
     }
     if (r.tool === "browse_url") {
       const via = r.fallback ? " (fetch fallback)" : "";

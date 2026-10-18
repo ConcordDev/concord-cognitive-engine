@@ -106,6 +106,7 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "browse_url", description: "Fetch and read a web page.", params: { url: { type: "string", required: true } } },
   { name: "run_lens_action", description: "Invoke a registered lens action.", params: { domain: { type: "string", required: true }, action: { type: "string", required: true } } },
   { name: "list_lens_actions", description: "List real action names for a domain.", params: { domain: { type: "string", required: true } } },
+  { name: "textbook_lookup", description: "Look up a fact or explanation in OpenStax open textbooks (CC BY).", params: { query: { type: "string", required: true }, book: { type: "string", required: false } } },
   { name: "find_lens_actions", description: "Search every lens action across all domains by intent.", params: { query: { type: "string", required: true } } },
   { name: "create_dtu", description: "Mint a DTU from the conversation.", params: { title: { type: "string", required: true } } },
   { name: "create_document", description: "Write a downloadable pdf, md, json, csv, txt, or zip.", params: { title: { type: "string", required: true } } },
