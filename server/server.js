@@ -26477,6 +26477,17 @@ register("dtu", "update", async (ctx, input) => {
   updated.updatedAt = nowISO();
   updated._version = (existing._version || 1) + 1;
 
+  // INC-111: cretiHuman is a human projection built from title/content/human.
+  // When one of those changes, regenerate it so detail/search views don't show
+  // the old title in "CRETI Content".
+  const titleChanged = input.title !== undefined && input.title !== existing.title;
+  const contentChanged = input.content !== undefined && input.content !== existing.content;
+  const summaryChanged = input.summary !== undefined && input.summary !== (existing.human?.summary || "");
+  if (titleChanged || contentChanged || summaryChanged) {
+    updated.cretiHuman = renderHumanDTU(updated);
+    updated.hash = crypto.createHash("sha256").update(updated.title + "\n" + updated.cretiHuman).digest("hex").slice(0, 16);
+  }
+
   upsertDTU(updated, { broadcast: true });
   ctx.log("dtu.update", `Updated DTU: ${updated.title}`, { id, version: updated._version });
 

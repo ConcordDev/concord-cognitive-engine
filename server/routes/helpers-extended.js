@@ -679,7 +679,8 @@ export default function registerHelpersExtendedRoutes(app, {
     const dtu = STATE.dtus?.get(req.params.id);
     if (!dtu || !ctxMayReadDtu(req, dtu)) return res.status(404).json({ ok: false, error: "not_found" });
     const tags = new Set(dtu.tags || []);
-    const related = dtusArray().filter(d => d.id !== dtu.id && ctxMayReadDtu(req, d) && (d.tags || []).some(t => tags.has(t)))
+    const related = safeDtuEntries().map(([, d]) => d)
+      .filter(d => d.id !== dtu.id && ctxMayReadDtu(req, d) && (d.tags || []).some(t => tags.has(t)))
       .slice(0, 20).map(d => ({ id: d.id, title: d.title, tier: d.tier, sharedTags: (d.tags || []).filter(t => tags.has(t)) }));
     res.json({ ok: true, related });
   }));
