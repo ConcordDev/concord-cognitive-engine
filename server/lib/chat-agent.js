@@ -30,10 +30,17 @@
 //     minted_by_provider + minted_by_model (Sprint 10 substrate).
 //
 // Loop bound: at most AGENT_MAX_TURNS interleaved (brain reply →
-// tool exec → brain reply). Caps at 5 by default to match the
-// existing chat.respond contract.
+// tool exec → brain reply). Default is 8 via CONCORD_AGENT_MAX_TURNS;
+// the live value comes from resolveAgentMaxTurns.
 
 import { brainChat, provenanceFrom } from "./byo-router.js";
+import {
+  resolveAgentMaxTokens,
+  resolveChatTimeoutMs,
+  resolveAgentMaxTurns,
+  resolveAgentMaxCallsPerTurn,
+  resolveAgentMaxToolCalls,
+} from "./chat-reply-policy.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
 import { recordInferenceSpan } from "./inference-metering.js";
 import { scanForInjection } from "./provenance-guard.js";
@@ -59,7 +66,7 @@ function _agentTodayBlock(opts = {}) {
   try { return "\n\n" + todayLine(opts.now instanceof Date ? opts.now : new Date(), opts.timeZone || "America/New_York"); } catch { return ""; }
 }
 
-const AGENT_MAX_TURNS = 5;
+const AGENT_MAX_TURNS = 8;
 const MAX_TOOL_RESULT_LEN = 12_000;
 // A reply that starts with a raw tool-result block is an echo, not an answer.
 const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
@@ -319,6 +326,8 @@ Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
 - Never claim a source you did not actually retrieve. Cite only titles and URLs that came back from web_search, browse_url, or expert_mode. If the tool result is only a Wikipedia page, attribute Wikipedia — do not say the answer was confirmed by an official site (for example the official Node.js page) unless that page was actually in the tool result. If a tool failed or returned nothing, say that.
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
+- Work in steps. PLAN: silently decide which facts or results the answer needs. ACT: issue every independent tool call you need now, one marker per line (for example two or three web_search queries from different angles, or web_search plus run_compute). OBSERVE: read the results; never invent what they did not say. CONTINUE: if something is still missing, contradictory or out of date, make more tool calls next turn. ANSWER only when the evidence covers the request or reasonable attempts are used up — then say what you could not confirm.
+- For a factual or current-events question, verify with at least one tool before answering; do not answer from memory alone.
 - For an explicit request to make, draw, or generate an image, use generate_image. Never tell the user to use an outside image service.
 - For any math/calculation use run_compute. Never guess at numbers.
 - To design, size or check a beam, cantilever, bracket or other structural part, use conkay_design. Never invent an action name such as engineering.cantilever_bending_design; an unknown action is rejected with the list of real ones.
@@ -1599,6 +1608,33 @@ export function formatToolResults(results) {
   }).join("\n\n");
 }
 
+export const DEEPEN_NUDGE =
+  "Your evidence so far is thin. Before answering, run another search from a different angle (different keywords, or add news/latest/official), or browse_url the most relevant source from the results. Use tool calls now; answer only after you have read the new results. If nothing more can be found, say what you could and could not confirm.";
+
+/** Decide whether the agent should search deeper before answering. */
+export function evidenceIsThin(toolCalls) {
+  const researchTools = new Set(["web_search", "browse_url", "expert_mode", "textbook_lookup"]);
+  const research = (Array.isArray(toolCalls) ? toolCalls : []).filter((t) => {
+    if (!t) return false;
+    if (researchTools.has(t.tool)) return true;
+    if (t.tool === "run_lens_action" && /search/i.test(String(t.action || ""))) return true;
+    return false;
+  });
+  if (!research.length) return false;
+  const successful = research.filter((t) => t.ok !== false);
+  if (successful.length >= 2) return false;
+  const text = successful
+    .map((t) => {
+      const v = t.result ?? t.text ?? t.answer ?? "";
+      if (v == null) return "";
+      if (typeof v === "string") return v;
+      try { return JSON.stringify(v); } catch { return ""; }
+    })
+    .join(" ");
+  const urls = (String(text).match(/https?:\/\//g) || []).length;
+  return successful.length < 2 && (urls === 0 || text.length < 1500);
+}
+
 /**
  * The agent loop. Runs up to maxTurns of (brain reply → tool exec → brain reply).
  *
@@ -1633,7 +1669,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     try { onEvent(type, payload); } catch { /* a bad listener must never break the agent loop */ }
   };
   if (!message) return { ok: false, error: "missing_message" };
-  const maxTurns = opts.maxTurns || AGENT_MAX_TURNS;
+  const maxTurns = resolveAgentMaxTurns({ requested: opts.maxTurns });
+  const _agentMaxTokens = opts.maxTokens || resolveAgentMaxTokens();
+  const _agentTimeoutMs = resolveChatTimeoutMs(_agentMaxTokens);
+  const _callsPerTurn = resolveAgentMaxCallsPerTurn();
+  const _maxToolCalls = resolveAgentMaxToolCalls();
+  // Marathon / long-task ticks (opts.toolGate) plan their own steps; the nudge is for live turns.
+  const _deepenEnabled = String(process.env.CONCORD_AGENT_DEEPEN ?? "1") !== "0" && opts.deepen !== false && typeof opts.toolGate !== "function";
+  const _deepenMax = Math.max(0, Math.min(3, Number(process.env.CONCORD_AGENT_DEEPEN_MAX ?? 1) || 0));
+  let _deepenUsed = 0;
+  let toolBudgetExhausted = false;
 
   // Compute-don't-guess on any model: a fully specified computational question
   // is answered by Concord's engines directly (lib/chat/compute-router.js) —
@@ -1862,7 +1907,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       db, userId,
       slot: opts.slot || "conscious",
       messages,
-      opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
+      opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _agentTimeoutMs },
     });
     // Wave 7 / D2 — record the agent-loop inference span (the cost ledger). Token
     // counts use the brain's usage when present, else a ~chars/4 estimate. Best-effort.
@@ -1900,6 +1945,20 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     }
 
     if (calls.length === 0) {
+      // Part 2 deepen: thin evidence gets one extra search turn before answering.
+      if (
+        _deepenEnabled &&
+        _deepenUsed < _deepenMax &&
+        turn < maxTurns - 1 &&
+        allToolCalls.length > 0 &&
+        evidenceIsThin(allToolCalls)
+      ) {
+        _deepenUsed++;
+        messages.push({ role: "assistant", content: r.text });
+        messages.push({ role: "user", content: DEEPEN_NUDGE });
+        emit("status", { phase: "deepen" });
+        continue;
+      }
       // No more tool calls — this is the final answer.
       finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls);
       // The model sometimes echoes a raw [TOOL_RESULT: ...] block back as its
@@ -1909,7 +1968,11 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     }
 
     const results = [];
-    for (const call of calls.slice(0, 5)) {
+    for (const call of calls.slice(0, _callsPerTurn)) {
+      if (allToolCalls.length >= _maxToolCalls) {
+        toolBudgetExhausted = true;
+        break;
+      }
       // Opt-in governance hook (never set by ordinary chat_agent.do calls —
       // only agent-marathon.js's tickMarathon supplies one, via
       // createToolGate). Checked immediately before EVERY real tool
@@ -2013,6 +2076,10 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
     }
 
+    // Total tool-call budget for this user turn (CONCORD_AGENT_MAX_TOOL_CALLS):
+    // once spent, the forced wrap-up turn below answers from what was gathered.
+    if (allToolCalls.length >= _maxToolCalls) toolBudgetExhausted = true;
+
     // A textbook lookup that doesn't state the fact is backed by a web search
     // in the same turn, so the model never fills the gap from memory.
     const thinBook = results.find(textbookNeedsWeb);
@@ -2051,6 +2118,10 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     messages.push({ role: "assistant", content: r.text });
     messages.push({ role: "user", content: formatToolResults(results) });
     finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls); // last visible body, in case we exit on max turns
+    if (toolBudgetExhausted) {
+      ranOutOfTurnsWithPendingCalls = true;
+      break;
+    }
     if (turn === maxTurns - 1) ranOutOfTurnsWithPendingCalls = true;
   }
 
@@ -2072,7 +2143,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
           ...messages,
           { role: "user", content: (typeof opts.wrapUpPrompt === "string" && opts.wrapUpPrompt) || "Give your final answer now, in full, based on everything above. Do not call any more tools — just answer." },
         ],
-        opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
+        opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _agentTimeoutMs },
       });
       if (wrapUp?.ok && wrapUp.text) {
         finalAnswer = guardPlaybackClaim(stripToolCalls(wrapUp.text), allToolCalls);

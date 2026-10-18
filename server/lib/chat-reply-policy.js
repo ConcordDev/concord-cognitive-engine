@@ -8,9 +8,9 @@
  * cutoff as a 1500-character history slice. The model reprinted the stub.
  */
 
-export const CHAT_MAX_TOKENS_DEFAULT = 2000;
+export const CHAT_MAX_TOKENS_DEFAULT = 4096;
 export const CHAT_MAX_TOKENS_FLOOR = 256;
-export const CHAT_MAX_TOKENS_CEILING = 8192;
+export const CHAT_MAX_TOKENS_CEILING = 16384;
 /** Sentence-bounded cap for one prior turn. A 2000-token reply fits. */
 export const CHAT_HISTORY_CHAR_CAP = 8000;
 /**
@@ -34,7 +34,7 @@ function clampInt(n, lo, hi) {
 
 /**
  * num_predict for a conversational reply.
- * Unset or non-positive CONCORD_CHAT_MAX_TOKENS → 2000.
+ * Unset or non-positive CONCORD_CHAT_MAX_TOKENS → 4096.
  * Verbosity omitted or 0.5 scales by 1 (the configured cap itself).
  * Other verbosities use the existing affect curve 0.6 + 0.8*v, clamped
  * to about 0.5×–1.5× the base and to the global floor/ceiling.
@@ -53,6 +53,82 @@ export function resolveChatMaxTokens({ verbosity, env } = {}) {
   const lo = Math.max(CHAT_MAX_TOKENS_FLOOR, Math.round(base * 0.5));
   const hi = Math.min(CHAT_MAX_TOKENS_CEILING, Math.round(base * 1.5));
   return clampInt(scaled, lo, hi);
+}
+
+export const AGENT_MAX_TOKENS_DEFAULT = 4096;
+
+/**
+ * num_predict for an autonomous agent turn.
+ * `env` is the full env MAP (unlike resolveChatMaxTokens, where `env` is the
+ * raw cap value). Reads CONCORD_AGENT_MAX_TOKENS, default 4096,
+ * clamped to [512, 16384].
+ */
+export function resolveAgentMaxTokens({ env } = {}) {
+  const e = env || process.env;
+  const raw = Number(e?.CONCORD_AGENT_MAX_TOKENS);
+  const base = Number.isFinite(raw) && raw > 0 ? raw : AGENT_MAX_TOKENS_DEFAULT;
+  return Math.min(16384, Math.max(512, Math.round(base)));
+}
+
+/**
+ * Request timeout for a single LLM chat call, scaled by the token budget.
+ * `env` is the full env MAP. If CONCORD_CHAT_LLM_TIMEOUT_MS is set, it wins
+ * (clamped to [30000, 1800000]). Otherwise tokens / CONCORD_CHAT_MIN_TOKPS
+ * (default 10, clamped [1, 500]) plus 30 s, capped by CONCORD_CHAT_TIMEOUT_CEIL_MS
+ * (default 900000) with a floor of 120000.
+ */
+export function resolveChatTimeoutMs(maxTokens, { env } = {}) {
+  const e = env || process.env;
+  const explicit = Number(e?.CONCORD_CHAT_LLM_TIMEOUT_MS);
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return Math.min(1800000, Math.max(30000, Math.round(explicit)));
+  }
+  const minTokps = Math.min(500, Math.max(1, Number(e?.CONCORD_CHAT_MIN_TOKPS) || 10));
+  const ceil = Math.min(1800000, Math.max(30000, Number(e?.CONCORD_CHAT_TIMEOUT_CEIL_MS) || 900000));
+  const ms = Math.round((Number(maxTokens) || 0) / minTokps * 1000 + 30000);
+  return Math.min(ceil, Math.max(120000, ms));
+}
+
+/** Short continuation after done_reason "length". */
+export const CHAT_CONTINUE_TOKENS = 1536;
+
+function clampIntPositive(n, fallback, cap) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return fallback;
+  return Math.min(cap, Math.max(1, Math.round(v)));
+}
+
+/**
+ * How many autonomous thinking/tool turns one agent invocation may take.
+ * `env` is the full env MAP. CONCORD_AGENT_MAX_TURNS is the default;
+ * CONCORD_AGENT_MAX_TURNS_CEILING caps both env and explicit requests.
+ */
+export function resolveAgentMaxTurns({ requested, env } = {}) {
+  const e = env || process.env;
+  const ceiling = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS_CEILING, 12, 50);
+  const fallback = clampIntPositive(e?.CONCORD_AGENT_MAX_TURNS, 8, ceiling);
+  if (Number.isFinite(requested) && requested > 0) {
+    return Math.min(ceiling, Math.max(1, Math.round(requested)));
+  }
+  return fallback;
+}
+
+/**
+ * How many tool calls may run in a single agent turn.
+ * `env` is the full env MAP. Default 6, clamped [1, 16].
+ */
+export function resolveAgentMaxCallsPerTurn({ env } = {}) {
+  const e = env || process.env;
+  return clampIntPositive(e?.CONCORD_AGENT_MAX_CALLS_PER_TURN, 6, 16);
+}
+
+/**
+ * Total tool-call budget across all agent turns.
+ * `env` is the full env MAP. Default 24, clamped [1, 100].
+ */
+export function resolveAgentMaxToolCalls({ env } = {}) {
+  const e = env || process.env;
+  return clampIntPositive(e?.CONCORD_AGENT_MAX_TOOL_CALLS, 24, 100);
 }
 
 export function stoppedOnLength(reason) {

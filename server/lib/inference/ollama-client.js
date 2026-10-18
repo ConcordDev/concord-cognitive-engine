@@ -26,7 +26,7 @@ function parseToolCalls(message) {
  * @param {string} brainName - Key in BRAIN_CONFIG
  * @param {import('./types.js').Message[]} messages
  * @param {{ tools?: object[], temperature?: number, stream?: boolean, signal?: AbortSignal, timeoutMs?: number }} opts
- * @returns {Promise<{ok: boolean, text: string, toolCalls: import('./types.js').ToolCall[], tokensIn: number, tokensOut: number, error?: string}>}
+ * @returns {Promise<{ok: boolean, text: string, toolCalls: import('./types.js').ToolCall[], tokensIn: number, tokensOut: number, doneReason?: string | null, error?: string}>}
  */
 export async function ollamaChat(brainName, messages, opts = {}) {
   const config = BRAIN_CONFIG[brainName];
@@ -99,12 +99,13 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     const tokensOut = j?.eval_count || 0;
 
     noteEndpointFinish(endpoint, { ok: true });
+    const doneReason = j?.done_reason || null;
     // A thinking model can spend the whole budget on `thinking` and return no
     // answer; that is a failure, not an empty success.
     if (!text && toolCalls.length === 0 && (message.thinking || j?.thinking)) {
-      return { ok: false, text: "", toolCalls, tokensIn, tokensOut, error: `empty_answer: model only produced thinking (done_reason ${j?.done_reason || "unknown"})` };
+      return { ok: false, text: "", toolCalls, tokensIn, tokensOut, doneReason, error: `empty_answer: model only produced thinking (done_reason ${doneReason || "unknown"})` };
     }
-    return { ok: true, text, toolCalls, tokensIn, tokensOut };
+    return { ok: true, text, toolCalls, tokensIn, tokensOut, doneReason };
   } catch (err) {
     noteEndpointFinish(endpoint, { ok: false });
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };

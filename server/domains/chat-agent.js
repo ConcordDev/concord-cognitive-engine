@@ -4,6 +4,7 @@
 // the runMacro + LENS_ACTIONS injection that ctx provides at runtime.
 
 import { runAgentLoop } from "../lib/chat-agent.js";
+import { resolveAgentMaxTurns } from "../lib/chat-reply-policy.js";
 
 /** Prefer message; accept task as alias (ActionPanel fleet convention). */
 export function resolveAgentMessage(input = {}) {
@@ -47,7 +48,7 @@ export default function registerChatAgentMacros(register) {
       runMacro: runMacroFn,
       lensActions,
       opts: {
-        maxTurns: Math.min(8, maxTurns || 5),
+        maxTurns: resolveAgentMaxTurns({ requested: maxTurns }),
         slot,
         // chat.respond's agent route (lib/chat/agent-route.js) says which
         // tool the request needs; a short system addendum, length-capped.
