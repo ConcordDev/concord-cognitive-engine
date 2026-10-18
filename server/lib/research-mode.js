@@ -171,10 +171,35 @@ export async function saveCitationDtus(db, session, toolCalls, runMacro) {
 // end with one. Prose that merely starts with the words does not match.
 const PROGRESS_NOTES_RE = /^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__)?[ \t]*progress notes[ \t]*(?::|(?:\*\*|__)[ \t]*:|(?:\*\*|__)?[ \t]*$)/im;
 
+// INC-142: models sometimes label the final answer "Final report:" (plain,
+// bold, or heading) and may repeat it. Match a line that is only that label.
+const FINAL_REPORT_RE = /^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__)?[ \t]*final report[ \t]*(?::|(?:\*\*|__)[ \t]*:|(?:\*\*|__)?[ \t]*$)/im;
+const FINAL_REPORT_LABEL_RE = /^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__)?[ \t]*final report[ \t]*(?::|(?:\*\*|__)[ \t]*:|(?:\*\*|__)?[ \t]*$)/gim;
+
+function looksLikeReport(text) {
+  return /^[ \t]*#{1,6}\s/m.test(text) || /^\s*\|.*\|/m.test(text) || FINAL_REPORT_RE.test(text) || text.length > 400;
+}
+
 /** Cut a trailing "Progress notes:" section off one block of text. */
 function withoutProgressNotes(block) {
   const m = PROGRESS_NOTES_RE.exec(block);
   if (!m) return block;
+  // INC-142: a leading "Progress notes:" label that actually introduces the
+  // final report (followed by "Final report:" or report-like headings/table)
+  // is the model mislabeling its answer. Strip the label and any narration
+  // before the first "Final report:" section, then drop the label itself.
+  if (m.index === 0) {
+    const rest = block.slice(m[0].length).trim();
+    const finalIdx = rest.search(FINAL_REPORT_RE);
+    if (finalIdx >= 0) {
+      const fromFinal = rest.slice(finalIdx).replace(FINAL_REPORT_RE, "").trim();
+      // The report may still end with a trailing progress-notes section.
+      return withoutProgressNotes(fromFinal);
+    }
+    if (looksLikeReport(rest)) return rest;
+    // Otherwise fall through: notes-only answers become empty here, and
+    // reportBody's `body || t` fallback keeps the original notes.
+  }
   return block.slice(0, m.index).trim();
 }
 
@@ -189,6 +214,12 @@ function withoutProgressNotes(block) {
  * that are progress notes, and a trailing notes section inside a part is cut.
  * When nothing but notes is left (a job that stopped early), the notes are
  * what it had, so they are kept.
+ *
+ * INC-142: models also label the final answer "Progress notes:" or
+ * "Final report:" as plain text. When a leading progress-notes block is
+ * actually a mislabeled report, we keep the report and drop the label plus any
+ * narration before the first "Final report:" section. Repeated standalone
+ * "Final report:" labels are collapsed.
  */
 export function reportBody(answer) {
   const t = String(answer || "")
@@ -203,7 +234,10 @@ export function reportBody(answer) {
     const part = withoutProgressNotes(raw.trim());
     if (part) kept.push(part);
   }
-  const body = kept.join("\n\n---\n\n").trim();
+  let body = kept.join("\n\n---\n\n").trim();
+  // INC-142: collapse any remaining standalone "Final report:" labels,
+  // including repeated ones, and tidy up excessive blank lines they leave.
+  body = body.replace(FINAL_REPORT_LABEL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
   return body || t;
 }
 
@@ -216,6 +250,16 @@ function numbersIn(text) {
   const out = new Set();
   for (const m of String(text || "").replace(/(\d),(\d{3})/g, "$1$2").match(/\d+(?:\.\d+)?/g) || []) out.add(String(parseFloat(m)));
   return out;
+}
+
+// INC-142: protected spans inside a line where a numeric spec must not get
+// an "(unverified)" hedge because it would corrupt a link.
+function linkProtectedRanges(line) {
+  const ranges = [];
+  for (const m of line.matchAll(/<(https?:\/\/[^>]+)>/g)) ranges.push([m.index, m.index + m[0].length]);
+  for (const m of line.matchAll(/\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g)) ranges.push([m.index, m.index + m[0].length]);
+  for (const m of line.matchAll(/https?:\/\/\S+/g)) ranges.push([m.index, m.index + m[0].length]);
+  return ranges;
 }
 
 /**
@@ -231,10 +275,13 @@ export function claimCheck(body, evidenceTexts = []) {
   const text = String(body || "").split("\n").map((line) => {
     // Links and the sources list are not claims.
     if (/^\s*\d+\.\s*\[.*\]\(https?:/.test(line)) return line;
+    const protectedRanges = linkProtectedRanges(line);
     return line.replace(SPEC_RE, (spec, _g, offset, whole) => {
       const before = whole.slice(Math.max(0, offset - 40), offset);
-      // "sec/60°" is a speed unit, not a second claim; links aren't claims.
-      if (/\/\s*$/.test(before) || /https?:\/\/\S*$/.test(before) || /\]\($/.test(before)) return spec;
+      // INC-142: never tag a spec that sits inside a markdown link, autolink,
+      // or bare URL; the hedge would corrupt the link target. Keep the
+      // existing slash guard so "sec/60°" speed units are not treated as claims.
+      if (protectedRanges.some(([s, e]) => offset >= s && offset < e) || /\/\s*$/.test(before) || /https?:\/\/\S*$/.test(before) || /\]\($/.test(before)) return spec;
       checked++;
       const nums = (spec.replace(/(\d),(\d{3})/g, "$1$2").match(/\d+(?:\.\d+)?/g) || []).map((n) => String(parseFloat(n)));
       if (nums.length && nums.every((n) => have.has(n))) return spec;
