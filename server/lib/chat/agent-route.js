@@ -20,7 +20,7 @@ import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js
 import { compactVoiceBlock } from "../../prompts/voice.js";
 import { parseExplicitDtuSave } from "./dtu-save-intent.js";
 import { CHAT_HISTORY_TURNS } from "../chat-reply-policy.js";
-import { isRecallAsk, formulaContextBlock } from "./session-memory.js";
+import { isRecallAsk, formulaContextBlock, memoryDtuRefs } from "./session-memory.js";
 import { stripToolCalls } from "../chat-agent.js";
 
 const WEB_RE = [
@@ -192,7 +192,7 @@ const ROUTE_HINT = {
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   recall: "The user is asking about something they said, saved or made earlier. Answer from the chat memory note and the earlier messages above, and from the user's own DTUs listed in the system notes (cite their ids). If the notes do not cover it, call run_lens_action dtu.search with the key words before answering. Only if none of these has it, say plainly that you don't see it; never say they did not mention something that appears above.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
-  compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
+  compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head. For a word problem (money, interest, trips, fuel, force, rates), write the formula as ONE arithmetic expression with the numbers filled in and call run_compute with key symbolic.evaluate and input {\"expression\": \"5000*(1+0.06)^10\"} (^ for powers). Never invent a compute function name. Then state the result with units and the formula you used.",
   save: "The user wants this saved: call create_dtu with a short title and the user's own words as the summary, then give the stored DTU id. If create_dtu fails, say it was not saved and why.",
   music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request; if the user only asks whether you can make music, make a short sample now with your own picks instead of asking). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the full page; if the tool result includes the search listing for that link, answer from it (title, outlet, date, snippet) and say that is all you have. Do not summarize from memory.",
@@ -388,6 +388,21 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       else if (retry?.ok || r) r = { ...r, answer: "I couldn't get live data for that just now, so I won't guess a number. Try again in a moment.", toolCalls: [...(r.toolCalls || []), ...(retry?.toolCalls || [])] };
     } catch { /* keep the first answer path below */ }
   }
+  // The model invented a solver name ("finance.compound_interest", "physics.fuelCost"):
+  // retry once on the general evaluator with an explicit expression.
+  if (route === "compute" && r?.ok !== undefined) {
+    const calls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
+    const solved = calls.some((t) => t && t.ok !== false && /^(?:run_compute|compute_router|run_python)$/.test(t.tool));
+    if (!solved && calls.some((t) => t?.tool === "run_compute" && /unknown compute function|requires "module\.function"/.test(String(t.error || "")))) {
+      try {
+        const retry = await runMacro("chat_agent", "do", {
+          message: `${prompt}\n\n(Write the formula as one arithmetic expression with the numbers filled in and call run_compute with key "symbolic.evaluate" and input {"expression": "..."}; ^ for powers.)`,
+          history: agentHistory, maxTurns: 4, routeHint: routeHint("compute"), voiceBlock: compactVoiceBlock(),
+        }, ctx);
+        if (retry?.ok && (retry.toolCalls || []).some((t) => t && t.ok !== false && /^(?:run_compute|compute_router|run_python)$/.test(t.tool))) r = retry;
+      } catch { /* keep the honest failure below */ }
+    }
+  }
   const toolCalls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
   let artifacts = Array.isArray(r?.artifacts) ? r.artifacts : [];
   let answer = String(r?.answer || "").trim();
@@ -438,7 +453,8 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   }
   // DTUs the reply may cite: the ones the loop put in its prompt plus any a
   // tool returned. Anything else is invented.
-  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls), { prompt });
+  // DTUs named in the chat memory note or the recall list are real and may be cited.
+  const g = guardDtuCitations(answer, collectRetrievedDtus(r?.contextDtus || [], toolCalls, recallDtus || [], memoryDtuRefs(memoryBlock), formulaDtus || []), { prompt });
   const sources = sourcesFromToolCalls(toolCalls);
   let replyText = g.text;
   // Math/physics: cite the formula DTU when a solver actually produced the numbers.
@@ -465,6 +481,8 @@ const FRESH_RE = /\b(?:price|prices|trading|worth|rate|score|scores|won|win|game
 /** True when the ask (or a short follow-up to one, "and eth?") needs live data. */
 export function needsFreshData(prompt, history = []) {
   const p = String(prompt || "");
+  // "how much was bitcoin when i asked earlier" is about this chat, not a new quote.
+  if (/\b(?:when i asked|i asked (?:you )?(?:earlier|before)|earlier|before)\b/i.test(p)) return false;
   if (FRESH_RE.test(p)) return true;
   if (p.trim().split(/\s+/).length > 4) return false;
   const prevUser = [...(history || [])].reverse().find((h) => h?.role === "user");

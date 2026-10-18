@@ -163,7 +163,7 @@ export function memoryDtuDue(userTurns, { evicted = false } = {}) {
 }
 
 // ── "what did I save / what did I say" ────────────────────────────────────
-const SAVED_RECALL_RE = /\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bdo you remember\b|\bremind me (?:what|of|the)\b/i;
+const SAVED_RECALL_RE = /\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bdo you remember\b|\bremind me (?:what|of|the)\b|\bwhen i asked\b|\bwhat (?:does|did) my\b[^.?!]{0,30}\b(?:note|notes|dtu)\b|\bmy\b[^.?!]{0,20}\bnote (?:says|said)\b/i;
 // "what's my X" is recall only with a recall cue or a fact noun; "what's my brother been up to" is chat.
 const MY_FORM_RE = /\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b/i;
 const RECALL_CUE_RE = /\b(?:again|earlier|before|said|told|mentioned|remember|saved)\b|\b(?:name|budget|address|birthday|plan|note|notes|order|hotel|flight|password hint|dog|cat|pet)\b/i;
@@ -260,4 +260,11 @@ export function rankRecallDtus(dtus, prompt, { limit = 8 } = {}) {
   });
   scored.sort((a, b) => b.score - a.score || b.t.localeCompare(a.t));
   return scored.slice(0, limit).map((x) => x.d);
+}
+
+/** DTUs the memory note names ("note (DTU) "title" id dtu_…"), so a reply may cite them. */
+export function memoryDtuRefs(text) {
+  const out = [];
+  for (const m of String(text || "").matchAll(/"([^"\n]{1,160})" id (dtu_[\w-]{4,80})/g)) out.push({ id: m[2], title: m[1] });
+  return out;
 }
