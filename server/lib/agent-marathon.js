@@ -718,7 +718,14 @@ export function isMarathonTicking(sessionId) {
   return _ticking.has(sessionId);
 }
 
-async function _deliverIfLongTask(db, sessionId) {
+async function _deliverIfLongTask(db, sessionId, runMacro = null) {
+  // Research jobs end with a real report file (lib/research-mode.js).
+  if (typeof runMacro === "function") {
+    try {
+      const { createResearchReport } = await import("./research-mode.js");
+      await createResearchReport(db, sessionId, runMacro);
+    } catch { /* the chat result still goes out */ }
+  }
   try {
     const { deliverLongTaskResult } = await import("./long-task.js");
     await deliverLongTaskResult(db, sessionId);
@@ -745,7 +752,7 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
   }
   if (session.total_turns >= session.max_turns) {
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'failed', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
-    await _deliverIfLongTask(db, sessionId);
+    await _deliverIfLongTask(db, sessionId, runMacro);
     return { ok: true, status: "failed", reason: "max_turns_exceeded" };
   }
 
@@ -885,7 +892,7 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
       return { ok: false, status: "running", retry: true, error: result.error };
     }
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'paused', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
-    if (longMeta) await _deliverIfLongTask(db, sessionId);
+    if (longMeta) await _deliverIfLongTask(db, sessionId, runMacro);
     return { ok: false, status: "paused", error: result.error };
   }
   if (longMeta && longMeta.tickFailures) {
@@ -911,6 +918,14 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
     result.model || null,
   );
   nextTurnIndex++;
+
+  // Research jobs: each web source read this tick becomes a citation DTU.
+  if (longMeta?.mode === "research") {
+    try {
+      const { saveCitationDtus } = await import("./research-mode.js");
+      await saveCitationDtus(db, session, result.toolCalls || [], runMacro);
+    } catch { /* never block the tick */ }
+  }
 
   const totalTurns = session.total_turns + result.turns;
 
@@ -1016,7 +1031,7 @@ async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }
       maybeFireMarathonCheckIn(db, session, totalTurns);
     } catch { /* never block the marathon on a check-in nudge */ }
   } else if (longMeta) {
-    await _deliverIfLongTask(db, sessionId);
+    await _deliverIfLongTask(db, sessionId, runMacro);
   }
 
   return {

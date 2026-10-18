@@ -104,7 +104,8 @@ export default function registerDocumentActions(register) {
       source: "document_create",
       ownerId: userId,
       visibility: "private",
-      human: { summary: String(input.summary || input.content || "").slice(0, 2000), bullets: Array.isArray(input.bullets) ? input.bullets : [] },
+      // `body` is a full document (a long-task research report); `summary` stays a summary.
+      human: { summary: typeof input.body === "string" && input.body.trim() ? input.body.slice(0, 40000) : String(input.summary || input.content || "").slice(0, 2000), bullets: Array.isArray(input.bullets) ? input.bullets : [] },
       core: {
         definitions: [], invariants: [], examples: [],
         claims: Array.isArray(input.claims) ? input.claims : [],
