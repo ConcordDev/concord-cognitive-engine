@@ -90,6 +90,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
           for (const tc of out.toolCalls || []) send("tool_call", tc);
           const answer = withNotices(String(out.reply || ""));
           for (let i = 0; i < answer.length; i += 80) send("token", { chunk: answer.slice(i, i + 80) });
+          console.log(`[chat-agent-stream] done surface=${surface} ok=true turns=0 route=${plan.route} error=""`);
           send("done", { ok: true, provider: null, model: null, turns: 0, route: plan.route });
           try { res.end(); } catch { /* noop */ }
           return;
@@ -141,6 +142,8 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         send("token", { chunk: answer.slice(i, i + step) });
       }
 
+      // Outcome only (no message text, no user id): makes a dead agent loop visible in the backend log.
+      console.log(`[chat-agent-stream] done surface=${surface} ok=${!!result.ok} turns=${result.turns ?? "?"} error=${JSON.stringify(String(result.error || "").replace(/\s+/g, " ").slice(0, 160))}`);
       send("done", {
         ok: result.ok,
         provider: result.provider,
@@ -149,6 +152,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         error: result.error,
       });
     } catch (err) {
+      console.warn(`[chat-agent-stream] done surface=${surface} ok=false turns=? error=${JSON.stringify(String(err?.message || err).replace(/\s+/g, " ").slice(0, 160))}`);
       send("done", { ok: false, error: err?.message || String(err) });
     }
     try { res.end(); } catch { /* noop */ }

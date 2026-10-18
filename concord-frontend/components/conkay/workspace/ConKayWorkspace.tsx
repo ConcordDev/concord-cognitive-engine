@@ -141,6 +141,8 @@ export function ConKayWorkspace() {
   const [viewMesh, setViewMesh] = useState<ChatArtifact | null>(null);
   /** A brief the workbench answered with questions: the next message adds to it. */
   const pendingBrief = useRef<string | null>(null);
+  /** The "what the design solver builds" note is shown once, on the first brief handed to the agent. */
+  const fallbackNoted = useRef(false);
   const [keeping, setKeeping] = useState(false);
   const [view, setView] = useState<ViewPreset>('isometric');
   const [display, setDisplay] = useState<DisplayMode>('wire-stress');
@@ -352,6 +354,18 @@ export function ConKayWorkspace() {
       if (!data) { reply(id, `The design did not run: ${e instanceof Error ? e.message : 'network error'}.`, { error: true }); return; }
     }
     const errs = Array.isArray(data?.errors) ? (data.errors as Array<{ error?: string }>).map((x) => x.error).filter(Boolean) : [];
+    // Not a design type the workbench reads (a parse refusal, or an error with no recognized domain):
+    // hand the brief to the ConKay agent instead of a dead-end error. Solver failures on a known type keep the error.
+    if (data?.ok === false && (data.stage === 'parse' || (data.stage === 'error' && !data.domain))) {
+      if (!fallbackNoted.current) {
+        fallbackNoted.current = true;
+        reply(id, 'ConKay\u2019s design solver builds cars, brackets, beams, trusses and Sentinel parts so far. This one is outside that list, so I\u2019ll work through it with you in conversation.');
+      } else {
+        setMessages((prev) => prev.filter((m) => m.id !== id));
+      }
+      await askAgent(text);
+      return;
+    }
     if (data?.ok === false) { reply(id, `The design did not run: ${errs.join('; ') || String(data?.error || 'no reason given')}.`, { error: true }); return; }
     if (data?.stage === 'questions') {
       pendingBrief.current = text;
@@ -382,7 +396,7 @@ export function ConKayWorkspace() {
       return;
     }
     reply(id, data?.stage === 'infeasible' ? 'No design met the brief within the search budget; see the workbench for what bound it.' : 'The design returned nothing to show.', { error: data?.stage !== 'infeasible' });
-  }, [push, reply, router]);
+  }, [askAgent, push, reply, router]);
 
   const send = useCallback(async (text: string) => {
     if (busy) return;
