@@ -144,7 +144,8 @@ describe("webSearchForChat end to end on the live prompt", () => {
     assert.ok(got.includes("https://nodejs.org/"));
     assert.ok(!got.some((u) => /google\.|yahoo\.|duckduckgo\.|cnn\.com|foxnews/.test(u)));
     const bingQs = urls.filter((u) => u.includes("bing.com")).map((u) => new URL(u).searchParams.get("q"));
-    assert.deepEqual(bingQs, [Q, "node js stable version"]);
+    // Subject-first compact query goes first; the full prompt only when it finds < 2 rows.
+    assert.deepEqual(bingQs, ["node js stable version"]);
   });
   it("still finds nodejs.org through the web index when the release API is down", async () => {
     installFetch({ eol: false });

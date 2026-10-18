@@ -110,7 +110,7 @@ describe("webSearchForChat providers", () => {
     assert.deepEqual(r, []);
   });
 
-  it("retries the keyless page with the compact query when filler words derail it", async () => {
+  it("asks the keyless page with the compact query first when filler words derail it", async () => {
     urls = [];
     globalThis.fetch = async (u) => {
       u = String(u); urls.push(u);
@@ -124,7 +124,7 @@ describe("webSearchForChat providers", () => {
     const r = await webSearchForChat(["current copper price today"]);
     assert.ok(r.some((x) => x.url.includes("kitco.com")));
     assert.ok(!r.some((x) => x.url.includes("current.com")));
-    assert.equal(urls.filter((u) => u.includes("bing.com")).length, 2);
+    assert.deepEqual(urls.filter((u) => u.includes("bing.com")).map((u) => new URL(u).searchParams.get("q")), ["copper price"]);
   });
 
   it("CONCORD_WEB_SEARCH_BING=0 disables the keyless page", async () => {

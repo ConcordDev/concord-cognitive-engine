@@ -244,7 +244,8 @@ function hasOrderedTightMatch(terms, text) {
 // does not have to repeat "current" or "2026" to be about copper prices,
 // so these never count as required terms.
 const OPTIONAL_TERMS = new Set(
-  `current latest today now recent recently live update updated news
+  `current latest today now recent recently live update updated news lately
+   good best great top find get nice easy
    tonight yesterday week month year
    january february march april may june july august september october november december`
     .split(/\s+/).filter(Boolean),
@@ -503,7 +504,11 @@ export function coversQuery(query, title, snippet, url) {
 }
 
 function keepCovering(query, rows) {
-  return (rows || []).filter((r) => coversQuery(query, r.title, r.snippet || r.content || "", r.url));
+  // "iphone price": a store page titled "Buy iPhone" with "$799" in the snippet answers it.
+  const priceAsk = /\b(?:price|prices|cost|costs|how much)\b/i.test(String(query || ""));
+  const priceless = priceAsk ? String(query).replace(/\b(?:price|prices|cost|costs|how much)\b/gi, " ") : "";
+  return (rows || []).filter((r) => coversQuery(query, r.title, r.snippet || r.content || "", r.url)
+    || (priceAsk && /\$\s?\d/.test(`${r.title} ${r.snippet || ""}`) && coversQuery(priceless, r.title, r.snippet || r.content || "", r.url)));
 }
 
 /**
@@ -527,7 +532,11 @@ async function generalWebResults(query) {
   if (process.env.BRAVE_API_KEY) rows.push(...keepCovering(query, (await braveSearch(query)).map((r) => ({ provider: "brave", ...r }))));
   if (rows.length < 3) rows.push(...keepCovering(query, await searxngSearch(query)));
   if (rows.length < 3) {
-    rows.push(...keepCovering(query, await bingSearch(query)));
+    // The keyless page ranks on the first word ("good ramen recipe" -> dictionary
+    // pages for "good"), so the subject-first compact form goes first.
+    const lead = compactSearchQuery(query);
+    if (lead && lead !== String(query).toLowerCase()) rows.push(...keepCovering(query, await bingSearch(lead)));
+    if (rows.length < 2) rows.push(...keepCovering(query, await bingSearch(query)));
     // Bing's keyless page sometimes ranks on the first word only when the
     // query carries filler ("current copper price today" → the bank named
     // Current). Retry once with just the required terms.
@@ -590,8 +599,13 @@ const NEWS_FILLER = new Set(
 );
 const NEWS_TOPIC_ALIASES = { tech: "technology", ai: "artificial intelligence" };
 
+// "what's trump doing lately", "Trump latest", "any update on the strike": recent events about a
+// subject, answered from a news index (dated headlines), not a general web page.
+const RECENT_EVENTS_RE = /\b(?:lately|recently|these days|this week|past week|latest on|latest with|update on|updates on)\b|\b(?:doing|up to)\b[^.?!]{0,20}\b(?:now|today|lately)\b|^\s*[a-z][\w.'-]*(?:\s+[a-z][\w.'-]*){0,2}\s+(?:latest|lately|today)\s*\??\s*$/i;
+const NOT_NEWS_RE = /\b(?:price|prices|cost|weather|forecast|score|scores|who won|recipe|version|release)\b/i;
 export function isNewsQuery(query) {
-  return NEWS_QUERY_RE.test(String(query || ""));
+  const q = String(query || "");
+  return NEWS_QUERY_RE.test(q) || (RECENT_EVENTS_RE.test(q) && !NOT_NEWS_RE.test(q));
 }
 
 /** Topic of a news question ("today's top tech news" → "technology"); "" = general headlines. */
@@ -621,11 +635,13 @@ export function parseBingNewsResults(html, query, limit = 6) {
     const snipM = part.match(/<div class="snippet"[^>]*>([\s\S]*?)<\/div>/i);
     const snippet = snipM ? stripTags(snipM[1]) : "";
     seen.add(url);
-    const lead = [outlet, age ? `${age.trim()} ago` : ""].filter(Boolean).join(", ");
+    const publishedAt = publishedFromAge(age);
+    const lead = [outlet, publishedAt ? dateLabel(publishedAt) : (age ? `${age.trim()} ago` : "")].filter(Boolean).join(", ");
     const text = `${lead ? `${lead}: ` : ""}${snippet || title}`;
     out.push({
       title: title.slice(0, 200), url, snippet: text.slice(0, 300), content: text.slice(0, 2000),
       source: hostOf(url), outlet, age: age.trim(), provider: "bing-news", query, fetchedAt: new Date().toISOString(),
+      ...(publishedAt ? { publishedAt } : {}),
     });
     if (out.length >= limit) break;
   }
@@ -643,8 +659,10 @@ export function parseGoogleNewsRss(xml, query, limit = 6) {
     if (outlet && title.endsWith(` - ${outlet}`)) title = title.slice(0, -(outlet.length + 3));
     if (!/^https?:\/\//i.test(url) || !title) continue;
     const date = get("pubDate");
-    const text = `${[outlet, date].filter(Boolean).join(", ")}: ${title}`;
-    out.push({ title: title.slice(0, 200), url, snippet: text.slice(0, 300), content: text.slice(0, 2000), source: outlet || "news.google.com", outlet, provider: "google-news", query, fetchedAt: new Date().toISOString() });
+    const t = Date.parse(date);
+    const publishedAt = Number.isFinite(t) ? new Date(t).toISOString() : null;
+    const text = `${[outlet, publishedAt ? dateLabel(publishedAt) : date].filter(Boolean).join(", ")}: ${title}`;
+    out.push({ title: title.slice(0, 200), url, snippet: text.slice(0, 300), content: text.slice(0, 2000), source: outlet || "news.google.com", outlet, provider: "google-news", query, fetchedAt: new Date().toISOString(), ...(publishedAt ? { publishedAt } : {}) });
     if (out.length >= limit) break;
   }
   return out;
@@ -653,25 +671,83 @@ export function parseGoogleNewsRss(xml, query, limit = 6) {
 async function newsResults(rawQuery) {
   if (String(process.env.CONCORD_WEB_SEARCH_NEWS || "1") === "0") return [];
   const topic = newsTopic(rawQuery);
-  const q = topic || "world news"; // "top stories" returned lifestyle filler
+  const q = topic || "world news";
+  const [bing, rss] = await Promise.all([bingNewsRows(q), googleNewsRows(topic, q)]);
+  return mergeNewest([...bing, ...rss], 8);
+}
+
+async function bingNewsRows(q) {
   try {
-    const res = await fetch(`https://www.bing.com/news/search?q=${encodeURIComponent(q)}&setlang=en&cc=US`, {
+    const res = await fetch(`https://www.bing.com/news/search?q=${encodeURIComponent(q)}&qft=sortbydate%3d%221%22&setlang=en&cc=US`, {
       headers: { "User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" },
       signal: AbortSignal.timeout(8000),
     });
-    if (res.ok) {
-      const rows = parseBingNewsResults(await res.text(), q);
-      if (rows.length) return rows;
-    }
-  } catch (_e) { /* fall back to the RSS feed */ }
+    return res.ok ? parseBingNewsResults(await res.text(), q, 10) : [];
+  } catch (_e) { return []; }
+}
+
+async function googleNewsRows(topic, q) {
   try {
     const url = topic
-      ? `https://news.google.com/rss/search?q=${encodeURIComponent(`${topic} when:2d`)}&hl=en-US&gl=US&ceid=US:en`
+      ? `https://news.google.com/rss/search?q=${encodeURIComponent(`${topic} when:7d`)}&hl=en-US&gl=US&ceid=US:en`
       : "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en";
     const res = await fetch(url, { headers: { "User-Agent": CHAT_USER_AGENT }, signal: AbortSignal.timeout(8000) });
-    if (res.ok) return parseGoogleNewsRss(await res.text(), q);
-  } catch (_e) { /* no news source reachable */ }
-  return [];
+    return res.ok ? parseGoogleNewsRss(await res.text(), q, 10) : [];
+  } catch (_e) { return []; }
+}
+
+/** Relative Bing age ("27m", "21h", "3d", "2 hours") -> ISO time, or null. */
+/**
+ * Google News RSS links are a JS redirect page with no article text. Find the
+ * publisher's own URL by searching the exact headline. Returns null when no
+ * non-Google result matches the title.
+ */
+export async function resolveNewsLink(title, outlet = "") {
+  const t = String(title || "").trim();
+  if (t.length < 12) return null;
+  try {
+    const rows = await bingSearch(`"${t.slice(0, 150)}"`);
+    const words = contentWords(t);
+    const hits = (rows || []).filter((r) => {
+      const h = hostOf(r.url, "");
+      if (!h || /(^|\.)google\./.test(h) || isBlockedUrl(r.url)) return false;
+      const tw = new Set(contentWords(r.title || ""));
+      return words.filter((w) => tw.has(w)).length >= Math.max(2, Math.ceil(words.length * 0.6));
+    });
+    const o = String(outlet || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const best = (o && hits.find((r) => hostOf(r.url, "").replace(/[^a-z0-9]/g, "").includes(o.slice(0, 8)))) || hits[0];
+    return best?.url || null;
+  } catch { return null; }
+}
+
+export function publishedFromAge(age, now = Date.now()) {
+  const m = String(age || "").trim().match(/^(\d+)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?|w|wk|weeks?|mo|months?)\b/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  const u = m[2].toLowerCase();
+  const ms = u.startsWith("mo") ? 30 * 864e5 : u.startsWith("m") ? 6e4 : u.startsWith("h") ? 36e5 : u.startsWith("d") ? 864e5 : 7 * 864e5;
+  return new Date(now - n * ms).toISOString();
+}
+
+/** "Oct 17, 2026" in New York time. */
+export function dateLabel(iso) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  return new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" });
+}
+
+/** Dedupe by URL and near-identical title; dated rows newest first, undated after. */
+export function mergeNewest(rows, limit = 8) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows || []) {
+    const key = String(r.title || "").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 60);
+    if (!r?.url || seen.has(r.url) || (key && seen.has(key))) continue;
+    seen.add(r.url); if (key) seen.add(key);
+    out.push(r);
+  }
+  out.sort((a, b) => (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0));
+  return out.slice(0, limit);
 }
 
 // ── Software release status (endoflife.date open API, keyless) ─────────────
@@ -807,6 +883,115 @@ async function releaseInfoResults(query) {
   }
 }
 
+// ── Real-time structured feeds (keyless) ────────────────────────────────────
+// Sports finals from ESPN's public scoreboard JSON and crypto spot prices from
+// Coinbase's public API: "who won the game last night" got a 5-day-old recap
+// and the price came from a cached page snippet. CONCORD_WEB_SEARCH_FEEDS=0 off.
+
+const SPORTS_Q_RE = /\b(?:who won|won|win|wins|lose|lost|final score|scores?|game|games|match|matchup|beat|result|results)\b/i;
+// ESPN's public JSON answers 403 to bot-only user agents.
+const FEED_UA = BROWSER_UA;
+const SPORTS_WHEN_RE = /\b(?:last night|yesterday|tonight|today|this weekend|latest|recent|just now)\b|\bwho won\b/i;
+const ESPN_LEAGUES = [
+  ["football/nfl", "NFL"], ["baseball/mlb", "MLB"], ["basketball/nba", "NBA"], ["hockey/nhl", "NHL"],
+  ["football/college-football", "College football"], ["basketball/wnba", "WNBA"], ["soccer/usa.1", "MLS"],
+];
+const LEAGUE_WORDS = { nfl: "NFL", football: "NFL", mlb: "MLB", baseball: "MLB", nba: "NBA", basketball: "NBA", nhl: "NHL", hockey: "NHL", college: "College football", ncaa: "College football", wnba: "WNBA", mls: "MLS", soccer: "MLS" };
+
+export function isSportsResultQuery(query) {
+  const q = String(query || "");
+  return SPORTS_Q_RE.test(q) && SPORTS_WHEN_RE.test(q) && !/\b(?:video ?game|board ?game|game of thrones|game show)\b/i.test(q);
+}
+
+function nyYmd(t) {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t));
+  return p.replace(/-/g, "");
+}
+
+/** ESPN scoreboard events -> result rows (finals first). */
+export function espnRows(data, leagueLabel, query = "") {
+  const out = [];
+  for (const ev of data?.events || []) {
+    const comp = ev?.competitions?.[0];
+    const teams = (comp?.competitors || []).map((c) => ({ name: c?.team?.displayName || c?.team?.name || "", abbr: c?.team?.abbreviation || "", score: c?.score, winner: !!c?.winner, home: c?.homeAway === "home" }));
+    if (teams.length !== 2) continue;
+    const state = ev?.status?.type?.state; // pre | in | post
+    const detail = ev?.status?.type?.shortDetail || ev?.status?.type?.description || "";
+    const [a, b] = teams.sort((x, y) => (y.winner ? 1 : 0) - (x.winner ? 1 : 0));
+    const when = ev?.date ? dateLabel(ev.date) : "";
+    const done = ev?.status?.type?.completed !== false;
+    const title = state === "post" && !done
+      ? `${leagueLabel}: ${a.name} vs ${b.name} (${detail || "not played"}, ${when})`
+      : state === "post"
+      ? `${leagueLabel}: ${a.name} ${a.score}, ${b.name} ${b.score} (${detail || "Final"}, ${when})`
+      : state === "in"
+        ? `${leagueLabel} live: ${a.name} ${a.score}, ${b.name} ${b.score} (${detail})`
+        : `${leagueLabel}: ${a.name} vs ${b.name} (${detail || when})`;
+    const link = (ev?.links || []).find((l) => /gamecast|summary|boxscore/i.test((l?.rel || []).join(" ")))?.href
+      || (ev?.id ? `https://www.espn.com/${leagueLabel === "College football" ? "college-football" : leagueLabel.toLowerCase()}/game/_/gameId/${ev.id}` : "https://www.espn.com/");
+    out.push({ title, url: link, snippet: `${when} · ESPN: ${title}`, content: `${title}. ${ev?.name || ""}`.trim(), source: "espn.com", outlet: "ESPN", provider: "espn", query, state: state === "post" && !done ? "off" : state, publishedAt: ev?.date || null, fetchedAt: new Date().toISOString(), _teams: teams.map((t) => `${t.name} ${t.abbr}`.toLowerCase()) });
+  }
+  return out;
+}
+
+async function sportsResults(query, now = Date.now()) {
+  if (String(process.env.CONCORD_WEB_SEARCH_FEEDS || "1") === "0" || !isSportsResultQuery(query)) return [];
+  const q = String(query).toLowerCase();
+  const day = 864e5;
+  const nyHour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(new Date(now)));
+  // After midnight, "last night" is still the date that just ended plus late games.
+  const dates = /\b(?:tonight|today)\b/.test(q) ? [nyYmd(now)]
+    : /\b(?:last night|yesterday)\b/.test(q) ? (nyHour < 6 ? [nyYmd(now), nyYmd(now - day)] : [nyYmd(now - day)])
+      : [nyYmd(now), nyYmd(now - day)];
+  const wanted = Object.entries(LEAGUE_WORDS).filter(([w]) => new RegExp(`\\b${w}\\b`).test(q)).map(([, l]) => l);
+  const leagues = ESPN_LEAGUES.filter(([, l]) => !wanted.length || wanted.includes(l));
+  const jobs = [];
+  for (const [path, label] of leagues) for (const d of dates) {
+    jobs.push(fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${d}`, { headers: { "User-Agent": FEED_UA }, signal: AbortSignal.timeout(6000) })
+      .then((r) => (r.ok ? r.json() : null)).then((j) => espnRows(j, label, query)).catch(() => []));
+  }
+  let rows = (await Promise.all(jobs)).flat();
+  // A team named in the question narrows it ("did the Yankees win last night").
+  const words = q.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !SEARCH_STOP.has(w) && !LEAGUE_WORDS[w] && !/^(?:who|won|win|the|game|games|last|night|score|scores|final|yesterday|tonight|today|did|beat|result|results|match)$/.test(w));
+  const team = words.length ? rows.filter((r) => r._teams.some((t) => words.some((w) => t.includes(w)))) : [];
+  if (words.length && !team.length && rows.length) {
+    // Named a team with no game on those dates: say so, then let news answer.
+    const when = dates.map((d) => dateLabel(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T16:00:00Z`)).join(" / ");
+    const note = `No game for "${words.join(" ")}" on ${when} in ESPN's NFL/MLB/NBA/NHL/college/WNBA/MLS scoreboards.`;
+    return [{ title: note, url: "https://www.espn.com/", snippet: note, content: note, source: "espn.com", outlet: "ESPN", provider: "espn", query, fetchedAt: new Date().toISOString() }];
+  }
+  if (team.length) rows = team;
+  const rank = { post: 0, in: 1, pre: 2, off: 3 };
+  rows.sort((a, b) => (rank[a.state] ?? 3) - (rank[b.state] ?? 3) || (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0));
+  return rows.slice(0, 10).map(({ _teams, ...r }) => r);
+}
+
+const CRYPTO = { bitcoin: "BTC", btc: "BTC", ethereum: "ETH", eth: "ETH", ether: "ETH", solana: "SOL", sol: "SOL", dogecoin: "DOGE", doge: "DOGE", xrp: "XRP", ripple: "XRP", cardano: "ADA", litecoin: "LTC", ltc: "LTC" };
+export function cryptoSymbols(query) {
+  const q = String(query || "").toLowerCase();
+  if (!/\b(?:price|prices|worth|cost|trading|value|how much|rate|usd)\b/.test(q)) return [];
+  return [...new Set(Object.entries(CRYPTO).filter(([w]) => new RegExp(`\\b${w}\\b`).test(q)).map(([, s]) => s))].slice(0, 3);
+}
+
+async function cryptoResults(query) {
+  if (String(process.env.CONCORD_WEB_SEARCH_FEEDS || "1") === "0") return [];
+  const syms = cryptoSymbols(query);
+  const rows = await Promise.all(syms.map(async (sym) => {
+    try {
+      const r = await fetch(`https://api.coinbase.com/v2/prices/${sym}-USD/spot`, { headers: { "User-Agent": CHAT_USER_AGENT }, signal: AbortSignal.timeout(5000) });
+      const j = r.ok ? await r.json() : null;
+      const amt = Number(j?.data?.amount);
+      if (!Number.isFinite(amt)) return null;
+      const at = new Date().toISOString();
+      const when = new Date(at).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const price = amt.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: amt < 10 ? 4 : 2 });
+      const title = `${sym} spot price: ${price} (Coinbase, ${when} ET)`;
+      return { title, url: `https://www.coinbase.com/price/${sym.toLowerCase()}`, snippet: title, content: title, source: "coinbase.com", outlet: "Coinbase", provider: "coinbase-spot", query, publishedAt: at, fetchedAt: at };
+    } catch (_e) { return null; }
+  }));
+  return rows.filter(Boolean);
+}
+
 export async function webSearchForChat(queries) {
   const allResults = [];
 
@@ -818,6 +1003,11 @@ export async function webSearchForChat(queries) {
     //    structured, keyless public API, before any results page.
     const releaseRows = await releaseInfoResults(query);
     allResults.push(...releaseRows);
+
+    // 0a. Real-time feeds: sports finals, crypto spot prices.
+    const [sportRows, cryptoRows] = await Promise.all([sportsResults(raw), cryptoResults(raw)]);
+    allResults.push(...cryptoRows, ...sportRows);
+    if (sportRows.length >= 2) break;
 
     // 0b. News questions go to a news index first; a general web page ranks
     //     "top tech news" on brand names (TopTech Electric & Plumbing).

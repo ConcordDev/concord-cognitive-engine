@@ -133,6 +133,9 @@ function shapeWebRow(r, query, decodeHtmlEntities) {
     scope: "web",
     origin: "web",
     source_name: r.source || "web",
+    ...(r.outlet ? { outlet: String(r.outlet).slice(0, 120) } : {}),
+    ...(r.publishedAt ? { published_at: r.publishedAt } : {}),
+    ...(r.provider ? { provider: r.provider } : {}),
     minted_by_provider: null,
     minted_by_model: null,
   };
