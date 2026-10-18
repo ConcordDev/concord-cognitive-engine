@@ -290,8 +290,10 @@ function _record(kind, d) {
   if (S.recent.length > 100) S.recent.splice(0, S.recent.length - 100);
 }
 
-function _finish(scope, verdict, meta) {
-  const mode = governorMode();
+function _finish(scope, verdict, meta, forceEnforce = false) {
+  // forceEnforce: work that is new under the governor (e.g. the governed
+  // embedding backfill) is enforced even while legacy paths shadow.
+  const mode = forceEnforce && governorMode() === "shadow" ? "enforce" : governorMode();
   const killed = isKilled();
   const c = S.counters[scope];
   let allow;
@@ -419,7 +421,7 @@ export function admitExecution(req = {}) {
     const last = S.agentLastExec.get(agentId);
     if (last && now - last < cfg.agentMinIntervalMs) verdict = "agent_rate";
   }
-  const out = _finish("exec", verdict, { type: kind, agent: agentId });
+  const out = _finish("exec", verdict, { type: kind, agent: agentId }, !!req.enforce);
   if (!out.allow) { out.release = () => {}; return out; }
   S.inflight++;
   _bump(S.inflightByKind, kind);

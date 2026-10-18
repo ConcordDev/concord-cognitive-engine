@@ -25,6 +25,7 @@ import crypto from "crypto";
 import * as presenceIdle from "./lib/presence-idle.js";
 import logger from './logger.js';
 import _qdrant from "./lib/qdrant-client.js";
+import { admitExecution } from "./lib/background-governor.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 const EMBEDDING_MODEL = process.env.CONCORD_EMBED_MODEL || "mxbai-embed-large";
@@ -166,7 +167,7 @@ export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog
  * @param {string} type - 'query' (prepend query prefix) or 'passage' (prepend passage prefix)
  * @returns {Promise<Float32Array|null>}
  */
-export async function embed(text, type = "passage") {
+export async function embed(text, type = "passage", { timeoutMs = EMBED_TIMEOUT_MS } = {}) {
   if (!embeddingState.available || !embeddingState.ollamaUrl) return null;
 
   const trimmed = String(text || "").trim().slice(0, 8192); // Model context limit
@@ -187,7 +188,7 @@ export async function embed(text, type = "passage") {
         model: embeddingState.model,
         prompt: textWithPrefix,
       }),
-      signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!response.ok) {
@@ -292,7 +293,10 @@ export function findSimilar(queryVec, candidates, topK = 10) {
  * @returns {Promise<{ id: string, score: number }[]>}
  */
 export async function semanticSearch(query, candidates, { lens = null, topK = 10, includeHighTier = true } = {}) {
-  const queryVec = await embed(query);
+  // Search runs on the request path (chat retrieval): a slow or unreachable
+  // embed host must degrade to keyword retrieval fast, not hold the chat
+  // for the 30s backfill timeout.
+  const queryVec = await embed(query, "passage", { timeoutMs: Number(process.env.CONCORD_EMBED_QUERY_TIMEOUT_MS) || 3000 });
   if (!queryVec) return [];
 
   // Filter candidates by lens if specified
@@ -463,10 +467,14 @@ export async function embedDTU(dtu) {
  * @param {{ onProgress?: Function }} opts
  * @returns {Promise<{ embedded: number, skipped: number, errors: number }>}
  */
-export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
+export async function backfillEmbeddings(dtusMap, { onProgress = null, governed = process.env.CONCORD_EMBED_GOVERNED === "1" } = {}) {
   // Sprint 60+ — idle gate. Backfill processes every DTU through the embedding
-  // model (one LLM call each). With no users, this is pure waste.
-  if (!presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
+  // model (one LLM call each). With no users, this is pure waste — UNLESS the
+  // embed model runs on the dedicated background brain (pod offload,
+  // CONCORD_EMBED_GOVERNED=1): then the background governor throttles each
+  // call and pauses the backfill whenever its breaker is open (chat strain,
+  // host pressure, background brain/tunnel down).
+  if (!governed && !presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
   if (!embeddingState.available) {
     return { embedded: 0, skipped: 0, errors: 0, reason: "embeddings_unavailable" };
   }
@@ -477,6 +485,9 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
   embeddingState.stats.backfillTotal = unembedded.length;
   embeddingState.stats.backfillProgress = 0;
   embeddingState.stats.backfillComplete = false;
+  embeddingState.stats.backfillGoverned = !!governed;
+  embeddingState.stats.backfillPauses = 0;
+  embeddingState.stats.backfillPauseReasons = {};
 
   if (unembedded.length === 0) {
     embeddingState.stats.backfillComplete = true;
@@ -484,6 +495,9 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
   }
 
   let embedded = 0, errors = 0;
+  const failures = {};
+  const delayMs = Number(process.env.CONCORD_EMBED_BACKFILL_DELAY_MS) || 50;
+  const maxPauseMs = Number(process.env.CONCORD_EMBED_BACKFILL_MAX_PAUSE_MS) || 6 * 3600_000;
 
   // Process in small groups of 10, yielding after each group so HTTP
   // requests can be served during backfill.  Each embedDTU() is an
@@ -492,14 +506,37 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
   const YIELD_EVERY = 10;
 
   for (let i = 0; i < unembedded.length; i++) {
+    let gate = null;
+    if (governed) {
+      const pauseStart = Date.now();
+      for (;;) {
+        gate = admitExecution({ kind: "embed", agentId: null, skipAgentRate: true, enforce: true });
+        if (gate.allow) break;
+        embeddingState.stats.backfillPauses++;
+        const r = String(gate.reason || "denied");
+        embeddingState.stats.backfillPauseReasons[r] = (embeddingState.stats.backfillPauseReasons[r] || 0) + 1;
+        if (Date.now() - pauseStart > maxPauseMs) {
+          if (_log) _log("warn", "backfill_paused_timeout", { progress: i, total: unembedded.length, reason: r });
+          embeddingState.stats.backfillProgress = i;
+          return { embedded, skipped: allDTUs.length - unembedded.length, errors, reason: `governor_paused:${r}`, failures };
+        }
+        await new Promise(res => { setTimeout(res, 5000); });
+      }
+    }
+    let ok = false;
     try {
       await embedDTU(unembedded[i]);
-      if (embeddingCache.has(unembedded[i].id)) {
-        embedded++;
-      }
-    } catch {
+      ok = embeddingCache.has(unembedded[i].id);
+      if (ok) embedded++;
+      else { errors++; failures.embed_failed_or_empty = (failures.embed_failed_or_empty || 0) + 1; }
+    } catch (e) {
       errors++;
+      const k = String(e?.message || "error").slice(0, 40);
+      failures[k] = (failures[k] || 0) + 1;
+    } finally {
+      if (gate) gate.release({ ok, error: ok ? undefined : "embed_failed" });
     }
+    if (governed && delayMs) await new Promise(res => { setTimeout(res, delayMs); });
 
     // Yield to event loop every YIELD_EVERY DTUs — lets HTTP respond
     if ((i + 1) % YIELD_EVERY === 0) {
@@ -523,12 +560,13 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
 
   embeddingState.stats.backfillComplete = true;
   embeddingState.stats.backfillProgress = unembedded.length;
+  embeddingState.stats.backfillFailures = failures;
 
   if (_log) {
-    _log("info", "backfill_complete", { embedded, errors, total: unembedded.length });
+    _log("info", "backfill_complete", { embedded, errors, total: unembedded.length, governed: !!governed, pauses: embeddingState.stats.backfillPauses, failures });
   }
 
-  return { embedded, skipped: allDTUs.length - unembedded.length, errors };
+  return { embedded, skipped: allDTUs.length - unembedded.length, errors, failures };
 }
 
 // ── Status & Monitoring ────────────────────────────────────────────────────
@@ -553,6 +591,10 @@ export function getEmbeddingStatus(totalDTUs = 0) {
       complete: embeddingState.stats.backfillComplete,
       progress: embeddingState.stats.backfillProgress,
       total: embeddingState.stats.backfillTotal,
+      governed: !!embeddingState.stats.backfillGoverned,
+      pauses: embeddingState.stats.backfillPauses || 0,
+      pauseReasons: embeddingState.stats.backfillPauseReasons || {},
+      failures: embeddingState.stats.backfillFailures || {},
     },
     stats: {
       totalEmbedded: embeddingState.stats.totalEmbedded,

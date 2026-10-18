@@ -97,6 +97,20 @@ const _vision_urls = _parseEndpoints(
 // onto one model so Ollama never swaps. Cloud slots (cloudflare://, cloud
 // sentinels) are untouched. An explicit per-slot BRAIN_<NAME>_MODEL still
 // wins if you deliberately want one slot differentiated.
+// Background brain (2026-10-18 pod offload): a dedicated, NON-user-facing
+// Ollama instance (pod :11436 via the com.concord.pod-bg-tunnel forward) for
+// emergent idle behaviour, minor-agent tasks, dreams and embeddings. Only
+// defined when BRAIN_BACKGROUND_URL(S) is set. Deliberately NOT routed through
+// OLLAMA_PROXY_URL — the proxy points at the user-facing instance, and the
+// whole point is that background work never queues behind (or in front of)
+// chat. There is no fallback chain: if this brain is down the background
+// governor's breaker pauses background work instead.
+const _background_urls = (() => {
+  const raw = process.env.BRAIN_BACKGROUND_URLS || process.env.BRAIN_BACKGROUND_URL || "";
+  const list = String(raw).split(",").map((u) => u.trim().replace(/\/+$/, "")).filter(Boolean);
+  return list.length ? list : null;
+})();
+
 const _localUnifiedModel = String(process.env.BRAIN_LOCAL_UNIFIED_MODEL || "").trim();
 function _isLocalHttpEndpoint(u) {
   return typeof u === "string" && /^https?:\/\//i.test(u);
@@ -247,7 +261,27 @@ contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65
     contextWindow: Math.min(Number(process.env.BRAIN_MULTIMODAL_CONTEXT) || 4096, 4096),
     maxTokens: 1500,
   },
+  ...(_background_urls ? {
+    background: {
+      url: _background_urls[0],
+      urls: _background_urls,
+      model: process.env.BRAIN_BACKGROUND_MODEL || "concord-core-v6:latest",
+      role: "non-user-facing background work: emergent idle behaviour, minor-agent tasks, dreams, embeddings",
+      temperature: 0.7,
+      timeout: Number(process.env.BRAIN_BACKGROUND_TIMEOUT_MS) || 60000,
+      priority: 3,
+      maxConcurrent: Number(process.env.BRAIN_BACKGROUND_CONCURRENT) || 4,
+      contextWindow: Math.min(Number(process.env.BRAIN_BACKGROUND_CONTEXT) || 4096, 8192),
+      maxTokens: Number(process.env.BRAIN_BACKGROUND_MAX_TOKENS) || 400,
+      // concord-core-v6 is a thinking model; with thinking on it spends
+      // ~1800 tokens per call. Background output is short and structured.
+      think: process.env.BRAIN_BACKGROUND_THINK === "1" ? true : false,
+    },
+  } : {}),
 });
+
+/** True when a dedicated background brain is configured. */
+export function hasBackgroundBrain() { return !!BRAIN_CONFIG.background; }
 
 /**
  * Map from system/subsystem names to brain assignments.
@@ -295,6 +329,8 @@ export const BRAIN_PRIORITY = Object.freeze({
   subconscious: 2, // NORMAL
   multimodal: 2,   // NORMAL — vision queries piggyback on subconscious priority
   utility: 3,      // LOW
+  // background: LOW — never ahead of user work (only when configured)
+  ...(BRAIN_CONFIG.background ? { background: 3 } : {}),
 });
 
 /**

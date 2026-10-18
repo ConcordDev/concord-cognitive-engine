@@ -15,6 +15,7 @@ const ROLE_CHAIN = {
   utility:      ["utility", "repair"],
   repair:       ["repair"],
   multimodal:   ["multimodal"],
+  background:   ["background"],     // dedicated bg instance — NO fallback (governor pauses instead)
 };
 
 // CallerIds that require strict conscious-only routing (no fallback under any circumstances)
