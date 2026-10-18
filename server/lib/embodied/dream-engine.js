@@ -14,12 +14,12 @@
 //
 // Two composers ship:
 //   1. `deterministic` — stitches fragments into a structured prose dream
-//      with no LLM call. Always available, used by tests, default
-//      production composer for builds without a healthy subconscious brain.
-//   2. `subconscious_llm` — opt-in via `process.env.CONCORD_DREAM_LLM=true`.
-//      Builds the same fragment list and asks the subconscious brain
-//      (port 11435, qwen2.5:7b) to elaborate. Falls back to deterministic
-//      if the brain call fails.
+//      with no LLM call. Always available, used by tests, fallback
+//      composer if the LLM path fails.
+//   2. `subconscious_llm` — DEFAULT-ON (routed through the background
+//      governor). Disable with `process.env.CONCORD_DREAM_LLM=false`.
+//      Builds the same fragment list and asks the background brain to
+//      elaborate. Falls back to deterministic if the brain call fails.
 //
 // The composed DTU is `kind = 'dream'`, `scope = 'personal'` by default.
 // Citation requires consent (existing economy invariant). The creator
@@ -35,6 +35,11 @@ import { governedBackgroundChat } from "../inference/background-chat.js";
 export const WINDOW_HOURS = Number(process.env.CONCORD_DREAM_WINDOW_HOURS) || 12;
 export const MIN_FRAGMENTS = Number(process.env.CONCORD_DREAM_MIN_FRAGMENTS) || 5;
 export const MIN_COMPOSE_INTERVAL_S = Number(process.env.CONCORD_DREAM_MIN_INTERVAL_S) || 6 * 3600;
+
+/** Resolve the dream composer from env, allowing opts.composer to override. */
+export function resolveDreamComposer(optsComposer) {
+  return optsComposer ?? (process.env.CONCORD_DREAM_LLM !== 'false' ? 'subconscious_llm' : 'deterministic');
+}
 
 /**
  * Gather fragments for a user over the last WINDOW_HOURS.
@@ -272,7 +277,7 @@ export function composeDeterministic({ fragments, summary }, userId) {
 export async function tryComposeForUser(db, userId, opts = {}) {
   const now = Number(opts.now ?? Math.floor(Date.now() / 1000));
   const minInterval = Number(opts.minInterval ?? MIN_COMPOSE_INTERVAL_S);
-  const composer = opts.composer ?? (process.env.CONCORD_DREAM_LLM === 'true' ? 'subconscious_llm' : 'deterministic');
+  const composer = resolveDreamComposer(opts.composer);
 
   // Throttle: skip if a dream was composed inside the cooldown.
   let last;

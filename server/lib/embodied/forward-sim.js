@@ -16,7 +16,8 @@
 // rules ship with mid-band confidence (0.4–0.7); LLM-enhanced predictions
 // get the LLM's stated confidence (clamped) or 0.5 if it doesn't return one.
 //
-// LLM enhancement is opt-in via CONCORD_FORWARD_SIM_LLM=true. Off by default.
+// LLM enhancement is DEFAULT-ON (routed through the background governor).
+// Disable with CONCORD_FORWARD_SIM_LLM=false.
 //
 // All work is wrapped in try/catch — a single subject's failure must not
 // stop the cycle for other subjects.
@@ -28,6 +29,11 @@ import { governedBackgroundChat } from "../inference/background-chat.js";
 export const PREDICTION_TTL_S = Number(process.env.CONCORD_PREDICTION_TTL_S) || 48 * 3600;
 export const MAX_PREDICTIONS_PER_PASS = Number(process.env.CONCORD_PREDICTIONS_PER_PASS) || 3;
 export const MIN_PASS_INTERVAL_S = Number(process.env.CONCORD_PREDICTION_INTERVAL_S) || 4 * 3600;
+
+/** Resolve the forward-sim composer from env, allowing opts.composer to override. */
+export function resolveForwardSimComposer(optsComposer) {
+  return optsComposer ?? (process.env.CONCORD_FORWARD_SIM_LLM !== 'false' ? 'subconscious_llm' : 'deterministic');
+}
 
 /**
  * Generate predictions for a user. Returns the inserted rows. Idempotent
@@ -76,7 +82,7 @@ export async function tryPredictForUser(db, userId, opts = {}) {
   }
   if (filtered.length === 0) return { ok: true, predictions: 0, reason: 'all_subjects_have_active_predictions' };
 
-  const composer = opts.composer ?? (process.env.CONCORD_FORWARD_SIM_LLM === 'true' ? 'subconscious_llm' : 'deterministic');
+  const composer = resolveForwardSimComposer(opts.composer);
   const inserted = [];
   for (const s of filtered) {
     try {
