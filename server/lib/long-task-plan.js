@@ -106,7 +106,8 @@ export async function planLongTask(db, { jobId, brain = null, lensActions = null
 
   let brainFn = brain;
   if (typeof brainFn !== "function") {
-    try { ({ brainChat: brainFn } = await import("./byo-router.js")); } catch { brainFn = null; }
+    // Planner slot: the user's own/High Power model, CONCORD_PLANNER_MODEL, else conscious.
+    try { ({ plannerBrainChat: brainFn } = await import("./byo-router.js")); } catch { brainFn = null; }
   }
   if (!brainFn) { mergeMeta(db, jobId, { planError: "no_brain" }); return { ok: false, reason: "no_brain" }; }
 

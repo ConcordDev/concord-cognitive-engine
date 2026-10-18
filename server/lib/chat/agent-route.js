@@ -172,6 +172,7 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (DTU_SAVE_RE.test(p) || NOTE_SAVE_RE.test(p)) return "save";
   if (MUSIC_RE.some((r) => r.test(p))) return "music";
   if (URL_RE.test(p) && BROWSE_ASK_RE.test(p)) return "browse";
+  if (isCodeAsk(p)) return "code";
   if (ACTION_RE.some((r) => r.test(p))) return "action";
   // "what did i save earlier", "whats my dog's name again": the chat memory and the
   // user's own DTUs, not the web and not "you didn't mention it".
@@ -193,6 +194,30 @@ export function chatAgentRoute(prompt, opts = {}) {
   return null;
 }
 
+// Coding asks: Concord's code lens (code.build / test-generate / multi-file /
+// propose-verified-patch), not a prose answer. Lens writes (tasks, events,
+// notes, songs) stay on the action/music routes.
+const CODE_NOUN = "(?:script|program|function|class|module|cli|command[- ]line tool|api|endpoint|server|component|react component|web ?app|app|bot|scraper|parser|regex|algorithm|library|sdk|unit tests?|test suite)";
+const CODE_RES = [
+  new RegExp(`\\b(?:write|build|make|create|generate|code|implement|scaffold)\\s+(?:me\\s+)?(?:a|an|the|some|my)?\\s*(?:[\\w.+#-]+\\s+){0,3}${CODE_NOUN}\\b`, "i"),
+  /\b(?:write|generate|add|create)\s+(?:some\s+)?(?:unit\s+|integration\s+|e2e\s+)?tests?\s+(?:for|to|covering)\b/i,
+  /\b(?:refactor|patch|debug)\s+(?:this|my|the)\s+(?:code|function|module|class|script|repo|file)s?\b/i,
+  /\bfix\s+(?:the|this|my)\s+(?:bug|failing test|code|function|script|stack ?trace)\b/i,
+  /\bmulti[- ]file\s+(?:change|edit|refactor|plan|patch)\b/i,
+  /\b(?:implement|code up|write)\s+[\w\s'-]{2,40}?\s+in\s+(?:python|javascript|typescript|node(?:\.js)?|rust|go|golang|java|c\+\+|c#|ruby|php|swift|kotlin|bash)\b/i,
+  /\b(?:in|using|with)\s+(?:python|javascript|typescript|node(?:\.js)?|rust|go|golang|java|c\+\+|c#|ruby|php|swift|kotlin|bash)\b[^.?!]{0,60}\b(?:write|build|make|implement|code)\b/i,
+];
+const NOT_CODE_RE = /\b(?:task|todo|to-do|event|meeting|reminder|note|playlist|song|beat|track|recipe|budget|shopping list|calendar|appointment)s?\b/i;
+export const CODE_TEST_RE = /\btests?\b/i;
+
+/** True for a coding ask that should use the code lens. */
+export function isCodeAsk(text) {
+  const p = String(text || "");
+  if (!p || p.length > 4000) return false;
+  if (NOT_CODE_RE.test(p) && !/\b(?:script|function|program|code|api|class|component|app|module)\b/i.test(p)) return false;
+  return CODE_RES.some((r) => r.test(p));
+}
+
 const ROUTE_HINT = {
   long: "This is a big multi-step job. Call start_long_task with the user's goal in their own words (mode research, plan, code or general). Then tell the user the job id, that it keeps working in the background, and that the result will be posted here. Don't try to do the whole job in this reply.",
   jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
@@ -205,6 +230,7 @@ const ROUTE_HINT = {
   music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request; if the user only asks whether you can make music, make a short sample now with your own picks instead of asking). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the full page; if the tool result includes the search listing for that link, answer from it (title, outlet, date, snippet) and say that is all you have. Do not summarize from memory.",
   action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Use the user's own words for the item text, unchanged. Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
+  code: "This is a coding request: use Concord's code tools through run_lens_action, not a prose answer. New program or script: code.build with {\"request\": the user's words, \"language\": \"python\"|\"javascript\"|...}; it generates, runs where execution is enabled, type-checks and repairs, and its status is honest (say done only if it returned done; if it says unrun, say the code was not executed). Tests for given code: code.test-generate with {\"code\": ..., \"framework\": ...}. A change across several files: code.multi-file-plan with {\"prompt\", \"files\"}, then code.multi-file-apply with the returned edits. A verified fix to a project or repo: code.propose-verified-patch with {\"projectId\" or \"repo\", \"taskQuery\"}. You can check pure Python yourself with run_python. Show the code the tool returned. A big multi-step build: start_long_task with mode code.",
   design: "This request is a ConKay design: call the conkay_design tool with the spec in words (span, load, material, supports, safety factor) and report the solver's real numbers. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
 };
 
