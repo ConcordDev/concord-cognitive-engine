@@ -178,3 +178,24 @@ test("find_lens_actions searches every domain by intent", async () => {
   assert.equal(tc.ok, true);
   assert.equal(tc.actions[0].key, "calendar.events-list");
 });
+
+test("a bare topic after a search turn is searched; small talk is not", () => {
+  assert.equal(chatAgentRoute("Trump", { prevRoute: "web" }), "web");
+  assert.equal(chatAgentRoute("Elon Musk", { prevRoute: "lookup" }), "lookup");
+  assert.equal(chatAgentRoute("thanks", { prevRoute: "web" }), null);
+  assert.equal(chatAgentRoute("cool", { prevRoute: "lookup" }), null);
+});
+
+test("web_search drops a year the user never typed and puts fresh news first", async () => {
+  const { executeToolCall } = await import("../lib/chat-agent.js");
+  const seen = [];
+  const runMacro = async (d, n, input) => { seen.push(input.query); return { ok: true, results: [{ title: "Wiki", url: "https://w.example/a", snippet: "old" }] }; };
+  const tc = await executeToolCall({ actor: { userId: "u1" }, userPrompt: "latest iPhone price" }, runMacro, new Map(),
+    { tool: "web_search", params: { query: "iPhone 17 price 2025" } });
+  assert.equal(seen[0], "iPhone 17 price");
+  assert.equal(tc.ok, true);
+  const tc2 = await executeToolCall({ actor: { userId: "u1" }, userPrompt: "prices in 2025?" }, runMacro, new Map(),
+    { tool: "web_search", params: { query: "prices 2025" } });
+  assert.equal(seen[1], "prices 2025");
+  assert.equal(tc2.ok, true);
+});
