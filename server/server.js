@@ -27661,7 +27661,11 @@ const _isTimeQuery = (s) => {
 // "Generate an image of a red fox in fresh snow" is not a weather question
 // (chat-par probe 2026-10-17: it answered "Weather lookup failed for fresh snow at sunrise").
 const _CREATIVE_ASK_RE = /\b(image|picture|photo|drawing|draw|paint|painting|illustrat\w*|render|wallpaper|sketch|logo|song|poem|story|lyrics|haiku|music|recipe)\b/i;
-const _isWeatherQuery = (s) => /\b(weather|forecast|temperature|temp|rain|snow|wind)\b/i.test(String(s||"")) && !_CREATIVE_ASK_RE.test(String(s||""));
+// "The average temperature was 70 degrees on day 1 and 80 on day 2. What was the mean?" is a stats
+// word problem, not a weather lookup (INC-134 verify: it answered "Weather lookup failed for …").
+const _STATS_WORD_PROBLEM_RE = /\b(?:average|mean|median|standard deviation|variance)\b/i;
+const _isWeatherQuery = (s) => /\b(weather|forecast|temperature|temp|rain|snow|wind)\b/i.test(String(s||"")) && !_CREATIVE_ASK_RE.test(String(s||""))
+  && !(_STATS_WORD_PROBLEM_RE.test(String(s||"")) && (String(s||"").match(/\d+(?:\.\d+)?/g) || []).length >= 2);
 const _extractLocation = (s) => _extractWeatherLocation(s);
 
 if (_isTimeQuery(prompt)) {
