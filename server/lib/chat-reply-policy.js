@@ -13,7 +13,20 @@ export const CHAT_MAX_TOKENS_FLOOR = 256;
 export const CHAT_MAX_TOKENS_CEILING = 8192;
 /** Sentence-bounded cap for one prior turn. A 2000-token reply fits. */
 export const CHAT_HISTORY_CHAR_CAP = 8000;
-export const CHAT_HISTORY_TURNS = 12;
+/**
+ * Prior messages (user + assistant rows) replayed per turn (60 rows = 30 exchanges, the in-memory session cap,
+ * bounded by CHAT_HISTORY_TOTAL_CHARS). 12 rows was 6 exchanges:
+ * a 37-turn phone session (long-chat probe 2026-10-17) lost the trip budget, the
+ * saved note and the dog's name by turn 29 and the model said "you didn't mention a
+ * budget in this conversation" while sending ~240 tokens of a 32k window.
+ */
+export const CHAT_HISTORY_TURNS = 60;
+/** The newest rows replay at full length (up to CHAT_HISTORY_CHAR_CAP each). */
+export const CHAT_HISTORY_FULL_RECENT = 12;
+/** Older rows are cut to a complete-sentence gist of this many characters. */
+export const CHAT_HISTORY_OLDER_CHAR_CAP = 700;
+/** Total replayed history, ~6k tokens; oldest rows drop first past this. */
+export const CHAT_HISTORY_TOTAL_CHARS = 24000;
 
 function clampInt(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n));
@@ -187,6 +200,9 @@ function historyTurnForReplay(text) {
   const t = String(text || "").trim();
   if (!t) return "";
   if (t.length <= CHAT_HISTORY_CHAR_CAP && replyEndsCleanly(t)) return t;
+  // "18% tip on $247.50 is $44.55." ends in digit + period, which sentenceEnded reads as a
+  // list number, so math answers vanished from history. A bare "2." line is still a stub.
+  if (t.length <= CHAT_HISTORY_CHAR_CAP && /\d[.!?]["'")\]]*$/.test(t) && !/(?:^|\n)\s*\d+[.)]\s*$/.test(t)) return t;
   const source = t.length > CHAT_HISTORY_CHAR_CAP ? t.slice(-CHAT_HISTORY_CHAR_CAP) : t;
   return trimToLastCompleteUnit(source);
 }
@@ -236,17 +252,31 @@ export function buildChatHistoryMessages(sessionMessages, currentUserContent) {
   // sent twice and the previous assistant turn is no longer "once."
   if (turns.length && turns[turns.length - 1].role === "user") turns.pop();
   const windowed = turns.slice(-CHAT_HISTORY_TURNS);
-  const out = [];
-  for (const turn of windowed) {
+  const kept = [];
+  let total = 0;
+  // Newest first, so the total budget drops the oldest rows, never the latest ones.
+  for (let i = windowed.length - 1; i >= 0; i--) {
+    const turn = windowed[i];
+    const older = windowed.length - i > CHAT_HISTORY_FULL_RECENT;
     // Only assistant turns can be stored mid-sentence. A user turn is kept as typed:
     // phone messages rarely end in punctuation, and "What trump doing lately" / "Trump"
     // were dropped from history, so "Use web search" had no topic (2026-10-17).
-    const content = turn.role === "user"
-      ? String(turn.content).trim().slice(0, CHAT_HISTORY_CHAR_CAP)
+    let content = turn.role === "user"
+      ? String(turn.content).trim().slice(0, older ? CHAT_HISTORY_OLDER_CHAR_CAP : CHAT_HISTORY_CHAR_CAP)
       : historyTurnForReplay(turn.content);
+    if (content && older && turn.role === "assistant" && content.length > CHAT_HISTORY_OLDER_CHAR_CAP) {
+      // A sentence-bounded head, never a mid-sentence stub (INC-20261010-07).
+      const head = content.slice(0, CHAT_HISTORY_OLDER_CHAR_CAP);
+      // A list or plan with no sentence end in the head: cut at a line break or word, marked as cut.
+      const cut = Math.max(head.lastIndexOf("\n"), head.lastIndexOf(" "));
+      content = trimToLastCompleteUnit(head) || `${head.slice(0, cut > 200 ? cut : head.length).trim()} …`;
+    }
     if (!content) continue;
-    out.push({ role: turn.role, content });
+    if (total + content.length > CHAT_HISTORY_TOTAL_CHARS && kept.length) break;
+    total += content.length;
+    kept.push({ role: turn.role, content });
   }
+  const out = kept.reverse();
   out.push({ role: "user", content: current });
   return out;
 }
