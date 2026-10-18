@@ -38258,13 +38258,23 @@ function ensureReplyEnvelope(out, req, extraMeta={}) {
     version: VERSION,
     capabilities: {
       version: VERSION,
-      llmReady: LLM_READY,
+      llmReady: _llmReadyForReq(req),
       organs: STATE.organs?.size || 0,
       growth: !!STATE.growth
     },
     ...extraMeta
   };
   return { ...base, ok, reply, meta };
+}
+
+// INC-137: meta.capabilities.llmReady is per account. A High Power account answered by a cloud
+// provider while the pod brain is down is ready; a Private account is ready only when the local brain is.
+function _llmReadyForReq(req) {
+  try {
+    const u = req?.user || null;
+    const actor = u ? { userId: u.id || u.userId, brainMode: u.brainMode || u.brain_mode || null } : null;
+    return llmReadyFor({ localReady: LLM_READY, db: STATE?.db || null, actor });
+  } catch { return LLM_READY; }
 }
 
 function deterministicFallbackReply(req) {
@@ -38296,7 +38306,7 @@ function toUI(out, req, extraMeta={}) {
     llmUsed: out?.llmUsed || out?.result?.llmUsed || false,
     capabilities: {
       version: VERSION,
-      llmReady: LLM_READY,
+      llmReady: _llmReadyForReq(req),
       organs: STATE.organs?.size || 0,
       growth: !!STATE.growth
     },
