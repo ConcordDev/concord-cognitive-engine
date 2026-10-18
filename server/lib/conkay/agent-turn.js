@@ -14,6 +14,7 @@
 
 import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk } from "../chat/agent-route.js";
 
+import { ROBOT_RE } from "./robot-assembly.js";
 const PART_RE = /\b(?:bracket|beam|i-?beam|cantilever|shaft|truss|column|plate|frame|part|mount|bridge|footbridge|joist|girder|lintel|shelf|hook|axle|spring|rod|bar)s?\b/i;
 const DESIGN_VERB_RE = /\b(?:design|build|size|sizing|make|create|model|engineer|spec|check)\b/i;
 const LOAD_RE = /\b\d+(?:\.\d+)?\s*(?:k?n|kgs?|kilograms?|lbs?|pounds?|tons?|tonnes?|kn)\b|\b(?:holds?|support(?:s|ing)?|carry|carries|load(?:ed)?)\b/i;
@@ -23,7 +24,7 @@ const NEW_MUSIC_RE = /\b(?:make|compose|write|create|generate|produce)\b/i;
 /** A ConKay design ask: a part noun + a design verb or a load. */
 export function isDesignAsk(text) {
   const p = String(text || "");
-  return PART_RE.test(p) && (DESIGN_VERB_RE.test(p) || LOAD_RE.test(p)) && !/\b(?:image|picture|photo|illustration|drawing|song|music)\b/i.test(p);
+  return (PART_RE.test(p) || ROBOT_RE.test(p)) && (DESIGN_VERB_RE.test(p) || LOAD_RE.test(p)) && !/\b(?:image|picture|photo|illustration|drawing|song|music)\b/i.test(p);
 }
 
 /** The most recent design brief the user gave in this conversation. */
@@ -101,7 +102,10 @@ export function conkayTurnPlan(message, history = []) {
     }
   }
   if (!writeFirst && isDesignAsk(p)) {
-    return { route: "design", hint: DESIGN_HINT, fallbackCall: { tool: "conkay_design", params: { text: p } } };
+    const hint = ROBOT_RE.test(p)
+      ? "This is a ConKay robot build. Call conkay_design with the user's words. It returns a concept 3D assembly the interface shows below your reply, with the parts list. Name the parts with their sizes and the overall size, say the model is shown below, and say it is a layout concept (no structural, motor or battery sizing was run). Never invent numbers the tool did not return."
+      : DESIGN_HINT;
+    return { route: "design", hint, fallbackCall: { tool: "conkay_design", params: { text: p } } };
   }
 
   if (!route) return null;
