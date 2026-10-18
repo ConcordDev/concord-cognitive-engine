@@ -385,6 +385,13 @@ describe('(B6) math — never fabricates a number on failure', () => {
 describe('(B7) search — count comes from real results, semantic flag honest', () => {
   const skill = CONKAY_SKILLS.find((s) => s.id === 'search')!;
 
+  it('matches archive searches only; web asks go to the agent', () => {
+    expect(skill.match('search my archive for compression')).toEqual({ q: 'compression' });
+    expect(skill.match('find my notes on gearboxes')).not.toBeNull();
+    expect(skill.match('search the web for the lightest carbon bike frames 2026')).toBeNull();
+    expect(skill.match('find the lightest carbon bike frames')).toBeNull();
+  });
+
   it('reports the real item count when the macro returns results', async () => {
     const r = await skill.run({ q: 'compression' }, makeCtx({
       runMacro: vi.fn().mockResolvedValue({

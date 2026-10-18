@@ -1016,7 +1016,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const solved = solveDesignText(text);
         const summary = summarizeDesignSolve(solved);
         if (!summary.ok) {
-          return { tool: call.tool, ok: false, error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}` };
+          return {
+            tool: call.tool, ok: false,
+            error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}`,
+            // The model gets one more turn to size an unsupported part by formula.
+            ...(summary.supportedParts ? { retryHint: "This part has no ConKay solver. Size it with run_python (show the formula, inputs and result), or say plainly it is not supported." } : {}),
+          };
         }
         // The solved part's triangle mesh (same arrays POST /api/conkay/design
         // returns), so the ConKay UI can show the 3D model. Rides on the
