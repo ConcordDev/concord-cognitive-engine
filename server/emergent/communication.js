@@ -5,6 +5,13 @@
 import crypto from "node:crypto";
 import { infer } from "../lib/inference/index.js";
 import { emitFeedEvent } from "./feed.js";
+import { admitCreation, noteCreated } from "../lib/background-governor.js";
+
+/** Normalised dedupe key: same sender, recipient and (case/space-folded) message. */
+export function communicationDedupeKey(fromId, toId, intent) {
+  const norm = String(intent || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 160);
+  return `comm|${fromId}|${toId}|${norm}`;
+}
 
 /**
  * Summarize an intent string to ≤120 chars for feed display.
@@ -49,6 +56,15 @@ export function initiateCommunication({ from, to, intent, context = {}, db, real
     status: "pending",
   };
 
+  // Backpressure at the source: the background governor may refuse the
+  // task (queue full, recipient backlog, creator rate, duplicate). A refused
+  // message is never inserted and never announced on the feed.
+  const govReq = { kind: "communication", fromId: from.id, toId: to.id, dedupeKey: communicationDedupeKey(from.id, to.id, intent) };
+  const decision = admitCreation(govReq);
+  if (!decision.allow) {
+    return { ...exchange, status: "refused", refused_reason: decision.reason };
+  }
+
   if (db) {
     try {
       db.prepare(`
@@ -69,6 +85,7 @@ export function initiateCommunication({ from, to, intent, context = {}, db, real
         JSON.stringify({ from_id: from.id, from_name: from.given_name || from.id, message: intent, message_id: messageId, context }),
         now
       );
+      noteCreated(govReq, decision);
     } catch (e) {
       console.error("[communication] initiate failed:", e?.message);
     }

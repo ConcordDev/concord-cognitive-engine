@@ -21,6 +21,7 @@ import { runAgentLoop } from "./agent-loop.js";
 import { acquire } from "./semaphore.js";
 import { emit as traceEmit } from "./tracer.js";
 import { emitRoyaltyEvent, computeContributors } from "./royalty-hook.js";
+import { parseCallerId, admitExecution } from "../background-governor.js";
 
 /**
  * @param {import('./types.js').InferRequest} req
@@ -28,6 +29,33 @@ import { emitRoyaltyEvent, computeContributors } from "./royalty-hook.js";
  * @returns {Promise<import('./types.js').InferResponse>}
  */
 export async function infer(req, db) {
+  // Background (non-user-facing) callers — `emergent:<id>:<kind>` — go
+  // through the background governor. A denial returns an empty, typed
+  // response (error: "bg_governor_denied:<reason>") rather than throwing,
+  // so every existing caller's `result.error` handling records it.
+  const bg = req && !req.brainOverride ? parseCallerId(req.callerId) : null;
+  if (!bg) return _infer(req, db);
+  const gate = admitExecution({ kind: bg.kind, agentId: bg.agentId });
+  if (!gate.allow) {
+    return {
+      inferenceId: req.traceId || `inf_${crypto.randomBytes(8).toString("hex")}`,
+      brainUsed: null, modelUsed: null, steps: [], finalText: "", toolCalls: [],
+      dtuContributors: [], tokensIn: 0, tokensOut: 0, latencyMs: 0, fallbacksUsed: [],
+      error: `bg_governor_denied:${gate.reason}`,
+      governor: { reason: gate.reason, mode: gate.mode },
+    };
+  }
+  try {
+    const out = await _infer(req, db);
+    gate.release({ ok: !out?.error, error: out?.error });
+    return out;
+  } catch (err) {
+    gate.release({ ok: false, error: err?.code || err?.message || "error" });
+    throw err;
+  }
+}
+
+async function _infer(req, db) {
   const inferenceId = req.traceId || `inf_${crypto.randomBytes(8).toString("hex")}`;
   const startedAt = Date.now();
 
