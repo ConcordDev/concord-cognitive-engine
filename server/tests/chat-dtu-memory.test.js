@@ -130,3 +130,21 @@ test("follow-ups: chat-history price recall, note recall, memory DTU refs, compu
   assert.deepEqual(memoryDtuRefs(mem.text), [{ id: "dtu_058af9596eb3511e91d9", title: "Pick up film from lab" }]);
   assert.match(routeHint("compute"), /symbolic\.evaluate/);
 });
+
+test("task receipts are tasks, not DTUs; saved songs/tasks are citable titles", async () => {
+  const { memoryDtuRefs } = await import("../lib/chat/session-memory.js");
+  const rows = longSession();
+  rows.push({ role: "user", content: "add a task to my tasks: call mom sunday" });
+  rows.push({ role: "assistant", content: 'Saved in productivity: "call mom sunday" (id tsk_mvdaokth_yu5nxm, due 2026-10-18).' });
+  rows.push({ role: "assistant", content: "x", meta: { artifacts: [{ type: "song", title: "Late Night Drives" }] } });
+  const m = buildSessionMemory(rows);
+  assert.match(m.text, /- task "call mom sunday" id tsk_mvdaokth_yu5nxm/);
+  assert.ok(!/note \(DTU\) "call mom sunday"/.test(m.text));
+  const refs = memoryDtuRefs(m.text);
+  assert.ok(refs.some((r) => r.id === "dtu_058af9596eb3511e91d9"));
+  assert.ok(refs.some((r) => r.title === "call mom sunday" && !r.id));
+  assert.ok(refs.some((r) => r.title === "Late Night Drives"));
+  const { guardDtuCitations, collectRetrievedDtus } = await import("../lib/chat/dtu-citation-guard.js");
+  const g = guardDtuCitations('You saved:\n- **Note**: "Pick up film from lab" (dtu_058af9596eb3511e91d9)\n- **Note**: call mom sunday\n- Song: Late Night Drives', collectRetrievedDtus(refs), { prompt: "what did i save earlier" });
+  assert.deepEqual(g.removed, []);
+});

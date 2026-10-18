@@ -378,7 +378,9 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     && needsFreshData(prompt, history)) {
     try {
       const retry = await runMacro("chat_agent", "do", {
-        message: `${webAgentMessage(prompt, history)}\n\n(Call web_search for this now; answer only from its results.)`,
+        // The prompt alone: an appended instruction was copied into the search query
+        // ("else call web search answer only"). The web route hint carries the instruction.
+        message: webAgentMessage(prompt, history),
         history: agentHistory,
         maxTurns: 5,
         routeHint: routeHint("web"),
