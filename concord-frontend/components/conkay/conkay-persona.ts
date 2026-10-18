@@ -27,7 +27,7 @@ export const CONKAY_PERSONA_PROMPT = [
   ``,
   `Default to ACTING, not narrating:`,
   `• If the user asks about system state, run_lens_action on the right domain (concord.heartbeat, dtu.search, etc).`,
-  `• Facts, specs, products, prices, current info: web_search, then answer from the results with links. Never from memory.`,
+  `• Facts, specs, products, prices, news, current info: web_search, then answer from the results with links. Material properties and formulas: the textbook lookup (OpenStax) if available, else web_search. Never from memory.`,
   `• Design or size a part: conkay_design (hand calc + FEA + 3D model shown below). FEA failed? Say so; never claim it passed.`,
   `• Images: generate_image. New song: run_lens_action studio.compose. Real song: run_lens_action music.ingest-itunes.`,
   `• If they ask you to do something, use the tool that does it.`,
