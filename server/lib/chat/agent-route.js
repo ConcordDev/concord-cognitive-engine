@@ -37,7 +37,31 @@ const WEB_RE = [
   /\bnews\b[^.?!]{0,30}\b(?:today|tonight|this week|right now|lately)\b/i,
   /\b(?:headlines?|news stories)\b/i,
   /\bwhat'?s\s+(?:happening|going on|new)\b[^.?!]{0,40}\b(?:today|now|this week|in the world|in tech|in ai)\b/i,
+  // Casual asks from a phone (Ramaj, 2026-10-17 20:10 ET): "Use web search", "What trump doing
+  // lately", "what's Elon been up to", "any updates on the strike". These fell to the
+  // conversational path, which answered from stale memory and said "I'll run a web search".
+  /\b(?:web|internet|online|google)\s+search\b/i,
+  /\bgoogle\s+(?:it|this|that|for)\b/i,
+  /\bsearch\s+(?:it|this|that)\s+up\b/i,
+  /\bwhat'?s\s+the\s+latest\b/i,
 ];
+
+// "What trump doing lately", "what's Elon been up to", "any updates on the strike": current
+// events about someone or something, not about the user or the assistant.
+const CASUAL_NEWS_RE = [
+  /\bwhat(?:'?s|\s+is|\s+are|\s+has|\s+have)?\s+([^.?!]{1,40}?)\s+(?:been\s+)?(?:doing|up to)\b[^.?!]{0,20}\b(?:lately|recently|these days|nowadays|this week|today|right now)\b/i,
+  /\bwhat(?:'?s|\s+has|\s+have)\s+([\w.'-]+(?:\s+[\w.'-]+){0,3})\s+been\s+up\s+to\b/i,
+  /\b(?:what'?s|whats|any)\s+(?:the\s+)?(?:latest|new|news|updates?)\s+(?:on|with|about|from)\s+([^.?!]{1,40})/i,
+];
+const SELF_RE = /\b(?:you|u|ya|y'?all|yourself|i|me|we|us|my|our|your)\b/i;
+function casualNews(p) {
+  return CASUAL_NEWS_RE.some((r) => { const m = p.match(r); return m && !SELF_RE.test(m[1]); });
+}
+
+// The assistant's previous turn asked what to search for ("What would you like me to look up?");
+// a short reply ("Trump") is the search topic.
+const ASKED_SEARCH_TOPIC_RE = /\b(?:what|which)\b[^?]{0,80}\b(?:look up|search(?:\s+for)?|find|google)\b[^?]*\?/i;
+const NOT_A_TOPIC_RE = /^(?:no|nah|nope|never ?mind|nvm|thanks?|thank you|ty|ok(?:ay)?|cool|k|stop|cancel)\b/i;
 
 // A follow-up to a web answer ("tell me more about the first story — source link?")
 // stays on the web route so it is answered from search, not from retrieved notes.
@@ -47,6 +71,8 @@ const MUSIC_RE = [
   /\b(?:make|compose|write|create|generate|produce|give)\s+(?:me\s+|us\s+)?(?:a|an|some|another|new)\b[^.?!]{0,30}\b(?:song|tune|beat|melody|jingle|instrumental|track|music)\b/i,
   /\b(?:play|listen to|put on|queue|find)\b[^.?!]{0,40}\b(?:song|songs|track|tracks|music|album|playlist|by\s+[A-Z0-9])/i,
   /\bplay\s+(?:me\s+)?(?:some(?:thing)?\s+)?(?:a\s+)?(?:real\s+)?["'A-Z]/,
+  // "Can you make music", "make me some beats" (no article).
+  /\b(?:make|compose|create|generate|produce)\s+(?:me\s+|us\s+)?(?:some\s+)?(?:music|beats?|songs?|tunes?)\b/i,
 ];
 
 // A URL plus a read/summarize ask: fetch the page instead of answering from memory.
@@ -90,7 +116,7 @@ const DTU_SAVE_RE = /\b(?:save|store|remember|mint|create|make)\b[^.?!]{0,40}\b(
 
 /**
  * Why this prompt should go through the agent tool loop, or null.
- * @param {{prevRoute?: string}} [opts]  agentRoute of the previous assistant turn
+ * @param {{prevRoute?: string, prevReply?: string}} [opts]  agentRoute and text of the previous assistant turn
  * @returns {null | "web" | "dtu" | "compute" | "design" | "save" | "music" | "browse" | "action"}
  */
 export function chatAgentRoute(prompt, opts = {}) {
@@ -104,8 +130,10 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (MUSIC_RE.some((r) => r.test(p))) return "music";
   if (URL_RE.test(p) && BROWSE_ASK_RE.test(p)) return "browse";
   if (ACTION_RE.some((r) => r.test(p))) return "action";
-  if (WEB_RE.some((r) => r.test(p))) return "web";
+  if (WEB_RE.some((r) => r.test(p)) || casualNews(p)) return "web";
   if (opts?.prevRoute === "web" && WEB_FOLLOWUP_RE.test(p)) return "web";
+  if (opts?.prevReply && ASKED_SEARCH_TOPIC_RE.test(String(opts.prevReply).slice(-400))
+    && p.split(/\s+/).length <= 8 && !NOT_A_TOPIC_RE.test(p)) return "web";
   if (CONVERT_RE.test(p)) return "compute";
   if (DTU_RE.some((r) => r.test(p))) return "dtu";
   // "solve conflicts with my coworker" is not a computation: needs math content too.
@@ -114,15 +142,31 @@ export function chatAgentRoute(prompt, opts = {}) {
 }
 
 const ROUTE_HINT = {
-  web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
+  web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
   save: "The user wants this saved: call create_dtu with a short title and the user's own words as the summary, then give the stored DTU id. If create_dtu fails, say it was not saved and why.",
-  music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
+  music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request; if the user only asks whether you can make music, make a short sample now with your own picks instead of asking). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the page; do not summarize from memory.",
   action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Use the user's own words for the item text, unchanged. Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
   design: "This request is a ConKay design: call the conkay_design tool with the spec in words (span, load, material, supports, safety factor) and report the solver's real numbers. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
 };
+
+// "Use web search", "google it", "look it up": no topic of its own. The model then searched
+// the tool-schema example ("concord cognitive engine") instead of the question just asked.
+const BARE_SEARCH_RE = /^\s*(?:(?:ok(?:ay)?|so|then|just|please|pls|can you|could you)[,\s]+)*(?:(?:use|do|run|try)\s+(?:a\s+|the\s+)?)?(?:(?:web|internet|online|google)\s+search|search\s+(?:the\s+)?(?:web|internet|online)|google|search|look)(?:\s+(?:it|that|this))?(?:\s+up)?(?:\s+(?:for\s+)?(?:it|that|this|me))?(?:\s+(?:please|pls|then|now))?\s*[.!?]*\s*$/i;
+
+/**
+ * The message the agent loop gets for a web turn: a bare "use web search" carries the
+ * user's previous question as its topic.
+ */
+export function webAgentMessage(prompt, history = []) {
+  const p = String(prompt || "").trim();
+  if (!BARE_SEARCH_RE.test(p)) return p;
+  const prev = [...(history || [])].reverse().find((h) => h?.role === "user" && String(h.content || "").trim()
+    && !BARE_SEARCH_RE.test(String(h.content)));
+  return prev ? `${p} — search the web for: ${String(prev.content).trim().slice(0, 300)}` : p;
+}
 
 /** One-line system hint for the agent loop, by route. */
 export function routeHint(route) {
@@ -252,7 +296,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   let r = null;
   try {
     r = await runMacro("chat_agent", "do", {
-      message: prompt,
+      message: route === "web" ? webAgentMessage(prompt, history) : prompt,
       history: (history || []).slice(-12),
       maxTurns: 5,
       routeHint: routeHint(route),

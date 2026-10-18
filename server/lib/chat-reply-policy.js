@@ -238,7 +238,12 @@ export function buildChatHistoryMessages(sessionMessages, currentUserContent) {
   const windowed = turns.slice(-CHAT_HISTORY_TURNS);
   const out = [];
   for (const turn of windowed) {
-    const content = historyTurnForReplay(turn.content);
+    // Only assistant turns can be stored mid-sentence. A user turn is kept as typed:
+    // phone messages rarely end in punctuation, and "What trump doing lately" / "Trump"
+    // were dropped from history, so "Use web search" had no topic (2026-10-17).
+    const content = turn.role === "user"
+      ? String(turn.content).trim().slice(0, CHAT_HISTORY_CHAR_CAP)
+      : historyTurnForReplay(turn.content);
     if (!content) continue;
     out.push({ role: turn.role, content });
   }
