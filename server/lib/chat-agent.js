@@ -71,6 +71,7 @@ const TOOL_REQUIRED_PARAMS = {
   browse_url:        ["url"],
   run_lens_action:   ["domain", "action"],
   list_lens_actions: ["domain"],
+  find_lens_actions: ["query"],
   create_dtu:        ["title"],
   create_document:   ["title"],
   export_dtu:        ["dtuId", "format"],
@@ -269,6 +270,8 @@ Available tools (with one working example each):
   - music — pick by intent. (a) REAL / EXISTING music (the user says "real", "existing", "actual", names an artist or song, or asks to play/find/listen to some kind of music without asking you to make it): [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "music", "action": "ingest-itunes", "params": {"term": "lofi", "limit": 3}}}] — returns real tracks with 30-second iTunes previews that play inline. Never compose for these. (b) A NEW song (the user asks you to make/compose/write/create/generate one): [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "studio", "action": "compose", "params": {"genre": "lofi", "key": "C", "bpm": 85, "bars": 8, "title": "..."}}}] — an instrumental arrangement made with Concord's Studio synths; the user can play it inline, save it, and open it in Studio. track-add only creates a library entry with no audio.
 - list_lens_actions: Look up the REAL action names and their input fields for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Results rank top-level and common actions first. Params: {"domain": "domain_name"}
   Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
+- find_lens_actions: Search ALL of Concord's lens actions (every domain) by what you want to do, when you don't know which domain has it. Returns the best domain.action matches with their input fields; then call run_lens_action with one. Params: {"query": "what the user wants, in a few words"}
+  Example: [TOOL_CALL: {"tool": "find_lens_actions", "params": {"query": "add item to shopping list"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
   Example: [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "Short note", "tags": ["physics", "conservation"]}}]
 - create_document: Produce a REAL downloadable file (a spec, blueprint, report) — never just describe one in prose. Formats: pdf, md, json, csv, txt, zip. For zip, pass files. Params: {"title": "...", "format": "pdf", "summary": "...", "claims": ["..."], "files": [{"name": "a.md", "content": "..."}]}
@@ -302,7 +305,7 @@ Rules:
 - For any math/calculation use run_compute. Never guess at numbers.
 - To design, size or check a beam, cantilever, bracket or other structural part, use conkay_design. Never invent an action name such as engineering.cantilever_bending_design; an unknown action is rejected with the list of real ones.
 - For current events / facts you don't know, use web_search.
-- For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
+- For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the domain, call find_lens_actions with the intent; if you know the domain but not the action name/params, call list_lens_actions — don't guess.
 - For deep cited research over Concord's substrate, use expert_mode.
 - Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.
 - Never say anything was made, rendered, or is playing unless a tool returned a song or audio artifact in this conversation. Even then, say the song or preview is ready to play below; nothing auto-plays, so never say it is already playing. Music has no render action — never call one. Concord cannot generate recorded audio (vocals, real instruments) from a prompt; studio.compose makes an instrumental arrangement with Studio's synths.`;
@@ -421,6 +424,53 @@ async function collectDomainActions(domain, lensActions) {
 }
 
 const nameTokens = (s) => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+
+const _stem = (t) => t.replace(/(?:ing|ies|es|ed|s)$/, (m) => (m === "ies" ? "y" : "")) || t;
+const _FIND_STOP = new Set(["the", "and", "for", "with", "into", "from", "that", "this", "what", "how", "can", "you", "please", "want", "need", "some", "new", "get", "make", "item", "thing"]);
+
+/**
+ * Every registered lens action, scored against an intent ("add item to shopping list").
+ * Domain-name hits weigh most, then action-name hits, then input-field names.
+ * @returns {Promise<Array<{key, domain, action, fields?, score}>>}
+ */
+export async function findLensActions(query, lensActions, { limit = 12 } = {}) {
+  const want = [...new Set(nameTokens(query).filter((t) => !_FIND_STOP.has(t)).map(_stem))];
+  if (!want.length) return [];
+  const keys = new Set();
+  if (lensActions && typeof lensActions.keys === "function") {
+    for (const k of lensActions.keys()) { const s = String(k); if (s.indexOf(".") > 0) keys.add(s); }
+  }
+  const ingest = (registry) => {
+    if (!registry || typeof registry.entries !== "function") return;
+    for (const [domain, bucket] of registry.entries()) {
+      if (!bucket || typeof bucket.keys !== "function") continue;
+      for (const name of bucket.keys()) if (name) keys.add(`${domain}.${name}`);
+    }
+  };
+  try { ingest(globalThis._concordMACROS); } catch { /* no live registry */ }
+  const scored = [];
+  for (const key of keys) {
+    const dot = key.indexOf(".");
+    const domain = key.slice(0, dot);
+    const action = key.slice(dot + 1);
+    const fields = MACRO_INPUT_HINTS[key];
+    const d = new Set(nameTokens(domain).map(_stem));
+    const a = new Set(nameTokens(action).map(_stem));
+    const f = new Set(nameTokens(Array.isArray(fields) ? fields.join(" ") : (fields ? JSON.stringify(fields) : "")).map(_stem));
+    let score = 0;
+    let matched = 0;
+    for (const t of want) {
+      const hit = (d.has(t) ? 3 : 0) + (a.has(t) ? 2 : 0) + (f.has(t) ? 0.5 : 0);
+      if (hit) matched++;
+      score += hit;
+    }
+    if (!score) continue;
+    score += matched >= 2 ? matched : 0; // several intent words in one action beat one strong word
+    scored.push({ key, domain, action, ...(fields ? { fields } : {}), score });
+  }
+  scored.sort((x, y) => y.score - x.score || x.key.length - y.key.length);
+  return scored.slice(0, Math.max(1, Math.min(25, limit)));
+}
 
 /** Names closest to a wrong one first (shared word stems), then the rest in rank order. */
 export function closestNames(wanted, names, limit = 25) {
@@ -911,6 +961,14 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}` };
         }
         return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary };
+      }
+      case "find_lens_actions": {
+        // Cross-domain discovery by intent: one search over every registered
+        // lens action (LENS_ACTIONS + register() macros), so the model can reach
+        // any of the catalog without knowing the domain first.
+        const hits = await findLensActions(String(call.params.query || ""), lensActions, { limit: Number(call.params.limit) || 12 });
+        return { tool: call.tool, ok: true, query: String(call.params.query || ""), total: hits.length, actions: hits,
+          ...(hits.length ? {} : { note: "no matching lens action; answer with web_search or say Concord has no tool for this" }) };
       }
       case "list_lens_actions": {
         // Discoverability — look up REAL macro names/params before calling

@@ -22,8 +22,8 @@ test("real Chat workflows route to the agent tool loop", () => {
 });
 
 test("conversational prompts stay conversational", () => {
-  for (const p of ["Give me one sentence about the moon.", "how do I make my song more catchy?", "play a game with me",
-    "I need to add more protein to my meals", "what is the meaning of life", "save a DTU titled X with content Y"]) {
+  for (const p of ["Give me one sentence about the moon.", "play a game with me",
+    "I need to add more protein to my meals", "save a DTU titled X with content Y"]) {
     assert.equal(chatAgentRoute(p), null, p);
   }
 });
@@ -117,7 +117,7 @@ test("casual phone asks reach the tools", () => {
   ];
   for (const [p, want] of cases) assert.equal(chatAgentRoute(p), want, p);
   for (const p of ["Yo", "Yo wassup", "What are you?", "Okay what can you do?", "What else can you do",
-    "what are you doing lately", "what have you been up to", "what's new with you", "how do I make my song more catchy?",
+    "what are you doing lately", "what have you been up to", "what's new with you",
     "what's my brother been up to"]) {
     assert.equal(chatAgentRoute(p), null, p);
   }
@@ -151,4 +151,30 @@ test("unpunctuated user turns stay in chat history", async () => {
   assert.deepEqual(h.map((m) => m.role), ["user", "assistant", "user"]);
   assert.equal(h[0].content, "What trump doing lately");
   assert.match(webAgentMessage("Use web search ", h.slice(0, -1)), /search the web for: What trump doing lately$/);
+});
+
+// Tools by default (Ramaj 2026-10-17 20:24 ET): factual / current / how-to / lookup asks.
+test("factual, current, how-to and lookup asks default to a tool", () => {
+  for (const p of ["who won the game last night", "latest iPhone price", "how do I fix a leaky faucet",
+    "find me a good ramen recipe", "what is the capital of peru", "whats on my calendar today", "how much is bitcoin",
+    "best budget headphones", "tell me about the roman empire", "how do I make my song more catchy?"]) {
+    assert.equal(chatAgentRoute(p), "lookup", p);
+  }
+  for (const p of ["Yo wassup", "lol", "thanks bro", "Can you help me", "What are you?", "what do you think about that",
+    "im so tired today", "Give me one sentence about the moon.", "write me a poem about rain"]) {
+    assert.equal(chatAgentRoute(p), null, p);
+  }
+  assert.equal(chatAgentRoute("what's the source for that?", { prevRoute: "lookup" }), "lookup");
+});
+
+test("find_lens_actions searches every domain by intent", async () => {
+  const { findLensActions, executeToolCall } = await import("../lib/chat-agent.js");
+  const la = new Map([["productivity.task-add", 1], ["shopping.list-add", 1], ["food.recipe-create", 1], ["finance.budget-get", 1], ["calendar.events-list", 1]]);
+  const hits = await findLensActions("add item to my shopping list", la);
+  assert.equal(hits[0].key, "shopping.list-add");
+  assert.equal((await findLensActions("save a recipe", la))[0].key, "food.recipe-create");
+  assert.deepEqual(await findLensActions("the and", la), []);
+  const tc = await executeToolCall({ actor: { userId: "u1" } }, async () => ({}), la, { tool: "find_lens_actions", params: { query: "calendar events" } });
+  assert.equal(tc.ok, true);
+  assert.equal(tc.actions[0].key, "calendar.events-list");
 });

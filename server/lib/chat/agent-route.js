@@ -58,6 +58,29 @@ function casualNews(p) {
   return CASUAL_NEWS_RE.some((r) => { const m = p.match(r); return m && !SELF_RE.test(m[1]); });
 }
 
+// Tools by default (Ramaj 2026-10-17: Chat "falls back to the model's limited knowledge").
+// Any factual, current, how-to, lookup or make/do ask goes to the agent loop ("lookup");
+// only small talk, questions about the assistant, creative writing and personal/emotional
+// chat stay conversational.
+const SMALLTALK_RE = /^(?:(?:yo+|hi+|hey+|hello|hiya|sup|wass?up|what'?s\s+(?:up|good|good\s+bro)|gm|gn|good\s+(?:morning|night|evening|afternoon)|thanks?|thank\s+you|thx|ty|ok(?:ay)?|k|cool|nice|great|awesome|lol|lmao|haha\w*|bye|yes|no|yeah|yep|nope|nah|sure|bet|word|facts|bro|dude|man|fam)[\s,!.?]*)+$/i;
+const ABOUT_ASSISTANT_RE = /\b(?:who|what)\s+(?:are|r)\s+(?:you|u)\b|\bhow\s+(?:are|r)\s+(?:you|u)\b|\bhow'?s\s+it\s+going\b|\bwhat\s+(?:else\s+)?can\s+(?:you|u)\s+do\b|\bwhat\s+do\s+(?:you|u)\s+(?:do|think|feel|like|want|know about yourself)\b|\b(?:who|what)\s+(?:made|built|created|trained|owns)\s+(?:you|u)\b|\byour\s+(?:name|opinion|favou?rite|feelings?|thoughts|purpose)\b|\babout\s+yourself\b|\b(?:do|can|are|did|will|would)\s+(?:you|u)\s+(?:like|love|feel|remember|think|dream|real|alive|sentient|conscious|ok|okay|there|human|a bot)\b|\b(?:you|u)\s+(?:been\s+)?(?:doing|up to)\b|\bnew\s+with\s+(?:you|u)\b/i;
+const CREATIVE_RE = /\b(?:write|draft|rewrite|rephrase|reword|proofread|paraphrase)\b|\b(?:poem|story|joke|haiku|lyrics|essay|sentence|paragraph|limerick|riddle|roast|pickup line|rap|caption|bio)\b|\b(?:play a game|let'?s play|role-?play|pretend|imagine)\b/i;
+const PERSONAL_RE = /\b(?:my|our)\s+(?:brother|sister|mom|mother|dad|father|wife|husband|girlfriend|boyfriend|gf|bf|friends?|kids?|son|daughter|family|boss|coworkers?|day|life|feelings?|mood|relationship|ex)\b|\bi(?:'m|\s+am)\s+(?:so\s+)?(?:sad|tired|bored|lonely|stressed|depressed|anxious|happy|excited|angry|upset|hungry)\b|\bi\s+feel\b|\bshould\s+i\s+(?:break up|text|call|forgive)\b/i;
+const QUESTION_START_RE = /^(?:(?:hey|yo|ok(?:ay)?|so|and|but|also|um+|please|pls|quick question)[,\s]+)*(?:what|what'?s|whats|wat|who|who'?s|whom|whose|when|when'?s|where|where'?s|which|why|how|how'?s|is|are|was|were|does|do|did|can|could|should|will|would|has|have|any|tell me|explain|describe|define|compare)\b/i;
+const LOOKUP_VERB_RE = /\b(?:find|search|look\s*up|lookup|get me|show me|give me|recommend|suggest|list|tell me about|tell me how|teach me|how to|help me (?:find|fix|choose|pick|understand|plan|learn))\b/i;
+const TOPIC_RE = /\b(?:recipes?|prices?|costs?|reviews?|near me|best|vs\.?|versus|scores?|weather|forecast|schedule|hours|address|definition|meaning of|who won|release date|stocks?|population|directions|tutorial|guide|specs?)\b/i;
+const GENERIC_WORDS = new Set(["help","something","stuff","thing","things","anything","everything","know","talk","chat","question","questions","this","that","there","here","now","just","really","please","can","could","you","your","the","and","for","with","what","how","why","who","when","where","which","are","is","was","does","did","have","has","will","would","should","tell","give","show","get","about","need","want","like","some","any","yes","okay","going","doing","make","much","many"]);
+function contentWords(p) {
+  return String(p).toLowerCase().replace(/[^a-z0-9'\s-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !GENERIC_WORDS.has(w));
+}
+/** A factual / current / how-to / lookup / do request that should get a tool, not model memory. */
+export function needsToolByDefault(prompt) {
+  const p = String(prompt || "").trim();
+  if (!p || SMALLTALK_RE.test(p) || ABOUT_ASSISTANT_RE.test(p) || CREATIVE_RE.test(p) || PERSONAL_RE.test(p)) return false;
+  if (contentWords(p).length < 1) return false;
+  return QUESTION_START_RE.test(p) || LOOKUP_VERB_RE.test(p) || TOPIC_RE.test(p) || /\?\s*$/.test(p);
+}
+
 // The assistant's previous turn asked what to search for ("What would you like me to look up?");
 // a short reply ("Trump") is the search topic.
 const ASKED_SEARCH_TOPIC_RE = /\b(?:what|which)\b[^?]{0,80}\b(?:look up|search(?:\s+for)?|find|google)\b[^?]*\?/i;
@@ -117,7 +140,7 @@ const DTU_SAVE_RE = /\b(?:save|store|remember|mint|create|make)\b[^.?!]{0,40}\b(
 /**
  * Why this prompt should go through the agent tool loop, or null.
  * @param {{prevRoute?: string, prevReply?: string}} [opts]  agentRoute and text of the previous assistant turn
- * @returns {null | "web" | "dtu" | "compute" | "design" | "save" | "music" | "browse" | "action"}
+ * @returns {null | "web" | "dtu" | "compute" | "design" | "save" | "music" | "browse" | "action" | "lookup"}
  */
 export function chatAgentRoute(prompt, opts = {}) {
   const p = String(prompt || "").trim();
@@ -138,10 +161,13 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (DTU_RE.some((r) => r.test(p))) return "dtu";
   // "solve conflicts with my coworker" is not a computation: needs math content too.
   if (COMPUTE_RE.some((r) => r.test(p)) && MATH_CONTENT_RE.test(p)) return "compute";
+  if (opts?.prevRoute === "lookup" && WEB_FOLLOWUP_RE.test(p)) return "lookup";
+  if (needsToolByDefault(p)) return "lookup";
   return null;
 }
 
 const ROUTE_HINT = {
+  lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query, then answer from its results with each item's link (you may explain the results in your own words). The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head.",
