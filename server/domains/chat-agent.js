@@ -55,6 +55,9 @@ export default function registerChatAgentMacros(register) {
         // Voice block first, route hint (grounding) last: agentExtraSystemBlock.
         ...(agentExtraSystemBlock(input) ? { extraSystemBlock: agentExtraSystemBlock(input) } : {}),
         ...(input.sessionId ? { sessionId: String(input.sessionId) } : {}),
+        // Self-continuation per-request switch (lib/chat/self-continuation.js; only matters when the
+        // CONCORD_CHAT_SELF_CONTINUE env is "1" or "optin").
+        ...(typeof input.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}),
         // Which surface asked (chat | conkay | agent): start_long_task posts its result back there.
         ...(["chat", "conkay", "agent"].includes(input.surface) ? { surface: input.surface } : {}),
       },

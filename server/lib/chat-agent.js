@@ -60,6 +60,14 @@ import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./
 import { guardFeaClaim } from "./chat/fea-honesty.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
 import { todayLine } from "./chat/today.js";
+import {
+  selfContinueActive,
+  selfContinueConfig,
+  checkpointProtocolBlock,
+  parseCheckpoint,
+  stripControl,
+  runSelfContinuation,
+} from "./chat/self-continuation.js";
 
 /** The user's local date for the agent prompt (never the UTC date). */
 function _agentTodayBlock(opts = {}) {
@@ -741,6 +749,19 @@ export function lensWriteKey(call) {
   const inner = p.params && typeof p.params === "object" ? p.params : {};
   const item = String(inner.content ?? inner.title ?? inner.name ?? inner.text ?? JSON.stringify(inner)).toLowerCase().replace(/\s+/g, " ").trim();
   return `${String(p.domain || "").toLowerCase()}.${action.toLowerCase()}|${item}`;
+}
+
+/**
+ * Key for a read-only research call (web_search / browse_url): tool + normalized query or URL.
+ * The chat-output-depth live verify (2026-10-18) burned the whole 24-call budget re-running
+ * near-identical searches; an exact repeat in the same user turn is answered from the first run.
+ */
+export function researchRepeatKey(call) {
+  if (!call || (call.tool !== "web_search" && call.tool !== "browse_url")) return null;
+  const p = call.params || call.args || {};
+  const raw = call.tool === "web_search" ? (p.query ?? p.q ?? "") : (p.url ?? "");
+  const norm = String(raw).toLowerCase().replace(/[^a-z0-9:/.]+/g, " ").replace(/\s+/g, " ").trim();
+  return norm ? `${call.tool}|${norm}` : null;
 }
 
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
@@ -1526,6 +1547,7 @@ function _screenUntrusted(label, source, text, fallbackFmt) {
 /** Format tool results into a system-style follow-up message for the next turn. */
 export function formatToolResults(results) {
   return results.map(r => {
+    if (r && r.repeated) return `[TOOL_RESULT: ${r.tool}] ${r.note}`;
     if (!r.ok) {
       // Param-validator error: include the worked example so the model
       // self-corrects next turn instead of giving up.
@@ -1679,6 +1701,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _deepenMax = Math.max(0, Math.min(3, Number(process.env.CONCORD_AGENT_DEEPEN_MAX ?? 1) || 0));
   let _deepenUsed = 0;
   let toolBudgetExhausted = false;
+  const _researchSeen = new Set();
+  const _selfCont = selfContinueActive(process.env, { selfContinue: opts.selfContinue });
+  let selfContinuation = null;
 
   // Compute-don't-guess on any model: a fully specified computational question
   // is answered by Concord's engines directly (lib/chat/compute-router.js) —
@@ -1813,6 +1838,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     ...history,
     { role: "user", content: message },
   ];
+  if (_selfCont) {
+    messages[0].content += "\n\n" + checkpointProtocolBlock(selfContinueConfig().roundTokens);
+  }
 
   const brain = opts.brainChat || brainChat; // injectable seam (tests)
   const allToolCalls = [];
@@ -1931,7 +1959,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     lastModel = r.model;
 
     const calls = parseToolCalls(r.text);
-    let visibleAnswer = stripToolCalls(r.text);
+    let visibleAnswer = stripControl(stripToolCalls(r.text));
     emit("turn_end", { turn: turnsTaken, text: visibleAnswer, willCallTools: calls.length > 0 });
 
     // Tool use is the default for asks that need one (ConKay: web search,
@@ -1961,6 +1989,27 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       // No more tool calls — this is the final answer.
       finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls);
+      if (_selfCont) {
+        const sc = await runSelfContinuation({
+          generate: async (msgs, o) => {
+            const g = await brain({
+              db, userId,
+              slot: opts.slot || "conscious",
+              messages: msgs,
+              opts: { temperature: 0.4, maxTokens: o.maxTokens, timeoutMs: resolveChatTimeoutMs(o.maxTokens) },
+            });
+            return { ok: g?.ok !== false, text: stripToolCalls(g?.text || ""), doneReason: g?.doneReason || null };
+          },
+          firstText: r.text,
+          firstDoneReason: r.doneReason || null,
+          systemPrompt: messages[0]?.content || "",
+          originalPrompt: message,
+        });
+        if (sc.rounds > 0 || sc.incomplete) {
+          finalAnswer = guardPlaybackClaim(sc.text, allToolCalls);
+          selfContinuation = { rounds: sc.rounds, stoppedBy: sc.stoppedBy, incomplete: sc.incomplete };
+        }
+      }
       // The model sometimes echoes a raw [TOOL_RESULT: ...] block back as its
       // answer. Ask once more for a real summary instead of showing the dump.
       if (allToolCalls.length && ECHOED_TOOL_RESULT_RE.test(finalAnswer)) ranOutOfTurnsWithPendingCalls = true;
@@ -2019,6 +2068,13 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
           note: "Already done earlier in this turn; it was NOT repeated. Report the first result and stop." });
         continue;
       }
+      const repeatKey = researchRepeatKey(call);
+      if (repeatKey && _researchSeen.has(repeatKey)) {
+        results.push({ tool: call.tool, ok: true, repeated: true, query: call.params?.query, url: call.params?.url,
+          note: "You already ran this exact call earlier in this turn; its results are above and it was NOT repeated. Search from a genuinely different angle (other terms, a specific source or site), browse a result URL, or answer from what you have." });
+        continue;
+      }
+      if (repeatKey) _researchSeen.add(repeatKey);
       const result = await executeToolCall(ctx, runMacro, lensActions, call);
       if (dupKey && result && typeof result === "object" && result.ok !== false) {
         Object.defineProperty(result, "_writeKey", { value: dupKey, enumerable: false });
@@ -2146,7 +2202,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _agentTimeoutMs },
       });
       if (wrapUp?.ok && wrapUp.text) {
-        finalAnswer = guardPlaybackClaim(stripToolCalls(wrapUp.text), allToolCalls);
+        finalAnswer = guardPlaybackClaim(stripControl(stripToolCalls(wrapUp.text)), allToolCalls);
         lastProvider = wrapUp.provider ?? lastProvider;
         lastModel = wrapUp.model ?? lastModel;
       }
@@ -2173,6 +2229,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     ok: true,
     answer: finalAnswer,
     ...(linksRemoved.length ? { linksRemoved } : {}),
+    ...(selfContinuation ? { selfContinuation } : {}),
     toolCalls: allToolCalls,
     artifacts: allArtifacts,
     turns: turnsTaken,

@@ -409,7 +409,7 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
 }
 
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null }) {
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
   const longOut = answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions, sessionId, surface: "chat" });
   if (longOut) return longOut;
@@ -429,6 +429,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       voiceBlock: compactVoiceBlock(),
       surface: "chat",
       ...(sessionId ? { sessionId } : {}),
+      ...(typeof selfContinue === "boolean" ? { selfContinue } : {}),
     }, ctx);
   } catch (e) {
     r = { ok: false, error: String(e?.message || e) };
@@ -566,6 +567,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     model: r?.model || null,
     linksRemoved: r?.linksRemoved || [],
     dtuRefsRemoved: g.removed,
+    ...(r?.selfContinuation ? { selfContinuation: r.selfContinuation } : {}),
   };
 }
 
