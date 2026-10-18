@@ -1029,10 +1029,19 @@ export default function registerMusicActions(registerLensAction) {
     const term = muClean(params.term, 120);
     if (!term) return { ok: false, error: "search term required" };
     const limit = Math.max(1, Math.min(25, Math.round(muNum(params.limit, 10))));
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=${limit}`;
+    // The model often passes the whole ask ("a real song by Daft Punk").
+    // Try the term as given, then the bare artist/title, then an artist-only search.
+    const bare = term.replace(/^\s*(?:play|find|queue|put on|listen to)?\s*(?:me\s+)?(?:a|an|some|the)?\s*(?:real|actual|existing)?\s*(?:songs?|tracks?|music|tunes?)?\s*(?:by|from)\s+/i, "").replace(/[.?!]+$/, "").trim();
+    const tries = [`term=${encodeURIComponent(term)}`];
+    if (bare && bare.toLowerCase() !== term.toLowerCase()) tries.push(`term=${encodeURIComponent(bare)}`);
+    tries.push(`term=${encodeURIComponent(bare || term)}&attribute=artistTerm`);
     try {
-      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
-      const results = Array.isArray(data?.results) ? data.results : [];
+      let results = [];
+      for (const q of tries) {
+        const data = await cachedFetchJson(`https://itunes.apple.com/search?${q}&media=music&entity=song&limit=${limit}`, { ttlMs: 6 * 60 * 60 * 1000 });
+        results = Array.isArray(data?.results) ? data.results.filter((r) => r && r.trackId) : [];
+        if (results.length) break;
+      }
       const userId = muAid(ctx);
       const lib = muListB(s.tracks, userId);
       const existing = new Set(lib.map((t) => t.externalId).filter(Boolean));
@@ -1040,7 +1049,14 @@ export default function registerMusicActions(registerLensAction) {
       const added = [];
       for (const r of results) {
         const extId = `itunes:${r.trackId}`;
-        if (existing.has(extId)) { skipped++; continue; }
+        if (existing.has(extId)) {
+          // Already in the library: still return it so it can play
+          // (live: a second "play Daft Punk" came back "No tracks found").
+          skipped++;
+          const have = lib.find((t) => t.externalId === extId);
+          if (have) added.push({ ...have, alreadyInLibrary: true });
+          continue;
+        }
         const track = {
           id: muId("trk"),
           title: muClean(r.trackName, 200) || "Untitled",

@@ -195,6 +195,30 @@ describe("backlog 1 — music.ingest-itunes (free-API ingestion)", () => {
   });
 });
 
+describe("music.ingest-itunes — real-song reliability", () => {
+  it("returns a track already in the library so it can still play", async () => {
+    resetState();
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [
+      { trackId: 77, trackName: "One More Time", artistName: "Daft Punk", previewUrl: "http://p77" } ] }) });
+    const first = await call("ingest-itunes", ctxA, { id: null, data: {}, meta: {} }, { term: "one more time daft punk" });
+    assert.equal(first.result.ingested, 1);
+    const again = await call("ingest-itunes", ctxA, { id: null, data: {}, meta: {} }, { term: "daft punk one more time" });
+    assert.equal(again.result.ingested, 0);
+    assert.equal(again.result.tracks[0].previewUrl, "http://p77");
+    assert.equal(again.result.tracks[0].alreadyInLibrary, true);
+  });
+  it("retries the bare artist when the whole ask finds nothing", async () => {
+    resetState();
+    const urls = [];
+    globalThis.fetch = async (u) => { urls.push(String(u)); return { ok: true, json: async () => ({ results: /term=Justice(&|$)/.test(String(u))
+      ? [{ trackId: 88, trackName: "D.A.N.C.E.", artistName: "Justice", previewUrl: "http://p88" }] : [] }) }; };
+    const r = await call("ingest-itunes", ctxA, { id: null, data: {}, meta: {} }, { term: "a real song by Justice" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.tracks[0].title, "D.A.N.C.E.");
+    assert.ok(urls.length >= 2);
+  });
+});
+
 describe("backlog 2 — music.lyrics-autofetch (LRCLIB)", () => {
   it("rejects unknown track", async () => {
     resetState();
