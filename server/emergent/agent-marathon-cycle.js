@@ -7,7 +7,7 @@
 // status='running' AND next_tick_at <= now, tick each up to 5 turns.
 // Bounded at MAX_PER_PASS to keep tick cost predictable.
 
-import { findDueMarathons, tickMarathon, startMarathon } from "../lib/agent-marathon.js";
+import { findDueMarathons, tickMarathon, startMarathon, isMarathonTicking } from "../lib/agent-marathon.js";
 import { kickstartLinkedMarathon } from "../lib/mission-marathon-bridge.js";
 import { loadOrCreate } from "../lib/affect-bridge.js";
 import { formGoalForAgent } from "../lib/agent-goals.js";
@@ -15,6 +15,7 @@ import { LruMap } from "../lib/lru-map.js";
 
 const MAX_PER_PASS = 3;
 const MAX_REGOAL_PER_PASS = 2;
+const MAX_LONG_TICKS_PER_PASS = 2;
 const TERMINAL_STATUSES = new Set(["completed", "abandoned", "failed", "revoked"]);
 
 // Wave 7 / E2 — per-session prior affect cache so the salience gate can detect spikes
@@ -114,7 +115,27 @@ export async function runAgentMarathonCycle({ db } = {}) {
     }
 
     const due = findDueMarathons(db, { limit: MAX_PER_PASS });
+    let longStarted = 0;
     for (const { id } of due) {
+      // Long tasks (lib/long-task.js, started from Chat/ConKay) tick in the
+      // background: a tick is several brain turns plus tool calls and can run
+      // for minutes, longer than the heartbeat module timeout. tickMarathon's
+      // in-flight guard keeps a session to one tick at a time.
+      let longMeta = null;
+      try {
+        const row = db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(id);
+        const m = row?.meta_json ? JSON.parse(row.meta_json) : null;
+        if (m?.longTask) longMeta = m;
+      } catch { longMeta = null; }
+      if (longMeta) {
+        if (isMarathonTicking(id) || longStarted >= MAX_LONG_TICKS_PER_PASS) continue;
+        longStarted++;
+        tickMarathon({
+          db, sessionId: id, runMacro, lensActions,
+          opts: { tickTurns: 3, ...(longMeta.projectId ? { projectId: longMeta.projectId } : {}) },
+        }).then((r) => { if (r?.ok) advanced++; }).catch(() => { errors++; });
+        continue;
+      }
       try {
         // Wave 7 / E2 — "feeling decides when to think" on the LIVE agent tick: a calm
         // agent stays on cheap instinct (no LLM loop); a spike/dilemma wakes it. The

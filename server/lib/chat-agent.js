@@ -92,6 +92,7 @@ const TOOL_REQUIRED_PARAMS = {
   mcp_connect:       ["serverId", "url"],
   mcp_call:          ["serverId", "toolName"],
   invoke_capability: ["capability"],
+  start_long_task:   ["goal"],
   // mcp_list and browser_act and run_authored_tool accept empty input.
 };
 
@@ -305,6 +306,10 @@ Available tools (with one working example each):
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
 - run_authored_tool: Invoke one of YOUR OWN previously human-approved authored tools (a saved, named DSL program or sandboxed code a human proposed and approved for autonomous use). Params: {"toolId": "...", "input": {...}}
+- start_long_task: Hand a big multi-step job (deep research with a written report, a multi-week plan, a coding project, anything needing more than a few tool calls) to a background job that keeps working after this reply and posts the result back here. Params: {"goal": "the job in the user's words", "mode": "research|plan|code|general"}. Then tell the user the job id and that it runs in the background; don't try to do the whole job in this reply.
+  Example: [TOOL_CALL: {"tool": "start_long_task", "params": {"goal": "research the best budget 3D printers and write me a report", "mode": "research"}}]
+- check_long_task: Progress of the user's background jobs (status, tool steps, latest notes, the result when done). Params: {"jobId": "optional mar_... id; omit for the latest jobs"}
+  Example: [TOOL_CALL: {"tool": "check_long_task", "params": {}}]
 - list_capabilities: List Concord Runtime capabilities — the connected systems (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional, e.g. zuko"}
   Example: [TOOL_CALL: {"tool": "list_capabilities", "params": {}}]
 - invoke_capability: Run one Runtime capability by name through the governed envelope. Most are the operator's private systems and return operator_only for anyone else — say so plainly, never invent their data. Params: {"capability": "zuko.status", "input": {...}}
@@ -1405,6 +1410,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `run_authored_tool error: ${err?.message || err}` };
         }
       }
+      case "start_long_task": {
+        // Background job (lib/long-task.js → lib/agent-marathon.js). Refused
+        // inside a marathon tick so a job can't spawn jobs.
+        if (ctx.marathonSessionId) return { tool: call.tool, ok: false, error: "start_long_task is not available inside a background job" };
+        const userId = ctx.actor?.userId;
+        if (!ctx.db || !userId) return { tool: call.tool, ok: false, error: "no signed-in user" };
+        const lt = await import("./long-task.js");
+        const goal = String(call.params?.goal || "").trim() || String(ctx.userPrompt || "").trim();
+        const r = lt.startLongTask(ctx.db, {
+          userId, goal,
+          mode: call.params?.mode ? String(call.params.mode) : null,
+          origin: { surface: ctx.surface || "agent", sessionId: ctx.actor?.sessionId || null },
+        });
+        if (!r.ok) return { tool: call.tool, ok: false, error: lt.longTaskStartedReply(r, goal), reason: r.reason };
+        lt.kickLongTask({ db: ctx.db, jobId: r.jobId, runMacro, lensActions });
+        return { tool: call.tool, ok: true, jobId: r.jobId, mode: r.mode, goal: goal.slice(0, 300), budgetCap: r.budgetCap, maxTurns: r.maxTurns, message: lt.longTaskStartedReply(r, goal) };
+      }
+      case "check_long_task": {
+        if (ctx.marathonSessionId) return { tool: call.tool, ok: false, error: "check_long_task is not available inside a background job" };
+        const userId = ctx.actor?.userId;
+        if (!ctx.db || !userId) return { tool: call.tool, ok: false, error: "no signed-in user" };
+        const lt = await import("./long-task.js");
+        const st = lt.longTaskStatus(ctx.db, userId, call.params?.jobId ? String(call.params.jobId) : null);
+        if (!st.ok) return { tool: call.tool, ok: false, error: lt.formatLongTaskStatus(st) };
+        return { tool: call.tool, ok: true, jobs: st.jobs, text: lt.formatLongTaskStatus(st) };
+      }
       case "list_capabilities": {
         // Concord Runtime discovery: the registry of sister systems (Dila,
         // Zuko, Predict, trading, pentester lab, missions, incident /
@@ -1559,6 +1590,8 @@ export function formatToolResults(results) {
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);
+    if (r.tool === "start_long_task") return `[TOOL_RESULT: start_long_task] Started background job ${r.jobId} (${r.mode}). ${r.message} Tell the user exactly that; do not do the job yourself now.`;
+    if (r.tool === "check_long_task") return `[TOOL_RESULT: check_long_task]\n${String(r.text || "").slice(0, 6000)}`;
     if (r.tool === "list_capabilities") return `[TOOL_RESULT: list_capabilities] ${r.total} capabilities${r.operator ? "" : " (public only — the rest are operator-only)"}: ${(r.capabilities || []).map(c => `${c.capability}${c.reachable ? "" : " (unreachable)"}`).join(", ")}`;
     if (r.tool === "invoke_capability") return `[TOOL_RESULT: invoke_capability ${r.capability}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "run_authored_tool") return `[TOOL_RESULT: run_authored_tool ${r.toolId}] ${JSON.stringify(r.result).slice(0, 4000)}`;
@@ -1753,6 +1786,10 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // Original user sentence — create_dtu reads this to keep an explicit
     // "titled … with content …" title/body verbatim when the model shortens them.
     userPrompt: message,
+    // Long tasks: which surface started this turn (chat | conkay | agent) and,
+    // inside a marathon tick, the session id (start_long_task is refused there).
+    surface: opts.surface || null,
+    marathonSessionId: opts.marathonSessionId || null,
     actor: {
       userId,
       sessionId: opts.sessionId || null,
@@ -1996,7 +2033,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         slot: opts.slot || "conscious",
         messages: [
           ...messages,
-          { role: "user", content: "Give your final answer now, in full, based on everything above. Do not call any more tools — just answer." },
+          { role: "user", content: (typeof opts.wrapUpPrompt === "string" && opts.wrapUpPrompt) || "Give your final answer now, in full, based on everything above. Do not call any more tools — just answer." },
         ],
         opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
       });

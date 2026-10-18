@@ -29,7 +29,8 @@
 import { runAgentLoop } from "../lib/chat-agent.js";
 import { startSSE } from "../lib/sse.js";
 import { conkayTurnPlan, conkayToolPolicy } from "../lib/conkay/agent-turn.js";
-import { sourcesFromToolCalls, withSourceLinks, writeReceipt } from "../lib/chat/agent-route.js";
+import { sourcesFromToolCalls, withSourceLinks, writeReceipt, answerLongTaskRoute } from "../lib/chat/agent-route.js";
+import { takePendingLongTaskNotices } from "../lib/long-task.js";
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
@@ -70,6 +71,31 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
     // Initial ack so the client knows the stream is live.
     send("status", { phase: "started" });
 
+    const surface = isConKay ? "conkay" : "agent";
+    const db = req.db || req.app.locals.db;
+    // Finished background jobs this surface hasn't shown yet (ConKay keeps its
+    // history in the browser, so a job's result is announced on the next reply).
+    let notices = [];
+    try { notices = takePendingLongTaskNotices(db, userId, { surface }); } catch { notices = []; }
+    const withNotices = (answer) => notices.length
+      ? `${notices.map((n) => n.text).join("\n\n---\n\n")}\n\n---\n\n${answer}`
+      : answer;
+
+    // ConKay background jobs: start or report without a model turn.
+    if (isConKay && (plan?.route === "long" || plan?.route === "jobs")) {
+      try {
+        const out = answerLongTaskRoute({ runMacro, ctx: { db, actor: { userId } }, prompt: message, route: plan.route, lensActions, surface });
+        if (out) {
+          for (const tc of out.toolCalls || []) send("tool_call", tc);
+          const answer = withNotices(String(out.reply || ""));
+          for (let i = 0; i < answer.length; i += 80) send("token", { chunk: answer.slice(i, i + 80) });
+          send("done", { ok: true, provider: null, model: null, turns: 0, route: plan.route });
+          try { res.end(); } catch { /* noop */ }
+          return;
+        }
+      } catch { /* fall through to the agent loop */ }
+    }
+
     try {
       const result = await runAgentLoop({
         db: req.db || req.app.locals.db,
@@ -78,7 +104,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         runMacro,
         lensActions,
         history,
-        opts: { maxTurns, slot, extraSystemBlock, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
+        opts: { maxTurns, slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
         onEvent: (type, payload) => {
@@ -108,6 +134,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         }
         answer = withSourceLinks(answer, sourcesFromToolCalls(result.toolCalls || []));
       }
+      if (notices.length) answer = withNotices(answer);
       const step = 80;
       for (let i = 0; i < answer.length; i += step) {
         send("token", { chunk: answer.slice(i, i + step) });

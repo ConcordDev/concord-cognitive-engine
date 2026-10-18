@@ -636,10 +636,39 @@ export function buildMarathonHistory(db, sessionId, fallbackMessage) {
   const priorTurns = rows.map((t) => ({ role: t.role, content: t.content }));
   const history = priorTurns.slice(0, -1);
   const lastMessage = priorTurns[priorTurns.length - 1]?.content || fallbackMessage;
-  return { history, lastMessage };
+  const lastRole = priorTurns[priorTurns.length - 1]?.role || "user";
+  return { history, lastMessage, lastRole };
 }
 
-export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
+// One tick per session at a time. Long ticks outlive the heartbeat's module
+// timeout and the immediate kick from start_long_task can overlap a heartbeat
+// pass; without this the same turn index would be written twice.
+const _ticking = new Set();
+
+export async function tickMarathon(args = {}) {
+  const sessionId = args?.sessionId;
+  if (sessionId && _ticking.has(sessionId)) return { ok: true, skipped: true, reason: "in_flight", sessionId };
+  if (sessionId) _ticking.add(sessionId);
+  try {
+    return await _tickMarathon(args);
+  } finally {
+    if (sessionId) _ticking.delete(sessionId);
+  }
+}
+
+/** True while a tick for this session is running in this process. */
+export function isMarathonTicking(sessionId) {
+  return _ticking.has(sessionId);
+}
+
+async function _deliverIfLongTask(db, sessionId) {
+  try {
+    const { deliverLongTaskResult } = await import("./long-task.js");
+    await deliverLongTaskResult(db, sessionId);
+  } catch { /* delivery is best-effort — never blocks the tick */ }
+}
+
+async function _tickMarathon({ db, sessionId, runMacro, lensActions, opts = {} }) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const session = db.prepare(`SELECT * FROM agent_marathon_sessions WHERE id = ?`).get(sessionId);
   if (!session) return { ok: false, reason: "session_not_found" };
@@ -659,6 +688,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   }
   if (session.total_turns >= session.max_turns) {
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'failed', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
+    await _deliverIfLongTask(db, sessionId);
     return { ok: true, status: "failed", reason: "max_turns_exceeded" };
   }
 
@@ -701,7 +731,28 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   // bounded no matter how many days a marathon runs. Below the threshold
   // this is byte-identical to the pre-387 "every prior turn" query.
   // The first user-turn is the goal; subsequent are tool-result responses.
-  const { history, lastMessage } = buildMarathonHistory(db, sessionId, session.goal);
+  const built = buildMarathonHistory(db, sessionId, session.goal);
+  let history = built.history;
+  let lastMessage = built.lastMessage;
+  // Long tasks (lib/long-task.js): a job brief in the system prompt, and a
+  // real "continue" user turn instead of feeding the agent's own last reply
+  // back to it as if the user had said it.
+  let longMeta = null;
+  try {
+    const m = session.meta_json ? JSON.parse(session.meta_json) : null;
+    if (m && m.longTask) longMeta = m;
+  } catch { longMeta = null; }
+  let longBlock = "";
+  if (longMeta) {
+    try {
+      const lt = await import("./long-task.js");
+      longBlock = lt.longTaskSystemBlock(session, longMeta);
+      if (built.lastRole === "assistant") {
+        history = [...history, { role: "assistant", content: lastMessage }];
+        lastMessage = lt.continuationMessage(session);
+      }
+    } catch { longBlock = ""; }
+  }
 
   const tickTurns = Math.min(opts.tickTurns || DEFAULT_TICK_TURNS, session.max_turns - session.total_turns);
 
@@ -742,13 +793,40 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     history,
     opts: {
       maxTurns: tickTurns, slot: opts.slot, sessionId, toolGate, brainChat: opts.brainChat,
-      extraSystemBlock: planCtx?.ok ? planCtx.block : "",
+      marathonSessionId: sessionId,
+      // A long task's tick ends with progress notes, not a premature final answer.
+      ...(longMeta ? { wrapUpPrompt: "This work session is ending. Don't call any more tools. Write your 'Progress notes:' now: what you found so far, with source links, and what is left to do. Only write the final deliverable and [TASK_COMPLETE] if the whole goal is truly finished." } : {}),
+      extraSystemBlock: [planCtx?.ok ? planCtx.block : "", longBlock].filter(Boolean).map((b) => `\n\n${b}`).join(""),
     },
   });
 
   if (!result.ok) {
+    // A long task survives a transient brain failure (pod restart, timeout):
+    // retry on a later tick, and only pause after three failures in a row.
+    if (longMeta && (Number(longMeta.tickFailures) || 0) < 3) {
+      try {
+        db.prepare(`
+          UPDATE agent_marathon_sessions
+          SET status = 'running', meta_json = ?, next_tick_at = unixepoch() + 90, updated_at = unixepoch()
+          WHERE id = ?
+        `).run(JSON.stringify((() => {
+          let fresh = longMeta;
+          try { fresh = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(sessionId)?.meta_json || "{}"); } catch { /* use the tick's copy */ }
+          return { ...fresh, tickFailures: (Number(longMeta.tickFailures) || 0) + 1, lastError: String(result.error || "").slice(0, 200) };
+        })()), sessionId);
+      } catch { /* fall through to the next tick anyway */ }
+      return { ok: false, status: "running", retry: true, error: result.error };
+    }
     db.prepare(`UPDATE agent_marathon_sessions SET status = 'paused', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
+    if (longMeta) await _deliverIfLongTask(db, sessionId);
     return { ok: false, status: "paused", error: result.error };
+  }
+  if (longMeta && longMeta.tickFailures) {
+    try {
+      const fresh = JSON.parse(db.prepare(`SELECT meta_json FROM agent_marathon_sessions WHERE id = ?`).get(sessionId)?.meta_json || "{}");
+      delete fresh.tickFailures;
+      db.prepare(`UPDATE agent_marathon_sessions SET meta_json = ? WHERE id = ?`).run(JSON.stringify(fresh), sessionId);
+    } catch { /* best-effort */ }
   }
 
   // Persist the new assistant turn (or any tool-call turns the loop emitted).
@@ -823,7 +901,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
   }
 
   const nextTickAt = nextStatus === "running"
-    ? Math.floor(Date.now() / 1000) + (opts.tickIntervalS || DEFAULT_TICK_INTERVAL_S)
+    ? Math.floor(Date.now() / 1000) + (opts.tickIntervalS || (longMeta ? 30 : DEFAULT_TICK_INTERVAL_S))
     : Math.floor(Date.now() / 1000);
 
   db.prepare(`
@@ -870,6 +948,8 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     try {
       maybeFireMarathonCheckIn(db, session, totalTurns);
     } catch { /* never block the marathon on a check-in nudge */ }
+  } else if (longMeta) {
+    await _deliverIfLongTask(db, sessionId);
   }
 
   return {
@@ -891,6 +971,15 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
 export function findDueMarathons(db, opts = {}) {
   if (!db) return [];
   const limit = Math.min(20, opts.limit || 5);
+  // Long tasks (lib/long-task.js) first: a user is waiting on them.
+  try {
+    return db.prepare(`
+      SELECT id FROM agent_marathon_sessions
+      WHERE status = 'running' AND next_tick_at <= unixepoch()
+      ORDER BY (CASE WHEN json_extract(meta_json, '$.longTask') = 1 THEN 0 ELSE 1 END), next_tick_at ASC
+      LIMIT ?
+    `).all(limit);
+  } catch { /* no meta_json column (minimal schema) — plain order below */ }
   try {
     return db.prepare(`
       SELECT id FROM agent_marathon_sessions

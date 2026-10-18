@@ -54,6 +54,8 @@ export default function registerChatAgentMacros(register) {
         // Voice block first, route hint (grounding) last: agentExtraSystemBlock.
         ...(agentExtraSystemBlock(input) ? { extraSystemBlock: agentExtraSystemBlock(input) } : {}),
         ...(input.sessionId ? { sessionId: String(input.sessionId) } : {}),
+        // Which surface asked (chat | conkay | agent): start_long_task posts its result back there.
+        ...(["chat", "conkay", "agent"].includes(input.surface) ? { surface: input.surface } : {}),
       },
     });
   }, { note: "Agent Mode — runs an agentic tool-use loop with web search, compute, browse_url, run_lens_action (any of 200+ lens domain actions), create_dtu, expert_mode. Routes through Sprint 10 BYO router so user's API key kicks in. Returns answer + toolCalls + artifacts + provenance. Accepts input.message or input.task (alias)." });
