@@ -11,6 +11,7 @@ import { runIdleBehavior } from "./idle-behavior.js";
 import { processCommunicationTask } from "./communication.js";
 import { emitFeedEvent } from "./feed.js";
 import { runQualityPipeline } from "../lib/emergents/quality/orchestrator.js";
+import { assessCreation, maybeCritique } from "../lib/emergents/quality/creation-gate.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 export class EmergentMinorAgent {
@@ -123,8 +124,45 @@ export class EmergentMinorAgent {
       if (result && typeof result === "object" && (result.error || !String(result.finalText || "").trim())) {
         throw new Error(String(result.error || "empty_output").slice(0, 200));
       }
+
+      const assessment = assessCreation({
+        kind: task.task_type,
+        text: String(result.finalText || ""),
+        emergentId: this.emergentId,
+        taskId: task.id,
+        db: this.db,
+      });
+      if (assessment.status === "rejected") {
+        const completedAt = Date.now();
+        const resultPayload = {
+          error: "quality_rejected",
+          reasons: assessment.reasons,
+          quality_history_id: assessment.historyId,
+          finalText: String(result.finalText || "").slice(0, 300),
+        };
+        try {
+          this.db.prepare(
+            "UPDATE emergent_tasks SET status = 'rejected', completed_at = ?, result = ? WHERE id = ?"
+          ).run(completedAt, JSON.stringify(resultPayload), task.id);
+        } catch { /* non-fatal */ }
+        emitFeedEvent({
+          type: "task_failed",
+          emergentId: this.emergentId,
+          emergent: this.identity,
+          data: { task_type: task.task_type, error: "quality_rejected:" + assessment.reasons.join(",") },
+        }, this.db, this.realtimeEmit);
+        return { rejected: assessment.reasons };
+      }
+
       this._markCompleted(task.id, result);
       this._recordObservation(task, result);
+      maybeCritique({
+        kind: task.task_type,
+        text: String(result.finalText || ""),
+        emergentId: this.emergentId,
+        historyId: assessment.historyId,
+        db: this.db,
+      }).catch(() => {});
       if (shouldProduceArtifact(task, result)) {
         const quality = await runQualityPipeline({
           emergentId: this.emergentId,

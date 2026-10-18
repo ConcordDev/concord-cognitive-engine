@@ -41,7 +41,9 @@ export async function infer(req, db) {
   // Routed calls are new under the governor, so they are enforced even in
   // shadow mode: a down background brain pauses them (no fallback).
   const toBackground = !!BRAIN_CONFIG.background && process.env.CONCORD_BG_BRAIN !== "0";
-  const gate = admitExecution({ kind: bg.kind, agentId: bg.agentId, enforce: toBackground });
+  // A sampled quality critique follows the agent's own call by design, so it
+  // must not be refused by that agent's per-agent rate limit.
+  const gate = admitExecution({ kind: bg.kind, agentId: bg.agentId, enforce: toBackground, skipAgentRate: bg.kind === "critique" });
   if (!gate.allow) {
     return {
       inferenceId: req.traceId || `inf_${crypto.randomBytes(8).toString("hex")}`,
