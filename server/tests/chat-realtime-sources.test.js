@@ -86,3 +86,17 @@ test("grounding rule asks for the newest dated items first", () => {
   assert.match(WEB_GROUNDING_RULE, /newest/);
   assert.match(WEB_GROUNDING_RULE, /outlet and date/);
 });
+
+test("model rewrites keep news and scores intent", async () => {
+  const { newsTopic } = await import("../emergent/conscious-web-search.js");
+  assert.equal(newsTopic("Donald Trump recent activities"), "donald trump");
+  assert.equal(isNewsQuery("Donald Trump recent activities"), true);
+  assert.equal(isSportsResultQuery("game last night winner"), true);
+});
+
+test("news merge gives each provider half the slots", () => {
+  const mk = (p, i, h) => ({ provider: p, title: `${p} ${i}`, url: `https://${p}.example/${i}`, publishedAt: new Date(Date.parse("2026-10-17T20:00:00Z") - h * 3600e3).toISOString() });
+  const rows = mergeNewest([...[0, 1, 2, 3, 4, 5].map((i) => mk("bing-news", i, i)), ...[0, 1, 2, 3].map((i) => mk("google-news", i, 10 + i))], 6);
+  assert.equal(rows.filter((r) => r.provider === "google-news").length, 3);
+  assert.equal(rows[0].provider, "bing-news");
+});
