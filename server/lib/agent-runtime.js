@@ -36,6 +36,14 @@ import * as trustNetwork from "../emergent/trust-network.js";
 import * as cognitiveFingerprint from "../emergent/cognitive-fingerprint.js";
 
 const PHASE = 1;
+
+// Entities the on-host runtime heartbeat (launchd com.concord.entity-heartbeat)
+// ticks. rt_tick writes rows, so the MCP surface only accepts these ids.
+// Override with CONCORD_RUNTIME_ENTITIES (comma-separated).
+export function runtimeEntityIds(env = process.env) {
+  const raw = String(env.CONCORD_RUNTIME_ENTITIES || "hermes-agent,dila,zuko,concord-root");
+  return new Set(raw.split(",").map((x) => x.trim()).filter(Boolean));
+}
 const STALENESS_MS = 60_000; // 60s — adjust per-layer as needed
 
 // Helper: try-catch wrapper producing {status, ...} shape.
@@ -716,7 +724,7 @@ export async function rtTick(entity_id, ctx = {}) {
     if (db) {
       try {
         db.prepare(`INSERT OR REPLACE INTO entity_drives (entity_id, drives_json, dominant_drive, resting_drive, last_updated)
-          VALUES (?, ?, ?, ?, ?)`).run(entity_id, JSON.stringify(updated), dominant, JSON.stringify(resting), Date.now());
+          VALUES (?, ?, ?, ?, ?)`).run(entity_id, JSON.stringify(updated), dominant?.name || null, JSON.stringify(resting), Date.now());
       } catch { /* table may not exist yet */ }
     }
   } catch (e) {
@@ -796,7 +804,20 @@ export async function rtTick(entity_id, ctx = {}) {
     } catch (e) { /* table may not exist yet */ }
   }
 
+  // 5. Retention: the heartbeat writes one history row + one trace row per
+  // entity per minute. Keep RT_TICK_RETENTION_DAYS (default 7) so the tables
+  // stay bounded. Runs on ~1 in 60 ticks per entity.
+  if (db && Math.random() < (ctx?.pruneProbability ?? 1 / 60)) {
+    try {
+      const days = Number(process.env.RT_TICK_RETENTION_DAYS) || 7;
+      const cutoff = tickRow.tick_at - days * 86_400_000;
+      db.prepare("DELETE FROM entity_tick_history WHERE entity_id = ? AND tick_at < ?").run(entity_id, cutoff);
+      db.prepare("DELETE FROM agent_reasoning_traces WHERE entity_id = ? AND reason = 'tick_heartbeat' AND created_at < ?").run(entity_id, cutoff);
+    } catch { /* retention is best-effort */ }
+  }
+
   return {
+    ok: true,
     status: "available",
     entity_id,
     tick_at: tickRow.tick_at,

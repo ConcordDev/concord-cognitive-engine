@@ -40515,6 +40515,14 @@ app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, r
     if (MCP_TOOLS_REQUIRE_REAL_AUTH.has(tool) && (!req.user || req.authMethod === "mcp-bypass")) {
       return res.status(403).json({ ok: false, error: "forbidden", reason: "this tool requires real authentication; the CONCORD_MCP_PUBLIC/AUTH_MODE=public bypass does not cover it" });
     }
+    // rt_* runtime-heartbeat tools: direct-local (the on-host launchd
+    // heartbeat) or a real user only — never the public mcp-anonymous bypass.
+    {
+      const { mcpLocalGuardAllows } = await import("./lib/mcp-local-guard.js");
+      if (!mcpLocalGuardAllows(tool, req)) {
+        return res.status(403).json({ ok: false, error: "forbidden", reason: "this tool is limited to on-host callers or real authentication" });
+      }
+    }
     // Option B admission: cap concurrent /mcp/call executions. Macros have no
     // AbortSignal path — a Promise.race timeout would fake interruption while
     // work kept running — so we shed excess at the door with busy_retry.
@@ -42789,29 +42797,22 @@ async function governorTick(reason="heartbeat") {
         }
       }
 
-      // 2.2 — Entity Autonomy + Growth: decideBehavior + execute
+      // 2.2 — Entity Autonomy + Growth: decideBehavior + execute, on each
+      // emergent's stored growth profile (raw emergents have no homeostasis;
+      // see runGrowthAutonomyTick in emergent/entity-growth.js).
       const growthMod = await import("./emergent/entity-growth.js").catch(() => null);
-      if (growthMod?.decideBehavior) {
-        for (const entity of _bgEntities) {
-          try {
-            const decision = growthMod.decideBehavior(entity);
-            if (decision && decision.action) {
-              // Age the entity each tick
-              try { growthMod.ageEntity(entity); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              // Process experience from decisions
-              if (decision.action === "explore" || decision.action === "learn") {
-                try { growthMod.processExperience(entity, { type: decision.action, topic: decision.topic || "general", quality: 0.5 }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+      if (growthMod?.runGrowthAutonomyTick) {
+        try {
+          const gStats = await growthMod.runGrowthAutonomyTick(_bgEntities, {
+            onCreate: async (profile) => {
+              const creativeMod = await import("./emergent/creative-generation.js").catch(() => null);
+              if (creativeMod?.createWork) {
+                try { creativeMod.createWork(profile.id, "CONCEPTUAL_ART", []); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
               }
-              // Creative generation when entity decides to create
-              if (decision.action === "create") {
-                const creativeMod = await import("./emergent/creative-generation.js").catch(() => null);
-                if (creativeMod?.createWork) {
-                  try { creativeMod.createWork(entity.id, "CONCEPTUAL_ART", []); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-                }
-              }
-            }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+            },
+          });
+          if (gStats.errors > 0) structuredLog("warn", "growth_autonomy_tick_errors", gStats);
+        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
       }
 
       // 2.3 — Dream Capture: capture dreams during entity sleep
