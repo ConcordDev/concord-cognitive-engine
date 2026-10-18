@@ -2230,6 +2230,13 @@ import { recordObservation as recordInstitutionalDecision, getInstitutionalMemor
 import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool, terminateAllForTest as terminateMacroPoolForTest } from "./workers/macro-pool.js";
 import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool, terminateAllForTest as terminateHeartbeatPoolForTest } from "./workers/heartbeat-pool.js";
 import { setHeartbeatPool, getHeartbeatTimingStats } from "./emergent/heartbeat-registry.js";
+import {
+  startBackgroundGovernor,
+  getGovernorStatus as getBgGovernorStatus,
+  setGovernorMode as setBgGovernorMode,
+  recordHttp as bgGovernorRecordHttp,
+  chatStarted as bgGovernorChatStarted,
+} from "./lib/background-governor.js";
 // Shard activation (ensureWorldActive/markWorldUserCount/recordWorldActivity) now
 // lives on the live worlds router (routes/worlds.js); the parent only needs the
 // lifecycle + tick-broadcast + health helpers.
@@ -3725,6 +3732,10 @@ resolveFrontendUrl({ mode: "public" });
 // HTTP request logging middleware
 function requestLoggerMiddleware(req, res, next) {
   const startTime = Date.now();
+  // Background governor: count in-flight chat requests (released on close).
+  if (typeof req.path === "string" && req.path.startsWith("/api/chat")) {
+    try { res.once("close", bgGovernorChatStarted()); } catch { /* never break a request */ }
+  }
 
   // Log request
   const requestData = {
@@ -3744,6 +3755,7 @@ function requestLoggerMiddleware(req, res, next) {
 
     // ---- P95 Tracking (Category 5: Observability) ----
     _LATENCY.record(duration, req.path, req.method);
+    try { bgGovernorRecordHttp(duration, req.path); } catch { /* observability only */ }
 
     if (res.statusCode >= 500 || res.statusCode === 403 || res.statusCode === 422 || res.statusCode === 429) {
       try { reportHttpFailure(req, null, res.statusCode); } catch { /* cortex must never break the response */ }
@@ -32024,6 +32036,13 @@ registerHeartbeat("agent-marathon-cycle", {
 // the user closes the tab.
 import { startLongTaskPump, startLongTask as _startResearchJob, kickLongTask as _kickResearchJob, longTaskStatus as _researchJobStatus } from "./lib/long-task.js";
 startLongTaskPump({ getDb: () => STATE?.db || globalThis._concordDB });
+
+// Background governor (creation + execution admission for non-user-facing
+// work). Shadow mode by default; CONCORD_BG_GOVERNOR=0 or the kill file
+// (~/concord/bg-governor.KILL) stops all background work.
+try {
+  startBackgroundGovernor({ db: STATE?.db || globalThis._concordDB || null, log: (level, event, data) => structuredLog(level, event, data) });
+} catch (e) { structuredLog("warn", "bg_governor_start_failed", { error: String(e?.message || e) }); }
 
 // Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
 // character has drifted from the values anchor, flag (never correct) past threshold for
@@ -61259,6 +61278,16 @@ app.post("/api/reminders/:id/complete", (req, res) => {
 // Phase B + C + D — operator-facing telemetry for the concurrency stack.
 // Surfaces per-module heartbeat timing, worker-pool utilisation, and brain
 // endpoint inflight + failure counts. Powers the ops-telemetry lens.
+app.get("/api/admin/background-governor", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try { res.json({ ok: true, ...getBgGovernorStatus() }); }
+  catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+// Runtime mode switch: { mode: "shadow" | "enforce" | "killed" | null }.
+app.post("/api/admin/background-governor/mode", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try { res.json({ ok: true, mode: setBgGovernorMode(req.body?.mode ?? null) }); }
+  catch (e) { res.status(400).json({ ok: false, error: String(e?.message || e) }); }
+});
+
 app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
     res.json({

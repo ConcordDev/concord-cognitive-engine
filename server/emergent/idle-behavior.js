@@ -4,6 +4,7 @@
 
 import { infer } from "../lib/inference/index.js";
 import { initiateCommunication } from "./communication.js";
+import { wouldAdmitCreation } from "../lib/background-governor.js";
 import { emitFeedEvent } from "./feed.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
@@ -191,6 +192,10 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         given_name: target.given_name || target.display_name,
       };
 
+      // Don't spend an LLM call on a message the governor would refuse.
+      const pre = wouldAdmitCreation({ kind: "communication", fromId: emergentIdentity.id, toId: targetIdentity.id });
+      if (!pre.allow) return { action, skipped: `governor:${pre.reason}` };
+
       try {
         _markBrainCall(emergentIdentity.id);
         const result = await infer({
@@ -201,7 +206,8 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         }, db);
         const message = result?.finalText?.trim()?.slice(0, 200);
         if (!message) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
-        initiateCommunication({ from: emergentIdentity, to: targetIdentity, intent: message, context: { initiator: "idle" }, db, realtimeEmit });
+        const ex = initiateCommunication({ from: emergentIdentity, to: targetIdentity, intent: message, context: { initiator: "idle" }, db, realtimeEmit });
+        if (ex?.status === "refused") return { action, skipped: `governor:${ex.refused_reason}` };
         return { action, observation: `Reached out to ${targetIdentity.given_name}` };
       } catch {
         return { action };
