@@ -266,7 +266,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
-- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) it returns a concept 3D assembly with its parts list instead. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
@@ -1042,6 +1042,20 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
         const text = String(call.params.text || call.params.brief || call.params.prompt || "").slice(0, 4000);
         if (!text.trim()) return { tool: call.tool, ok: false, error: "conkay_design requires text describing the part" };
+        // A robot / multi-part machine: a concept assembly the UI can show in 3D.
+        const { ROBOT_RE, buildRobotAssembly } = await import("./conkay/robot-assembly.js");
+        if (ROBOT_RE.test(text)) {
+          const asm = buildRobotAssembly(text);
+          const { mesh, ...rest } = asm;
+          return {
+            tool: call.tool, ok: true, key: "conkay_design.robot-assembly",
+            result: { kind: "robot-assembly", ...rest, partCount: asm.parts.length,
+              instruction: "Say the robot concept model is shown below. List its parts with their sizes in mm and the overall size. Say plainly it is a layout concept: no structural, motor or battery sizing was run." },
+            artifact: { kind: "mesh", source: "conkay_design", title: "robot concept assembly", meshKind: mesh.kind,
+              positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
+              color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name) },
+          };
+        }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
         const solved = solveDesignText(text);
         const summary = summarizeDesignSolve(solved);
