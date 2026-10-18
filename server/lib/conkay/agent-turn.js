@@ -39,9 +39,9 @@ const DESIGN_HINT = "This is a ConKay design ask. Call conkay_design with the us
 
 const POLICY = [
   "TOOL POLICY (ConKay, overrides any style instruction above): you answer with tools, not from memory.",
-  "• Facts, products, prices, specs, current events, anything you would otherwise recall: web_search first, then answer from the results with their links. For news, lead with the newest dated items and name each outlet and date.",
-  "• Textbook, science and engineering facts (material constants, laws, definitions) or any ask for a textbook/OpenStax source: textbook_lookup first; quote the numbers with units and cite book, section and link.",
-  "• Designing or sizing a part: conkay_design (hand calc + FEA + 3D model). FEA on a design already discussed: conkay_design again with that same brief. If an FEA result has ok:false, say the FEA failed; never claim an FEA pass.",
+  "• Facts, products, prices, specs, current events, anything you would otherwise recall: web_search first, then answer from the results with their links. If the snippets lack the number asked for, browse_url the best result and quote the number from that page. For news, lead with the newest dated items and name each outlet and date.",
+  "• Textbook, science and engineering facts (material constants, laws, definitions, formulas) or any ask for a textbook/OpenStax source: textbook_lookup first; quote the numbers with units and cite book, section and link. If it has nothing, web_search. Never guess a value; if no source has it, say so.",
+  "• Designing or sizing a part: conkay_design (hand calc + FEA + 3D model). FEA on a design already discussed: conkay_design again with that same brief. If an FEA result has ok:false, say the FEA failed; never claim an FEA pass. A part conkay_design does not support (shaft, gear, spring...): work it out with run_python, showing the formula and inputs.",
   "• Images: generate_image. A new song: run_lens_action studio.compose; a real song: run_lens_action music.ingest-itunes. Say it is ready to play below, never that it is playing.",
   "• Creating or changing something in Concord (tasks, events, notes): run_lens_action (find_lens_actions if unsure), then report only what the tool stored. Never invent dates, ids or details.",
   "• Do not say \"On it\" or describe a tool you did not call. If a tool fails or returns nothing, say so plainly.",

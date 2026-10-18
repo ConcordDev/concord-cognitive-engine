@@ -103,6 +103,14 @@ describe("conkay_design returns a 3D model artifact", () => {
   });
 });
 
+describe("conkay_design unsupported part", () => {
+  it("fails with a retry hint so the model can size it by formula", async () => {
+    const r = await executeToolCall({ actor: { userId: "u1" } }, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "size a steel shaft for 200 Nm torque" } });
+    assert.equal(r.ok, false);
+    assert.match(r.retryHint, /run_python/);
+  });
+});
+
 describe("guardFeaClaim", () => {
   const failed = [{ tool: "run_lens_action", key: "engineering.runFEA", domain: "engineering", action: "runFEA", ok: false, error: "model must have at least one node and one member" }];
   it("removes an FEA pass claim when every FEA run failed", () => {

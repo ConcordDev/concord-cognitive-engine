@@ -453,6 +453,9 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
     label: 'Search your archive',
     hint: 'search my archive for …',
     match: (u) => {
+      // Only an archive search. "search the web for X" / "find the lightest
+      // frames" go to the agent, which runs web_search with links.
+      if (!/\b(?:my|archive|dtus?|notes?|saved|vault|library)\b/i.test(u)) return null;
       const m = u.match(/^\s*(?:search|find|look up|dig up|surface)\s+(?:(?:my|the)\s+)?(?:archive\s+)?(?:dtus?\s+)?(?:notes?\s+)?(?:for|about|on|named|titled)?\s*(.+?)\s*$/i);
       if (!m || !m[1]) return null;
       const q = m[1].replace(/[?.!]+$/, '').trim();
