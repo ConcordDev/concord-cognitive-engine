@@ -151,7 +151,7 @@ describe("tool-preference signal", () => {
     it("5 real web_search dispatches through the actual agent loop produce a dominant-tool line", async () => {
       const userId = "u-dominant";
       const brain = makeBrainWithToolBurst(
-        Array.from({ length: 5 }, () => ({ tool: "web_search", params: { query: "concord" } })),
+        Array.from({ length: 5 }, (_, i) => ({ tool: "web_search", params: { query: `concord ${i}` } })),
       );
 
       const result = await runAgentLoop({
@@ -209,7 +209,7 @@ describe("tool-preference signal", () => {
     it("below MIN_TOOL_SAMPLE (only 4 calls, all one tool) injects nothing", async () => {
       const userId = "u-below-floor";
       const brain = makeBrainWithToolBurst(
-        Array.from({ length: 4 }, () => ({ tool: "web_search", params: { query: "x" } })),
+        Array.from({ length: 4 }, (_, i) => ({ tool: "web_search", params: { query: `x ${i}` } })),
       );
       await runAgentLoop({
         db, userId, message: "search 4 times",
