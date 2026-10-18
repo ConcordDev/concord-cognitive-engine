@@ -7,7 +7,6 @@
 //   2) IDE-grade macros (snippets, exec, multi-file agent, search, snapshots)
 //      — new in the parity sprint. Touch STATE.dtus + ctx.llm where appropriate.
 
-import vm from "node:vm";
 // Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
 // the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
 import tsLang from "../lib/ts-language-service.js";
@@ -15,7 +14,6 @@ import tsLang from "../lib/ts-language-service.js";
 import { runBuildLoop } from "../lib/build-loop.js";
 // Item 6 — CaMeL: file content fed to the LLM is untrusted data, never instructions.
 import { scanForInjection } from "../lib/provenance-guard.js";
-import { runPython } from "../lib/python-sandbox.js";
 import { runWasmCodeExec, wasmExecEnabled, isCodeExecRole } from "../lib/wasm-code-exec.js";
 // GH-3a — real ranked code retrieval (replaces naive @-mention-or-recency
 // selection in codebase-chat; also the file-manifest source for multi-file-plan
@@ -30,8 +28,6 @@ import codePushGovernance from "../lib/code-push-governance.js";
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
 const MULTI_FILE_PLAN_TIMEOUT_MS = 25_000;
-const EXEC_TIMEOUT_MS = 4_000;
-const EXEC_MEMORY_HINT_BYTES = 32 * 1024 * 1024;
 const SEARCH_RESULT_CAP = 500;
 
 // GH-3b — verify-and-retry loop helpers (module-scope: pure functions, no
@@ -112,10 +108,10 @@ function buildVerifyFeedback(verification) {
   return lines.join("\n");
 }
 
-// node:vm is NOT a security boundary — sandbox escapes (constructor reach-back, async
-// prototype chains, etc.) are a known class. Live code execution is therefore gated:
-// default OFF in production, ON in dev/test. Set CONCORD_CODE_EXEC_ENABLED=1 to enable in
-// prod (only after fronting it with isolated-vm / a worker-or-container sandbox).
+// Retained for compatibility (finance.js still imports pythonExecEnabled).
+// After INC-145 these gates no longer control any code.exec path: all code
+// execution routes through the WASM sandbox (runWasmCodeExec), and raw host
+// execution (node:vm / Pyodide-on-host) has been retired.
 export function codeExecEnabled() {
   const v = process.env.CONCORD_CODE_EXEC_ENABLED;
   if (v === "1" || v === "true") return true;
@@ -123,16 +119,9 @@ export function codeExecEnabled() {
   return (process.env.NODE_ENV || "development") !== "production";
 }
 
-// Independent gate from codeExecEnabled() above — deliberately not the same
-// flag. The Python path (server/lib/python-sandbox.js, Pyodide in a
-// worker_threads Worker) has a genuinely different risk/resource profile
-// than the node:vm JS path: real network + filesystem isolation (verified
-// by hand — see that file's header), but NO Node permission-model layer
-// (structurally incompatible with Pyodide's loader), a ~2s cold-load cost
-// per call, and a wall-clock timeout as the primary defense against both
-// infinite loops and memory growth rather than a reliable resource cap.
-// An operator who's comfortable with one path isn't necessarily comfortable
-// with the other's tradeoffs, so each gets its own opt-in.
+// Retained for compatibility (finance.js still imports pythonExecEnabled).
+// After INC-145 this gate no longer controls any code.exec path: Python runs
+// only through the WASM sandbox (runWasmCodeExec), not via Pyodide on the host.
 export function pythonExecEnabled() {
   const v = process.env.CONCORD_PYTHON_EXEC_ENABLED;
   if (v === "1" || v === "true") return true;
@@ -603,20 +592,21 @@ export default function registerCodeActions(registerLensAction) {
   });
 
   /**
-   * exec — Sandbox-execute a piece of code. JavaScript routes through Node's
-   * built-in `vm` with strict timeout + no I/O globals. Other languages
-   * return `{ supported: false }` so the caller can fall back to the broader
-   * runner pipeline.
+   * exec-status — Report whether live code execution is available. After
+   * INC-145 the only execution path is the WASM sandbox (runWasmCodeExec).
+   * Host JavaScript/Python execution is retired, so `enabled` reflects
+   * wasmExecEnabled() && isCodeExecRole(ctx), and `hostExec` is always off.
    */
   registerLensAction("code", "exec-status", (ctx) => {
-    const enabled = codeExecEnabled();
+    const enabled = wasmExecEnabled() && isCodeExecRole(ctx);
     return {
       ok: true,
       result: {
         enabled,
         reason: enabled
           ? ""
-          : "Live code execution is disabled in this environment. Enable with CONCORD_CODE_EXEC_ENABLED=1 (node:vm is not a hardened sandbox).",
+          : "Code execution runs only in the WASM sandbox (founder/sovereign, pod jobs on). Host execution was retired (INC-145).",
+        hostExec: { enabled: false, retired: "INC-145" },
         wasm: {
           enabled: wasmExecEnabled(),
           allowed: isCodeExecRole(ctx),
@@ -629,8 +619,9 @@ export default function registerCodeActions(registerLensAction) {
 
   registerLensAction("code", "exec", async (ctx, _artifact, params = {}) => {
     // Accept `source` as an alias for `code` (the productivity notebook + some callers
-    // use `source`). node:vm here is the accepted boundary for a personal JS notebook —
-    // no I/O globals + a 4s timeout — not a hardened multi-tenant sandbox.
+    // use `source`). After INC-145 ALL code execution routes through the WASM sandbox
+    // (runWasmCodeExec). Raw host execution (node:vm / Pyodide on host) is retired;
+    // JavaScript/TypeScript is refused outright, and Python is sent to the WASM gate.
     const code = String(params.code ?? params.source ?? "");
     const language = String(params.language || "javascript").toLowerCase();
     if (!code.trim()) return { ok: true, result: { stdout: "", stderr: "", exitCode: 0, supported: true } };
@@ -642,47 +633,22 @@ export default function registerCodeActions(registerLensAction) {
     }
 
     if (language === "javascript" || language === "js" || language === "typescript" || language === "ts") {
-      if (!codeExecEnabled()) {
-        return { ok: false, error: "code_exec_disabled", result: { supported: false, stdout: "", stderr: "Live code execution is disabled in this environment. Enable with CONCORD_CODE_EXEC_ENABLED=1 (node:vm is not a hardened sandbox — front it with isolated-vm/process isolation before enabling in production).", exitCode: -1 } };
-      }
-      return execJavaScript(code, language);
+      return {
+        ok: false,
+        error: "code_exec_host_retired",
+        status: 403,
+        result: {
+          supported: false,
+          sandbox: null,
+          stdout: "",
+          stderr: "Host JavaScript execution was retired (INC-145). Code runs only in the WASM sandbox: use language python or wat (founder/sovereign).",
+          exitCode: -1,
+        },
+      };
     }
 
     if (language === "python" || language === "python3" || language === "py") {
-      if (!pythonExecEnabled()) {
-        return { ok: false, error: "python_exec_disabled", result: { supported: false, stdout: "", stderr: "Live Python execution is disabled in this environment. Enable with CONCORD_PYTHON_EXEC_ENABLED=1 — see server/lib/python-sandbox.js's header for the real, verified security envelope before enabling in production.", exitCode: -1 } };
-      }
-      // Scientific packages (numpy/pandas/matplotlib/scipy/sympy) — vendored
-      // offline, never CDN-fetched at runtime (see lib/pyodide-packages.js's
-      // header). A package that hasn't been vendored via
-      // `npm run fetch-pyodide-packages` fails honestly here, with the
-      // exact missing-file list, rather than a generic execution error.
-      const packages = Array.isArray(params.packages) ? params.packages.map(String) : [];
-      const r = await runPython(code, { packages });
-      if (!r.ok && (r.error === "python_package_not_vendored" || r.error === "python_package_not_allowed")) {
-        return {
-          ok: false, error: r.error,
-          result: {
-            supported: true, stdout: "", exitCode: -1,
-            stderr: r.error === "python_package_not_vendored"
-              ? `Package(s) not vendored: ${(r.missing || []).join(", ")}. An operator must run \`npm run fetch-pyodide-packages\` first.`
-              : `Package(s) not allowed: ${(r.unknown || []).join(", ")}. Supported: numpy, pandas, matplotlib, scipy, sympy.`,
-            missing: r.missing, unknown: r.unknown,
-          },
-        };
-      }
-      return {
-        ok: r.ok,
-        error: r.ok ? undefined : "python_exec_failed",
-        result: {
-          supported: true,
-          stdout: r.stdout,
-          stderr: r.ok ? r.stderr : (r.error || r.stderr || "python execution failed"),
-          exitCode: r.ok ? 0 : 1,
-          returnValue: r.result,
-          images: r.images || [],
-        },
-      };
+      return runWasmCodeExec(ctx, { code, language: "python", timeoutMs: params.timeoutMs });
     }
 
     return {
@@ -690,7 +656,7 @@ export default function registerCodeActions(registerLensAction) {
       result: {
         supported: false,
         stdout: "",
-        stderr: `Language "${language}" cannot run in the sandbox. Supported: javascript/typescript, python.`,
+        stderr: `Language "${language}" cannot run in the sandbox. Supported: python, wat (WASM sandbox).`,
         exitCode: -1,
       },
     };
@@ -2531,24 +2497,16 @@ Rules:
 });
 
   // ── Step debugger (breakpoints / watch / call stack) ──────────
-  // Instruments the user's JS and executes it under the vm sandbox,
-  // capturing a real call-stack + variable snapshot at each line
-  // that carries a breakpoint.
-  registerLensAction("code", "debug-run", (_ctx, _a, params = {}) => {
-  try {
-    const code = String(params.code || "");
-    const language = String(params.language || "javascript").toLowerCase();
-    const breakpoints = Array.isArray(params.breakpoints)
-      ? params.breakpoints.map(n => Math.max(1, Math.round(Number(n)))).filter(Number.isFinite)
-      : [];
-    const watch = Array.isArray(params.watch) ? params.watch.map(String).filter(Boolean).slice(0, 20) : [];
-    if (!code.trim()) return { ok: false, error: "code required" };
-    if (!["javascript", "js", "typescript", "ts"].includes(language)) {
-      return { ok: false, error: `step debugger supports JS/TS only (got ${language})` };
-    }
-    return runDebugSession(code, language, new Set(breakpoints), watch);
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+  // Retired by INC-145: the host-side JS step debugger ran user code under
+  // node:vm with no role gate, which exposed host Object/Function -> constructor
+  // escape (RCE). It now refuses unconditionally; use the WASM sandbox for
+  // execution.
+  registerLensAction("code", "debug-run", () => ({
+    ok: false,
+    error: "code_exec_host_retired",
+    status: 403,
+    message: "The host JavaScript step debugger was retired (INC-145); host-side code execution is disabled.",
+  }));
 
   // ── Phase 3: the verifiable build loop ────────────────────────
   // "make X" → generate → write → run → lint (real tsc) → verify → repair → done.
@@ -3034,90 +2992,6 @@ function toSnapshotShape(dtu) {
   };
 }
 
-function execJavaScript(code, language) {
-  // Strip ts type annotations and trailing imports for a best-effort TS->JS
-  // run. Anything that needs full TS compilation goes through the broader
-  // runner pipeline (already wired in lens page).
-  let src = code;
-  if (language === "typescript" || language === "ts") {
-    src = src
-      .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
-      .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
-      .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
-  }
-
-  const stdoutLines = [];
-  const stderrLines = [];
-  const startedAt = performance.now();
-
-  const sandboxConsole = {
-    log: (...args) => stdoutLines.push(args.map(formatExecArg).join(" ")),
-    info: (...args) => stdoutLines.push(args.map(formatExecArg).join(" ")),
-    warn: (...args) => stderrLines.push(args.map(formatExecArg).join(" ")),
-    error: (...args) => stderrLines.push(args.map(formatExecArg).join(" ")),
-    debug: (...args) => stdoutLines.push(args.map(formatExecArg).join(" ")),
-  };
-
-  const sandbox = {
-    console: sandboxConsole,
-    Math, JSON, Date, Number, String, Boolean, Array, Object, Map, Set,
-    Promise, RegExp, Error, TypeError, RangeError, Symbol,
-    parseInt, parseFloat, isFinite, isNaN, encodeURIComponent, decodeURIComponent,
-  };
-
-  try {
-    const ctx = vm.createContext(sandbox, { name: "code-lens-exec" });
-    // Use the script in eval-mode (not function-wrapped) so the result of the
-    // last expression is captured — `1 + 2 + 3` should yield `6`, mirroring
-    // Node REPL / `vm.runInContext` semantics. Strict mode is opt-in by the
-    // user source; we don't force it because that breaks legitimate patterns
-    // (`with`, top-level `let` shadowing, etc.) and the sandbox is already
-    // isolated.
-    const ctxObj = ctx;
-    const script = new vm.Script(src, { filename: "exec.js" });
-    const value = script.runInContext(ctxObj, { timeout: EXEC_TIMEOUT_MS, displayErrors: true });
-    if (value !== undefined && stdoutLines.length === 0) {
-      stdoutLines.push(formatExecArg(value));
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-    stderrLines.push(msg);
-    return {
-      ok: true,
-      result: {
-        stdout: stdoutLines.join("\n"),
-        stderr: stderrLines.join("\n"),
-        exitCode: 1,
-        durationMs: Math.round(performance.now() - startedAt),
-        supported: true,
-        memoryHintBytes: EXEC_MEMORY_HINT_BYTES,
-      },
-    };
-  }
-
-  return {
-    ok: true,
-    result: {
-      stdout: stdoutLines.join("\n"),
-      stderr: stderrLines.join("\n"),
-      exitCode: 0,
-      durationMs: Math.round(performance.now() - startedAt),
-      supported: true,
-      memoryHintBytes: EXEC_MEMORY_HINT_BYTES,
-    },
-  };
-}
-
-function formatExecArg(v) {
-  if (v === undefined) return "undefined";
-  if (v === null) return "null";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (typeof v === "function") return `[Function: ${v.name || "anonymous"}]`;
-  try { return JSON.stringify(v); } catch { return String(v); }
-}
-
 function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("timeout")), ms);
@@ -3398,92 +3272,4 @@ function publicSession(session) {
   };
 }
 
-// ─── Step debugger (breakpoints / watch / call-stack backlog item) ───────
-// runDebugSession — instruments JS line-by-line and executes it under the
-// vm sandbox. Before each source line that carries a breakpoint, a probe is
-// injected that records a real call-stack + the value of each watch
-// expression at that point. Returns an ordered list of debug frames.
-function runDebugSession(code, language, breakpointSet, watch) {
-  let src = code;
-  if (language === "typescript" || language === "ts") {
-    src = src
-      .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
-      .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
-      .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
-  }
-  const srcLines = src.split("\n");
-  const frames = [];
-  const stdoutLines = [];
-  const stderrLines = [];
-  const watchExprs = (watch || []).slice(0, 20);
 
-  // Probe fn the instrumented code calls. Captures line + scope + stack.
-  const __probe = (lineNo) => {
-    if (frames.length >= 500) return; // hard cap so a loop can't explode memory
-    const stackRaw = new Error().stack || "";
-    const callStack = stackRaw.split("\n").slice(2, 9)
-      .map(l => l.trim().replace(/^at\s+/, ""))
-      .filter(l => l && !l.includes("vm.js") && !l.includes("node:vm"));
-    frames.push({ line: lineNo, sourceText: (srcLines[lineNo - 1] || "").trim().slice(0, 200), callStack, watch: {} });
-  };
-
-  // Instrument: prepend `__probe(N);` to each line that has a breakpoint.
-  // Only instrument lines that look like statements (skip blank/comment/brace-only).
-  let instrumented = "";
-  for (let i = 0; i < srcLines.length; i++) {
-    const lineNo = i + 1;
-    const raw = srcLines[i];
-    const trimmed = raw.trim();
-    if (breakpointSet.has(lineNo) && trimmed && !trimmed.startsWith("//") && !/^[}\])]+;?$/.test(trimmed)) {
-      instrumented += `__probe(${lineNo});\n`;
-    }
-    instrumented += raw + "\n";
-  }
-
-  const stdout = (...a) => stdoutLines.push(a.map(formatExecArg).join(" "));
-  const sandbox = {
-    __probe,
-    console: { log: stdout, info: stdout, debug: stdout, warn: (...a) => stderrLines.push(a.map(formatExecArg).join(" ")), error: (...a) => stderrLines.push(a.map(formatExecArg).join(" ")) },
-    Math, JSON, Date, Number, String, Boolean, Array, Object, Map, Set,
-    Promise, RegExp, Error, TypeError, RangeError, Symbol,
-    parseInt, parseFloat, isFinite, isNaN, encodeURIComponent, decodeURIComponent,
-  };
-  const startedAt = performance.now();
-  let exitCode = 0;
-  try {
-    const ctx = vm.createContext(sandbox, { name: "code-lens-debug" });
-    const script = new vm.Script(instrumented, { filename: "debug.js" });
-    script.runInContext(ctx, { timeout: EXEC_TIMEOUT_MS, displayErrors: true });
-  } catch (e) {
-    exitCode = 1;
-    stderrLines.push(e instanceof Error ? `${e.name}: ${e.message}` : String(e));
-  }
-
-  // Evaluate watch expressions against the final sandbox scope, per breakpoint
-  // hit (best effort — a watch expr is re-evaluated in the post-run context).
-  for (const frame of frames) {
-    for (const expr of watchExprs) {
-      try {
-        const v = vm.runInContext(`(${expr})`, vm.createContext({ ...sandbox }), { timeout: 200 });
-        frame.watch[expr] = formatExecArg(v);
-      } catch {
-        frame.watch[expr] = "<unavailable>";
-      }
-    }
-  }
-
-  return {
-    ok: true,
-    result: {
-      frames,
-      hitCount: frames.length,
-      breakpoints: Array.from(breakpointSet).sort((a, b) => a - b),
-      watch: watchExprs,
-      stdout: stdoutLines.join("\n"),
-      stderr: stderrLines.join("\n"),
-      exitCode,
-      durationMs: Math.round(performance.now() - startedAt),
-    },
-  };
-}
