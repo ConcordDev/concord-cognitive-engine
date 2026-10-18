@@ -1983,6 +1983,7 @@ import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode 
 import { assertByoCryptoReady } from "./lib/byo-crypto.js";
 import { prepareContext } from "./lib/context-orchestrator.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
+import { cloudChatAvailable, cloudFallbackChat, llmReadyFor } from "./lib/llm-cloud-fallback.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
 import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
@@ -17879,7 +17880,8 @@ function makeCtx(req=null) {
     actor: resolvedActor,
     env: {
       version: VERSION,
-      llmReady: LLM_READY,
+      // Honest per account (INC-137): local brain up, or a cloud route for a High Power account.
+      get llmReady() { return llmReadyFor({ localReady: LLM_READY, db: STATE?.db || null, actor: resolvedActor }); },
       brainModel: BRAIN?.conscious?.model || null,
     },
     affect: affectPolicy ? {
@@ -17968,7 +17970,12 @@ function makeCtx(req=null) {
       listMacros,
     },
     llm: {
-      enabled: BRAIN.conscious && BRAIN.conscious.enabled,
+      // INC-137: true when the local brain is up OR this High Power/BYO account has a cloud route.
+      // Private accounts only ever see the local brain's state.
+      get enabled() {
+        return Boolean(BRAIN.conscious && BRAIN.conscious.enabled)
+          || cloudChatAvailable({ db: STATE?.db || null, actor: resolvedActor, slot: "conscious" });
+      },
       async chat({ system, messages, temperature=0.3, maxTokens, model=null, timeoutMs=30000, slot="conscious", dtuRefs, macroRefs, grcMode }) {
         // Conscious chat used to default to 1500, which sat under the
         // conversational cap and cut replies off before CONCORD_CHAT_MAX_TOKENS
@@ -18105,6 +18112,29 @@ function makeCtx(req=null) {
           }
         }
         // ===== END PLATFORM PROVIDER ROUTING =====
+
+        // ===== FREE-CLOUD FALLBACK (High Power, local brain down) — INC-137 =====
+        // The pod/local brain is down: a High Power account gets the free-cloud routers
+        // (openrouter/cerebras/groq/gemini/mistral/cloudflare, FCFS quota) instead of a dead
+        // local call. cloudFallbackChat refuses Private Mode before touching any provider.
+        if (_brainMode === "high_power" && !(BRAIN[slot]?.enabled || BRAIN.conscious?.enabled)) {
+          const _fcStartMs = Date.now();
+          const fc = await cloudFallbackChat({
+            db, actor: resolvedActor, slot,
+            messages: [...(system ? [{ role: "system", content: system }] : []), ...(messages || [])],
+            opts: { temperature, maxTokens, timeoutMs },
+          });
+          if (fc?.ok && fc.text) {
+            structuredLog("info", "llm_free_cloud_routed", { slot, provider: fc.provider, model: fc.model, reason: "local_brain_down" });
+            _meterLlmChat(db, {
+              spanType: "chat", brainUsed: slot, modelUsed: fc.model,
+              callerId: _byoUserId, latencyMs: Date.now() - _fcStartMs,
+              tokensIn: fc.tokensIn, tokensOut: fc.tokensOut,
+            });
+            return { ok: true, content: fc.text, raw: fc, brain: slot, source: "free_cloud", provider: fc.provider, model: fc.model };
+          }
+          structuredLog("warn", "llm_free_cloud_failed", { slot, provider: fc?.provider || null, error: fc?.error || "free_cloud_error" });
+        }
 
         // ===== OLLAMA-ONLY ROUTING =====
         // Sovereignty principle: local brains only. Cloud LLM fallbacks were
