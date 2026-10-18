@@ -27,9 +27,14 @@
 import { renderDtuAsFile, DOCUMENT_EXPORT_FORMATS } from "../lib/dtu-document-export.js";
 import { listZipEntries, readZipEntryText } from "../lib/renderers/zip-renderer.js";
 import { storeArtifact, retrieveArtifact } from "../lib/artifact-store.js";
+import { ctxMayReadDtu } from "../lib/dtu-read-access.js";
 
-function canReadDtu(dtu, userId) {
+function canReadDtu(dtu, userId, ctx = null) {
   if (!dtu) return false;
+  // INC-139: never wider than the by-id read gate (GET /api/dtus/:id).
+  // A private DTU owned through author/userId/createdBy (no ownerId) used
+  // to pass the "no owner" branch below.
+  if (!ctxMayReadDtu(ctx, dtu)) return false;
   if (!dtu.ownerId) return true; // system/no-owner DTUs
   if (dtu.ownerId === userId) return true;
   if (dtu.ownerId === "anon" || dtu.ownerId === "system") return true;
@@ -45,7 +50,7 @@ export default function registerDocumentActions(register) {
     const dtu = STATE.dtus.get(dtuId);
     if (!dtu) return { ok: false, error: "dtu_not_found" };
     const userId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
-    if (!canReadDtu(dtu, userId)) return { ok: false, error: "forbidden" };
+    if (!canReadDtu(dtu, userId, ctx)) return { ok: false, error: "forbidden" };
 
     const rendered = await renderDtuAsFile(dtu, input.format);
     if (!rendered.ok) return rendered;
@@ -150,7 +155,7 @@ export default function registerDocumentActions(register) {
     const dtu = STATE.dtus.get(dtuId);
     if (!dtu) return { ok: false, error: "dtu_not_found" };
     const userId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
-    if (!canReadDtu(dtu, userId)) return { ok: false, error: "forbidden" };
+    if (!canReadDtu(dtu, userId, ctx)) return { ok: false, error: "forbidden" };
     if (!dtu.artifact) return { ok: false, error: "no_artifact_on_dtu" };
     if (dtu.machine?.format !== "application/zip" && dtu.artifact?.type !== "application/zip") {
       return { ok: false, error: "not_a_zip_artifact" };

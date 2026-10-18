@@ -93,6 +93,7 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
 import { lookupUserIdentity } from "./lib/user-identity.js";
 import {
   addSpoFact as _inferenceAddSpoFact,
@@ -40856,6 +40857,12 @@ app.get("/api/world/soundscape/track/:dtuId/audio", (req, res) => {
     if (!tags.includes("soundscape")) return res.status(403).json({ ok: false, error: "not_soundscape_opt_in" });
     const visibility = dtu.meta?.visibility ?? dtu.visibility ?? "private";
     if (visibility === "private") return res.status(403).json({ ok: false, error: "private_visibility" });
+    // INC-139: this route is anonymous + cross-origin. A DTU the by-id read
+    // gate hides from an anonymous viewer (privacy private/followers-only,
+    // scope "user", visibility "internal") is not public-by-author either.
+    if (dtu.visibility === "internal" || privateDtuHiddenFrom(dtu, null)) {
+      return res.status(403).json({ ok: false, error: "private_visibility" });
+    }
     const ref = dtu.artifact;
     if (!ref?.diskPath) return res.status(404).json({ ok: false, error: "no_audio_artifact" });
 
@@ -47301,6 +47308,9 @@ function _presentDtuPublic(dtu, ctx) {
   for (const key of ["ownerId", "createdBy", "createdByUser", "author", "userId"]) {
     if (_looksLikeRawUserId(out[key])) out[key] = _publicActorLabel(ctx, out[key]);
   }
+  // INC-139: artifact refs carry absolute server disk paths in storage.
+  // The wire copy keeps the metadata and drops the paths.
+  if (out.artifact && typeof out.artifact === "object") out.artifact = publicArtifactRef(out.artifact);
   return out;
 }
 
@@ -48177,9 +48187,18 @@ mountArtifactUploadRoutes(app, {
 // case, and a generic res.sendFile() fallback (correct auto content-type +
 // range/ETag support) instead of hardcoding "image/jpeg" for every
 // thumbnail regardless of its actual type.
+// INC-139: every /api/artifact/:dtuId/* read goes through the same gate as
+// GET /api/dtus/:id (dtu.get): shadow DTUs are internal and private DTUs are
+// owner-only. A hidden DTU answers exactly like a missing one (404, same
+// body) so the id does not confirm it exists. Public/shared DTUs and the
+// priced-art preview gate below are unchanged.
+function _artifactDtuForReq(req) {
+  return artifactDtuForViewer(STATE.dtus, req.params.dtuId, makeCtx(req), { isShadow: isShadowDTU });
+}
+
 app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
   try {
-    const dtu = STATE.dtus.get(req.params.dtuId);
+    const dtu = _artifactDtuForReq(req);
     if (!dtu?.artifact?.thumbnail) return res.status(404).json({ ok: false, error: "no_thumbnail" });
     const thumbPath = dtu.artifact.thumbnail;
     const fs = await import("fs");
@@ -48201,7 +48220,7 @@ app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
 
 app.get("/api/artifact/:dtuId/stream", async (req, res) => {
   try {
-    const dtu = STATE.dtus.get(req.params.dtuId);
+    const dtu = _artifactDtuForReq(req);
     if (!dtu?.artifact) return res.status(404).json({ ok: false, error: "no_artifact" });
 
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
@@ -48251,7 +48270,7 @@ app.get("/api/artifact/:dtuId/stream", async (req, res) => {
 
 app.get("/api/artifact/:dtuId/download", async (req, res) => {
   try {
-    const dtu = STATE.dtus.get(req.params.dtuId);
+    const dtu = _artifactDtuForReq(req);
     if (!dtu?.artifact) return res.status(404).json({ ok: false, error: "no_artifact" });
 
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
@@ -48281,7 +48300,7 @@ app.get("/api/artifact/:dtuId/download", async (req, res) => {
 });
 
 app.get("/api/artifact/:dtuId/info", async (req, res) => {
-  const dtu = STATE.dtus.get(req.params.dtuId);
+  const dtu = _artifactDtuForReq(req);
   if (!dtu?.artifact) return res.status(404).json({ ok: false, error: "no_artifact" });
 
   res.json({
