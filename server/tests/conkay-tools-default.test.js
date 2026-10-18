@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { runAgentLoop, executeToolCall } from "../lib/chat-agent.js";
-import { conkayTurnPlan, isDesignAsk } from "../lib/conkay/agent-turn.js";
+import { conkayTurnPlan, isDesignAsk, relativeDateHint } from "../lib/conkay/agent-turn.js";
 import { guardFeaClaim } from "../lib/chat/fea-honesty.js";
 import { explicitImagePrompt } from "../lib/chat/image-router.js";
 
@@ -136,5 +136,20 @@ describe("explicitImagePrompt", () => {
   it("still ignores non-picture renders", () => {
     assert.equal(explicitImagePrompt("render the model"), null);
     assert.equal(explicitImagePrompt("render a stress plot of the beam"), null);
+  });
+});
+
+describe("relativeDateHint", () => {
+  const sat = new Date(2026, 9, 17, 21, 0); // Sat Oct 17 2026, local
+  it("resolves weekday names to real dates", () => {
+    const h = relativeDateHint("create a task: call the machinist friday", sat);
+    assert.match(h, /today is saturday 2026-10-17/);
+    assert.match(h, /friday = friday 2026-10-23/);
+    assert.match(relativeDateHint("meeting tomorrow at 3pm", sat), /tomorrow = 2026-10-18/);
+    assert.match(relativeDateHint("next saturday", sat), /2026-10-24/);
+    assert.equal(relativeDateHint("call the machinist", sat), "");
+  });
+  it("rides the action plan hint", () => {
+    assert.match(conkayTurnPlan("create a task: call the machinist about the bracket quote friday").hint, /friday = friday \d{4}-\d{2}-\d{2}/);
   });
 });
