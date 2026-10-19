@@ -12,6 +12,7 @@ import { coverage } from "./verification/coverage.js";
 import { buildRealizationPackage } from "./verification/realization.js";
 import { hasPendingKernels, settleKernels, KERNEL_PENDING } from "./cad/kernel-queue.js";
 import { listSolvers } from "./physics/registry.js";
+export { softenDesignIR, formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./compiler/soften-ir.js";
 import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
@@ -69,10 +70,10 @@ export { listSolvers };
 
 export function openDesign(ir) {
   const built = DesignGraph.fromIR(ir);
-  if (!built.ok) return { ok: false, errors: built.errors };
+  if (!built.ok) return { ok: false, errors: built.errors, ...(built.warnings ? { warnings: built.warnings } : {}) };
   const engine = new DesignEngine(built.graph);
   engine.runAll();
-  return { ok: true, session: new DesignSession(engine) };
+  return { ok: true, session: new DesignSession(engine), ...(built.warnings ? { warnings: built.warnings } : {}) };
 }
 
 export class DesignSession {

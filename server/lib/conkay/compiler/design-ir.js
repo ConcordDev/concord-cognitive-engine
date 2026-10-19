@@ -17,6 +17,7 @@
 // }
 
 import { parseQuantity } from "./units.js";
+import { softenDesignIR } from "./soften-ir.js";
 import { getMaterial } from "../materials/index.js";
 import { validateMassState } from "../verification/mass-state.js";
 import { CAD_BODY_OPTIONAL } from "../cad/body-params.js";
@@ -154,6 +155,10 @@ export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 
 export function compileDesignIR(ir) {
   const errors = [];
   if (!ir || typeof ir !== "object") return { ok: false, errors: ["design IR must be an object"] };
+  // Soften common agent traps (missing massSource, bare requirements, aliases).
+  const softened = softenDesignIR(ir);
+  ir = softened.ir;
+  const softenWarnings = softened.warnings || [];
   for (const [k, max] of Object.entries(LIMITS)) {
     if (Array.isArray(ir[k]) && ir[k].length > max) return { ok: false, errors: [`${k}: at most ${max} (got ${ir[k].length})`] };
   }
@@ -384,7 +389,13 @@ export function compileDesignIR(ir) {
     requirements.push(req);
   }
 
-  if (errors.length) return { ok: false, errors };
+  if (errors.length) {
+    return {
+      ok: false,
+      errors,
+      ...(softenWarnings.length ? { warnings: softenWarnings } : {}),
+    };
+  }
   // Bolt-joint input validation. Runs *after* unit conversion so the
   // validator can check SI values, ranges, and inter-field constraints
   // (e.g. edgeDistance > holeDiameter/2). This is a non-mutating
@@ -404,6 +415,16 @@ export function compileDesignIR(ir) {
   for (const e of vErrors) {
     errors.push(`${e.where}.${e.field}: [${e.code}] ${e.message}`);
   }
-  if (errors.length) return { ok: false, errors };
-  return { ok: true, design: { design, materialOverrides, nodes, edges, loadCases, requirements } };
+  if (errors.length) {
+    return {
+      ok: false,
+      errors,
+      ...(softenWarnings.length ? { warnings: softenWarnings } : {}),
+    };
+  }
+  return {
+    ok: true,
+    design: { design, materialOverrides, nodes, edges, loadCases, requirements },
+    ...(softenWarnings.length ? { warnings: softenWarnings } : {}),
+  };
 }
