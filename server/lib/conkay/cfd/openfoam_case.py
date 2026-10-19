@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # server/lib/conkay/cfd/openfoam_case.py
 #
-# Writes an OpenFOAM 12 external-aero case (foamRun, incompressibleFluid, steady SIMPLE,
+# Writes an OpenFOAM 12 external-aero case (foamRun, incompressibleFluid, steady SIMPLE; optional transient DDES overlay,
 # k-omega SST, wall functions, snappyHexMesh with 3 layers, moving ground). Stdlib only.
 #
 # Request (JSON on stdin):
 #   { "preset": "ahmed" | "car5m", "outDir": "...", "nproc": int, "endTime": int,
 #     "aref": m2 (car5m only), "lref": m (car5m only),
-#     "refinement": "coarse" | "medium" (default) | "fine" }
+#     "refinement": "coarse" | "medium" (default) | "fine",
+#     "turbulence": "rans" (default) | "ddes",
+#     "flowThroughsDiscard": number > 0, "flowThroughsAverage": number > 0, "cflTarget": 0 < number <= 2
+#       (the last three only with turbulence "ddes"; defaults in DES_DEFAULTS).
+#     refinement and turbulence combine: a "ddes" request on "fine" uses that level's cell size. }
 # Reply (JSON on stdout): { ok, preset, files: { path: sha256 }, caseSha256 } or { ok: false, error }.
 #
 # The templates are the ones the recorded runs were made with (docs/CONKAY-AERO-CFD.md);
@@ -16,7 +20,7 @@
 # Flow: 40 m/s (the Lienhart & Becker / ERCOFTAC 082 speed), nu 1.5e-5 -> Re_L 2.78e6 on the
 # Ahmed body. Ahmed's 0.285 total was measured at Re_L 4.29e6 (60 m/s); stated, not adjusted.
 # Inlet turbulence: intensity 0.5 %, length scale 0.1 m.
-import hashlib, json, os, sys
+import hashlib, json, math, os, re, sys
 
 U = 40.0; NU = 1.5e-5
 
@@ -241,6 +245,153 @@ echo DONE > DONE
     return files
 
 
+# ---------------------------------------------------------------------------------------------
+# Transient DES variant (turbulence "ddes"). The RANS files above are written unchanged; a "ddes"
+# request ADDS des/system/{controlDict,fvSchemes,fvSolution}, des/constant/momentumTransport and
+# AllrunDES. The workflow is the OpenFOAM 12 motorBike LES one: run the steady RANS case, move its
+# last time into 0, swap in the transient dictionaries, run foamRun again.
+#   tutorials/incompressibleFluid/motorBike/lesFiles/{Allrun,controlDict,fvSchemes,fvSolution,momentumTransport}
+# This template has never been run. Every number below is a choice or a formula, stated where used.
+# ---------------------------------------------------------------------------------------------
+TURBULENCE = ("rans", "ddes")
+DES_DEFAULTS = {
+    # choices, not published values: ~5 flow-throughs (L/U) to flush the RANS start-up transient,
+    # ~10 to average over; the statistics in force-coeffs.js decide whether that was enough.
+    "flowThroughsDiscard": 5.0, "flowThroughsAverage": 10.0,
+    # target maximum Courant number of the finest cells (see des_timing); 1 is a choice.
+    "cflTarget": 1.0,
+}
+# Peak local speed assumed in the finest cells, as a multiple of the free stream: a choice (flow
+# over a bluff body's roof/shoulder reaches about 1.3-1.5 U; not computed from this mesh).
+U_PEAK_FACTOR = 1.5
+CDES = 0.61          # kOmegaSSTDES.C: CDES default 0.61 (written explicitly)
+FSST = 2             # kOmegaSSTDES.C FDES(): case 2 = Lt*(1 - F2)/(CDES*delta), the DDES-style F2 shielding
+DELTA_COEFF = 2      # maxDeltaxyz.H: for a regular hex cell delta = half the width, so deltaCoeff 2 gives the max edge
+
+
+def surface_level(files):
+    """Finest snappyHexMesh surface refinement level, read from the snappy dictionary actually written."""
+    m = re.search(r'refinementSurfaces\s*\{\s*\S+\s*\{\s*level\s*\((\d+)\s+(\d+)\)', files['system/snappyHexMeshDict'])
+    if not m:
+        raise ValueError("cannot read the refinement level from snappyHexMeshDict")
+    return max(int(m.group(1)), int(m.group(2)))
+
+
+def base_cell(block):
+    """Largest blockMesh cell edge (m): extent / count per axis, from a written blockMeshDict."""
+    vs = re.search(r'vertices\s*\((.*?)\)\s*;', block, re.S).group(1)
+    pts = [tuple(float(x) for x in t.split()) for t in re.findall(r'\(([^()]*)\)', vs)]
+    n = [int(x) for x in re.search(r'hex\s*\([^)]*\)\s*\((\d+)\s+(\d+)\s+(\d+)\)', block).groups()]
+    lo, hi = pts[0], pts[6]
+    return max((hi[i] - lo[i]) / n[i] for i in range(3))
+
+
+def des_timing(h_fine, lref, cfl, n_discard, n_average):
+    """
+    Time step and run length. dt = cfl * h_fine / (U_PEAK_FACTOR * U), rounded DOWN to 2 significant
+    digits (so Co <= cfl is kept), h_fine = the finest cell edge = blockMesh cell / 2^surface level.
+    One flow-through is lref / U. endTime = ceil(total / dt) whole steps.
+    """
+    raw = cfl * h_fine / (U_PEAK_FACTOR * U)
+    e = math.floor(math.log10(raw))
+    dt = float(f"{math.floor(raw / 10**e * 10 + 1e-9) / 10:.1f}e{e}")
+    t_ft = lref / U
+    steps = lambda t: int(math.ceil(t / dt - 1e-9))
+    n_total = steps((n_discard + n_average) * t_ft)
+    return {
+        "dtS": dt, "hFineM": h_fine, "cflTarget": cfl, "uPeakFactor": U_PEAK_FACTOR,
+        "flowThroughS": t_ft, "stepsPerFlowThrough": steps(t_ft),
+        "discardTimeS": float(f"{n_discard * t_ft:.10g}"), "windowTimeS": float(f"{n_average * t_ft:.10g}"),
+        "flowThroughsDiscard": n_discard, "flowThroughsAverage": n_average,
+        "totalSteps": n_total, "endTimeS": float(f"{n_total * dt:.10g}"),
+        "model": "kOmegaSSTDES", "FSST": FSST, "CDES": CDES, "delta": "maxDeltaxyz", "deltaCoeff": DELTA_COEFF,
+    }
+
+
+def build_des(files, des, nproc, ransEnd):
+    """Adds the transient overlay to `files` (in place)."""
+    # Same function objects as the RANS controlDict (forceCoeffs written EVERY step: writeInterval 1).
+    rc = files['system/controlDict']
+    funcs = rc[rc.index('functions\n'):]
+    files['des/system/controlDict'] = H('dictionary', 'controlDict', 'system') + f'''
+application foamRun;
+solver incompressibleFluid;
+startFrom startTime; startTime 0; stopAt endTime; endTime {des["endTimeS"]:.8g}; deltaT {des["dtS"]:.8g};
+// fixed dt from cflTarget (openfoam_case.py des_timing); adjustTimeStep is NOT used, so the
+// force series is uniformly spaced, which force-coeffs.js timeWindowStatistics requires.
+writeControl timeStep; writeInterval {des["stepsPerFlowThrough"]}; purgeWrite 2; writeFormat binary;
+writePrecision 8; writeCompression off; timeFormat general; timePrecision 8;
+runTimeModifiable true;
+{funcs}'''
+    # fvSchemes: motorBike/lesFiles/fvSchemes (backward, LUST unlimitedGrad(U), limitedLinear 1 on the
+    # turbulence scalars, limited corrected 0.33); omega takes the same scheme as k (an extension of the tutorial).
+    files['des/system/fvSchemes'] = H('dictionary', 'fvSchemes', 'system') + '''
+ddtSchemes { default backward; }
+gradSchemes { default Gauss linear; grad(U) cellLimited Gauss linear 1; }
+divSchemes
+{
+    default none;
+    div(phi,U) Gauss LUST unlimitedGrad(U);
+    div(phi,k) Gauss limitedLinear 1;
+    div(phi,omega) Gauss limitedLinear 1;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+laplacianSchemes { default Gauss linear limited corrected 0.33; }
+interpolationSchemes { default linear; }
+snGradSchemes { default limited corrected 0.33; }
+wallDist { method meshWave; }
+'''
+    # fvSolution: motorBike/lesFiles/fvSolution (PIMPLE nCorrectors 3, pFinal relTol 0, U/k relTol 0)
+    files['des/system/fvSolution'] = H('dictionary', 'fvSolution', 'system') + '''
+solvers
+{
+    p { solver GAMG; tolerance 1e-6; relTol 0.05; smoother GaussSeidel; nCellsInCoarsestLevel 50; }
+    pFinal { $p; relTol 0; }
+    "(U|k|omega).*" { solver smoothSolver; smoother symGaussSeidel; tolerance 1e-7; relTol 0; }
+}
+PIMPLE { nCorrectors 3; nNonOrthogonalCorrectors 0; }
+relaxationFactors { "U.*" 1; "(k|omega).*" 1; }
+'''
+    # momentumTransport: LES block layout as motorBike/lesFiles/momentumTransport; model kOmegaSSTDES
+    # (src/MomentumTransportModels/momentumTransportModels/LES/kOmegaSSTDES/kOmegaSSTDES.C reads CDES and FSST
+    # from kOmegaSSTDESCoeffs); delta maxDeltaxyz (LES/LESdeltas/maxDeltaxyz reads deltaCoeff from maxDeltaxyzCoeffs).
+    files['des/constant/momentumTransport'] = H('dictionary', 'momentumTransport', 'constant') + f'''
+simulationType LES;
+LES
+{{
+    model kOmegaSSTDES;
+    delta maxDeltaxyz;
+    turbulence on;
+    printCoeffs on;
+    kOmegaSSTDESCoeffs {{ CDES {CDES}; FSST {FSST}; }}
+    maxDeltaxyzCoeffs {{ deltaCoeff {DELTA_COEFF}; }}
+}}
+'''
+    files['AllrunDES'] = f'''#!/bin/bash
+# Stage 2 of the DDES case: run AFTER ./Allrun has finished the steady RANS (DONE exists). Same
+# procedure as OpenFOAM 12 tutorials/incompressibleFluid/motorBike/lesFiles/Allrun.
+cd "${{0%/*}}"
+source /opt/openfoam12/etc/bashrc || true
+set -e
+[ -f DONE ] || {{ echo "run ./Allrun (steady RANS, endTime {ransEnd}) first"; exit 1; }}
+[ ! -d postProcessing.rans ] || {{ echo "postProcessing.rans exists: stage 2 was already started"; exit 1; }}
+LATEST=$(ls processor0 | grep -E '^[0-9.]+$' | sort -g | tail -1)
+[ "$LATEST" = "{ransEnd}" ] || {{ echo "latest RANS time is $LATEST, expected {ransEnd}"; exit 1; }}
+mv postProcessing postProcessing.rans
+for p in processor*; do
+  rm -rf "$p/0"
+  mv "$p/$LATEST" "$p/0"
+  rm -rf "$p/0/uniform"
+  for t in $(ls "$p" | grep -E '^[0-9.]+$' | grep -vx 0); do rm -rf "$p/$t"; done
+done
+cp des/system/controlDict des/system/fvSchemes des/system/fvSolution system/
+cp des/constant/momentumTransport constant/
+mpirun --allow-run-as-root -np {nproc} foamRun -parallel > log.foamRun.des 2>&1
+echo DONE > DONE.des
+'''
+    return files
+
+
 def case_hash(files):
     h = hashlib.sha256()
     for p in sorted(files):
@@ -270,7 +421,35 @@ def main():
         refinement = req.get("refinement", "medium")
         if refinement is None or refinement not in REFINEMENTS:
             raise ValueError(f"refinement must be one of {sorted(REFINEMENTS)}")
+        turb = req["turbulence"] if "turbulence" in req else "rans"
+        if turb not in TURBULENCE:
+            raise ValueError(f"turbulence must be one of {list(TURBULENCE)}, got {json.dumps(turb)}")
+        des_req = {k: req[k] for k in DES_DEFAULTS if k in req}
+        if turb == "rans" and des_req:
+            raise ValueError(f"{sorted(des_req)} only apply with turbulence \"ddes\"")
         files = build(PRESETS[preset], nproc, endt, aref, lref, refinement)
+        des = None
+        if turb == "ddes":
+            if endt % 500:
+                raise ValueError("with turbulence \"ddes\" endTime (the RANS stage) must be a multiple of 500, the RANS writeInterval, so its last time is written")
+            vals = {**DES_DEFAULTS, **des_req}
+            for nm, v in vals.items():
+                if not isinstance(v, (int, float)) or isinstance(v, bool) or not v > 0 or v != v or v == float("inf"):
+                    raise ValueError(f"{nm} must be a positive finite number")
+            if vals["cflTarget"] > 2:
+                raise ValueError("cflTarget must be <= 2 (DES with a low-dissipation scheme wants Co of order 1)")
+            if vals["flowThroughsAverage"] < 2:
+                raise ValueError("flowThroughsAverage must be >= 2 flow-throughs")
+            # Finest cell of the mesh this request wrote. refinement scales blockMesh; the snappy
+            # level does not. The preset template still contains @CELLS@, so the count comes from
+            # the written blockMeshDict, not from the template text.
+            h_fine = base_cell(files["system/blockMeshDict"]) / 2 ** surface_level(files)
+            des = des_timing(h_fine, lref, float(vals["cflTarget"]), float(vals["flowThroughsDiscard"]), float(vals["flowThroughsAverage"]))
+            if des["totalSteps"] > 10_000_000:
+                raise ValueError("more than 1e7 time steps: the request is not a usable DES run")
+            if des["stepsPerFlowThrough"] * 1 < 20:
+                raise ValueError("fewer than 20 steps per flow-through")
+            build_des(files, des, nproc, endt)
         out = req.get("outDir")
         if out:
             for p, txt in files.items():
@@ -279,7 +458,9 @@ def main():
                 with open(full, "w") as f:
                     f.write(txt)
             os.chmod(os.path.join(out, "Allrun"), 0o755)
-        print(json.dumps({
+            if "AllrunDES" in files:
+                os.chmod(os.path.join(out, "AllrunDES"), 0o755)
+        reply = {
             "ok": True, "preset": preset, "aref": aref, "lref": lref, "speedMs": U, "nu": NU,
             "fits": PRESETS[preset]["fits"],
             "refinement": refinement, "blockCells": list(block_cells(PRESETS[preset], refinement)),
@@ -289,7 +470,11 @@ def main():
             "solverSetupSha256": case_hash({p: t for p, t in files.items() if p.startswith(("0/", "constant/")) or p in ("system/controlDict", "system/fvSchemes", "system/fvSolution", "system/decomposeParDict", "system/surfaceFeaturesDict")}),
             "files": {p: hashlib.sha256(t.encode()).hexdigest() for p, t in sorted(files.items())},
             "caseSha256": case_hash(files),
-        }))
+        }
+        if des is not None:
+            reply["turbulence"] = turb
+            reply["des"] = des
+        print(json.dumps(reply))
     except Exception as e:  # noqa: BLE001 - every failure goes back as JSON
         print(json.dumps({"ok": False, "error": str(e)}))
 
