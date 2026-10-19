@@ -15,7 +15,7 @@
 // front seats behind the footwell, rear seats ahead of the Super 8.8 IRS at
 // the rear axle, fuel cell above and behind the differential.
 
-import { seatBoxes, umtriHPointX } from "../packaging/checks.js";
+import { seatBoxes, umtriHPointX, sgrpFrontSeats, rearKneeL48, rearLegsToFrontSeats } from "../packaging/checks.js";
 import { seatOccupant, occupantDims, PACKAGING_REFERENCES } from "../packaging/occupant.js";
 import { aabb, separation, bounds } from "../packaging/geometry.js";
 import { frontSeatPopulationPosition } from "../packaging/seat-position-model.js";
@@ -191,12 +191,35 @@ export function deriveRearPackage({ choices, keys, rearKeys = null, seatDims, di
   const trackRear = hx("M50") + c.seatTrackTravel / 2;
   const sgRPFrontX = Math.min(hx("M95"), trackRear);
   const hz = c.floorZ + c.h30;
-  const seatRearX = seatBoxes("SgRP", seatDims, { x: sgRPFrontX, y: 0, z: hz }, c.torsoDeg, c.floorZ, c.frontSeatBackThicknessM || 0).rearX;
+  const frontSeats = sgrpFrontSeats(seatDims, { x: sgRPFrontX, hz, torsoDeg: c.torsoDeg, floorZ: c.floorZ, backT: c.frontSeatBackThicknessM || 0, frontSeatY: c.frontSeatY });
+  const seatRearX = frontSeats[0].rearX; // the seatback's rearmost point (its top): information only, no longer the knee constraint
   const rearZ = c.floorZ + c.rearH31;
   const rearOccAt = (x, y, sides = [-1, 1]) => (rearKeys || keys).flatMap((k) => sides.map((s) => seatOccupant(k, { id: s < 0 ? "SEAT_3" : "SEAT_4", hPoint: { x, y: s * y, z: rearZ }, torsoDeg: c.rearTorsoDeg, posture: "rear", floorZ: c.floorZ })));
-  // Knee pivot relative to the H-point does not depend on the H-point's x.
-  const kneeAhead = Math.max(...rearOccAt(0, c.rearSeatY).map((o) => -o.landmarks.knee[0]));
-  const rearSgRPX = mmUp(seatRearX + J.L48.subtractMm / 1000 + c.rearKneeMarginM + kneeAhead);
+  // Knee: SAE J1100 L48 at the knee pivot's height on the rear face of the front seatback. The knee pivot's height above the
+  // floor and its lead ahead of the H-point do not depend on the H-point x (rear posture: vertical shin, heel on the floor), so
+  // the smallest H-point x giving every occupant (both sides) L48 >= the margin is solved directly from the reference placement.
+  const refOcc = rearOccAt(0, c.rearSeatY);
+  const kneeAhead = Math.max(...refOcc.map((o) => -o.landmarks.knee[0]));
+  let kneeSgRPX = -Infinity, kneeGov = null;
+  for (const o of refOcc) {
+    const l48At0 = rearKneeL48(o, frontSeats, J.L48.subtractMm / 1000); // L48 with the H-point at x = 0; it grows 1:1 with x
+    if (l48At0 == null) continue;
+    const need = c.rearKneeMarginM - l48At0;
+    if (need > kneeSgRPX) { kneeSgRPX = need; kneeGov = { occupant: o.key, seat: o.seat, kneeHeightAboveFloorM: r4(o.landmarks.knee[1] - c.floorZ), seatbackRearFaceXAtKneeM: r4(frontSeats[0].rearXAt(o.landmarks.knee[1])) }; }
+  }
+  // Shin and feet: clear of the front seats' base and back (solid boxes, floor to sitting surface), 0 mm (the check's threshold).
+  const legSep = (x) => Math.min(...rearOccAt(x, c.rearSeatY).map((o) => rearLegsToFrontSeats(o, frontSeats, c.floorZ)));
+  // Not monotone over the whole line (a rear seat far ahead of the front seat is trivially clear), so walk forward from a point
+  // clearly behind the front seats (rearmost seat point + 0.6 m) in 1 mm steps until the legs first touch a front seat box.
+  let footSgRPX = null;
+  { let x = seatRearX + 0.6; if (legSep(x) >= 0) { const floor = Math.min(...frontSeats.map((st) => st.frontX)); while (x - 0.001 > floor && legSep(x - 0.001) >= 0) x -= 0.001; footSgRPX = x; } }
+  // The knee-height reading applies to the 2+2 (rearKeys given: the electric car). A car seating every checked occupant in the
+  // rear (the front-engine car, rearSeating "full") keeps the earlier, more conservative reference, the seatback's rearmost
+  // point, so its layout (and the tub built around it) is unchanged; the knee-height L48 and the foot check still run on it.
+  const topSgRPX = seatRearX + J.L48.subtractMm / 1000 + c.rearKneeMarginM + kneeAhead;
+  const kneeHeightReading = Array.isArray(rearKeys);
+  const rearSgRPX = mmUp(kneeHeightReading ? Math.max(kneeSgRPX, footSgRPX ?? -Infinity) : topSgRPX);
+  const sgRPGovernor = !kneeHeightReading ? "seatback top (earlier reference, every-occupant rear)" : footSgRPX != null && footSgRPX > kneeSgRPX ? "shin/foot to the front seat base" : "knee (L48 at knee height)";
   const d = diffDims;
   const dz = tyreR + (c.diffRiseM || 0);
   const diffAt = (x) => aabb({ id: "DIFFERENTIAL", min: [x - d.lengthM / 2, -d.widthM / 2, dz - d.heightM / 2], max: [x + d.lengthM / 2, d.widthM / 2, dz + d.heightM / 2] });
@@ -260,12 +283,13 @@ export function deriveRearPackage({ choices, keys, rearKeys = null, seatDims, di
     rearSgRPX, rearAxleX, rearSeatY, fuelCellCenter,
     ...(driveUnit ? { driveUnitBox: bounds(unitAt(rearAxleX)) } : {}),
     inputs: {
-      sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), occupants: keys, ...(rearKeys ? { rearOccupants: rearKeys } : {}),
+      sgRPFrontX: r4(sgRPFrontX), frontSeatRearX: r4(seatRearX), kneeAheadOfHPointM: r4(kneeAhead), rearSgRPGovernor: sgRPGovernor, kneeSgRPX: r4(kneeSgRPX), footSgRPX: footSgRPX == null ? null : r4(footSgRPX), kneeGoverning: kneeGov, occupants: keys, ...(rearKeys ? { rearOccupants: rearKeys } : {}),
       // information only (no layout value depends on it): where that front seat sits among drivers (SAE 980651 SAM)
       frontSeatPopulation: frontSeatPopulationPosition({ hxAtStature: (S) => prpX + umtriHPointX(S / 1000, c.steeringWheelL6, c.h30), seatX: sgRPFrontX, trackFrontX: hx("M50") - c.seatTrackTravel / 2, trackRearX: trackRear }),
     },
     method: [
-      `rearSgRPX = front seat rear at the SgRP-front (${r4(seatRearX)} m, seat envelope incl. the backrest allowance) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead of any occupant (${r4(kneeAhead)} m), rounded up to 1 mm`,
+      ...(kneeHeightReading ? [] : [`rearSgRPX (every-occupant rear) = front seat rear at the SgRP-front (${r4(seatRearX)} m, the seatback's rearmost point) + J1100 L48 ${J.L48.subtractMm} mm + rearKneeMarginM + the largest knee-pivot lead (${r4(kneeAhead)} m), rounded up to 1 mm; the knee-height L48 (${r4(kneeSgRPX)} m) and the shin/foot clearance (${footSgRPX == null ? 'n/a' : r4(footSgRPX)} m) are lower and are checked by package.rearKnee / package.rearFoot`]),
+      ...(kneeHeightReading ? [`rearSgRPX = the larger of (a) the smallest H-point x giving every rear occupant J1100 L48 (6.2.27: knee pivot to the back of the front seatback, minus ${J.L48.subtractMm} mm) >= rearKneeMarginM, with the seatback's REAR FACE taken at the knee pivot's height (the seat back surface reclined ${c.torsoDeg} deg, ${Math.round((c.frontSeatBackThicknessM || 0) * 1000)} mm thick; front seat at the SgRP-front ${r4(sgRPFrontX)} m): ${r4(kneeSgRPX)} m, and (b) the smallest x at which the rear occupants' shin and feet clear the front seats' base and back boxes (0 mm): ${footSgRPX == null ? 'n/a' : r4(footSgRPX)} m; rounded up to 1 mm; governed by ${sgRPGovernor}`] : []),
       `rearAxleX = smallest axle x (bisection, 0.1 mm, rounded up to 1 mm) at which the differential envelope (on the axle, centre at tyre-radius height${c.diffRiseM ? ` + diffRiseM ${r4(c.diffRiseM)} m` : ""}) is diffClearanceM behind every rear occupant box of every percentile (separating-axis gap)`,
       "fuelCellCenter: bottom fuelClearanceM above the differential envelope's top; the smallest x at which it is fuelClearanceM clear of every rear occupant box",
       wellNote || "rearSeatY: the design's (no rear wheel-well constraint given)",
