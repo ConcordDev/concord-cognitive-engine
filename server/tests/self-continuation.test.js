@@ -583,3 +583,71 @@ describe("bold field labels are not section headings", async () => {
     assert.ok(out.includes("Worms.") && out.includes("## 3. Jay") && out.includes("Forests."));
   });
 });
+
+describe("no 'I'll continue step by step' preamble (2026-10-18)", async () => {
+  const m = await import("../lib/chat/self-continuation.js");
+  const LIVE = "I can give you a detailed guide, but not in a single response. We'll continue step by step.";
+
+  it("the protocol block forbids announcing parts and never asks for 'continue'", () => {
+    const b = checkpointProtocolBlock(3072);
+    assert.match(b, /one continuous reply/);
+    assert.match(b, /never announce that you will continue/i);
+    assert.ok(!/You will then be asked to continue/.test(b), "must not tell the model it will be asked to continue");
+    assert.ok(b.includes(CHECKPOINT_OPEN) && b.includes(CHECKPOINT_CLOSE), "checkpoint protocol itself stays");
+  });
+
+  it("drops the live preamble and a trailing 'ready for the next part' line", () => {
+    const out = m.stripContinuationPreamble(`${LIVE}\n\n## 1. Site\nPick a sunny spot.\n\n## 2. Soil\nTest it.\n\nLet me know when you're ready for the next part.`, {});
+    assert.equal(out, "## 1. Site\nPick a sunny spot.\n\n## 2. Soil\nTest it.");
+  });
+
+  it("keeps the rest of a mixed opening paragraph", () => {
+    const out = m.stripContinuationPreamble("Sure! This won't fit in one response, so I'll split it into parts. Here is the full guide:\n\n## A\nx", {});
+    assert.equal(out, "Sure! Here is the full guide:\n\n## A\nx");
+  });
+
+  it("leaves ordinary content alone", () => {
+    for (const t of [
+      "Let's go through this step by step.\n\n1. Do x",
+      "Here's what to write in a reply to your landlord.\n\nDear Sir...",
+      "The guide has three parts: soil, water, light.\n\n## Soil\nx",
+      "Great question! Gardening is rewarding.\n\n## 1\nx\n\n## Summary\nThat's everything — enjoy your garden.",
+      "Not in a single response.", // single paragraph: never stripped to nothing
+    ]) assert.equal(m.stripContinuationPreamble(t, {}), t);
+  });
+
+  it("CONCORD_SELF_CONTINUE_PREAMBLE_STRIP=0 turns the strip off", () => {
+    const t = `${LIVE}\n\n## 1\nx`;
+    assert.equal(m.stripContinuationPreamble(t, { CONCORD_SELF_CONTINUE_PREAMBLE_STRIP: "0" }), t);
+  });
+
+  it("runSelfContinuation still continues and returns one clean reply", async () => {
+    let calls = 0;
+    const first = `${LIVE}\n\n## 1. Site\nPick a sunny spot.\n\n${CHECKPOINT_OPEN}\n{"done":["site"],"remaining":["soil"]}\n${CHECKPOINT_CLOSE}`;
+    const r = await runSelfContinuation({
+      generate: async () => { calls++; return { ok: true, text: "\n\n## 2. Soil\nTest it.", doneReason: "stop" }; },
+      firstText: first, firstDoneReason: "stop",
+      env: { CONCORD_CHAT_SELF_CONTINUE: "1", CONCORD_SELF_CONTINUE_KILL_FILE: "/nonexistent/kill" },
+    });
+    assert.equal(calls, 1);
+    assert.equal(r.stoppedBy, "complete");
+    assert.ok(r.text.startsWith("## 1. Site"), r.text);
+    assert.ok(r.text.includes("## 2. Soil"));
+    assertNoCheckpoint(r);
+  });
+
+  it("runAgentLoop: a one-part answer loses the preamble when self-continuation is on", async () => {
+    const prev = process.env.CONCORD_CHAT_SELF_CONTINUE;
+    process.env.CONCORD_CHAT_SELF_CONTINUE = "1";
+    try {
+      const brain = async () => ({ ok: true, provider: "test", model: "t", text: `${LIVE}\n\n## 1. Site\nPick a sunny spot.\n\n## 2. Soil\nTest it.`, doneReason: "stop" });
+      const r = await runAgentLoop({ db: null, userId: "u1", message: "garden guide", runMacro: async () => ({ ok: true }), lensActions: new Map(), history: [], opts: { brainChat: brain, deepen: false } });
+      assert.equal(r.ok, true);
+      assert.ok(r.answer.startsWith("## 1. Site"), r.answer);
+      assert.ok(!/single response|step by step/i.test(r.answer));
+    } finally {
+      if (prev === undefined) delete process.env.CONCORD_CHAT_SELF_CONTINUE;
+      else process.env.CONCORD_CHAT_SELF_CONTINUE = prev;
+    }
+  });
+});

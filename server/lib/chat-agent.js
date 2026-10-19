@@ -66,6 +66,7 @@ import {
   checkpointProtocolBlock,
   parseCheckpoint,
   stripControl,
+  stripContinuationPreamble,
   runSelfContinuation,
 } from "./chat/self-continuation.js";
 
@@ -2038,6 +2039,10 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         if (sc.rounds > 0 || sc.incomplete) {
           finalAnswer = guardPlaybackClaim(sc.text, allToolCalls);
           selfContinuation = { rounds: sc.rounds, stoppedBy: sc.stoppedBy, incomplete: sc.incomplete };
+        } else {
+          // The reader sees one reply: no "not in a single response… step by step" framing, even
+          // when the answer finished in the first part (sc.text already had it removed).
+          finalAnswer = stripContinuationPreamble(finalAnswer);
         }
       }
       // The model sometimes echoes a raw [TOOL_RESULT: ...] block back as its
