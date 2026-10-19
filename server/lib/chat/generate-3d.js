@@ -13,7 +13,7 @@
 
 import { NodeIO } from "@gltf-transform/core";
 import { MeshoptSimplifier } from "meshoptimizer";
-import { assessGpuHealth, isGenerationAbort } from "../pollinations-image.js";
+import { assessGpuHealth, GPU_BUSY_REPLY, isGenerationAbort } from "../pollinations-image.js";
 
 export const THREE_D_TIMEOUT_REPLY = "3D generation timed out before the GPU finished. Try again in a moment.";
 const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the mesh. Try again in a moment.";
@@ -106,22 +106,42 @@ export async function decimateMesh({ positions, indices }, maxTris = MAX_TRIS) {
 /**
  * @returns {Promise<{ok:true, mesh, conceptB64, seconds, provider} | {ok:false, error, reason, stage}>}
  */
-export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, preflight = false } = {}) {
+export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false } = {}) {
   const clean = String(prompt || "").trim().slice(0, 600);
   if (!clean) return { ok: false, stage: "input", reason: "empty_prompt", error: "generate_3d requires a prompt" };
+  const remain = () => (Number(deadlineMs) > 0 ? Number(deadlineMs) - Date.now() : Infinity);
+  // Concept and mesh share one deadline. A 120s concept wait plus the 150s
+  // mesh default is what pushed a JSON chat turn past Cloudflare's 524.
+  if (remain() < 800) {
+    return { ok: false, stage: "budget", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
+  }
   if (preflight) {
     let health = null;
+    let healthAbort = false;
+    const healthCap = Math.min(5_000, Math.max(400, Number.isFinite(remain()) ? remain() : 5_000));
     try {
-      const hr = await fetchImpl(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(5000) });
+      const hr = await fetchImpl(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(healthCap) });
       health = typeof hr?.json === "function" ? await hr.json() : null;
-    } catch { health = null; }
+    } catch (err) {
+      health = null;
+      healthAbort = isGenerationAbort(err);
+    }
     const gate = assessGpuHealth(health);
+    // A health check that itself times out means the pod is stuck on another
+    // job (the tunnel only has the in-flight generation). Do not start /concept.
+    if (healthAbort) {
+      return { ok: false, stage: "concept", reason: "gpu_busy", error: GPU_BUSY_REPLY };
+    }
     if (!gate.ok && (gate.reason === "gpu_busy" || gate.reason === "gpu_wrong_model")) {
       return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
     }
   }
   const t0 = Date.now();
-  const conceptMs = Number(conceptTimeoutMs) > 0 ? Number(conceptTimeoutMs) : 120_000;
+  const conceptCap = Number(conceptTimeoutMs) > 0 ? Number(conceptTimeoutMs) : 120_000;
+  const conceptMs = Math.min(conceptCap, remain());
+  if (conceptMs < 800) {
+    return { ok: false, stage: "budget", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
+  }
   const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, conceptMs, fetchImpl);
   if (!concept?.ok || !concept.png_b64) {
     if (concept?.reason === "timeout") {
@@ -129,7 +149,11 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     }
     return { ok: false, stage: "concept", reason: concept?.reason || "concept_failed", error: `3D generation is unavailable: the GPU pod could not make the concept image (${concept?.reason || concept?.error || "no image"})` };
   }
-  const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, MESH_TIMEOUT_MS, fetchImpl);
+  const meshMs = Math.min(MESH_TIMEOUT_MS, remain());
+  if (meshMs < 800) {
+    return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
+  }
+  const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, meshMs, fetchImpl);
   if (!mesh?.ok || !mesh.glb_b64) {
     if (mesh?.reason === "timeout") {
       return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };

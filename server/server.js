@@ -2162,7 +2162,10 @@ import {
   followUpFailureReply,
   ensureCreatedDtuIds,
   chatTurnArtifacts,
+  scrubUserFacingToolNames,
+  userFacingMeshReply,
 } from "./lib/chat/tool-turn-reply.js";
+import { chatGenerationBudget } from "./lib/chat/gen-budget.js";
 import {
   chatTurnKey,
   coalesceChatTurn,
@@ -27431,6 +27434,11 @@ register("dtu", "gapPromote", async (ctx, input) => {
 // Chat domain
 async function __chatRespondImpl(ctx, input) {
   const sessionId = normalizeText(input.sessionId || "default");
+  // Clock for the generation budget. JSON chat must answer before Cloudflare's
+  // ~100s 524; the brain time before a tool counts against that same clock.
+  if (ctx && typeof ctx === "object" && !Number(ctx.chatTurnStartedAt)) {
+    ctx.chatTurnStartedAt = Date.now();
+  }
 
 const prompt = String(input.prompt || input.message || input.query || "");
 const mode = normalizeText(input.mode || "explore");
@@ -29024,7 +29032,13 @@ ${_operatorV6Block}` : "";
   if (!_deterministicAnswer) {
     try {
       const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
-      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId, timeoutMs: 120_000 });
+      const _imgBudget = chatGenerationBudget({ ctx, startedAt: ctx?.chatTurnStartedAt });
+      const _image = await _fulfillImageRequest(prompt, {
+        ownerId: ctx?.actor?.userId || input?.userId,
+        timeoutMs: _imgBudget.transport === "json"
+          ? Math.max(1, _imgBudget.skipGpu ? 1 : _imgBudget.timeoutMs)
+          : 120_000,
+      });
       if (_image) {
         _imageTurn = _image;
         _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
@@ -29072,11 +29086,18 @@ ${_operatorV6Block}` : "";
     // Chat mode used to call executeToolCall without the user text, so the
     // 3D bounce and the robot/concept hints never saw "generate a 3d cad".
     // chatGenTimeoutMs caps the GPU concept wait (the pod default is 5 min).
+    const _genBudget = chatGenerationBudget({ ctx, startedAt: ctx?.chatTurnStartedAt });
     const _toolCtx = {
       ...ctx,
       userPrompt: typeof prompt === "string" ? prompt : String(input?.message || input?.query || ""),
+      chatTransport: _genBudget.transport,
+      chatGenDeadlineMs: _genBudget.deadlineMs,
+      // Streaming and socket turns keep the 120s concept cap (SSE keep-alives
+      // hold the proxy). A JSON turn replaces it with the time still left so
+      // the attempt plus the local layout fallback stay under ~90s.
       chatGenTimeoutMs: 120_000,
     };
+    if (_genBudget.transport === "json") _toolCtx.chatGenTimeoutMs = _genBudget.timeoutMs;
     const MAX_TOOL_RESULT_LEN = 12000;
     try {
       switch (call.tool) {
@@ -29691,7 +29712,7 @@ ${_operatorV6Block}` : "";
           }
           _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
         } else if (_meshHit) {
-          finalReply = String(_meshHit.result?.instruction || "The 3D model is shown below.");
+          finalReply = userFacingMeshReply(_meshHit);
           _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
         } else if (shouldSkipToolFollowup(_toolResults)) {
           // A failed tool, or a plain DTU save, is answered from the tool
@@ -29973,6 +29994,11 @@ ${_operatorV6Block}` : "";
 
   if (!_lockedReply && _toolCallsExecuted.length) {
     finalReply = ensureCreatedDtuIds(finalReply, _toolCallsExecuted);
+  }
+  // A failed 3D/design tool must not leave "use conkay_design …" in the
+  // transcript. The model-facing retry hint can name the tool; the reply cannot.
+  if (typeof finalReply === "string" && _toolCallsExecuted.some((t) => t && t.ok === false && (t.tool === "generate_3d" || t.tool === "generate_image" || t.tool === "conkay_design"))) {
+    finalReply = scrubUserFacingToolNames(finalReply);
   }
   if (_lockedReply) finalReply = _lockedReply;
 
@@ -56690,6 +56716,7 @@ function initChatSocketHandlers(io) {
           state: STATE,
           log: (...args) => structuredLog("info", "chat:socket", ...args),
           reqMeta: { sessionId },
+          chatTransport: "socket",
           affect: {},
           llm: {
             enabled: LLM_READY,
