@@ -74,3 +74,31 @@ export async function fetchPublicUrl(url, init = {}, opts = {}) {
     typeof opts.pinnedFetchImpl === "function" ? opts.pinnedFetchImpl : fetchWithPinnedIp;
   return pinnedFetch(check, init);
 }
+
+/** Caller-facing reason when a user-supplied target fails the SSRF guard. */
+export const PUBLIC_URL_BLOCKED = "target blocked (private or invalid address)";
+
+/**
+ * Save-time check for a user-supplied URL.
+ *
+ * http(s) targets that the SSRF guard rejects as private, link-local,
+ * loopback, metadata, or otherwise invalid return `{ ok:false }`. A name
+ * that does not resolve is not evidence of a private address (a test TLD
+ * or a transient DNS failure), so it is allowed at save time — the fetch
+ * path still fails closed. Non-http(s) strings are skipped; callers that
+ * persist them keep their own scheme check.
+ *
+ * @param {string} urlString
+ * @returns {Promise<{ ok: boolean, skipped?: boolean, unresolved?: boolean, error?: string }>}
+ */
+export async function assessPublicUrl(urlString) {
+  const raw = String(urlString ?? "").trim();
+  if (!raw || !/^https?:\/\//i.test(raw)) return { ok: true, skipped: true };
+  const check = await validateSafeFetchUrl(raw);
+  if (check.ok) return { ok: true };
+  const error = String(check.error || "URL failed SSRF validation");
+  if (error.startsWith("DNS lookup failed") || error === "Hostname did not resolve") {
+    return { ok: true, unresolved: true };
+  }
+  return { ok: false, error };
+}

@@ -2,6 +2,8 @@
 // Domain actions for app building/prototyping: scaffold generation,
 // UI complexity measurement, and wireframe validation.
 
+import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
+
 export default function registerAppmakerActions(registerLensAction) {
   /**
    * scaffoldApp
@@ -1089,7 +1091,7 @@ export default function registerAppmakerActions(registerLensAction) {
    * connector.save — bind an external API/data-source to the project.
    * params.connector = { id?, name, kind, endpoint, authMode, method }
    */
-  registerLensAction("app-maker", "connectorSave", (ctx, artifact, params) => {
+  registerLensAction("app-maker", "connectorSave", async (ctx, artifact, params) => {
     try {
       const s = getAppState();
       if (!s) return { ok: false, error: "state_unavailable" };
@@ -1098,11 +1100,17 @@ export default function registerAppmakerActions(registerLensAction) {
       const c = params?.connector || {};
       const kindEntry = CONNECTOR_KINDS.find((k) => k.kind === c.kind);
       if (!kindEntry) return { ok: false, error: "unknown_connector_kind" };
+      const endpoint = amClean(c.endpoint || "", 400);
+      // INC-75: reject private/link-local/loopback/metadata hosts before they
+      // are stored. The probe is guarded too; this stops the target being
+      // saved in the first place.
+      const assessed = await assessPublicUrl(endpoint);
+      if (!assessed.ok) return { ok: false, error: PUBLIC_URL_BLOCKED };
       const record = {
         id: c.id && proj.connectors.some((x) => x.id === c.id) ? c.id : amId("conn"),
         name: amClean(c.name || kindEntry.label, 60),
         kind: c.kind,
-        endpoint: amClean(c.endpoint || "", 400),
+        endpoint,
         method: ["GET", "POST", "PUT", "DELETE", "PATCH"].includes(c.method) ? c.method : "GET",
         authMode: kindEntry.authModes.includes(c.authMode) ? c.authMode : kindEntry.authModes[0],
         // Credentials masked — never stored plaintext beyond a label hint.
@@ -1169,16 +1177,20 @@ export default function registerAppmakerActions(registerLensAction) {
         return { ok: true, result: { reachable: null, message: `${conn.kind} connectors are not network-probable` } };
       }
       const started = Date.now();
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
       try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 8000);
-        const resp = await fetch(conn.endpoint, {
+        // INC-75: fetchPublicUrl validates scheme + private/link-local/loopback
+        // (including after DNS) and pins the connection. redirect:manual so a
+        // public 3xx is recorded as that status and not followed onto an
+        // internal address. The 8s abort is the previous probe budget.
+        const resp = await fetchPublicUrl(conn.endpoint, {
           method: conn.kind === "graphql" ? "POST" : conn.method,
           signal: ctrl.signal,
+          redirect: "manual",
           headers: conn.kind === "graphql" ? { "content-type": "application/json" } : undefined,
           body: conn.kind === "graphql" ? JSON.stringify({ query: "{__typename}" }) : undefined,
         });
-        clearTimeout(timer);
         const latencyMs = Date.now() - started;
         conn.status = resp.ok ? "verified" : "error";
         conn.lastTestedAt = amNow();
@@ -1191,10 +1203,17 @@ export default function registerAppmakerActions(registerLensAction) {
         conn.status = "error";
         conn.lastTestedAt = amNow();
         saveAppState();
+        const blocked = netErr?.code === "SSRF_BLOCKED";
         return {
           ok: true,
-          result: { reachable: false, error: String(netErr?.message || netErr), connectorId: conn.id },
+          result: {
+            reachable: false,
+            error: blocked ? PUBLIC_URL_BLOCKED : String(netErr?.message || netErr),
+            connectorId: conn.id,
+          },
         };
+      } finally {
+        clearTimeout(timer);
       }
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
