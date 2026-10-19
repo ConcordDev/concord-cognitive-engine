@@ -25,14 +25,22 @@ export function readSentinelAlerts(sinceMinutes = 10, dbPath = DEFAULT_SENTINEL_
   const conn = openRo(dbPath);
   if (!conn) return [];
   try {
+    // Use a sargable UTC cutoff so an index on created_at can be used.
+    // created_at is SQLite CURRENT_TIMESTAMP text ("YYYY-MM-DD HH:MM:SS", UTC),
+    // so the cutoff must use the same format: an ISO "T...Z" string would sort
+    // after every same-day row and silently drop all recent alerts.
+    const cutoff = new Date(Date.now() - sinceMinutes * 60_000)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
     const rows = conn
       .prepare(
         `SELECT id, observed_at, source, severity, message, delivered_via, trace_id
          FROM sentinel_alerts
-         WHERE datetime(created_at, 'localtime') > datetime('now', 'localtime', ?)
+         WHERE created_at > ?
          ORDER BY id DESC LIMIT 30`,
       )
-      .all(`-${sinceMinutes} minutes`);
+      .all(cutoff);
     return rows.map((r) => ({
       source: "sentinel_alert",
       kind: r.source,
