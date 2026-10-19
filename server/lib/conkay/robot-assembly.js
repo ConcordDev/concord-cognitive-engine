@@ -16,18 +16,23 @@ const countOf = (text, nounRe, dflt) => {
   return Math.max(0, Math.min(8, n || dflt));
 };
 
-/** Which subsystems the ask names, with defaults for a small mobile manipulator. */
+const HUMANOID_RE = /\b(?:humanoids?|bipeds?|androids?|iron[\s-]*man|powered[\s-]*armou?r|exosuits?|exoskeletons?|two[\s-]+legs?|walking)\b|\blegs?\b/i;
+
+/** Which subsystems the ask names, with defaults for a small mobile manipulator.
+ *  A brief that is clearly a person-shaped machine (humanoid, biped, iron man)
+ *  stands on legs. Explicit wheels or tracks still win. */
 export function parseRobotAsk(text) {
   const t = String(text || "").toLowerCase();
-  const legs = /\blegs?\b|\bbiped|\bwalking\b/.test(t);
   const tracked = /\btracks?\b|\btracked\b|\btreads?\b/.test(t);
+  const wheeled = /\bwheels?\b|\bwheeled\b/.test(t);
+  const legs = HUMANOID_RE.test(t) && !tracked && !wheeled;
   const scale = /\b(?:tiny|desk|desktop|toy)\b/.test(t) ? 0.5 : /\b(?:large|big|full[- ]size|human[- ]size)\b/.test(t) ? 2 : 1;
   return {
     scale,
     base: legs ? "legs" : tracked ? "tracks" : "wheels",
     // Default 4 wheels (2 per side); "3 wheels per side" means 6.
     wheels: legs || tracked ? 0 : countOf(t, "wheels?", 4) * (/\bwheels?\s+(?:per|on each|each)\s+side\b/.test(t) ? 2 : 1),
-    arms: countOf(t, "arms?", /\barms?\b/.test(t) ? 2 : 0),
+    arms: countOf(t, "arms?", /\barms?\b/.test(t) ? 2 : (legs ? 2 : 0)),
     head: /\bhead\b/.test(t) || /\bcamera\b/.test(t) || !/\bno head\b/.test(t),
     camera: /\bcamera|vision|eyes?\b/.test(t),
     gripper: !/\bno (?:gripper|hands?)\b/.test(t),

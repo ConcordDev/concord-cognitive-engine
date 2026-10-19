@@ -10,6 +10,19 @@ import { conkayTurnPlan } from "../lib/conkay/agent-turn.js";
 const ASK = "build me a small two-arm robot (wheeled base, torso, two arms, a head with a camera)";
 
 describe("robot assembly", () => {
+  it("a humanoid or iron man brief stands on legs, not a wheeled base", () => {
+    for (const text of ["an iron man like robot", "a humanoid robot", "a biped android"]) {
+      const s = parseRobotAsk(text);
+      assert.equal(s.base, "legs", text);
+      assert.equal(s.wheels, 0, text);
+      assert.equal(s.arms, 2, text);
+      const names = buildRobotAssembly(text).parts.map((p) => p.name);
+      assert.equal(names.filter((n) => n.startsWith("wheel")).length, 0, text);
+      assert.ok(names.some((n) => n.startsWith("leg")), text);
+    }
+    assert.equal(parseRobotAsk("a wheeled iron man robot").base, "wheels");
+    assert.equal(parseRobotAsk(ASK).base, "wheels");
+  });
   it("parses the named subsystems", () => {
     const s = parseRobotAsk(ASK);
     assert.equal(s.arms, 2); assert.equal(s.base, "wheels"); assert.equal(s.wheels, 4);

@@ -1578,10 +1578,24 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "generate_3d": {
         const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
+        const { fallbackDesignCall } = await import("./chat/route-3d-ask.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
-        const g = await generate3dFromPrompt(prompt, Number(ctx?.chatGenTimeoutMs) > 0
-          ? { conceptTimeoutMs: Number(ctx.chatGenTimeoutMs), preflight: true }
-          : {});
+        const deadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
+        const timeoutMs = Number(ctx?.chatGenTimeoutMs);
+        const hasChatBudget = deadlineMs > 0 || (Number.isFinite(timeoutMs) && timeoutMs > 0);
+        let g;
+        if (deadlineMs && deadlineMs - Date.now() < 800) {
+          g = { ok: false, stage: "budget", reason: "timeout", error: "3D generation timed out before the GPU finished. Try again in a moment." };
+        } else {
+          g = await generate3dFromPrompt(prompt, {
+            ...(Number.isFinite(timeoutMs) && timeoutMs > 0 ? { conceptTimeoutMs: timeoutMs } : {}),
+            ...(deadlineMs > 0 ? { deadlineMs } : {}),
+            // Chat always preflights. A busy pod (or a health check that
+            // cannot return) fails in seconds so an engineered ask can fall
+            // back to a local layout instead of sitting out the full timeout.
+            preflight: hasChatBudget || ctx?.chatTransport === "json" || ctx?.chatTransport === "sse" || ctx?.chatTransport === "socket",
+          });
+        }
         const conceptArtifact = async (b64) => {
           try {
             const { publishPrivateImage } = await import("./chat/image-router.js");
@@ -1590,6 +1604,13 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           } catch { return null; }
         };
         if (!g.ok) {
+          const next = fallbackDesignCall(ctx?.userPrompt, prompt, g);
+          if (next) {
+            const designed = await executeToolCall(ctx, runMacro, lensActions, next);
+            if (designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")))) {
+              return { ...designed, fellBackFrom: "generate_3d", fallbackReason: g.reason || g.stage || "failed" };
+            }
+          }
           return { tool: call.tool, ok: false, error: g.error, reason: g.reason, stage: g.stage,
             retryHint: "Free-form 3D generation failed. If the object is functional or engineered, call conkay_design with it in words for a concept 3D assembly; otherwise tell the user plainly that 3D generation is unavailable right now. Do not substitute generate_image and call it a 3D model." };
         }

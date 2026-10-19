@@ -44,8 +44,12 @@ export function isGenerationAbort(err) {
 export function assessGpuHealth(health) {
   if (!health || typeof health !== "object") return { ok: false, reason: "local_gpu_unreachable" };
   const status = String(health.status || health.state || "").toLowerCase();
-  if (health.busy === true || status === "busy") {
-    return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY };
+  // The gen pod reports `busy` (lock held) and `on_gpu` (trellis1 / flux).
+  // A busy pod will not start /concept until the current job finishes, which
+  // is longer than a chat turn can wait.
+  const busyFlag = health.busy === true || health.busy === 1 || String(health.busy).toLowerCase() === "true";
+  if (busyFlag || status === "busy" || status === "occupied") {
+    return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY, onGpu: health.on_gpu || null };
   }
   const loaded = [health.model, health.loaded_model, health.loadedModel, health.weights?.loaded]
     .find((v) => typeof v === "string" && v.trim());

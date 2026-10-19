@@ -94,6 +94,7 @@ export default function registerChatRoutes(app, {
         }
 
         sse("meta", { ok:true, mode: req._concordMode, sessionId: req.body.sessionId || null });
+        ctx.chatTransport = "sse";
         const out = scrubChatFields(await runMacro("chat","respond", req.body, ctx), chatUserText(req.body));
 
         // An unavailable brain is a notice, not a streamed answer.
@@ -126,7 +127,7 @@ export default function registerChatRoutes(app, {
         logger.debug('[chat] buildWorkingContext failed', { err: _wcErr?.message });
       }
 
-      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext }), chatUserText(req.body));
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext, chatTransport: "json" }), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       // Attach confidence score to the final response
@@ -242,12 +243,14 @@ export default function registerChatRoutes(app, {
         req.body = enforceRequestInvariants(req, req.body || {});
         req._concordMode = req.body.mode || "chat";
         const fallbackCtx = makeCtx(req);
+        fallbackCtx.chatTransport = "json";
         const fallbackOut = scrubChatFields(await runMacro("chat","respond", req.body, fallbackCtx), chatUserText(req.body));
         return res.json(fallbackOut);
       }
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";
       const ctx = makeCtx(req);
+      ctx.chatTransport = "sse";
 
       startSSE(res);
 

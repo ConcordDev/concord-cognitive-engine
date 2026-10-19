@@ -15,9 +15,10 @@ import path from "node:path";
 import { CHAT_RESPOND_TOOLS } from "../lib/chat-tool-surface.js";
 import { executeToolCall } from "../lib/chat-agent.js";
 import { chatAgentRoute } from "../lib/chat/agent-route.js";
-import { toolFor3dAsk } from "../lib/chat/route-3d-ask.js";
+import { fallbackDesignCall, toolFor3dAsk } from "../lib/chat/route-3d-ask.js";
 import { generate3dFromPrompt } from "../lib/chat/generate-3d.js";
-import { composeToolTurnReply } from "../lib/chat/tool-turn-reply.js";
+import { chatGenerationBudget, JSON_TURN_BUDGET_MS } from "../lib/chat/gen-budget.js";
+import { composeToolTurnReply, scrubUserFacingToolNames, userFacingMeshReply } from "../lib/chat/tool-turn-reply.js";
 import {
   assessGpuHealth,
   generatePollinationsImage,
@@ -54,6 +55,8 @@ describe("chat 3D tool routing", () => {
     const body = chatExecuteToolCallSource();
     assert.match(body, /userPrompt:/);
     assert.match(body, /chatGenTimeoutMs:\s*120_000/);
+    assert.match(body, /chatGenerationBudget/);
+    assert.match(body, /chatGenDeadlineMs/);
     assert.match(body, /case "conkay_design":/);
     assert.match(body, /case "generate_3d":/);
     assert.match(body, /case "generate_image":/);
@@ -62,9 +65,15 @@ describe("chat 3D tool routing", () => {
     assert.match(body, /_runtimeTool\(_toolCtx,/);
     assert.doesNotMatch(body, /_imageTool\(ctx,/);
     const src = readFileSync(SERVER_JS, "utf8");
+    assert.match(src, /chatTurnStartedAt/);
+    assert.match(src, /userFacingMeshReply/);
+    assert.match(src, /scrubUserFacingToolNames/);
     assert.match(src, /reason !== "wants_3d"/);
     assert.match(src, /toolFor3dAsk/);
     assert.match(src, /userFacingGenerationError/);
+    const routes = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../routes/chat.js"), "utf8");
+    assert.match(routes, /chatTransport: "json"/);
+    assert.match(routes, /chatTransport = "sse"/);
   });
 
   it("routes a 3d cad ask to the design agent path and to conkay_design", () => {
@@ -178,6 +187,7 @@ describe("GPU concept timeout is plain English", () => {
     const reply = composeToolTurnReply([timed.ok ? timed : { tool: "generate_3d", ok: false, error: abort.message }]);
     assert.match(reply, /timed out before the GPU finished/);
     assert.doesNotMatch(reply, /aborted due to timeout/i);
+    assert.doesNotMatch(reply, /\bgenerate_3d\b|\bconkay_design\b|\bgenerate_image\b/);
 
     const calls = [];
     const busy = await generate3dFromPrompt("a small owl", {
@@ -190,6 +200,157 @@ describe("GPU concept timeout is plain English", () => {
     assert.equal(busy.reason, "gpu_busy");
     assert.deepEqual(calls.map((u) => u.slice(u.lastIndexOf("/"))), ["/health"]);
     assert.doesNotMatch(busy.error, /aborted due to timeout/i);
+  });
+});
+
+const IRON_MAN = "Yes generate a 3d cad of an iron man like robot";
+
+function listen(handler) {
+  return new Promise((resolve) => {
+    const s = http.createServer(handler);
+    s.listen(0, "127.0.0.1", () => resolve(s));
+  });
+}
+
+describe("generate_3d failure falls back to a layout", () => {
+  const saved = process.env.CONCORD_GEN_URL;
+  const savedBudget = process.env.CONCORD_CHAT_JSON_BUDGET_MS;
+  after(() => {
+    if (saved === undefined) delete process.env.CONCORD_GEN_URL;
+    else process.env.CONCORD_GEN_URL = saved;
+    if (savedBudget === undefined) delete process.env.CONCORD_CHAT_JSON_BUDGET_MS;
+    else process.env.CONCORD_CHAT_JSON_BUDGET_MS = savedBudget;
+  });
+
+  it("a busy pod on an engineered ask returns a biped layout without naming tools", async () => {
+    let conceptHits = 0;
+    const srv = await listen((req, res) => {
+      if (req.url !== "/health") conceptHits += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, busy: true, on_gpu: "trellis1" }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const t0 = Date.now();
+      const r = await executeToolCall(
+        { userPrompt: IRON_MAN, chatTransport: "json", chatGenTimeoutMs: 30_000, chatGenDeadlineMs: Date.now() + 30_000, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "iron man robot" } },
+      );
+      assert.ok(Date.now() - t0 < 5_000);
+      assert.equal(conceptHits, 0);
+      assert.equal(r.ok, true);
+      assert.equal(r.fellBackFrom, "generate_3d");
+      assert.equal(r.artifact.kind, "mesh");
+      assert.equal(r.result.spec.base, "legs");
+      assert.equal(r.result.spec.wheels, 0);
+      assert.ok(r.artifact.positions.length > 100);
+      const reply = userFacingMeshReply(r);
+      assert.match(reply, /robot layout is shown below/);
+      assert.doesNotMatch(reply, /\bgenerate_3d\b|\bconkay_design\b|\bgenerate_image\b/);
+      assert.equal(userFacingMeshReply({ artifact: { kind: "mesh", meshKind: "i-beam" }, result: { part: "beam" } }), "The 3D model is shown below.");
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("a free-form ask does not fall back to a robot, and the failure names no tool", async () => {
+    const srv = await listen((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, busy: true, on_gpu: "trellis1" }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const r = await executeToolCall(
+        { userPrompt: "generate a 3d model of a dragon", chatGenTimeoutMs: 30_000, chatGenDeadlineMs: Date.now() + 30_000, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "a small dragon figurine" } },
+      );
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "gpu_busy");
+      assert.equal(fallbackDesignCall("generate a 3d model of a dragon", "a dragon", r), null);
+      const reply = composeToolTurnReply([r]);
+      assert.match(reply, /busy/i);
+      assert.doesNotMatch(reply, /\bgenerate_3d\b|\bconkay_design\b|\bgenerate_image\b/);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("scrubs a failure that tells the user to use conkay_design", () => {
+    const reply = composeToolTurnReply([{
+      tool: "generate_3d",
+      ok: false,
+      error: "use conkay_design with a detailed spec",
+    }]);
+    assert.match(reply, /describe the part in more detail/);
+    assert.match(reply, /Agent mode/);
+    assert.doesNotMatch(reply, /\bconkay_design\b|\bgenerate_3d\b|\bgenerate_image\b|\brun_lens_action\b/);
+    const echoed = scrubUserFacingToolNames("That failed. Try conkay_design with a detailed spec, or call generate_3d.");
+    assert.doesNotMatch(echoed, /\bconkay_design\b|\bgenerate_3d\b/);
+    assert.match(echoed, /describe the part in more detail/);
+  });
+
+  it("a non-streaming turn against a slow gen server stays under the 90s budget", { timeout: 20_000 }, async () => {
+    assert.ok(JSON_TURN_BUDGET_MS <= 90_000);
+    assert.ok(JSON_TURN_BUDGET_MS >= 60_000);
+    const open = chatGenerationBudget({ transport: "json", startedAt: Date.now() });
+    assert.equal(open.capMs, JSON_TURN_BUDGET_MS);
+    assert.ok(open.timeoutMs < 90_000);
+    assert.equal(chatGenerationBudget({ transport: "sse", startedAt: Date.now() }).capMs, 120_000);
+    const late = chatGenerationBudget({ transport: "json", startedAt: Date.now() - 80_000 });
+    assert.ok(late.timeoutMs < 10_000);
+
+    process.env.CONCORD_CHAT_JSON_BUDGET_MS = "6000";
+    let conceptHits = 0;
+    let meshHits = 0;
+    const srv = await listen((req, res) => {
+      if (req.url === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+        return;
+      }
+      if (req.url === "/concept") conceptHits += 1;
+      else meshHits += 1;
+      // Never respond. The deadline has to abort the socket.
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const startedAt = Date.now();
+      const budget = chatGenerationBudget({ transport: "json", startedAt });
+      assert.equal(budget.capMs, 6000);
+      assert.ok(budget.timeoutMs > 0 && budget.timeoutMs < 90_000);
+      const r = await executeToolCall(
+        {
+          userPrompt: IRON_MAN,
+          chatTransport: "json",
+          chatGenDeadlineMs: budget.deadlineMs,
+          chatGenTimeoutMs: budget.timeoutMs,
+          actor: { userId: "u1" },
+        },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "iron man cad robot" } },
+      );
+      const elapsed = Date.now() - startedAt;
+      assert.ok(elapsed < 90_000, `wall ${elapsed}ms`);
+      assert.ok(elapsed < budget.capMs + 3_000, `wall ${elapsed}ms exceeded the json budget`);
+      assert.equal(r.ok, true);
+      assert.equal(r.artifact.kind, "mesh");
+      assert.equal(r.result.spec.base, "legs");
+      assert.equal(r.result.parts.filter((p) => p.name.startsWith("wheel")).length, 0);
+      assert.equal(conceptHits, 1);
+      assert.equal(meshHits, 0);
+      const reply = userFacingMeshReply(r);
+      assert.doesNotMatch(reply, /\bconkay_design\b|\bgenerate_3d\b/);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
   });
 });
 

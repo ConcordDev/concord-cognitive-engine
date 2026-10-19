@@ -31,6 +31,45 @@ export function isRecoverableToolFailure(r) {
   return RECOVERABLE_ERROR_RE.test(err);
 }
 
+const THREE_D_USER_TIMEOUT = "3D generation timed out before the GPU finished. Try again in a moment.";
+
+// Identifiers the model uses. A saved chat reply must not recite them.
+const TOOL_NAME_SCRUB = [
+  [/\b(?:use|call|try)\s+conkay_design\s+with\s+a\s+detailed\s+spec\b/gi, "describe the part in more detail, or try Agent mode"],
+  [/\bconkay_design\.from-brief\b/gi, "a fuller design"],
+  [/\bconkay_design\b/gi, "the design layout"],
+  [/\bconkay_(?:solve|compile_brief|solver_list|ir_schema)\b/gi, "the design check"],
+  [/\bgenerate_3d\b/gi, "3D generation"],
+  [/\bgenerate_image\b/gi, "image generation"],
+];
+
+/** Strip design/generation tool identifiers from text a person will read. */
+export function scrubUserFacingToolNames(text) {
+  let s = String(text || "");
+  for (const [re, to] of TOOL_NAME_SCRUB) {
+    re.lastIndex = 0;
+    s = s.replace(re, to);
+  }
+  return s.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.])/g, "$1").trim();
+}
+
+const MESH_REPLY = {
+  robot: "The robot layout is shown below. It is a starting arrangement, not a checked design: no structural, motor, or battery sizing was run. Describe a change if you want a different size, or try Agent mode for a fuller design.",
+  concept: "The 3D layout is shown below. It is a concept arrangement, not a checked engineering analysis. Describe a size or material to change it, or try Agent mode for a fuller design.",
+};
+
+/** Sentence stored as the chat reply when a turn produced a mesh. No tool names.
+ *  A solved part keeps a plain "shown below" line. Only a layout concept says
+ *  that no engineering check was run. */
+export function userFacingMeshReply(hit) {
+  const kind = `${hit?.result?.kind || ""} ${hit?.key || ""} ${hit?.artifact?.meshKind || ""}`;
+  if (/robot/i.test(kind)) return MESH_REPLY.robot;
+  if (/concept/i.test(kind)) return MESH_REPLY.concept;
+  const instruction = String(hit?.result?.instruction || "").trim();
+  if (instruction) return scrubUserFacingToolNames(instruction);
+  return "The 3D model is shown below.";
+}
+
 /** Default recovery hint for a failed call that came back without one. */
 export function recoveryHint(r) {
   const err = String(r?.error || r?.reason || "");
@@ -98,8 +137,9 @@ export function composeToolTurnReply(results) {
   for (const r of Array.isArray(results) ? results : []) {
     if (!r?.ok) {
       const raw = String(r?.error || "it failed");
-      const err = userFacingGenerationError(raw) || raw;
-      lines.push(`I couldn't complete ${r?.tool || "that tool"}: ${String(err).replace(/[.!?]+\s*$/, "")}.`);
+      const err = userFacingGenerationError(raw, r?.tool === "generate_3d" ? THREE_D_USER_TIMEOUT : undefined) || raw;
+      const label = r?.tool || "that step";
+      lines.push(scrubUserFacingToolNames(`I couldn't complete ${label}: ${String(err).replace(/[.!?]+\s*$/, "")}.`));
       continue;
     }
     if (r.tool === "create_dtu" && r.dtuId) {
