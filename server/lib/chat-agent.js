@@ -1103,7 +1103,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             tool: call.tool, ok: false,
             error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}`,
             // The model gets one more turn to size an unsupported part by formula.
-            ...(summary.supportedParts ? { retryHint: "This part has no ConKay solver. Size it with run_python (show the formula, inputs and result), or say plainly it is not supported." } : {}),
+            ...(summary.supportedParts ? { retryHint: "This part has no ConKay solver. Do not call run_python for it (code execution is off for member accounts). Answer in your reply: say ConKay's design solver does not cover this part yet, then work it out by formula in words (formula, inputs, result) or give practical design guidance (key dimensions, material, how it is built)." } : {}),
           };
         }
         // The solved part's triangle mesh (same arrays POST /api/conkay/design

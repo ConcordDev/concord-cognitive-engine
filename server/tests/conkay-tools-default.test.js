@@ -107,7 +107,8 @@ describe("conkay_design unsupported part", () => {
   it("fails with a retry hint so the model can size it by formula", async () => {
     const r = await executeToolCall({ actor: { userId: "u1" } }, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "size a steel shaft for 200 Nm torque" } });
     assert.equal(r.ok, false);
-    assert.match(r.retryHint, /run_python/);
+    assert.match(r.retryHint, /by formula/);
+    assert.match(r.retryHint, /Do not call run_python/);
   });
 });
 
