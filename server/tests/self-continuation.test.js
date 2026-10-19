@@ -590,8 +590,8 @@ describe("no 'I'll continue step by step' preamble (2026-10-18)", async () => {
 
   it("the protocol block forbids announcing parts and never asks for 'continue'", () => {
     const b = checkpointProtocolBlock(3072);
-    assert.match(b, /one continuous reply/);
-    assert.match(b, /never announce that you will continue/i);
+    assert.match(b, /joins responses into one reply/);
+    assert.match(b, /Never tell the user the answer is split/);
     assert.ok(!/You will then be asked to continue/.test(b), "must not tell the model it will be asked to continue");
     assert.ok(b.includes(CHECKPOINT_OPEN) && b.includes(CHECKPOINT_CLOSE), "checkpoint protocol itself stays");
   });

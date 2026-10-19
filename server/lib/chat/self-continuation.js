@@ -60,14 +60,15 @@ export function checkpointProtocolBlock(roundTokens) {
   // The reader always sees ONE reply: Concord stitches the parts itself. Telling the model its
   // per-response size made it open long answers with "I can give you a detailed guide, but not in a
   // single response… we'll continue step by step" (live 2026-10-18) even when the answer then
-  // finished in one message — so the block forbids announcing parts and frames the limit as internal.
+  // finished in one message — so the block forbids announcing parts. It keeps the original framing
+  // otherwise: a v1 rewording ("write the complete answer… start directly with the answer") made the
+  // web-lookup route refuse ("I couldn't find a complete guide…") 2/2 on a live garden-guide ask.
   return (
-    "LONG ANSWERS: Write the complete answer as one continuous reply. Never say or imply the answer is too long for one response, never announce that you will continue, go step by step across messages or split it into parts, and never ask the user to say \"continue\" — the system continues for you and the reader sees one seamless reply. Start directly with the answer itself.\n" +
-    `Internal limit (never mention it): one generation holds about ${words} words. If you reach it before the answer is complete, finish your last sentence, then end the generation with this block and nothing after it:\n` +
+    `LONG ANSWERS: Each response holds about ${words} words; Concord joins responses into one reply automatically. If the answer will not fit, write as much as fits, finish your last sentence, then end the response with this block and nothing after it:\n` +
     `${CHECKPOINT_OPEN}\n` +
     `{"done":["parts you finished"],"remaining":["parts still to write"],"next":"what to write first next time"}\n` +
     `${CHECKPOINT_CLOSE}\n` +
-    "Never put the block in the middle of a response, never mention it, and leave it out entirely when the answer is complete."
+    "Never put the block in the middle of a response and never mention it or the word limit. Never tell the user the answer is split, comes in parts, continues later or will go step by step across messages, and never ask them to say \"continue\". Leave the block out entirely when the answer is complete."
   );
 }
 
