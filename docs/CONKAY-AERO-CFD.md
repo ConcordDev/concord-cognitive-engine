@@ -62,7 +62,43 @@ Even if the total is accepted, the component split is not: the base is high and 
 Gant, and the two errors partly cancel.
 
 Caveats regardless of the outcome: 40 m/s (Re_L 2.78e6) vs Ahmed's 60 m/s; stilts omitted; moving
-ground; one mesh, no grid-convergence study.
+ground; the validation run is a single mesh (see Grid convergence below for the study tooling; no
+study has been run yet).
+
+## Grid convergence
+
+`openfoam_case.py` takes an optional `refinement` of `coarse`, `medium` (default) or `fine`. `medium`
+is exactly the mesh above (the pinned `caseSha256` values are unchanged); an unknown value is an
+error. Every blockMesh axis count is scaled by sqrt 2 per step (Ahmed 80x20x14 becomes 57x14x10 /
+113x28x20; car 85x30x15 becomes 60x21x11 / 120x42x21) and the snappy refinement levels stay put, so
+every cell size, the layers included (`relativeSizes`), scales by the same r = 1.414, above the 1.3
+that Celik et al. (2008, Step 2) ask for. A ratio of 2 (one snappy level) would make the fine Ahmed
+mesh about 45 M cells; sqrt 2 gives about 2.8x the cells per step (~2 M / 5.6 M / ~16 M for Ahmed).
+Axis counts are rounded and snappy snapping is not self-similar, so the study uses the realised cell
+counts, not the nominal r. The fine level raises `maxLocalCells` to 6 M (per rank) so refinement is
+not cut short; the other files are byte-identical across levels (`solverSetupSha256` proves it).
+
+```bash
+node server/scripts/conkay-cfd.mjs case --body <hash> --out /tmp/car-fine --refinement fine
+# run it, then import; non-medium runs are stored beside the medium one as <hash>.fine / <hash>.coarse
+node server/scripts/conkay-cfd.mjs import --body <hash> --run /tmp/car-fine
+```
+
+`cfd/gci.js` is the Celik et al. (2008) procedure (Eqs. 1-7: apparent order by fixed-point iteration,
+extrapolated value, e_a, e_ext, GCI_fine). Oscillatory, divergent, zero-difference or
+non-converging series give no number. `cfd/mesh-study.js` reduces the three runs with the usual tail
+statistics, requires each level to be settled and the cases to differ only in `refinement`, takes
+h = (domain volume / snappy cell count)^(1/3), and feeds the GCI. When coarse/fine runs are
+recorded for a body, `aero.cfd` adds a `discretizationUncertainty` output; it never changes the
+settled/Ahmed verdict. The GCI is the discretization error of Cd for this mesh family only, not
+turbulence-model error and not validation; the bluff-body wake's iterative scatter (up to the 2 %
+settled limit) can be as large as the level-to-level differences.
+
+Acceptance: `tests/conkay-cfd-gci.test.js` reproduces the three columns of Table 1 of the JFE
+procedure (p, phi_ext, e_a, e_ext, GCI_fine; backward-facing step data of Celik & Karatekin) and
+recovers p and phi_0 from exact power series. Note the kernel's file hash changed (new code), so
+runs recorded under the previous `kernelSha256` must be re-recorded or re-stamped before `aero.cfd`
+accepts them.
 
 ## Running a case
 
