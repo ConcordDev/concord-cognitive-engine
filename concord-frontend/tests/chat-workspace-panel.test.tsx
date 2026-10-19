@@ -109,13 +109,24 @@ vi.mock('@/components/conkay/useConKayVoice', () => ({
 
 // ── heavy / unrelated children ─────────────────────────────────────────────
 vi.mock('react-virtuoso', () => ({
-  Virtuoso: ({ data, itemContent }: { data: unknown[]; itemContent: (i: number, d: unknown) => React.ReactNode }) => (
-    <div data-testid="virtuoso">
-      {data.map((d, i) => (
-        <div key={i}>{itemContent(i, d)}</div>
-      ))}
-    </div>
-  ),
+  // Mirrors the real list: items, then components.Footer (streaming preview /
+  // thinking dots ride there) with the list's `context`.
+  Virtuoso: ({ data, itemContent, components, context }: {
+    data: unknown[];
+    itemContent: (i: number, d: unknown) => React.ReactNode;
+    components?: { Footer?: React.ComponentType<{ context?: unknown }> };
+    context?: unknown;
+  }) => {
+    const Footer = components?.Footer;
+    return (
+      <div data-testid="virtuoso" data-virtuoso-scroller="true">
+        {data.map((d, i) => (
+          <div key={i}>{itemContent(i, d)}</div>
+        ))}
+        {Footer ? <Footer context={context} /> : null}
+      </div>
+    );
+  },
 }));
 // framer-motion: render motion.* as the plain element and AnimatePresence as a
 // passthrough, so exit animations (which never finish in jsdom) don't keep
@@ -802,6 +813,39 @@ describe('ChatWorkspacePanel — sending', () => {
     fireEvent.click(stop);
     expect(seenSignal?.aborted).toBe(true);
     resolveStream(jsonResponse({ reply: 'late' }));
+  });
+
+  it('laptop layout: the streaming reply renders inside the scrolling thread, above the floating composer', async () => {
+    // One streamed chunk, then the stream stays open (reply still arriving).
+    const enc = new TextEncoder();
+    let sent = false;
+    fetchHandler = (url) => {
+      if (url === '/api/chat/stream') {
+        return Promise.resolve({
+          ok: true,
+          headers: { get: () => 'text/event-stream' },
+          body: {
+            getReader: () => ({
+              read: () => {
+                if (sent) return new Promise(() => {});
+                sent = true;
+                return Promise.resolve({ done: false, value: enc.encode(`data: ${JSON.stringify({ ok: true, chunk: 'Streaming section one', done: false })}\n`) });
+              },
+              cancel: vi.fn(),
+            }),
+          },
+        });
+      }
+      return Promise.resolve(jsonResponse({ ok: false }));
+    };
+    renderPanel();
+    send('a long question');
+    const streamed = await screen.findByText(/Streaming section one/);
+    // Inside the Virtuoso scroller (its Footer), not an unscrollable sibling block under the list.
+    expect(screen.getByTestId('virtuoso')).toContainElement(streamed);
+    const threadEl = screen.getByTestId('chat-thread');
+    expect(threadEl.className).toMatch(/\bmin-h-0\b/);
+    expect(threadEl).not.toContainElement(screen.getByTestId('chat-composer'));
   });
 
   it('Escape in the composer aborts generation while pending', async () => {
