@@ -121,6 +121,9 @@ export const VAULT_DTU_TYPE = "vault_record";
 // writes tersely, only reject a non-statement.
 export const MIN_CURATOR_STATEMENT_CHARS = 20;
 
+// INC-148: platform roles allowed to install the (single, permanent) founding curator.
+export const FOUNDING_CURATOR_ROLES = ["founder", "sovereign"];
+
 const MAX_STATEMENT_CHARS = 8000;
 const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 200;
@@ -807,8 +810,18 @@ export default function registerVaultActions(registerLensAction) {
   registerLensAction("vault", "decline", needsActor(({ db, p, userId }) =>
     decline(db, p.submissionId, { curatorId: userId, reason: p.reason })));
 
-  registerLensAction("vault", "install_founding_curator", needsActor(({ db, p, userId }) =>
-    installFoundingCurator(db, { curatorId: userId, displayName: p.displayName })));
+  // INC-148 (2026-10-19): the founding-curator slot is single, permanent and
+  // cannot be retired, so first-come-first-served let ANY authenticated
+  // member seize TheVault (and from there admit permanent records and invite
+  // curators). Only the platform founder/sovereign may install it. Role comes
+  // from the authenticated actor, never the payload.
+  registerLensAction("vault", "install_founding_curator", needsActor(({ db, p, userId, ctx }) => {
+    const role = String(ctx?.actor?.role || "").toLowerCase();
+    if (!FOUNDING_CURATOR_ROLES.includes(role)) {
+      return { ok: false, reason: "founder_only", error: "Insufficient permissions: only the platform founder may install the founding curator" };
+    }
+    return installFoundingCurator(db, { curatorId: userId, displayName: p.displayName });
+  }));
 
   registerLensAction("vault", "invite_curator", needsActor(({ db, p, userId }) =>
     inviteGuestCurator(db, userId, { curatorId: p.curatorId, displayName: p.displayName })));
