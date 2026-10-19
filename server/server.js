@@ -27979,7 +27979,13 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
           }
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
-        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}) });
+        // POST /api/chat (JSON) has one ~85s wall-clock budget for the whole
+        // turn (lib/chat/gen-budget.js). The agent loop's brain rounds, tool
+        // calls and generate_3d → layout fallback all run against it. Stream
+        // and socket turns keep their keepalive-backed timeouts.
+        const _agentBudget = chatGenerationBudget({ ctx, startedAt: ctx?.chatTurnStartedAt });
+        const _agentDeadline = _agentBudget.transport === "json" ? { deadlineMs: _agentBudget.deadlineMs } : {};
+        const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);
           if (process.env.CONCORD_CHAT_HUMANIZE !== "0") {
@@ -28019,6 +28025,17 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       }
     } catch (_agentErr) {
       ctx.log("chat", "Agent-route failed; using the conversational path", { error: String(_agentErr?.message || _agentErr) });
+    }
+    // A JSON turn whose agent attempt used up the budget does not start the
+    // conversational path (another full brain call) and run into the 524.
+    const _afterAgent = chatGenerationBudget({ ctx, startedAt: ctx?.chatTurnStartedAt });
+    if (_afterAgent.transport === "json" && _afterAgent.timeoutMs < 20_000 && Date.now() - Number(ctx?.chatTurnStartedAt || Date.now()) > 20_000) {
+      const { budgetExhaustedReply: _budgetReply } = await import("./lib/chat/tool-turn-reply.js");
+      const reply = _budgetReply([], { prompt });
+      sess.messages.push({ role: "assistant", content: reply, ts: nowISO(), meta: { llmUsed: false, mode, source: "chat_budget" } });
+      _persistDeterministicTurn(reply, { llmUsed: false, source: "chat_budget" });
+      saveStateDebounced();
+      return { ok: true, reply, content: reply, sessionId, mode, llmUsed: false, meta: { panel: "chat", sessionId, mode, llmUsed: false, source: "chat_budget" } };
     }
   }
 

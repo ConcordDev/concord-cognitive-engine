@@ -29,6 +29,15 @@ export function sha256File(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
+const LEVELS = ["coarse", "medium", "fine"];
+
+/** Directory of a run: <key> for the medium (default) mesh, <key>.coarse / <key>.fine for the other grid-study levels. */
+function runDirFor(dir, key, refinement) {
+  if (refinement === undefined || refinement === null || refinement === "medium") return path.join(dir, key);
+  if (!LEVELS.includes(refinement)) throw new Error(`refinement must be one of ${LEVELS.join(", ")}, got ${JSON.stringify(refinement)}`);
+  return path.join(dir, `${key}.${refinement}`);
+}
+
 function assertKey(key) {
   if (typeof key !== "string" || !KEY.test(key)) throw new Error(`cfd run key must be a 24-hex cad.body request hash, got ${JSON.stringify(key)}`);
 }
@@ -50,9 +59,9 @@ function segmentFiles(dir) {
  * unusable (bad schema, a copied file whose hash differs from the receipt, unparsable data),
  * else { record, forces: { fn: merged }, snappy }.
  */
-export function readRun(key, { dir = cfdStoreDir() } = {}) {
+export function readRun(key, { dir = cfdStoreDir(), refinement } = {}) {
   assertKey(key);
-  const runDir = path.join(dir, key);
+  const runDir = runDirFor(dir, key, refinement);
   const file = path.join(runDir, "run.json");
   if (!fs.existsSync(file)) return null;
   try {
@@ -86,10 +95,10 @@ export function readRun(key, { dir = cfdStoreDir() } = {}) {
  * (case, surface, solver, host, stepSha256, frontalArea ...). Copies every
  * <postProcessingDir>/<fn>/<startTime>/forceCoeffs.dat and writes run.json with their hashes.
  */
-export function importRun(key, src, meta, { dir = cfdStoreDir() } = {}) {
+export function importRun(key, src, meta, { dir = cfdStoreDir(), refinement } = {}) {
   assertKey(key);
   if (!src?.postProcessingDir || !fs.existsSync(src.postProcessingDir)) throw new Error("importRun: postProcessingDir missing");
-  const runDir = path.join(dir, key);
+  const runDir = runDirFor(dir, key, refinement ?? meta?.case?.refinement ?? undefined);
   fs.mkdirSync(runDir, { recursive: true, mode: 0o700 });
   const files = {};
   for (const fn of fs.readdirSync(src.postProcessingDir)) {

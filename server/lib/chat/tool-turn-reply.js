@@ -193,3 +193,34 @@ export function ensureCreatedDtuIds(reply, results) {
     .join("\n");
   return text.trim() ? `${text.trim()}\n\n${extra}` : extra;
 }
+
+const THREE_D_TOOLS = new Set(["generate_3d", "conkay_design", "generate_image"]);
+
+/** First tool result that carries a mesh artifact, or null. */
+export function meshResult(results) {
+  for (const r of Array.isArray(results) ? results : []) {
+    if (!r?.ok) continue;
+    if (r.artifact?.kind === "mesh") return r;
+    if (Array.isArray(r.artifacts) && r.artifacts.some((a) => a?.kind === "mesh")) return r;
+  }
+  return null;
+}
+
+/**
+ * Reply for a non-streaming chat turn that ran out of its ~85s budget
+ * (lib/chat/gen-budget.js). A mesh that did come back is reported; otherwise a
+ * plain "still generating, try again" line. Never names a tool.
+ */
+export function budgetExhaustedReply(results, { prompt = "" } = {}) {
+  const list = Array.isArray(results) ? results : [];
+  const hit = meshResult(list);
+  if (hit) return userFacingMeshReply(hit);
+  const wants3d = list.some((r) => THREE_D_TOOLS.has(r?.tool)) || /\b(?:3[- ]?d|cad|stl|mesh|model)\b/i.test(String(prompt || ""));
+  if (wants3d) {
+    return "3D generation is still running and didn't finish in time for this reply. Try again in a minute. If it's a part or a robot, describe it with sizes and I can make a quick layout instead.";
+  }
+  const done = list.filter((r) => r?.ok).length;
+  return done
+    ? "That took longer than I can wait on this connection, so this answer is cut short. Ask again and I'll pick it up from here."
+    : "That took longer than I can wait on this connection. Try again in a moment.";
+}

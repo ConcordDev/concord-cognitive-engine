@@ -16,7 +16,7 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps keyed
 // by userId. Every handler returns { ok, result?, error? } and never throws.
 
-import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
 
 export default function registerObserveActions(registerLensAction) {
   // ---- per-user STATE -------------------------------------------------
@@ -632,7 +632,7 @@ export default function registerObserveActions(registerLensAction) {
   // ====================================================================
 
   /** syntheticSave — create or update a synthetic uptime / API check. */
-  registerLensAction("observe", "syntheticSave", (ctx, _artifact, params = {}) => {
+  registerLensAction("observe", "syntheticSave", async (ctx, _artifact, params = {}) => {
     try {
       const s = getObserveState();
       if (!s) return { ok: false, error: "state unavailable" };
@@ -640,6 +640,10 @@ export default function registerObserveActions(registerLensAction) {
       const list = listFor(s.synthetics, uid);
       const url = clean(params.url, 400);
       if (!url) return { ok: false, error: "url required" };
+      // INC-76: reject private/link-local/loopback/metadata hosts at save.
+      // Unresolvable names are kept (the run path still fails closed).
+      const assessed = await assessPublicUrl(url);
+      if (!assessed.ok) return { ok: false, error: PUBLIC_URL_BLOCKED };
       let chk = params.id ? list.find((c) => c.id === params.id) : null;
       const reqMethod = String(params.method || "GET").toUpperCase();
       const fields = {
@@ -701,11 +705,13 @@ export default function registerObserveActions(registerLensAction) {
       if (!chk) return { ok: false, error: "check not found" };
       const started = Date.now();
       let ok = false, statusCode = 0, errText = null, latencyMs = 0;
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), chk.timeoutMs);
       try {
-        const ctl = new AbortController();
-        const to = setTimeout(() => ctl.abort(), chk.timeoutMs);
-        const res = await fetch(chk.url, { method: chk.method, signal: ctl.signal });
-        clearTimeout(to);
+        // INC-76: same SSRF guard as pageOnCall (fetchPublicUrl). redirect
+        // manual so the recorded status is the check URL itself. The saved
+        // timeoutMs still aborts the probe.
+        const res = await fetchPublicUrl(chk.url, { method: chk.method, signal: ctl.signal, redirect: "manual" });
         latencyMs = Date.now() - started;
         statusCode = res.status;
         let body = "";
@@ -714,7 +720,10 @@ export default function registerObserveActions(registerLensAction) {
           && (!chk.expectSubstring || body.includes(chk.expectSubstring));
       } catch (e) {
         latencyMs = Date.now() - started;
-        errText = e?.name === "AbortError" ? "timeout" : String(e?.message || e);
+        if (e?.code === "SSRF_BLOCKED") errText = PUBLIC_URL_BLOCKED;
+        else errText = e?.name === "AbortError" ? "timeout" : String(e?.message || e);
+      } finally {
+        clearTimeout(to);
       }
       const run = { ts: started, ok, statusCode, latencyMs, error: errText };
       chk.history.push(run);
