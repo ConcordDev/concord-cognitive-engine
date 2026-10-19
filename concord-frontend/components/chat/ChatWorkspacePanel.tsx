@@ -305,6 +305,17 @@ export interface ChatWorkspacePanelProps {
   onActiveChange: (mode: ChatMode) => void;
 }
 
+/**
+ * Streaming / thinking indicators ride inside the Virtuoso scroller as its
+ * Footer, so a long streamed reply scrolls with the thread instead of growing
+ * an unscrollable block under the list (which, at laptop heights, pushed the
+ * newest text behind the floating composer and out of view). Module-level so
+ * Virtuoso sees one stable component type; the content comes via `context`.
+ */
+function ChatThreadFooter({ context }: { context?: { footer: React.ReactNode } }) {
+  return <>{context?.footer ?? null}</>;
+}
+
 export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePanelProps) {
   // Phase 12 (Item 8 cont.) — flash on chat completion + multi-device
   // message saves. Excludes chat:token / chat:status because those fire
@@ -846,6 +857,20 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // the bottom (auto-follow); if they've scrolled up to read history we
   // don't yank them back.
   const streamingAnchorRef = useRef<HTMLDivElement | null>(null);
+  // The floating composer overlays the bottom of the thread. Its height varies
+  // (textarea grows to max-h-32, quote / attachment chips), so the thread's
+  // bottom padding tracks the measured height instead of a fixed pb-28/pb-32
+  // that a grown composer covered on short laptop screens.
+  const [composerHeight, setComposerHeight] = useState(0);
+  const composerObserverRef = useRef<ResizeObserver | null>(null);
+  const composerRef = useCallback((el: HTMLDivElement | null) => {
+    composerObserverRef.current?.disconnect();
+    composerObserverRef.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setComposerHeight(Math.ceil(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    composerObserverRef.current = ro;
+  }, []);
   const lastScrollTsRef = useRef<number>(0);
   useEffect(() => {
     if (!streamActive || !streamingContent || !streamingAnchorRef.current) return;
@@ -853,14 +878,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     if (now - lastScrollTsRef.current < 80) return; // ~12 fps cap
     lastScrollTsRef.current = now;
     const anchor = streamingAnchorRef.current;
-    const scroller = anchor.closest('.overflow-y-auto, .overflow-auto') as HTMLElement | null;
+    const scroller = anchor.closest('[data-virtuoso-scroller], .overflow-y-auto, .overflow-auto') as HTMLElement | null;
     if (scroller) {
       const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
       // Only auto-follow when the user is within 200px of the bottom.
       if (distanceFromBottom > 200) return;
+      // Scroll the thread itself. scrollIntoView also scrolls every ancestor
+      // (lens container, app <main>), which slid the composer off-screen.
+      requestAnimationFrame(() => { scroller.scrollTop = scroller.scrollHeight; });
+      return;
     }
     requestAnimationFrame(() => {
-      anchor?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      anchor?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     });
   }, [streamingContent, streamActive]);
 
@@ -2728,19 +2757,73 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     ? selectedPersona.name
     : 'Concord';
 
+  // Streaming preview + thinking dots. Rendered as the Virtuoso Footer (inside
+  // the thread scroller) so the newest text stays reachable above the composer.
+  const threadFooter = (
+    <>
+      {/* Streaming indicator */}
+      {streamActive && streamingContent && (
+        <div className="flex gap-4 px-4 lg:px-6 pb-2">
+          <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
+            <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+          </div>
+          <div className="flex-1 max-w-2xl">
+            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-neon-cyan/30 text-gray-200">
+              <MessageRenderer content={streamingContent} streaming />
+            </div>
+          </div>
+          {/* Scroll anchor: rAF-throttled scroll-into-view on token tick */}
+          <div ref={streamingAnchorRef} aria-hidden="true" />
+        </div>
+      )}
+
+      {/* Thinking indicator (when not streaming) */}
+      {(sendMutation.isPending || regenerateMutation.isPending) && !streamActive && (
+        <div
+          className="flex gap-4 px-4 lg:px-6 pb-2"
+          role="status"
+          aria-label="AI is thinking"
+        >
+          <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
+            <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+          </div>
+          <div className="flex-1 max-w-2xl">
+            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-lattice-border">
+              <div className="flex items-center gap-2 text-gray-400">
+                <div
+                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  style={{ animationDelay: '0ms' }}
+                />
+                <div
+                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <div
+                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  style={{ animationDelay: '300ms' }}
+                />
+              </div>
+              <span className="sr-only">AI is generating a response...</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   // ──────────────────────────────────────────────
   // Render
   // ──────────────────────────────────────────────
 
   return (
     <>
-    <div data-lens-theme="chat" className={cn('relative h-full flex flex-col', cleanEmpty ? 'bg-black' : 'bg-lattice-bg')}>
+    <div data-lens-theme="chat" className={cn('relative h-full min-h-0 overflow-hidden flex flex-col', cleanEmpty ? 'bg-black' : 'bg-lattice-bg')}>
       {modelOffline && (
         <div className="px-4 py-2 text-xs bg-amber-500/10 border-b border-amber-500/30 text-amber-200">
           Language model is offline — you can still type. Replies may not generate.
         </div>
       )}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex overflow-hidden relative">
         {/* Mobile sidebar backdrop */}
         {chatSidebarOpen && (
           <div
@@ -3419,12 +3502,15 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           {/* Messages */}
           <div
             className={cn(
-              'flex-1 overflow-hidden flex flex-col',
+              'flex-1 min-h-0 overflow-hidden flex flex-col',
               // Floating composer overlays the bottom — leave room for last bubbles.
+              // pb-28/pb-32 is the pre-measure fallback; the measured composer height wins.
               !isEmptyThread && 'pb-28 sm:pb-32',
               // The conversations / new-chat header floats over the top edge.
               cleanEmpty && !isEmptyThread && 'pt-12',
             )}
+            style={cleanEmpty && !isEmptyThread && composerHeight > 0 ? { paddingBottom: composerHeight + 8 } : undefined}
+            data-testid="chat-thread"
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
@@ -3474,63 +3560,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   data={threadItems}
                   followOutput="smooth"
                   initialTopMostItemIndex={threadItems.length - 1}
-                  className="flex-1"
+                  className="flex-1 min-h-0"
                   itemContent={renderThreadItem}
+                  components={{ Footer: ChatThreadFooter }}
+                  context={{ footer: threadFooter }}
                 />
               </>
             )}
+            {threadItems.length === 0 && threadFooter}
 
-            {/* Streaming indicator */}
-            {streamActive && streamingContent && (
-              <div className="flex gap-4 px-4 lg:px-6 pb-2">
-                <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
-                </div>
-                <div className="flex-1 max-w-2xl">
-                  <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-neon-cyan/30 text-gray-200">
-                    <MessageRenderer content={streamingContent} streaming />
-                  </div>
-                </div>
-                {/* Scroll anchor: rAF-throttled scroll-into-view on token tick */}
-                <div ref={streamingAnchorRef} aria-hidden="true" />
-              </div>
-            )}
-
-            {/* Thinking indicator (when not streaming) */}
-            {(sendMutation.isPending || regenerateMutation.isPending) && !streamActive && (
-              <div
-                className="flex gap-4 px-4 lg:px-6 pb-2"
-                role="status"
-                aria-label="AI is thinking"
-              >
-                <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
-                </div>
-                <div className="flex-1 max-w-2xl">
-                  <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-lattice-border">
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <div
-                        className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
-                        style={{ animationDelay: '0ms' }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
-                        style={{ animationDelay: '150ms' }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
-                        style={{ animationDelay: '300ms' }}
-                      />
-                    </div>
-                    <span className="sr-only">AI is generating a response...</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Input Area — floating Claude composer for empty and active threads */}
-          <div className={cn(
+          <div ref={composerRef} data-testid="chat-composer" className={cn(
             cleanEmpty
               ? 'absolute bottom-0 inset-x-0 z-20 px-3 pb-4 sm:px-6 sm:pb-8 pointer-events-none'
               : 'p-4 border-t border-lattice-border bg-lattice-surface',
