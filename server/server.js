@@ -115,6 +115,7 @@ import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMa
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
+import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
@@ -12946,68 +12947,110 @@ function _normalizeSettingsDefaults() {
 }
 
 function loadStateFromDisk() {
-  // Try SQLite first in production
+  // INC-100: debounced saves durable-write JSON (yielding I/O) and skip the
+  // sync SQLite blob upsert by default. Prefer the newer of SQLite vs JSON by
+  // savedAt so a crash after a debounced save still restores the latest state.
+  const candidates = [];
+
   if (USE_SQLITE_STATE) {
     try {
       const row = db.prepare("SELECT data, saved_at FROM state_snapshots WHERE id = 1").get();
-      if (row) {
-        const obj = JSON.parse(row.data);
-        _hydrateState(obj);
-        _normalizeSettingsDefaults();
-        structuredLog("info", "state_loaded", { source: "sqlite" });
-        return { ok: true, loaded: true, backend: "sqlite", savedAt: row.saved_at };
+      if (row?.data) {
+        candidates.push({
+          source: "sqlite",
+          savedAt: row.saved_at || "",
+          raw: row.data,
+        });
+      } else {
+        structuredLog("info", "state_migration_check", { source: "json" });
       }
-      // No snapshot yet — fall through to JSON check for migration
-      structuredLog("info", "state_migration_check", { source: "json" });
     } catch (e) {
       structuredLog("error", "persistence_load_failed", { error: e.message });
     }
   }
 
-  // JSON file fallback (dev mode or migration source)
   try {
-    if (!fs.existsSync(STATE_PATH)) return { ok: true, loaded: false, path: STATE_PATH, backend: "json" };
-    const raw = fs.readFileSync(STATE_PATH, "utf-8");
-    const obj = JSON.parse(raw);
-    _hydrateState(obj);
-    _normalizeSettingsDefaults();
-
-    // If SQLite is available and we loaded from JSON, migrate data to SQLite
-    if (USE_SQLITE_STATE) {
+    if (fs.existsSync(STATE_PATH)) {
+      const raw = fs.readFileSync(STATE_PATH, "utf-8");
+      let savedAt = "";
       try {
-        const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
-        stmt.run(raw, obj.version || VERSION, nowISO());
-        structuredLog("info", "state_migrated", { from: "json", to: "sqlite" });
-      } catch (migErr) {
-        structuredLog("error", "persistence_migration_failed", { error: migErr.message });
+        const peek = JSON.parse(raw);
+        savedAt = peek?.savedAt || "";
+      } catch { /* use mtime below */ }
+      if (!savedAt) {
+        try { savedAt = fs.statSync(STATE_PATH).mtime.toISOString(); } catch { savedAt = ""; }
       }
+      candidates.push({ source: "json", savedAt, raw, path: STATE_PATH });
     }
-
-    return { ok: true, loaded: true, path: STATE_PATH, backend: USE_SQLITE_STATE ? "sqlite (migrated)" : "json", savedAt: obj.savedAt || null };
   } catch (e) {
-    structuredLog("error", "state_json_corrupted", { error: e.message, path: STATE_PATH });
-    // Try loading latest backup
+    structuredLog("error", "state_json_stat_failed", { error: e.message, path: STATE_PATH });
+  }
+
+  if (candidates.length === 0) {
+    return { ok: true, loaded: false, path: STATE_PATH, backend: USE_SQLITE_STATE ? "sqlite" : "json" };
+  }
+
+  candidates.sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+
+  let lastErr = null;
+  for (const c of candidates) {
     try {
-      const backupBase = path.join(path.dirname(STATE_PATH), "backups");
-      if (fs.existsSync(backupBase)) {
-        const dirs = fs.readdirSync(backupBase).sort().reverse();
-        for (const dir of dirs.slice(0, 5)) {
-          const bp = path.join(backupBase, dir, "concord_state.json");
-          if (fs.existsSync(bp)) {
-            const bRaw = fs.readFileSync(bp, "utf-8");
-            const bObj = JSON.parse(bRaw);
-            _hydrateState(bObj);
-            _normalizeSettingsDefaults();
-            structuredLog("warn", "state_restored_from_backup", { backup: dir });
-            return { ok: true, loaded: true, path: bp, backend: "json (backup)", restoredFrom: dir };
+      const obj = JSON.parse(c.raw);
+      _hydrateState(obj);
+      _normalizeSettingsDefaults();
+      // Only migrate JSON → SQLite when SQLite had no row at all (first-time
+      // cutover). Do NOT upsert the ~38 MB blob on every boot just because JSON
+      // is newer — that reintroduces the INC-100 sync write stall at startup.
+      // sync/critical/shutdown still write SQLite from in-memory STATE.
+      if (USE_SQLITE_STATE && db && c.source === "json") {
+        const hadSqlite = candidates.some((o) => o.source === "sqlite");
+        if (!hadSqlite) {
+          try {
+            const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
+            stmt.run(c.raw, obj.version || VERSION, c.savedAt || nowISO());
+            structuredLog("info", "state_migrated", { from: "json", to: "sqlite" });
+          } catch (migErr) {
+            structuredLog("error", "persistence_migration_failed", { error: migErr.message });
           }
         }
       }
-    } catch (backupErr) {
-      structuredLog("error", "backup_restore_failed", { error: backupErr.message });
+      structuredLog("info", "state_loaded", { source: c.source, savedAt: c.savedAt || null, candidates: candidates.map((x) => x.source) });
+      return {
+        ok: true,
+        loaded: true,
+        path: c.path || STATE_PATH,
+        backend: c.source === "sqlite" ? "sqlite" : (USE_SQLITE_STATE ? "json (preferred)" : "json"),
+        savedAt: c.savedAt || obj.savedAt || null,
+      };
+    } catch (e) {
+      lastErr = e;
+      structuredLog("error", "persistence_candidate_failed", { source: c.source, error: e.message });
     }
-    return { ok: false, loaded: false, path: STATE_PATH, backend: "json", error: String(e?.message || e) };
   }
+
+  // All candidates failed to parse — try dated backups, then give up.
+  const failMsg = lastErr?.message || "all state candidates failed";
+  structuredLog("error", "state_json_corrupted", { error: failMsg, path: STATE_PATH });
+  try {
+    const backupBase = path.join(path.dirname(STATE_PATH), "backups");
+    if (fs.existsSync(backupBase)) {
+      const dirs = fs.readdirSync(backupBase).sort().reverse();
+      for (const dir of dirs.slice(0, 5)) {
+        const bp = path.join(backupBase, dir, "concord_state.json");
+        if (fs.existsSync(bp)) {
+          const bRaw = fs.readFileSync(bp, "utf-8");
+          const bObj = JSON.parse(bRaw);
+          _hydrateState(bObj);
+          _normalizeSettingsDefaults();
+          structuredLog("warn", "state_restored_from_backup", { backup: dir });
+          return { ok: true, loaded: true, path: bp, backend: "json (backup)", restoredFrom: dir };
+        }
+      }
+    }
+  } catch (backupErr) {
+    structuredLog("error", "backup_restore_failed", { error: backupErr.message });
+  }
+  return { ok: false, loaded: false, path: STATE_PATH, backend: "json", error: String(failMsg) };
 }
 
 // Coalescing window for the debounced full-state save. The serialize is
@@ -13023,6 +13066,13 @@ const STATE_SAVE_COALESCE_MS = Math.max(250, Number(process.env.CONCORD_STATE_SA
 // Kill-switch. Set CONCORD_STATE_SAVE_CHUNKED=0 to restore the single atomic
 // stringify on the debounced path (the sync/shutdown paths never used it).
 const _CHUNKED_SAVE_ENABLED = process.env.CONCORD_STATE_SAVE_CHUNKED !== "0";
+// INC-100 state-save: the ~38 MB better-sqlite3 INSERT OR REPLACE on the
+// debounced path blocked the event loop for 4165 ms (profiled 2026-10-19
+// 12:17:55Z, unsampled native gap still on the save timer stack). Default is
+// to durable-write the JSON file with yielding I/O and skip the sync SQLite
+// blob upsert on debounce; sync/critical/shutdown still write SQLite.
+// Set CONCORD_STATE_SAVE_SQLITE_ON_DEBOUNCE=1 to restore the old upsert.
+const _SQLITE_ON_DEBOUNCE = process.env.CONCORD_STATE_SAVE_SQLITE_ON_DEBOUNCE === "1";
 // Count of chunked saves discarded because state mutated mid-snapshot and the
 // atomic path was used instead. Surfaced so a deployment that tears on every
 // save — where chunking buys nothing and costs one extra serialize — is
@@ -13130,15 +13180,21 @@ function saveStateDebounced() {
           data = JSON.stringify(_serializeState());
         }
 
-        if (USE_SQLITE_STATE) {
-          // SQLite: single-row upsert inside WAL transaction — crash-safe
+        // Always durable-write the JSON snapshot with yielding I/O first.
+        // INC-100: a sync better-sqlite3 INSERT of this ~38 MB blob blocked
+        // the event loop for 4165 ms (see lib/chunked-write.js). JSON + rename
+        // is crash-safe and keeps maxGap ~1 ms; loadStateFromDisk prefers the
+        // newer of JSON vs SQLite by savedAt.
+        if (typeof STATE_PATH === "string") {
+          const tmpPath = STATE_PATH + ".tmp";
+          await writeFileChunkedYielding(tmpPath, data);
+          await fs.promises.rename(tmpPath, STATE_PATH);
+        }
+        // Optional sync SQLite upsert (off by default on the debounced path).
+        // sync/critical/shutdown still write SQLite unconditionally.
+        if (USE_SQLITE_STATE && db && _SQLITE_ON_DEBOUNCE) {
           const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
           stmt.run(data, VERSION, nowISO());
-        } else {
-          // JSON: atomic write via temp file + rename
-          const tmpPath = STATE_PATH + ".tmp";
-          fs.writeFileSync(tmpPath, data, "utf-8");
-          fs.renameSync(tmpPath, STATE_PATH);
         }
         // Tell the 5-min periodic safety net this state is already on disk
         // so it doesn't re-serialize an unchanged 28 MB two minutes later.
@@ -13154,9 +13210,7 @@ function saveStateDebounced() {
         if (typeof realtimeEmit === "function") {
           realtimeEmit("health:pulse", { component: "state_save", status: "critical", score: 0, metrics: { failures: STATE._saveFailures, error: String(e?.message || e) }, timestamp: Date.now() });
         }
-        if (!USE_SQLITE_STATE) {
-          try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
       }
     }, STATE_SAVE_COALESCE_MS);
   } catch (e) {
