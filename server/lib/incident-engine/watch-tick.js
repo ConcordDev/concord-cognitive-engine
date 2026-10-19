@@ -62,6 +62,8 @@ export function ensureIncidentSchema(db) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_incident_state_status ON incident_state(status, detected_at);
+    CREATE INDEX IF NOT EXISTS idx_incident_state_class_source_detected
+      ON incident_state(incident_class, source, detected_at);
     CREATE INDEX IF NOT EXISTS idx_incident_actions_incident ON incident_actions(incident_id, action_at);
   `);
 }
@@ -77,6 +79,48 @@ function findRecentIncident(db, incidentClass, source, dedupeMinutes, nowIso) {
     )
     .get(incidentClass, source, cutoff);
   return row || null;
+}
+
+/**
+ * Set-based recent-incident lookup for a slice.
+ * Returns a Map keyed by `${incident_class}\x00${source}` -> { id, status, outcome }.
+ * One query per slice instead of one query per signal.
+ */
+function buildRecentIncidentMap(db, pairs, cutoff) {
+  const map = new Map();
+  if (pairs.length === 0) return map;
+  const unique = [];
+  const seen = new Set();
+  for (const [incidentClass, source] of pairs) {
+    const key = `${incidentClass}\x00${source}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push([incidentClass, source]);
+  }
+  const values = unique.map(() => "(?,?)").join(",");
+  const params = unique.flat();
+  const rows = db
+    .prepare(
+      `SELECT s.incident_class, s.source, s.id, s.status, s.outcome
+       FROM incident_state s
+       JOIN (
+         SELECT incident_class, source, MAX(id) AS max_id
+         FROM incident_state
+         WHERE detected_at > ? AND (incident_class, source) IN (VALUES ${values})
+         GROUP BY incident_class, source
+       ) m ON s.incident_class = m.incident_class
+          AND s.source = m.source
+          AND s.id = m.max_id`,
+    )
+    .all(cutoff, ...params);
+  for (const r of rows) {
+    map.set(`${r.incident_class}\x00${r.source}`, {
+      id: r.id,
+      status: r.status,
+      outcome: r.outcome,
+    });
+  }
+  return map;
 }
 
 function persistIncident(db, row) {
@@ -147,13 +191,10 @@ export function decideOneSignal(db, sig, opts = {}) {
   const cls = classifyForWatch(sig);
   const source = sig?.source || "unknown";
 
-  const recent = findRecentIncident(
-    db,
-    cls.incidentClass,
-    source,
-    dedupeMinutes,
-    nowIso,
-  );
+  const recent =
+    opts.recentIncident !== undefined
+      ? opts.recentIncident
+      : findRecentIncident(db, cls.incidentClass, source, dedupeMinutes, nowIso);
   if (recent) {
     return {
       result: {
@@ -346,14 +387,47 @@ export async function processSignalBacklog(db, signals, opts = {}) {
 
     const slice = signals.slice(cursor, cursor + K);
     const syncT0 = performance.now();
+
+    // Batch the dedupe lookup for this slice: one set-based query instead of
+    // one per-row .get() per signal. The recent map is keyed by
+    // `${incident_class}\x00${source}`.
+    const dedupeCutoff = new Date(
+      Date.parse(opts.nowIso || new Date().toISOString()) -
+        DEDUPE_WINDOW_MINUTES * 60_000,
+    ).toISOString();
+    const classSourcePairs = slice.map((sig) => {
+      const cls = classifyForWatch(sig);
+      return [cls.incidentClass, sig?.source || "unknown"];
+    });
+    const recentMap = buildRecentIncidentMap(db, classSourcePairs, dedupeCutoff);
+
     const decided = [];
+    /** @type {Map<string, number>} tracks first inserts within this slice for exact same-pass dedupe parity. */
+    const sliceFirstInsert = new Map();
     for (const sig of slice) {
       // Stop mid-slice only between signals if wall already blown (rare).
       if (chunked && decided.length > 0 && now() - started >= wallMs) {
         truncated = true;
         break;
       }
-      decided.push(decideOneSignal(db, sig, { traceId, nowIso: opts.nowIso }));
+      const cls = classifyForWatch(sig);
+      const source = sig?.source || "unknown";
+      const key = `${cls.incidentClass}\x00${source}`;
+      let recent = recentMap.get(key) || null;
+      if (sliceFirstInsert.has(key)) {
+        // A prior signal in this same slice already inserted for this class/source.
+        // Preserve exact old behavior: subsequent ones dedupe against that insert.
+        recent = { id: sliceFirstInsert.get(key), status: "active", outcome: null };
+      }
+      const d = decideOneSignal(db, sig, {
+        traceId,
+        nowIso: opts.nowIso,
+        recentIncident: recent,
+      });
+      if (d.result.incident_id && d.result.status !== "deduped" && !sliceFirstInsert.has(key)) {
+        sliceFirstInsert.set(key, d.result.incident_id);
+      }
+      decided.push(d);
     }
     const syncMs = performance.now() - syncT0;
     sliceSyncMs.push(syncMs);
