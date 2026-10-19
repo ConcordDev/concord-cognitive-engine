@@ -1547,7 +1547,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // A 3D/CAD ask must not come back as a flat picture (cockpit audit
         // 2026-10-19: "Yes generate a 3d model" → a FLUX photo).
         if (wants3dModel(ctx?.userPrompt) && !/\b(?:image|picture|photo|render(?:ing)?|illustration|drawing|concept art)\b/i.test(String(ctx?.userPrompt || ""))) {
-          return { tool: call.tool, ok: false, error: "generate_image makes flat 2D pictures, and the user asked for a 3D model",
+          return { tool: call.tool, ok: false, reason: "wants_3d", error: "generate_image makes flat 2D pictures, and the user asked for a 3D model",
             retryHint: `Call conkay_design with the object in words for an engineered/functional object (stand, bracket, truss, gearbox, enclosure, furniture, robot), or generate_3d for a free-form object: [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": ${JSON.stringify(String(call.params.prompt || "").slice(0, 200))}}}]` };
         }
         // Pod GPU FLUX only. Does not call multimodal.image_generate
@@ -1562,6 +1562,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const gen = await produceGpuImage({
           prompt: call.params.prompt, width, height, seed: call.params.seed,
           ownerId: ctx?.actor?.userId, state: ctx?.mediaState,
+          ...(Number(ctx?.chatGenTimeoutMs) > 0 ? { timeoutMs: Number(ctx.chatGenTimeoutMs) } : {}),
         });
         if (!gen.ok) {
           return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason };
@@ -1578,7 +1579,9 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "generate_3d": {
         const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
-        const g = await generate3dFromPrompt(prompt);
+        const g = await generate3dFromPrompt(prompt, Number(ctx?.chatGenTimeoutMs) > 0
+          ? { conceptTimeoutMs: Number(ctx.chatGenTimeoutMs), preflight: true }
+          : {});
         const conceptArtifact = async (b64) => {
           try {
             const { publishPrivateImage } = await import("./chat/image-router.js");

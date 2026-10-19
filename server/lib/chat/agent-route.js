@@ -152,6 +152,10 @@ const DESIGN_RE = [
   // 3D / CAD / STL / printable asks go to conkay_design or generate_3d, never
   // the flat image tool (audit 2026-10-19: "generate a 3d model" → FLUX photo).
   /\b(?:3[- ]?d|cad|solid|mesh|printable|stl)\s+(?:model|models|part|parts|file|mesh|object|version|design|print)\b/i,
+  // "generate a 3d cad" has no noun after cad, so the pattern above misses it
+  // and chat stays on the conversational tool list (which used to offer only
+  // generate_image).
+  /\b3[- ]?d\s+cad\b/i,
   /\b3[- ]?d[- ]print(?:ed|able|ing)?\b|\bstl\b|\bstep file\b/i,
   /\b(?:design|make|build|model|create|cad)\b[^.?!]{0,40}\b(?:phone stand|tablet stand|truss|gear\s*box|enclosure|project box)\b/i,
   /\b(?:design|size|sizing)\b[^.?!]{0,60}\b(?:cantilever|beam|bracket|shaft|gear|truss|bridge|footbridge|car|vehicle|column|spring|bolt|weld|plate|frame|part)\b/i,

@@ -2161,6 +2161,7 @@ import {
   toolFollowUpUserMessage,
   followUpFailureReply,
   ensureCreatedDtuIds,
+  chatTurnArtifacts,
 } from "./lib/chat/tool-turn-reply.js";
 import {
   chatTurnKey,
@@ -28959,10 +28960,13 @@ Available tools:
 - conkay_solve: Run one ConKay solver against a Design IR. Params: {"solver_id": "mass.budget", "ir": {}}
 - conkay_ir_schema: Worked Design IR example and contract hints. Params: {}
 - conkay_compile_brief: Turn a short design sentence into Design IR. Missing sizes stay missing. Params: {"brief": "biped robot 60 kg, thigh 0.4 m, stance 0.2 m, foot 0.08 m"}
+- conkay_design: Size or check an engineered part, or build a concept 3D assembly (stand, bracket, beam, robot, enclosure) from a plain-language spec. Params: {"text": "the design in words"}
+- generate_3d: Free-form 3D model (creature, prop, figurine) on Concord's GPU. Not for engineered parts. Params: {"prompt": "the object"}
 - generate_image: Generate an image on Concord's GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
 ${_operatorToolLines}
 Rules for tool use:
 - For an explicit request to make, draw, or generate an image, use generate_image. Never recommend DALL-E, Midjourney, Stable Diffusion, or any outside image service. If the GPU server is down, say exactly: GPU image generation is offline.
+- A 3D model, CAD model, STL, printable part, or mesh is not an image. Use conkay_design for an engineered or functional object and generate_3d for a free-form object. Do not answer those with generate_image.
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
 - Use browse_url when the user provides a URL or asks about a specific page.
@@ -29020,7 +29024,7 @@ ${_operatorV6Block}` : "";
   if (!_deterministicAnswer) {
     try {
       const { fulfillImageRequest: _fulfillImageRequest } = await import("./lib/chat/image-router.js");
-      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId });
+      const _image = await _fulfillImageRequest(prompt, { ownerId: ctx?.actor?.userId || input?.userId, timeoutMs: 120_000 });
       if (_image) {
         _imageTurn = _image;
         _deterministicAnswer = { value: _image.reply, text: _image.reply, image: true };
@@ -29065,6 +29069,14 @@ ${_operatorV6Block}` : "";
 
   // Execute a single tool call and return its result
   const _executeToolCall = async (call) => {
+    // Chat mode used to call executeToolCall without the user text, so the
+    // 3D bounce and the robot/concept hints never saw "generate a 3d cad".
+    // chatGenTimeoutMs caps the GPU concept wait (the pod default is 5 min).
+    const _toolCtx = {
+      ...ctx,
+      userPrompt: typeof prompt === "string" ? prompt : String(input?.message || input?.query || ""),
+      chatGenTimeoutMs: 120_000,
+    };
     const MAX_TOOL_RESULT_LEN = 12000;
     try {
       switch (call.tool) {
@@ -29161,20 +29173,23 @@ ${_operatorV6Block}` : "";
           // as a failure, and lifts song/preview/image artifacts. The ConKay and
           // list tools share that same executeToolCall path (MCP bridge).
           const { executeToolCall: _lensTool } = await import("./lib/chat-agent.js");
-          return _lensTool(ctx, runMacro, LENS_ACTIONS, call);
+          return _lensTool(_toolCtx, runMacro, LENS_ACTIONS, call);
         }
+        case "conkay_design":
+        case "generate_3d":
         case "generate_image": {
-          // Same GPU-only path as the agent loop. Never the old
+          // Same GPU / ConKay path as the agent loop. Never the old
           // multimodal.image_generate macro (it threw without ctx.state).
+          // userPrompt is on _toolCtx so a 3D ask is not answered as a picture.
           const { executeToolCall: _imageTool } = await import("./lib/chat-agent.js");
-          return _imageTool(ctx, runMacro, LENS_ACTIONS, call);
+          return _imageTool(_toolCtx, runMacro, LENS_ACTIONS, call);
         }
         case "list_capabilities":
         case "invoke_capability": {
           // Concord Runtime — one implementation, shared with the agent loop
           // (lib/chat-agent.js executeToolCall): registry + envelope + gate.
           const { executeToolCall: _runtimeTool } = await import("./lib/chat-agent.js");
-          return _runtimeTool(ctx, runMacro, LENS_ACTIONS, call);
+          return _runtimeTool(_toolCtx, runMacro, LENS_ACTIONS, call);
         }
         default: {
           if (typeof _executeObserveOrgan === "function") {
@@ -29189,7 +29204,9 @@ ${_operatorV6Block}` : "";
         }
       }
     } catch (e) {
-      return { tool: call.tool, ok: false, error: String(e?.message || e) };
+      const { userFacingGenerationError: _plainGen } = await import("./lib/pollinations-image.js");
+      const raw = String(e?.message || e);
+      return { tool: call.tool, ok: false, error: _plainGen(raw) || raw };
     }
   };
 
@@ -29641,23 +29658,40 @@ ${_operatorV6Block}` : "";
             if (_res?.ok) { _toolResults.length = 0; _toolResults.push(_res); }
           }
         }
+        // generate_image on a 3D/CAD ask bounces with reason wants_3d. Chat
+        // does not give the model another tool turn, so run the right tool
+        // here instead of saving the bounce as the reply.
+        if (_toolResults.some((r) => r?.reason === "wants_3d")) {
+          const { toolFor3dAsk: _toolFor3dAsk } = await import("./lib/chat/route-3d-ask.js");
+          for (let _i = 0; _i < _toolResults.length; _i++) {
+            if (_toolResults[_i]?.reason !== "wants_3d") continue;
+            const _next = _toolFor3dAsk(prompt);
+            if (!_next) continue;
+            _toolResults[_i] = await _executeToolCall(_next);
+          }
+          _toolCallsExecuted = _toolResults;
+        }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
         const _genImages = _toolResults.filter((r) => r.tool === "generate_image");
+        const _meshHit = _toolResults.find((r) => r?.ok && (r.artifact?.kind === "mesh" || (Array.isArray(r.artifacts) && r.artifacts.some((a) => a?.kind === "mesh"))));
         if (_arithOnly) {
           finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
         } else if (_genImages.length > 0) {
           // The image is the reply. A follow-up brain call restates it as
           // "I can't generate images, try DALL-E" and drops the artifact.
-          const { markdownImageReply: _markdownImageReply } = await import("./lib/chat/image-router.js");
+          const { markdownImageReply: _markdownImageReply, userFacingGenerationError: _plainGenErr } = await import("./lib/chat/image-router.js");
           const _imgHit = _genImages.find((r) => r.artifact?.url);
           if (_imgHit) {
             finalReply = _markdownImageReply(_imgHit.prompt, _imgHit.artifact.url);
             _imageTurn = { ok: true, reply: finalReply, artifact: _imgHit.artifact, prompt: _imgHit.prompt };
           } else {
-            finalReply = String(_genImages.find((r) => !r.ok)?.error || "GPU image generation is offline");
+            finalReply = _plainGenErr(String(_genImages.find((r) => !r.ok)?.error || "")) || "GPU image generation is offline";
             _imageTurn = { ok: false, offline: finalReply === "GPU image generation is offline", reply: finalReply };
           }
+          _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
+        } else if (_meshHit) {
+          finalReply = String(_meshHit.result?.instruction || "The 3D model is shown below.");
           _deterministicAnswer = { value: finalReply, text: finalReply, image: true };
         } else if (shouldSkipToolFollowup(_toolResults)) {
           // A failed tool, or a plain DTU save, is answered from the tool
@@ -29973,7 +30007,8 @@ ${_operatorV6Block}` : "";
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
+  const _turnArtifacts = chatTurnArtifacts(_toolCallsExecuted, { skipImage: !!_imageTurn?.artifact });
+  sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}) } });
   if (llmUsed && !_aiUnavailable) _recordChatPersonality(finalReply, currentLens || mode);
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
@@ -30178,6 +30213,7 @@ ${_operatorV6Block}` : "";
           mode,
           toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined,
           toolCallCount: _toolCallsExecuted.length,
+          ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
           computed: _computedSurface,
           dtuRefs: _dtuRefs.length > 0 ? _dtuRefs : undefined,
           // Lets the chat lens find this exact reply in the saved thread when
@@ -30223,6 +30259,7 @@ ${_operatorV6Block}` : "";
     ...(_selfContMeta ? { selfContinuation: _selfContMeta } : {}),
     ...(_dtuRefsRemoved.length ? { dtuRefsRemoved: _dtuRefsRemoved } : {}),
     ...(_imageTurn?.artifact ? { artifact: _imageTurn.artifact } : {}),
+    ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}),
     ...(_aiUnavailable ? {
       code: _aiUnavailable.code,
       notice: _aiUnavailable.notice,

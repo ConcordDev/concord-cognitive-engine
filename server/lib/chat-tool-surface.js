@@ -112,6 +112,24 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "conkay_design",
+    description: "Size or check an engineered part, or build a concept 3D assembly from a plain-language spec.",
+    params: {
+      text: { type: "string", required: true, description: "The design in words" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "generate_3d",
+    description: "Free-form 3D model on Concord's GPU. Not for engineered parts.",
+    params: {
+      prompt: { type: "string", required: true, description: "The object" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
     name: "generate_image",
     description: "Generate an image on Concord's GPU.",
     params: {

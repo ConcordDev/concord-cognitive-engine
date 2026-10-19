@@ -172,7 +172,19 @@ export default function configureMiddleware(app, deps) {
   // It must NOT be exposed in a response header (that would defeat CSP).
 
   // ---- Compression ----
-  if (compression) app.use(compression());
+  // Event streams are excluded. A keep-alive comment is smaller than the
+  // compression threshold, so it would sit in the buffer until the chat
+  // turn finished and the client would see a silent socket.
+  if (compression) {
+    const baseFilter = typeof compression.filter === "function" ? compression.filter : null;
+    app.use(compression({
+      filter(req, res) {
+        const type = String(res.getHeader("Content-Type") || "");
+        if (type.includes("text/event-stream")) return false;
+        return baseFilter ? baseFilter(req, res) : true;
+      },
+    }));
+  }
 
   // ---- Body Parsing (per-endpoint size limits) ----
   // Strict limits for chatty endpoints; generous for bulk operations.

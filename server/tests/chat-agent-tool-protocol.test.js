@@ -189,7 +189,7 @@ test("list_lens_actions drops the empty name, ranks preferred and top-level firs
       ["announcements.task-add", async () => ({})],
       ["other.task-add", async () => ({})],
     ]);
-    const result = await executeToolCall({}, async () => ({}), lens, {
+    const result = await executeToolCall({ actor: { id: "u-test", userId: "u-test" } }, async () => ({}), lens, {
       tool: "list_lens_actions", params: { domain: "announcements" },
     });
     assert.equal(result.ok, true);
@@ -222,7 +222,7 @@ test("run_lens_action stores data: URLs as artifacts instead of slicing them", a
   const prevLive = globalThis._concordMACROS;
   globalThis._concordMACROS = macros;
   try {
-    const result = await executeToolCall({}, async () => ({
+    const result = await executeToolCall({ actor: { id: "u-test", userId: "u-test" } }, async () => ({
       ok: true,
       preview: `caption data:image/png;base64,${big} end`,
       note: "data:text/plain;base64,SGk=",
@@ -248,7 +248,7 @@ test("run_lens_action stores data: URLs as artifacts instead of slicing them", a
     assert.match(result.result.preview, /caption /);
     assert.match(result.result.preview, / end/);
 
-    const skipped = await executeToolCall({}, async () => ({
+    const skipped = await executeToolCall({ actor: { id: "u-test", userId: "u-test" } }, async () => ({
       ok: true,
       bad: "see data:not-a-url please",
       empty: "data:image/png;base64, next",
