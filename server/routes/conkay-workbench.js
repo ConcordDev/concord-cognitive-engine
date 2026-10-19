@@ -59,6 +59,11 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
     return p;
   };
   const evict = () => { while (store.size > MAX_CONVERSATIONS) store.delete([...store.entries()].sort((a, b) => a[1].touched - b[1].touched)[0][0]); };
+  // A refused brief is logged by stage and the first reason only: never the prompt, never who sent it.
+  const logReject = (stage, errors, domain) => {
+    const first = Array.isArray(errors) && errors[0] ? String(errors[0].error || "").replace(/\s+/g, " ").slice(0, 160) : "";
+    console.warn(`[conkay-workbench] 400 stage=${stage || "?"} domain=${domain || "none"} reason=${JSON.stringify(first)}`);
+  };
   const handle = (fn) => async (req, res) => {
     try { await fn(req, res); } catch (e) { res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) }); }
   };
@@ -69,7 +74,7 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       const p = pendingOwn(req, res); if (!p) return;
       const turns = [...p.turns, String(req.body?.text || "")];
       const r = await designFromChat(turns.join("\n\n"), { evaluate: makeEvaluator(p.screening) });
-      if (!r.ok) return res.status(400).json({ ok: false, stage: r.stage, errors: r.errors, pendingId: p.id, history: historyOf(turns) });
+      if (!r.ok) { logReject(r.stage, r.errors, r.domain); return res.status(400).json({ ok: false, stage: r.stage, errors: r.errors, pendingId: p.id, history: historyOf(turns) }); }
       if (r.stage === "questions") {
         p.turns = turns;
         return res.json({ ok: true, stage: "questions", questions: r.questions, claims: r.claims, pendingId: p.id, history: historyOf(turns) });
@@ -89,11 +94,13 @@ export default function createConkayWorkbenchRouter({ requireAuth, store = new M
       const t = new ChatSession().ask(prompt);
       if (t.kind === "questions") return res.json({ ok: true, stage: "questions", domain: t.domain, questions: t.questions, claims: t.claims });
       if (t.kind === "answer") return res.json({ ok: true, stage: "solved", domain: t.domain, answer: plain(t.answer), claims: t.claims, assumptions: t.assumptions, ...(t.followUps ? { followUps: t.followUps } : {}) });
-      return res.status(400).json({ ok: false, stage: t.kind, domain: t.domain, errors: t.errors || [{ error: "the solver did not answer" }], claims: t.claims });
+      const errors = t.errors || [{ error: "the solver did not answer" }];
+      logReject(t.kind, errors, t.domain);
+      return res.status(400).json({ ok: false, stage: t.kind, domain: t.domain, errors, claims: t.claims });
     }
     const screening = !!req.body?.screening;
     const r = await designFromChat(prompt, { evaluate: makeEvaluator(screening) });
-    if (!r.ok) return res.status(400).json({ ok: false, stage: r.stage, errors: r.errors });
+    if (!r.ok) { logReject(r.stage, r.errors, r.domain); return res.status(400).json({ ok: false, stage: r.stage, errors: r.errors }); }
     if (r.stage === "questions") {
       const id = crypto.randomUUID();
       store.set(id, { pending: true, id, turns: [prompt], owner: userOf(req), touched: Date.now(), screening });
