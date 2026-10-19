@@ -46,3 +46,29 @@ export function chatGenerationBudget({ transport, startedAt, now = Date.now(), c
     capMs: cap,
   };
 }
+
+/** Milliseconds left before `deadlineMs`; Infinity when there is no deadline. */
+export function budgetLeftMs(deadlineMs, now = Date.now()) {
+  const d = Number(deadlineMs);
+  return Number.isFinite(d) && d > 0 ? d - now : Infinity;
+}
+
+/**
+ * Settle with `promise`, or with `onLate()` once `deadlineMs` passes, whichever
+ * is first. The late work is not cancelled (fetch timeouts do that); the turn
+ * just stops waiting for it so the JSON reply leaves before Cloudflare's 524.
+ * No deadline: returns the promise unchanged.
+ */
+export function raceDeadline(promise, deadlineMs, onLate) {
+  const left = budgetLeftMs(deadlineMs);
+  if (!Number.isFinite(left)) return promise;
+  let timer = null;
+  const late = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      try { resolve(onLate()); } catch { resolve(null); }
+    }, Math.max(0, left));
+  });
+  // Swallow a late rejection from the abandoned work.
+  Promise.resolve(promise).catch(() => {});
+  return Promise.race([promise, late]).finally(() => { if (timer) clearTimeout(timer); });
+}

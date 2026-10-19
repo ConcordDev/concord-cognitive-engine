@@ -57,7 +57,11 @@ import {
   isRecoverableToolFailure,
   recoveryHint,
   followUpFailureReply,
+  budgetExhaustedReply,
+  meshResult,
+  userFacingMeshReply,
 } from "./chat/tool-turn-reply.js";
+import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
@@ -833,6 +837,9 @@ export async function validComputeKeys(modName = "") {
   return { module: null, keys: keys.slice(0, 50) };
 }
 
+/** Time a non-streaming turn keeps back from generate_3d for the local layout fallback. */
+export const GEN_3D_FALLBACK_RESERVE_MS = 12_000;
+
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
@@ -1578,10 +1585,18 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "generate_3d": {
         const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
-        const { fallbackDesignCall } = await import("./chat/route-3d-ask.js");
+        const { fallbackDesignCall, isEngineered3dAsk } = await import("./chat/route-3d-ask.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
-        const deadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
-        const timeoutMs = Number(ctx?.chatGenTimeoutMs);
+        const turnDeadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
+        // A JSON turn on an engineered ask keeps time for the local layout
+        // fallback: the GPU attempt gets the turn deadline minus that reserve.
+        const fallbackReserveMs = turnDeadlineMs && ctx?.chatTransport === "json"
+          && (isEngineered3dAsk(ctx?.userPrompt) || isEngineered3dAsk(prompt))
+          ? Math.max(0, Math.min(GEN_3D_FALLBACK_RESERVE_MS, Math.floor((turnDeadlineMs - Date.now()) / 4)))
+          : 0;
+        const deadlineMs = turnDeadlineMs ? turnDeadlineMs - fallbackReserveMs : 0;
+        let timeoutMs = Number(ctx?.chatGenTimeoutMs);
+        if (deadlineMs && Number.isFinite(timeoutMs) && timeoutMs > 0) timeoutMs = Math.max(1, Math.min(timeoutMs, deadlineMs - Date.now()));
         const hasChatBudget = deadlineMs > 0 || (Number.isFinite(timeoutMs) && timeoutMs > 0);
         let g;
         if (deadlineMs && deadlineMs - Date.now() < 800) {
@@ -2009,6 +2024,27 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const maxTurns = resolveAgentMaxTurns({ requested: opts.maxTurns });
   const _agentMaxTokens = opts.maxTokens || resolveAgentMaxTokens();
   const _agentTimeoutMs = resolveChatTimeoutMs(_agentMaxTokens);
+  // Non-streaming chat (POST /api/chat?full=1) hands a wall-clock deadline in
+  // (lib/chat/gen-budget.js). Every brain round, tool call and the summary
+  // turn are clamped to it, so the reply leaves before Cloudflare's ~100s 524.
+  // No deadline (stream, socket, ConKay, marathons): unchanged.
+  const _deadlineMs = (() => {
+    const d = Number(opts.deadlineMs);
+    return Number.isFinite(d) && d > Date.now() - 1_000 && d < Date.now() + 15 * 60_000 ? d : 0;
+  })();
+  const _left = () => budgetLeftMs(_deadlineMs);
+  // A brain round is not worth starting with less than this left.
+  const _minBrainMs = 6_000;
+  // Below this, a mesh that already came back is reported directly instead of
+  // waiting on another brain round to describe it.
+  const _minSummaryMs = 20_000;
+  const _budgetReserveMs = 2_000;
+  const _brainTimeout = (base) => (_deadlineMs ? Math.max(1_000, Math.min(base, _left() - _budgetReserveMs)) : base);
+  // Stop waiting on a brain round a little before the deadline so the reply
+  // still has time to be built and sent.
+  const _brainDeadline = () => (_deadlineMs ? _deadlineMs - _budgetReserveMs : 0);
+  const _brainLate = () => ({ ok: false, error: "chat_budget_timeout", budgetTimeout: true });
+  let budgetStopped = false;
   const _callsPerTurn = resolveAgentMaxCallsPerTurn();
   const _maxToolCalls = resolveAgentMaxToolCalls();
   // Marathon / long-task ticks (opts.toolGate) plan their own steps; the nudge is for live turns.
@@ -2053,7 +2089,10 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   try {
     const { explicitImagePrompt, fulfillImageRequest } = await import("./chat/image-router.js");
     if (explicitImagePrompt(message)) {
-      const image = await fulfillImageRequest(message, { ownerId: userId });
+      const image = await fulfillImageRequest(message, {
+        ownerId: userId,
+        ...(_deadlineMs ? { timeoutMs: Math.max(1, _left() - _budgetReserveMs) } : {}),
+      });
       if (image) {
         const artifact = image.artifact || null;
         const toolCall = {
@@ -2218,6 +2257,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // Original user sentence — create_dtu reads this to keep an explicit
     // "titled … with content …" title/body verbatim when the model shortens them.
     userPrompt: message,
+    // JSON chat budget for generate_3d (concept + mesh share the deadline) and
+    // its local layout fallback. chatGenTimeoutMs is refreshed before each call.
+    ...(_deadlineMs ? { chatTransport: opts.chatTransport || "json", chatGenDeadlineMs: _deadlineMs, chatGenTimeoutMs: Math.max(1, _left() - _budgetReserveMs) } : {}),
     // Long tasks: which surface started this turn (chat | conkay | agent) and,
     // inside a marathon tick, the session id (start_long_task is refused there).
     surface: opts.surface || null,
@@ -2255,12 +2297,17 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     turnsTaken++;
     emit("turn_start", { turn: turnsTaken });
     const _turnStart = Date.now();
-    let r = await brain({
+    if (_deadlineMs && _left() < _minBrainMs) {
+      budgetStopped = true;
+      finalAnswer = budgetExhaustedReply(allToolCalls, { prompt: message });
+      break;
+    }
+    let r = await raceDeadline(brain({
       db, userId,
       slot: opts.slot || "conscious",
       messages,
-      opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _agentTimeoutMs },
-    });
+      opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _brainTimeout(_agentTimeoutMs) },
+    }), _brainDeadline(), _brainLate);
     // Wave 7 / D2 — record the agent-loop inference span (the cost ledger). Token
     // counts use the brain's usage when present, else a ~chars/4 estimate. Best-effort.
     try {
@@ -2272,6 +2319,12 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         error: r.ok ? null : (r.error || "brain_failed"),
       });
     } catch { /* metering never breaks the loop */ }
+    if (!r.ok && _deadlineMs && (r.budgetTimeout || _left() < _minBrainMs)) {
+      // Out of time mid-round: answer from what the tools already returned.
+      budgetStopped = true;
+      finalAnswer = budgetExhaustedReply(allToolCalls, { prompt: message });
+      break;
+    }
     if (!r.ok) {
       return {
         ok: false, error: r.error || "brain_failed",
@@ -2302,6 +2355,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         _deepenEnabled &&
         _deepenUsed < _deepenMax &&
         turn < maxTurns - 1 &&
+        !(_deadlineMs && _left() < _minSummaryMs) &&
         allToolCalls.length > 0 &&
         evidenceIsThin(allToolCalls)
       ) {
@@ -2316,6 +2370,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         _gapEnabled &&
         !_gapUsed &&
         !toolBudgetExhausted &&
+        !(_deadlineMs && _left() < _minSummaryMs) &&
         turn < maxTurns - 1 &&
         allToolCalls.some((t) => t && t.ok !== false && (t.tool === "web_search" || t.tool === "browse_url")) &&
         answerAdmitsGaps(visibleAnswer)
@@ -2328,7 +2383,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       // No more tool calls — this is the final answer.
       finalAnswer = guardPlaybackClaim(visibleAnswer, allToolCalls);
-      if (_selfCont) {
+      if (_selfCont && !_deadlineMs) {
         const sc = await runSelfContinuation({
           generate: async (msgs, o) => {
             const g = await brain({
@@ -2418,7 +2473,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         continue;
       }
       if (repeatKey) _researchSeen.add(repeatKey);
-      const result = await executeToolCall(ctx, runMacro, lensActions, call);
+      if (_deadlineMs && _left() < 1_000) {
+        budgetStopped = true;
+        break;
+      }
+      if (_deadlineMs) ctx.chatGenTimeoutMs = Math.max(1, _left() - _budgetReserveMs);
+      const result = await raceDeadline(
+        executeToolCall(ctx, runMacro, lensActions, call),
+        _deadlineMs ? _deadlineMs - 1_000 : 0,
+        () => ({ tool: call.tool, ok: false, stage: "budget", reason: "timeout", error: "It ran out of time before this step finished." }),
+      );
       if (dupKey && result && typeof result === "object" && result.ok !== false) {
         Object.defineProperty(result, "_writeKey", { value: dupKey, enumerable: false });
       }
@@ -2479,10 +2543,19 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // once spent, the forced wrap-up turn below answers from what was gathered.
     if (allToolCalls.length >= _maxToolCalls) toolBudgetExhausted = true;
 
+    // JSON chat budget: out of time, or a mesh already came back with too
+    // little time left for another brain round. Reply from the tool results.
+    if (_deadlineMs && (budgetStopped || _left() < _minBrainMs || (_left() < _minSummaryMs && meshResult(allToolCalls)))) {
+      budgetStopped = true;
+      const hit = meshResult(allToolCalls);
+      finalAnswer = hit ? userFacingMeshReply(hit) : budgetExhaustedReply(allToolCalls, { prompt: message });
+      break;
+    }
+
     // A textbook lookup that doesn't state the fact is backed by a web search
     // in the same turn, so the model never fills the gap from memory.
     const thinBook = results.find(textbookNeedsWeb);
-    if (thinBook && !results.some((x) => x?.tool === "web_search")) {
+    if (thinBook && !results.some((x) => x?.tool === "web_search") && !(_deadlineMs && _left() < _minSummaryMs)) {
       const q = String(thinBook.query || "").replace(/\b(?:(?:per|according to|from|in)\s+)?(?:an?\s+|the\s+)?(?:openstax\s+)?(?:text\s?book|openstax)s?\b/gi, " ").replace(/\s+/g, " ").trim();
       if (q) {
         const web = await executeToolCall(ctx, runMacro, lensActions, { tool: "web_search", params: { query: q } });
@@ -2534,19 +2607,28 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   // reuses the exact same message history (including every real tool
   // result already gathered) so the answer is grounded in what actually
   // happened, not a fresh guess.
-  if (ranOutOfTurnsWithPendingCalls) {
+  if (ranOutOfTurnsWithPendingCalls && _deadlineMs && _left() < _minBrainMs) {
+    budgetStopped = true;
+    const hit = meshResult(allToolCalls);
+    finalAnswer = hit ? userFacingMeshReply(hit) : budgetExhaustedReply(allToolCalls, { prompt: message });
+  } else if (ranOutOfTurnsWithPendingCalls) {
     try {
       // Long-task ticks pass the planner slot for this summary turn.
       const wrapBrain = typeof opts.wrapUpBrainChat === "function" ? opts.wrapUpBrainChat : brain;
-      const wrapUp = await wrapBrain({
+      const wrapUp = await raceDeadline(wrapBrain({
         db, userId,
         slot: opts.slot || "conscious",
         messages: [
           ...messages,
           { role: "user", content: (typeof opts.wrapUpPrompt === "string" && opts.wrapUpPrompt) || "Give your final answer now, in full, based on everything above. Do not call any more tools — just answer." },
         ],
-        opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _agentTimeoutMs },
-      });
+        opts: { temperature: 0.4, maxTokens: _agentMaxTokens, timeoutMs: _brainTimeout(_agentTimeoutMs) },
+      }), _brainDeadline(), _brainLate);
+      if (wrapUp?.budgetTimeout) {
+        budgetStopped = true;
+        const hit = meshResult(allToolCalls);
+        finalAnswer = hit ? userFacingMeshReply(hit) : budgetExhaustedReply(allToolCalls, { prompt: message });
+      }
       if (wrapUp?.ok && wrapUp.text) {
         finalAnswer = guardPlaybackClaim(stripControl(stripToolCalls(wrapUp.text)), allToolCalls);
         lastProvider = wrapUp.provider ?? lastProvider;
@@ -2581,6 +2663,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     turns: turnsTaken,
     provider: lastProvider,
     model: lastModel,
+    ...(budgetStopped ? { budgetStopped: true } : {}),
     ...provenanceFrom({ provider: lastProvider, model: lastModel }),
     contextDtus,
   };

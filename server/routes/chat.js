@@ -59,6 +59,9 @@ export default function registerChatRoutes(app, {
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";
       const ctx = makeCtx(req);
+      // The JSON reply's ~85s budget (lib/chat/gen-budget.js) starts when the
+      // request arrives, not when chat.respond gets to it.
+      const _turnStartedAt = Date.now();
       // Chicken3: stream by default when enabled, while preserving an explicit full-response path.
       // - ?full=1 forces classic JSON response
       // - Accept: text/event-stream or ?stream=1 also forces streaming
@@ -127,7 +130,7 @@ export default function registerChatRoutes(app, {
         logger.debug('[chat] buildWorkingContext failed', { err: _wcErr?.message });
       }
 
-      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext, chatTransport: "json" }), chatUserText(req.body));
+      const out = scrubChatFields(await runMacro("chat","respond", req.body, { ...ctx, workingContext, chatTransport: "json", chatTurnStartedAt: _turnStartedAt }), chatUserText(req.body));
       kernelTick({ type: "USER_MSG", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
 
       // Attach confidence score to the final response
@@ -244,6 +247,7 @@ export default function registerChatRoutes(app, {
         req._concordMode = req.body.mode || "chat";
         const fallbackCtx = makeCtx(req);
         fallbackCtx.chatTransport = "json";
+        fallbackCtx.chatTurnStartedAt = Date.now();
         const fallbackOut = scrubChatFields(await runMacro("chat","respond", req.body, fallbackCtx), chatUserText(req.body));
         return res.json(fallbackOut);
       }
