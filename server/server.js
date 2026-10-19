@@ -6468,6 +6468,26 @@ function initDatabase() {
       // (pre-existing-file) database, or a VACUUM on an existing one —
       // out of scope for what was a minor I/O-amortization tweak.
       db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
+      // INC-100: that boot-time optimize is a no-op (plain optimize only looks
+      // at tables this connection has already queried — none yet), so
+      // sqlite_stat1 stayed frozen at tiny row counts and the planner chose
+      // full SCANs over existing indexes (3.5 s event-loop freezes from
+      // idle-behavior recentCommunicationCount). Re-ANALYZE the stale tables
+      // one at a time, off the boot path, then twice a day. Kill switch:
+      // CONCORD_SQLITE_STATS_REFRESH=0.
+      if (process.env.CONCORD_SQLITE_STATS_REFRESH !== "0") {
+        const _runStatsRefresh = () => {
+          import("./lib/sqlite-stats-refresh.js")
+            .then(({ refreshStaleStats }) => refreshStaleStats(db))
+            .then((r) => structuredLog("info", "sqlite_stats_refresh", {
+              ok: r?.ok, checked: r?.checked, error: r?.error,
+              slowest: (r?.refreshed || []).slice().sort((a, b) => b.ms - a.ms).slice(0, 5),
+            }))
+            .catch((e) => structuredLog("warn", "sqlite_stats_refresh_failed", { error: e?.message }));
+        };
+        setTimeout(_runStatsRefresh, 120_000).unref?.();
+        setInterval(_runStatsRefresh, 12 * 3600_000).unref?.();
+      }
     }
 
     // Create tables (writer only — a read-only replica inherits the schema the
