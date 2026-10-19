@@ -29790,6 +29790,9 @@ ${_operatorV6Block}` : "";
   }
   // A checkpoint control block is never shown or saved, flag on or off.
   if (llmUsed && finalReply && _selfContLib) finalReply = _selfContLib.stripControl(finalReply);
+  // Self-continuation answers read as one reply: drop "not in a single response… we'll continue step
+  // by step" framing the model may still write (CONCORD_SELF_CONTINUE_PREAMBLE_STRIP=0 turns it off).
+  if (llmUsed && finalReply && _selfContActive && !_selfContMeta?.incomplete) finalReply = _selfContLib.stripContinuationPreamble(finalReply);
 
   if (!_lockedReply && llmUsed && !_deterministicAnswer && stoppedOnLength(_replyDoneReason) && finalReply) {
     try {

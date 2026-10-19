@@ -57,13 +57,87 @@ export function selfContinueActive(env = process.env, input = {}) {
 
 export function checkpointProtocolBlock(roundTokens) {
   const words = Math.round(roundTokens * 0.7);
+  // The reader always sees ONE reply: Concord stitches the parts itself. Telling the model its
+  // per-response size made it open long answers with "I can give you a detailed guide, but not in a
+  // single response… we'll continue step by step" (live 2026-10-18) even when the answer then
+  // finished in one message — so the block forbids announcing parts and frames the limit as internal.
   return (
-    `LONG ANSWERS: You can write about ${words} words per response. If the complete answer will not fit, write as much complete content as fits, finish your last sentence, then end the response with this block and nothing after it:\n` +
+    "LONG ANSWERS: Write the complete answer as one continuous reply. Never say or imply the answer is too long for one response, never announce that you will continue, go step by step across messages or split it into parts, and never ask the user to say \"continue\" — the system continues for you and the reader sees one seamless reply. Start directly with the answer itself.\n" +
+    `Internal limit (never mention it): one generation holds about ${words} words. If you reach it before the answer is complete, finish your last sentence, then end the generation with this block and nothing after it:\n` +
     `${CHECKPOINT_OPEN}\n` +
     `{"done":["parts you finished"],"remaining":["parts still to write"],"next":"what to write first next time"}\n` +
     `${CHECKPOINT_CLOSE}\n` +
-    "You will then be asked to continue. Never put the block in the middle of a response, never mention it, and leave it out entirely when the answer is complete."
+    "Never put the block in the middle of a response, never mention it, and leave it out entirely when the answer is complete."
   );
+}
+
+/*
+ * Belt-and-braces for the prompt above: a model can still open (or close) a long answer by
+ * announcing that it will come in parts. Those sentences are framing, not content — drop them
+ * from the first two paragraphs and the last paragraph. Only sentences that talk about the
+ * response/message/parts themselves match; "let's go step by step" inside a tutorial does not.
+ * CONCORD_SELF_CONTINUE_PREAMBLE_STRIP=0 turns this off live.
+ */
+// Each entry: the sentence must match `re` AND (when given) `with` — the second test keeps ordinary
+// content ("in a reply to your landlord", "the guide has three parts") from matching.
+const LIMIT_WORD = /(?:\bnot\b|n['’]t\b|\bcannot\b|\btoo\b|\bfit\b|\bentire|\bwhole\b|\ball\b|\bexceed|\blimit|\bimpossible\b)/i;
+const SPEAKER_WORD = /\b(?:I['’]ll|I\s+will|I\s+can|we['’]ll|we\s+will|let['’]s|let\s+me|I['’]m\s+going\s+to|continu\w*|cover|send|share|provide|pick\s+up|break|split|divide)\b/i;
+const PREAMBLE_RULES = [
+  // "...but not in a single response", "can't fit it all in one message", "too long for one reply"
+  { re: /\b(?:in|into|within|for)\s+(?:a\s+single|one\s+single|one|a)\s+(?:response|reply|message|answer)\b/i, with: LIMIT_WORD },
+  { re: /\bsingle\s+(?:response|reply|message)\b/i, with: LIMIT_WORD },
+  // "we'll continue step by step", "I'll continue in the next message"
+  { re: /\bcontinu\w*\b[^.!?\n]{0,60}\b(?:step[-\s]by[-\s]step|in\s+parts|next\s+(?:response|reply|message|part)|following\s+(?:response|reply|message))/i },
+  // "I'll send this over several messages", "split it into parts"
+  { re: /\b(?:multiple|several|a\s+few|separate|two|three|successive)\s+(?:responses|replies|messages|installments)\b/i, with: SPEAKER_WORD },
+  { re: /\b(?:in|into)\s+(?:parts|chunks|installments)\b/i, with: SPEAKER_WORD },
+  { re: /\b(?:next|following|subsequent|upcoming)\s+(?:response|reply|message)s?\b/i, with: SPEAKER_WORD },
+  { re: /\b(?:shall|should)\s+I\s+(?:continue|keep\s+going|go\s+on|proceed)\b/i },
+  { re: /\b(?:say|type|reply(?:\s+with)?)\s+["“']?continue["”']?/i },
+  { re: /\blet\s+me\s+know\s+(?:when|if)\s+you(?:['’]re|\s+are)\s+ready\s+(?:for\s+(?:the\s+)?(?:next|rest|more)|to\s+continue|to\s+move\s+on)/i },
+];
+const isFramingSentence = (s) => PREAMBLE_RULES.some((r) => r.re.test(s) && (!r.with || r.with.test(s)));
+
+function preambleStripEnabled(env) {
+  return String((env || {}).CONCORD_SELF_CONTINUE_PREAMBLE_STRIP ?? "1").trim() !== "0";
+}
+
+function splitSentences(par) {
+  // Keep the terminator with its sentence; a paragraph without terminators is one sentence.
+  return String(par).match(/[^.!?…]+(?:[.!?…]+["'”’)\]]*|$)\s*/g) || [par];
+}
+
+function stripFramingParagraph(par) {
+  const t = par.trim();
+  if (!t || t.length > 600) return par; // long paragraphs are content
+  if (/^(?:#{1,6}\s|```|\||[-*•]\s|\d+[.)]\s)/.test(t)) return par; // structure, not framing
+  const sentences = splitSentences(t);
+  const kept = sentences.filter((s) => !isFramingSentence(s));
+  if (kept.length === sentences.length) return par;
+  const rest = kept.join("").trim();
+  // Left with only a bare connective ("Sure!", "Let's begin:")? That is framing too, unless it introduces a list.
+  if (!rest || (/^[\w\s,'’!.-]{0,24}[!.:]?$/.test(rest) && rest.split(/\s+/).length <= 3 && !/:$/.test(rest))) return "";
+  return rest;
+}
+
+export function stripContinuationPreamble(text, env = process.env) {
+  const src = String(text ?? "");
+  if (!src.trim() || !preambleStripEnabled(env)) return src;
+  const pars = src.split(/\n{2,}/);
+  if (pars.length < 2) return src; // a one-paragraph reply is never stripped to nothing
+  const out = pars.slice();
+  // Lead: the first two non-heading paragraphs.
+  let seen = 0;
+  for (let i = 0; i < out.length && seen < 2; i++) {
+    if (/^\s*#{1,6}\s/.test(out[i])) continue;
+    seen++;
+    out[i] = stripFramingParagraph(out[i]);
+  }
+  // Trail: the last paragraph (a finished reply does not promise a next part).
+  const last = out.length - 1;
+  if (last >= 2) out[last] = stripFramingParagraph(out[last]);
+  const joined = out.filter((p) => p.trim()).join("\n\n");
+  return joined.trim() ? joined : src;
 }
 
 function normalizeCheckpoint(raw, itemCap, nextCap) {
@@ -569,6 +643,7 @@ export async function runSelfContinuation({
   }
 
   const incomplete = !!cp && stoppedBy !== "complete";
+  text = stripContinuationPreamble(text, env);
   if (incomplete) {
     const t = trimPartialTail(text);
     if (t) text = t;
