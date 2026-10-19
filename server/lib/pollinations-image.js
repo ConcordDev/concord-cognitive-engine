@@ -22,7 +22,18 @@ export const CHAT_CONCEPT_TIMEOUT_MS = 120_000;
 export const IMAGE_TIMEOUT_REPLY = "Image generation timed out before the GPU finished. Try again in a moment.";
 export const GPU_BUSY_REPLY = "The GPU is busy with another job. Try again in a moment.";
 export const GPU_WRONG_MODEL_REPLY = "The GPU has a different model loaded, so this generation cannot start. Try again in a moment.";
+// Chat probes /health before POST. A busy or unloaded pod answers in this
+// window instead of queueing behind the job that holds the gen-server lock.
+// The cap is the longest a chat turn may sit on "a job is already running".
+export const GEN_HEALTH_TIMEOUT_MS = 4_000;
+export const GEN_BUSY_WAIT_CAP_MS = 20_000;
+// Organic batch posts omit this and still queue. Chat sends it so a pod that
+// has been redeployed refuses instead of accepting the request onto the lock.
+export const GEN_FAIL_IF_BUSY_HEADER = "X-Concord-Fail-If-Busy";
 const ABORT_TEXT_RE = /aborted due to timeout|operation was aborted|\bAbortError\b|\bTimeoutError\b/i;
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const GLB_MAGIC = Buffer.from("glTF");
+const BUSY_TEXT_RE = /^(?:the gpu is busy\b|3d generation is busy\b)/i;
 
 /** Plain sentence for a saved reply. Raw AbortError text stays out of the transcript. */
 export function userFacingGenerationError(text, fallback = IMAGE_TIMEOUT_REPLY) {
@@ -34,6 +45,34 @@ export function userFacingGenerationError(text, fallback = IMAGE_TIMEOUT_REPLY) 
 export function isGenerationAbort(err) {
   const name = String(err?.name || "");
   return name === "TimeoutError" || name === "AbortError" || ABORT_TEXT_RE.test(String(err?.message || err || ""));
+}
+
+/** PNG signature (8 bytes is enough) or JPEG SOI. Error text is neither. */
+export function isPngOrJpeg(buf) {
+  if (!Buffer.isBuffer(buf)) return false;
+  if (buf.length >= PNG_SIG.length && buf.subarray(0, PNG_SIG.length).equals(PNG_SIG)) return true;
+  return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+}
+
+/** GLB magic ("glTF") plus the 12-byte header. A sentence is not a mesh. */
+export function isGlb(buf) {
+  return Buffer.isBuffer(buf) && buf.length >= 12 && buf.subarray(0, 4).equals(GLB_MAGIC);
+}
+
+/**
+ * Null when the buffer is a real image. A busy/error sentence comes back as
+ * gpu_busy so chat can say the pod is busy without storing a .png of that text.
+ * @returns {null | { reason: "gpu_busy" | "not_image", error: string }}
+ */
+export function imageByteFailure(buf) {
+  if (isPngOrJpeg(buf)) return null;
+  if (Buffer.isBuffer(buf) && buf.length > 0 && buf.length <= 512) {
+    const text = buf.toString("utf8").trim();
+    if (text && !text.includes("\uFFFD") && (text === GPU_BUSY_REPLY || BUSY_TEXT_RE.test(text))) {
+      return { reason: "gpu_busy", error: GPU_BUSY_REPLY };
+    }
+  }
+  return { reason: "not_image", error: "Image generation did not return an image." };
 }
 
 /**
@@ -54,6 +93,12 @@ export function assessGpuHealth(health) {
   const loadingStatus = /^(?:loading|starting|warming|initializing)$/.test(status);
   if (loadingFlag || loadingStatus || busyFlag || status === "busy" || status === "occupied") {
     return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY, onGpu: health.on_gpu || null };
+  }
+  // `on_gpu: null` is idle and healthy. A loaded non-FLUX model (trellis1
+  // while a mesh job owns the card) will not run /concept until it unloads.
+  const onGpu = typeof health.on_gpu === "string" ? health.on_gpu.trim() : "";
+  if (onGpu && !/flux/i.test(onGpu)) {
+    return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY, onGpu };
   }
   const loaded = [health.model, health.loaded_model, health.loadedModel, health.weights?.loaded]
     .find((v) => typeof v === "string" && v.trim());
@@ -92,9 +137,12 @@ async function saveGpuArt(pngB64, seed) {
 
 async function localHealth() {
   try {
-    const r = await fetch(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(5000) });
+    const r = await fetch(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(GEN_HEALTH_TIMEOUT_MS) });
     return r.ok ? await r.json() : null;
-  } catch {
+  } catch (err) {
+    // The tunnel only carries the in-flight job, so a health abort is the
+    // pod being busy — not "the server is down" (that is ECONNREFUSED).
+    if (isGenerationAbort(err)) return { ok: true, busy: true };
     return null;
   }
 }
@@ -121,7 +169,7 @@ async function generateViaLocalGpu({ prompt, width, height, seed, timeoutMs } = 
   try {
     const r = await fetch(`${GEN_URL()}/concept`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", [GEN_FAIL_IF_BUSY_HEADER]: "1" },
       body: JSON.stringify({ prompt: cleanPrompt, seed: s, width: w, height: h }),
       signal: AbortSignal.timeout(conceptTimeoutMs(timeoutMs)),
     });
@@ -131,6 +179,9 @@ async function generateViaLocalGpu({ prompt, width, height, seed, timeoutMs } = 
       if (FALLBACK_REASONS.has(reason)) return { ok: false, reason };
       return { ok: false, reason, error: body?.error || body?.reason || "gpu_concept_failed" };
     }
+    const pngBuf = Buffer.from(String(body.png_b64), "base64");
+    const badPng = imageByteFailure(pngBuf);
+    if (badPng) return { ok: false, reason: badPng.reason, error: badPng.error };
     const dataUrl = `data:image/png;base64,${body.png_b64}`;
     // Persist under DATA_DIR for artifact reuse (async, bounded).
     let savedPath = null;

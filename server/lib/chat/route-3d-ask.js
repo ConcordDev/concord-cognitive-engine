@@ -17,7 +17,7 @@ const ORGANIC_SUBJECT_RE = /\b(?:dragons?|creatures?|monsters?|beasts?|animals?|
 const GPU_FAIL_REASONS = new Set([
   "timeout", "gpu_busy", "gpu_wrong_model", "concept_failed", "mesh_failed",
   "local_gpu_unreachable", "generation_error", "weights_missing", "empty_mesh",
-  "glb_parse_failed", "health_timeout", "loading",
+  "glb_parse_failed", "health_timeout", "loading", "not_image", "not_mesh",
 ]);
 
 export const THREE_D_BUSY_REPLY = "3D generation is busy right now. Try again in a minute.";

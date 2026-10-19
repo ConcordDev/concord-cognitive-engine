@@ -167,7 +167,7 @@ test("generate_3d: pod concept + mesh → decimated mesh artifact data", async (
   };
   const r = await generate3dFromPrompt("a small owl", { fetchImpl });
   assert.equal(r.ok, true);
-  assert.deepEqual(calls.map((u) => u.replace(/^.*\//, "/")), ["/concept", "/mesh"]);
+  assert.deepEqual(calls.map((u) => u.replace(/^.*\//, "/")), ["/health", "/concept", "/health", "/mesh"]);
   assert.equal(r.mesh.triangleCount, 4);
   assert.equal(Math.max(...r.mesh.positions.filter((_, i) => i % 3 === 1)), 3, "node translation applied");
   const tri = await glbToTriangles(glb);

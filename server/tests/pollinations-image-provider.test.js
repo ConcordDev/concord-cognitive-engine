@@ -61,7 +61,7 @@ describe("pollinations-image provider selection", () => {
   });
 
   it("returns the GPU image and keeps only the newest saved copies", async () => {
-    const png = Buffer.from("fake-png-bytes-for-test-0123456789").toString("base64");
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const srv = await startGen((url) => (url === "/health" ? { ok: true } : { ok: true, png_b64: png, seconds: 1.2 }));
     try {
       process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
