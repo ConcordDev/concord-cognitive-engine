@@ -43,19 +43,52 @@ export async function runNpcVsNpcCombatCycle(STATE) {
   // now it skips just that one pair, which is strictly safer, and also
   // means nothing here can throw out to the transaction wrapper and roll
   // back pairs already resolved earlier in the same tick.
-  const resolveAllWorlds = db.transaction((worlds) => {
-    for (const worldId of worlds) {
-      const npcs = db.prepare(`
+  // INC-100d (2026-10-19): preload the NPC-vs-NPC grudge graph ONCE per
+  // cycle instead of two prepare()+get() calls for every colocated pair.
+  // Measured on a prod DB clone: 16 worlds, 37,718 colocated pairs, 876
+  // grudge rows -> ~75k synchronous statements, ~590 ms of blocked event
+  // loop every ~2 min (event_loop_burst_lag heartbeats[] named this module
+  // in every ~480-550 ms burst window). Only NPCs that hold a grudge can
+  // ever clear GRUDGE_FLOOR (mutual = min of both directions, missing = 0),
+  // so occupants with no outgoing grudge are dropped before pairing.
+  const grudgeOf = new Map(); // npc_id -> Map(target_id -> severity)
+  try {
+    const rows = db.prepare(`SELECT npc_id, target_id, severity FROM npc_grudges WHERE target_kind = 'npc'`).all();
+    for (const r of rows) {
+      let m = grudgeOf.get(r.npc_id);
+      if (!m) { m = new Map(); grudgeOf.set(r.npc_id, m); }
+      if (!m.has(r.target_id)) m.set(r.target_id, r.severity);
+    }
+  } catch { /* table may not exist -> no grudges -> nothing to resolve */ }
+  if (grudgeOf.size === 0) return { ok: true, resolved: 0 };
+
+  const mutualGrudge = (aId, bId) =>
+    Math.min(grudgeOf.get(aId)?.get(bId) ?? 0, grudgeOf.get(bId)?.get(aId) ?? 0);
+
+  let powerStmt = null, logStmt = null;
+  try { powerStmt = db.prepare(`SELECT SUM(level) as total FROM npc_skills WHERE npc_id = ?`); } catch { /* table may not exist */ }
+  try {
+    logStmt = db.prepare(`
+      INSERT INTO npc_ambition_log (id, npc_id, move_kind, target_kind, target_id, world_id, outcome)
+      VALUES (?, ?, 'combat', 'npc', ?, ?, ?)
+    `);
+  } catch { /* table may not exist */ }
+  const npcsStmt = db.prepare(`
         SELECT id, current_location, archetype
           FROM world_npcs
          WHERE world_id = ?
          LIMIT 500
-      `).all(worldId);
+      `);
+
+  const resolveAllWorlds = db.transaction((worlds) => {
+    for (const worldId of worlds) {
+      const npcs = npcsStmt.all(worldId);
       if (npcs.length < 2) continue;
 
-      // Bucket by cell.
+      // Bucket by cell (only NPCs that hold any NPC grudge can fight).
       const byCell = new Map();
       for (const n of npcs) {
+        if (!grudgeOf.has(n.id)) continue;
         const cell = _cellOf(n.current_location);
         if (!byCell.has(cell)) byCell.set(cell, []);
         byCell.get(cell).push(n);
@@ -68,12 +101,12 @@ export async function runNpcVsNpcCombatCycle(STATE) {
           for (let j = i + 1; j < occupants.length; j++) {
             try {
               const a = occupants[i], b = occupants[j];
-              const grudge = _mutualGrudge(db, a.id, b.id);
+              const grudge = mutualGrudge(a.id, b.id);
               if (grudge < GRUDGE_FLOOR) continue;
 
               // Resolve.
-              const aPower = _powerOf(db, a);
-              const bPower = _powerOf(db, b);
+              const aPower = _powerOf(powerStmt, a);
+              const bPower = _powerOf(powerStmt, b);
               const aWins  = aPower >= bPower;
               const winner = aWins ? a : b;
               const loser  = aWins ? b : a;
@@ -93,10 +126,7 @@ export async function runNpcVsNpcCombatCycle(STATE) {
 
               // Audit-log.
               try {
-                db.prepare(`
-                  INSERT INTO npc_ambition_log (id, npc_id, move_kind, target_kind, target_id, world_id, outcome)
-                  VALUES (?, ?, 'combat', 'npc', ?, ?, ?)
-                `).run(`ambm_${crypto.randomUUID()}`, winner.id, loser.id, worldId, `damage=${damage}`);
+                logStmt?.run(`ambm_${crypto.randomUUID()}`, winner.id, loser.id, worldId, `damage=${damage}`);
               } catch { /* table may not exist */ }
               resolved++;
             } catch { /* one pair's failure must not abort the rest of the batch */ }
@@ -110,17 +140,9 @@ export async function runNpcVsNpcCombatCycle(STATE) {
   return { ok: true, resolved };
 }
 
-function _mutualGrudge(db, aId, bId) {
+function _powerOf(powerStmt, npc) {
   try {
-    const a = db.prepare(`SELECT severity FROM npc_grudges WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?`).get(aId, bId);
-    const b = db.prepare(`SELECT severity FROM npc_grudges WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?`).get(bId, aId);
-    return Math.min(a?.severity ?? 0, b?.severity ?? 0);
-  } catch { return 0; }
-}
-
-function _powerOf(db, npc) {
-  try {
-    const row = db.prepare(`SELECT SUM(level) as total FROM npc_skills WHERE npc_id = ?`).get(npc.id);
+    const row = powerStmt?.get(npc.id);
     return Number(row?.total ?? 1);
   } catch { return 1; }
 }
