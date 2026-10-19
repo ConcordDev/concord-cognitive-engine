@@ -194,7 +194,9 @@ test("runAgentLoop grants one retry then answers from tool results on second fai
         provider: "test", model: "test",
       };
     }
-    if (brainCalls === 2) {
+    if (brainCalls === 2 || brainCalls === 3) {
+      // Recovery turns are capped (CONCORD_AGENT_TOOL_RETRIES, default 2):
+      // the third all-failed turn is answered from the results.
       return {
         ok: true,
         text: '[TOOL_CALL: {"tool":"music.also_missing","params":{}}]',

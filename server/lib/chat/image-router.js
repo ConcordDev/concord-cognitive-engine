@@ -35,6 +35,8 @@ const MAKE = /^(?:make|generate|create|paint|render|design)\s+(?:me\s+|us\s+)?(?
 const MAKE_BARE = /^(?:make|generate|create|paint|render)\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+)?(?:image|picture|photo|photograph|illustration|drawing)s?\s+(?:of\s+|showing\s+)?(.+)$/i;
 const DRAW = /^draw\s+(?:me\s+|us\s+)?(?:an?\s+|some\s+)?(?:(?:image|picture|photo|photograph|illustration|drawing)s?\s+(?:of\s+|showing\s+)?)?(.+)$/i;
 // "draw a conclusion", "draw attention", "draw on experience" are not pictures.
+// A 3D model / CAD / STL / printable ask. "a 3d render image of…" stays a picture.
+export const THREE_D_ASK_RE = /\b(?:3[- ]?d|cad|solid|mesh|printable|stl)\s+(?:model|models|part|parts|file|mesh|object|version|design|print)\b|\b3[- ]?d[- ]print(?:ed|able|ing)?\b|\bstl\b|\bcad\b|\bprintable\b|\bstep file\b/i;
 const DRAW_IDIOM = /^(?:a\s+)?(?:conclusion|distinction|comparison|parallel|blank|attention|inference|analogy|line\b|from\b|on\b|upon\b)/i;
 
 function scrubOutside(text) {
@@ -55,6 +57,10 @@ export function explicitImagePrompt(message) {
   if (!text || text.length > 800) return null;
   if (/^(?:what|who|why|how|when|where|is|are|does|do|explain|describe|tell me about|define)\b/i.test(text)) return null;
   if (/\b(?:do not|don't|dont)\s+(?:make|generate|create|draw|paint|render)\b/i.test(text)) return null;
+  // "make a 3d model / CAD model / STL of a phone stand" is a 3D ask, not a
+  // FLUX picture (cockpit audit 2026-10-19). It goes to conkay_design /
+  // generate_3d through the agent loop.
+  if (THREE_D_ASK_RE.test(text)) return null;
   text = text.replace(/[.!?]+$/, "").replace(/\s+(?:please|thanks|thank you)$/i, "").trim();
   text = text.replace(LEAD_IN, "").trim();
   const styled = text.match(MAKE);

@@ -34,7 +34,7 @@ export function parseRobotAsk(text) {
   };
 }
 
-function meshBuilder() {
+export function meshBuilder() {
   const positions = [], indices = [];
   const quad = (a, b, c, d) => {
     const i = positions.length / 3;

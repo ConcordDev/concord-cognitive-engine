@@ -11,6 +11,51 @@
  * skip the follow-up because the visible reply is synthesized directly.
  */
 
+// Ordinary failures the model can recover from on the next turn by trying a
+// different key, part, id, URL or tool (cockpit audit 2026-10-19: one of these
+// used to end the whole reply with "I couldn't complete X").
+export const RECOVERABLE_ERROR_RE = /unknown tool|not registered|required|missing|unknown compute function|requires "module\.function"|compute error|unsupported part|no span|not found|no such|does not exist|unknown (?:action|domain|engine|function|key)|invalid (?:key|id|url|input|param)|code_exec_(?:forbidden|disabled)|python_exec|run_python|browse_url (?:failed|requires)|HTTP (?:4\d\d|5\d\d)|\b(?:400|403|404|408|410|422|429|500|502|503|504)\b|timed? ?out|timeout|ECONNRESET|ECONNREFUSED|fetch failed|no results|empty result|returned nothing|not_formal_intent|2D|3D|generation_error|unavailable/i;
+
+// Failures where another attempt in the same reply cannot help (auth, policy,
+// spend). These still end the loop and are reported as-is.
+export const HARD_ERROR_RE = /forbidden_by_governance|governance|halted|not authori[sz]ed|unauthori[sz]ed|permission denied|operator_only|insufficient (?:funds|balance)|rate.?limit(?:ed)? exceeded|quota_exhausted|budget exhausted|consent/i;
+
+/** True when a failed tool result is an ordinary, retryable failure. */
+export function isRecoverableToolFailure(r) {
+  if (!r || r.ok) return false;
+  if (r.retryHint || r.validActions || r.validKeys) return true;
+  const err = String(r.error || r.reason || "");
+  if (HARD_ERROR_RE.test(err) && !/code_exec_forbidden/.test(err)) return false;
+  return RECOVERABLE_ERROR_RE.test(err);
+}
+
+/** Default recovery hint for a failed call that came back without one. */
+export function recoveryHint(r) {
+  const err = String(r?.error || r?.reason || "");
+  const tool = String(r?.tool || "");
+  if (/not found|no such|does not exist/i.test(err) && /dtu|lens/i.test(`${tool} ${r?.domain || ""} ${err}`)) {
+    return "That item is gone or not visible to this user. Run the search again and use a different hit, or tell the user it is no longer available.";
+  }
+  if (tool === "browse_url" || /HTTP (?:4|5)\d\d|\b40[34]\b|fetch failed|timed? ?out|timeout/i.test(err)) {
+    return "That page could not be read. Try another result URL from web_search, or answer from the search listing and say the page was unavailable.";
+  }
+  if (tool === "run_python" || /code_exec|python_exec/i.test(err)) {
+    return "Code execution is not available here. Use run_compute (symbolic.evaluate for arithmetic), conkay_design, or a lens action instead; do not call run_python again.";
+  }
+  if (/unsupported part|no span/i.test(err)) {
+    return "Rephrase the part for conkay_design with a supported shape and a span/length, or build it with run_lens_action engineering.parametricSolid / engineering.partMesh, or size it by formula in words.";
+  }
+  if (/2D|3D/i.test(err)) {
+    return "For a 3D model use conkay_design (stands, trusses, gearboxes, brackets, robots) or generate_3d; generate_image only makes flat pictures.";
+  }
+  return "Try a different tool, key or input for the same goal; do not repeat the exact call that failed.";
+}
+
+/**
+ * True when the visible reply should be composed straight from the tool
+ * results (the loop stops). `allowRetry` is true while the caller still has
+ * recovery turns left for this user turn (chat-agent caps it, default 2).
+ */
 export function shouldSkipToolFollowup(results, opts = {}) {
   const list = Array.isArray(results) ? results : [];
   if (!list.length) return false;
@@ -18,11 +63,7 @@ export function shouldSkipToolFollowup(results, opts = {}) {
     // Mixed batch: let the model use the good results and note the failure.
     if (list.some((r) => r?.ok && r?.tool !== "create_dtu")) return false;
     if (opts.allowRetry) {
-      const retryable = list.every((r) => {
-        if (r?.ok) return true;
-        if (r?.retryHint || r?.validActions) return true;
-        return /unknown tool|not registered|required|missing/i.test(String(r?.error || ""));
-      });
+      const retryable = list.every((r) => r?.ok || isRecoverableToolFailure(r));
       if (retryable) return false;
     }
     return true;

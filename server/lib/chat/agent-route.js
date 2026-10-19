@@ -21,7 +21,7 @@ import { collectRetrievedDtus, guardDtuCitations } from "./dtu-citation-guard.js
 import { compactVoiceBlock } from "../../prompts/voice.js";
 import { parseExplicitDtuSave } from "./dtu-save-intent.js";
 import { CHAT_HISTORY_TURNS, resolveAgentMaxTurns } from "../chat-reply-policy.js";
-import { isRecallAsk, formulaContextBlock, memoryDtuRefs } from "./session-memory.js";
+import { isRecallAsk, formulaContextBlock, memoryDtuRefs, parseRememberAsk, recallRemembered, rememberAckReply, recallRememberedReply } from "./session-memory.js";
 import { stripToolCalls } from "../chat-agent.js";
 import { isLongTaskAsk, isLongTaskStatusAsk, startLongTask, kickLongTask, longTaskStartedReply, longTaskStatus, formatLongTaskStatus } from "../long-task.js";
 
@@ -46,6 +46,9 @@ const WEB_RE = [
   // lately", "what's Elon been up to", "any updates on the strike". These fell to the
   // conversational path, which answered from stale memory and said "I'll run a web search".
   /\b(?:web|internet|online|google)\s+search\b/i,
+  // "use websearch if you needa learn", "web-search it" (one word; audit 2026-10-19).
+  /\bweb-?search(?:es|ing)?\b/i,
+  /^\s*(?:(?:ok(?:ay)?|so|then|yes|yeah|yep|sure|please|pls|go|just)[,\s]+)*(?:do|run|start)\s+(?:some|the|a little|more|deep|real)?\s*research\b/i,
   /\bgoogle\s+(?:it|this|that|for)\b/i,
   /\bsearch\s+(?:it|this|that)\s+up\b/i,
   /\bwhat'?s\s+the\s+latest\b/i,
@@ -146,12 +149,96 @@ const MATH_CONTENT_RE = /\d|[\^=+*/]|\b(?:integral|derivative|equation|matrix|sq
 
 const DESIGN_RE = [
   /\bconkay\b/i,
+  // 3D / CAD / STL / printable asks go to conkay_design or generate_3d, never
+  // the flat image tool (audit 2026-10-19: "generate a 3d model" → FLUX photo).
+  /\b(?:3[- ]?d|cad|solid|mesh|printable|stl)\s+(?:model|models|part|parts|file|mesh|object|version|design|print)\b/i,
+  /\b3[- ]?d[- ]print(?:ed|able|ing)?\b|\bstl\b|\bstep file\b/i,
+  /\b(?:design|make|build|model|create|cad)\b[^.?!]{0,40}\b(?:phone stand|tablet stand|truss|gear\s*box|enclosure|project box)\b/i,
   /\b(?:design|size|sizing)\b[^.?!]{0,60}\b(?:cantilever|beam|bracket|shaft|gear|truss|bridge|footbridge|car|vehicle|column|spring|bolt|weld|plate|frame|part)\b/i,
   /\bsafety\s+factor\b/i,
 ];
 
 // "save this as a DTU" is an explicit write; chat.respond handles it.
 const DTU_SAVE_RE = /\b(?:save|store|remember|mint|create|make)\b[^.?!]{0,40}\b(?:as\s+(?:a\s+)?dtu|dtu)\b/i;
+
+// ── Affirmations, follow-ups and status (cockpit audit 2026-10-19) ──────────
+// "Yes run it" after a design brief hit the CSL not_formal_intent gate on the
+// conversational path; "What happened?" after a failed tool web-searched the
+// phrase "what happened".
+const AFFIRM_HEAD = String.raw`(?:yes+|yeah|yea|yep|yup|ya|sure|ok(?:ay)?|k|alright|aight|bet|cool|perfect|great|absolutely|definitely|of course|please|pls|go ahead|go for it|do it|do that|run it|let'?s go|let'?s do it|sounds good|make it|send it|proceed|continue|keep going|try again|retry|again)`;
+const AFFIRM_PREFIX_RE = new RegExp(String.raw`^\s*${AFFIRM_HEAD}(?:[\s,.!-]+${AFFIRM_HEAD})*[\s,.!-]+`, "i");
+const BARE_AFFIRM_RE = new RegExp(String.raw`^\s*${AFFIRM_HEAD}(?:[\s,.!-]+(?:${AFFIRM_HEAD}|it|that|this|now|then|please|pls|bro|man|fam|again|the (?:research|search|design|model|analysis|fea|solver|plan)|(?:run|do|make|build|start|generate|try)\s+(?:it|that|this|the (?:research|search|design|model|analysis|fea|solver|plan)|again)))*[\s.!]*$`, "i");
+/** "Yes generate a 3d model" → "generate a 3d model"; unchanged when no affirmation lead. */
+export function stripAffirmation(p) {
+  const t = String(p || "");
+  const m = AFFIRM_PREFIX_RE.exec(t);
+  return m ? t.slice(m[0].length).trim() : t;
+}
+/** "yes", "yes run it", "go ahead", "do it", "try again". */
+export function isBareAffirmation(p) {
+  const t = String(p || "").trim();
+  return t.length <= 60 && BARE_AFFIRM_RE.test(t);
+}
+// The previous assistant turn offered or planned an action ("Want me to run FEA on it?",
+// "Shall I search for…", "I can generate…", "Next I'll…").
+const OFFER_RE = /\b(?:want me to|shall i|should i|do you want (?:me )?to|would you like (?:me )?to|i can (?:run|do|make|generate|search|build|design|create|try|export|start)|next,? i(?:'ll| will)|i(?:'ll| will) (?:run|search|generate|build|make|design|try)|ready to (?:run|generate|build)|say (?:yes|go)|let me know if)\b/i;
+export function offeredAction(prevReply) {
+  return OFFER_RE.test(String(prevReply || "").slice(-600));
+}
+const ACTION_AFFIRM_RE = /\b(?:run|do|go ahead|go for it|try again|retry|again|proceed|continue|keep going|make it|send it|let'?s go|start|generate|build)\b/i;
+const WHAT_HAPPENED_RE = /^\s*(?:(?:so|ok(?:ay)?|hey|yo|wait|hmm|uh|and)[,\s]+)*(?:what\s+(?:just\s+)?happened|what\s+went\s+wrong|what\s+(?:was|is)\s+the\s+(?:error|problem|issue)|why\s+did\s+(?:it|that|the tool|this)\s+fail|what\s+failed|did\s+(?:it|that)\s+(?:work|fail)|why\s+(?:didn'?t|did not)\s+(?:it|that)\s+work|what'?s\s+wrong|huh)\b[\s?!.]*$/i;
+const TOOL_FAILURE_TEXT_RE = /\b(?:couldn'?t|could not|can'?t|cannot|failed|failure|error|unsupported|not found|unavailable|didn'?t work|nothing was (?:created|saved)|not_formal_intent|offline)\b/i;
+
+/** Status reply for "what happened?" after a failure, from the last assistant turn. */
+export function toolStatusReply(prevReply) {
+  const text = String(prevReply || "").replace(/\s+/g, " ").trim();
+  const sentences = text.split(/(?<=[.!?])\s+/).filter((x) => TOOL_FAILURE_TEXT_RE.test(x)).slice(0, 3);
+  if (!sentences.length) return null;
+  const body = sentences.map((x) => `- ${x.slice(0, 300)}`).join("\n");
+  return `Here's what happened on that last step:\n${body}\n\nNothing else ran after that. Say "try again" and I'll take another route (a different tool or input), or tell me what to change.`;
+}
+
+/** The user ask an affirmation confirms: the last user turn that was not itself an affirmation. */
+export function confirmedAsk(history = []) {
+  for (let i = (history || []).length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h?.role !== "user") continue;
+    const c = String(h.content || "").trim();
+    if (c && !isBareAffirmation(c)) return c.slice(0, 1200);
+  }
+  return "";
+}
+
+/** The agent-loop message for a "continue" turn: the confirmation plus what it confirms. */
+export function continueAgentMessage(prompt, history = []) {
+  const prevReply = [...(history || [])].reverse().find((h) => h?.role === "assistant")?.content || "";
+  const ask = confirmedAsk(history);
+  return [
+    String(prompt || "").trim(),
+    "",
+    "(The user is confirming. Carry out the action you offered or planned in your previous reply now, with real tool calls; do not ask again and do not just describe it.",
+    ask ? `Their earlier request: "${ask.slice(0, 600)}"` : "",
+    prevReply ? `Your previous reply ended: "${String(prevReply).slice(-500)}")` : ")",
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * Turns answered without a model: remember/recall of a stated value and the
+ * post-failure status report. Shared by Chat and the ConKay stream.
+ * @returns {string|null}
+ */
+export function deterministicRouteReply(route, prompt, history = [], memoryBlock = "") {
+  if (route === "remember") return rememberAckReply(parseRememberAsk(prompt));
+  if (route === "recall") {
+    const r = recallRemembered(prompt, history, memoryBlock);
+    return r ? recallRememberedReply(r, prompt) : null;
+  }
+  if (route === "status") {
+    const prevReply = [...(history || [])].reverse().find((h) => h?.role === "assistant")?.content || "";
+    return toolStatusReply(prevReply);
+  }
+  return null;
+}
 
 /**
  * Why this prompt should go through the agent tool loop, or null.
@@ -167,9 +254,20 @@ export function chatAgentRoute(prompt, opts = {}) {
   // Background jobs (lib/long-task.js): "how's my job going?" and asks too big
   // for one reply ("research X and write me a report").
   if (isLongTaskStatusAsk(p)) return "jobs";
+  // "Yes generate a 3d model": the affirmation prefix is dropped and the rest routed.
+  const affirmRest = stripAffirmation(p);
+  if (affirmRest !== p && affirmRest && !isBareAffirmation(p)) return chatAgentRoute(affirmRest, opts);
+  // "Yes" / "do it" / "run it" / "go ahead" / "try again" after an offer or a planned tool.
+  // A bare "ok"/"cool"/"thanks" after an answer is an acknowledgement, not a go-ahead:
+  // it needs an offer in the last reply, or an action word plus a prior tool turn.
+  if (isBareAffirmation(p) && (offeredAction(opts?.prevReply) || (ACTION_AFFIRM_RE.test(p) && opts?.prevRoute && opts.prevRoute !== "remember" && opts.prevRoute !== "status"))) return "continue";
+  // "What happened?" right after a failed tool: a status report, not a web search.
+  if (WHAT_HAPPENED_RE.test(p) && TOOL_FAILURE_TEXT_RE.test(String(opts?.prevReply || ""))) return "status";
   if (isLongTaskAsk(p)) return "long";
   if (DESIGN_RE.some((r) => r.test(p))) return "design";
   if (DTU_SAVE_RE.test(p) || NOTE_SAVE_RE.test(p)) return "save";
+  // "Remember codeword PLUM-77": stored in this chat's memory, acknowledged verbatim.
+  if (parseRememberAsk(p)) return "remember";
   if (MUSIC_RE.some((r) => r.test(p))) return "music";
   if (URL_RE.test(p) && BROWSE_ASK_RE.test(p)) return "browse";
   if (isCodeAsk(p)) return "code";
@@ -223,20 +321,23 @@ const ROUTE_HINT = {
   jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
   lookup: "Answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
-  recall: "The user is asking about something they said, saved or made earlier. Answer from the chat memory note and the earlier messages above, and from the user's own DTUs listed in the system notes (cite their ids). If the notes do not cover it, call run_lens_action dtu.search with the key words before answering. Only if none of these has it, say plainly that you don't see it; never say they did not mention something that appears above.",
+  recall: "If the user asked you to remember a value earlier in this chat (a codeword, name, number), give that exact value. The user is asking about something they said, saved or made earlier. Answer from the chat memory note and the earlier messages above, and from the user's own DTUs listed in the system notes (cite their ids). If the notes do not cover it, call run_lens_action dtu.search with the key words before answering. Only if none of these has it, say plainly that you don't see it; never say they did not mention something that appears above.",
   dtu: "This request is about the user's DTUs: look them up with run_lens_action dtu.search (or expert_mode) and cite only DTUs the tool returned. If none match, say so.",
   compute: "This request is a computation: use run_compute (or the compute engines) rather than doing the math in your head. For a word problem (money, interest, trips, fuel, force, rates), write the formula as ONE arithmetic expression with the numbers filled in and call run_compute with key symbolic.evaluate and input {\"expression\": \"5000*(1+0.06)^10\"} (^ for powers). Never invent a compute function name. Then state the result with units and the formula you used.",
   save: "The user wants this saved: call create_dtu with a short title and the user's own words as the summary, then give the stored DTU id. If create_dtu fails, say it was not saved and why.",
   music: "This is a music request. For a NEW song, call run_lens_action studio.compose (choose genre, key, bpm, bars and a title from the request; if the user only asks whether you can make music, make a short sample now with your own picks instead of asking). For REAL music by an artist or a named song, call run_lens_action music.ingest-itunes with the artist or song as term. When a tool returns a song or preview, say it is ready to play below (never that it is playing). Never invent Spotify, YouTube or other links. If the tool fails, say so.",
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the full page; if the tool result includes the search listing for that link, answer from it (title, outlet, date, snippet) and say that is all you have. Do not summarize from memory.",
   action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Use the user's own words for the item text, unchanged. Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
-  code: "This is a coding request: use Concord's code tools through run_lens_action, not a prose answer. New program or script: code.build with {\"request\": the user's words, \"language\": \"python\"|\"javascript\"|...}; it generates, runs where execution is enabled, type-checks and repairs, and its status is honest (say done only if it returned done; if it says unrun, say the code was not executed). Tests for given code: code.test-generate with {\"code\": ..., \"framework\": ...}. A change across several files: code.multi-file-plan with {\"prompt\", \"files\"}, then code.multi-file-apply with the returned edits. A verified fix to a project or repo: code.propose-verified-patch with {\"projectId\" or \"repo\", \"taskQuery\"}. You can check pure Python yourself with run_python. Show the code the tool returned. A big multi-step build: start_long_task with mode code.",
-  design: "This request is a ConKay design: call the conkay_design tool with the spec in words (span, load, material, supports, safety factor) and report the solver's real numbers. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
+  code: "This is a coding request: use Concord's code tools through run_lens_action, not a prose answer. New program or script: code.build with {\"request\": the user's words, \"language\": \"python\"|\"javascript\"|...}; it generates, runs where execution is enabled, type-checks and repairs, and its status is honest (say done only if it returned done; if it says unrun, say the code was not executed). Tests for given code: code.test-generate with {\"code\": ..., \"framework\": ...}. A change across several files: code.multi-file-plan with {\"prompt\", \"files\"}, then code.multi-file-apply with the returned edits. A verified fix to a project or repo: code.propose-verified-patch with {\"projectId\" or \"repo\", \"taskQuery\"}. If run_python is in your tool list you can check pure Python yourself with it. Show the code the tool returned. A big multi-step build: start_long_task with mode code.",
+  design: "This request is a ConKay design or a 3D/CAD model. Engineered or functional objects (beams, brackets, stands, trusses, gearboxes, enclosures, furniture, robots): call the conkay_design tool with the object and its sizes in words; it returns the solver's numbers or a concept 3D assembly the interface shows below your reply. Free-form objects (a creature, figurine, prop, sculpture): call generate_3d. Never use generate_image for a 3D or CAD ask. Report only what the tool returned. For a full design from a brief, use run_lens_action conkay_design.from-brief. If a tool fails, read its hint and try the next option before giving up.",
+  continue: "The user just said yes to what you offered or planned in your last reply. Do it now with real tool calls (the same tool and inputs you proposed; conkay_design or conkay_design.from-brief for a design, web_search for research, studio.compose for a song). Do not ask for confirmation again and do not just describe the step. If it fails, try one other way, then report plainly what happened.",
+  remember: "The user asked you to remember something. Confirm in one short sentence what you will remember, using their exact words and values.",
+  status: "The user is asking what happened with the last step. Explain from the conversation above which tool failed and why, in plain words, and offer to retry another way. Do not call web_search.",
 };
 
 // "Use web search", "google it", "look it up": no topic of its own. The model then searched
 // the tool-schema example ("concord cognitive engine") instead of the question just asked.
-const BARE_SEARCH_RE = /^\s*(?:(?:ok(?:ay)?|so|then|just|please|pls|can you|could you)[,\s]+)*(?:(?:use|do|run|try)\s+(?:a\s+|the\s+)?)?(?:(?:web|internet|online|google)\s+search|search\s+(?:the\s+)?(?:web|internet|online)|google|search|look)(?:\s+(?:it|that|this))?(?:\s+up)?(?:\s+(?:for\s+)?(?:it|that|this|me))?(?:\s+(?:please|pls|then|now))?\s*[.!?]*\s*$/i;
+const BARE_SEARCH_RE = /^\s*(?:(?:ok(?:ay)?|so|then|just|please|pls|can you|could you)[,\s]+)*(?:(?:use|do|run|try)\s+(?:a\s+|the\s+)?)?(?:(?:web|internet|online|google)\s+search|web-?search|search\s+(?:the\s+)?(?:web|internet|online)|google|search|look|(?:some\s+|more\s+|the\s+)?research)(?:\s+(?:it|that|this))?(?:\s+up)?(?:\s+(?:for\s+)?(?:it|that|this|me))?(?:\s+(?:please|pls|then|now))?\s*[.!?]*\s*$/i;
 
 /**
  * The message the agent loop gets for a web turn: a bare "use web search" carries the
@@ -417,11 +518,13 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   if (recap) return { reply: recap, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const status = writeStatusReply(prompt, history);
   if (status) return { reply: status, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
+  const fixed = deterministicRouteReply(route, prompt, history, memoryBlock);
+  if (fixed) return { reply: fixed, toolCalls: [], artifacts: [], sources: [], provider: null, model: null, linksRemoved: [], dtuRefsRemoved: [] };
   const agentHistory = agentHistoryWithNotes(history, { memoryBlock, formulaDtus, recallDtus });
   let r = null;
   try {
     r = await runMacro("chat_agent", "do", {
-      message: route === "web" ? webAgentMessage(prompt, history) : prompt,
+      message: route === "web" ? webAgentMessage(prompt, history) : route === "continue" ? continueAgentMessage(prompt, history) : prompt,
       history: agentHistory,
       maxTurns: resolveAgentMaxTurns(),
       routeHint: routeHint(route),
