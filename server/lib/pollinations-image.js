@@ -48,7 +48,11 @@ export function assessGpuHealth(health) {
   // A busy pod will not start /concept until the current job finishes, which
   // is longer than a chat turn can wait.
   const busyFlag = health.busy === true || health.busy === 1 || String(health.busy).toLowerCase() === "true";
-  if (busyFlag || status === "busy" || status === "occupied") {
+  // `on_gpu: null` is the idle healthy shape. Only an explicit loading flag
+  // means the weights are not ready yet — treat that like a busy pod.
+  const loadingFlag = health.loading === true || health.loading === 1 || String(health.loading).toLowerCase() === "true";
+  const loadingStatus = /^(?:loading|starting|warming|initializing)$/.test(status);
+  if (loadingFlag || loadingStatus || busyFlag || status === "busy" || status === "occupied") {
     return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY, onGpu: health.on_gpu || null };
   }
   const loaded = [health.model, health.loaded_model, health.loadedModel, health.weights?.loaded]

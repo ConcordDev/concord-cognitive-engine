@@ -24,7 +24,7 @@ import { CHAT_HISTORY_TURNS, resolveAgentMaxTurns } from "../chat-reply-policy.j
 import { isRecallAsk, formulaContextBlock, memoryDtuRefs, parseRememberAsk, recallRemembered, rememberAckReply, recallRememberedReply } from "./session-memory.js";
 import { stripToolCalls } from "../chat-agent.js";
 import { budgetLeftMs } from "./gen-budget.js";
-import { budgetExhaustedReply, scrubUserFacingToolNames } from "./tool-turn-reply.js";
+import { budgetExhaustedReply, sanitizeUserReply } from "./tool-turn-reply.js";
 import { isLongTaskAsk, isLongTaskStatusAsk, startLongTask, kickLongTask, longTaskStartedReply, longTaskStatus, formatLongTaskStatus } from "../long-task.js";
 
 const WEB_RE = [
@@ -335,7 +335,7 @@ const ROUTE_HINT = {
   browse: "The user gave a URL: call browse_url on it first and answer only from the page it returns. If the fetch fails or is blocked, say you could not read the full page; if the tool result includes the search listing for that link, answer from it (title, outlet, date, snippet) and say that is all you have. Do not summarize from memory.",
   action: "The user wants something created or changed in a Concord lens. Use run_lens_action with the right action (tasks: productivity.task-add; calendar events: calendar.events-create; otherwise call list_lens_actions for the domain first). Use the user's own words for the item text, unchanged. Report only what the tool returned. If no action fits or the tool failed, say plainly that nothing was created and why. Never say it was added unless a tool call succeeded.",
   code: "This is a coding request: use Concord's code tools through run_lens_action, not a prose answer. New program or script: code.build with {\"request\": the user's words, \"language\": \"python\"|\"javascript\"|...}; it generates, runs where execution is enabled, type-checks and repairs, and its status is honest (say done only if it returned done; if it says unrun, say the code was not executed). Tests for given code: code.test-generate with {\"code\": ..., \"framework\": ...}. A change across several files: code.multi-file-plan with {\"prompt\", \"files\"}, then code.multi-file-apply with the returned edits. A verified fix to a project or repo: code.propose-verified-patch with {\"projectId\" or \"repo\", \"taskQuery\"}. If run_python is in your tool list you can check pure Python yourself with it. Show the code the tool returned. A big multi-step build: start_long_task with mode code.",
-  design: "This request is a ConKay design or a 3D/CAD model. Engineered or functional objects (beams, brackets, stands, trusses, gearboxes, enclosures, furniture, robots): call the conkay_design tool with the object and its sizes in words; it returns the solver's numbers or a concept 3D assembly the interface shows below your reply. Free-form objects (a creature, figurine, prop, sculpture): call generate_3d. Never use generate_image for a 3D or CAD ask. Report only what the tool returned. For a full design from a brief, use run_lens_action conkay_design.from-brief. If a tool fails, read its hint and try the next option before giving up.",
+  design: "This request is a ConKay design or a 3D/CAD model. Engineered or functional objects the user named (beams, brackets, stands, trusses, gearboxes, enclosures, furniture, robots, cars, parts, mechanisms): call the conkay_design tool with the user's own words; it returns the solver's numbers or a concept 3D assembly the interface shows below your reply. Say that assembly is a layout approximation. Free-form objects (a creature, character, statue, plant, figurine, prop, sculpture): call generate_3d. If generate_3d fails, tell the user 3D generation is busy or unavailable and to try again in a minute. Do not call conkay_design for those, and do not substitute a different object. Never use generate_image for a 3D or CAD ask. Report only what the tool returned. For a full design from a brief, use run_lens_action conkay_design.from-brief.",
   continue: "The user just said yes to what you offered or planned in your last reply. Do it now with real tool calls (the same tool and inputs you proposed; conkay_design or conkay_design.from-brief for a design, web_search for research, studio.compose for a song). Do not ask for confirmation again and do not just describe the step. If it fails, try one other way, then report plainly what happened.",
   remember: "The user asked you to remember something. Confirm in one short sentence what you will remember, using their exact words and values.",
   status: "The user is asking what happened with the last step. Explain from the conversation above which tool failed and why, in plain words, and offer to retry another way. Do not call web_search.",
@@ -555,7 +555,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     if (!answer || !r?.ok) answer = budgetExhaustedReply(r?.toolCalls || [], { prompt });
     const toolCalls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
     return {
-      reply: scrubUserFacingToolNames(answer),
+      reply: sanitizeUserReply(answer, { prompt }),
       toolCalls: toolCalls.map(clientToolCall),
       artifacts: Array.isArray(r?.artifacts) ? r.artifacts : [],
       sources: sourcesFromToolCalls(toolCalls),
@@ -692,7 +692,7 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
     for (const f of formulaDtus) sources.push({ type: "dtu", title: f.title, id: f.id, url: `/dtus/${f.id}` });
   }
   return {
-    reply: withSourceLinks(replyText, sources.filter((x) => x.type !== "dtu")),
+    reply: sanitizeUserReply(withSourceLinks(replyText, sources.filter((x) => x.type !== "dtu")), { prompt }),
     toolCalls: toolCalls.map(clientToolCall),
     artifacts,
     sources,
