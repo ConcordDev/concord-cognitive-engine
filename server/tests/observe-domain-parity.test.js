@@ -176,26 +176,29 @@ describe("observe — alert monitors", () => {
 
 // ---------------------------------------------------------------- 6. synthetics
 describe("observe — synthetic monitoring", () => {
-  it("saves and lists a synthetic check", () => {
-    const save = call("syntheticSave", ctxA, {}, { url: "https://example.com/health", expectStatus: 200 });
+  it("saves and lists a synthetic check", async () => {
+    const save = await call("syntheticSave", ctxA, {}, { url: "https://example.com/health", expectStatus: 200 });
     assert.equal(save.ok, true);
     assert.equal(save.result.check.status, "pending");
-    assert.equal(call("syntheticList", ctxA, {}, {}).result.total, 1);
+    assert.equal((await call("syntheticList", ctxA, {}, {})).result.total, 1);
   });
 
-  it("rejects a missing URL and deletes a check", () => {
-    assert.equal(call("syntheticSave", ctxA, {}, {}).ok, false);
-    const save = call("syntheticSave", ctxA, {}, { url: "https://x.test" });
-    assert.equal(call("syntheticDelete", ctxA, {}, { id: save.result.check.id }).ok, true);
+  it("rejects a missing URL and deletes a check", async () => {
+    assert.equal((await call("syntheticSave", ctxA, {}, {})).ok, false);
+    const save = await call("syntheticSave", ctxA, {}, { url: "https://x.test" });
+    assert.equal((await call("syntheticDelete", ctxA, {}, { id: save.result.check.id })).ok, true);
   });
 
   it("syntheticRun records latency + status via real fetch", async () => {
     globalThis.fetch = async () => ({ status: 200, text: async () => "OK" });
-    const save = call("syntheticSave", ctxA, {}, { url: "https://x.test", expectStatus: 200 });
+    // 8.8.8.8 is a public address, so the SSRF guard reaches the fetch slot.
+    // An unresolvable name (x.test) is fail-closed and never gets here.
+    const save = await call("syntheticSave", ctxA, {}, { url: "https://8.8.8.8/", expectStatus: 200 });
     const r = await call("syntheticRun", ctxA, {}, { id: save.result.check.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.check.status, "up");
     assert.equal(r.result.check.uptimePct, 100);
+    assert.equal(r.result.run.statusCode, 200);
   });
 });
 
