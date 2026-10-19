@@ -179,6 +179,29 @@ export function alignReplyToBbox(text, bbox) {
   });
 }
 
+/**
+ * Keep a CAD/ConKay layout in the reply when a side call (create_dtu) would
+ * otherwise leave only "Saved a private DTU…". The design sentence and the
+ * bbox stay; the save line stays with them.
+ */
+export function ensureDesignSummary(reply, results) {
+  const hit = meshResult(results);
+  if (!hit) return String(reply || "");
+  const summary = userFacingMeshReply(hit);
+  const text = String(reply || "").trim();
+  if (!text) return summary;
+  const bbox = specBbox(hit);
+  const hasLayout = /layout is shown below|3D model is shown below/i.test(text);
+  const hasDims = !bbox || (
+    text.includes(`${bbox.length} mm`)
+    && text.includes(`${bbox.height} mm`)
+    && text.includes(`${bbox.width} mm`)
+  );
+  if (hasLayout && hasDims) return text;
+  if (hasLayout && bbox) return `${text.trimEnd()}${overallSizeSentence(bbox)}`;
+  return `${summary}\n\n${text}`;
+}
+
 /** Sentence stored as the chat reply when a turn produced a mesh. No tool names.
  *  A solved part keeps a plain "shown below" line. Only a layout concept says
  *  that no engineering check was run. Overall size is the spec bbox. */

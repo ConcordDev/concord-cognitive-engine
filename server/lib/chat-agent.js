@@ -63,6 +63,7 @@ import {
   sanitizeUserReply,
   alignReplyToBbox,
   specBbox,
+  ensureDesignSummary,
 } from "./chat/tool-turn-reply.js";
 import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
@@ -2720,6 +2721,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
   // A streamed follow-up once called an 880 mm layout "2.7 m tall".
   finalAnswer = alignReplyToBbox(finalAnswer, specBbox(allToolCalls));
+  finalAnswer = ensureDesignSummary(finalAnswer, allToolCalls);
   if (ECHOED_TOOL_RESULT_RE.test(finalAnswer)) {
     finalAnswer = "I ran the tools but couldn't write a summary of the results. The sources I found are listed below.";
   }

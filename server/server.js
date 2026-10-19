@@ -2161,6 +2161,7 @@ import {
   toolFollowUpUserMessage,
   followUpFailureReply,
   ensureCreatedDtuIds,
+  ensureDesignSummary,
   chatTurnArtifacts,
   scrubUserFacingToolNames,
   userFacingMeshReply,
@@ -30026,6 +30027,7 @@ ${_operatorV6Block}` : "";
 
   if (!_lockedReply && _toolCallsExecuted.length) {
     finalReply = ensureCreatedDtuIds(finalReply, _toolCallsExecuted);
+    finalReply = ensureDesignSummary(finalReply, _toolCallsExecuted);
   }
   // A failed 3D/design tool must not leave "use conkay_design …" in the
   // transcript. The model-facing retry hint can name the tool; the reply cannot.
