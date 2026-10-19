@@ -9,7 +9,8 @@
 // a substitute. "GPU image generation is offline" is reserved for a gen
 // server that is actually unreachable or missing weights.
 
-import { generateViaLocalGpu } from "../pollinations-image.js";
+import { generateViaLocalGpu, userFacingGenerationError } from "../pollinations-image.js";
+export { userFacingGenerationError };
 import { storeArtifact, retrieveArtifact } from "../artifact-store.js";
 import { createMediaDTU, canAccessMediaDTU, getMediaDTU } from "../media-dtu.js";
 
@@ -142,12 +143,16 @@ export { retrieveArtifact, canAccessMediaDTU, getMediaDTU };
  * Pod GPU only. Never calls Pollinations. Never throws.
  * offline is true only for local_gpu_unreachable and weights_missing.
  */
-export async function produceGpuImage({ prompt, width, height, seed, ownerId, state } = {}) {
+export async function produceGpuImage({ prompt, width, height, seed, ownerId, state, timeoutMs } = {}) {
   const clean = String(prompt || "").trim();
   let gen;
   try {
-    gen = await generateViaLocalGpu({ prompt: clean, width, height, seed });
+    gen = await generateViaLocalGpu({ prompt: clean, width, height, seed, timeoutMs });
   } catch (err) {
+    const aborted = userFacingGenerationError(err?.message);
+    if (aborted && aborted !== String(err?.message || "").trim()) {
+      return { ok: false, offline: false, error: aborted, reason: "timeout", prompt: clean };
+    }
     return { ok: false, offline: true, error: GPU_OFFLINE_REPLY, reason: "local_gpu_unreachable", detail: String(err?.message || err) };
   }
   const external = gen?.provider === "pollinations" || /pollinations\.ai/i.test(String(gen?.url || ""));
@@ -178,10 +183,19 @@ export async function produceGpuImage({ prompt, width, height, seed, ownerId, st
       },
     };
   }
+  if (gen?.reason === "timeout" || gen?.reason === "gpu_busy" || gen?.reason === "gpu_wrong_model") {
+    return {
+      ok: false,
+      offline: false,
+      error: userFacingGenerationError(gen.error) || gen.error,
+      reason: gen.reason,
+      prompt: clean,
+    };
+  }
   if (external || OFFLINE_REASONS.has(gen?.reason) || !gen) {
     return { ok: false, offline: true, error: GPU_OFFLINE_REPLY, reason: gen?.reason || "local_gpu_unreachable", prompt: clean };
   }
-  const raw = scrubOutside(gen.error || gen.reason || "generate_image failed");
+  const raw = userFacingGenerationError(scrubOutside(gen.error || gen.reason || "generate_image failed"));
   return {
     ok: false,
     offline: false,
@@ -197,7 +211,7 @@ export async function produceGpuImage({ prompt, width, height, seed, ownerId, st
 export async function fulfillImageRequest(message, opts = {}) {
   const parsed = explicitImagePrompt(message);
   if (!parsed) return null;
-  const gen = await produceGpuImage({ ...parsed, ownerId: opts.ownerId, state: opts.state });
+  const gen = await produceGpuImage({ ...parsed, ownerId: opts.ownerId, state: opts.state, timeoutMs: opts.timeoutMs });
   if (gen.ok && gen.artifact) {
     return {
       ok: true,

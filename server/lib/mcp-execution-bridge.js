@@ -9,6 +9,8 @@
 //   list_lens_actions    — discovery (actions + input hints)
 //   conkay_solver_list   — Solver Registry inventory
 //   conkay_solve         — one solver id + design inputs → envelope + provenance
+//   conkay_ir_schema     — worked Design IR example
+//   conkay_compile_brief — short brief → Design IR (no invented sizes)
 
 import { resolveDualRegistry } from "./dual-registry-resolve.js";
 import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
@@ -21,6 +23,7 @@ import {
   BRIDGE_RISK,
 } from "./mcp-hermes-identity.js";
 import { formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./conkay/compiler/soften-ir.js";
+import { compileDesignBrief } from "./conkay/compiler/design-brief.js";
 
 const PREFERRED_LENS_ACTIONS = [
   "task-add", "task-list", "search", "create", "save", "open", "from-brief",
@@ -490,7 +493,7 @@ export async function conkayIrSchemaMcp(db, args = {}, STATE = null, callCtx = n
   if (!imp.ok) return { ok: false, ...imp };
   const auth = authorizeBridgeCall({
     actor,
-    tool: "conkay_solver_list",
+    tool: "conkay_ir_schema",
     risk: BRIDGE_RISK.READ,
   });
   if (!auth.ok) return { ok: false, ...auth };
@@ -505,5 +508,48 @@ export async function conkayIrSchemaMcp(db, args = {}, STATE = null, callCtx = n
     ],
     actor_id: imp.actorId,
     audited: true,
+  };
+}
+
+/**
+ * conkay_compile_brief — a short design sentence → Design IR.
+ * Robot briefs become Joint / Actuator / Limb nodes. Missing sizes stay
+ * missing. Cars and L-brackets delegate to compileBrief.
+ */
+export async function conkayCompileBriefMcp(db, args = {}, STATE = null, callCtx = null) {
+  const clean = stripInternalArgs(args);
+  const actor = actorFromCallCtx(callCtx, args);
+  const imp = rejectImpersonation(actor, clean);
+  if (!imp.ok) return { ok: false, ...imp };
+  const auth = authorizeBridgeCall({
+    actor,
+    tool: "conkay_compile_brief",
+    risk: BRIDGE_RISK.READ,
+  });
+  if (!auth.ok) return { ok: false, ...auth };
+  const brief = clean.brief ?? clean.text ?? "";
+  const compiled = compileDesignBrief(typeof brief === "string" ? brief : "");
+  if (!compiled.ok) {
+    return {
+      ok: false,
+      reason: "brief_incomplete",
+      error: compiled.error,
+      ...(compiled.missing ? { missing: compiled.missing } : {}),
+      hints: compiled.hints || [...CONKAY_IR_HINTS],
+      actor_id: imp.actorId,
+      audited: true,
+    };
+  }
+  return {
+    ok: true,
+    architecture: compiled.architecture,
+    ir: compiled.ir,
+    warnings: compiled.warnings || [],
+    assumptions: compiled.assumptions || [],
+    ...(compiled.spec ? { spec: compiled.spec } : {}),
+    ...(compiled.unmapped ? { unmapped: compiled.unmapped } : {}),
+    actor_id: imp.actorId,
+    audited: true,
+    note: "Compiled from the brief with registry material ids. Screening IR. Quantities that were not in the brief are not invented.",
   };
 }

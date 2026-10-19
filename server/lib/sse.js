@@ -32,9 +32,16 @@ export function startSSE(res, { heartbeatMs = SSE_HEARTBEAT_MS } = {}) {
   res.setHeader("X-Accel-Buffering", "no");
   if (typeof res.flushHeaders === "function") res.flushHeaders();
 
-  const hb = setInterval(() => {
+  // compression() holds a ~13-byte comment until the body is ~1KB, so a
+  // phone's ~45s no-data watchdog cancels /api/chat/stream while a tool is
+  // still running (the tunnel hits the Node port with no nginx). Write a
+  // beat immediately and flush every beat so bytes actually leave.
+  const beat = () => {
     try { res.write(":keepalive\n\n"); } catch { /* connection closed */ }
-  }, heartbeatMs);
+    try { if (typeof res.flush === "function") res.flush(); } catch { /* best-effort */ }
+  };
+  beat();
+  const hb = setInterval(beat, heartbeatMs);
   if (typeof hb.unref === "function") hb.unref(); // never hold the process open
 
   const stop = () => clearInterval(hb);

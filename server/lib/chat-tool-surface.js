@@ -2,7 +2,7 @@
 // runs web_search.
 //
 // Two paths inject tools, and they are not the same set:
-//   • chat.respond (/api/chat, /api/chat/stream) injects the five tools in
+//   • chat.respond (/api/chat, /api/chat/stream) injects the public tools in
 //     its system prompt (plus two operator tools) whenever
 //     STATE.__chicken3.toolsEnabled !== false. It then sets the session's
 //     toolsOptIn itself. Session opt-in is not a precondition.
@@ -68,6 +68,68 @@ export const CHAT_RESPOND_TOOLS = Object.freeze([
     operatorOnly: false,
   },
   {
+    name: "list_lens_actions",
+    description: "List real action names and input fields for a lens domain.",
+    params: {
+      domain: { type: "string", required: true, description: "Lens domain" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "conkay_solver_list",
+    description: "List ConKay solvers from the live Solver Registry.",
+    params: {
+      domain: { type: "string", required: false, description: "Optional physics domain filter" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "conkay_solve",
+    description: "Run one ConKay solver against a Design IR.",
+    params: {
+      solver_id: { type: "string", required: true, description: "Solver id from conkay_solver_list" },
+      ir: { type: "object", required: false, description: "Design IR" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "conkay_ir_schema",
+    description: "Worked Design IR example and contract hints.",
+    params: {},
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "conkay_compile_brief",
+    description: "Compile a short design brief into Design IR. Does not invent missing sizes.",
+    params: {
+      brief: { type: "string", required: true, description: "Plain-language design brief" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "conkay_design",
+    description: "Size or check an engineered part, or build a concept 3D assembly from a plain-language spec.",
+    params: {
+      text: { type: "string", required: true, description: "The design in words" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
+    name: "generate_3d",
+    description: "Free-form 3D model on Concord's GPU. Not for engineered parts.",
+    params: {
+      prompt: { type: "string", required: true, description: "The object" },
+    },
+    requiresOptIn: true,
+    operatorOnly: false,
+  },
+  {
     name: "generate_image",
     description: "Generate an image on Concord's GPU.",
     params: {
@@ -105,6 +167,7 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "conkay_solve", description: "Run one ConKay solver against a Design IR (MCP bridge).", params: { solver_id: { type: "string", required: true }, ir: { type: "object", required: false } } },
   { name: "conkay_solver_list", description: "List ConKay solvers (MCP bridge).", params: { domain: { type: "string", required: false } } },
   { name: "conkay_ir_schema", description: "Worked Design IR example + contract hints (MCP bridge).", params: {} },
+  { name: "conkay_compile_brief", description: "Compile a short design brief into Design IR (MCP bridge). Missing sizes stay missing.", params: { brief: { type: "string", required: false }, text: { type: "string", required: false } } },
   { name: "run_python", description: "Python in the isolated Pyodide worker.", params: { code: { type: "string", required: true } } },
   { name: "browse_url", description: "Fetch and read a web page.", params: { url: { type: "string", required: true } } },
   { name: "run_lens_action", description: "Invoke a registered lens action.", params: { domain: { type: "string", required: true }, action: { type: "string", required: true } } },

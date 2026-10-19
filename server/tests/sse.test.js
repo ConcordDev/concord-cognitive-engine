@@ -57,6 +57,19 @@ describe("startSSE", () => {
     assert.equal(res.writes.length, n);
   });
 
+  it("flushes each keep-alive so a buffered proxy cannot hold it", async () => {
+    const res = mockRes();
+    let flushes = 0;
+    res.flush = () => { flushes += 1; };
+    const stop = startSSE(res, { heartbeatMs: 10 });
+    assert.ok(flushes >= 1, "the first beat flushes immediately");
+    await new Promise((r) => { setTimeout(r, 25); });
+    const beats = res.writes.filter((w) => w === ":keepalive\n\n").length;
+    assert.ok(beats >= 2, `expected heartbeats, got ${beats}`);
+    assert.ok(flushes >= beats, "every keep-alive was flushed");
+    stop();
+  });
+
   it("never throws when write fails (connection already closed)", () => {
     const res = mockRes();
     res.write = () => { throw new Error("EPIPE"); };

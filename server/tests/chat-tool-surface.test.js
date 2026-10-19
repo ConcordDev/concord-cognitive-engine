@@ -48,7 +48,7 @@ function chatExecuteToolCallSource() {
 describe("chat tool catalog matches both live paths", () => {
   it("lists the tools chat.respond writes into the prompt, including operator-only", () => {
     const src = readFileSync(SERVER_JS, "utf8");
-    const prompted = [...chatPromptToolBlock().matchAll(/^- ([a-z_]+):/gm)].map((m) => m[1]);
+    const prompted = [...chatPromptToolBlock().matchAll(/^- ([a-z0-9_]+):/gm)].map((m) => m[1]);
     assert.deepEqual(prompted, CHAT_RESPOND_TOOLS.filter((t) => !t.operatorOnly).map((t) => t.name));
     const opStart = src.indexOf("const _operatorToolLines");
     const opBlock = src.slice(opStart, src.indexOf("const _operatorV6Block"));
@@ -75,7 +75,9 @@ describe("chat tool catalog matches both live paths", () => {
     assert.equal(on.paths.chat.available, true);
     assert.equal(on.paths.chat.gatedBySessionOptIn, false);
     assert.deepEqual(on.tools.map((t) => t.name), [
-      "web_search", "run_compute", "browse_url", "create_dtu", "run_lens_action", "generate_image",
+      "web_search", "run_compute", "browse_url", "create_dtu", "run_lens_action",
+      "list_lens_actions", "conkay_solver_list", "conkay_solve", "conkay_ir_schema", "conkay_compile_brief",
+      "conkay_design", "generate_3d", "generate_image",
     ]);
     assert.equal(on.tools.every((t) => t.available === true && t.path === "chat"), true);
     assert.equal(on.tools.find((t) => t.name === "run_compute").requiresOptIn, false);

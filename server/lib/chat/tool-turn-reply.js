@@ -11,6 +11,8 @@
  * skip the follow-up because the visible reply is synthesized directly.
  */
 
+import { userFacingGenerationError } from "../pollinations-image.js";
+
 // Ordinary failures the model can recover from on the next turn by trying a
 // different key, part, id, URL or tool (cockpit audit 2026-10-19: one of these
 // used to end the whole reply with "I couldn't complete X").
@@ -71,11 +73,32 @@ export function shouldSkipToolFollowup(results, opts = {}) {
   return list.every((r) => r?.tool === "create_dtu");
 }
 
+/** Mesh and other non-image artifacts a chat turn should hand the UI. */
+export function chatTurnArtifacts(results, { skipImage } = {}) {
+  const out = [];
+  const seen = new Set();
+  for (const r of Array.isArray(results) ? results : []) {
+    const list = [r?.artifact, ...(Array.isArray(r?.artifacts) ? r.artifacts : [])];
+    for (const a of list) {
+      if (!a || seen.has(a)) continue;
+      if (skipImage && (a.kind === "image" || a.type === "image")) continue;
+      seen.add(a);
+      try {
+        if (JSON.stringify(a).length >= 200000) continue;
+      } catch { continue; }
+      out.push(a);
+      if (out.length >= 4) return out;
+    }
+  }
+  return out;
+}
+
 export function composeToolTurnReply(results) {
   const lines = [];
   for (const r of Array.isArray(results) ? results : []) {
     if (!r?.ok) {
-      const err = r?.error || "it failed";
+      const raw = String(r?.error || "it failed");
+      const err = userFacingGenerationError(raw) || raw;
       lines.push(`I couldn't complete ${r?.tool || "that tool"}: ${String(err).replace(/[.!?]+\s*$/, "")}.`);
       continue;
     }

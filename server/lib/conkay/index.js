@@ -29,6 +29,7 @@ import "./physics/solvers/mass-properties.js";
 import "./physics/solvers/mass-budget.js";
 import "./physics/solvers/geometry-stability.js";
 import "./physics/solvers/tube-actuation.js";
+import "./physics/solvers/robotics.js";
 import "./physics/solvers/electrical.js";
 import "./physics/solvers/energy-balance.js";
 import "./physics/solvers/powertrain.js";

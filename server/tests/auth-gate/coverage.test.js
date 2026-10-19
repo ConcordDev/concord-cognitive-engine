@@ -55,6 +55,8 @@ const PROTECTED_TOOLS = new Set([
   "list_lens_actions",
   "conkay_solve",
   "conkay_solver_list",
+  "conkay_ir_schema",
+  "conkay_compile_brief",
 ]);
 
 // ── Boilerplate (same shape as tests/e2e/admin-liveness-role-gate.test.js) ──

@@ -13,6 +13,10 @@
 
 import { NodeIO } from "@gltf-transform/core";
 import { MeshoptSimplifier } from "meshoptimizer";
+import { assessGpuHealth, isGenerationAbort } from "../pollinations-image.js";
+
+export const THREE_D_TIMEOUT_REPLY = "3D generation timed out before the GPU finished. Try again in a moment.";
+const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the mesh. Try again in a moment.";
 
 const GEN_URL = () => (process.env.CONCORD_GEN_URL || "http://127.0.0.1:7870").replace(/\/$/, "");
 const CONCEPT_FRAMING = "a single object, product shot, plain white background, centered, full object visible, no text,";
@@ -27,7 +31,10 @@ async function postJson(route, body, timeoutMs, fetchImpl) {
     });
     return await r.json();
   } catch (err) {
-    return { ok: false, reason: err?.name === "TimeoutError" ? "timeout" : "local_gpu_unreachable", error: String(err?.message || err) };
+    if (isGenerationAbort(err)) {
+      return { ok: false, reason: "timeout", error: THREE_D_TIMEOUT_REPLY, detail: String(err?.message || err) };
+    }
+    return { ok: false, reason: "local_gpu_unreachable", error: String(err?.message || err) };
   }
 }
 
@@ -99,16 +106,34 @@ export async function decimateMesh({ positions, indices }, maxTris = MAX_TRIS) {
 /**
  * @returns {Promise<{ok:true, mesh, conceptB64, seconds, provider} | {ok:false, error, reason, stage}>}
  */
-export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS } = {}) {
+export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, preflight = false } = {}) {
   const clean = String(prompt || "").trim().slice(0, 600);
   if (!clean) return { ok: false, stage: "input", reason: "empty_prompt", error: "generate_3d requires a prompt" };
+  if (preflight) {
+    let health = null;
+    try {
+      const hr = await fetchImpl(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(5000) });
+      health = typeof hr?.json === "function" ? await hr.json() : null;
+    } catch { health = null; }
+    const gate = assessGpuHealth(health);
+    if (!gate.ok && (gate.reason === "gpu_busy" || gate.reason === "gpu_wrong_model")) {
+      return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
+    }
+  }
   const t0 = Date.now();
-  const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, 120_000, fetchImpl);
+  const conceptMs = Number(conceptTimeoutMs) > 0 ? Number(conceptTimeoutMs) : 120_000;
+  const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, conceptMs, fetchImpl);
   if (!concept?.ok || !concept.png_b64) {
+    if (concept?.reason === "timeout") {
+      return { ok: false, stage: "concept", reason: "timeout", error: concept.error || THREE_D_TIMEOUT_REPLY };
+    }
     return { ok: false, stage: "concept", reason: concept?.reason || "concept_failed", error: `3D generation is unavailable: the GPU pod could not make the concept image (${concept?.reason || concept?.error || "no image"})` };
   }
   const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, MESH_TIMEOUT_MS, fetchImpl);
   if (!mesh?.ok || !mesh.glb_b64) {
+    if (mesh?.reason === "timeout") {
+      return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
+    }
     const why = String(mesh?.error || mesh?.reason || "no mesh").slice(0, 200);
     return { ok: false, stage: "mesh", reason: mesh?.reason || "mesh_failed", conceptB64: concept.png_b64,
       error: `3D mesh generation is unavailable on the GPU pod right now (${why})` };

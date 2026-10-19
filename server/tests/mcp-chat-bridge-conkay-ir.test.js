@@ -52,7 +52,7 @@ describe("softenDesignIR", () => {
       loadCases: [],
       requirements: ["be light"],
     });
-    assert.equal(ir.nodes[0].material, "aluminum-6061-t6-b221");
+    assert.equal(ir.nodes[0].material, "aluminum-5052-h32");
     assert.match(ir.nodes[0].props.massSource, /caller assumption/);
     assert.equal(ir.requirements.length, 0);
     assert.ok(warnings.some((w) => /massSource/.test(w)));

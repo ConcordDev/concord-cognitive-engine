@@ -16,6 +16,56 @@ const GEN_URL = () => (process.env.CONCORD_GEN_URL || process.env.GEN_SERVER_URL
 const FALLBACK_REASONS = new Set(["local_gpu_unreachable", "weights_missing"]);
 // FLUX-schnell renders in seconds; the long tail is a cold model load.
 const GPU_CONCEPT_TIMEOUT_MS = Number(process.env.CONCORD_GEN_TIMEOUT_MS) || 5 * 60 * 1000;
+// Chat turns must not sit on the 5-minute default. A phone cancels the
+// stream at ~45s with no bytes; 120s is the chat concept budget.
+export const CHAT_CONCEPT_TIMEOUT_MS = 120_000;
+export const IMAGE_TIMEOUT_REPLY = "Image generation timed out before the GPU finished. Try again in a moment.";
+export const GPU_BUSY_REPLY = "The GPU is busy with another job. Try again in a moment.";
+export const GPU_WRONG_MODEL_REPLY = "The GPU has a different model loaded, so this generation cannot start. Try again in a moment.";
+const ABORT_TEXT_RE = /aborted due to timeout|operation was aborted|\bAbortError\b|\bTimeoutError\b/i;
+
+/** Plain sentence for a saved reply. Raw AbortError text stays out of the transcript. */
+export function userFacingGenerationError(text, fallback = IMAGE_TIMEOUT_REPLY) {
+  const s = String(text || "").trim();
+  if (!s) return "";
+  return ABORT_TEXT_RE.test(s) ? fallback : s;
+}
+
+export function isGenerationAbort(err) {
+  const name = String(err?.name || "");
+  return name === "TimeoutError" || name === "AbortError" || ABORT_TEXT_RE.test(String(err?.message || err || ""));
+}
+
+/**
+ * Health the gen pod actually reported. `{ok:true}` with no model field still
+ * proceeds (that is the healthy shape the pod and the tests use). Busy and a
+ * named non-FLUX model fail before the long /concept POST.
+ */
+export function assessGpuHealth(health) {
+  if (!health || typeof health !== "object") return { ok: false, reason: "local_gpu_unreachable" };
+  const status = String(health.status || health.state || "").toLowerCase();
+  if (health.busy === true || status === "busy") {
+    return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY };
+  }
+  const loaded = [health.model, health.loaded_model, health.loadedModel, health.weights?.loaded]
+    .find((v) => typeof v === "string" && v.trim());
+  if (loaded && !/flux/i.test(String(loaded))) {
+    return { ok: false, reason: "gpu_wrong_model", error: GPU_WRONG_MODEL_REPLY };
+  }
+  if (!(health.ok === true || health.weights?.flux_schnell)) {
+    return { ok: false, reason: "local_gpu_unreachable" };
+  }
+  if (health.weights && health.weights.flux_schnell === false) {
+    return { ok: false, reason: "weights_missing" };
+  }
+  return { ok: true };
+}
+
+function conceptTimeoutMs(timeoutMs) {
+  const n = Number(timeoutMs);
+  if (Number.isFinite(n) && n > 0) return n;
+  return GPU_CONCEPT_TIMEOUT_MS;
+}
 // Saved copies are a convenience cache, not storage — keep the newest N.
 const gpuArtKeep = () => Number(process.env.CONCORD_GPU_ART_KEEP) || 200;
 
@@ -45,17 +95,12 @@ async function localHealth() {
  * Generate via pod GPU (/concept → FLUX). Returns data URL + optional file path.
  * Never throws; returns { ok:false, reason } on failure.
  */
-async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
+async function generateViaLocalGpu({ prompt, width, height, seed, timeoutMs } = {}) {
   const cleanPrompt = String(prompt || "").trim();
   if (!cleanPrompt) return { ok: false, reason: "prompt_required" };
   const health = await localHealth();
-  // Healthy = {ok:true,...} or a weights map that has flux_schnell.
-  if (!health || !(health.ok === true || health.weights?.flux_schnell)) {
-    return { ok: false, reason: "local_gpu_unreachable" };
-  }
-  if (health.weights && health.weights.flux_schnell === false) {
-    return { ok: false, reason: "weights_missing" };
-  }
+  const gate = assessGpuHealth(health);
+  if (!gate.ok) return { ok: false, reason: gate.reason, ...(gate.error ? { error: gate.error } : {}) };
   const w = Math.max(256, Math.min(1024, Number(width) || 768));
   const h = Math.max(256, Math.min(1024, Number(height) || 768));
   let s = Number(seed);
@@ -70,7 +115,7 @@ async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: cleanPrompt, seed: s, width: w, height: h }),
-      signal: AbortSignal.timeout(GPU_CONCEPT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(conceptTimeoutMs(timeoutMs)),
     });
     const body = await r.json();
     if (!body?.ok || !body?.png_b64) {
@@ -96,8 +141,10 @@ async function generateViaLocalGpu({ prompt, width, height, seed } = {}) {
       watermark: false,
     };
   } catch (err) {
-    const reason = err?.name === "TimeoutError" ? "timeout" : "local_gpu_unreachable";
-    return { ok: false, reason, error: String(err?.message || err) };
+    if (isGenerationAbort(err)) {
+      return { ok: false, reason: "timeout", error: IMAGE_TIMEOUT_REPLY, detail: String(err?.message || err) };
+    }
+    return { ok: false, reason: "local_gpu_unreachable", error: String(err?.message || err) };
   }
 }
 
