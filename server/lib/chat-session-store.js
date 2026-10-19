@@ -50,9 +50,10 @@ function _serialiseMeta(meta) {
       webAugmented: meta.webAugmented,
       agentRoute: meta.agentRoute,
     };
-    // Playable/viewable results (studio song, iTunes preview, image) so a reload
-    // or another device still shows the player. A song is ~7 KB; anything that
-    // would bloat the row (inline data URLs) is left out.
+    // Playable/viewable results (studio song, iTunes preview, image, 3D model).
+    // A song is ~7 KB. A TRELLIS mesh is the GLB in the media store plus a
+    // short URL record (see lib/chat/artifact-media.js). Anything still over
+    // 60 KB of JSON — inline positions, a data URL — is left out of the row.
     if (Array.isArray(meta.artifacts) && meta.artifacts.length) {
       const keep = meta.artifacts.slice(0, 4).filter((a) => a && typeof a === "object" && JSON.stringify(a).length < 60000);
       if (keep.length) slim.artifacts = keep;

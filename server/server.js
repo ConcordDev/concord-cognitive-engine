@@ -27994,18 +27994,30 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
               if (_ah.applied) _agentReply = _ah.text;
             } catch { /* humanizer optional */ }
           }
+          // A TRELLIS mesh is megabytes of positions. Store the GLB as private
+          // media and keep a short URL on the in-memory message and the row.
+          let _agentArtifacts = [];
+          try {
+            const { externalizeChatArtifacts } = await import("./lib/chat/artifact-media.js");
+            _agentArtifacts = await externalizeChatArtifacts(_agentOut.artifacts, {
+              ownerId: _agentCtx?.actor?.userId || ctx?.actor?.userId || null,
+              state: STATE,
+            });
+          } catch {
+            _agentArtifacts = (_agentOut.artifacts || []).filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } }).slice(0, 4);
+          }
           const _agentMeta = {
             llmUsed: true, mode, source: "chat_agent", agentRoute: _agentRouteKind,
             toolCallCount: _agentOut.toolCalls.length,
             tools: _agentOut.toolCalls.map((t) => t.tool).slice(0, 10),
+            ...(_agentArtifacts.length ? { artifacts: _agentArtifacts } : {}),
           };
           // Saved with the message so a reload (or another device) still shows the
-          // cited sources, the tool cards and any playable song/preview/image.
+          // cited sources, the tool cards and any playable song/preview/image/model.
           const _persistMeta = {
             ..._agentMeta,
             sources: _agentOut.sources.slice(0, 8),
             toolCalls: _agentOut.toolCalls.slice(0, 10).map((t) => ({ tool: t.tool, ok: t.ok !== false, ...(t.key ? { key: t.key } : {}), ...(t.error ? { error: String(t.error).slice(0, 300) } : {}) })),
-            ...(_agentOut.artifacts.length ? { artifacts: _agentOut.artifacts.slice(0, 4).filter((a) => JSON.stringify(a).length < 200000) } : {}),
           };
           sess.messages.push({ role: "assistant", content: _agentReply, ts: nowISO(), meta: _agentMeta });
           _persistDeterministicTurn(_agentReply, _persistMeta);
@@ -28016,7 +28028,7 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             ok: true, reply: _agentReply, content: _agentReply, sessionId, mode, llmUsed: true,
             route: "chat_agent", agentRoute: _agentRouteKind,
             ...(_agentOut.selfContinuation ? { selfContinuation: _agentOut.selfContinuation } : {}),
-            toolCalls: _agentOut.toolCalls, artifacts: _agentOut.artifacts, sources: _agentOut.sources,
+            toolCalls: _agentOut.toolCalls, artifacts: _agentArtifacts, sources: _agentOut.sources,
             ...(_agentOut.linksRemoved.length ? { linksRemoved: _agentOut.linksRemoved } : {}),
             ...(_agentOut.dtuRefsRemoved.length ? { dtuRefsRemoved: _agentOut.dtuRefsRemoved } : {}),
             meta: { panel: "chat", sessionId, ..._agentMeta, toolCalls: _agentOut.toolCalls.length, sources: _agentOut.sources, provider: _agentOut.provider, model: _agentOut.model },
@@ -30050,7 +30062,16 @@ ${_operatorV6Block}` : "";
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  const _turnArtifacts = chatTurnArtifacts(_toolCallsExecuted, { skipImage: !!_imageTurn?.artifact });
+  let _turnArtifacts = chatTurnArtifacts(_toolCallsExecuted, { skipImage: !!_imageTurn?.artifact });
+  try {
+    const { externalizeChatArtifacts } = await import("./lib/chat/artifact-media.js");
+    _turnArtifacts = await externalizeChatArtifacts(_turnArtifacts, {
+      ownerId: ctx?.actor?.userId || input?.userId || null,
+      state: STATE,
+    });
+  } catch {
+    _turnArtifacts = _turnArtifacts.filter((a) => { try { return a && JSON.stringify(a).length < 60000; } catch { return false; } });
+  }
   sess.messages.push({ role: "assistant", content: (finalReply = visibleChatReply(finalReply, prompt)), ts: nowISO(), meta: { llmUsed, semanticUsed, mode, code: _aiUnavailable?.code, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length, ...(_turnArtifacts.length ? { artifacts: _turnArtifacts } : {}) } });
   if (llmUsed && !_aiUnavailable) _recordChatPersonality(finalReply, currentLens || mode);
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
