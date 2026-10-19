@@ -98,11 +98,22 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
       } catch { /* fall through to the agent loop */ }
     }
 
+    // Remember / recall / "what happened?": answered from the conversation, no model turn.
+    if (isConKay && typeof plan?.reply === "string" && plan.reply) {
+      const answer = withNotices(plan.reply);
+      for (let i = 0; i < answer.length; i += 80) send("token", { chunk: answer.slice(i, i + 80) });
+      console.log(`[chat-agent-stream] done surface=${surface} ok=true turns=0 route=${plan.route} error=""`);
+      send("done", { ok: true, provider: null, model: null, turns: 0, route: plan.route });
+      try { res.end(); } catch { /* noop */ }
+      return;
+    }
+
     try {
       const result = await runAgentLoop({
         db: req.db || req.app.locals.db,
         userId,
-        message,
+        // "Yes run it": the loop gets the confirmation plus what it confirms.
+        message: (isConKay && typeof plan?.message === "string" && plan.message) || message,
         runMacro,
         lensActions,
         history,

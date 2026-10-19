@@ -19460,31 +19460,43 @@ async function initLocalEmbeddings() {
       || process.env.BRAIN_VISION_URL
       || process.env.OLLAMA_URL
       || "http://ollama-vision:11434";
-    const model = process.env.CONCORD_EMBED_OLLAMA_MODEL || "nomic-embed-text";
-    try {
-      // Probe with a short embedding so we fail fast if the model isn't
-      // pulled yet. The Ollama server auto-pulls on first request,
-      // which can be slow; we explicitly probe so the warmup happens
-      // up front instead of inside the first DTU index.
-      const probe = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model, prompt: "warmup" }),
-        signal: AbortSignal.timeout(60_000),
-      });
-      if (!probe.ok) throw new Error(`probe HTTP ${probe.status}`);
-      const probeBody = await probe.json();
-      const dim = Array.isArray(probeBody?.embedding) ? probeBody.embedding.length : 768;
-      EMBEDDINGS.backend = "ollama";
-      EMBEDDINGS.ollamaUrl = ollamaUrl;
-      EMBEDDINGS.ollamaModel = model;
-      EMBEDDINGS.enabled = true;
-      EMBEDDINGS.dim = dim;
-      structuredLog("info", "embeddings_loaded", { backend: "ollama", model, dim, url: ollamaUrl });
-      return { ok: true, backend: "ollama" };
-    } catch (e) {
-      structuredLog("warn", "embeddings_ollama_init_failed", { error: e.message, fallback: "xenova" });
-      // Fall through to Xenova fallback below.
+    // Cockpit audit 2026-10-19: the default probed nomic-embed-text, which no
+    // Concord ollama serves (404 every boot → CPU Xenova fallback). The
+    // semantic layer (lib/embeddings.js) already uses mxbai-embed-large on
+    // CONCORD_EMBED_OLLAMA_URL (:11436); this store now tries it first, then
+    // nomic, then falls back to Xenova as before.
+    const models = [...new Set([process.env.CONCORD_EMBED_OLLAMA_MODEL, "mxbai-embed-large", "nomic-embed-text"].filter(Boolean))];
+    // mxbai is Matryoshka-trained: keep its first N dims (default 512) so the
+    // in-memory store stays near the old 384-dim footprint on a low-memory host.
+    const legacyDims = Math.max(0, Number(process.env.CONCORD_EMBED_LEGACY_DIMS ?? 512) || 0);
+    for (const model of models) {
+      try {
+        // Probe with a short embedding so we fail fast if the model isn't
+        // pulled yet. The Ollama server auto-pulls on first request,
+        // which can be slow; we explicitly probe so the warmup happens
+        // up front instead of inside the first DTU index.
+        const probe = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ model, prompt: "warmup" }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (!probe.ok) throw new Error(`probe HTTP ${probe.status}`);
+        const probeBody = await probe.json();
+        const full = Array.isArray(probeBody?.embedding) ? probeBody.embedding.length : 768;
+        const truncate = /mxbai/i.test(model) && legacyDims > 0 && legacyDims < full ? legacyDims : 0;
+        EMBEDDINGS.backend = "ollama";
+        EMBEDDINGS.ollamaUrl = ollamaUrl;
+        EMBEDDINGS.ollamaModel = model;
+        EMBEDDINGS.truncateDims = truncate;
+        EMBEDDINGS.enabled = true;
+        EMBEDDINGS.dim = truncate || full;
+        structuredLog("info", "embeddings_loaded", { backend: "ollama", model, dim: EMBEDDINGS.dim, fullDim: full, url: ollamaUrl });
+        return { ok: true, backend: "ollama" };
+      } catch (e) {
+        structuredLog("warn", "embeddings_ollama_init_failed", { model, error: e.message, fallback: models.indexOf(model) < models.length - 1 ? "next_model" : "xenova" });
+        // Try the next model, then fall through to the Xenova fallback below.
+      }
     }
   }
 
@@ -19560,7 +19572,8 @@ async function generateEmbedding(text) {
           if (!res.ok) throw new Error(`ollama embed HTTP ${res.status}`);
           const j = await res.json();
           if (!Array.isArray(j?.embedding)) throw new Error("ollama embed returned no embedding");
-          return { ok: true, embedding: j.embedding, dim: j.embedding.length };
+          const vec = EMBEDDINGS.truncateDims > 0 ? j.embedding.slice(0, EMBEDDINGS.truncateDims) : j.embedding;
+          return { ok: true, embedding: vec, dim: vec.length };
         }
         // Xenova fallback path.
         if (!EMBEDDINGS.model) return { ok: false, error: "embeddings_model_missing" };

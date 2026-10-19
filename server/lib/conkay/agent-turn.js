@@ -12,10 +12,12 @@
 // ConKay engineering cases (design → conkay_design, FEA on "it" → the last
 // design brief).
 
-import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk, CODE_TEST_RE } from "../chat/agent-route.js";
+import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk, CODE_TEST_RE, continueAgentMessage, deterministicRouteReply, confirmedAsk } from "../chat/agent-route.js";
+import { conceptKind } from "./concept-assembly.js";
 
 import { ROBOT_RE } from "./robot-assembly.js";
-const PART_RE = /\b(?:bracket|beam|i-?beam|cantilever|shaft|truss|column|plate|frame|part|mount|bridge|footbridge|joist|girder|lintel|shelf|hook|axle|spring|rod|bar)s?\b/i;
+const PART_RE = /\b(?:bracket|beam|i-?beam|cantilever|shaft|truss|column|plate|frame|part|mount|bridge|footbridge|joist|girder|lintel|shelf|hook|axle|spring|rod|bar|stand|holder|gear\s*box|gearbox|enclosure|housing|table|desk|chair|stool|bookshelf)s?\b/i;
+const CAD_RE = /\b(?:3[- ]?d|cad|solid|mesh|printable|stl)\s+(?:model|models|part|parts|file|mesh|object|version|design|print)\b|\b3[- ]?d[- ]print(?:ed|able|ing)?\b|\bstl\b/i;
 const DESIGN_VERB_RE = /\b(?:design|build|size|sizing|make|create|model|engineer|spec|check)\b/i;
 const LOAD_RE = /\b\d+(?:\.\d+)?\s*(?:k?n|kgs?|kilograms?|lbs?|pounds?|tons?|tonnes?|kn)\b|\b(?:holds?|support(?:s|ing)?|carry|carries|load(?:ed)?)\b/i;
 const FEA_RE = /\b(?:fea|finite[- ]element|stress analysis|structural analysis|simulat(?:e|ion)|analy[sz]e (?:it|this|that|the (?:design|part|bracket|beam|model))|re-?run (?:it|the solver)|check (?:the )?(?:stress|deflection|safety factor))\b/i;
@@ -36,13 +38,16 @@ export function lastDesignBrief(history = []) {
   return null;
 }
 
-const DESIGN_HINT = "This is a ConKay design ask. Call conkay_design with the user's spec in words (part, load, material, supports, safety factor). It runs the hand calculation and the FEA solver and returns a 3D model the interface shows below your reply. Report the solver's real numbers and pass/fail, list the assumed defaults, and say the model is shown below. Never state numbers the tool did not return.";
+const DESIGN_HINT = "This is a ConKay design ask. Call conkay_design with the user's spec in words (part, load, material, supports, safety factor). It runs the hand calculation and the FEA solver and returns a 3D model the interface shows below your reply; for everyday objects it has no solver for (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with a parts list. Report the solver's real numbers and pass/fail (or the concept parts and sizes), list the assumed defaults, and say the model is shown below. Never state numbers the tool did not return.";
+const FREEFORM_3D_HINT = "The user wants a free-form 3D model. Call generate_3d with the object in a few words; it returns a rotatable mesh and its concept image below your reply. If it fails, say plainly 3D generation is unavailable right now; never substitute generate_image and call it a 3D model.";
 
 const POLICY = [
   "TOOL POLICY (ConKay, overrides any style instruction above): you answer with tools, not from memory.",
   "• Facts, products, prices, specs, current events, anything you would otherwise recall: web_search first, then answer from the results with their links. If the snippets lack the number asked for, browse_url the best result and quote the number from that page. For news, lead with the newest dated items and name each outlet and date.",
   "• Textbook, science and engineering facts (material constants, laws, definitions, formulas) or any ask for a textbook/OpenStax source: textbook_lookup first; quote the numbers with units and cite book, section and link. If it has nothing, web_search. Never guess a value; if no source has it, say so.",
   "• Designing or sizing a part: conkay_design (hand calc + FEA + 3D model). FEA on a design already discussed: conkay_design again with that same brief. If an FEA result has ok:false, say the FEA failed; never claim an FEA pass. A part conkay_design does not support (shaft, gear, spring, phone stand...): say so, then work it out by formula in your reply (formula, inputs, result) or give practical design guidance; do not call run_python for it.",
+  "• 3D / CAD / STL / printable asks: conkay_design for engineered or functional objects (it returns a concept 3D assembly for stands, trusses, gearboxes, furniture, enclosures), generate_3d for free-form objects. Never generate_image for a 3D ask.",
+  "• If a tool fails, read its hint and try one other way (a different tool, key or input) before telling the user it failed.",
   "• Images: generate_image. A new song: run_lens_action studio.compose; a real song: run_lens_action music.ingest-itunes. Say it is ready to play below, never that it is playing.",
   "• Creating or changing something in Concord (tasks, events, notes): run_lens_action (find_lens_actions if unsure), then report only what the tool stored. Never invent dates, ids or details.",
   "• Do not say \"On it\" or describe a tool you did not call. If a tool fails or returns nothing, say so plainly.",
@@ -92,6 +97,22 @@ export function conkayTurnPlan(message, history = []) {
   if (route === "long" || route === "jobs") {
     return { route, hint: routeHint(route), fallbackCall: route === "long" ? { tool: "start_long_task", params: { goal: p.slice(0, 2000) } } : { tool: "check_long_task", params: {} } };
   }
+  // Remember / recall a stated value / "what happened?": answered without a model.
+  if (route === "remember" || route === "status" || route === "recall") {
+    const reply = deterministicRouteReply(route, p, history, "");
+    if (reply) return { route, hint: routeHint(route), fallbackCall: null, reply };
+    if (route !== "recall") return { route, hint: routeHint(route), fallbackCall: null };
+  }
+  // "Yes run it" after a design brief or an offer: re-run the planned action.
+  if (route === "continue") {
+    const ask = confirmedAsk(history);
+    const brief = lastDesignBrief(history);
+    const designish = /\b(?:design|model|fea|cad|brief|solver|conkay|3d|stl|part|assembly)\b/i.test(`${prevReply.slice(-600)} ${ask}`);
+    let fallbackCall = null;
+    if (brief && designish) fallbackCall = { tool: "conkay_design", params: { text: brief } };
+    else if (ask && CAD_RE.test(ask) && conceptKind(ask)) fallbackCall = { tool: "conkay_design", params: { text: ask } };
+    return { route, hint: routeHint("continue"), fallbackCall, message: continueAgentMessage(p, history), ...(brief && designish ? { brief } : {}) };
+  }
   // "create a task: call the machinist about the bracket" is a lens write, not a design.
   const writeFirst = route === "action" || route === "save" || route === "music" || route === "browse";
 
@@ -105,6 +126,11 @@ export function conkayTurnPlan(message, history = []) {
         fallbackCall: { tool: "conkay_design", params: { text: brief } },
       };
     }
+  }
+  // "make a 3d model / CAD / STL of X": engineered objects to conkay_design, free-form to generate_3d.
+  if (!writeFirst && CAD_RE.test(p) && !isDesignAsk(p)) {
+    if (conceptKind(p)) return { route: "design", hint: DESIGN_HINT, fallbackCall: { tool: "conkay_design", params: { text: p } } };
+    return { route: "design", hint: FREEFORM_3D_HINT, fallbackCall: { tool: "generate_3d", params: { prompt: p.replace(/^.*?\b(?:3[- ]?d|cad|stl)\s+(?:model|file|mesh|object|version|print)?\s*(?:of\s+)?/i, "").slice(0, 300) || p.slice(0, 300) } } };
   }
   if (!writeFirst && isDesignAsk(p)) {
     const hint = ROBOT_RE.test(p)

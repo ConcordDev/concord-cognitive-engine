@@ -111,9 +111,21 @@ export function buildSessionMemory(rows) {
   }
   const saved = savedItemsFromRows(list);
   if (userTurns < MEMORY_MIN_USER_TURNS) return { text: "", userTurns, facts, saved };
+  // Things the user explicitly asked you to remember never age out of the note.
+  const pinned = [];
+  {
+    let n = 0;
+    for (const m of list) {
+      if (m?.role !== "user") continue;
+      n++;
+      if (parseRememberAsk(m.content)) pinned.push(`- turn ${n}: ${clip(m.content)}`);
+    }
+  }
   const parts = [
     `Memory of this chat (${userTurns} user turns so far; from the saved transcript, oldest first). Use it to answer questions about earlier turns. Later lines override earlier ones (corrections). If something is not here or in the replayed messages, say you don't see it rather than guessing.`,
   ];
+  const pin = takeNewestWithin(pinned, 700);
+  if (pin.length) parts.push(`The user asked you to remember (their words, newest last):\n${pin.join("\n")}`);
   const f = takeNewestWithin(facts, FACTS_CHARS);
   if (f.length) parts.push(`What the user told you (their words):\n${f.join("\n")}`);
   const s = takeNewestWithin(saved.map((x) => `- ${x}`), SAVED_CHARS);
@@ -167,10 +179,10 @@ export function memoryDtuDue(userTurns, { evicted = false } = {}) {
 }
 
 // ── "what did I save / what did I say" ────────────────────────────────────
-const SAVED_RECALL_RE = /\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bdo you remember\b|\bremind me (?:what|of|the)\b|\bwhen i asked\b|\bwhat (?:does|did) my\b[^.?!]{0,30}\b(?:note|notes|dtu)\b|\bmy\b[^.?!]{0,20}\bnote (?:says|said)\b/i;
+const SAVED_RECALL_RE = /\bwhat(?:'?s| is| was)?\s+(?:the\s+|my\s+|that\s+)?(?:code ?word|password|passphrase|pass ?code|secret(?:\s+word)?|magic word|safe ?word)\b|\b(?:which|what)\s+(?:code ?word|word|phrase|number|name)\s+(?:did|have)\s+i\b|\bwhat did i (?:give|gave|tell|ask) you(?: to remember)?\b|\bwhat (?:did )?i (?:asked|told) you to remember\b|\bremember what i (?:said|told you|gave you)\b|\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bdo you remember\b|\bremind me (?:what|of|the)\b|\bwhen i asked\b|\bwhat (?:does|did) my\b[^.?!]{0,30}\b(?:note|notes|dtu)\b|\bmy\b[^.?!]{0,20}\bnote (?:says|said)\b/i;
 // "what's my X" is recall only with a recall cue or a fact noun; "what's my brother been up to" is chat.
 const MY_FORM_RE = /\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b/i;
-const RECALL_CUE_RE = /\b(?:again|earlier|before|said|told|mentioned|remember|saved)\b|\b(?:name|budget|address|birthday|plan|note|notes|order|hotel|flight|password hint|dog|cat|pet)\b/i;
+const RECALL_CUE_RE = /\b(?:again|earlier|before|said|told|gave|give|mentioned|remember|saved|code ?word|password|passphrase|secret)\b|\b(?:name|budget|address|birthday|plan|note|notes|order|hotel|flight|password hint|dog|cat|pet)\b/i;
 const NOT_RECALL_RE = /\b(?:been up to|up to|doing|feeling|horoscope|ip address|location)\b/i;
 /** A question about what the user said or saved earlier. */
 export function isRecallAsk(prompt) {
@@ -178,6 +190,75 @@ export function isRecallAsk(prompt) {
   if (!SAVED_RECALL_RE.test(p) || NOT_RECALL_RE.test(p)) return false;
   const nonMy = SAVED_RECALL_RE.test(p.replace(MY_FORM_RE, " "));
   return nonMy || RECALL_CUE_RE.test(p);
+}
+
+// ── "Remember codeword PLUM-77" / "what codeword did I give you" (PLUM-77) ─
+// Cockpit audit 2026-10-19: the remember turn had no route and the recall
+// question ran a web search for the phrase. Both are answered here from the
+// chat's own turns, with no model call, so the value comes back verbatim.
+const REMEMBER_RE = /^\s*(?:(?:hey|yo|ok(?:ay)?|so|also|and|please|pls|concord|conkay)[,\s]+)*(?:please\s+)?(?:remember|memori[sz]e|keep in mind|don'?t forget|do not forget)\s*[:,-]?\s+(?!(?:when|what|how|why|if|whether|the time)\b)(?:that\s+)?(.{2,300}?)\s*[.!]*$/i;
+const LABEL_WORDS = "code ?word|password|passphrase|pass ?code|pin|secret(?:\\s+word)?|magic word|safe ?word|word|phrase|number|key|name";
+const LABEL_RE = new RegExp(String.raw`\b(${LABEL_WORDS})\b(?:\s*(?:is|=|:|was|will be)\s*|\s+)["“'‘]?([A-Za-z0-9][\w-]*(?:[ ][A-Za-z0-9][\w-]*){0,3}?)["”'’]?\s*(?:[.,!?]|$)`, "i");
+const normLabel = (l) => String(l || "").toLowerCase().replace(/\s+/g, " ").replace(/^code ?word$/, "codeword").replace(/^pass ?code$/, "passcode").replace(/^safe ?word$/, "safeword").replace(/^secret\s+word$/, "secret");
+
+/** "Remember codeword PLUM-77" → { fact, label: "codeword", value: "PLUM-77" }; null when not a remember ask. */
+export function parseRememberAsk(prompt) {
+  const p = String(prompt || "").trim();
+  if (!p || p.length > 400 || /\?\s*$/.test(p)) return null;
+  const m = REMEMBER_RE.exec(p);
+  if (!m) return null;
+  const fact = m[1].trim();
+  // "remember this as a note / dtu" is a DTU save (the save route).
+  if (/\b(?:as\s+(?:a\s+)?(?:note|dtu)|dtu)\b/i.test(fact)) return null;
+  const lab = LABEL_RE.exec(fact);
+  return lab ? { fact, label: normLabel(lab[1]), value: lab[2].trim() } : { fact, label: null, value: null };
+}
+
+const ASKED_LABEL_RE = new RegExp(String.raw`\b(${LABEL_WORDS})\b`, "i");
+/** True for "what codeword did I give you" style questions about a remembered value. */
+export function isRememberedValueAsk(prompt) {
+  const p = String(prompt || "");
+  return /\b(?:what|which|tell me|remind me|say)\b/i.test(p) && (ASKED_LABEL_RE.test(p) || /\bremember\b/i.test(p))
+    && (/\b(?:i|me|my)\b/i.test(p) || /\b(?:code ?word|password|passphrase|pass ?code|secret|safe ?word|magic word)\b/i.test(p)) && !parseRememberAsk(p);
+}
+
+/**
+ * The value the user asked you to remember, from their own earlier turns
+ * (newest first) and the chat memory note. null when none matches.
+ * @returns {{ label: string|null, value: string|null, fact: string } | null}
+ */
+export function recallRemembered(prompt, history = [], memoryBlock = "") {
+  if (!isRememberedValueAsk(prompt)) return null;
+  const want = normLabel(ASKED_LABEL_RE.exec(String(prompt || ""))?.[1] || "");
+  const candidates = [];
+  for (const h of history || []) if (h?.role === "user") candidates.push(String(h.content || ""));
+  for (const line of String(memoryBlock || "").split("\n")) {
+    const m = /^- turn \d+:\s*(.+)$/.exec(line.trim());
+    if (m) candidates.push(m[1]);
+  }
+  let loose = null;
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const r = parseRememberAsk(candidates[i]);
+    if (!r) continue;
+    if (want && r.label && (r.label === want || (want === "word" && /word/.test(r.label)) || (r.label === "word" && /word/.test(want)))) return r;
+    if (!want && r) return r;
+    if (!loose && r.value) loose = r;
+  }
+  return want ? (loose && /word|code|pass|secret/.test(want) && /word|code|pass|secret/.test(loose.label || "") ? loose : null) : loose;
+}
+
+/** Reply for a remember turn. */
+export function rememberAckReply(r) {
+  if (!r) return null;
+  if (r.label && r.value) return `Got it. I'll remember the ${r.label}: ${r.value}.`;
+  return `Got it. I'll remember that: ${r.fact.replace(/[.!]+$/, "")}.`;
+}
+
+/** Reply for a recall of a remembered value. */
+export function recallRememberedReply(r, prompt = "") {
+  if (!r) return null;
+  if (r.label && r.value) return `The ${r.label} you gave me is ${r.value}.`;
+  return `You asked me to remember: ${r.fact.replace(/[.!]+$/, "")}.`;
 }
 
 // ── Math / physics: formula DTUs for the solver ───────────────────────────

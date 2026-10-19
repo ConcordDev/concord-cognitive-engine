@@ -58,7 +58,7 @@ describe("chat tool catalog matches both live paths", () => {
   });
 
   it("lists every executeToolCall case and no extra names", () => {
-    const cases = [...executeToolCallSource().matchAll(/case "([a-z_]+)":/g)].map((m) => m[1]);
+    const cases = [...executeToolCallSource().matchAll(/case "([a-z0-9_]+)":/g)].map((m) => m[1]);
     assert.deepEqual([...new Set(cases)].sort(), AGENT_LOOP_TOOLS.map((t) => t.name).sort());
     assert.ok(AGENT_LOOP_TOOLS.length >= 19);
   });

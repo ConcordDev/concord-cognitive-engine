@@ -54,6 +54,8 @@ import { collectAllowedUrls, enforceGroundedLinks, WEB_GROUNDING_RULE, WEB_NO_RE
 import {
   composeToolTurnReply,
   shouldSkipToolFollowup,
+  isRecoverableToolFailure,
+  recoveryHint,
   followUpFailureReply,
 } from "./chat/tool-turn-reply.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
@@ -105,6 +107,7 @@ const TOOL_REQUIRED_PARAMS = {
   read_zip:          ["dtuId"],
   expert_mode:       ["query"],
   generate_image:    ["prompt"],
+  generate_3d:       ["prompt"],
   mcp_connect:       ["serverId", "url"],
   mcp_call:          ["serverId", "toolName"],
   invoke_capability: ["capability"],
@@ -283,7 +286,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
-- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) it returns a concept 3D assembly with its parts list instead. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
@@ -314,7 +317,9 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "expert_mode", "params": {"query": "what does the substrate say about X?"}}]
 - generate_image: Generate an image on Concord's own GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
   Example: [TOOL_CALL: {"tool": "generate_image", "params": {"prompt": "a blue circle on a white background"}}]
-  This is the only image generator. Never recommend DALL-E, Midjourney, Stable Diffusion, Pollinations, or any outside service. If the GPU server is down, say exactly: GPU image generation is offline.
+  This is the only image generator. Never recommend DALL-E, Midjourney, Stable Diffusion, Pollinations, or any outside service. If the GPU server is down, say exactly: GPU image generation is offline. It makes FLAT 2D pictures only — never use it for a 3D model, CAD model, STL or printable part.
+- generate_3d: Generate a free-form 3D model (a creature, prop, figurine, organic or decorative object) on Concord's GPU pod; returns a rotatable 3D mesh plus its concept image. Takes a minute or two. For engineered parts (stands, brackets, beams, trusses, gearboxes, enclosures, furniture, robots) use conkay_design instead. Params: {"prompt": "the object in a few words"}
+  Example: [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": "a small ceramic owl figurine"}}]
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
   Example: [TOOL_CALL: {"tool": "mcp_connect", "params": {"serverId": "github", "url": "https://mcp.github.com/http"}}]
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
@@ -338,6 +343,8 @@ Rules:
 - Work in steps. PLAN: silently decide which facts or results the answer needs. ACT: issue every independent tool call you need now, one marker per line (for example two or three web_search queries from different angles, or web_search plus run_compute). OBSERVE: read the results; never invent what they did not say. CONTINUE: if something is still missing, contradictory or out of date, make more tool calls next turn. ANSWER only when the evidence covers the request or reasonable attempts are used up — then say what you could not confirm.
 - For a factual or current-events question, verify with at least one tool before answering; do not answer from memory alone.
 - For an explicit request to make, draw, or generate an image, use generate_image. Never tell the user to use an outside image service.
+- A "3D model", "CAD model", STL, "printable" part or mesh is NOT an image: use conkay_design for engineered/functional objects and generate_3d for free-form objects. Never answer a 3D ask with generate_image.
+- If a tool fails, read its Hint and try another way (a different key, tool or input) before giving up; only report failure after a reasonable second attempt.
 - For any math/calculation use run_compute. Never guess at numbers.
 - To design, size or check a beam, cantilever, bracket or other structural part, use conkay_design. Never invent an action name such as engineering.cantilever_bending_design; an unknown action is rejected with the list of real ones.
 - For current events / facts you don't know, use web_search.
@@ -345,6 +352,30 @@ Rules:
 - For deep cited research over Concord's substrate, use expert_mode.
 - Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.
 - Never say anything was made, rendered, or is playing unless a tool returned a song or audio artifact in this conversation. Even then, say the song or preview is ready to play below; nothing auto-plays, so never say it is already playing. Music has no render action — never call one. Concord cannot generate recorded audio (vocals, real instruments) from a prompt; studio.compose makes an instrumental arrangement with Studio's synths.`;
+
+/**
+ * Whether run_python can actually run for this caller. Since INC-145 code runs
+ * only in the WASM sandbox, founder/sovereign only, and only with pod jobs on
+ * (lib/wasm-code-exec.js). Everyone else got code_exec_forbidden on every
+ * call (cockpit audit 2026-10-19), so the tool is not offered to them.
+ */
+export function pythonToolAvailable(role, env = process.env) {
+  const v = String(env?.CONCORD_PYTHON_TOOL ?? "");
+  if (v === "0" || v === "off") return false;
+  const elevated = role === "founder" || role === "sovereign";
+  const wasmOn = !(["0", "false", "off"].includes(String(env?.CONCORD_WASM_EXEC_ENABLED ?? ""))) && env?.CONCORD_POD_JOBS === "1";
+  return elevated && wasmOn;
+}
+
+/** TOOL_SCHEMA_BLOCK minus the tools this caller cannot run. */
+export function toolSchemaBlockFor({ role = null, env = process.env } = {}) {
+  if (pythonToolAvailable(role, env)) return TOOL_SCHEMA_BLOCK;
+  return TOOL_SCHEMA_BLOCK
+    .split("\n")
+    .filter((line) => !/^- run_python:|^\s+Example: \[TOOL_CALL: \{"tool": "run_python"/.test(line))
+    .join("\n")
+    + "\n- run_python is NOT available in this session (sandboxed code execution is off for this account). Never call it; use run_compute, conkay_design or a lens action instead.";
+}
 
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
@@ -765,6 +796,31 @@ export function researchRepeatKey(call) {
   return norm ? `${call.tool}|${norm}` : null;
 }
 
+/** A 3D model / CAD / STL / printable-part ask (not a picture). */
+export const WANTS_3D_RE = /\b3[- ]?d\s*(?:model|models|modell?ing|mesh|object|version|print(?:able|ed)?|file|part|design|render)?\b|\bcad\b|\bstl\b|\bstep file\b|\b(?:3d[- ]?)?printable\b|\bsolid model\b|\bmesh model\b/i;
+export function wants3dModel(text) {
+  return WANTS_3D_RE.test(String(text || ""));
+}
+
+/**
+ * Real run_compute keys for an error message: every function in the named
+ * module when it exists, otherwise the common entry points across modules.
+ */
+export async function validComputeKeys(modName = "") {
+  const { loadComputeModule, listComputeModules } = await import("./compute/index.js");
+  const fnsOf = (m) => Object.keys(m || {}).filter((k) => typeof m[k] === "function" && !/^(?:parse|stringify|_)/.test(k));
+  const own = modName ? await loadComputeModule(String(modName)) : null;
+  if (own) return { module: String(modName), keys: ["symbolic.evaluate", ...fnsOf(own).map((f) => `${modName}.${f}`)].filter((k, i, a) => a.indexOf(k) === i).slice(0, 40) };
+  const keys = ["symbolic.evaluate", "symbolic.solve", "symbolic.differentiate", "symbolic.integrate", "symbolic.simplify"];
+  for (const m of listComputeModules()) {
+    const name = typeof m === "string" ? m : m.name;
+    if (name === "symbolic") continue;
+    const mod = await loadComputeModule(name);
+    keys.push(...fnsOf(mod).slice(0, 6).map((f) => `${name}.${f}`));
+  }
+  return { module: null, keys: keys.slice(0, 50) };
+}
+
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
@@ -845,16 +901,33 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "run_compute": {
-        const { key = "", input = {} } = call.params || {};
-        if (!key.includes(".")) {
-          return { tool: call.tool, ok: false, error: 'run_compute requires "module.function" key' };
-        }
-        const [modName, fnName] = key.split(".");
+        const { key: _rawKey = "", input = {} } = call.params || {};
+        const key = String(_rawKey || "");
+        const [modName, fnName] = key.includes(".") ? key.split(".") : [key, ""];
         try {
           const { loadComputeModule } = await import("./compute/index.js");
-          const mod = await loadComputeModule(modName);
+          const mod = fnName ? await loadComputeModule(modName) : null;
           if (!mod || typeof mod[fnName] !== "function") {
-            return { tool: call.tool, ok: false, error: `unknown compute function ${key}` };
+            // A word problem the model wrote as one expression: run it on the
+            // general evaluator instead of failing on an invented key
+            // ("finance.compound_interest", "physics.length.convert").
+            const expr = input && typeof input === "object" ? (input.expression ?? input.expr ?? input.equation) : (typeof input === "string" ? input : null);
+            if (typeof expr === "string" && expr.trim() && !(modName === "symbolic" && fnName === "evaluate")) {
+              const sym = await loadComputeModule("symbolic");
+              try {
+                const raw = invokeCompute(sym, "symbolic", "evaluate", { expression: expr, ...(input?.values ? { values: input.values } : {}) });
+                const _stringify = sym.stringify || (await import("./compute/symbolic-math.js")).stringify;
+                return { tool: call.tool, ok: true, key: "symbolic.evaluate", requestedKey: key, result: normalizeComputeResult(raw, _stringify),
+                  note: `"${key}" is not a compute function; the expression was evaluated with symbolic.evaluate instead.` };
+              } catch { /* fall through to the key list */ }
+            }
+            const valid = await validComputeKeys(modName);
+            return {
+              tool: call.tool, ok: false,
+              error: key.includes(".") ? `unknown compute function ${key}` : 'run_compute requires "module.function" key',
+              validKeys: valid.keys,
+              retryHint: `Use one of the real compute keys${valid.module ? ` in ${valid.module}` : ""}: ${valid.keys.join(", ")}. For word-problem arithmetic (money, interest, trips, unit conversions) write ONE expression with the numbers filled in and call [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.evaluate", "input": {"expression": "5000*(1+0.06)^10"}}}]`,
+            };
           }
           const rawResult = invokeCompute(mod, modName, fnName, input);
           let _stringify;
@@ -863,10 +936,15 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           }
           return { tool: call.tool, ok: true, key, result: normalizeComputeResult(rawResult, _stringify) };
         } catch (err) {
-          return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}` };
+          return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}`,
+            retryHint: "Check the input fields for this function, or write the calculation as one expression and use symbolic.evaluate." };
         }
       }
       case "run_python": {
+        if (ctx?.actor && !pythonToolAvailable(ctx.actor.role)) {
+          return { tool: call.tool, ok: false, error: "code_exec_forbidden: run_python is not available for this account",
+            retryHint: "Code execution is off here. Use run_compute (symbolic.evaluate for arithmetic), conkay_design, or a lens action instead; do not call run_python again." };
+        }
         const code = String(call.params.code || "");
         if (!code.trim()) return { tool: call.tool, ok: false, error: "run_python requires non-empty code" };
         // Optional scientific packages: numpy/pandas/matplotlib/scipy/sympy.
@@ -1099,12 +1177,36 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
         const solved = solveDesignText(text);
         const summary = summarizeDesignSolve(solved);
+        // Everyday CAD objects with no solver (phone stand, truss, gearbox,
+        // shelf, table, chair, enclosure): a concept 3D assembly instead of
+        // "unsupported part". "gearbox"/"enclosure"/"phone stand" also beat a
+        // false "box"/"beam" solver match.
+        {
+          const { buildConceptAssembly, conceptKind } = await import("./conkay/concept-assembly.js");
+          const ck = conceptKind(text);
+          if (ck && (!summary.ok || ["gearbox", "enclosure", "phone-stand", "chair", "table", "shelf"].includes(ck))) {
+            const own = typeof ctx?.userPrompt === "string" && conceptKind(ctx.userPrompt) === ck ? `${ctx.userPrompt} ${text}` : text;
+            const asm = buildConceptAssembly(own);
+            if (asm) {
+              const { mesh, ...rest } = asm;
+              return {
+                tool: call.tool, ok: true, key: `conkay_design.concept-${asm.kind}`,
+                result: { kind: `${asm.kind}-concept`, ...rest, partCount: asm.parts.length,
+                  instruction: "Say the 3D concept model is shown below. List its main parts with sizes in mm and the overall size, then the notes. Say plainly it is a layout concept: no structural or tolerance analysis was run. Offer next steps (change a size, run FEA on a member with conkay_design, export)." },
+                artifact: { kind: "mesh", source: "conkay_design", title: `${asm.kind.replace(/-/g, " ")} concept`, meshKind: mesh.kind,
+                  positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
+                  color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name),
+                  partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm },
+              };
+            }
+          }
+        }
         if (!summary.ok) {
           return {
             tool: call.tool, ok: false,
             error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}`,
             // The model gets one more turn to size an unsupported part by formula.
-            ...(summary.supportedParts ? { retryHint: "This part has no ConKay solver. Do not call run_python for it (code execution is off for member accounts). Answer in your reply: say ConKay's design solver does not cover this part yet, then work it out by formula in words (formula, inputs, result) or give practical design guidance (key dimensions, material, how it is built)." } : {}),
+            ...(summary.supportedParts ? { retryHint: "This part has no ConKay solver. Do not call run_python for it. Either call conkay_design again describing it as a supported part with a span/length (beam, cantilever, I-beam, bracket, box, tube, cylinder), build its geometry with run_lens_action engineering.partMesh / engineering.parametricSolid, or say ConKay's solver does not cover it yet and work it out by formula in words (formula, inputs, result)." } : {}),
           };
         }
         // The solved part's triangle mesh (same arrays POST /api/conkay/design
@@ -1304,6 +1406,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_image": {
+        // A 3D/CAD ask must not come back as a flat picture (cockpit audit
+        // 2026-10-19: "Yes generate a 3d model" → a FLUX photo).
+        if (wants3dModel(ctx?.userPrompt) && !/\b(?:image|picture|photo|render(?:ing)?|illustration|drawing|concept art)\b/i.test(String(ctx?.userPrompt || ""))) {
+          return { tool: call.tool, ok: false, error: "generate_image makes flat 2D pictures, and the user asked for a 3D model",
+            retryHint: `Call conkay_design with the object in words for an engineered/functional object (stand, bracket, truss, gearbox, enclosure, furniture, robot), or generate_3d for a free-form object: [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": ${JSON.stringify(String(call.params.prompt || "").slice(0, 200))}}}]` };
+        }
         // Pod GPU FLUX only. Does not call multimodal.image_generate
         // (that macro threw macro_uncaught_throw when ctx.state was missing)
         // and does not fall back to Pollinations or any outside service.
@@ -1328,6 +1436,28 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           // that an image was attached (formatToolResults).
           artifact: gen.artifact,
         };
+      }
+      case "generate_3d": {
+        const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
+        const prompt = String(call.params.prompt || "").slice(0, 600);
+        const g = await generate3dFromPrompt(prompt);
+        const conceptArtifact = async (b64) => {
+          try {
+            const { publishPrivateImage } = await import("./chat/image-router.js");
+            const st = await publishPrivateImage({ imageB64: b64, prompt: `3D concept: ${prompt}`, width: 512, height: 512, ownerId: ctx?.actor?.userId, state: ctx?.mediaState });
+            return st.ok ? { kind: "image", source: "generate_3d concept", prompt, mimeType: "image/png", url: st.url, mediaId: st.mediaId, width: 512, height: 512 } : null;
+          } catch { return null; }
+        };
+        if (!g.ok) {
+          return { tool: call.tool, ok: false, error: g.error, reason: g.reason, stage: g.stage,
+            retryHint: "Free-form 3D generation failed. If the object is functional or engineered, call conkay_design with it in words for a concept 3D assembly; otherwise tell the user plainly that 3D generation is unavailable right now. Do not substitute generate_image and call it a 3D model." };
+        }
+        const concept = g.conceptB64 ? await conceptArtifact(g.conceptB64) : null;
+        const meshArtifact = { kind: "mesh", source: "generate_3d", title: `${prompt.slice(0, 60)} (3D)`, meshKind: "generated",
+          positions: g.mesh.positions, indices: g.mesh.indices, vertexCount: g.mesh.vertexCount, triangleCount: g.mesh.triangleCount,
+          color: "#a3a3a3", pass: null, feaOk: null };
+        return { tool: call.tool, ok: true, prompt, source: g.provider, seconds: g.seconds, triangleCount: g.mesh.triangleCount,
+          artifact: meshArtifact, artifacts: concept ? [meshArtifact, concept] : [meshArtifact] };
       }
       case "mcp_list": {
         const { listAllMcpTools } = await import("./mcp-bridge.js");
@@ -1556,6 +1686,9 @@ export function formatToolResults(results) {
       if (r.validActions) {
         line += `\nValid actions: ${Array.isArray(r.validActions) ? r.validActions.join(", ") : r.validActions}`;
       }
+      if (Array.isArray(r.validKeys) && r.validKeys.length) {
+        line += `\nValid compute keys: ${r.validKeys.join(", ")}`;
+      }
       if (r.retryHint) {
         line += `\nHint: ${r.retryHint}`;
       }
@@ -1567,7 +1700,8 @@ export function formatToolResults(results) {
       const webText = typeof r.result === "string" ? r.result : JSON.stringify(r.result || {});
       return _screenUntrusted("web_search", "web_search", webText, (t) => `[TOOL_RESULT: web_search] ${t}`);
     }
-    if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${r.note ? `${r.note} ` : ""}${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "generate_3d") return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.`;
     if (r.tool === "conkay_design") {
       const v = r.result?.safety?.verdict;
       return `[TOOL_RESULT: conkay_design]${v ? ` ${v}` : ""} Report these numbers and the pass/fail exactly; list the assumptions.\n${JSON.stringify(r.result).slice(0, 4000)}`;
@@ -1865,7 +1999,11 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   let lastModel = "ollama";
   let finalAnswer = "";
   let turnsTaken = 0;
-  let usedRetry = false;
+  // Recovery turns after ordinary tool failures (bad compute key, unsupported
+  // part, DTU not found, 404, blocked python, timeout). Capped so a failing
+  // tool cannot thrash the whole turn budget.
+  const _maxRecoveries = Math.max(0, Math.min(4, Number(process.env.CONCORD_AGENT_TOOL_RETRIES ?? 2) || 0));
+  let recoveriesUsed = 0;
   // Set true only when the loop exhausts every turn while the brain is
   // STILL issuing tool calls (never reached the `calls.length === 0` break
   // below). Without the forced wrap-up turn added after the loop, `finalAnswer`
@@ -1903,6 +2041,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     try { console.warn(`[chat-agent] role lookup threw (${e?.message || e}) — fail-open to member`); } catch { /* noop */ }
   }
   const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
+  // Offer only the tools this caller can run (run_python: founder/sovereign + WASM).
+  try { messages[0].content = messages[0].content.replace(TOOL_SCHEMA_BLOCK, () => toolSchemaBlockFor({ role: callerRole })); } catch { /* keep the full schema */ }
   const ctx = {
     db,
     // Tests inject a fixed OpenStax lookup; production uses openstax-lookup.js.
@@ -2188,7 +2328,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // A failed tool, or a plain create_dtu save, is answered from the tool
     // results — never a free-generated follow-up that leaks prompt fragments
     // ("Mention in a sentence.") or drops the stored title (INC-SWEEP F3).
-    const skipFollowup = shouldSkipToolFollowup(results, { allowRetry: !usedRetry });
+    const skipFollowup = shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < _maxRecoveries });
     if (skipFollowup) {
       finalAnswer = guardPlaybackClaim(
         composeToolTurnReply(results)
@@ -2198,10 +2338,13 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       );
       break;
     }
-    // One retry is granted when the failure is retryable (unknown/missing) and
-    // we haven't used it yet; the next failure is answered from the results.
-    if (!usedRetry && results.some((r) => !r?.ok)) {
-      usedRetry = true;
+    // A turn whose calls ALL failed for ordinary reasons spends one recovery
+    // turn: each failure carries a hint and the model tries another way.
+    if (results.length && results.every((r) => !r?.ok)) {
+      recoveriesUsed++;
+    }
+    for (const fr of results) {
+      if (fr && !fr.ok && !fr.retryHint && isRecoverableToolFailure(fr)) fr.retryHint = recoveryHint(fr);
     }
 
     // Append the brain's intermediate text + tool results to the message
