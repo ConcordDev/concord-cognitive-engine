@@ -15,9 +15,9 @@ export function cfdPython() {
   return process.env.CONKAY_CFD_PYTHON || "python3";
 }
 
-/** { ok, preset, files, caseSha256, kernelSha256, ... } or { ok:false, error }. outDir omitted = hashes only. */
-export async function writeCase({ preset, outDir, nproc, endTime, aref, lref }) {
-  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input: { preset, outDir, nproc, endTime, aref, lref }, timeoutMs: 60000 });
+/** refinement: "coarse" | "medium" (default) | "fine" (r = sqrt 2 per step, see openfoam_case.py). { ok, preset, files, caseSha256, kernelSha256, ... } or { ok:false, error }. outDir omitted = hashes only. */
+export async function writeCase({ preset, outDir, nproc, endTime, aref, lref, refinement }) {
+  const r = await runPythonKernel({ python: cfdPython(), script: CASE_SCRIPT, input: { preset, outDir, nproc, endTime, aref, lref, ...(refinement === undefined ? {} : { refinement }) }, timeoutMs: 60000 });
   if (r.ok) r.kernelSha256 = sha256File(CASE_SCRIPT);
   return r;
 }
