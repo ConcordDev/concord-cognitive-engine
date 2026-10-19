@@ -243,15 +243,22 @@ export const MCP_TOOLS = [
   {
     name: "conkay_solve",
     description:
-      "Run one ConKay solver by id against a Design IR (or owned designId). Returns PASS/FAIL/WARN/NOT_COMPUTED envelopes with provenance (sourced/computed/estimated/assumed/unknown). screening ≠ validation; unknown stays unknown.",
+      "Run one ConKay solver by id against a Design IR (or owned designId). Returns PASS/FAIL/WARN/NOT_COMPUTED envelopes with provenance (sourced/computed/estimated/assumed/unknown). screening ≠ validation; unknown stays unknown. " +
+      "IR tips: quantities as \"1.5 kg\" / \"200 mm\" (bare SI numbers ok); stated mass needs massSource (auto-filled if missing); positions are lengths; call conkay_ir_schema for a worked example before retrying compile errors.",
     inputSchema: jsonSchema({
       solver_id: textProp("Solver id from conkay_solver_list (e.g. joint.bolt-shear)"),
-      ir: { type: "object", description: "Design IR object" },
+      ir: { type: "object", description: "Design IR object (see conkay_ir_schema for a mini example)" },
       designId: textProp("Owned design id (alternative to ir)"),
       target: textProp("Optional target node id"),
       dry_run: boolProp("Preview applicable targets without running", false),
       idempotency_key: textProp("Caller idempotency key for safe retries"),
     }, ["solver_id"]),
+  },
+  {
+    name: "conkay_ir_schema",
+    description:
+      "Worked ConKay Design IR example + contract hints. Call before conkay_solve when unsure about Quantity strings, massSource, positions, materials, or requirements shape.",
+    inputSchema: SCHEMA_DESCRIPTION_BASE,
   },
 
   // ── EMBEDDINGS ────────────────────────────────────────────────────────
@@ -2344,7 +2351,7 @@ async function concordiaCall(db, args, STATE, toolName) {
 try {
   globalThis.__concordMcpBuiltinTools = new Set(
     MCP_TOOLS.filter((t) =>
-      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list"].includes(t.name)
+      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema"].includes(t.name)
     ).map((t) => t.name)
   );
 } catch { /* ignore */ }
@@ -2387,6 +2394,10 @@ export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
     case "conkay_solve": {
       const { conkaySolveMcp } = await import("./mcp-execution-bridge.js");
       return conkaySolveMcp(db, args, STATE, callCtx);
+    }
+    case "conkay_ir_schema": {
+      const { conkayIrSchemaMcp } = await import("./mcp-execution-bridge.js");
+      return conkayIrSchemaMcp(db, args, STATE, callCtx);
     }
     case "dila_status":          return dilaStatus(db, args);
     case "dila_workers":         return dilaWorkers(db, args);

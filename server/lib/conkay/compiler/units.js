@@ -56,15 +56,36 @@ export function dimensionOf(unit) {
 export function parseQuantity(q, expectDim) {
   let value;
   let unit;
-  if (typeof q === "number") { value = q; unit = "1"; }
-  else if (typeof q === "string") {
+  let coercedBare = false;
+  if (typeof q === "number") {
+    value = q;
+    // Bare numbers used to always be "ratio". When the caller named a
+    // dimension (length/mass/…), treat the number as already-SI of that
+    // dim so agents can write position: {x:0,y:0,z:0} or mass: 1.5
+    // without a unit string. Dimensionless calls still use ratio.
+    if (expectDim && expectDim !== "ratio" && SI_UNIT[expectDim]) {
+      unit = SI_UNIT[expectDim];
+      coercedBare = true;
+    } else {
+      unit = "1";
+    }
+  } else if (typeof q === "string") {
     const m = q.trim().match(/^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*([A-Za-z/³²0-9]*)$/i);
     if (!m) return { ok: false, error: `cannot read quantity "${q}"` };
     value = Number(m[1]);
     unit = m[2] || "1";
+    // "1.5" with no unit + expected dim → SI of that dim (same as bare number).
+    if (!m[2] && expectDim && expectDim !== "ratio" && SI_UNIT[expectDim]) {
+      unit = SI_UNIT[expectDim];
+      coercedBare = true;
+    }
   } else if (q && typeof q === "object") {
     value = Number(q.value);
     unit = q.unit == null ? "1" : String(q.unit);
+    if ((q.unit == null || q.unit === "" || q.unit === "1") && expectDim && expectDim !== "ratio" && SI_UNIT[expectDim]) {
+      unit = SI_UNIT[expectDim];
+      coercedBare = true;
+    }
   } else {
     return { ok: false, error: "quantity missing" };
   }
@@ -72,9 +93,10 @@ export function parseQuantity(q, expectDim) {
   if (!knownUnit(unit)) return { ok: false, error: `unknown unit "${unit}"` };
   const [dim, factor] = UNITS[unit];
   if (expectDim && dim !== expectDim) {
-    return { ok: false, error: `expected a ${expectDim}, got ${unit} (${dim})` };
+    const example = expectDim === "mass" ? `"${value} kg"` : expectDim === "length" ? `"${value} m"` : `"${value} ${SI_UNIT[expectDim] || ""}"`;
+    return { ok: false, error: `expected a ${expectDim}, got ${unit} (${dim}). Use a unit string like ${example}` };
   }
-  return { ok: true, si: value * factor, dim, value, unit };
+  return { ok: true, si: value * factor, dim, value, unit, ...(coercedBare ? { coercedBare: true } : {}) };
 }
 
 /** Convert an SI value to a display unit of the same dimension. */

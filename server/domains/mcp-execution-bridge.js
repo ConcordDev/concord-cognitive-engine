@@ -58,6 +58,17 @@ export const MCP_EXECUTION_BRIDGE_CAPABILITIES = [
     implementation: "mcp_builtin",
     mcp_tool_name: "conkay_solver_list",
   },
+  {
+    capability: "conkay.ir_schema",
+    owner: "mcp_execution_bridge",
+    risk: "read",
+    description: "Worked Design IR example and contract hints for conkay_solve.",
+    inputs: [],
+    outputs: ["example", "hints"],
+    dependencies: ["conkay_solver_registry"],
+    implementation: "mcp_builtin",
+    mcp_tool_name: "conkay_ir_schema",
+  },
 ];
 
 for (const cap of MCP_EXECUTION_BRIDGE_CAPABILITIES) {

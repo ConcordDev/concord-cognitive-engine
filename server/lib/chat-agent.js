@@ -95,6 +95,9 @@ const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
   conkay_design:     ["text"],
+  conkay_solve:      ["solver_id"],
+  conkay_solver_list: [],
+  conkay_ir_schema:  [],
   run_python:        ["code"],
   browse_url:        ["url"],
   run_lens_action:   ["domain", "action"],
@@ -288,6 +291,12 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
+- conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
+  Example: [TOOL_CALL: {"tool": "conkay_ir_schema", "params": {}}]
+- conkay_solver_list: List ConKay solvers (id, domain, fidelity). Params: {"domain": "optional filter"}
+  Example: [TOOL_CALL: {"tool": "conkay_solver_list", "params": {"domain": "mass"}}]
+- conkay_solve: Run one ConKay solver against a Design IR (same path as Concord MCP). Quantities need units (or bare SI); stated mass needs massSource (auto-filled if missing). Params: {"solver_id": "mass.budget", "ir": { ... }}
+  Example: [TOOL_CALL: {"tool": "conkay_solve", "params": {"solver_id": "mass.budget", "ir": {"design":{"id":"d1"},"nodes":[{"id":"P1","kind":"Part","props":{"mass":"1.5 kg","massSource":"caller assumption"}}],"edges":[],"loadCases":[],"requirements":[]}}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
@@ -1065,91 +1074,99 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             artifact: gen.artifact,
           };
         }
-        // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS —
-        // the same precedence server.js's runMcpTool / /api/lens/run use.
-        // `strict` (default) verifies the pair is ACTUALLY registered: a
-        // misnamed/nonexistent (domain, action) — what the model most often
-        // guesses wrong — returns via:"none" with an actionable error instead
-        // of firing runMacro() (which throws an opaque "macro not found") or,
-        // worse, being masked as a plausible result. See dual-registry-resolve.js.
-        const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
-        if (resolved.via === "none") {
-          if (resolved.reason === "not_registered") {
-            // Reject with the real names, so the next turn picks one instead
-            // of guessing again (live test: engineering.cantilever_bending_design).
+        // Same MCP execution-bridge handlers external clients use (audit /
+        // auth / dry_run). In-process — not an HTTP self-fetch.
+        const { runLensActionMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await runLensActionMcp(
+          ctx?.db || null,
+          {
+            domain,
+            action,
+            params: actionInput,
+            dry_run: call.params.dry_run === true || call.params.preview === true,
+            preview: call.params.preview === true,
+            approval: call.params.approval === true,
+            approval_token: call.params.approval_token || call.params.approvalToken || null,
+            idempotency_key: call.params.idempotency_key || null,
+          },
+          ctx?.STATE || ctx?.state || null,
+          { actor, lensActions, runMacro, req: ctx?.req || null },
+        );
+        if (bridge?.dry_run) {
+          return {
+            tool: call.tool, ok: true, dry_run: true, domain, action,
+            result: bridge.preview, audited: true, via: "mcp_execution_bridge",
+          };
+        }
+        if (!bridge?.ok) {
+          if (bridge?.reason === "not_registered") {
             const unknown = await unknownLensActionError(domain, action, lensActions);
             return {
               tool: call.tool, ok: false, domain, action,
-              error: unknown.error,
+              error: unknown.error || bridge.error,
+              reason: "not_registered",
               ...(unknown.validActions ? { validActions: unknown.validActions } : {}),
               ...(unknown.validDomains ? { validDomains: unknown.validDomains } : {}),
               retryHint: `[TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "${domain}"}}]`,
+              audited: bridge.audited === true,
+              via: "mcp_execution_bridge",
             };
           }
-          // Registry genuinely not injected (nothing to dispatch against).
-          return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
-        }
-        try {
-          const result = resolved.via === "lens_action"
-            ? await resolved.handler(ctx, null, actionInput)
-            : await runMacro(domain, action, actionInput, ctx);
-          // Carry the input alongside domain/action so a caller can run the
-          // result through the frontend's detectArtifact registry (some
-          // kinds, e.g. FEA, reshape input+output together — see
-          // lib/conkay/artifact-kinds.ts) — the honest artifact->interactive-3D
-          // pipeline needs this for agent-triggered lens actions the same way
-          // it already works for directly-run macros.
-          // data: URLs are lifted onto artifacts first so a multi-kilobyte
-          // image is not sliced down to a broken prefix in the model text.
-          const pulled = [];
-          const cleaned = pullDataUrls(result, pulled);
-          if (result && typeof result === "object" && result.ok === false) {
-            return {
-              tool: call.tool, ok: false, key: resolved.key, domain, action, input: actionInput,
-              error: String(result.error || result.message || result.reason || "action failed"),
-              result: cleaned,
-            };
-          }
-          if (domain === "music" && action === "play-track") {
-            const t = result?.result?.track || result?.track || {};
-            const audioUrl = result?.result?.audioUrl || result?.audioUrl || t.audioUrl || t.previewUrl || null;
-            if (!audioUrl) {
-              return {
-                tool: call.tool, ok: false, key: resolved.key, domain, action, input: actionInput,
-                error: "This track is only a library entry with no audio file, so nothing can be played.",
-                result: cleaned,
-              };
-            }
-          }
-          // Lift real audio URLs onto artifacts (iTunes preview, bounce download, etc.).
-          const audioArtifacts = extractAudioArtifacts(cleaned, 0).slice(0, 3);
-          let artifacts = dedupeArtifacts([...pulled, ...audioArtifacts]);
-
-          // A studio.compose result carries a generated song/project; turn it
-          // into a playable song artifact for the chat UI.
-          if (domain === "studio" && action === "compose" && result?.result?.song && result?.result?.project?.id) {
-            const songArtifact = {
-              kind: "song",
-              projectId: result.result.project.id,
-              title: result.result.song.title || result.result.project.name,
-              bpm: result.result.song.bpm,
-              key: result.result.song.key,
-              durationSec: result.result.song.durationSec,
-              song: result.result.song,
-            };
-            artifacts = [songArtifact, ...artifacts.filter((a) => a.kind !== "audio")];
-          }
-
-          const lead = artifacts.find((a) => a.kind === "image") || artifacts[0];
           return {
-            tool: call.tool, ok: true, key: resolved.key, domain, action, input: actionInput,
-            result: cleaned,
-            ...(lead ? { artifact: lead } : {}),
-            ...(artifacts.length ? { artifacts } : {}),
+            tool: call.tool, ok: false, domain, action,
+            error: String(bridge?.error || bridge?.reason || "lens action failed"),
+            reason: bridge?.reason || null,
+            risk: bridge?.risk || null,
+            audited: bridge?.audited === true,
+            via: "mcp_execution_bridge",
+            ...(bridge?.result ? { result: bridge.result } : {}),
           };
-        } catch (err) {
-          return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
+        const result = bridge.result;
+        const pulled = [];
+        const cleaned = pullDataUrls(result, pulled);
+        if (result && typeof result === "object" && result.ok === false) {
+          return {
+            tool: call.tool, ok: false, key: bridge.key, domain, action, input: actionInput,
+            error: String(result.error || result.message || result.reason || "action failed"),
+            result: cleaned,
+            audited: true, via: "mcp_execution_bridge", risk: bridge.risk,
+          };
+        }
+        if (domain === "music" && action === "play-track") {
+          const tr = result?.result?.track || result?.track || {};
+          const audioUrl = result?.result?.audioUrl || result?.audioUrl || tr.audioUrl || tr.previewUrl || null;
+          if (!audioUrl) {
+            return {
+              tool: call.tool, ok: false, key: bridge.key, domain, action, input: actionInput,
+              error: "This track is only a library entry with no audio file, so nothing can be played.",
+              result: cleaned, audited: true, via: "mcp_execution_bridge",
+            };
+          }
+        }
+        const audioArtifacts = extractAudioArtifacts(cleaned, 0).slice(0, 3);
+        let artifacts = dedupeArtifacts([...pulled, ...audioArtifacts]);
+        if (domain === "studio" && action === "compose" && result?.result?.song && result?.result?.project?.id) {
+          const songArtifact = {
+            kind: "song",
+            projectId: result.result.project.id,
+            title: result.result.song.title || result.result.project.name,
+            bpm: result.result.song.bpm,
+            key: result.result.song.key,
+            durationSec: result.result.song.durationSec,
+            song: result.result.song,
+          };
+          artifacts = [songArtifact, ...artifacts.filter((a) => a.kind !== "audio")];
+        }
+        const lead = artifacts.find((a) => a.kind === "image") || artifacts[0];
+        return {
+          tool: call.tool, ok: true, key: bridge.key, domain, action, input: actionInput,
+          result: cleaned,
+          audited: true, via: "mcp_execution_bridge", risk: bridge.risk,
+          ...(lead ? { artifact: lead } : {}),
+          ...(artifacts.length ? { artifacts } : {}),
+        };
       }
       case "conkay_design": {
         // Deterministic ConKay sizing check: parse → hand calc + FEA → safety
@@ -1230,6 +1247,83 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         }
         return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary, ...(artifact ? { artifact } : {}) };
       }
+      case "conkay_solver_list": {
+        const { conkaySolverListMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await conkaySolverListMcp(
+          ctx?.db || null,
+          { domain: call.params.domain, fidelity: call.params.fidelity },
+          ctx?.STATE || ctx?.state || null,
+          { actor, req: ctx?.req || null },
+        );
+        return {
+          tool: call.tool,
+          ok: !!bridge?.ok,
+          ...(bridge || {}),
+          via: "mcp_execution_bridge",
+          ...(bridge?.ok ? {} : { error: String(bridge?.error || bridge?.reason || "conkay_solver_list failed") }),
+        };
+      }
+      case "conkay_ir_schema": {
+        const { conkayIrSchemaMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await conkayIrSchemaMcp(
+          ctx?.db || null, {}, ctx?.STATE || ctx?.state || null,
+          { actor, req: ctx?.req || null },
+        );
+        return {
+          tool: call.tool,
+          ok: !!bridge?.ok,
+          ...(bridge || {}),
+          via: "mcp_execution_bridge",
+          ...(bridge?.ok ? {} : { error: String(bridge?.error || bridge?.reason || "conkay_ir_schema failed") }),
+        };
+      }
+      case "conkay_solve": {
+        const { conkaySolveMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await conkaySolveMcp(
+          ctx?.db || null,
+          {
+            solver_id: call.params.solver_id || call.params.solverId,
+            ir: call.params.ir,
+            designId: call.params.designId,
+            target: call.params.target,
+            dry_run: call.params.dry_run === true,
+            idempotency_key: call.params.idempotency_key,
+          },
+          ctx?.STATE || ctx?.state || null,
+          { actor, req: ctx?.req || null },
+        );
+        if (!bridge?.ok) {
+          return {
+            tool: call.tool, ok: false,
+            error: String(bridge?.error || bridge?.reason || "conkay_solve failed"),
+            reason: bridge?.reason || null,
+            ...(bridge?.errors ? { errors: bridge.errors } : {}),
+            ...(bridge?.hints ? { hints: bridge.hints } : {}),
+            ...(bridge?.example ? { example: bridge.example } : {}),
+            ...(bridge?.warnings ? { warnings: bridge.warnings } : {}),
+            audited: bridge?.audited === true,
+            via: "mcp_execution_bridge",
+            retryHint: bridge?.reason === "ir_invalid"
+              ? "Fix the Design IR using the hints/example, or call conkay_ir_schema first."
+              : "Call conkay_solver_list if the solver id is wrong; conkay_ir_schema for IR shape.",
+          };
+        }
+        return {
+          tool: call.tool, ok: true,
+          solver_id: bridge.solver_id,
+          status: bridge.status,
+          results: bridge.results,
+          provenance: bridge.provenance,
+          summary: bridge.summary,
+          ...(bridge.warnings ? { warnings: bridge.warnings } : {}),
+          ...(bridge.dry_run ? { dry_run: true, preview: bridge.preview } : {}),
+          audited: true, via: "mcp_execution_bridge",
+          instruction: "Report PASS/FAIL/WARN/NOT_COMPUTED honestly. screening ≠ validation; unknown stays unknown. Mention any IR warnings.",
+        };
+      }
       case "textbook_lookup": {
         const textbookLookup = typeof ctx?.textbookLookup === "function" ? ctx.textbookLookup : (await import("./openstax-lookup.js")).textbookLookup;
         const book = String(call.params.book || "").trim();
@@ -1255,26 +1349,30 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(hits.length ? {} : { note: "no matching lens action; answer with web_search or say Concord has no tool for this" }) };
       }
       case "list_lens_actions": {
-        // Discoverability — look up REAL macro names/params before calling
-        // them via run_lens_action, instead of guessing from training-data
-        // priors. Mirrors the introspection GET /api/lens-actions/:domain
-        // already does for the frontend's AutoActionStrip (server.js), just
-        // done in-process against the SAME registries run_lens_action
-        // itself resolves against — no new HTTP round-trip, no new global
-        // wiring. Resolves BOTH registries (lensActions AND legacy MACROS
-        // via runMacro's introspection) — previously only lensActions was
-        // scanned, so any domain registered with plain register() (e.g.
-        // legacy plugins, or the dtu domain's many actions) was invisible
-        // to ConKay's own tool-calling loop even though it was reachable
-        // through run_lens_action. See dual-registry-resolve.js for the
-        // shared resolution logic.
+        // Same MCP bridge handler external clients use (auth + audit).
         const domain = String(call.params.domain || "");
         if (!domain) return { tool: call.tool, ok: false, error: "domain required" };
-        if (!lensActions || typeof lensActions.keys !== "function") {
-          return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
+        const { listLensActionsMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await listLensActionsMcp(
+          ctx?.db || null,
+          { domain },
+          ctx?.STATE || ctx?.state || null,
+          { actor, lensActions, runMacro, req: ctx?.req || null },
+        );
+        if (!bridge?.ok) {
+          return {
+            tool: call.tool, ok: false, domain,
+            error: String(bridge?.error || bridge?.reason || "list_lens_actions failed"),
+            reason: bridge?.reason || null,
+            audited: bridge?.audited === true,
+            via: "mcp_execution_bridge",
+          };
         }
-        const ranked = await collectDomainActions(domain, lensActions);
-        return { tool: call.tool, ok: true, domain, total: ranked.length, actions: ranked };
+        return {
+          tool: call.tool, ok: true, domain: bridge.domain, total: bridge.total, actions: bridge.actions,
+          audited: true, via: "mcp_execution_bridge",
+        };
       }
       case "create_dtu": {
         // The dtu.create macro is gated by councilGate() — a content-quality

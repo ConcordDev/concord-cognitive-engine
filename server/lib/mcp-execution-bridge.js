@@ -20,6 +20,7 @@ import {
   rejectImpersonation,
   BRIDGE_RISK,
 } from "./mcp-hermes-identity.js";
+import { formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./conkay/compiler/soften-ir.js";
 
 const PREFERRED_LENS_ACTIONS = [
   "task-add", "task-list", "search", "create", "save", "open", "from-brief",
@@ -65,6 +66,17 @@ function stripInternalArgs(args = {}) {
   delete out.__trace_id;
   delete out.__call_ctx;
   return out;
+}
+
+
+function resolveLensRegistries(callCtx = null) {
+  const lensActions =
+    (callCtx?.lensActions instanceof Map ? callCtx.lensActions : null)
+    || (globalThis.__concordLensActions instanceof Map ? globalThis.__concordLensActions : null);
+  const runMacro =
+    (typeof callCtx?.runMacro === "function" ? callCtx.runMacro : null)
+    || (typeof globalThis.__concordRunMacro === "function" ? globalThis.__concordRunMacro : null);
+  return { lensActions, runMacro };
 }
 
 function buildLensCtx(db, STATE, actor) {
@@ -132,7 +144,7 @@ export async function listLensActionsMcp(db, args = {}, STATE = null, callCtx = 
   const domain = String(clean.domain || "").trim();
   if (!domain) return { ok: false, reason: "invalid_input", error: "domain required" };
 
-  const lensActions = globalThis.__concordLensActions;
+  const { lensActions } = resolveLensRegistries(callCtx);
   if (!(lensActions instanceof Map)) {
     return { ok: false, reason: "lens_actions_unavailable", error: "LENS_ACTIONS not booted" };
   }
@@ -205,12 +217,7 @@ export async function runLensActionMcp(db, args = {}, STATE = null, callCtx = nu
   const actionInput = (clean.params && typeof clean.params === "object") ? clean.params : {};
   const dryRun = clean.dry_run === true || clean.preview === true;
 
-  const lensActions = globalThis.__concordLensActions instanceof Map
-    ? globalThis.__concordLensActions
-    : null;
-  const runMacro = typeof globalThis.__concordRunMacro === "function"
-    ? globalThis.__concordRunMacro
-    : null;
+  const { lensActions, runMacro } = resolveLensRegistries(callCtx);
 
   const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
   if (resolved.via === "none") {
@@ -374,7 +381,7 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
   if (clean.dry_run === true || clean.preview === true) {
     const built = DesignGraph.fromIR(ir);
     if (!built.ok) {
-      return { ok: false, reason: "ir_invalid", error: "design did not compile", errors: built.errors };
+      return { ok: false, reason: "ir_invalid", error: "design did not compile", ...formatIrErrors(built.errors, built.warnings) };
     }
     const targets = typeof solver.targets === "function" ? solver.targets(built.graph) : [];
     return {
@@ -398,7 +405,7 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
   // ctx.result). openDesign runs ALL solvers — too heavy for MCP single-solve.
   const built = DesignGraph.fromIR(ir);
   if (!built.ok) {
-    return { ok: false, reason: "ir_invalid", error: "design did not compile", errors: built.errors };
+    return { ok: false, reason: "ir_invalid", error: "design did not compile", ...formatIrErrors(built.errors, built.warnings) };
   }
 
   // Include dependency solvers that this solver may pull via ctx.result —
@@ -406,7 +413,7 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
   // single solver has unknown deps. Cap: use openDesign for correctness.
   const opened = openDesign(ir);
   if (!opened.ok) {
-    return { ok: false, reason: "ir_invalid", error: "design did not compile", errors: opened.errors };
+    return { ok: false, reason: "ir_invalid", error: "design did not compile", ...formatIrErrors(opened.errors, opened.warnings) };
   }
 
   const targetFilter = clean.target != null ? String(clean.target) : null;
@@ -468,5 +475,35 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
     idempotency_key: clean.idempotency_key || null,
     audited: true,
     note: "screening ≠ validation; unknown stays unknown",
+  };
+}
+
+
+/**
+ * conkay_ir_schema — worked Design IR example + hints (read-only).
+ * Agents call this before conkay_solve when unsure of the contract.
+ */
+export async function conkayIrSchemaMcp(db, args = {}, STATE = null, callCtx = null) {
+  const clean = stripInternalArgs(args);
+  const actor = actorFromCallCtx(callCtx, args);
+  const imp = rejectImpersonation(actor, clean);
+  if (!imp.ok) return { ok: false, ...imp };
+  const auth = authorizeBridgeCall({
+    actor,
+    tool: "conkay_solver_list",
+    risk: BRIDGE_RISK.READ,
+  });
+  if (!auth.ok) return { ok: false, ...auth };
+  return {
+    ok: true,
+    hints: [...CONKAY_IR_HINTS],
+    example: CONKAY_IR_MINI_EXAMPLE,
+    notes: [
+      "Pass example as `ir` to conkay_solve with a solver_id from conkay_solver_list.",
+      "Bare SI numbers are accepted for typed quantities; unit strings are preferred.",
+      "Missing massSource is auto-filled as a caller assumption (see warnings).",
+    ],
+    actor_id: imp.actorId,
+    audited: true,
   };
 }

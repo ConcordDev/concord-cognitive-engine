@@ -19,8 +19,8 @@ function getPath(obj, path) {
 export class DesignGraph {
   static fromIR(ir) {
     const c = compileDesignIR(ir);
-    if (!c.ok) return { ok: false, errors: c.errors };
-    return { ok: true, graph: new DesignGraph(c.design) };
+    if (!c.ok) return { ok: false, errors: c.errors, ...(c.warnings ? { warnings: c.warnings } : {}) };
+    return { ok: true, graph: new DesignGraph(c.design), ...(c.warnings ? { warnings: c.warnings } : {}) };
   }
 
   constructor(compiled) {

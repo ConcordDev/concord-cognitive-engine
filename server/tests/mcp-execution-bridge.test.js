@@ -63,7 +63,7 @@ const BRACKET_IR = {
 describe("MCP tools surface includes bridge tools", () => {
   it("registers run_lens_action, list_lens_actions, conkay_solve, conkay_solver_list", () => {
     const names = new Set(MCP_TOOLS.map((t) => t.name));
-    for (const n of ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list"]) {
+    for (const n of ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema"]) {
       assert.ok(names.has(n), `missing ${n}`);
     }
   });
@@ -85,7 +85,7 @@ describe("Capability registration (no unregistered_but_dispatchable)", () => {
     _resetRegistry();
   });
 
-  it("registers all four bridge capabilities with mcp_builtin", () => {
+  it("registers all bridge capabilities with mcp_builtin", () => {
     for (const cap of MCP_EXECUTION_BRIDGE_CAPABILITIES) {
       const d = getCapabilityDescriptor(cap.capability);
       assert.ok(d, cap.capability);

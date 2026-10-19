@@ -749,9 +749,11 @@ describe("Car brief, end to end (mechanism: illustrative parts, not a finished c
 
 describe("Stated (catalogue) values and payload", () => {
   it("a stated mass needs a source, and is reported as stated, not computed", () => {
-    const bad = compileDesignIR({ nodes: [{ id: "E", kind: "Actuator", props: { mass: "180 kg" } }] });
-    assert.equal(bad.ok, false);
-    assert.match(bad.errors[0], /needs props.massSource/);
+    // Missing massSource used to hard-fail; soften-ir auto-fills a caller
+    // assumption and warns so agents do not burn 30 compiles.
+    const soft = compileDesignIR({ nodes: [{ id: "E", kind: "Actuator", props: { mass: "180 kg" } }] });
+    assert.equal(soft.ok, true, soft.errors?.join("; "));
+    assert.ok((soft.warnings || []).some((w) => /massSource/.test(w)));
     const s = open({ design: { id: "x" }, nodes: [{ id: "E", kind: "Actuator", props: { mass: "180 kg", massSource: "example datasheet" } }] });
     const e = s.result("mass.part@E");
     assert.equal(e.outputs.mass.value, 180);
