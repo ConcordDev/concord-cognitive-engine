@@ -11,12 +11,13 @@ import http from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { Document, NodeIO } from "@gltf-transform/core";
 
 import { CHAT_RESPOND_TOOLS } from "../lib/chat-tool-surface.js";
 import { executeToolCall } from "../lib/chat-agent.js";
 import { chatAgentRoute } from "../lib/chat/agent-route.js";
-import { fallbackDesignCall, toolFor3dAsk } from "../lib/chat/route-3d-ask.js";
-import { generate3dFromPrompt } from "../lib/chat/generate-3d.js";
+import { fallbackDesignCall, plain3dFailureReply, toolFor3dAsk } from "../lib/chat/route-3d-ask.js";
+import { generate3dFromPrompt, THREE_D_TIMEOUT_REPLY } from "../lib/chat/generate-3d.js";
 import { chatGenerationBudget, JSON_TURN_BUDGET_MS } from "../lib/chat/gen-budget.js";
 import { composeToolTurnReply, isRecoverableToolFailure, sanitizeUserReply, scrubUserFacingToolNames, userFacingMeshReply } from "../lib/chat/tool-turn-reply.js";
 import { visibleChatReply } from "../lib/chat-governance-leak.js";
@@ -231,8 +232,9 @@ describe("GPU concept timeout is plain English", () => {
     const hungHealth = await generate3dFromPrompt("a small owl", {
       fetchImpl: async () => { throw abort; },
     });
-    assert.equal(hungHealth.reason, "gpu_busy");
-    assert.equal(hungHealth.error, GPU_BUSY_REPLY);
+    assert.equal(hungHealth.reason, "timeout");
+    assert.equal(hungHealth.error, THREE_D_TIMEOUT_REPLY);
+    assert.doesNotMatch(hungHealth.error, /busy/i);
     assert.doesNotMatch(hungHealth.error, /aborted due to timeout/i);
   });
 });
@@ -524,7 +526,9 @@ describe("generate_3d failure falls back to a layout", () => {
       },
     });
     assert.equal(mesh.skippedMesh, true);
-    assert.equal(mesh.reason, "timeout");
+    assert.equal(mesh.reason, "mesh_budget");
+    assert.doesNotMatch(mesh.error, /busy/i);
+    assert.doesNotMatch(plain3dFailureReply(mesh, { transport: "sse" }), /busy/i);
     assert.deepEqual(skipped, ["/health", "/concept"]);
   });
 });
@@ -680,7 +684,7 @@ describe("busy gen server fails fast and stores no fake artifact", () => {
     }
   });
 
-  it("a health check that never returns is busy within a few seconds and does not post", { timeout: 15_000 }, async () => {
+  it("a health check that never returns is a timeout within a few seconds and does not post", { timeout: 15_000 }, async () => {
     let posts = 0;
     const srv = await listen((req, res) => {
       if (req.url !== "/health") {
@@ -697,8 +701,9 @@ describe("busy gen server fails fast and stores no fake artifact", () => {
       assert.ok(elapsed < 8_000, `wall ${elapsed}ms`);
       assert.ok(elapsed < GEN_BUSY_WAIT_CAP_MS, `wall ${elapsed}ms waited out a running job`);
       assert.equal(r.ok, false);
-      assert.equal(r.reason, "gpu_busy");
-      assert.equal(r.error, GPU_BUSY_REPLY);
+      assert.equal(r.reason, "timeout");
+      assert.equal(r.error, THREE_D_TIMEOUT_REPLY);
+      assert.doesNotMatch(r.error, /busy/i);
       assert.equal(posts, 0);
       assert.equal(r.conceptB64, undefined);
     } finally {
@@ -765,5 +770,164 @@ describe("busy gen server fails fast and stores no fake artifact", () => {
       meshSrv.closeAllConnections?.();
       meshSrv.close();
     }
+  });
+});
+
+async function tinyGlb() {
+  const doc = new Document();
+  const buf = doc.createBuffer();
+  const pos = doc.createAccessor().setType("VEC3").setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])).setBuffer(buf);
+  const idx = doc.createAccessor().setType("SCALAR").setArray(new Uint32Array([0, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 3])).setBuffer(buf);
+  const prim = doc.createPrimitive().setAttribute("POSITION", pos).setIndices(idx);
+  const mesh = doc.createMesh().addPrimitive(prim);
+  doc.createScene().addChild(doc.createNode().setMesh(mesh));
+  return Buffer.from(await new NodeIO().writeBinary(doc));
+}
+
+describe("warm TRELLIS fits a stream turn", () => {
+  const saved = process.env.CONCORD_GEN_URL;
+  after(() => {
+    if (saved === undefined) delete process.env.CONCORD_GEN_URL;
+    else process.env.CONCORD_GEN_URL = saved;
+  });
+
+  it("a stream dragon turn with a 70s mesh requests and returns that mesh", { timeout: 120_000 }, async () => {
+    const glb = await tinyGlb();
+    let conceptHits = 0;
+    let meshHits = 0;
+    const srv = await listen(async (req, res) => {
+      const path = req.url.split("?")[0];
+      if (path === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+        return;
+      }
+      if (path === "/concept") {
+        conceptHits += 1;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, png_b64: "iVBORw0KGgo=" }));
+        return;
+      }
+      if (path === "/mesh") {
+        meshHits += 1;
+        await new Promise((resolve) => setTimeout(resolve, 70_000));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, glb_b64: glb.toString("base64"), provider: "local-gpu:TRELLIS", faces: 4 }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, aborted: true }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const ask = "generate a 3d model of a dragon statue";
+      const r = await executeToolCall(
+        {
+          userPrompt: ask,
+          chatTransport: "sse",
+          chatGenDeadlineMs: Date.now() + 120_000,
+          chatGenTimeoutMs: 120_000,
+          actor: { userId: "u1" },
+          mediaState: { dtus: new Map() },
+        },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: ask } },
+      );
+      assert.equal(conceptHits, 1);
+      assert.equal(meshHits, 1);
+      assert.equal(r.ok, true, r.error);
+      assert.equal(r.artifact?.kind, "mesh");
+      assert.ok(r.artifact.triangleCount >= 4);
+      assert.doesNotMatch(String(r.error || ""), /busy/i);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("a JSON turn without room for concept and mesh names streaming chat, not busy", async () => {
+    let posts = 0;
+    const srv = await listen((req, res) => {
+      if (req.url !== "/health") posts += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const ask = "generate a 3d model of a dragon statue";
+      const r = await executeToolCall(
+        {
+          userPrompt: ask,
+          chatTransport: "json",
+          chatGenDeadlineMs: Date.now() + 85_000,
+          chatGenTimeoutMs: 80_000,
+          actor: { userId: "u1" },
+        },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: ask } },
+      );
+      assert.equal(posts, 0);
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "mesh_budget");
+      assert.match(r.error, /streaming chat/i);
+      assert.match(r.error, /try again/i);
+      assert.doesNotMatch(r.error, /busy/i);
+      const reply = composeToolTurnReply([r]);
+      assert.match(reply, /streaming chat/i);
+      assert.doesNotMatch(reply, /busy/i);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("says busy only when health or the busy header says busy", async () => {
+    const calls = [];
+    const healthBusy = await generate3dFromPrompt("a dragon statue", {
+      deadlineMs: Date.now() + 120_000,
+      transport: "sse",
+      fetchImpl: async (url) => {
+        calls.push(String(url).slice(String(url).lastIndexOf("/")));
+        return { json: async () => ({ ok: true, busy: true, on_gpu: "flux" }) };
+      },
+    });
+    assert.equal(healthBusy.reason, "gpu_busy");
+    assert.match(plain3dFailureReply(healthBusy, { transport: "sse" }), /3D generation is busy/);
+    assert.deepEqual(calls, ["/health"]);
+
+    const skipped = [];
+    const budget = await generate3dFromPrompt("a dragon statue", {
+      deadlineMs: Date.now() + 40_000,
+      transport: "sse",
+      fetchImpl: async (url) => {
+        const path = String(url).slice(String(url).lastIndexOf("/"));
+        skipped.push(path);
+        if (path === "/health") return { json: async () => ({ ok: true, busy: false, on_gpu: "flux" }) };
+        if (path === "/concept") return { json: async () => ({ ok: true, png_b64: "iVBORw0KGgo=" }) };
+        throw new Error(`unexpected ${path}`);
+      },
+    });
+    assert.equal(budget.reason, "mesh_budget");
+    assert.equal(budget.skippedMesh, true);
+    assert.doesNotMatch(budget.error, /busy/i);
+    assert.doesNotMatch(plain3dFailureReply(budget, { transport: "sse" }), /busy/i);
+    assert.equal(skipped.includes("/mesh"), false);
+
+    const headerBusy = await generate3dFromPrompt("a dragon statue", {
+      deadlineMs: Date.now() + 120_000,
+      transport: "sse",
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/health")) return { json: async () => ({ ok: true, busy: false, on_gpu: "flux" }) };
+        return {
+          headers: { get: (name) => (String(name).toLowerCase() === "x-concord-busy" ? "1" : null) },
+          json: async () => ({ ok: false, reason: "queued" }),
+        };
+      },
+    });
+    assert.equal(headerBusy.reason, "gpu_busy");
+    assert.match(plain3dFailureReply(headerBusy), /3D generation is busy/);
+    assert.doesNotMatch(plain3dFailureReply({ ok: false, reason: "timeout", error: THREE_D_TIMEOUT_REPLY }), /busy/i);
   });
 });

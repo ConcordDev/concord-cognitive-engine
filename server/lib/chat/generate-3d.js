@@ -18,6 +18,7 @@ import {
   assessGpuHealth, GPU_BUSY_REPLY, GEN_FAIL_IF_BUSY_HEADER, GEN_HEALTH_TIMEOUT_MS,
   imageByteFailure, isGenerationAbort, isGlb,
 } from "../pollinations-image.js";
+import { JSON_MESH_BUDGET_REPLY, MESH_BUDGET_REPLY } from "./route-3d-ask.js";
 
 export const THREE_D_TIMEOUT_REPLY = "3D generation timed out before the GPU finished. Try again in a moment.";
 const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the mesh. Try again in a moment.";
@@ -25,9 +26,39 @@ const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the 
 const GEN_URL = () => (process.env.CONCORD_GEN_URL || "http://127.0.0.1:7870").replace(/\/$/, "");
 const CONCEPT_FRAMING = "a single object, product shot, plain white background, centered, full object visible, no text,";
 export const MESH_TIMEOUT_MS = Number(process.env.CONCORD_GEN3D_TIMEOUT_MS || 150_000);
-/** TRELLIS on the single GPU runs for about three minutes. Don't start it inside a shorter turn. */
-export const TRELLIS_MESH_BUDGET_MS = 180_000;
+/**
+ * Warm TRELLIS is about 65–75s. Start /mesh when at least this much of the
+ * turn is left. The 150s request cap is how long we will wait, not a minimum:
+ * comparing those two (150 < 180) skipped every chat mesh. If the deadline
+ * still hits, POST /abort stops the job in a few seconds.
+ * Override: CONCORD_GEN3D_MESH_MIN_MS.
+ */
+export function trellisMeshMinMs(env = process.env) {
+  const n = Number(env?.CONCORD_GEN3D_MESH_MIN_MS);
+  if (Number.isFinite(n) && n >= 5_000 && n <= 150_000) return Math.floor(n);
+  return 70_000;
+}
+/**
+ * Concept images land in well under this. A JSON turn (~85s) that cannot
+ * hold concept + mesh is told to use streaming instead of starting TRELLIS.
+ * Override: CONCORD_GEN3D_CONCEPT_HEADROOM_MS.
+ */
+export function conceptMeshHeadroomMs(env = process.env) {
+  const n = Number(env?.CONCORD_GEN3D_CONCEPT_HEADROOM_MS);
+  if (Number.isFinite(n) && n >= 0 && n <= 60_000) return Math.floor(n);
+  return 20_000;
+}
 const MAX_TRIS = 5_000;
+
+function responseSaysBusy(res, body) {
+  if (body?.reason === "gpu_busy" || body?.busy === true) return true;
+  const headers = res?.headers;
+  if (headers && typeof headers.get === "function") {
+    const raw = headers.get("x-concord-busy") || headers.get("x-concord-gpu-busy") || headers.get("x-gpu-busy");
+    if (raw && /^(1|true|yes|busy)$/i.test(String(raw).trim())) return true;
+  }
+  return false;
+}
 
 /** Tell the pod to drop the in-flight job. Best-effort: a dead pod must not hide the timeout. */
 export async function abortGenJob(jobId, fetchImpl = fetch) {
@@ -52,7 +83,9 @@ async function postJson(route, body, timeoutMs, fetchImpl, jobId) {
       body: JSON.stringify({ ...body, job_id: jobId }),
       signal: ac.signal,
     });
-    return await r.json();
+    const parsed = await r.json();
+    if (responseSaysBusy(r, parsed)) return { ok: false, reason: "gpu_busy", error: GPU_BUSY_REPLY };
+    return parsed;
   } catch (err) {
     if (isGenerationAbort(err)) {
       await abortGenJob(jobId, fetchImpl);
@@ -156,7 +189,7 @@ async function probeHealth(fetchImpl, capMs) {
 /**
  * @returns {Promise<{ok:true, mesh, conceptB64, seconds, provider} | {ok:false, error, reason, stage}>}
  */
-export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false } = {}) {
+export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false, transport = "" } = {}) {
   // Stream turns used to skip this probe (`preflight` only when a budget or
   // transport was set). The POST then queued on the gen-server lock for the
   // whole concept timeout. Chat always probes. `preflight` stays accepted.
@@ -169,17 +202,24 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
   if (remain() < 800) {
     return { ok: false, stage: "budget", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
   }
+  const meshMin = trellisMeshMinMs();
   const conceptProbe = await probeHealth(fetchImpl, healthCapMs(remain()));
-  // A health check that itself times out means the pod is stuck on another
-  // job (the tunnel only has the in-flight generation). Do not start /concept.
+  // A health check that times out is a timeout, not the pod reporting busy.
   // Unreachable (connection refused, or a body that is not a health report)
   // still falls through so a mock that only answers /concept keeps working.
   if (conceptProbe.aborted) {
-    return { ok: false, stage: "concept", reason: "gpu_busy", error: GPU_BUSY_REPLY };
+    return { ok: false, stage: "concept", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
   }
   const gate = assessGpuHealth(conceptProbe.health);
   if (!gate.ok && (gate.reason === "gpu_busy" || gate.reason === "gpu_wrong_model")) {
     return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
+  }
+  // JSON chat is one 85s body. Concept + a warm mesh does not fit, and
+  // starting TRELLIS there only to abort it still holds the GPU. Say so
+  // once health has said the card is free. Stream turns decide after the
+  // concept image, when the time left is the mesh budget.
+  if (transport === "json" && Number(deadlineMs) > 0 && remain() < meshMin + conceptMeshHeadroomMs()) {
+    return { ok: false, stage: "budget", reason: "mesh_budget", skippedMesh: true, error: JSON_MESH_BUDGET_REPLY };
   }
   const t0 = Date.now();
   const jobId = randomUUID();
@@ -190,6 +230,9 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
   }
   const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, conceptMs, fetchImpl, jobId);
   if (!concept?.ok || !concept.png_b64) {
+    if (concept?.reason === "gpu_busy") {
+      return { ok: false, stage: "concept", reason: "gpu_busy", error: GPU_BUSY_REPLY };
+    }
     if (concept?.reason === "timeout") {
       return { ok: false, stage: "concept", reason: "timeout", error: concept.error || THREE_D_TIMEOUT_REPLY };
     }
@@ -200,23 +243,34 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
   if (badPng) {
     return { ok: false, stage: "concept", reason: badPng.reason, error: badPng.error };
   }
-  const meshMs = Math.min(MESH_TIMEOUT_MS, remain());
-  // A chat turn's deadline is 85s or 120s. Starting TRELLIS there leaves the
-  // GPU busy for ~3 minutes after the client has already given up.
-  if (Number(deadlineMs) > 0 && meshMs < TRELLIS_MESH_BUDGET_MS) {
-    return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY, skippedMesh: true };
+  const leftForMesh = remain();
+  const meshMs = Math.min(MESH_TIMEOUT_MS, leftForMesh);
+  // Compare time remaining with the warm-mesh minimum. Do not compare the
+  // 150s wait cap with that minimum — a cap below the minimum skips every mesh.
+  if (Number(deadlineMs) > 0 && leftForMesh < meshMin) {
+    return {
+      ok: false, stage: "budget", reason: "mesh_budget", skippedMesh: true, conceptB64: concept.png_b64,
+      error: transport === "json" ? JSON_MESH_BUDGET_REPLY : MESH_BUDGET_REPLY,
+    };
   }
   if (meshMs < 800) {
     return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
   }
-  // FLUX is still the loaded model after concept. Only a held lock (or a
-  // health check the in-flight job is blocking) should stop the mesh step.
+  // FLUX is still the loaded model after concept. Only a health report that
+  // says busy stops the mesh. A health check that times out is a timeout;
+  // /abort is what frees the card if the mesh itself runs past the deadline.
   const meshProbe = await probeHealth(fetchImpl, healthCapMs(remain()));
-  if (meshProbe.aborted || healthSaysBusy(meshProbe.health)) {
+  if (meshProbe.aborted) {
+    return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
+  }
+  if (healthSaysBusy(meshProbe.health)) {
     return { ok: false, stage: "mesh", reason: "gpu_busy", error: GPU_BUSY_REPLY };
   }
   const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, meshMs, fetchImpl, jobId);
   if (!mesh?.ok || !mesh.glb_b64) {
+    if (mesh?.reason === "gpu_busy") {
+      return { ok: false, stage: "mesh", reason: "gpu_busy", conceptB64: concept.png_b64, error: GPU_BUSY_REPLY };
+    }
     if (mesh?.reason === "timeout") {
       return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
     }
