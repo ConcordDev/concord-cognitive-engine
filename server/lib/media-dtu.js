@@ -24,7 +24,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-export const MEDIA_TYPES = ["audio", "video", "image", "document", "stream"];
+export const MEDIA_TYPES = ["audio", "video", "image", "document", "model", "stream"];
 
 export const TRANSCODE_STATUSES = ["pending", "processing", "ready", "failed"];
 
@@ -35,6 +35,7 @@ export const MEDIA_MIME_MAP = {
   video: ["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-matroska"],
   image: ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "image/avif"],
   document: ["application/pdf", "text/plain", "text/markdown", "application/epub+zip"],
+  model: ["model/gltf-binary", "model/gltf+json"],
   stream: ["application/x-mpegURL", "application/vnd.apple.mpegurl"],
 };
 
@@ -59,6 +60,7 @@ export const MAX_FILE_SIZES = {
   video: 5 * 1024 * 1024 * 1024, // 5GB
   image: 50 * 1024 * 1024,      // 50MB
   document: 100 * 1024 * 1024,  // 100MB
+  model: 50 * 1024 * 1024,       // 50MB — a decimated TRELLIS GLB is well under this
   stream: 0, // streams are unbounded
 };
 
@@ -202,7 +204,8 @@ export function createMediaDTU(STATE, params) {
     hlsSegments: [],
 
     // Transcode
-    transcodeStatus: mediaType === "image" || mediaType === "document" ? "ready" : "pending",
+    // A GLB is already the bytes the viewer loads. There is no transcode step.
+    transcodeStatus: mediaType === "image" || mediaType === "document" || mediaType === "model" ? "ready" : "pending",
     transcodeVariants: [],
 
     // Storage reference. `artifactRef` is the content-addressed sha256

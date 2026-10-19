@@ -184,8 +184,14 @@ export function chatTurnArtifacts(results, { skipImage } = {}) {
       if (!a || seen.has(a)) continue;
       if (skipImage && (a.kind === "image" || a.type === "image")) continue;
       seen.add(a);
+      // A mesh or an inline image can be several MB of JSON. Those are stored
+      // as media before the message is saved (artifact-media.js). Dropping
+      // them here is what made a TRELLIS model disappear before that step.
+      const kind = a.kind || a.type;
+      const inlineImage = (kind === "image") && (a.image_b64 || String(a.url || a.dataUrl || "").startsWith("data:"));
+      const meshGeometry = kind === "mesh" && (a.positions || a.glb_b64 || a.glb);
       try {
-        if (JSON.stringify(a).length >= 200000) continue;
+        if (!inlineImage && !meshGeometry && JSON.stringify(a).length >= 200000) continue;
       } catch { continue; }
       out.push(a);
       if (out.length >= 4) return out;

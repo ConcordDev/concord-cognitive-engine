@@ -44,6 +44,7 @@ export interface ChatArtifact {
   pass?: boolean | null;
   vertexCount?: number;
   triangleCount?: number;
+  mediaId?: string;
   /** Robot / assembly parts with sizes (mm), for the workspace parts panel. */
   partList?: Array<{ name: string; size_mm?: number[] }>;
   bbox_mm?: { length?: number; height?: number; width?: number };
@@ -112,10 +113,12 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
             </div>
           );
         }
-        if (kind === 'mesh' && Array.isArray(a.positions) && Array.isArray(a.indices) && a.positions.length >= 9) {
+        const meshUrl = typeof a.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(a.url) ? a.url : '';
+        const meshPositions = Array.isArray(a.positions) && Array.isArray(a.indices) && a.positions.length >= 9;
+        if (kind === 'mesh' && (meshPositions || meshUrl)) {
           return (
             <div key={i} className="max-w-md space-y-1">
-              <MeshArtifactView positions={a.positions} indices={a.indices} color={a.color} title={a.title} />
+              <MeshArtifactView positions={a.positions} indices={a.indices} url={meshUrl || undefined} color={a.color} title={a.title} />
               <div className="text-[11px] text-zinc-400">
                 {a.title || '3D model'}
                 {typeof a.triangleCount === 'number' ? ` · ${a.triangleCount} triangles` : ''}

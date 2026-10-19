@@ -105,7 +105,7 @@ describe("artifact-store", () => {
         "application/pdf", "application/javascript", "application/json",
         "application/zip",
         "text/plain", "text/markdown", "text/html", "text/csv", "text/calendar",
-        "model/gltf+json",
+        "model/gltf+json", "model/gltf-binary",
       ];
       for (const t of knownTypes) {
         assert.equal(isSupportedType(t), true, `Expected true for ${t}`);
