@@ -120,16 +120,76 @@ const MESH_REPLY = {
   concept: "The 3D layout is shown below. It is a layout approximation, a concept arrangement, not a checked engineering analysis. Describe a size or material to change it, or try Agent mode for a fuller design.",
 };
 
+/** Bounding box a layout tool actually built, in millimetres. */
+export function specBbox(hitOrCalls) {
+  const list = Array.isArray(hitOrCalls) ? hitOrCalls : [hitOrCalls];
+  for (const r of list) {
+    const b = r?.artifact?.bbox_mm || r?.result?.bbox_mm;
+    if (b && [b.length, b.height, b.width].every((n) => Number.isFinite(Number(n)) && Number(n) > 0)) {
+      return { length: Number(b.length), height: Number(b.height), width: Number(b.width) };
+    }
+  }
+  return null;
+}
+
+function overallSizeSentence(bbox) {
+  if (!bbox) return "";
+  return ` Overall size: ${bbox.length} mm long, ${bbox.height} mm tall, ${bbox.width} mm wide.`;
+}
+
+const UNIT_MM = [
+  [/^(?:mm|millimet(?:re|er)s?|millimeters?)$/i, 1],
+  [/^(?:cm|centimet(?:re|er)s?|centimeters?)$/i, 10],
+  [/^(?:m|meters?|metres?)$/i, 1000],
+];
+
+function quotedMm(num, unit) {
+  const n = Number(num);
+  const u = String(unit || "");
+  for (const [re, factor] of UNIT_MM) if (re.test(u)) return n * factor;
+  return NaN;
+}
+
+function closeToSpec(mm, targets) {
+  return targets.some((t) => Math.abs(mm - t) <= Math.max(15, t * 0.08));
+}
+
+/**
+ * Rewrite an overall size the reply invented. "2.7 m tall" on an 880 mm
+ * layout becomes "880 mm tall". A figure that already matches the spec
+ * bbox, and a part size with no tall/long/wide word, are left alone.
+ */
+export function alignReplyToBbox(text, bbox) {
+  const src = String(text ?? "");
+  const spec = bbox && bbox.length != null ? bbox : specBbox(bbox);
+  if (!spec || !src) return src;
+  const dims = { height: Number(spec.height), length: Number(spec.length), width: Number(spec.width) };
+  const targets = Object.values(dims).filter((n) => Number.isFinite(n) && n > 0);
+  if (!targets.length) return src;
+  const re = /(\d+(?:\.\d+)?)\s*-?\s*(mm|cm|m|meters?|metres?|millimet(?:re|er)s?|millimeters?|centimet(?:re|er)s?|centimeters?)\s*(?:-|\s)*(tall|high|height|long|length|wide|width|in\s+height|in\s+length|in\s+width)/gi;
+  return src.replace(re, (full, num, unit, axisWord) => {
+    const mm = quotedMm(num, unit);
+    if (!Number.isFinite(mm) || closeToSpec(mm, targets)) return full;
+    const word = String(axisWord || "");
+    const axis = /tall|high|height/i.test(word) ? "height" : /long|length/i.test(word) ? "length" : /wide|width/i.test(word) ? "width" : null;
+    const value = axis ? dims[axis] : null;
+    if (!Number.isFinite(value) || value <= 0) return full;
+    const label = axis === "height" ? "tall" : axis === "length" ? "long" : "wide";
+    return `${value} mm ${label}`;
+  });
+}
+
 /** Sentence stored as the chat reply when a turn produced a mesh. No tool names.
  *  A solved part keeps a plain "shown below" line. Only a layout concept says
- *  that no engineering check was run. */
+ *  that no engineering check was run. Overall size is the spec bbox. */
 export function userFacingMeshReply(hit) {
   const kind = `${hit?.result?.kind || ""} ${hit?.key || ""} ${hit?.artifact?.meshKind || ""}`;
-  if (/robot/i.test(kind)) return MESH_REPLY.robot;
-  if (/concept/i.test(kind)) return MESH_REPLY.concept;
+  const size = overallSizeSentence(specBbox(hit));
+  if (/robot/i.test(kind)) return MESH_REPLY.robot + size;
+  if (/concept/i.test(kind)) return MESH_REPLY.concept + size;
   const instruction = String(hit?.result?.instruction || "").trim();
-  if (instruction) return sanitizeUserReply(instruction);
-  return "The 3D model is shown below.";
+  if (instruction) return sanitizeUserReply(instruction + size);
+  return size ? `The 3D model is shown below.${size}` : "The 3D model is shown below.";
 }
 
 /** Default recovery hint for a failed call that came back without one. */

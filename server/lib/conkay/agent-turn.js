@@ -15,7 +15,7 @@
 import { chatAgentRoute, routeHint, webAgentMessage, realMusicTerm, isTextbookAsk, CODE_TEST_RE, continueAgentMessage, deterministicRouteReply, confirmedAsk } from "../chat/agent-route.js";
 import { conceptKind } from "./concept-assembly.js";
 
-import { ROBOT_RE } from "./robot-assembly.js";
+import { ROBOT_RE, designTextParams } from "./robot-assembly.js";
 const PART_RE = /\b(?:bracket|beam|i-?beam|cantilever|shaft|truss|column|plate|frame|part|mount|bridge|footbridge|joist|girder|lintel|shelf|hook|axle|spring|rod|bar|stand|holder|gear\s*box|gearbox|enclosure|housing|table|desk|chair|stool|bookshelf)s?\b/i;
 const CAD_RE = /\b(?:3[- ]?d|cad|solid|mesh|printable|stl)\s+(?:model|models|part|parts|file|mesh|object|version|design|print)\b|\b3[- ]?d[- ]print(?:ed|able|ing)?\b|\bstl\b/i;
 const DESIGN_VERB_RE = /\b(?:design|build|size|sizing|make|create|model|engineer|spec|check)\b/i;
@@ -109,8 +109,8 @@ export function conkayTurnPlan(message, history = []) {
     const brief = lastDesignBrief(history);
     const designish = /\b(?:design|model|fea|cad|brief|solver|conkay|3d|stl|part|assembly)\b/i.test(`${prevReply.slice(-600)} ${ask}`);
     let fallbackCall = null;
-    if (brief && designish) fallbackCall = { tool: "conkay_design", params: { text: brief } };
-    else if (ask && CAD_RE.test(ask) && conceptKind(ask)) fallbackCall = { tool: "conkay_design", params: { text: ask } };
+    if (brief && designish) fallbackCall = { tool: "conkay_design", params: designTextParams(brief) };
+    else if (ask && CAD_RE.test(ask) && conceptKind(ask)) fallbackCall = { tool: "conkay_design", params: designTextParams(ask) };
     return { route, hint: routeHint("continue"), fallbackCall, message: continueAgentMessage(p, history), ...(brief && designish ? { brief } : {}) };
   }
   // "create a task: call the machinist about the bracket" is a lens write, not a design.
@@ -123,20 +123,20 @@ export function conkayTurnPlan(message, history = []) {
         route: "fea",
         brief,
         hint: `The user wants FEA on this design: "${brief}". Call conkay_design with exactly that brief (it runs the FEA solver as well as the hand calculation and returns the 3D model). Report fea.ok, the FEA max stress, deflection and utilization next to the hand numbers. If fea.ok is false, say the FEA failed and why; never claim an FEA pass.`,
-        fallbackCall: { tool: "conkay_design", params: { text: brief } },
+        fallbackCall: { tool: "conkay_design", params: designTextParams(brief) },
       };
     }
   }
   // "make a 3d model / CAD / STL of X": engineered objects to conkay_design, free-form to generate_3d.
   if (!writeFirst && CAD_RE.test(p) && !isDesignAsk(p)) {
-    if (conceptKind(p)) return { route: "design", hint: DESIGN_HINT, fallbackCall: { tool: "conkay_design", params: { text: p } } };
+    if (conceptKind(p)) return { route: "design", hint: DESIGN_HINT, fallbackCall: { tool: "conkay_design", params: designTextParams(p) } };
     return { route: "design", hint: FREEFORM_3D_HINT, fallbackCall: { tool: "generate_3d", params: { prompt: p.replace(/^.*?\b(?:3[- ]?d|cad|stl)\s+(?:model|file|mesh|object|version|print)?\s*(?:of\s+)?/i, "").slice(0, 300) || p.slice(0, 300) } } };
   }
   if (!writeFirst && isDesignAsk(p)) {
     const hint = ROBOT_RE.test(p)
       ? "This is a ConKay robot build. Call conkay_design with the user's words. It returns a concept 3D assembly the interface shows below your reply, with the parts list. Name the parts with their sizes and the overall size, say the model is shown below, and say it is a layout concept (no structural, motor or battery sizing was run). Never invent numbers the tool did not return."
       : DESIGN_HINT;
-    return { route: "design", hint, fallbackCall: { tool: "conkay_design", params: { text: p } } };
+    return { route: "design", hint, fallbackCall: { tool: "conkay_design", params: designTextParams(p) } };
   }
 
   if (!route) return null;
@@ -153,7 +153,7 @@ export function conkayTurnPlan(message, history = []) {
   } else if (route === "code" && !CODE_TEST_RE.test(p)) {
     fallbackCall = { tool: "run_lens_action", params: { domain: "code", action: "build", params: { request: p.slice(0, 2000) } } };
   } else if (route === "design") {
-    fallbackCall = { tool: "conkay_design", params: { text: p } };
+    fallbackCall = { tool: "conkay_design", params: designTextParams(p) };
   } else if (route === "music") {
     fallbackCall = NEW_MUSIC_RE.test(p)
       ? { tool: "run_lens_action", params: { domain: "studio", action: "compose", params: { genre: /\b(lofi|jazz|rock|house|techno|ambient|hip[- ]?hop|trap|pop|synthwave|edm)\b/i.exec(p)?.[1]?.toLowerCase() || "lofi", key: "C", bpm: 85, bars: 8, title: "ConKay Sketch" } } }

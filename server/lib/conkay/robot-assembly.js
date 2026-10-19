@@ -36,7 +36,96 @@ export function parseRobotAsk(text) {
     head: /\bhead\b/.test(t) || /\bcamera\b/.test(t) || !/\bno head\b/.test(t),
     camera: /\bcamera|vision|eyes?\b/.test(t),
     gripper: !/\bno (?:gripper|hands?)\b/.test(t),
+    scope: robotPartScope(t) || "full",
   };
+}
+
+const PART_WORD = "torso|chest|thorax|abdomen|arms?|heads?|legs?|hands?|grippers?";
+
+function canonPart(word) {
+  const s = String(word || "").toLowerCase();
+  if (/^(?:torso|chest|thorax|abdomen)s?$/.test(s)) return "torso";
+  if (/^arms?$/.test(s)) return "arm";
+  if (/^heads?$/.test(s)) return "head";
+  if (/^legs?$/.test(s)) return "leg";
+  if (/^(?:hands?|grippers?)$/.test(s)) return "hand";
+  return null;
+}
+
+function namedParts(text) {
+  const found = [];
+  const checks = [
+    ["torso", /\btorsos?\b|\bchests?\b|\bthoraxes?\b|\babdomens?\b/i],
+    ["arm", /\barms?\b/i],
+    ["head", /\bheads?\b/i],
+    ["leg", /\blegs?\b/i],
+    ["hand", /\bhands?\b|\bgrippers?\b/i],
+  ];
+  for (const [name, re] of checks) if (re.test(text)) found.push(name);
+  return found;
+}
+
+/**
+ * The sub-assembly the user asked for, or null for a whole robot.
+ * "robot torso" / "just the arm" / "a single part" (when one region is named)
+ * is that part. A list of regions ("torso, arms, and a head") stays a whole robot.
+ */
+export function robotPartScope(text) {
+  const t = String(text || "");
+  if (!t.trim()) return null;
+  const only = new RegExp(`\\b(?:just|only|solely|nothing but)\\s+(?:the\\s+|a\\s+|an\\s+)?(${PART_WORD})\\b`, "i").exec(t)
+    || new RegExp(`\\b(${PART_WORD})\\s+only\\b`, "i").exec(t);
+  if (only) {
+    const c = canonPart(only[1]);
+    if (c) return c;
+  }
+  if (/\bsingle\s+part\b/i.test(t)) {
+    const named = namedParts(t);
+    if (named.length === 1) return named[0];
+  }
+  // The part is the object ("robot torso", "arm of a robot"), not a modifier
+  // ("two-arm robot") and not one item in a list of regions.
+  const asObject = /\brobot(?:ic)?s?\s+(torsos?|chests?|thoraxes?|abdomens?|arms?|heads?|legs?|hands?|grippers?)\b/i.exec(t)
+    || /\b(torsos?|chests?|thoraxes?|abdomens?|arms?|heads?|legs?|hands?|grippers?)\s+of\s+(?:a\s+|an\s+|the\s+)?(?:[\w-]+\s+){0,8}robots?\b/i.exec(t);
+  if (!asObject) return null;
+  const one = canonPart(asObject[1]);
+  if (!one) return null;
+  const named = namedParts(t);
+  if (named.length > 1) return null;
+  return one;
+}
+
+function normalizeScope(scope) {
+  const s = String(scope || "").toLowerCase().trim();
+  if (!s) return null;
+  if (s === "full" || s === "robot" || s === "whole") return "full";
+  if (s === "part" || s === "single" || s === "single part") return "part";
+  return canonPart(s);
+}
+
+function resolveScope(explicit, parsed) {
+  const fromOpt = normalizeScope(explicit);
+  if (fromOpt === "full") return "full";
+  if (fromOpt && fromOpt !== "part") return fromOpt;
+  if (fromOpt === "part" && parsed && parsed !== "full") return parsed;
+  return parsed || "full";
+}
+
+/** conkay_design params: the user's words, plus scope when they named one part. */
+export function designTextParams(text, limit = 4000) {
+  const t = String(text || "").slice(0, limit);
+  const scope = robotPartScope(t);
+  return scope ? { text: t, scope } : { text: t };
+}
+
+function scopeCount(text, noun) {
+  const m = new RegExp(String.raw`\b(\d+|one|single|two|dual|twin|three|four|six)[\s-]+(?:\w+[\s-]+)?${noun}s?\b`, "i").exec(text);
+  if (m) {
+    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : WORD_N[m[1].toLowerCase()];
+    return Math.max(1, Math.min(2, n || 1));
+  }
+  if (new RegExp(String.raw`\b${noun}s\b`, "i").test(text)) return 2;
+  return 1;
 }
 
 export function meshBuilder() {
@@ -75,16 +164,104 @@ export function meshBuilder() {
 
 const r3 = (v) => Math.round(v * 1000) / 1000;
 
-/** @returns {{ ok: true, spec, parts, mesh, bbox, notes }} */
-export function buildRobotAssembly(text) {
-  const spec = parseRobotAsk(text);
-  const s = spec.scale;
-  const m = meshBuilder();
+function finishAssembly(spec, parts, m, notes) {
+  const xs = [], ys = [], zs = [];
+  for (let i = 0; i < m.positions.length; i += 3) { xs.push(m.positions[i]); ys.push(m.positions[i + 1]); zs.push(m.positions[i + 2]); }
+  const span = (a) => (a.length ? Math.round((Math.max(...a) - Math.min(...a)) * 1000) : 0);
+  return {
+    ok: true,
+    spec,
+    parts,
+    bbox_mm: { length: span(xs), height: span(ys), width: span(zs) },
+    mesh: { kind: "robot-assembly", positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3 },
+    notes,
+  };
+}
+
+function partAdder(m) {
   const parts = [];
   const add = (name, shape, center, size, make) => {
     make();
     parts.push({ name, shape, center_mm: center.map((v) => Math.round(v * 1000)), size_mm: size.map((v) => Math.round(v * 1000)) });
   };
+  return { parts, add };
+}
+
+/** One named sub-assembly. A torso ask does not grow legs, arms, or a head. */
+function buildScopedAssembly(spec, text) {
+  const s = spec.scale;
+  const m = meshBuilder();
+  const { parts, add } = partAdder(m);
+  const scope = spec.scope;
+  if (scope === "torso") {
+    const waistH = 0.08 * s, waistL = 0.16 * s, waistW = 0.24 * s;
+    const chestH = 0.36 * s, chestL = 0.22 * s, chestW = 0.34 * s;
+    const waistC = [0, waistH / 2, 0];
+    add("torso waist", "box", waistC, [waistL, waistH, waistW], () => m.box(waistC, [waistL, waistH, waistW]));
+    const chestC = [0, waistH + chestH / 2, 0];
+    add("torso chest", "box", chestC, [chestL, chestH, chestW], () => m.box(chestC, [chestL, chestH, chestW]));
+    const plate = [chestL / 2 + 0.008 * s, chestC[1], 0];
+    add("chest plate", "box", plate, [0.016 * s, chestH * 0.7, chestW * 0.7], () => m.box(plate, [0.016 * s, chestH * 0.7, chestW * 0.7]));
+  } else if (scope === "arm") {
+    const n = scopeCount(text, "arm");
+    for (let a = 0; a < n; a++) {
+      const side = n === 1 ? 0 : (a % 2 === 0 ? 1 : -1);
+      const z = side * 0.18 * s;
+      const label = n === 1 ? "" : (side > 0 ? " left" : " right");
+      const shoulder = [0, 0.46 * s, z];
+      add(`arm${label} shoulder`.replace("  ", " "), "cylinder", shoulder, [0.06 * s, 0.06 * s, 0.05 * s], () => m.cyl(shoulder, 0.03 * s, 0.05 * s, "z"));
+      const upper = [0, 0.32 * s, z];
+      add(`arm${label} upper`.trim(), "box", upper, [0.05 * s, 0.18 * s, 0.05 * s], () => m.box(upper, [0.05 * s, 0.18 * s, 0.05 * s]));
+      const fore = [0.08 * s, 0.2 * s, z];
+      add(`arm${label} forearm`.trim(), "box", fore, [0.16 * s, 0.045 * s, 0.045 * s], () => m.box(fore, [0.16 * s, 0.045 * s, 0.045 * s]));
+      for (const f of [1, -1]) {
+        const g = [0.18 * s, 0.2 * s, z + f * 0.015 * s];
+        add(`arm${label} gripper finger`.trim(), "box", g, [0.05 * s, 0.02 * s, 0.01 * s], () => m.box(g, [0.05 * s, 0.02 * s, 0.01 * s]));
+      }
+    }
+  } else if (scope === "head") {
+    const neck = [0, 0.02 * s, 0];
+    add("neck", "cylinder", neck, [0.04 * s, 0.04 * s, 0.04 * s], () => m.cyl(neck, 0.02 * s, 0.04 * s, "y"));
+    const head = [0, 0.04 * s + 0.06 * s, 0];
+    add("head", "box", head, [0.12 * s, 0.12 * s, 0.14 * s], () => m.box(head, [0.12 * s, 0.12 * s, 0.14 * s]));
+    if (spec.camera || /\bcamera|vision|eyes?\b/i.test(text)) {
+      const cam = [0.06 * s + 0.02 * s, head[1] + 0.01 * s, 0];
+      add("camera", "cylinder", cam, [0.04 * s, 0.035 * s, 0.035 * s], () => m.cyl(cam, 0.0175 * s, 0.04 * s, "x"));
+    }
+  } else if (scope === "leg") {
+    const n = scopeCount(text, "leg");
+    const h = 0.42 * s;
+    for (let i = 0; i < n; i++) {
+      const side = n === 1 ? 0 : (i % 2 === 0 ? 1 : -1);
+      const c = [0, h / 2, side * 0.08 * s];
+      const name = n === 1 ? "leg" : `leg ${side > 0 ? "left" : "right"}`;
+      add(name, "box", c, [0.08 * s, h, 0.08 * s], () => m.box(c, [0.08 * s, h, 0.08 * s]));
+    }
+  } else if (scope === "hand") {
+    const n = scopeCount(text, "hand");
+    for (let i = 0; i < n; i++) {
+      const z = n === 1 ? 0 : (i % 2 === 0 ? 0.06 * s : -0.06 * s);
+      const label = n === 1 ? "hand" : `hand ${i % 2 === 0 ? "left" : "right"}`;
+      const palm = [0, 0.02 * s, z];
+      add(`${label} palm`, "box", palm, [0.08 * s, 0.04 * s, 0.06 * s], () => m.box(palm, [0.08 * s, 0.04 * s, 0.06 * s]));
+      for (const f of [-1, 0, 1]) {
+        const finger = [0.05 * s, 0.025 * s, z + f * 0.018 * s];
+        add(`${label} finger`, "box", finger, [0.05 * s, 0.012 * s, 0.01 * s], () => m.box(finger, [0.05 * s, 0.012 * s, 0.01 * s]));
+      }
+    }
+  }
+  const label = scope === "torso" ? "torso" : scope;
+  return finishAssembly(spec, parts, m, `Concept layout of the ${label} only (y up, x forward). Not a solved design: no structural, motor or battery sizing was run.`);
+}
+
+/** @returns {{ ok: true, spec, parts, mesh, bbox, notes }} */
+export function buildRobotAssembly(text, opts = {}) {
+  const spec = parseRobotAsk(text);
+  spec.scope = resolveScope(opts.scope, spec.scope);
+  if (spec.scope !== "full") return buildScopedAssembly(spec, text);
+  const s = spec.scale;
+  const m = meshBuilder();
+  const { parts, add } = partAdder(m);
   // Units: metres. y up, x forward, z left.
   const base = { L: 0.40 * s, W: 0.30 * s, H: 0.10 * s };
   const wheelR = 0.065 * s, wheelT = 0.04 * s;
@@ -147,15 +324,5 @@ export function buildRobotAssembly(text) {
       add("camera", "cylinder", cam, [0.04 * s, 0.035 * s, 0.035 * s], () => m.cyl(cam, 0.0175 * s, 0.04 * s, "x"));
     }
   }
-  const xs = [], ys = [], zs = [];
-  for (let i = 0; i < m.positions.length; i += 3) { xs.push(m.positions[i]); ys.push(m.positions[i + 1]); zs.push(m.positions[i + 2]); }
-  const span = (a) => Math.round((Math.max(...a) - Math.min(...a)) * 1000);
-  return {
-    ok: true,
-    spec,
-    parts,
-    bbox_mm: { length: span(xs), height: span(ys), width: span(zs) },
-    mesh: { kind: "robot-assembly", positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3 },
-    notes: "Concept layout from sized primitives (y up, x forward). Not a solved design: no structural, motor or battery sizing was run.",
-  };
+  return finishAssembly(spec, parts, m, "Concept layout from sized primitives (y up, x forward). Not a solved design: no structural, motor or battery sizing was run.");
 }

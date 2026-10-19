@@ -73,7 +73,86 @@ os.environ.setdefault("SPCONV_ALGO", "native")
 
 _lock = threading.Lock()
 _state = {"trellis": None, "trellis1": None, "flux": None, "on_gpu": None, "served": 0, "errors": 0}
+_abort = threading.Event()
+_job = {"id": None, "handler": None}
 HEAVY = ("trellis", "trellis1", "flux")
+
+
+class GenerationAborted(Exception):
+    """The client timed out, closed the socket, or posted /abort."""
+
+
+def _interrupt_loaded():
+    pipe = _state.get("flux")
+    if pipe is None:
+        return
+    try:
+        pipe._interrupt = True
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _client_gone(handler):
+    """True when the request socket has been closed (Node abort, proxy drop)."""
+    if handler is None:
+        return False
+    import select
+    import socket
+    conn = getattr(handler, "connection", None)
+    if conn is None:
+        return False
+    try:
+        readable, _, _ = select.select([conn], [], [], 0)
+        if not readable:
+            return False
+        peeked = conn.recv(1, socket.MSG_PEEK)
+        return peeked == b""
+    except (OSError, ConnectionError, ValueError):
+        return True
+
+
+def _raise_if_aborted():
+    if _abort.is_set() or _client_gone(_job.get("handler")):
+        _abort.set()
+        _interrupt_loaded()
+        raise GenerationAborted()
+
+
+def abort_job(job_id=None):
+    """Stop the in-flight generation. Does not take the generation lock."""
+    current = _job.get("id")
+    if job_id not in (None, "") and str(job_id) != str(current):
+        return {"ok": False, "reason": "no_such_job", "job_id": current}
+    _abort.set()
+    _interrupt_loaded()
+    return {"ok": True, "aborted": True, "job_id": current}
+
+
+def _flux_step(_pipe, _step_index, _timestep, callback_kwargs):
+    _raise_if_aborted()
+    return callback_kwargs
+
+
+def _test_hold(req):
+    """Test-only pause so a client can prove /abort stops an in-flight job.
+    Ignored unless CONCORD_GEN_ALLOW_TEST_HOLD=1, so a production request
+    cannot ask the pod to sleep."""
+    if os.environ.get("CONCORD_GEN_ALLOW_TEST_HOLD") != "1":
+        return None
+    try:
+        hold = float(req.get("test_hold_s") or 0)
+    except (TypeError, ValueError):
+        return None
+    if hold <= 0:
+        return None
+    deadline = time.time() + hold
+    while time.time() < deadline:
+        try:
+            _raise_if_aborted()
+        except GenerationAborted:
+            return {"ok": False, "reason": "aborted", "error": "generation aborted"}
+        time.sleep(0.05)
+    return {"ok": True, "reason": "held", "held_s": hold}
 
 
 def weights_status():
@@ -182,6 +261,10 @@ def _clip_safe_prompt(pipe, full_text):
 
 
 def do_concept(req):
+    held = _test_hold(req)
+    if held is not None:
+        return held
+    _raise_if_aborted()
     miss = missing("flux_schnell")
     if miss:
         return {"ok": False, "reason": "weights_missing", "missing": miss}
@@ -196,13 +279,19 @@ def do_concept(req):
     # cross 512 deserves an honest flag, not a silent drop.
     t5_max = 512
     t5_tokens = _token_count(pipe.tokenizer_2, full_prompt)
-    img = pipe(
-        clip_prompt, prompt_2=full_prompt,
+    gen_kwargs = dict(
         guidance_scale=0.0, num_inference_steps=int(req.get("steps", 4)),
         width=int(req.get("width", 1024)), height=int(req.get("height", 1024)),
         max_sequence_length=t5_max,
         generator=torch.Generator("cpu").manual_seed(int(req.get("seed", 0))),
-    ).images[0]
+        callback_on_step_end=_flux_step,
+    )
+    try:
+        img = pipe(clip_prompt, prompt_2=full_prompt, **gen_kwargs).images[0]
+    except TypeError:
+        gen_kwargs.pop("callback_on_step_end", None)
+        _raise_if_aborted()
+        img = pipe(clip_prompt, prompt_2=full_prompt, **gen_kwargs).images[0]
     buf = io.BytesIO()
     img.save(buf, "PNG")
     return {
@@ -217,6 +306,10 @@ def do_concept(req):
 
 
 def do_mesh_trellis1(req):
+    held = _test_hold(req)
+    if held is not None:
+        return held
+    _raise_if_aborted()
     miss = missing("trellis1")
     if miss:
         return {"ok": False, "reason": "weights_missing", "missing": miss}
@@ -241,6 +334,10 @@ def do_mesh_trellis1(req):
 
 
 def do_mesh(req):
+    held = _test_hold(req)
+    if held is not None:
+        return held
+    _raise_if_aborted()
     engine = req.get("engine") or default_engine()
     if engine == "trellis1":
         return do_mesh_trellis1(req)
@@ -320,7 +417,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/health":
             return self._send(404, {"ok": False, "reason": "not_found"})
         info = {"ok": True, "weights": weights_status(), "default_engine": default_engine(), "on_gpu": _state["on_gpu"],
-                "served": _state["served"], "errors": _state["errors"], "busy": _lock.locked(), "rss_mb": rss_mb()}
+                "served": _state["served"], "errors": _state["errors"], "busy": _lock.locked(), "rss_mb": rss_mb(),
+                "job_id": _job.get("id"), "aborting": _abort.is_set()}
         try:
             import torch
             info["gpu"] = torch.cuda.get_device_name(0)
@@ -330,13 +428,19 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, info)
 
     def do_POST(self):
-        handlers = {"/concept": do_concept, "/mesh": do_mesh}
-        if self.path not in handlers:
-            return self._send(404, {"ok": False, "reason": "not_found"})
+        path = self.path.split("?", 1)[0]
         try:
             req = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         except Exception as exc:  # noqa: BLE001
             return self._send(400, {"ok": False, "reason": "bad_json", "error": str(exc)})
+        # /abort must not wait on the generation lock: that lock is what the
+        # in-flight job is holding.
+        if path == "/abort":
+            job_id = req.get("job_id") or self.headers.get("X-Concord-Job-Id")
+            return self._send(200, abort_job(job_id))
+        handlers = {"/concept": do_concept, "/mesh": do_mesh}
+        if path not in handlers:
+            return self._send(404, {"ok": False, "reason": "not_found"})
         # Chat sets this so a busy card answers immediately. Organic batch
         # posts omit it and keep queueing on the lock (those jobs are minutes).
         fail_if_busy = str(self.headers.get("X-Concord-Fail-If-Busy") or "").strip().lower() in ("1", "true", "yes")
@@ -349,17 +453,26 @@ class Handler(BaseHTTPRequestHandler):
                 })
         else:
             _lock.acquire()
+        job_id = self.headers.get("X-Concord-Job-Id") or req.get("job_id") or str(time.time())
         try:
+            _abort.clear()
+            _job["id"] = str(job_id)
+            _job["handler"] = self
             try:
-                res = handlers[self.path](req)
-            except Exception as exc:  # noqa: BLE001
-                traceback.print_exc()
-                res = {"ok": False, "reason": "generation_error", "error": f"{type(exc).__name__}: {str(exc)[:400]}"}
+                try:
+                    res = handlers[path](req)
+                except GenerationAborted:
+                    res = {"ok": False, "reason": "aborted", "error": "generation aborted"}
+                except Exception as exc:  # noqa: BLE001
+                    traceback.print_exc()
+                    res = {"ok": False, "reason": "generation_error", "error": f"{type(exc).__name__}: {str(exc)[:400]}"}
+                finally:
+                    release_memory()
+                _state["served"] += 1
+                if not res.get("ok"):
+                    _state["errors"] += 1
             finally:
-                release_memory()
-            _state["served"] += 1
-            if not res.get("ok"):
-                _state["errors"] += 1
+                _job["handler"] = None
         finally:
             _lock.release()
         self._send(200, res)

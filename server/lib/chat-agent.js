@@ -61,6 +61,8 @@ import {
   meshResult,
   userFacingMeshReply,
   sanitizeUserReply,
+  alignReplyToBbox,
+  specBbox,
 } from "./chat/tool-turn-reply.js";
 import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
@@ -295,7 +297,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
   Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
-- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). Params: {"text": "the design in words, with span, load, material, supports and safety factor"}
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
   Example: [TOOL_CALL: {"tool": "conkay_ir_schema", "params": {}}]
@@ -1193,18 +1195,21 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         );
         // A robot / multi-part machine: a concept assembly the UI can show in 3D.
         const { ROBOT_RE, buildRobotAssembly } = await import("./conkay/robot-assembly.js");
-        if (ROBOT_RE.test(text)) {
+        if (ROBOT_RE.test(text) || ROBOT_RE.test(ctx?.userPrompt || "")) {
           // Part counts come from the user's own words, not the model's
           // rewrite (live: "a two-arm robot" came back with 8 wheels).
           const own = typeof ctx?.userPrompt === "string" && ROBOT_RE.test(ctx.userPrompt) ? ctx.userPrompt : text;
-          const asm = buildRobotAssembly(own);
+          const scope = call.params.scope || call.params.part;
+          const asm = buildRobotAssembly(own, scope ? { scope } : {});
           const refused = refuseSubstitute(`robot ${asm?.mesh?.kind || "robot-assembly"}`);
           if (refused) return refused;
           const { mesh, ...rest } = asm;
+          const bb = asm.bbox_mm;
+          const scopeNote = asm.spec?.scope && asm.spec.scope !== "full" ? ` This is the ${asm.spec.scope} only.` : "";
           return {
             tool: call.tool, ok: true, key: "conkay_design.robot-assembly",
             result: { kind: "robot-assembly", ...rest, partCount: asm.parts.length,
-              instruction: "Say the robot concept model is shown below. List its parts with their sizes in mm and the overall size. Say plainly it is a layout concept: no structural, motor or battery sizing was run." },
+              instruction: `Say the robot concept model is shown below.${scopeNote} List its parts with their sizes in mm. Overall size is exactly ${bb.length} mm long, ${bb.height} mm tall, ${bb.width} mm wide. Quote those millimetre figures; do not convert them or state a different overall size. Say plainly it is a layout concept: no structural, motor or battery sizing was run.` },
             artifact: { kind: "mesh", source: "conkay_design", title: "robot concept assembly", meshKind: mesh.kind,
               positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
               color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name),
@@ -1600,15 +1605,17 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_3d": {
-        const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
+        const { generate3dFromPrompt, TRELLIS_MESH_BUDGET_MS } = await import("./chat/generate-3d.js");
         const { clampGenerate3dBudget } = await import("./chat/gen-budget.js");
         const { fallbackDesignCall, isEngineered3dAsk, wantsExplicitMeshLook, conceptMatchesAsk, plain3dFailureReply } = await import("./chat/route-3d-ask.js");
+        const { designTextParams } = await import("./conkay/robot-assembly.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
         const user = typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "";
-        // Engineered / CAD asks (robot, car, part, mechanism, furniture) get
-        // the local layout first. TRELLIS only runs after that, and only when
-        // the reserve still leaves a real GPU window or the user asked for a
-        // mesh / organic look. Creatures stay on generate_3d with no layout.
+        // Engineered / CAD asks get the local layout and stop. TRELLIS runs
+        // after that layout only when the user asked for a mesh, organic,
+        // sculpted, or realistic look AND the turn can still finish that job.
+        // A few seconds left is not enough: the pod keeps the GPU for minutes
+        // after this reply. Creatures stay on generate_3d with no layout.
         const engineered = isEngineered3dAsk(user);
         const explicitMesh = wantsExplicitMeshLook(user);
         const turnDeadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
@@ -1626,7 +1633,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               enough: true,
             };
         const layoutFrom = async (text) => {
-          const designed = await executeToolCall(ctx, runMacro, lensActions, { tool: "conkay_design", params: { text: String(text || "").slice(0, 4000) } });
+          const designed = await executeToolCall(ctx, runMacro, lensActions, { tool: "conkay_design", params: designTextParams(text) });
           const kind = `${designed?.result?.kind || ""} ${designed?.artifact?.meshKind || ""}`;
           const hasMesh = designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")));
           if (!hasMesh || !conceptMatchesAsk(kind, user)) return null;
@@ -1634,10 +1641,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
         let layout = null;
         if (engineered) layout = await layoutFrom(user);
-        const tryGpu = !layout || explicitMesh || gpuBudget.enough;
-        const gpuLeft = gpuBudget.deadlineMs > 0 ? gpuBudget.deadlineMs - Date.now() : gpuBudget.timeoutMs;
-        if (layout && (!tryGpu || gpuLeft < 800)) {
-          return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: "layout_first" };
+        const gpuLeft = gpuBudget.deadlineMs > 0 ? gpuBudget.deadlineMs - Date.now() : (Number(gpuBudget.timeoutMs) > 0 ? gpuBudget.timeoutMs : Infinity);
+        const meshRoom = !(turnDeadlineMs > 0) || gpuLeft >= TRELLIS_MESH_BUDGET_MS;
+        if (layout && !(explicitMesh && meshRoom)) {
+          return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: explicitMesh ? "mesh_budget" : "layout_first" };
         }
         let g;
         if (reserveOn && gpuLeft < 800) {
@@ -1934,7 +1941,11 @@ export function formatToolResults(results) {
     if (r.tool === "generate_3d") return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.`;
     if (r.tool === "conkay_design") {
       const v = r.result?.safety?.verdict;
-      return `[TOOL_RESULT: conkay_design]${v ? ` ${v}` : ""} Report these numbers and the pass/fail exactly; list the assumptions.\n${JSON.stringify(r.result).slice(0, 4000)}`;
+      const b = specBbox(r);
+      const size = b
+        ? `OVERALL SIZE (quote these millimetres exactly; do not convert or invent another overall height, length, or width): length ${b.length} mm, height ${b.height} mm, width ${b.width} mm.\n`
+        : "";
+      return `[TOOL_RESULT: conkay_design]${v ? ` ${v}` : ""} ${size}Report these numbers and the pass/fail exactly; list the assumptions.\n${JSON.stringify(r.result).slice(0, 4000)}`;
     }
     if (r.tool === "run_python") {
       const parts = [];
@@ -2702,6 +2713,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   // A failed FEA run is never reported as a pass (INC-128).
   finalAnswer = guardFeaClaim(finalAnswer, allToolCalls);
+  // A streamed follow-up once called an 880 mm layout "2.7 m tall".
+  finalAnswer = alignReplyToBbox(finalAnswer, specBbox(allToolCalls));
   if (ECHOED_TOOL_RESULT_RE.test(finalAnswer)) {
     finalAnswer = "I ran the tools but couldn't write a summary of the results. The sources I found are listed below.";
   }
