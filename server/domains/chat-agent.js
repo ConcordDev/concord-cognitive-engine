@@ -60,9 +60,14 @@ export default function registerChatAgentMacros(register) {
         ...(typeof input.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}),
         // Which surface asked (chat | conkay | agent): start_long_task posts its result back there.
         ...(["chat", "conkay", "agent"].includes(input.surface) ? { surface: input.surface } : {}),
-        // Non-streaming chat turn deadline (lib/chat/gen-budget.js); runAgentLoop
-        // ignores anything that is not a near-future epoch ms.
-        ...(Number(input.deadlineMs) > 0 ? { deadlineMs: Number(input.deadlineMs), chatTransport: "json" } : {}),
+        // Chat turn deadline (lib/chat/gen-budget.js); runAgentLoop ignores
+        // anything that is not a near-future epoch ms. JSON is the default
+        // when a deadline arrives without a transport. Stream design turns
+        // pass "sse" so the layout reserve still applies.
+        ...(Number(input.deadlineMs) > 0 ? { deadlineMs: Number(input.deadlineMs) } : {}),
+        ...((input.chatTransport === "json" || input.chatTransport === "sse" || input.chatTransport === "socket")
+          ? { chatTransport: input.chatTransport }
+          : (Number(input.deadlineMs) > 0 ? { chatTransport: "json" } : {})),
       },
     });
   }, { note: "Agent Mode — runs an agentic tool-use loop with web search, compute, browse_url, run_lens_action (any of 200+ lens domain actions), create_dtu, expert_mode. Routes through Sprint 10 BYO router so user's API key kicks in. Returns answer + toolCalls + artifacts + provenance. Accepts input.message or input.task (alias)." });

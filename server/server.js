@@ -27979,12 +27979,15 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
             _recallDtus = _chatMemoryLib.rankRecallDtus(_mine, prompt).map((d) => ({ id: d.id, title: d.title, summary: d.human?.summary || d.cretiHuman || "", createdAt: d.createdAt }));
           }
         } catch (_e) { logger.debug('server', 'chat dtu notes failed', { error: _e?.message }); }
-        // POST /api/chat (JSON) has one ~85s wall-clock budget for the whole
-        // turn (lib/chat/gen-budget.js). The agent loop's brain rounds, tool
-        // calls and generate_3d → layout fallback all run against it. Stream
-        // and socket turns keep their keepalive-backed timeouts.
+        // POST /api/chat (JSON) has one ~85s wall-clock budget (gen-budget.js)
+        // for brain rounds, tools, and generate_3d. A design turn on stream
+        // or socket gets the 120s keepalive budget too, so the conkay reserve
+        // clamps generate_3d on both. Other stream routes stay on keepalives.
         const _agentBudget = chatGenerationBudget({ ctx, startedAt: ctx?.chatTurnStartedAt });
-        const _agentDeadline = _agentBudget.transport === "json" ? { deadlineMs: _agentBudget.deadlineMs } : {};
+        const _agentDeadline = _agentBudget.transport === "json" ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: "json" }
+          : (_agentRouteKind === "design"
+              ? { deadlineMs: _agentBudget.deadlineMs, chatTransport: _agentBudget.transport }
+              : {});
         const _agentOut = await _ar.answerViaAgent({ runMacro, ctx: _agentCtx, history: _agentHistory, prompt, route: _agentRouteKind, lensActions: LENS_ACTIONS, memoryBlock: _chatMemory.text, formulaDtus: _formulaDtus, recallDtus: _recallDtus, sessionId, ...(typeof input?.selfContinue === "boolean" ? { selfContinue: input.selfContinue } : {}), ..._agentDeadline });
         if (_agentOut) {
           let _agentReply = visibleChatReply(_agentOut.reply, prompt);

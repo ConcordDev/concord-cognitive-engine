@@ -516,11 +516,17 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
 }
 
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0 }) {
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0, chatTransport = null }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
   // Non-streaming chat: one deadline for every agent call below (gen-budget.js).
+  // Design turns on the stream path pass a deadline too, plus the real transport,
+  // so the generate_3d reserve is not limited to turns flagged "json".
   const _deadline = Number(deadlineMs) > 0 ? Number(deadlineMs) : 0;
-  const _budget = _deadline ? { deadlineMs: _deadline } : {};
+  const _transport = chatTransport === "json" || chatTransport === "sse" || chatTransport === "socket" ? chatTransport : "";
+  const _budget = {
+    ...(_deadline ? { deadlineMs: _deadline } : {}),
+    ...(_transport ? { chatTransport: _transport } : {}),
+  };
   const _roomFor = (ms) => !_deadline || budgetLeftMs(_deadline) >= ms;
   const longOut = answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions, sessionId, surface: "chat" });
   if (longOut) return longOut;

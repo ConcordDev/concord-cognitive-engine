@@ -38,6 +38,19 @@ export function isEngineered3dAsk(text) {
   return ENGINEERED_RE.test(p) || !!conceptKind(p) || ROBOT_RE.test(p);
 }
 
+/**
+ * The user asked for a GPU mesh or an organic look, not only a CAD layout.
+ * Organic subjects (dragon, statue, creature) are a separate path: they go
+ * to generate_3d and never get a layout substituted.
+ */
+export function wantsExplicitMeshLook(text) {
+  const p = String(text || "");
+  if (/\borganic\s+look\b|\blooks?\s+organic\b|\bsculpted(?:\s+look)?\b|\btrellis\b/i.test(p)) return true;
+  if (/\b(?:realistic|photoreal(?:istic)?|free[- ]form|organic)\s+(?:3[- ]?d\s+)?mesh\b/i.test(p)) return true;
+  if (/\b(?:generate|make|render|create|want|give|show)\b[^.]{0,48}\bmesh\b/i.test(p)) return true;
+  return false;
+}
+
 /** A 3D ask that must not be answered with a stand-in layout. */
 export function isFreeform3dAsk(text) {
   const p = String(text || "").trim();
