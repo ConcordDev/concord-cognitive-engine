@@ -280,10 +280,13 @@ describe("JSON chat budget holds through the agent loop", () => {
       });
       const elapsed = Date.now() - startedAt;
       assert.ok(elapsed < JSON_TURN_BUDGET_MS, `wall ${elapsed}ms`);
-      assert.equal(conceptHits, 1, "organic asks still go to generate_3d");
-      assert.equal(abortHits, 1, "the timed-out concept posts /abort");
+      assert.equal(conceptHits, 0, "8s cannot hold a concept and a mesh, so the pod is not started");
+      assert.equal(abortHits, 0);
       assert.equal(r.toolCalls.some((t) => t.tool === "conkay_design" || t.layoutFirst), false);
+      assert.equal(r.toolCalls.some((t) => t.tool === "generate_3d"), true);
       assert.equal(r.artifacts.some((a) => a?.kind === "mesh"), false);
+      assert.match(r.answer, /streaming chat/i);
+      assert.doesNotMatch(r.answer, /busy/i);
       assert.doesNotMatch(r.answer, /robot layout|layout approximation/i);
       assert.doesNotMatch(r.answer, TOOL_NAME_RE);
     } finally {

@@ -1605,7 +1605,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         };
       }
       case "generate_3d": {
-        const { generate3dFromPrompt, TRELLIS_MESH_BUDGET_MS } = await import("./chat/generate-3d.js");
+        const { generate3dFromPrompt, trellisMeshMinMs, conceptMeshHeadroomMs } = await import("./chat/generate-3d.js");
         const { clampGenerate3dBudget } = await import("./chat/gen-budget.js");
         const { fallbackDesignCall, isEngineered3dAsk, wantsExplicitMeshLook, conceptMatchesAsk, plain3dFailureReply } = await import("./chat/route-3d-ask.js");
         const { designTextParams } = await import("./conkay/robot-assembly.js");
@@ -1613,9 +1613,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const user = typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "";
         // Engineered / CAD asks get the local layout and stop. TRELLIS runs
         // after that layout only when the user asked for a mesh, organic,
-        // sculpted, or realistic look AND the turn can still finish that job.
-        // A few seconds left is not enough: the pod keeps the GPU for minutes
-        // after this reply. Creatures stay on generate_3d with no layout.
+        // sculpted, or realistic look AND the turn can still hold a concept
+        // plus a warm mesh (~70s). A deadline that hits mid-mesh is POST
+        // /abort, not a reason to skip every chat turn. Creatures stay on
+        // generate_3d with no layout.
         const engineered = isEngineered3dAsk(user);
         const explicitMesh = wantsExplicitMeshLook(user);
         const turnDeadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
@@ -1642,7 +1643,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         let layout = null;
         if (engineered) layout = await layoutFrom(user);
         const gpuLeft = gpuBudget.deadlineMs > 0 ? gpuBudget.deadlineMs - Date.now() : (Number(gpuBudget.timeoutMs) > 0 ? gpuBudget.timeoutMs : Infinity);
-        const meshRoom = !(turnDeadlineMs > 0) || gpuLeft >= TRELLIS_MESH_BUDGET_MS;
+        const meshRoom = !(turnDeadlineMs > 0) || gpuLeft >= trellisMeshMinMs() + conceptMeshHeadroomMs();
         if (layout && !(explicitMesh && meshRoom)) {
           return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: explicitMesh ? "mesh_budget" : "layout_first" };
         }
@@ -1654,12 +1655,16 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         } else {
           const deadlineMs = reserveOn ? gpuBudget.deadlineMs : turnDeadlineMs;
           const timeoutMs = reserveOn ? gpuBudget.timeoutMs : (hasTimeout ? rawTimeout : 0);
+          const transport = ctx?.chatTransport === "sse" || ctx?.chatTransport === "socket" || ctx?.chatTransport === "json"
+            ? ctx.chatTransport
+            : "";
           g = await generate3dFromPrompt(prompt, {
             ...(timeoutMs > 0 ? { conceptTimeoutMs: timeoutMs } : {}),
             ...(deadlineMs > 0 ? { deadlineMs } : {}),
             // Always probe /health, including a stream turn that has no
             // deadline and no transport on ctx. A busy pod fails in seconds.
             preflight: true,
+            ...(transport ? { transport } : {}),
           });
         }
         const conceptArtifact = async (b64) => {
@@ -1678,7 +1683,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           }
           return {
             tool: call.tool, ok: false, terminal: true,
-            error: plain3dFailureReply(g), reason: g.reason, stage: g.stage,
+            error: plain3dFailureReply(g, { transport: ctx?.chatTransport || "" }), reason: g.reason, stage: g.stage,
           };
         }
         const concept = g.conceptB64 ? await conceptArtifact(g.conceptB64) : null;

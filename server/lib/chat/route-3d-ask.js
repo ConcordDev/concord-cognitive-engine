@@ -18,10 +18,17 @@ const GPU_FAIL_REASONS = new Set([
   "timeout", "gpu_busy", "gpu_wrong_model", "concept_failed", "mesh_failed",
   "local_gpu_unreachable", "generation_error", "weights_missing", "empty_mesh",
   "glb_parse_failed", "health_timeout", "loading", "not_image", "not_mesh",
+  "mesh_budget",
 ]);
 
 export const THREE_D_BUSY_REPLY = "3D generation is busy right now. Try again in a minute.";
 export const THREE_D_UNAVAILABLE_REPLY = "3D generation is unavailable right now. Try again in a minute.";
+/** Deadline fired while the pod was working. Not the same as the card being busy. */
+export const THREE_D_TIMEOUT_REPLY_USER = "3D generation timed out before the GPU finished. Try again in a moment.";
+/** Turn still has a concept image, but not enough time left to start TRELLIS. */
+export const MESH_BUDGET_REPLY = "This reply doesn't have enough time left to finish the 3D mesh. Try again in a moment.";
+/** JSON chat is ~85s. Concept plus a warm mesh does not fit; streaming does. */
+export const JSON_MESH_BUDGET_REPLY = "This reply doesn't have enough time for the concept image and the 3D mesh. Use the streaming chat, or try again.";
 
 /** Creature, character, statue, or plant, and not a part the user also named. */
 export function isOrganic3dAsk(text) {
@@ -111,10 +118,26 @@ export function layoutWouldSubstitute(userText, kind) {
   return !conceptMatchesAsk(kind, user);
 }
 
-/** Busy (pod loading, in use, or out of time) vs down. Both ask the user to retry. */
-export function plain3dFailureReply(failure) {
-  const blob = `${failure?.reason || ""} ${failure?.error || ""} ${failure?.stage || ""}`;
-  if (/busy|loading|timeout|timed?\s*out|health_timeout|gpu_busy/i.test(blob)) return THREE_D_BUSY_REPLY;
+/**
+ * What the user reads when generate_3d did not return a mesh.
+ * "Busy" is only the pod's own word: /health busy/loading, or a busy
+ * response header / gpu_busy body. A deadline and a budget skip each
+ * keep their own sentence.
+ */
+export function plain3dFailureReply(failure, { transport } = {}) {
+  const reason = String(failure?.reason || "");
+  const err = String(failure?.error || "");
+  if (reason === "gpu_busy" || reason === "loading") return THREE_D_BUSY_REPLY;
+  if (reason === "mesh_budget" || failure?.skippedMesh) {
+    if (transport === "json" || /streaming chat/i.test(err)) return JSON_MESH_BUDGET_REPLY;
+    if (err && !/\bbusy\b/i.test(err)) return err;
+    return MESH_BUDGET_REPLY;
+  }
+  if (reason === "timeout" || reason === "health_timeout") {
+    if (err && !/\bbusy\b/i.test(err) && !/aborted due to timeout/i.test(err)) return err;
+    return THREE_D_TIMEOUT_REPLY_USER;
+  }
+  if (err && !/\bbusy\b/i.test(err)) return err;
   return THREE_D_UNAVAILABLE_REPLY;
 }
 
