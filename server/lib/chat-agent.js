@@ -1614,7 +1614,6 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const deadlineMs = turnDeadlineMs ? turnDeadlineMs - fallbackReserveMs : 0;
         let timeoutMs = Number(ctx?.chatGenTimeoutMs);
         if (deadlineMs && Number.isFinite(timeoutMs) && timeoutMs > 0) timeoutMs = Math.max(1, Math.min(timeoutMs, deadlineMs - Date.now()));
-        const hasChatBudget = deadlineMs > 0 || (Number.isFinite(timeoutMs) && timeoutMs > 0);
         let g;
         if (deadlineMs && deadlineMs - Date.now() < 800) {
           g = { ok: false, stage: "budget", reason: "timeout", error: "3D generation timed out before the GPU finished. Try again in a moment." };
@@ -1622,10 +1621,9 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           g = await generate3dFromPrompt(prompt, {
             ...(Number.isFinite(timeoutMs) && timeoutMs > 0 ? { conceptTimeoutMs: timeoutMs } : {}),
             ...(deadlineMs > 0 ? { deadlineMs } : {}),
-            // Chat always preflights. A busy pod (or a health check that
-            // cannot return) fails in seconds so an engineered ask can fall
-            // back to a local layout instead of sitting out the full timeout.
-            preflight: hasChatBudget || ctx?.chatTransport === "json" || ctx?.chatTransport === "sse" || ctx?.chatTransport === "socket",
+            // Always probe /health, including a stream turn that has no
+            // deadline and no transport on ctx. A busy pod fails in seconds.
+            preflight: true,
           });
         }
         const conceptArtifact = async (b64) => {

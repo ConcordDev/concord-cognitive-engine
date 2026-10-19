@@ -337,7 +337,19 @@ class Handler(BaseHTTPRequestHandler):
             req = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         except Exception as exc:  # noqa: BLE001
             return self._send(400, {"ok": False, "reason": "bad_json", "error": str(exc)})
-        with _lock:
+        # Chat sets this so a busy card answers immediately. Organic batch
+        # posts omit it and keep queueing on the lock (those jobs are minutes).
+        fail_if_busy = str(self.headers.get("X-Concord-Fail-If-Busy") or "").strip().lower() in ("1", "true", "yes")
+        if fail_if_busy:
+            if not _lock.acquire(blocking=False):
+                return self._send(200, {
+                    "ok": False,
+                    "reason": "gpu_busy",
+                    "error": "The GPU is busy with another job. Try again in a moment.",
+                })
+        else:
+            _lock.acquire()
+        try:
             try:
                 res = handlers[self.path](req)
             except Exception as exc:  # noqa: BLE001
@@ -348,6 +360,8 @@ class Handler(BaseHTTPRequestHandler):
             _state["served"] += 1
             if not res.get("ok"):
                 _state["errors"] += 1
+        finally:
+            _lock.release()
         self._send(200, res)
 
 

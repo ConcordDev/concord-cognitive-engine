@@ -287,7 +287,7 @@ function startGen(handler) {
 }
 
 test("generate_image uses the pod image path and does not touch ctx.state", async () => {
-  const png = Buffer.from("fake-png-bytes-for-agent-image").toString("base64");
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   const srv = await startGen((url) => (url === "/health" ? { ok: true, weights: { flux_schnell: true } } : { ok: true, png_b64: png, provider: "local_gpu_flux" }));
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-img-"));
   const saved = {
@@ -373,7 +373,7 @@ test("generate_image reports GPU offline and never calls Pollinations", async ()
 
 test("generate_image and the lens image action never surface macro_uncaught_throw", async () => {
   await withRegistries(async () => {
-    const png = Buffer.from("red-bicycle").toString("base64");
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const srv = await startGen((url) => (url === "/health" ? { ok: true, weights: { flux_schnell: true } } : { ok: true, png_b64: png, provider: "local_gpu_flux" }));
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-img-throw-"));
     const saved = { gen: process.env.CONCORD_GEN_URL, data: process.env.DATA_DIR };

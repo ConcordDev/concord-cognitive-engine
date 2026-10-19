@@ -10,9 +10,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-  explicitImagePrompt, fulfillImageRequest, produceGpuImage, GPU_OFFLINE_REPLY, markdownImageReply,
+  explicitImagePrompt, fulfillImageRequest, produceGpuImage, publishPrivateImage, GPU_OFFLINE_REPLY, markdownImageReply,
   getMediaDTU, canAccessMediaDTU, retrieveArtifact,
 } from "../lib/chat/image-router.js";
+import { GPU_BUSY_REPLY } from "../lib/pollinations-image.js";
 import { runAgentLoop } from "../lib/chat-agent.js";
 
 function startGen(handler) {
@@ -57,7 +58,7 @@ test("explicit image phrasing is recognized and idioms are not", () => {
 });
 
 test("a healthy GPU stores a private artifact and the reply contains no data URL", async () => {
-  const png = Buffer.from("red-bicycle-png").toString("base64");
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   const srv = await startGen((url) => (url === "/health"
     ? { ok: true, weights: { flux_schnell: true } }
     : { ok: true, png_b64: png, provider: "local_gpu_flux" }));
@@ -175,7 +176,7 @@ test("chat.respond and the agent loop route images before any model call", () =>
 });
 
 test("runAgentLoop returns the GPU image and does not ask the brain", async () => {
-  const png = Buffer.from("agent-bicycle").toString("base64");
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   const srv = await startGen((url) => (url === "/health" ? { ok: true, weights: { flux_schnell: true } } : { ok: true, png_b64: png, provider: "local_gpu_flux" }));
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-loop-img-"));
   const saved = { gen: process.env.CONCORD_GEN_URL, data: process.env.DATA_DIR };
@@ -246,5 +247,80 @@ test("runAgentLoop says the GPU is offline without calling the brain when the ge
   } finally {
     if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL; else process.env.CONCORD_GEN_URL = saved.gen;
     if (saved.force === undefined) delete process.env.CONCORD_FORCE_POLLINATIONS; else process.env.CONCORD_FORCE_POLLINATIONS = saved.force;
+  }
+});
+
+test("a busy GPU returns the busy sentence in a few seconds and saves no artifact", async () => {
+  let conceptHits = 0;
+  const srv = await startGen((url) => {
+    if (url !== "/health") conceptHits += 1;
+    return { ok: true, busy: true, on_gpu: "trellis1" };
+  });
+  const saved = { gen: process.env.CONCORD_GEN_URL };
+  process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+  try {
+    const state = { dtus: new Map() };
+    const t0 = Date.now();
+    const hit = await fulfillImageRequest("draw a picture of a sunset", { ownerId: "owner-1", state });
+    const elapsed = Date.now() - t0;
+    assert.ok(elapsed < 5_000, `wall ${elapsed}ms`);
+    assert.equal(conceptHits, 0);
+    assert.equal(hit.ok, false);
+    assert.equal(hit.artifact, undefined);
+    assert.equal(hit.reply, GPU_BUSY_REPLY);
+    assert.equal(state.dtus.size, 0);
+  } finally {
+    srv.close();
+    if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL; else process.env.CONCORD_GEN_URL = saved.gen;
+  }
+});
+
+test("non-image bytes are never stored as an image artifact", async () => {
+  assert.equal(Buffer.from(GPU_BUSY_REPLY).length, 56);
+  const busyB64 = Buffer.from(GPU_BUSY_REPLY).toString("base64");
+  const headers = [];
+  const srv = await new Promise((resolve) => {
+    const s = http.createServer((req, res) => {
+      headers.push(req.headers["x-concord-fail-if-busy"] || "");
+      let body = "";
+      req.on("data", (c) => { body += c; });
+      req.on("end", () => {
+        const out = req.url === "/health"
+          ? { ok: true, busy: false, on_gpu: "flux", weights: { flux_schnell: true } }
+          : { ok: true, png_b64: busyB64, provider: "local_gpu_flux" };
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(out));
+        void body;
+      });
+    });
+    s.listen(0, "127.0.0.1", () => resolve(s));
+  });
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "img-busy-bytes-"));
+  const saved = { gen: process.env.CONCORD_GEN_URL, data: process.env.DATA_DIR };
+  process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+  process.env.DATA_DIR = dataDir;
+  try {
+    const state = { dtus: new Map() };
+    const hit = await fulfillImageRequest("draw a picture of a sunset", { ownerId: "owner-1", state });
+    assert.equal(hit.ok, false);
+    assert.equal(hit.artifact, undefined);
+    assert.equal(hit.reply, GPU_BUSY_REPLY);
+    assert.equal(state.dtus.size, 0);
+    const artDir = path.join(dataDir, "gpu-art");
+    assert.equal(fs.existsSync(artDir) ? fs.readdirSync(artDir).length : 0, 0);
+    assert.ok(headers.includes("1"), "concept post asks the pod not to queue");
+
+    const junk = await publishPrivateImage({
+      imageB64: Buffer.from("this is not a png").toString("base64"),
+      prompt: "a sunset", width: 512, height: 512, ownerId: "owner-1", state,
+    });
+    assert.equal(junk.ok, false);
+    assert.equal(junk.reason, "not_image");
+    assert.equal(state.dtus.size, 0);
+  } finally {
+    srv.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL; else process.env.CONCORD_GEN_URL = saved.gen;
+    if (saved.data === undefined) delete process.env.DATA_DIR; else process.env.DATA_DIR = saved.data;
   }
 });

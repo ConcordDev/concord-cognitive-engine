@@ -13,7 +13,10 @@
 
 import { NodeIO } from "@gltf-transform/core";
 import { MeshoptSimplifier } from "meshoptimizer";
-import { assessGpuHealth, GPU_BUSY_REPLY, isGenerationAbort } from "../pollinations-image.js";
+import {
+  assessGpuHealth, GPU_BUSY_REPLY, GEN_FAIL_IF_BUSY_HEADER, GEN_HEALTH_TIMEOUT_MS,
+  imageByteFailure, isGenerationAbort, isGlb,
+} from "../pollinations-image.js";
 
 export const THREE_D_TIMEOUT_REPLY = "3D generation timed out before the GPU finished. Try again in a moment.";
 const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the mesh. Try again in a moment.";
@@ -26,7 +29,7 @@ const MAX_TRIS = 5_000;
 async function postJson(route, body, timeoutMs, fetchImpl) {
   try {
     const r = await fetchImpl(`${GEN_URL()}${route}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", [GEN_FAIL_IF_BUSY_HEADER]: "1" },
       body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
     });
     return await r.json();
@@ -103,10 +106,38 @@ export async function decimateMesh({ positions, indices }, maxTris = MAX_TRIS) {
   return { positions: outPos, indices: outIdx, vertexCount: outPos.length / 3, triangleCount: outIdx.length / 3 };
 }
 
+function healthCapMs(remain) {
+  const left = Number.isFinite(remain) ? remain : GEN_HEALTH_TIMEOUT_MS;
+  return Math.min(GEN_HEALTH_TIMEOUT_MS, Math.max(400, left));
+}
+
+/** Busy/loading only. A non-FLUX `on_gpu` is fine here: mesh is about to load TRELLIS. */
+function healthSaysBusy(health) {
+  if (!health || typeof health !== "object") return false;
+  const status = String(health.status || health.state || "").toLowerCase();
+  const busyFlag = health.busy === true || health.busy === 1 || String(health.busy).toLowerCase() === "true";
+  const loadingFlag = health.loading === true || health.loading === 1 || String(health.loading).toLowerCase() === "true";
+  return loadingFlag || /^(?:loading|starting|warming|initializing)$/.test(status) || busyFlag || status === "busy" || status === "occupied";
+}
+
+async function probeHealth(fetchImpl, capMs) {
+  try {
+    const hr = await fetchImpl(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(capMs) });
+    const health = typeof hr?.json === "function" ? await hr.json() : null;
+    return { health, aborted: false };
+  } catch (err) {
+    return { health: null, aborted: isGenerationAbort(err) };
+  }
+}
+
 /**
  * @returns {Promise<{ok:true, mesh, conceptB64, seconds, provider} | {ok:false, error, reason, stage}>}
  */
 export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false } = {}) {
+  // Stream turns used to skip this probe (`preflight` only when a budget or
+  // transport was set). The POST then queued on the gen-server lock for the
+  // whole concept timeout. Chat always probes. `preflight` stays accepted.
+  void preflight;
   const clean = String(prompt || "").trim().slice(0, 600);
   if (!clean) return { ok: false, stage: "input", reason: "empty_prompt", error: "generate_3d requires a prompt" };
   const remain = () => (Number(deadlineMs) > 0 ? Number(deadlineMs) - Date.now() : Infinity);
@@ -115,26 +146,17 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
   if (remain() < 800) {
     return { ok: false, stage: "budget", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
   }
-  if (preflight) {
-    let health = null;
-    let healthAbort = false;
-    const healthCap = Math.min(5_000, Math.max(400, Number.isFinite(remain()) ? remain() : 5_000));
-    try {
-      const hr = await fetchImpl(`${GEN_URL()}/health`, { signal: AbortSignal.timeout(healthCap) });
-      health = typeof hr?.json === "function" ? await hr.json() : null;
-    } catch (err) {
-      health = null;
-      healthAbort = isGenerationAbort(err);
-    }
-    const gate = assessGpuHealth(health);
-    // A health check that itself times out means the pod is stuck on another
-    // job (the tunnel only has the in-flight generation). Do not start /concept.
-    if (healthAbort) {
-      return { ok: false, stage: "concept", reason: "gpu_busy", error: GPU_BUSY_REPLY };
-    }
-    if (!gate.ok && (gate.reason === "gpu_busy" || gate.reason === "gpu_wrong_model")) {
-      return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
-    }
+  const conceptProbe = await probeHealth(fetchImpl, healthCapMs(remain()));
+  // A health check that itself times out means the pod is stuck on another
+  // job (the tunnel only has the in-flight generation). Do not start /concept.
+  // Unreachable (connection refused, or a body that is not a health report)
+  // still falls through so a mock that only answers /concept keeps working.
+  if (conceptProbe.aborted) {
+    return { ok: false, stage: "concept", reason: "gpu_busy", error: GPU_BUSY_REPLY };
+  }
+  const gate = assessGpuHealth(conceptProbe.health);
+  if (!gate.ok && (gate.reason === "gpu_busy" || gate.reason === "gpu_wrong_model")) {
+    return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
   }
   const t0 = Date.now();
   const conceptCap = Number(conceptTimeoutMs) > 0 ? Number(conceptTimeoutMs) : 120_000;
@@ -149,9 +171,20 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     }
     return { ok: false, stage: "concept", reason: concept?.reason || "concept_failed", error: `3D generation is unavailable: the GPU pod could not make the concept image (${concept?.reason || concept?.error || "no image"})` };
   }
+  const pngBuf = Buffer.from(String(concept.png_b64), "base64");
+  const badPng = imageByteFailure(pngBuf);
+  if (badPng) {
+    return { ok: false, stage: "concept", reason: badPng.reason, error: badPng.error };
+  }
   const meshMs = Math.min(MESH_TIMEOUT_MS, remain());
   if (meshMs < 800) {
     return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
+  }
+  // FLUX is still the loaded model after concept. Only a held lock (or a
+  // health check the in-flight job is blocking) should stop the mesh step.
+  const meshProbe = await probeHealth(fetchImpl, healthCapMs(remain()));
+  if (meshProbe.aborted || healthSaysBusy(meshProbe.health)) {
+    return { ok: false, stage: "mesh", reason: "gpu_busy", error: GPU_BUSY_REPLY };
   }
   const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, meshMs, fetchImpl);
   if (!mesh?.ok || !mesh.glb_b64) {
@@ -162,9 +195,13 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     return { ok: false, stage: "mesh", reason: mesh?.reason || "mesh_failed", conceptB64: concept.png_b64,
       error: `3D mesh generation is unavailable on the GPU pod right now (${why})` };
   }
+  const glbBuf = Buffer.from(String(mesh.glb_b64), "base64");
+  if (!isGlb(glbBuf)) {
+    return { ok: false, stage: "mesh", reason: "not_mesh", error: "3D generation did not return a mesh." };
+  }
   let tri;
   try {
-    tri = await decimateMesh(await glbToTriangles(Buffer.from(mesh.glb_b64, "base64")), maxTris);
+    tri = await decimateMesh(await glbToTriangles(glbBuf), maxTris);
   } catch (err) {
     return { ok: false, stage: "convert", reason: "glb_parse_failed", error: `the pod returned a 3D file Concord could not read (${String(err?.message || err).slice(0, 160)})` };
   }

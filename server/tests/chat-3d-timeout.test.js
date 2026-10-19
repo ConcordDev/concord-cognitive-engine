@@ -22,9 +22,14 @@ import { composeToolTurnReply, isRecoverableToolFailure, sanitizeUserReply, scru
 import { visibleChatReply } from "../lib/chat-governance-leak.js";
 import {
   assessGpuHealth,
+  GEN_BUSY_WAIT_CAP_MS,
+  GEN_HEALTH_TIMEOUT_MS,
   generatePollinationsImage,
   generateViaLocalGpu,
+  GPU_BUSY_REPLY,
   IMAGE_TIMEOUT_REPLY,
+  isGlb,
+  isPngOrJpeg,
 } from "../lib/pollinations-image.js";
 
 const SERVER_JS = path.join(path.dirname(fileURLToPath(import.meta.url)), "../server.js");
@@ -117,6 +122,19 @@ describe("GPU concept timeout is plain English", () => {
     assert.equal(assessGpuHealth({ ok: true, status: "loading" }).reason, "gpu_busy");
     assert.equal(assessGpuHealth({ ok: true, state: "warming" }).reason, "gpu_busy");
     assert.equal(assessGpuHealth({ ok: true, on_gpu: null }).ok, true);
+    assert.equal(assessGpuHealth({ ok: true, on_gpu: "flux" }).ok, true);
+    assert.equal(assessGpuHealth({ ok: true, busy: false, on_gpu: "trellis1" }).reason, "gpu_busy");
+    assert.equal(assessGpuHealth({ ok: true, on_gpu: "trellis1" }).error, GPU_BUSY_REPLY);
+    assert.ok(GEN_HEALTH_TIMEOUT_MS <= GEN_BUSY_WAIT_CAP_MS);
+    assert.ok(GEN_HEALTH_TIMEOUT_MS <= 5_000);
+    const sig = Buffer.from("iVBORw0KGgo=", "base64");
+    assert.equal(isPngOrJpeg(sig), true);
+    assert.equal(isPngOrJpeg(Buffer.from(GPU_BUSY_REPLY)), false);
+    assert.equal(Buffer.from(GPU_BUSY_REPLY).length, 56);
+    const glb = Buffer.alloc(12);
+    glb.write("glTF", 0, "ascii");
+    assert.equal(isGlb(glb), true);
+    assert.equal(isGlb(Buffer.from(GPU_BUSY_REPLY)), false);
   });
 
   it("a short timeout does not save the raw abort text or fall back to Pollinations", async () => {
@@ -183,7 +201,11 @@ describe("GPU concept timeout is plain English", () => {
     abort.name = "TimeoutError";
     const timed = await generate3dFromPrompt("a small owl", {
       conceptTimeoutMs: 50,
-      fetchImpl: async () => { throw abort; },
+      preflight: false,
+      fetchImpl: async (url) => {
+        if (String(url).endsWith("/health")) return { json: async () => ({ ok: true, on_gpu: "flux" }) };
+        throw abort;
+      },
     });
     assert.equal(timed.ok, false);
     assert.equal(timed.reason, "timeout");
@@ -196,7 +218,7 @@ describe("GPU concept timeout is plain English", () => {
 
     const calls = [];
     const busy = await generate3dFromPrompt("a small owl", {
-      preflight: true,
+      preflight: false,
       fetchImpl: async (url) => {
         calls.push(String(url));
         return { json: async () => ({ ok: true, busy: true }) };
@@ -205,6 +227,13 @@ describe("GPU concept timeout is plain English", () => {
     assert.equal(busy.reason, "gpu_busy");
     assert.deepEqual(calls.map((u) => u.slice(u.lastIndexOf("/"))), ["/health"]);
     assert.doesNotMatch(busy.error, /aborted due to timeout/i);
+
+    const hungHealth = await generate3dFromPrompt("a small owl", {
+      fetchImpl: async () => { throw abort; },
+    });
+    assert.equal(hungHealth.reason, "gpu_busy");
+    assert.equal(hungHealth.error, GPU_BUSY_REPLY);
+    assert.doesNotMatch(hungHealth.error, /aborted due to timeout/i);
   });
 });
 
@@ -461,5 +490,140 @@ describe("chat stream keep-alives", () => {
     // The live stream calls it after, which is the path that must keep alive.
     const respondAt = body.indexOf('runMacro("chat","respond"', sseAt);
     assert.ok(sseAt >= 0 && respondAt > sseAt);
+    const sse = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../lib/sse.js"), "utf8");
+    assert.match(sse, /SSE_HEARTBEAT_MS = Number\(process\.env\.CONCORD_SSE_HEARTBEAT_MS\) \|\| 15000/);
+  });
+});
+
+describe("busy gen server fails fast and stores no fake artifact", () => {
+  const saved = process.env.CONCORD_GEN_URL;
+  after(() => {
+    if (saved === undefined) delete process.env.CONCORD_GEN_URL;
+    else process.env.CONCORD_GEN_URL = saved;
+  });
+
+  it("an empty stream ctx returns the busy sentence in a few seconds and does not post", async () => {
+    for (const health of [
+      { ok: true, busy: true },
+      { ok: true, loading: true },
+      { ok: true, busy: false, on_gpu: "trellis1" },
+    ]) {
+      let posts = 0;
+      const srv = await listen((req, res) => {
+        if (req.url !== "/health") posts += 1;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(health));
+      });
+      try {
+        process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+        const t0 = Date.now();
+        const state = { dtus: new Map() };
+        const r = await executeToolCall(
+          { mediaState: state },
+          async () => ({}),
+          new Map(),
+          { tool: "generate_3d", params: { prompt: "generate a 3d model of a dragon statue" } },
+        );
+        const elapsed = Date.now() - t0;
+        assert.ok(elapsed < 5_000, `wall ${elapsed}ms`);
+        assert.equal(posts, 0);
+        assert.equal(r.ok, false);
+        assert.equal(r.reason, "gpu_busy");
+        assert.match(r.error, /3D generation is busy/);
+        assert.equal(r.artifact, undefined);
+        assert.equal(r.artifacts, undefined);
+        assert.equal(state.dtus.size, 0);
+      } finally {
+        srv.closeAllConnections?.();
+        srv.close();
+      }
+    }
+  });
+
+  it("a health check that never returns is busy within a few seconds and does not post", { timeout: 15_000 }, async () => {
+    let posts = 0;
+    const srv = await listen((req, res) => {
+      if (req.url !== "/health") {
+        posts += 1;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("{}");
+      }
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const t0 = Date.now();
+      const r = await generate3dFromPrompt("a dragon statue", { preflight: false });
+      const elapsed = Date.now() - t0;
+      assert.ok(elapsed < 8_000, `wall ${elapsed}ms`);
+      assert.ok(elapsed < GEN_BUSY_WAIT_CAP_MS, `wall ${elapsed}ms waited out a running job`);
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "gpu_busy");
+      assert.equal(r.error, GPU_BUSY_REPLY);
+      assert.equal(posts, 0);
+      assert.equal(r.conceptB64, undefined);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("error text is not saved as a concept image or a mesh", async () => {
+    const busyB64 = Buffer.from(GPU_BUSY_REPLY).toString("base64");
+    assert.equal(Buffer.from(busyB64, "base64").length, 56);
+    let meshHits = 0;
+    const textSrv = await listen((req, res) => {
+      if (req.url === "/mesh") meshHits += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      const body = req.url === "/health"
+        ? { ok: true, busy: false, on_gpu: "flux" }
+        : { ok: true, png_b64: busyB64 };
+      res.end(JSON.stringify(body));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${textSrv.address().port}`;
+      const state = { dtus: new Map() };
+      const r = await executeToolCall(
+        { userPrompt: "generate a 3d model of a dragon statue", mediaState: state, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "a dragon statue" } },
+      );
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "gpu_busy");
+      assert.match(r.error, /3D generation is busy/);
+      assert.equal(meshHits, 0);
+      assert.equal(r.artifact, undefined);
+      assert.equal(state.dtus.size, 0);
+    } finally {
+      textSrv.closeAllConnections?.();
+      textSrv.close();
+    }
+
+    const meshSrv = await listen((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      let body;
+      if (req.url === "/health") body = { ok: true, busy: false, on_gpu: "flux" };
+      else if (req.url === "/concept") body = { ok: true, png_b64: "iVBORw0KGgo=" };
+      else body = { ok: true, glb_b64: busyB64 };
+      res.end(JSON.stringify(body));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${meshSrv.address().port}`;
+      const state = { dtus: new Map() };
+      const r = await executeToolCall(
+        { userPrompt: "generate a 3d model of a dragon statue", mediaState: state, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "a dragon statue" } },
+      );
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "not_mesh");
+      assert.equal(r.artifact, undefined);
+      assert.equal(r.artifacts, undefined);
+      assert.equal(state.dtus.size, 0);
+    } finally {
+      meshSrv.closeAllConnections?.();
+      meshSrv.close();
+    }
   });
 });

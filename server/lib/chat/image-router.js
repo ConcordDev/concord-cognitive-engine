@@ -9,7 +9,7 @@
 // a substitute. "GPU image generation is offline" is reserved for a gen
 // server that is actually unreachable or missing weights.
 
-import { generateViaLocalGpu, userFacingGenerationError } from "../pollinations-image.js";
+import { generateViaLocalGpu, GPU_BUSY_REPLY, imageByteFailure, userFacingGenerationError } from "../pollinations-image.js";
 export { userFacingGenerationError };
 import { storeArtifact, retrieveArtifact } from "../artifact-store.js";
 import { createMediaDTU, canAccessMediaDTU, getMediaDTU } from "../media-dtu.js";
@@ -102,6 +102,10 @@ export function markdownImageReply(prompt, url) {
 export async function publishPrivateImage({ imageB64, prompt, width, height, ownerId, state } = {}) {
   const buf = Buffer.from(String(imageB64 || ""), "base64");
   if (!buf.length) return { ok: false, error: "image generation returned no image", reason: "no_image" };
+  const bad = imageByteFailure(buf);
+  if (bad) {
+    return { ok: false, error: bad.reason === "gpu_busy" ? GPU_BUSY_REPLY : bad.error, reason: bad.reason };
+  }
   const host = mediaHost(state);
   const authorId = String(ownerId || "anonymous");
   let artifactRef;
