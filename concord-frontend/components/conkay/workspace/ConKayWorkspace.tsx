@@ -346,10 +346,12 @@ export function ConKayWorkspace() {
     const id = push({ role: 'assistant', text: intent.domain === 'car' ? 'Designing the car (this runs the full car pipeline and can take a minute)…' : `Designing the ${intent.label}…`, pending: true });
     let data: Record<string, unknown> | null = null;
     try {
-      data = (await api.post('/api/conkay/workbench', { prompt: text.slice(0, 4000) })).data as Record<string, unknown>;
+      // A 400 carries the refusal (stage, errors): resolve it so the body is read. The api client turns a
+      // rejected response into a ConcordError without `response`, which used to hide it behind "status code 400".
+      data = (await api.post('/api/conkay/workbench', { prompt: text.slice(0, 4000) }, { validateStatus: (s) => (s >= 200 && s < 300) || s === 400 })).data as Record<string, unknown>;
     } catch (e) {
       const res = (e as { response?: { status?: number; data?: Record<string, unknown> } })?.response;
-      if (res?.status === 401) { reply(id, 'Sign in to design here. The showcase designs open without an account: say "show me the car".', { error: true }); return; }
+      if (res?.status === 401 || (e as { statusCode?: number })?.statusCode === 401) { reply(id, 'Sign in to design here. The showcase designs open without an account: say "show me the car".', { error: true }); return; }
       data = res?.data ?? null;
       if (!data) { reply(id, `The design did not run: ${e instanceof Error ? e.message : 'network error'}.`, { error: true }); return; }
     }
