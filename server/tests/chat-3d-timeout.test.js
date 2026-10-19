@@ -378,13 +378,54 @@ describe("generate_3d failure falls back to a layout", () => {
       assert.equal(r.artifact.kind, "mesh");
       assert.equal(r.result.spec.base, "legs");
       assert.equal(r.result.parts.filter((p) => p.name.startsWith("wheel")).length, 0);
-      assert.equal(conceptHits, 1);
+      assert.equal(conceptHits, 0, "6s leaves nothing after the layout reserve, so TRELLIS is not started");
       assert.equal(meshHits, 0);
       const reply = userFacingMeshReply(r);
       assert.doesNotMatch(reply, /\bconkay_design\b|\bgenerate_3d\b/);
     } finally {
       srv.closeAllConnections?.();
       srv.close();
+    }
+  });
+
+  it("clamps generate_3d on a stream turn and on a turn with no transport flag", { timeout: 25_000 }, async () => {
+    for (const chatTransport of ["sse", undefined]) {
+      let conceptHits = 0;
+      const srv = await listen((req, res) => {
+        if (req.url === "/health") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+          return;
+        }
+        conceptHits += 1;
+      });
+      try {
+        process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+        const startedAt = Date.now();
+        const deadlineMs = startedAt + 18_000;
+        const r = await executeToolCall(
+          {
+            userPrompt: IRON_MAN,
+            ...(chatTransport ? { chatTransport } : {}),
+            chatGenDeadlineMs: deadlineMs,
+            chatGenTimeoutMs: 18_000,
+            actor: { userId: "u1" },
+          },
+          async () => ({}),
+          new Map(),
+          { tool: "generate_3d", params: { prompt: "iron man cad robot" } },
+        );
+        const elapsed = Date.now() - startedAt;
+        assert.ok(elapsed < 18_000, `${chatTransport || "unflagged"} wall ${elapsed}ms`);
+        assert.ok(elapsed < JSON_TURN_BUDGET_MS);
+        assert.equal(r.ok, true);
+        assert.equal(r.layoutFirst, true);
+        assert.equal(r.result.spec.base, "legs");
+        assert.equal(conceptHits, 1, `${chatTransport || "unflagged"} should still try TRELLIS inside the reserve`);
+      } finally {
+        srv.closeAllConnections?.();
+        srv.close();
+      }
     }
   });
 });

@@ -838,8 +838,8 @@ export async function validComputeKeys(modName = "") {
   return { module: null, keys: keys.slice(0, 50) };
 }
 
-/** Time a non-streaming turn keeps back from generate_3d for the local layout fallback. */
-export const GEN_3D_FALLBACK_RESERVE_MS = 12_000;
+/** Time a chat turn keeps back from generate_3d so a local layout can still be returned. */
+export { GEN_3D_FALLBACK_RESERVE_MS } from "./chat/gen-budget.js";
 
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
@@ -1601,25 +1601,54 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "generate_3d": {
         const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
-        const { fallbackDesignCall, isEngineered3dAsk, conceptMatchesAsk, plain3dFailureReply } = await import("./chat/route-3d-ask.js");
+        const { clampGenerate3dBudget } = await import("./chat/gen-budget.js");
+        const { fallbackDesignCall, isEngineered3dAsk, wantsExplicitMeshLook, conceptMatchesAsk, plain3dFailureReply } = await import("./chat/route-3d-ask.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
+        const user = typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "";
+        // Engineered / CAD asks (robot, car, part, mechanism, furniture) get
+        // the local layout first. TRELLIS only runs after that, and only when
+        // the reserve still leaves a real GPU window or the user asked for a
+        // mesh / organic look. Creatures stay on generate_3d with no layout.
+        const engineered = isEngineered3dAsk(user);
+        const explicitMesh = wantsExplicitMeshLook(user);
         const turnDeadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
-        // A JSON turn on an engineered ask keeps time for the local layout
-        // fallback: the GPU attempt gets the turn deadline minus that reserve.
-        // The user's sentence decides, not a tool prompt that named a stock object.
-        const fallbackReserveMs = turnDeadlineMs && ctx?.chatTransport === "json"
-          && isEngineered3dAsk(ctx?.userPrompt)
-          ? Math.max(0, Math.min(GEN_3D_FALLBACK_RESERVE_MS, Math.floor((turnDeadlineMs - Date.now()) / 4)))
-          : 0;
-        const deadlineMs = turnDeadlineMs ? turnDeadlineMs - fallbackReserveMs : 0;
-        let timeoutMs = Number(ctx?.chatGenTimeoutMs);
-        if (deadlineMs && Number.isFinite(timeoutMs) && timeoutMs > 0) timeoutMs = Math.max(1, Math.min(timeoutMs, deadlineMs - Date.now()));
+        const rawTimeout = Number(ctx?.chatGenTimeoutMs);
+        const hasTimeout = Number.isFinite(rawTimeout) && rawTimeout > 0;
+        // The reserve applies on JSON and stream, and on a design turn that
+        // has a deadline even when chatTransport was never set to "json".
+        const reserveOn = engineered && (turnDeadlineMs > 0 || hasTimeout);
+        const gpuBudget = reserveOn
+          ? clampGenerate3dBudget({ deadlineMs: turnDeadlineMs, timeoutMs: hasTimeout ? rawTimeout : 0 })
+          : {
+              reserveMs: 0,
+              deadlineMs: turnDeadlineMs,
+              timeoutMs: hasTimeout ? rawTimeout : 0,
+              enough: true,
+            };
+        const layoutFrom = async (text) => {
+          const designed = await executeToolCall(ctx, runMacro, lensActions, { tool: "conkay_design", params: { text: String(text || "").slice(0, 4000) } });
+          const kind = `${designed?.result?.kind || ""} ${designed?.artifact?.meshKind || ""}`;
+          const hasMesh = designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")));
+          if (!hasMesh || !conceptMatchesAsk(kind, user)) return null;
+          return designed;
+        };
+        let layout = null;
+        if (engineered) layout = await layoutFrom(user);
+        const tryGpu = !layout || explicitMesh || gpuBudget.enough;
+        const gpuLeft = gpuBudget.deadlineMs > 0 ? gpuBudget.deadlineMs - Date.now() : gpuBudget.timeoutMs;
+        if (layout && (!tryGpu || gpuLeft < 800)) {
+          return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: "layout_first" };
+        }
         let g;
-        if (deadlineMs && deadlineMs - Date.now() < 800) {
+        if (reserveOn && gpuLeft < 800) {
+          g = { ok: false, stage: "budget", reason: "timeout", error: "3D generation timed out before the GPU finished. Try again in a moment." };
+        } else if (!reserveOn && turnDeadlineMs && turnDeadlineMs - Date.now() < 800) {
           g = { ok: false, stage: "budget", reason: "timeout", error: "3D generation timed out before the GPU finished. Try again in a moment." };
         } else {
+          const deadlineMs = reserveOn ? gpuBudget.deadlineMs : turnDeadlineMs;
+          const timeoutMs = reserveOn ? gpuBudget.timeoutMs : (hasTimeout ? rawTimeout : 0);
           g = await generate3dFromPrompt(prompt, {
-            ...(Number.isFinite(timeoutMs) && timeoutMs > 0 ? { conceptTimeoutMs: timeoutMs } : {}),
+            ...(timeoutMs > 0 ? { conceptTimeoutMs: timeoutMs } : {}),
             ...(deadlineMs > 0 ? { deadlineMs } : {}),
             // Always probe /health, including a stream turn that has no
             // deadline and no transport on ctx. A busy pod fails in seconds.
@@ -1634,15 +1663,11 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           } catch { return null; }
         };
         if (!g.ok) {
-          const user = ctx?.userPrompt;
+          if (layout) return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: g.reason || g.stage || "failed" };
           const next = fallbackDesignCall(user, prompt, g);
           if (next) {
-            const designed = await executeToolCall(ctx, runMacro, lensActions, next);
-            const kind = `${designed?.result?.kind || ""} ${designed?.artifact?.meshKind || ""}`;
-            const hasMesh = designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")));
-            if (hasMesh && conceptMatchesAsk(kind, user)) {
-              return { ...designed, fellBackFrom: "generate_3d", fallbackReason: g.reason || g.stage || "failed" };
-            }
+            const designed = await layoutFrom(next.params.text);
+            if (designed) return { ...designed, fellBackFrom: "generate_3d", fallbackReason: g.reason || g.stage || "failed" };
           }
           return {
             tool: call.tool, ok: false, terminal: true,
@@ -1653,8 +1678,16 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const meshArtifact = { kind: "mesh", source: "generate_3d", title: `${prompt.slice(0, 60)} (3D)`, meshKind: "generated",
           positions: g.mesh.positions, indices: g.mesh.indices, vertexCount: g.mesh.vertexCount, triangleCount: g.mesh.triangleCount,
           color: "#a3a3a3", pass: null, feaOk: null };
-        return { tool: call.tool, ok: true, prompt, source: g.provider, seconds: g.seconds, triangleCount: g.mesh.triangleCount,
+        const generated = { tool: call.tool, ok: true, prompt, source: g.provider, seconds: g.seconds, triangleCount: g.mesh.triangleCount,
           artifact: meshArtifact, artifacts: concept ? [meshArtifact, concept] : [meshArtifact] };
+        // A CAD ask returns the layout. The mesh replaces it only when the
+        // user asked for that look and TRELLIS actually finished.
+        if (layout && !explicitMesh) {
+          const extras = [meshArtifact, ...(concept ? [concept] : [])];
+          const artifacts = [layout.artifact, ...extras.filter((a) => a && a !== layout.artifact)];
+          return { ...layout, fellBackFrom: "generate_3d", layoutFirst: true, fallbackReason: "layout_first", artifact: layout.artifact, artifacts };
+        }
+        return generated;
       }
       case "mcp_list": {
         const { listAllMcpTools } = await import("./mcp-bridge.js");

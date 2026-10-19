@@ -12,6 +12,38 @@ export const STREAM_TURN_BUDGET_MS = 120_000;
 const JSON_RESERVE_MS = 4_000;
 const STREAM_RESERVE_MS = 2_000;
 
+/** Time a chat turn keeps back from generate_3d so a local layout can still be returned. */
+export const GEN_3D_FALLBACK_RESERVE_MS = 12_000;
+/** Don't start TRELLIS after a layout unless at least this much GPU time is left. */
+export const GEN_3D_MIN_AFTER_LAYOUT_MS = 5_000;
+
+/**
+ * Clamp a generate_3d attempt to the time left after the conkay reserve.
+ * JSON and stream turns both use this. No deadline and no timeout: nothing to clamp.
+ * @returns {{ reserveMs: number, deadlineMs: number, timeoutMs: number, enough: boolean }}
+ */
+export function clampGenerate3dBudget({ deadlineMs = 0, timeoutMs = 0, now = Date.now(), reserveMs = GEN_3D_FALLBACK_RESERVE_MS } = {}) {
+  const reserve = Math.max(0, Number(reserveMs) || 0);
+  const deadline = Number(deadlineMs) > 0 ? Number(deadlineMs) : 0;
+  const timeout = Number(timeoutMs) > 0 ? Number(timeoutMs) : 0;
+  let gpuDeadline = 0;
+  let gpuTimeout = 0;
+  if (deadline) {
+    gpuDeadline = deadline - reserve;
+    gpuTimeout = Math.max(0, gpuDeadline - now);
+    if (timeout) gpuTimeout = Math.min(gpuTimeout, timeout);
+  } else if (timeout) {
+    gpuTimeout = Math.max(0, timeout - reserve);
+    gpuDeadline = now + gpuTimeout;
+  }
+  return {
+    reserveMs: reserve,
+    deadlineMs: gpuDeadline,
+    timeoutMs: gpuTimeout,
+    enough: gpuTimeout >= GEN_3D_MIN_AFTER_LAYOUT_MS,
+  };
+}
+
 /** Operator override for tests. Clamped so a JSON turn cannot be set past the Cloudflare budget. */
 export function jsonTurnBudgetMs() {
   const n = Number(process.env.CONCORD_CHAT_JSON_BUDGET_MS);
