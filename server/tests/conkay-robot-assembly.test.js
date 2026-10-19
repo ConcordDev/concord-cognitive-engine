@@ -3,9 +3,10 @@
 // nothing showed in the workspace).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildRobotAssembly, parseRobotAsk, ROBOT_RE } from "../lib/conkay/robot-assembly.js";
-import { executeToolCall } from "../lib/chat-agent.js";
+import { buildRobotAssembly, parseRobotAsk, ROBOT_RE, robotPartScope } from "../lib/conkay/robot-assembly.js";
+import { executeToolCall, formatToolResults } from "../lib/chat-agent.js";
 import { conkayTurnPlan } from "../lib/conkay/agent-turn.js";
+import { alignReplyToBbox, userFacingMeshReply } from "../lib/chat/tool-turn-reply.js";
 
 const ASK = "build me a small two-arm robot (wheeled base, torso, two arms, a head with a camera)";
 
@@ -69,5 +70,75 @@ describe("robot part counts come from the user's words", () => {
     const r = await executeToolCall({ actor: { userId: "u1" }, userPrompt: "yes go ahead" }, async () => ({}), new Map(), { tool: "conkay_design", params: { text: "robot with 6 wheels and one arm" } });
     assert.equal(r.result.spec.wheels, 6);
     assert.equal(r.result.spec.arms, 1);
+  });
+});
+
+const TORSO = "Make a 3D CAD model of a simple Mark-9 Iron Man style robot torso";
+
+describe("a named sub-assembly is the whole model", () => {
+  it("a torso ask carries scope and builds only the torso", async () => {
+    assert.equal(robotPartScope(TORSO), "torso");
+    assert.equal(robotPartScope(ASK), null);
+    assert.equal(parseRobotAsk("an iron man like robot").scope, "full");
+    const plan = conkayTurnPlan(TORSO, []);
+    assert.equal(plan.route, "design");
+    assert.equal(plan.fallbackCall.tool, "conkay_design");
+    assert.equal(plan.fallbackCall.params.scope, "torso");
+    const r = await executeToolCall(
+      { actor: { userId: "u1" }, userPrompt: TORSO },
+      async () => ({}),
+      new Map(),
+      { tool: "conkay_design", params: plan.fallbackCall.params },
+    );
+    assert.equal(r.ok, true);
+    assert.equal(r.result.spec.scope, "torso");
+    const names = r.result.parts.map((p) => p.name);
+    assert.deepEqual(names, ["torso waist", "torso chest", "chest plate"]);
+    for (const n of names) assert.doesNotMatch(n, /\b(?:leg|arm|head|wheel|base|neck)\b/i, n);
+    const full = buildRobotAssembly("an iron man like robot");
+    assert.equal(full.spec.scope, "full");
+    assert.equal(full.bbox_mm.height, 880);
+    assert.ok(r.result.bbox_mm.height < full.bbox_mm.height);
+    assert.equal(r.artifact.bbox_mm.height, r.result.bbox_mm.height);
+    const reply = userFacingMeshReply(r);
+    assert.match(reply, new RegExp(`${r.artifact.bbox_mm.height} mm tall`));
+    assert.match(reply, new RegExp(`${r.artifact.bbox_mm.length} mm long`));
+    assert.match(reply, new RegExp(`${r.artifact.bbox_mm.width} mm wide`));
+    assert.match(formatToolResults([r]), new RegExp(`height ${r.artifact.bbox_mm.height} mm`));
+    const aligned = alignReplyToBbox("It stands 2.7 m tall.", r.artifact.bbox_mm);
+    assert.match(aligned, new RegExp(`${r.artifact.bbox_mm.height} mm tall`));
+    assert.doesNotMatch(aligned, /2\.7/);
+    const kept = alignReplyToBbox(`The chest plate is ${r.result.parts[2].size_mm[1]} mm.`, r.artifact.bbox_mm);
+    assert.match(kept, new RegExp(`${r.result.parts[2].size_mm[1]} mm`));
+    // The model's rewrite still loses to the user's torso ask.
+    const rewritten = await executeToolCall(
+      { actor: { userId: "u1" }, userPrompt: TORSO },
+      async () => ({}),
+      new Map(),
+      { tool: "conkay_design", params: { text: "full iron man robot with base, legs, arms and a head" } },
+    );
+    assert.equal(rewritten.result.spec.scope, "torso");
+    assert.equal(rewritten.result.parts.some((p) => /leg|arm|head|base/.test(p.name)), false);
+  });
+
+  it("arm, head, leg, and hand asks stay on that part", () => {
+    const cases = [
+      ["a robot arm", "arm", /shoulder|upper|forearm|gripper/],
+      ["two robot arms", "arm", /left|right/],
+      ["just the head", "head", /head/],
+      ["a robot leg", "leg", /^leg$/],
+      ["two legs of a robot", "leg", /left|right/],
+      ["just the hand", "hand", /palm|finger/],
+    ];
+    for (const [text, scope, nameRe] of cases) {
+      const a = buildRobotAssembly(text);
+      assert.equal(a.spec.scope, scope, text);
+      assert.equal(robotPartScope(text), scope, text);
+      assert.ok(a.parts.some((p) => nameRe.test(p.name)), `${text} ${a.parts.map((p) => p.name).join(",")}`);
+      const foreign = scope === "arm" ? /torso|leg|head|wheel|base/ : scope === "head" ? /torso|leg|arm|wheel|base/ : scope === "leg" ? /torso|arm|head|wheel|base/ : /torso|leg|arm|head|wheel|base/;
+      for (const p of a.parts) assert.doesNotMatch(p.name, foreign, `${text}: ${p.name}`);
+    }
+    assert.equal(buildRobotAssembly("a robot arm").parts.filter((p) => /upper/.test(p.name)).length, 1);
+    assert.equal(buildRobotAssembly("two robot arms").parts.filter((p) => /upper/.test(p.name)).length, 2);
   });
 });

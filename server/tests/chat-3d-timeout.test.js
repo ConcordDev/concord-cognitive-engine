@@ -420,13 +420,112 @@ describe("generate_3d failure falls back to a layout", () => {
         assert.ok(elapsed < JSON_TURN_BUDGET_MS);
         assert.equal(r.ok, true);
         assert.equal(r.layoutFirst, true);
+        assert.equal(r.fallbackReason, "layout_first");
         assert.equal(r.result.spec.base, "legs");
-        assert.equal(conceptHits, 1, `${chatTransport || "unflagged"} should still try TRELLIS inside the reserve`);
+        assert.equal(conceptHits, 0, `${chatTransport || "unflagged"} CAD ask must not start TRELLIS after the layout`);
       } finally {
         srv.closeAllConnections?.();
         srv.close();
       }
     }
+  });
+
+  it("an explicit realistic look still does not start TRELLIS inside a chat budget", async () => {
+    let conceptHits = 0;
+    const srv = await listen((req, res) => {
+      if (req.url !== "/health") conceptHits += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const ask = "Yes generate a 3d cad of an iron man like robot with a realistic look";
+      const r = await executeToolCall(
+        { userPrompt: ask, chatTransport: "json", chatGenTimeoutMs: 80_000, chatGenDeadlineMs: Date.now() + 85_000, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: ask } },
+      );
+      assert.equal(conceptHits, 0);
+      assert.equal(r.ok, true);
+      assert.equal(r.layoutFirst, true);
+      assert.equal(r.fallbackReason, "mesh_budget");
+      assert.equal(r.result.spec.base, "legs");
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("an explicit realistic look calls the pod only when the turn can finish TRELLIS", async () => {
+    for (const explicit of [false, true]) {
+      let conceptHits = 0;
+      let meshHits = 0;
+      const srv = await listen((req, res) => {
+        if (req.url === "/concept") conceptHits += 1;
+        if (req.url === "/mesh") meshHits += 1;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        const body = req.url === "/health"
+          ? { ok: true, busy: false, on_gpu: "flux" }
+          : { ok: false, reason: "generation_error", error: "stopped" };
+        res.end(JSON.stringify(body));
+      });
+      try {
+        process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+        const ask = explicit
+          ? "Yes generate a 3d cad of an iron man like robot with a realistic look"
+          : IRON_MAN;
+        const r = await executeToolCall(
+          { userPrompt: ask, chatGenDeadlineMs: Date.now() + 250_000, chatGenTimeoutMs: 250_000, actor: { userId: "u1" } },
+          async () => ({}),
+          new Map(),
+          { tool: "generate_3d", params: { prompt: ask } },
+        );
+        assert.equal(r.ok, true, explicit ? "explicit" : "plain");
+        assert.equal(r.layoutFirst, true);
+        assert.equal(conceptHits, explicit ? 1 : 0, explicit ? "explicit look starts the pod" : "plain CAD does not");
+        assert.equal(meshHits, 0);
+      } finally {
+        srv.closeAllConnections?.();
+        srv.close();
+      }
+    }
+  });
+
+  it("a concept timeout posts /abort and a short deadline never starts /mesh", async () => {
+    const abort = new Error("The operation was aborted due to timeout");
+    abort.name = "TimeoutError";
+    const calls = [];
+    const timed = await generate3dFromPrompt("a small dragon", {
+      conceptTimeoutMs: 2_000,
+      deadlineMs: Date.now() + 5_000,
+      fetchImpl: async (url) => {
+        const path = String(url).slice(String(url).lastIndexOf("/"));
+        calls.push(path);
+        if (path === "/health") return { json: async () => ({ ok: true, busy: false, on_gpu: "flux" }) };
+        if (path === "/abort") return { json: async () => ({ ok: true, aborted: true }) };
+        throw abort;
+      },
+    });
+    assert.equal(timed.reason, "timeout");
+    assert.equal(timed.stage, "concept");
+    assert.ok(calls.includes("/abort"));
+    assert.equal(calls.includes("/mesh"), false);
+
+    const skipped = [];
+    const mesh = await generate3dFromPrompt("a small dragon", {
+      deadlineMs: Date.now() + 30_000,
+      fetchImpl: async (url) => {
+        const path = String(url).slice(String(url).lastIndexOf("/"));
+        skipped.push(path);
+        if (path === "/health") return { json: async () => ({ ok: true, busy: false, on_gpu: "flux" }) };
+        if (path === "/concept") return { json: async () => ({ ok: true, png_b64: "iVBORw0KGgo=" }) };
+        return { json: async () => ({ ok: true }) };
+      },
+    });
+    assert.equal(mesh.skippedMesh, true);
+    assert.equal(mesh.reason, "timeout");
+    assert.deepEqual(skipped, ["/health", "/concept"]);
   });
 });
 

@@ -3,7 +3,7 @@
 // Free-form objects go to generate_3d.
 
 import { conceptKind } from "../conkay/concept-assembly.js";
-import { ROBOT_RE } from "../conkay/robot-assembly.js";
+import { ROBOT_RE, designTextParams } from "../conkay/robot-assembly.js";
 
 const ENGINEERED_RE = /\b(?:cad|stl|beam|bracket|stand|truss|gear\s*box|gearbox|enclosure|robot|furniture|shelf|table|chair|cantilever|shaft|column|plate|frame|housing|mechanism|linkage|actuator|assembly|cars?|vehicles?|automobiles?|trucks?)\b/i;
 
@@ -45,7 +45,9 @@ export function isEngineered3dAsk(text) {
  */
 export function wantsExplicitMeshLook(text) {
   const p = String(text || "");
-  if (/\borganic\s+look\b|\blooks?\s+organic\b|\bsculpted(?:\s+look)?\b|\btrellis\b/i.test(p)) return true;
+  if (/\b(?:organic|sculpted|realistic|photoreal(?:istic)?)\s+look\b/i.test(p)) return true;
+  if (/\blooks?\s+(?:organic|sculpted|realistic|photoreal(?:istic)?)\b/i.test(p)) return true;
+  if (/\bsculpted(?:\s+look)?\b|\btrellis\b/i.test(p)) return true;
   if (/\b(?:realistic|photoreal(?:istic)?|free[- ]form|organic)\s+(?:3[- ]?d\s+)?mesh\b/i.test(p)) return true;
   if (/\b(?:generate|make|render|create|want|give|show)\b[^.]{0,48}\bmesh\b/i.test(p)) return true;
   return false;
@@ -123,7 +125,7 @@ export function toolFor3dAsk(text) {
   const p = String(text || "").trim();
   if (!p) return null;
   if (isEngineered3dAsk(p)) {
-    return { tool: "conkay_design", params: { text: p.slice(0, 4000) } };
+    return { tool: "conkay_design", params: designTextParams(p) };
   }
   return { tool: "generate_3d", params: { prompt: p.slice(0, 600) } };
 }
@@ -145,5 +147,5 @@ export function fallbackDesignCall(userText, _toolPrompt, failure) {
   // The user decides. "generate a 3d model of a dragon" must not become a
   // bookshelf because the model's prompt copied one from a tool description.
   if (!user || isOrganic3dAsk(user) || isFreeform3dAsk(user) || !isEngineered3dAsk(user)) return null;
-  return { tool: "conkay_design", params: { text: user.slice(0, 4000) } };
+  return { tool: "conkay_design", params: designTextParams(user) };
 }

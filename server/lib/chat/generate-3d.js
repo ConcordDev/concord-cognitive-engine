@@ -11,6 +11,7 @@
 // Honest failures only: pod down, mesh engine broken, timeout. Never a
 // placeholder mesh.
 
+import { randomUUID } from "node:crypto";
 import { NodeIO } from "@gltf-transform/core";
 import { MeshoptSimplifier } from "meshoptimizer";
 import {
@@ -24,20 +25,42 @@ const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the 
 const GEN_URL = () => (process.env.CONCORD_GEN_URL || "http://127.0.0.1:7870").replace(/\/$/, "");
 const CONCEPT_FRAMING = "a single object, product shot, plain white background, centered, full object visible, no text,";
 export const MESH_TIMEOUT_MS = Number(process.env.CONCORD_GEN3D_TIMEOUT_MS || 150_000);
+/** TRELLIS on the single GPU runs for about three minutes. Don't start it inside a shorter turn. */
+export const TRELLIS_MESH_BUDGET_MS = 180_000;
 const MAX_TRIS = 5_000;
 
-async function postJson(route, body, timeoutMs, fetchImpl) {
+/** Tell the pod to drop the in-flight job. Best-effort: a dead pod must not hide the timeout. */
+export async function abortGenJob(jobId, fetchImpl = fetch) {
+  if (!jobId) return;
+  try {
+    await fetchImpl(`${GEN_URL()}/abort`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: jobId }),
+      signal: AbortSignal.timeout(1_500),
+    });
+  } catch { /* the generation socket is already closed */ }
+}
+
+async function postJson(route, body, timeoutMs, fetchImpl, jobId) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), Math.max(1, timeoutMs));
   try {
     const r = await fetchImpl(`${GEN_URL()}${route}`, {
-      method: "POST", headers: { "Content-Type": "application/json", [GEN_FAIL_IF_BUSY_HEADER]: "1" },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+      method: "POST",
+      headers: { "Content-Type": "application/json", [GEN_FAIL_IF_BUSY_HEADER]: "1", "X-Concord-Job-Id": jobId },
+      body: JSON.stringify({ ...body, job_id: jobId }),
+      signal: ac.signal,
     });
     return await r.json();
   } catch (err) {
     if (isGenerationAbort(err)) {
-      return { ok: false, reason: "timeout", error: THREE_D_TIMEOUT_REPLY, detail: String(err?.message || err) };
+      await abortGenJob(jobId, fetchImpl);
+      return { ok: false, reason: "timeout", error: THREE_D_TIMEOUT_REPLY, detail: String(err?.message || err), aborted: true };
     }
     return { ok: false, reason: "local_gpu_unreachable", error: String(err?.message || err) };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -159,12 +182,13 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     return { ok: false, stage: "concept", reason: gate.reason, error: gate.error };
   }
   const t0 = Date.now();
+  const jobId = randomUUID();
   const conceptCap = Number(conceptTimeoutMs) > 0 ? Number(conceptTimeoutMs) : 120_000;
   const conceptMs = Math.min(conceptCap, remain());
   if (conceptMs < 800) {
     return { ok: false, stage: "budget", reason: "timeout", error: THREE_D_TIMEOUT_REPLY };
   }
-  const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, conceptMs, fetchImpl);
+  const concept = await postJson("/concept", { prompt: `${CONCEPT_FRAMING} ${clean}`, seed, width: 512, height: 512 }, conceptMs, fetchImpl, jobId);
   if (!concept?.ok || !concept.png_b64) {
     if (concept?.reason === "timeout") {
       return { ok: false, stage: "concept", reason: "timeout", error: concept.error || THREE_D_TIMEOUT_REPLY };
@@ -177,6 +201,11 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     return { ok: false, stage: "concept", reason: badPng.reason, error: badPng.error };
   }
   const meshMs = Math.min(MESH_TIMEOUT_MS, remain());
+  // A chat turn's deadline is 85s or 120s. Starting TRELLIS there leaves the
+  // GPU busy for ~3 minutes after the client has already given up.
+  if (Number(deadlineMs) > 0 && meshMs < TRELLIS_MESH_BUDGET_MS) {
+    return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY, skippedMesh: true };
+  }
   if (meshMs < 800) {
     return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };
   }
@@ -186,7 +215,7 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
   if (meshProbe.aborted || healthSaysBusy(meshProbe.health)) {
     return { ok: false, stage: "mesh", reason: "gpu_busy", error: GPU_BUSY_REPLY };
   }
-  const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, meshMs, fetchImpl);
+  const mesh = await postJson("/mesh", { image_b64: concept.png_b64, seed }, meshMs, fetchImpl, jobId);
   if (!mesh?.ok || !mesh.glb_b64) {
     if (mesh?.reason === "timeout") {
       return { ok: false, stage: "mesh", reason: "timeout", conceptB64: concept.png_b64, error: MESH_TIMEOUT_REPLY };

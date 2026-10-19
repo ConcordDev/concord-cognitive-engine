@@ -194,9 +194,8 @@ describe("JSON chat budget holds through the agent loop", () => {
     });
     try {
       process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
-      // A full 85s deadline would also try TRELLIS (window = 85s − reserve).
-      // This scaled JSON deadline still has a GPU window, so the hung concept
-      // must be cut at the reserve and the layout must come back.
+      // The deadline still has a GPU window. A CAD ask returns the layout
+      // and does not open that window.
       const budgetMs = 20_000;
       const startedAt = Date.now();
       const brain = slowBrain([
@@ -209,11 +208,10 @@ describe("JSON chat budget holds through the agent loop", () => {
       });
       const elapsed = Date.now() - startedAt;
       assert.ok(elapsed < JSON_TURN_BUDGET_MS, `wall ${elapsed}ms reached the 85s JSON budget`);
-      assert.ok(elapsed < budgetMs, `wall ${elapsed}ms ran to the turn deadline`);
-      assert.ok(elapsed > 2_000, "the free pod was actually attempted");
+      assert.ok(elapsed < 5_000, `wall ${elapsed}ms waited on the GPU after the layout`);
       assert.equal(r.ok, true);
-      assert.equal(healthHits >= 1, true);
-      assert.equal(conceptHits, 1);
+      assert.equal(healthHits, 0, "a CAD ask does not probe the pod after the layout");
+      assert.equal(conceptHits, 0, "a CAD ask does not start TRELLIS after the layout");
       const call = r.toolCalls.find((t) => t.fellBackFrom === "generate_3d" || t.tool === "conkay_design");
       assert.ok(call?.ok, call?.error || "no layout");
       assert.equal(call.layoutFirst, true);
@@ -222,18 +220,47 @@ describe("JSON chat budget holds through the agent loop", () => {
       assert.match(r.answer, /robot layout is shown below/);
       assert.doesNotMatch(r.answer, TOOL_NAME_RE);
       assert.doesNotMatch(r.answer, /still running and didn't finish/i);
+      const h = call.artifact?.bbox_mm?.height || call.result?.bbox_mm?.height;
+      assert.equal(h, 880);
+      assert.match(r.answer, new RegExp(`${h} mm tall`));
+      assert.doesNotMatch(r.answer, /2\.7/);
     } finally {
       srv.closeAllConnections?.();
       srv.close();
     }
   });
 
+  it("a follow-up that invents 2.7 m is rewritten to the spec bbox", { timeout: 20_000 }, async () => {
+    const brain = slowBrain([
+      [20, 'On it. [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": "iron man like robot"}}]'],
+      [20, "The finished robot stands 2.7 m tall."],
+    ]);
+    const r = await runAgentLoop({
+      db: new Database(":memory:"), userId: "u1", message: IRON_MAN,
+      runMacro: async () => ({ ok: true }), lensActions: new Map(),
+      opts: { ...LOOP_OPTS, brainChat: brain, maxTurns: 4 },
+    });
+    assert.equal(r.ok, true);
+    const call = r.toolCalls.find((t) => t.layoutFirst || t.tool === "conkay_design");
+    const h = call?.artifact?.bbox_mm?.height;
+    assert.equal(h, 880);
+    assert.match(r.answer, new RegExp(`${h} mm tall`));
+    assert.doesNotMatch(r.answer, /2\.7/);
+  });
+
   it("a dragon ask still uses generate_3d and does not substitute a layout", { timeout: 20_000 }, async () => {
     let conceptHits = 0;
+    let abortHits = 0;
     const srv = await listen((req, res) => {
       if (req.url === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, busy: false, on_gpu: "flux" }));
+        return;
+      }
+      if (req.url === "/abort") {
+        abortHits += 1;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, aborted: true }));
         return;
       }
       conceptHits += 1;
@@ -254,6 +281,7 @@ describe("JSON chat budget holds through the agent loop", () => {
       const elapsed = Date.now() - startedAt;
       assert.ok(elapsed < JSON_TURN_BUDGET_MS, `wall ${elapsed}ms`);
       assert.equal(conceptHits, 1, "organic asks still go to generate_3d");
+      assert.equal(abortHits, 1, "the timed-out concept posts /abort");
       assert.equal(r.toolCalls.some((t) => t.tool === "conkay_design" || t.layoutFirst), false);
       assert.equal(r.artifacts.some((a) => a?.kind === "mesh"), false);
       assert.doesNotMatch(r.answer, /robot layout|layout approximation/i);
@@ -264,7 +292,7 @@ describe("JSON chat budget holds through the agent loop", () => {
     }
   });
 
-  it("the layout reserve clamps JSON and stream, and an 85s window still tries TRELLIS", () => {
+  it("the layout reserve clamps JSON and stream; enough is not a license to start TRELLIS", () => {
     const now = 1_000_000;
     const full = clampGenerate3dBudget({ deadlineMs: now + JSON_TURN_BUDGET_MS, timeoutMs: 80_000, now });
     assert.equal(full.reserveMs, RESERVE);
@@ -281,7 +309,10 @@ describe("JSON chat budget holds through the agent loop", () => {
     assert.equal(isEngineered3dAsk("generate a 3d model of a dragon"), false);
     assert.equal(wantsExplicitMeshLook(IRON_MAN), false);
     assert.equal(wantsExplicitMeshLook("make a mesh with an organic look of an iron man robot"), true);
+    assert.equal(wantsExplicitMeshLook("give the robot a realistic look"), true);
     assert.equal(wantsExplicitMeshLook("sculpt a statue of a horse"), false);
+    // `enough` still means the reserve left a GPU window. An engineered ask
+    // does not spend that window on TRELLIS unless the user asked for the look.
   });
 
   it("server.js hands the JSON deadline to the agent route; stream keeps keepalives and the 120s cap", () => {
