@@ -61,7 +61,8 @@ async function ensureTraceDb() {
           payload_json TEXT NOT NULL,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS idx_trace_correlation_trace_id ON trace_correlation(trace_id, observed_at);`);
+      CREATE INDEX IF NOT EXISTS idx_trace_correlation_trace_id ON trace_correlation(trace_id, observed_at);
+      CREATE INDEX IF NOT EXISTS idx_trace_correlation_observed_at_event ON trace_correlation(observed_at, source_event);`);
       _traceDb = db;
       return db;
     } catch (e) {
@@ -85,14 +86,28 @@ const TRACE_PRUNE_OLDER_THAN_SECONDS = 30 * 24 * 3600;
 
 /** Delete trace_correlation rows older than the retention window. Best-effort,
  * mirrors writeTraceEvent's own never-throw contract -- a prune failure must
- * never affect dispatch. */
-export async function pruneOldTraceEvents(olderThanSeconds = TRACE_PRUNE_OLDER_THAN_SECONDS) {
+ * never affect dispatch.
+ *
+ * INC-100: this used to be one `DELETE ... WHERE created_at < ?`. created_at
+ * has no index, so every hourly run full-scanned the table (463k rows,
+ * 459 MB on 2026-10-19) on the main thread: a 1.3-1.5 s event-loop block even
+ * when it deleted nothing. observed_at carries the same instant in ISO form
+ * (the format of the cutoff) and is indexed, so select ids through that index
+ * and delete in small batches, yielding between them. */
+export async function pruneOldTraceEvents(olderThanSeconds = TRACE_PRUNE_OLDER_THAN_SECONDS, { batchSize = 1000, maxBatches = 100 } = {}) {
   const db = await ensureTraceDb();
   if (!db) return { ok: false, reason: "no_db" };
   try {
     const cutoffIso = new Date(Date.now() - olderThanSeconds * 1000).toISOString();
-    const r = db.prepare(`DELETE FROM trace_correlation WHERE created_at < ?`).run(cutoffIso);
-    return { ok: true, deleted: r.changes };
+    const del = db.prepare(`DELETE FROM trace_correlation WHERE id IN (SELECT id FROM trace_correlation WHERE observed_at < ? LIMIT ?)`);
+    let deleted = 0;
+    for (let b = 0; b < maxBatches; b++) {
+      if (b > 0) await new Promise((r) => { setImmediate(r); });
+      const n = del.run(cutoffIso, batchSize).changes;
+      deleted += n;
+      if (n < batchSize) break;
+    }
+    return { ok: true, deleted };
   } catch (e) {
     return { ok: false, reason: "prune_failed", error: e.message };
   }

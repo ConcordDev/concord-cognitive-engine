@@ -261,6 +261,10 @@ const REVIEWED = {
   "lib/skill-tree-engine.js": 1,
   "lib/skills/character-level.js": 1,
   "lib/social/reputation.js": 2,
+  // lib/sqlite-stats-refresh.js (2) — the only interpolated identifier is a
+  // table name read back from sqlite_stat1 (the DB's own catalog, never
+  // caller input), double-quote escaped by quoteIdent(); no values are spliced.
+  "lib/sqlite-stats-refresh.js": 2,
   // lib/strip-object-object-dtu-tags.js (7) — `table` is only the literals
   // "dtu_store" and "dtus". `select` and `sets` are those tables' column
   // names chosen from PRAGMA table_info, or the assignment fragments
