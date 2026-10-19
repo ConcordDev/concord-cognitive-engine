@@ -23,6 +23,8 @@ import { parseExplicitDtuSave } from "./dtu-save-intent.js";
 import { CHAT_HISTORY_TURNS, resolveAgentMaxTurns } from "../chat-reply-policy.js";
 import { isRecallAsk, formulaContextBlock, memoryDtuRefs, parseRememberAsk, recallRemembered, rememberAckReply, recallRememberedReply } from "./session-memory.js";
 import { stripToolCalls } from "../chat-agent.js";
+import { budgetLeftMs } from "./gen-budget.js";
+import { budgetExhaustedReply, scrubUserFacingToolNames } from "./tool-turn-reply.js";
 import { isLongTaskAsk, isLongTaskStatusAsk, startLongTask, kickLongTask, longTaskStartedReply, longTaskStatus, formatLongTaskStatus } from "../long-task.js";
 
 const WEB_RE = [
@@ -514,8 +516,12 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   return { ...base, reply: longTaskStartedReply(r, prompt), toolCalls: [{ tool: "start_long_task", ok: !!r.ok, jobId: r.jobId || null, mode: r.mode || null, ...(r.ok ? {} : { error: r.reason }) }] };
 }
 
-export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined }) {
+export async function answerViaAgent({ runMacro, ctx, history = [], prompt, route, lensActions = null, memoryBlock = "", formulaDtus = [], recallDtus = [], sessionId = null, selfContinue = undefined, deadlineMs = 0 }) {
   if (typeof runMacro !== "function" || !ctx?.db || !ctx?.actor?.userId || !route) return null;
+  // Non-streaming chat: one deadline for every agent call below (gen-budget.js).
+  const _deadline = Number(deadlineMs) > 0 ? Number(deadlineMs) : 0;
+  const _budget = _deadline ? { deadlineMs: _deadline } : {};
+  const _roomFor = (ms) => !_deadline || budgetLeftMs(_deadline) >= ms;
   const longOut = answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions, sessionId, surface: "chat" });
   if (longOut) return longOut;
   const recap = recapReply(prompt, history, memoryBlock);
@@ -537,15 +543,34 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
       surface: "chat",
       ...(sessionId ? { sessionId } : {}),
       ...(typeof selfContinue === "boolean" ? { selfContinue } : {}),
+      ..._budget,
     }, ctx);
   } catch (e) {
     r = { ok: false, error: String(e?.message || e) };
+  }
+  // Out of time: reply from what came back. Never fall through to the
+  // conversational path (another full brain call) or start a retry.
+  if (_deadline && (r?.budgetStopped || ((!r?.ok || !String(r?.answer || "").trim()) && !_roomFor(20_000)))) {
+    let answer = String(r?.answer || "").trim();
+    if (!answer || !r?.ok) answer = budgetExhaustedReply(r?.toolCalls || [], { prompt });
+    const toolCalls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
+    return {
+      reply: scrubUserFacingToolNames(answer),
+      toolCalls: toolCalls.map(clientToolCall),
+      artifacts: Array.isArray(r?.artifacts) ? r.artifacts : [],
+      sources: sourcesFromToolCalls(toolCalls),
+      provider: r?.provider || null,
+      model: r?.model || null,
+      linksRemoved: r?.linksRemoved || [],
+      dtuRefsRemoved: [],
+      budgetStopped: true,
+    };
   }
   // A price/score/news answer with no tool at all is from memory ("Ethereum is at $3,241.18 on
   // Coinbase as of 10:05 PM" with zero tool calls; invented ESPN finals). Run web_search
   // ourselves and have the loop answer from those results; if that fails, refuse to guess.
   if ((route === "lookup" || route === "web") && r?.ok && !(r.toolCalls || []).some((t) => t && t.ok !== false)
-    && needsFreshData(prompt, history)) {
+    && needsFreshData(prompt, history) && _roomFor(30_000)) {
     const failed = { ...r, answer: "I couldn't get live data for that just now, so I won't guess a number. Try again in a moment." };
     try {
       const { executeToolCall } = await import("../chat-agent.js");
@@ -560,16 +585,17 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
           maxTurns: 2,
           routeHint: routeHint("web"),
           voiceBlock: compactVoiceBlock(),
+          ..._budget,
         }, ctx);
         r = retry?.ok && String(retry.answer || "").trim() ? { ...retry, toolCalls: [tc, ...(retry.toolCalls || [])] } : { ...failed, toolCalls: [tc] };
       } else r = failed;
     } catch { r = failed; }
   }
   // Action route: the model answered without trying any write. One more try.
-  if (route === "action" && r?.ok !== undefined && !(r?.toolCalls || []).some((t) => t?.tool === "run_lens_action")) {
+  if (route === "action" && r?.ok !== undefined && !(r?.toolCalls || []).some((t) => t?.tool === "run_lens_action") && _roomFor(30_000)) {
     try {
       const retry = await runMacro("chat_agent", "do", {
-        message: prompt, history: agentHistory, maxTurns: resolveAgentMaxTurns(), routeHint: routeHint("action"), voiceBlock: compactVoiceBlock(),
+        message: prompt, history: agentHistory, maxTurns: resolveAgentMaxTurns(), routeHint: routeHint("action"), voiceBlock: compactVoiceBlock(), ..._budget,
       }, ctx);
       if (retry?.ok && (retry.toolCalls || []).some((t) => t?.tool === "run_lens_action")) r = retry;
     } catch { /* keep the honest failure below */ }
@@ -592,11 +618,11 @@ export async function answerViaAgent({ runMacro, ctx, history = [], prompt, rout
   if (route === "compute" && r?.ok !== undefined) {
     const calls = Array.isArray(r?.toolCalls) ? r.toolCalls : [];
     const solved = calls.some((t) => t && t.ok !== false && /^(?:run_compute|compute_router|run_python)$/.test(t.tool));
-    if (!solved && calls.some((t) => t?.tool === "run_compute" && /unknown compute function|requires "module\.function"/.test(String(t.error || "")))) {
+    if (!solved && _roomFor(30_000) && calls.some((t) => t?.tool === "run_compute" && /unknown compute function|requires "module\.function"/.test(String(t.error || "")))) {
       try {
         const retry = await runMacro("chat_agent", "do", {
           message: `${prompt}\n\n(Write the formula as one arithmetic expression with the numbers filled in and call run_compute with key "symbolic.evaluate" and input {"expression": "..."}; ^ for powers.)`,
-          history: agentHistory, maxTurns: 4, routeHint: routeHint("compute"), voiceBlock: compactVoiceBlock(),
+          history: agentHistory, maxTurns: 4, routeHint: routeHint("compute"), voiceBlock: compactVoiceBlock(), ..._budget,
         }, ctx);
         if (retry?.ok && (retry.toolCalls || []).some((t) => t && t.ok !== false && /^(?:run_compute|compute_router|run_python)$/.test(t.tool))) r = retry;
       } catch { /* keep the honest failure below */ }
