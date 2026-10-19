@@ -24,7 +24,7 @@ import { selectComponent, massStateOf, checkApplicability, getComponent, governi
 import { CELL_P45B, PACK_DESIGN_CHOICES, packElectrical, placePack, NOT_INCLUDED as EV_PACK_NOT_INCLUDED } from "../powertrain/ev-pack.js";
 import { tubLandmarks, tubPositions, tubEnvelopeFit, TUB_FIREWALL_OFFSET_M, TUB_GRID_M, TUB_DESIGN_CHOICES } from "../structural/car-tub.js";
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
-import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, deriveEvFront, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES, EV_LAYOUT_CHOICES } from "./car-layout.js";
+import { layoutCar, steeringLockDeg, deriveRearPackage, deriveGroundClearance, deriveEvFront, LAYOUT_DESIGN_CHOICES, LAYOUT_REVISION_CHOICES, GROUND_CLEARANCE_CHOICES, EV_LAYOUT_CHOICES, REAR_2PLUS2_OCCUPANTS } from "./car-layout.js";
 import { PACKAGING_REFERENCES, occupantDims } from "../packaging/occupant.js";
 import { umtriHPointX } from "../packaging/checks.js";
 import { CAD_BODY_DEFAULTS, CAD_BODY_MATERIAL, CAD_BODY_BASIS, ELECTRIC_BODY_CHOICES, cadBodyGeometry } from "../cad/body-params.js";
@@ -193,7 +193,7 @@ function bodyParamsFor(config, bodyParams) {
   return { ...CAD_BODY_DEFAULTS, ...ev, ...(bodyParams || {}) };
 }
 
-function buildCarOnce(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis: chassisOpt, tub = {}, rearSeatRepair = null } = {}) {
+function buildCarOnce(brief, { config: overrides, speedLimiter = true, packaging = true, occupantKeys = PACKAGING_OCCUPANTS, layoutChoices, layout = "derived", cadBody = true, bodyParams, groundClearance = {}, diffEnvelope = "package", chassis: chassisOpt, tub = {}, rearSeatRepair = null, rearSeating } = {}) {
   const c = compileBrief(brief);
   if (c.error) return { error: c.error };
   if (c.architecture !== "road-vehicle") return { error: `no component flow for a ${c.architecture} yet` };
@@ -422,7 +422,7 @@ function buildCarOnce(brief, { config: overrides, speedLimiter = true, packaging
     },
   };
   // Package layout: component positions from library dimensions and the seating design (car-layout.js).
-  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: bodyParamsFor(config, bodyParams), groundClearance, diffEnvelope, rearSeatRepair });
+  if (packaging) applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body: bodyParamsFor(config, bodyParams), groundClearance, diffEnvelope, rearSeatRepair, rearSeating });
   // Electronic speed limiter: a design choice between the required top speed
   // and the tyre's established speed (pass speedLimiter: false to leave it out).
   let limiter = null;
@@ -551,7 +551,10 @@ function placeBattery({ ir, byId, components }) {
   return pl;
 }
 
-function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package", rearSeatRepair = null }) {
+function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, layout, seatF, sources, body = null, groundClearance = null, diffEnvelope = "package", rearSeatRepair = null, rearSeating = null }) {
+  // The electric car is a 2+2 (owner, 2026-10-17): its rear seats take the smallest adult of the ANSUR II table
+  // (car-layout.js REAR_2PLUS2_OCCUPANTS). rearSeating "full" keeps every checked occupant in the rear; "2plus2" forces it.
+  const rearOccupantKeys = (rearSeating || (veh.props.vehicle.fuelType === "electric" ? "2plus2" : "full")) === "2plus2" ? [...REAR_2PLUS2_OCCUPANTS.keys] : null;
   const entry = (k) => {
     const id = selection[k]?.chosen;
     if (!id) return null;
@@ -591,7 +594,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     }
     const evC = Object.fromEntries(Object.entries(EV_LAYOUT_CHOICES).map(([k, x]) => [k, x.value]));
     const der = deriveRearPackage({
-      choices: base, keys: [...new Set([...occupantKeys, "M95"])], seatDims: seatF?.dimensions,
+      choices: base, keys: [...new Set([...occupantKeys, "M95"])], rearKeys: rearOccupantKeys, seatDims: seatF?.dimensions,
       diffDims: diffE?.dimensions, fuelDimsM: electric ? null : fuelE?.dimensions?.fitsInternalContainerMm?.map((x) => x / 1000), tyreR: tyreE ? tyreE.dimensions.overallDiameterM / 2 : null,
         rearWell: body && tyreE?.dimensions?.sectionWidthM ? { track, tyreHalfWidthM: tyreE.dimensions.sectionWidthM / 2, archClearanceM: body.archClearanceM, clearanceM: body.skinOffsetM } : null,
       ...(motorE?.dimensions?.axialLengthM ? { driveUnit: { axialM: motorE.dimensions.axialLengthM, heightM: motorE.dimensions.heightM, widthM: evC.moduleWidthM, belowShaftM: 0.17, gapM: evC.couplingGapM, shaftDz: evC.shaftZFromDiffCentreM } } : {}),
@@ -618,6 +621,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
           { parameter: "frontSeatBackThicknessM", old: 0, new: base.frontSeatBackThicknessM.value, unit: "m", reason: "the seat envelope was a plane on the occupant's back (a lower bound); the rear knee room needs the back of the seatback", basis: "design" },
           { parameter: "rearSgRPX", old: LAYOUT_DESIGN_CHOICES.rearSgRPX.value, new: der.rearSgRPX, unit: "m", change: r4(der.rearSgRPX - LAYOUT_DESIGN_CHOICES.rearSgRPX.value), reason: "#1039: M95 rear knee L48 was -9.3 mm; derived so every percentile has L48 >= the knee margin", basis: "derived" },
           ...(der.rearSeatY !== base.rearSeatY.value ? [{ parameter: "rearSeatY", old: base.rearSeatY.value, new: der.rearSeatY, unit: "m", change: r4(der.rearSeatY - base.rearSeatY.value), reason: "the CAD body's rear wheel wells: the M95 rear torso was 22 mm from the well's inner wall (under the 40 mm skin offset); the rear seats move inboard until every rear occupant clears the well by the skin offset", basis: "derived" }] : []),
+          { parameter: "rear occupants", old: occupantKeys, new: rearOccupantKeys || occupantKeys, reason: rearOccupantKeys ? `2+2: ${REAR_2PLUS2_OCCUPANTS.basis}. The front seats keep ${occupantKeys.join(", ")}.` : "every checked occupant sits in the rear", basis: rearOccupantKeys ? "design choice (occupant sourced: ANSUR II)" : "design" },
           { parameter: "rearAxleX", old: oldRear, new: rearAxleX, unit: "m", change: r4(rearAxleX - oldRear), reason: "#1039: rear torso/pelvis overlapped the differential envelope by 44.8-89.8 mm; derived so the differential clears every rear occupant by diffClearanceM", basis: "derived" },
           { parameter: "wheelbase", old: r4(oldRear - frontAxleX), new: r4(rearAxleX - frontAxleX), unit: "m", change: r4(rearAxleX - oldRear), reason: "follows the rear axle (front axle unchanged)", basis: "derived" },
           ...(der.fuelCellCenter ? [{ parameter: "fuelCellCenter", old: LAYOUT_DESIGN_CHOICES.fuelCellCenter.value, new: der.fuelCellCenter, unit: "m", reason: "re-placed above the moved differential and clear of the rear occupants (was 17.7 mm from the differential)", basis: "derived" }] : []),
@@ -664,6 +668,7 @@ function applyLayout({ ir, byId, veh, selection, occupantKeys, layoutChoices, la
     ...(revision ? { layoutRevision: revision } : {}),
     bodyShell: "BODY_SHELL",
     occupantKeys,
+    ...(rearOccupantKeys ? { rearOccupantKeys, rearOccupantBasis: REAR_2PLUS2_OCCUPANTS.basis } : {}),
     seats,
     designChoices: choices,
     components: lay.components,

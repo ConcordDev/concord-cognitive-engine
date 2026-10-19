@@ -81,6 +81,8 @@ function check(list, c) {
 export function packageScene({ pkg, centers }) {
   const dc = Object.fromEntries(Object.entries(pkg.designChoices).map(([k, v]) => [k, v.value]));
   const keys = pkg.occupantKeys;
+  // a 2+2 seats only some percentiles in the rear (pkg.rearOccupantKeys); the default seats every checked occupant
+  const rearKeys = pkg.rearOccupantKeys || keys;
   const notes = [];
   const floorZ = dc.floorZ;
   const ahp = { x: dc.ahpX, z: floorZ };
@@ -148,7 +150,7 @@ export function packageScene({ pkg, centers }) {
       o.hFrontX = hFront;
       occ.push(o);
     }
-    for (const s of rear) occ.push(seatOccupant(key, { id: s.id, hPoint: { x: sgRPRear.x, y: s.y, z: sgRPRear.z }, torsoDeg: dc.rearTorsoDeg, posture: "rear", floorZ }));
+    if (rearKeys.includes(key)) for (const s of rear) occ.push(seatOccupant(key, { id: s.id, hPoint: { x: sgRPRear.x, y: s.y, z: sgRPRear.z }, torsoDeg: dc.rearTorsoDeg, posture: "rear", floorZ }));
     for (const o of occ) {
       const d = occupantDims(key);
       const isFront = o.seat === "SEAT_1" || o.seat === "SEAT_2";
@@ -156,7 +158,7 @@ export function packageScene({ pkg, centers }) {
     }
     scenarios[key] = occ;
   }
-  return { dc, keys, notes, floorZ, ahp, bof, prpX, sw, hz, hx, track, sgRPFront, sgRPRear, swBox, seatDims, compBoxes, wheels, scenarios, front, rear, lock };
+  return { dc, keys, rearKeys, notes, floorZ, ahp, bof, prpX, sw, hz, hx, track, sgRPFront, sgRPRear, swBox, seatDims, compBoxes, wheels, scenarios, front, rear, lock };
 }
 
 /** J1100 measurement rays (inside the cabin, toward the body surface), with ids the checks look up. */
@@ -206,7 +208,7 @@ export function packageEnvelopes(scene) {
  */
 export function evaluatePackaging({ pkg, centers, shell, body, frontAxleX, rearAxleX }) {
   const scene = packageScene({ pkg, centers });
-  const { dc, keys, notes, floorZ, ahp, bof, prpX, sw, hz, hx, track, sgRPFront, sgRPRear, swBox, seatDims, compBoxes, scenarios, lock } = scene;
+  const { dc, keys, rearKeys, notes, floorZ, ahp, bof, prpX, sw, hz, hx, track, sgRPFront, sgRPRear, swBox, seatDims, compBoxes, scenarios, lock } = scene;
   const checks = [];
   const warnings = [];
   const surfaceName = body ? "the CAD body's inner skin surface (outer surface minus the skin thickness)" : "the shell's inner surface";
@@ -307,7 +309,7 @@ export function evaluatePackaging({ pkg, centers, shell, body, frontAxleX, rearA
     // Front: hips in the seat (cushion width), shoulder room (W3) and hip room (W5) for two occupants.
     if (seatDims) check(checks, { id: `seatWidth.${key}`, group: "hip room", occupant: key, seat: "front", value: mm(d.hipBreadthSitting), threshold: mm(seatDims.maxCushionWidthM), unit: "mm", comparator: "<=", note: "hip breadth, sitting against the seat's max cushion width", thresholdBasis: { state: "sourced", source: pkg.seatFront.source, basis: "RECARO published max seat cushion width" } });
     check(checks, { id: `W3.${key}`, group: "shoulder room", occupant: key, seat: "front", value: j1100.front.W3.mm, threshold: mm(2 * d.shoulderBreadthBideltoid), unit: "mm", comparator: ">=", note: "J1100 W3 against two occupants' bideltoid breadths side by side", thresholdBasis: { state: "estimated", method: "2 x ANSUR II bideltoid breadth (two occupants shoulder to shoulder, no gap)" } });
-    check(checks, { id: `W4.${key}`, group: "shoulder room", occupant: key, seat: "rear", value: j1100.rear.W4.mm, threshold: mm(2 * d.shoulderBreadthBideltoid), unit: "mm", comparator: ">=", note: "J1100 W4 against two rear occupants' bideltoid breadths", thresholdBasis: { state: "estimated", method: "2 x ANSUR II bideltoid breadth" } });
+    if (rearKeys.includes(key)) check(checks, { id: `W4.${key}`, group: "shoulder room", occupant: key, seat: "rear", value: j1100.rear.W4.mm, threshold: mm(2 * d.shoulderBreadthBideltoid), unit: "mm", comparator: ">=", note: "J1100 W4 against two rear occupants' bideltoid breadths", thresholdBasis: { state: "estimated", method: "2 x ANSUR II bideltoid breadth" } });
     check(checks, { id: `W5.${key}`, group: "hip room", occupant: key, seat: "front", value: j1100.front.W5.mm, threshold: mm(2 * d.hipBreadthSitting), unit: "mm", comparator: ">=", note: "J1100 W5 against two occupants' hip breadths", thresholdBasis: { state: "estimated", method: "2 x ANSUR II hip breadth, sitting" } });
 
     // Steering and pedals (driver).

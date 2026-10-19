@@ -73,7 +73,10 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   const f5 = occupantDims("F5");
   const driver = scene.scenarios.M95?.find((o) => o.seat === "SEAT_1") || scene.scenarios[pkg.occupantKeys[0]]?.find((o) => o.seat === "SEAT_1");
   const driverF5 = scene.scenarios.F5?.find((o) => o.seat === "SEAT_1");
-  const rearM = scene.scenarios.M95?.find((o) => o.seat === "SEAT_3");
+  // the rear occupant that sets the roof/backlight conflicts: the 95th male when he sits in the rear, else the
+  // tallest-seated of the rear occupants (a 2+2 seats only the occupants in scene.rearKeys there)
+  const rearM = scene.scenarios.M95?.find((o) => o.seat === "SEAT_3")
+    || (scene.rearKeys || []).map((k) => scene.scenarios[k]?.find((o) => o.seat === "SEAT_3")).filter(Boolean).sort((a, b) => b.landmarks.headTop[1] - a.landmarks.headTop[1])[0];
 
   const headTop = (occ) => occ?.landmarks?.headTop?.[1] ?? null;
   const shoulderZ = (occ) => {
@@ -153,7 +156,7 @@ export function assemblyFromIr(ir, { bodyBBox = null, powerW = null, layout = nu
   const rearSeatBackX = rearM ? rearM.landmarks.hPoint[0] + 0.28 : scene.sgRPRear.x + 0.3;
   const conflicts = [];
   if (driverHead) conflicts.push({ x: driverHead[0], hx: 0.09, zTop: driverHead[1], zClear: 0.02, reason: "95th-percentile driver head", curve: "roof" });
-  if (rearHead) conflicts.push({ x: rearHead[0], hx: 0.09, zTop: rearHead[1], zClear: 0.02, reason: "95th-percentile rear head", curve: "roof" });
+  if (rearHead) conflicts.push({ x: rearHead[0], hx: 0.09, zTop: rearHead[1], zClear: 0.02, reason: rearM?.key === "M95" ? "95th-percentile rear head" : `rear head (${rearM?.key} percentile, 2+2 rear occupant)`, curve: "roof" });
   let evPack = null;
   // a package component sits at its node, plus its offset (the traction battery's second block)
   const compAt = (c) => { const p = centers[c.node]; return p && { x: p.x + (c.offset?.[0] || 0), y: p.y + (c.offset?.[1] || 0), z: p.z + (c.offset?.[2] || 0) }; };
