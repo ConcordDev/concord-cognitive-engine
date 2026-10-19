@@ -63,7 +63,7 @@ const BRACKET_IR = {
 describe("MCP tools surface includes bridge tools", () => {
   it("registers run_lens_action, list_lens_actions, conkay_solve, conkay_solver_list", () => {
     const names = new Set(MCP_TOOLS.map((t) => t.name));
-    for (const n of ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema"]) {
+    for (const n of ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema", "conkay_compile_brief"]) {
       assert.ok(names.has(n), `missing ${n}`);
     }
   });

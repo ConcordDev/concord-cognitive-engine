@@ -2,7 +2,8 @@
 //
 // Pre-register MCP Execution Bridge tools in the capability registry so F0's
 // capability gate never returns capability_unregistered_but_dispatchable for
-// run_lens_action / list_lens_actions / conkay_solve / conkay_solver_list.
+// run_lens_action / list_lens_actions / conkay_solve / conkay_solver_list /
+// conkay_ir_schema / conkay_compile_brief.
 //
 // implementation: "mcp_builtin" — in-process handlers in lib/mcp-tools.js
 // (not organ Python scripts). Health is checked against the live MCP_TOOLS
@@ -68,6 +69,17 @@ export const MCP_EXECUTION_BRIDGE_CAPABILITIES = [
     dependencies: ["conkay_solver_registry"],
     implementation: "mcp_builtin",
     mcp_tool_name: "conkay_ir_schema",
+  },
+  {
+    capability: "conkay.compile_brief",
+    owner: "mcp_execution_bridge",
+    risk: "read",
+    description: "Compile a short design brief into Design IR. Missing sizes stay missing.",
+    inputs: ["brief", "text"],
+    outputs: ["ir", "warnings", "assumptions", "architecture"],
+    dependencies: ["conkay_solver_registry"],
+    implementation: "mcp_builtin",
+    mcp_tool_name: "conkay_compile_brief",
   },
 ];
 

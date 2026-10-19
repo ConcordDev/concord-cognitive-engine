@@ -260,6 +260,15 @@ export const MCP_TOOLS = [
       "Worked ConKay Design IR example + contract hints. Call before conkay_solve when unsure about Quantity strings, massSource, positions, materials, or requirements shape.",
     inputSchema: SCHEMA_DESCRIPTION_BASE,
   },
+  {
+    name: "conkay_compile_brief",
+    description:
+      "Compile a short design brief into ConKay Design IR using registry ids and quantity strings. A robot brief becomes Joint, Actuator, and Limb nodes plus a walk block. A car or L-bracket brief uses the existing architecture compiler. Missing sizes stay missing — the helper does not invent a foot width or a link mass. Pass the returned ir to conkay_solve.",
+    inputSchema: jsonSchema({
+      brief: textProp("Plain-language design, e.g. 'biped robot 60 kg, thigh 0.4 m, shin 0.4 m, stance 0.2 m, foot 0.08 m, actuator 48 Nm'"),
+      text: textProp("Alias for brief"),
+    }),
+  },
 
   // ── EMBEDDINGS ────────────────────────────────────────────────────────
   {
@@ -2351,7 +2360,7 @@ async function concordiaCall(db, args, STATE, toolName) {
 try {
   globalThis.__concordMcpBuiltinTools = new Set(
     MCP_TOOLS.filter((t) =>
-      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema"].includes(t.name)
+      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema", "conkay_compile_brief"].includes(t.name)
     ).map((t) => t.name)
   );
 } catch { /* ignore */ }
@@ -2398,6 +2407,10 @@ export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
     case "conkay_ir_schema": {
       const { conkayIrSchemaMcp } = await import("./mcp-execution-bridge.js");
       return conkayIrSchemaMcp(db, args, STATE, callCtx);
+    }
+    case "conkay_compile_brief": {
+      const { conkayCompileBriefMcp } = await import("./mcp-execution-bridge.js");
+      return conkayCompileBriefMcp(db, args, STATE, callCtx);
     }
     case "dila_status":          return dilaStatus(db, args);
     case "dila_workers":         return dilaWorkers(db, args);

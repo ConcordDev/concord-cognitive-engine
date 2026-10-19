@@ -29,7 +29,7 @@ export const NODE_KINDS = new Set([
   "Field", "Material", "Fluid", "Circuit", "Actuator", "Sensor", "HeatSource", "HeatSink", "Boundary",
   "Interface", "Process",
   // Common specializations of Part.
-  "Bolt", "Plate", "Tire", "Seat",
+  "Bolt", "Plate", "Tire", "Seat", "Limb",
   // People and cargo: they have mass (gross mass, CG) but are not part of
   // the product's own (kerb) mass or cost.
   "Payload",

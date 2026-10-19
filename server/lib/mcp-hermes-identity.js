@@ -12,7 +12,7 @@
 //   mcp:lens:compute   — compute/read lens actions (no durable mutation)
 //   mcp:lens:write     — write-shaped lens actions
 //   mcp:lens:high      — payment/publish/deploy/destructive (+ approval)
-//   mcp:conkay:read    — conkay_solver_list
+//   mcp:conkay:read    — conkay_solver_list, conkay_ir_schema, conkay_compile_brief
 //   mcp:conkay:compute — conkay_solve
 //   *                  — unrestricted (operator keys only; not the default Hermes key)
 
@@ -144,16 +144,13 @@ export function authorizeBridgeCall({
   }
 
   if (!hasWildcard(scopes) && scopes.size > 0) {
-    const need =
-      tool === "conkay_solve" || tool === "conkay_solver_list"
-        ? requiredConkayScope(risk)
-        : requiredLensScope(risk);
+    const conkayTool = String(tool || "").startsWith("conkay_");
+    const need = conkayTool ? requiredConkayScope(risk) : requiredLensScope(risk);
     // Allow a broader scope to satisfy a narrower need:
     // high ⊃ write ⊃ compute ⊃ read
-    const ladder =
-      tool.startsWith("conkay_")
-        ? ["mcp:conkay:read", "mcp:conkay:compute"]
-        : ["mcp:lens:read", "mcp:lens:compute", "mcp:lens:write", "mcp:lens:high"];
+    const ladder = conkayTool
+      ? ["mcp:conkay:read", "mcp:conkay:compute"]
+      : ["mcp:lens:read", "mcp:lens:compute", "mcp:lens:write", "mcp:lens:high"];
     const needIdx = ladder.indexOf(need);
     const hasLadder = ladder.some((s, i) => i >= needIdx && scopes.has(s));
     // Also accept a domain-scoped key (e.g. scopes:["physics"]) for lens calls

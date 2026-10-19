@@ -44,7 +44,7 @@ function ownInertia(geometry, m) {
 
 export const massCg = registerSolver({
   id: "mass.cg",
-  version: "1.1.0",
+  version: "1.2.0",
   domain: "mass.cg",
   fidelity: 1,
   method: "CG = Σm·r/Σm; full 6-component inertia tensor about the CG by the parallel-axis theorem. For box/plate parts, own products are zero (symmetry); assembly products come from Σ(−mᵢ·dᵢ⨯dᵢ) over each part. Hand-calc validation in scripts/test-cg-tensor.mjs.",
@@ -53,6 +53,7 @@ export const massCg = registerSolver({
     const items = [];
     const missing = [];
     const pointMasses = [];
+    const warnings = [];
     for (const child of ctx.children(id, "CONTAINS")) {
       if (child.kind === "Assembly") {
         const sub = ctx.result("mass.cg", child.id);
@@ -70,17 +71,27 @@ export const massCg = registerSolver({
         continue;
       }
       if (LOGICAL_KINDS.has(child.kind)) continue; // joints and other logical nodes have no body
+      // A node marked logical and carrying no stated mass is not a body
+      // (mass.budget already skips it). A stated mass on that node is kept:
+      // the CG uses it and says so, rather than dropping it or failing closed.
+      const logical = ctx.get(child.id, "props.logical");
+      const stated = ctx.get(child.id, "props.mass");
+      if (logical && !Number.isFinite(stated)) continue;
       const mEnv = ctx.result("mass.part", child.id);
       const m = mEnv?.outputs?.mass?.value;
       if (!Number.isFinite(m)) { missing.push(`${child.id} (no mass)`); continue; }
+      if (logical && Number.isFinite(stated)) warnings.push(`${child.id} is marked logical but has a stated mass ${stated} kg; the CG includes that stated mass`);
+      for (const w of mEnv.warnings || []) {
+        if (/mass inconsistency/i.test(w)) warnings.push(`${child.id}: ${w}`);
+      }
       const pos = mEnv.outputs.centroid?.value || ctx.get(child.id, "position");
       if (!pos) { missing.push(`${child.id} (no position)`); continue; }
       const own = ownInertia(ctx.get(child.id, "geometry"), m);
       if (!own) pointMasses.push(child.id);
       items.push({ id: child.id, m, r: pos, own: own || { xx: 0, yy: 0, zz: 0, xy: 0, xz: 0, yz: 0 } });
     }
-    if (missing.length) return { notComputed: `CG needs mass and position for ${missing.join(", ")}` };
-    if (!items.length) return { notComputed: "nothing with mass in this assembly" };
+    if (missing.length) return { notComputed: `CG needs mass and position for ${missing.join(", ")}`, warnings };
+    if (!items.length) return { notComputed: "nothing with mass in this assembly", warnings };
     const M = items.reduce((s, i) => s + i.m, 0);
     const cg = { x: 0, y: 0, z: 0 };
     for (const i of items) for (const k of ["x", "y", "z"]) cg[k] += (i.m * i.r[k]) / M;
@@ -103,6 +114,13 @@ export const massCg = registerSolver({
     // coincident with the design axes; an L-shape does not. We don't
     // diagonalize here — that belongs to a moment-of-inertia display
     // solver, not the CG aggregator — but we expose the raw tensor for it.
+    if (ctx.get(id, "props.massBudget")) {
+      const budget = ctx.result("mass.budget", id);
+      const known = budget?.outputs?.knownMass?.value;
+      if (Number.isFinite(known) && Math.abs(known - M) > Math.max(0.05, 0.01 * Math.max(M, known))) {
+        warnings.push(`mass inconsistency: mass.cg ${M} kg includes stated masses; mass.budget known mass is ${known} kg (placeholders and masses without a mass state are excluded there). The CG uses the stated masses.`);
+      }
+    }
     return {
       inputs: { parts: { value: items.map((i) => ({ id: i.id, mass: i.m, position: i.r })), unit: "kg, m" } },
       outputs: {
@@ -111,6 +129,7 @@ export const massCg = registerSolver({
         Ixx: { value: I.xx, unit: "kg·m²" }, Iyy: { value: I.yy, unit: "kg·m²" }, Izz: { value: I.zz, unit: "kg·m²" },
         Ixy: { value: I.xy, unit: "kg·m²" }, Ixz: { value: I.xz, unit: "kg·m²" }, Iyz: { value: I.yz, unit: "kg·m²" },
       },
+      warnings,
       assumptions: [
         "Positions are part centroids in the design frame.",
         ...(pointMasses.length ? [`Counted as point masses (own inertia not included, products not contributed): ${pointMasses.join(", ")}`] : []),

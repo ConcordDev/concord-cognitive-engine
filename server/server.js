@@ -28954,6 +28954,11 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- list_lens_actions: List real action names and input fields for a domain before guessing. Params: {"domain": "domain_name"}
+- conkay_solver_list: List ConKay solvers (id, domain, fidelity). Params: {"domain": "optional filter"}
+- conkay_solve: Run one ConKay solver against a Design IR. Params: {"solver_id": "mass.budget", "ir": {}}
+- conkay_ir_schema: Worked Design IR example and contract hints. Params: {}
+- conkay_compile_brief: Turn a short design sentence into Design IR. Missing sizes stay missing. Params: {"brief": "biped robot 60 kg, thigh 0.4 m, stance 0.2 m, foot 0.08 m"}
 - generate_image: Generate an image on Concord's GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
 ${_operatorToolLines}
 Rules for tool use:
@@ -29144,11 +29149,17 @@ ${_operatorV6Block}` : "";
             return { tool: call.tool, ok: false, error: `browse_url failed: ${_be?.message}` };
           }
         }
-        case "run_lens_action": {
-          // INC-128: this used to call the LENS_ACTIONS handler (no macros) and
+        case "run_lens_action":
+        case "list_lens_actions":
+        case "conkay_solver_list":
+        case "conkay_solve":
+        case "conkay_ir_schema":
+        case "conkay_compile_brief": {
+          // INC-128: run_lens_action used to call the LENS_ACTIONS handler (no macros) and
           // return ok:true even when the action itself failed. The agent loop's
           // implementation resolves both registries, reports result.ok===false
-          // as a failure, and lifts song/preview/image artifacts.
+          // as a failure, and lifts song/preview/image artifacts. The ConKay and
+          // list tools share that same executeToolCall path (MCP bridge).
           const { executeToolCall: _lensTool } = await import("./lib/chat-agent.js");
           return _lensTool(ctx, runMacro, LENS_ACTIONS, call);
         }
@@ -29255,6 +29266,9 @@ ${_operatorV6Block}` : "";
       if (r.tool === "browse_url") return `[TOOL_RESULT: browse_url url=${r.url}]\nTitle: ${r.title}\n${r.text}`;
       if (r.tool === "create_dtu") return `[TOOL_RESULT: create_dtu] Created DTU "${r.title}" (id: ${r.dtuId})`;
       if (r.tool === "run_lens_action") return `[TOOL_RESULT: run_lens_action] ${JSON.stringify(r.result).slice(0, 4000)}`;
+      if (r.tool === "list_lens_actions") return `[TOOL_RESULT: list_lens_actions] ${JSON.stringify(r.actions || r).slice(0, 4000)}`;
+      if (r.tool === "conkay_compile_brief") return `[TOOL_RESULT: conkay_compile_brief] ${JSON.stringify({ architecture: r.architecture, warnings: r.warnings, assumptions: r.assumptions, ir: r.ir }).slice(0, 8000)}`;
+      if (r.tool === "conkay_solve" || r.tool === "conkay_solver_list" || r.tool === "conkay_ir_schema") return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 6000)}`;
       if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image] Image generated and attached.`;
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 4000)}`;
     }).join("\n\n");
@@ -40752,6 +40766,8 @@ const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([
   "list_lens_actions",
   "conkay_solve",
   "conkay_solver_list",
+  "conkay_ir_schema",
+  "conkay_compile_brief",
 ]);
 
 app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, res) => {

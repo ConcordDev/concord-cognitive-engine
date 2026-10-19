@@ -52,12 +52,22 @@ export function describeMassState(ms) {
   return `${ms.state}`;
 }
 
+/** Relative gap above which a stated mass and a geometry mass are flagged. */
+export const MASS_INCONSISTENCY_REL = 0.05;
+
+export function geometryMassKg(geometry, densityKgM3) {
+  if (!geometry || geometry.shape === "cad-body" || !(densityKgM3 > 0)) return null;
+  const V = volumeM3(geometry);
+  if (!Number.isFinite(V)) return null;
+  return V * densityKgM3;
+}
+
 export const massPart = registerSolver({
   id: "mass.part",
-  version: "1.3.0",
+  version: "1.4.0",
   domain: "mass",
   fidelity: 1,
-  method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source. Every mass carries a mass state (sourced / estimated / computed / placeholder).",
+  method: "m = V·ρ, volume from the part's parametric geometry; or a stated mass with its source. A stated mass wins over geometry; a disagreement beyond 5% is flagged, not averaged.",
   targets: (g) => [...g.nodes.values()].filter((n) => n.geometry || hasStated(n, "mass")).map((n) => n.id),
   run(ctx, id) {
     const stated = ctx.get(id, "props.mass");
@@ -67,10 +77,25 @@ export const massPart = registerSolver({
       // A stated mass with only a free-text source has no mass state: it is
       // not shown to be sourced, estimated or computed, so it is a placeholder.
       const massState = declared || { state: "placeholder", note: `stated mass with no mass state (source given: ${source})` };
+      const geometry = ctx.get(id, "geometry");
+      const mat = geometry ? ctx.material(id) : null;
+      const fromGeometry = geometryMassKg(geometry, mat?.densityKgM3);
+      const warnings = [];
+      if (Number.isFinite(fromGeometry)) {
+        const denom = Math.max(Math.abs(stated), Math.abs(fromGeometry), 1e-9);
+        if (Math.abs(stated - fromGeometry) / denom > MASS_INCONSISTENCY_REL && Math.abs(stated - fromGeometry) > 0.02) {
+          warnings.push(`mass inconsistency: stated ${stated} kg vs geometry ${fromGeometry} kg; CG and mass use the stated mass`);
+        }
+      }
       return {
-        inputs: { statedMass: { value: stated, unit: "kg", source } },
-        outputs: { mass: { value: stated, unit: "kg", basis: "stated" }, massState: { value: massState.state, detail: massState } },
-        assumptions: [`Stated mass, not computed: ${source}.`],
+        inputs: { statedMass: { value: stated, unit: "kg", source }, ...(Number.isFinite(fromGeometry) ? { geometryMass: { value: fromGeometry, unit: "kg" } } : {}) },
+        outputs: {
+          mass: { value: stated, unit: "kg", basis: "stated" },
+          massState: { value: massState.state, detail: massState },
+          ...(Number.isFinite(fromGeometry) ? { geometryMass: { value: fromGeometry, unit: "kg", basis: "geometry × density, not used" } } : {}),
+        },
+        warnings,
+        assumptions: [`Stated mass, not computed: ${source}.`, ...(warnings.length ? ["Stated mass is kept. The geometry mass is reported beside it and is not blended in."] : [])],
       };
     }
     const geometry = ctx.get(id, "geometry");

@@ -98,6 +98,7 @@ const TOOL_REQUIRED_PARAMS = {
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
   conkay_ir_schema:  [],
+  conkay_compile_brief: [],
   run_python:        ["code"],
   browse_url:        ["url"],
   run_lens_action:   ["domain", "action"],
@@ -297,6 +298,8 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "conkay_solver_list", "params": {"domain": "mass"}}]
 - conkay_solve: Run one ConKay solver against a Design IR (same path as Concord MCP). Quantities need units (or bare SI); stated mass needs massSource (auto-filled if missing). Params: {"solver_id": "mass.budget", "ir": { ... }}
   Example: [TOOL_CALL: {"tool": "conkay_solve", "params": {"solver_id": "mass.budget", "ir": {"design":{"id":"d1"},"nodes":[{"id":"P1","kind":"Part","props":{"mass":"1.5 kg","massSource":"caller assumption"}}],"edges":[],"loadCases":[],"requirements":[]}}}]
+- conkay_compile_brief: Turn a short design sentence into Design IR so you do not invent node kinds. A robot brief becomes Joint, Actuator and Limb nodes. Missing foot width or link mass stays missing. Then pass ir to conkay_solve. Params: {"brief": "the design in words"} (text is an alias)
+  Example: [TOOL_CALL: {"tool": "conkay_compile_brief", "params": {"brief": "biped robot 60 kg, thigh 0.4 m, shin 0.4 m, stance 0.2 m, foot 0.08 m, actuator 48 Nm"}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
@@ -1324,6 +1327,43 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           instruction: "Report PASS/FAIL/WARN/NOT_COMPUTED honestly. screening ≠ validation; unknown stays unknown. Mention any IR warnings.",
         };
       }
+      case "conkay_compile_brief": {
+        const brief = String(call.params.brief || call.params.text || "").trim();
+        if (!brief) {
+          return {
+            tool: call.tool, ok: false,
+            error: "brief or text required",
+            example: '[TOOL_CALL: {"tool": "conkay_compile_brief", "params": {"brief": "biped robot 60 kg, thigh 0.4 m, shin 0.4 m, stance 0.2 m, foot 0.08 m, actuator 48 Nm"}}]',
+          };
+        }
+        const { conkayCompileBriefMcp } = await import("./mcp-execution-bridge.js");
+        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const bridge = await conkayCompileBriefMcp(
+          ctx?.db || null,
+          { brief },
+          ctx?.STATE || ctx?.state || null,
+          { actor, req: ctx?.req || null },
+        );
+        if (!bridge?.ok) {
+          return {
+            tool: call.tool, ok: false,
+            error: String(bridge?.error || bridge?.reason || "conkay_compile_brief failed"),
+            reason: bridge?.reason || null,
+            ...(bridge?.missing ? { missing: bridge.missing } : {}),
+            ...(bridge?.hints ? { hints: bridge.hints } : {}),
+            via: "mcp_execution_bridge",
+          };
+        }
+        return {
+          tool: call.tool, ok: true,
+          architecture: bridge.architecture,
+          ir: bridge.ir,
+          warnings: bridge.warnings,
+          assumptions: bridge.assumptions,
+          audited: true, via: "mcp_execution_bridge",
+          instruction: "Use this ir with conkay_solve. Do not invent quantities the warnings say were missing. Screening IR, not a finished design.",
+        };
+      }
       case "textbook_lookup": {
         const textbookLookup = typeof ctx?.textbookLookup === "function" ? ctx.textbookLookup : (await import("./openstax-lookup.js")).textbookLookup;
         const book = String(call.params.book || "").trim();
@@ -1859,6 +1899,12 @@ export function formatToolResults(results) {
     if (r.tool === "list_capabilities") return `[TOOL_RESULT: list_capabilities] ${r.total} capabilities${r.operator ? "" : " (public only — the rest are operator-only)"}: ${(r.capabilities || []).map(c => `${c.capability}${c.reachable ? "" : " (unreachable)"}`).join(", ")}`;
     if (r.tool === "invoke_capability") return `[TOOL_RESULT: invoke_capability ${r.capability}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "run_authored_tool") return `[TOOL_RESULT: run_authored_tool ${r.toolId}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "conkay_compile_brief") {
+      return `[TOOL_RESULT: conkay_compile_brief] architecture=${r.architecture || "?"}. Pass ir to conkay_solve. Do not invent missing sizes.\nwarnings: ${JSON.stringify(r.warnings || [])}\n${JSON.stringify(r.ir).slice(0, 8000)}`;
+    }
+    if (r.tool === "conkay_solve" || r.tool === "conkay_ir_schema" || r.tool === "conkay_solver_list") {
+      return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 6000)}`;
+    }
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
 }

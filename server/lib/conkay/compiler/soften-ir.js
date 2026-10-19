@@ -8,21 +8,10 @@
 //   • props.mass / unitCost without massSource / unitCostSource
 //   • massState.estimated without uncertainty
 //   • requirements as a bare string array
-//   • aluminum-5052 / aluminum-7075-t6 / abs aliases → registry ids
+//   • aluminum-5052 / aluminum-7075-t6 / abs aliases → registry ids that
+//     already carry a price (5052-H32, 7075-T6, ABS), so cost checks compute
 
-const MATERIAL_ALIASES = Object.freeze({
-  "aluminum-5052": "aluminum-6061-t6-b221",
-  "aluminium-5052": "aluminum-6061-t6-b221",
-  "aluminum-6061": "aluminum-6061-t6-b221",
-  "aluminum-6061-t6": "aluminum-6061-t6-b221",
-  "aluminium-6061": "aluminum-6061-t6-b221",
-  "aluminum-7075": "aluminum-6061-t6-b221",
-  "aluminium-7075": "aluminum-6061-t6-b221",
-  "aluminum-7075-t6": "aluminum-6061-t6-b221",
-  abs: "polycarbonate",
-  "abs-plastic": "polycarbonate",
-  pc: "polycarbonate",
-});
+import { getMaterial, resolveMaterialName } from "../materials/index.js";
 
 /** Tiny worked IR used in tool descriptions and soft error tips. */
 export const CONKAY_IR_MINI_EXAMPLE = Object.freeze({
@@ -50,7 +39,7 @@ export const CONKAY_IR_HINTS = Object.freeze([
   'Quantities are strings with units: "20 mm", "1.5 kg", "40 kN" (bare SI numbers are also accepted).',
   'A stated props.mass needs props.massSource (or massState): e.g. massSource: "caller assumption".',
   'Positions are lengths: position: { x: "0 m", y: "0 m", z: "0 m" } (or bare 0 = 0 m).',
-  "Materials must be registry ids (steel-a36, aluminum-6061-t6-b221). Common aliases are auto-mapped.",
+  "Materials must be registry ids (steel-a36, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, abs-plastic). Common aliases are auto-mapped.",
   "requirements is an array of { id, metric, max|min, ... } objects, not bare strings.",
 ]);
 
@@ -76,7 +65,7 @@ export function softenDesignIR(input) {
   if (Array.isArray(ir.nodes)) {
     for (const n of ir.nodes) {
       if (n && typeof n.material === "string") {
-        const alias = MATERIAL_ALIASES[n.material.toLowerCase()] || MATERIAL_ALIASES[n.material];
+        const alias = canonicalMaterial(n.material);
         if (alias && alias !== n.material) {
           warnings.push(`nodes(${n.id || "?"}): material "${n.material}" aliased to "${alias}"`);
           n.material = alias;
@@ -88,10 +77,21 @@ export function softenDesignIR(input) {
   return { ir, warnings };
 }
 
+/** Registry id for a caller material name. Already-valid ids stay put (7075 is not rewritten to 6061). */
+export function canonicalMaterial(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return null;
+  if (getMaterial(raw)) return raw;
+  const lower = raw.toLowerCase();
+  if (getMaterial(lower)) return lower;
+  const resolved = resolveMaterialName(lower);
+  return resolved?.id || null;
+}
+
 function softenMaterials(materials, warnings) {
   const out = {};
   for (const [id, val] of Object.entries(materials)) {
-    const alias = MATERIAL_ALIASES[id.toLowerCase()] || MATERIAL_ALIASES[id];
+    const alias = canonicalMaterial(id);
     if (alias && alias !== id) {
       warnings.push(`materials.${id}: aliased to ${alias}`);
       out[alias] = val;
@@ -169,7 +169,7 @@ export function formatIrErrors(errors, warnings = []) {
     tips.push('Use unit strings: "0 m", "1.5 kg", "40 kN". Bare SI numbers are also accepted.');
   }
   if (/unknown material/i.test(joined)) {
-    tips.push("Use a registry material id (steel-a36, aluminum-6061-t6-b221). Aliases like aluminum-5052 are auto-mapped.");
+    tips.push("Use a registry material id (steel-a36, aluminum-6061-t6, aluminum-5052-h32, abs-plastic). Aliases like aluminum-5052 and abs are auto-mapped.");
   }
   if (/requirements/i.test(joined)) {
     tips.push("requirements entries are objects, e.g. { id: \"R1\", metric: \"mass.total\", max: \"80 kg\" }.");
