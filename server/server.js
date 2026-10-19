@@ -75715,6 +75715,7 @@ try {
           culprit: attr.culprit,
           culpritMs: attr.culpritMs,
           candidates: attr.candidates,
+          heartbeats: attr.heartbeats || [],
           lastTimer: globalThis.__lastLagProbeName || null,
         });
       }
@@ -75750,6 +75751,7 @@ try {
             culprit: attr.culprit,
             culpritMs: attr.culpritMs,
             candidates: attr.candidates,
+            heartbeats: attr.heartbeats || [],
             lastTimer: globalThis.__lastLagProbeName || null,
           });
         }

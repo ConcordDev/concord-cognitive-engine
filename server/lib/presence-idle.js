@@ -219,6 +219,40 @@ const _lagWork = [];   // { name, ms, end }
 const _lagHttp = [];   // { name, start, end }
 const _push = (arr, e) => { arr.push(e); if (arr.length > _LAG_RING) arr.shift(); };
 
+// INC-100c — heartbeat module spans. A stall inside an async heartbeat (sync
+// work after an await, e.g. a better-sqlite3 loop once a fetch resolves) is
+// invisible to recordLagWork, so the 30 s detector logged "unattributed".
+// The registry stamps each main-thread module's start/end here; spikes then
+// list the heartbeat modules that were running inside the stall window.
+const _LAG_HB_RING = 256;
+const _lagHb = [];               // { name, start, end }
+const _hbInFlight = new Map();   // name -> start ms epoch
+
+/** Registry hook: main-thread heartbeat module `name` started. */
+export function noteHeartbeatStart(name, start = Date.now()) {
+  _hbInFlight.set(String(name || "?"), start);
+}
+
+/** Registry hook: heartbeat module `name` finished. Spans under 50 ms are dropped. */
+export function noteHeartbeatEnd(name, end = Date.now()) {
+  const n = String(name || "?");
+  const start = _hbInFlight.get(n);
+  _hbInFlight.delete(n);
+  if (!Number.isFinite(start) || end - start < 50) return;
+  _lagHb.push({ name: n, start, end });
+  if (_lagHb.length > _LAG_HB_RING) _lagHb.shift();
+}
+
+function _heartbeatsInWindow(since, now) {
+  const rows = [];
+  for (const h of _lagHb) if (h.end >= since) rows.push({ label: h.name, ms: h.end - h.start, running: false });
+  for (const [name, start] of _hbInFlight) if (start <= now) rows.push({ label: name, ms: now - start, running: true });
+  return rows
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 3)
+    .map((r) => (r.running ? `${r.label} (running ${r.ms}ms)` : `${r.label} (${r.ms}ms)`));
+}
+
 /** Record that `name` ran synchronously for `ms` (ending now). Sub-5ms runs are ignored. */
 export function recordLagWork(name, ms, end = Date.now()) {
   const v = Number(ms);
@@ -257,11 +291,12 @@ export function getLagCulprit({ windowMs = 5000, stallMs = 0, now = Date.now() }
     .sort((a, b) => (b.end - b.start) - (a.end - a.start))
     .slice(0, 3)
     .map((h) => `${h.name} (${h.end - h.start}ms)`);
-  return { culprit, culpritMs: best ? best.ms : null, candidates };
+  const heartbeats = _heartbeatsInWindow(since, now);
+  return { culprit, culpritMs: best ? best.ms : null, candidates, heartbeats };
 }
 
 /** Test-only. */
-export function _resetLagAttributionForTest() { _lagWork.length = 0; _lagHttp.length = 0; }
+export function _resetLagAttributionForTest() { _lagWork.length = 0; _lagHttp.length = 0; _lagHb.length = 0; _hbInFlight.clear(); }
 
 
 /**
