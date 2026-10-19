@@ -18,7 +18,8 @@ import { chatAgentRoute } from "../lib/chat/agent-route.js";
 import { fallbackDesignCall, toolFor3dAsk } from "../lib/chat/route-3d-ask.js";
 import { generate3dFromPrompt } from "../lib/chat/generate-3d.js";
 import { chatGenerationBudget, JSON_TURN_BUDGET_MS } from "../lib/chat/gen-budget.js";
-import { composeToolTurnReply, scrubUserFacingToolNames, userFacingMeshReply } from "../lib/chat/tool-turn-reply.js";
+import { composeToolTurnReply, isRecoverableToolFailure, sanitizeUserReply, scrubUserFacingToolNames, userFacingMeshReply } from "../lib/chat/tool-turn-reply.js";
+import { visibleChatReply } from "../lib/chat-governance-leak.js";
 import {
   assessGpuHealth,
   generatePollinationsImage,
@@ -112,6 +113,10 @@ describe("GPU concept timeout is plain English", () => {
     assert.equal(assessGpuHealth({ ok: true, status: "busy" }).reason, "gpu_busy");
     assert.equal(assessGpuHealth({ ok: true, model: "sdxl" }).reason, "gpu_wrong_model");
     assert.equal(assessGpuHealth(null).reason, "local_gpu_unreachable");
+    assert.equal(assessGpuHealth({ ok: true, loading: true }).reason, "gpu_busy");
+    assert.equal(assessGpuHealth({ ok: true, status: "loading" }).reason, "gpu_busy");
+    assert.equal(assessGpuHealth({ ok: true, state: "warming" }).reason, "gpu_busy");
+    assert.equal(assessGpuHealth({ ok: true, on_gpu: null }).ok, true);
   });
 
   it("a short timeout does not save the raw abort text or fall back to Pollinations", async () => {
@@ -248,6 +253,7 @@ describe("generate_3d failure falls back to a layout", () => {
       assert.ok(r.artifact.positions.length > 100);
       const reply = userFacingMeshReply(r);
       assert.match(reply, /robot layout is shown below/);
+      assert.match(reply, /approximation/);
       assert.doesNotMatch(reply, /\bgenerate_3d\b|\bconkay_design\b|\bgenerate_image\b/);
       assert.equal(userFacingMeshReply({ artifact: { kind: "mesh", meshKind: "i-beam" }, result: { part: "beam" } }), "The 3D model is shown below.");
     } finally {
@@ -351,6 +357,96 @@ describe("generate_3d failure falls back to a layout", () => {
       srv.closeAllConnections?.();
       srv.close();
     }
+  });
+});
+
+const TOOL_LEAK_RE = /\b(?:generate_3d|generate_image|conkay_design|conkay_solve|run_lens_action|run_compute|TOOL_CALL|TOOL_RESULT)\b|FLAT 2D|say exactly|DALL-E/i;
+const PARROT = "GPU image generation is offline. It makes FLAT 2D pictures only — never use it for a 3D model, CAD model, STL or printable part.";
+
+describe("organic 3D asks do not become a bookshelf", () => {
+  const saved = process.env.CONCORD_GEN_URL;
+  after(() => {
+    if (saved === undefined) delete process.env.CONCORD_GEN_URL;
+    else process.env.CONCORD_GEN_URL = saved;
+  });
+
+  it("seeds a robot layout from the user's words and refuses a creature", () => {
+    const busy = { ok: false, reason: "gpu_busy", error: "busy" };
+    assert.equal(fallbackDesignCall("generate a 3d model of a dragon", "a bookshelf", busy), null);
+    assert.equal(fallbackDesignCall("sculpt a statue of a horse", "a bookshelf", busy), null);
+    assert.equal(fallbackDesignCall("a 3d model of a fern plant", "phone stand", busy), null);
+    const robot = fallbackDesignCall("generate a 3d model of a robot", "a bookshelf", busy);
+    assert.equal(robot.tool, "conkay_design");
+    assert.match(robot.params.text, /robot/i);
+    assert.doesNotMatch(robot.params.text, /bookshelf|shelf/i);
+    assert.equal(isRecoverableToolFailure({ ok: false, terminal: true, retryHint: "call conkay_design", error: "3D generation is busy right now." }), false);
+  });
+
+  it("a creature ask with generate_3d failing does not substitute conkay", async () => {
+    const srv = await listen((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, loading: true }));
+    });
+    try {
+      process.env.CONCORD_GEN_URL = `http://127.0.0.1:${srv.address().port}`;
+      const r = await executeToolCall(
+        { userPrompt: "generate a 3d model of a dragon", chatTransport: "json", chatGenTimeoutMs: 30_000, chatGenDeadlineMs: Date.now() + 30_000, actor: { userId: "u1" } },
+        async () => ({}),
+        new Map(),
+        { tool: "generate_3d", params: { prompt: "a bookshelf" } },
+      );
+      assert.equal(r.ok, false);
+      assert.equal(r.fellBackFrom, undefined);
+      assert.equal(r.artifact, undefined);
+      assert.equal(r.terminal, true);
+      assert.match(r.error, /3D generation is busy/);
+      assert.match(r.error, /minute/);
+      assert.doesNotMatch(r.error, /shelf|bookshelf|FLAT 2D/i);
+      const reply = composeToolTurnReply([r]);
+      assert.match(reply, /3D generation is busy/);
+      assert.match(reply, /minute/);
+      assert.doesNotMatch(reply, TOOL_LEAK_RE);
+      assert.doesNotMatch(reply, /shelf|bookshelf/i);
+    } finally {
+      srv.closeAllConnections?.();
+      srv.close();
+    }
+  });
+
+  it("conkay_design will not return a bookshelf for a dragon", async () => {
+    const r = await executeToolCall(
+      { userPrompt: "generate a 3d model of a dragon" },
+      async () => ({}),
+      new Map(),
+      { tool: "conkay_design", params: { text: "a bookshelf" } },
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.terminal, true);
+    assert.equal(r.artifact, undefined);
+    assert.match(r.error, /3D generation is (?:busy|unavailable)/);
+    assert.match(r.error, /minute/);
+    assert.doesNotMatch(JSON.stringify(r.result || {}), /shelf/i);
+    const reply = composeToolTurnReply([r]);
+    assert.doesNotMatch(reply, TOOL_LEAK_RE);
+    assert.doesNotMatch(reply, /shelf|bookshelf/i);
+  });
+});
+
+describe("tool-description text never reaches the user", () => {
+  it("strips the image-tool sentence and tool names, and keeps a real image failure", () => {
+    const dragon = "generate a 3d model of a dragon";
+    const cleaned = sanitizeUserReply(PARROT, { prompt: dragon });
+    assert.match(cleaned, /3D generation is (?:busy|unavailable)/);
+    assert.match(cleaned, /minute/);
+    assert.doesNotMatch(cleaned, TOOL_LEAK_RE);
+    assert.doesNotMatch(cleaned, /GPU image generation is offline/);
+    assert.equal(sanitizeUserReply("GPU image generation is offline", { prompt: "draw a red bike" }), "GPU image generation is offline");
+    const named = sanitizeUserReply("Try generate_3d, then conkay_design, or generate_image.", { prompt: dragon });
+    assert.doesNotMatch(named, TOOL_LEAK_RE);
+    const shown = visibleChatReply(PARROT, dragon);
+    assert.match(shown, /3D generation is (?:busy|unavailable)/);
+    assert.doesNotMatch(shown, TOOL_LEAK_RE);
+    assert.equal(visibleChatReply("Plain answer.", "q"), "Plain answer.");
   });
 });
 

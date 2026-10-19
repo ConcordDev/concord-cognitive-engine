@@ -1,4 +1,5 @@
 import { stripControl } from "./chat/self-continuation.js";
+import { sanitizeUserReply } from "./chat/tool-turn-reply.js";
 /**
  * Strip GRC / ethos envelopes the conscious model echoes into a user-visible
  * chat reply.
@@ -202,7 +203,7 @@ export function visibleChatReply(text, userText) {
   const raw = stripControl(String(text ?? ""));
   const clean = stripGovernanceLeak(raw, { userText });
   if (!clean.trim() && raw.trim() && isGovernanceLeakFragment(raw)) return HONEST_EMPTY;
-  return clean;
+  return sanitizeUserReply(clean, { prompt: userText });
 }
 
 /**

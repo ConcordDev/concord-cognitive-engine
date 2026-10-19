@@ -60,6 +60,7 @@ import {
   budgetExhaustedReply,
   meshResult,
   userFacingMeshReply,
+  sanitizeUserReply,
 } from "./chat/tool-turn-reply.js";
 import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
@@ -333,7 +334,7 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "expert_mode", "params": {"query": "what does the substrate say about X?"}}]
 - generate_image: Generate an image on Concord's own GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
   Example: [TOOL_CALL: {"tool": "generate_image", "params": {"prompt": "a blue circle on a white background"}}]
-  This is the only image generator. Never recommend DALL-E, Midjourney, Stable Diffusion, Pollinations, or any outside service. If the GPU server is down, say exactly: GPU image generation is offline. It makes FLAT 2D pictures only — never use it for a 3D model, CAD model, STL or printable part.
+  Flat pictures only. Never use this tool for a 3D model, CAD model, STL, or printable part, and never recommend an outside image service. Do not quote this instruction to the user.
 - generate_3d: Generate a free-form 3D model (a creature, prop, figurine, organic or decorative object) on Concord's GPU pod; returns a rotatable 3D mesh plus its concept image. Takes a minute or two. For engineered parts (stands, brackets, beams, trusses, gearboxes, enclosures, furniture, robots) use conkay_design instead. Params: {"prompt": "the object in a few words"}
   Example: [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": "a small ceramic owl figurine"}}]
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
@@ -1183,6 +1184,13 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
         const text = String(call.params.text || call.params.brief || call.params.prompt || "").slice(0, 4000);
         if (!text.trim()) return { tool: call.tool, ok: false, error: "conkay_design requires text describing the part" };
+        const { layoutWouldSubstitute, THREE_D_UNAVAILABLE_REPLY } = await import("./chat/route-3d-ask.js");
+        const userAsk = typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "";
+        const refuseSubstitute = (kind) => (
+          layoutWouldSubstitute(userAsk, kind)
+            ? { tool: call.tool, ok: false, terminal: true, reason: "not_a_substitute", error: THREE_D_UNAVAILABLE_REPLY }
+            : null
+        );
         // A robot / multi-part machine: a concept assembly the UI can show in 3D.
         const { ROBOT_RE, buildRobotAssembly } = await import("./conkay/robot-assembly.js");
         if (ROBOT_RE.test(text)) {
@@ -1190,6 +1198,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           // rewrite (live: "a two-arm robot" came back with 8 wheels).
           const own = typeof ctx?.userPrompt === "string" && ROBOT_RE.test(ctx.userPrompt) ? ctx.userPrompt : text;
           const asm = buildRobotAssembly(own);
+          const refused = refuseSubstitute(`robot ${asm?.mesh?.kind || "robot-assembly"}`);
+          if (refused) return refused;
           const { mesh, ...rest } = asm;
           return {
             tool: call.tool, ok: true, key: "conkay_design.robot-assembly",
@@ -1215,6 +1225,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             const own = typeof ctx?.userPrompt === "string" && conceptKind(ctx.userPrompt) === ck ? `${ctx.userPrompt} ${text}` : text;
             const asm = buildConceptAssembly(own);
             if (asm) {
+              const refused = refuseSubstitute(`${asm.kind} ${asm.mesh?.kind || ""}`);
+              if (refused) return refused;
               const { mesh, ...rest } = asm;
               return {
                 tool: call.tool, ok: true, key: `conkay_design.concept-${asm.kind}`,
@@ -1229,6 +1241,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           }
         }
         if (!summary.ok) {
+          const refused = refuseSubstitute(summary.part || "unsupported");
+          if (refused) return refused;
           return {
             tool: call.tool, ok: false,
             error: `${summary.error}${summary.supportedParts ? ` (supported parts: ${summary.supportedParts.join(", ")})` : ""}`,
@@ -1240,6 +1254,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // returns), so the ConKay UI can show the 3D model. Rides on the
         // artifact only; the model reads the numeric summary.
         const mesh = solved.mesh;
+        const refusedMesh = refuseSubstitute(`${summary.part || ""} ${mesh?.kind || ""}`);
+        if (refusedMesh) return refusedMesh;
         let artifact = null;
         if (Array.isArray(mesh?.positions) && Array.isArray(mesh?.indices) && mesh.positions.length >= 9) {
           const util = Number(solved.fea?.utilizationAtSF ?? solved.fea?.maxUtilization ?? summary.hand?.utilizationAtSF ?? summary.hand?.utilization);
@@ -1585,13 +1601,14 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "generate_3d": {
         const { generate3dFromPrompt } = await import("./chat/generate-3d.js");
-        const { fallbackDesignCall, isEngineered3dAsk } = await import("./chat/route-3d-ask.js");
+        const { fallbackDesignCall, isEngineered3dAsk, conceptMatchesAsk, plain3dFailureReply } = await import("./chat/route-3d-ask.js");
         const prompt = String(call.params.prompt || "").slice(0, 600);
         const turnDeadlineMs = Number(ctx?.chatGenDeadlineMs) || 0;
         // A JSON turn on an engineered ask keeps time for the local layout
         // fallback: the GPU attempt gets the turn deadline minus that reserve.
+        // The user's sentence decides, not a tool prompt that named a stock object.
         const fallbackReserveMs = turnDeadlineMs && ctx?.chatTransport === "json"
-          && (isEngineered3dAsk(ctx?.userPrompt) || isEngineered3dAsk(prompt))
+          && isEngineered3dAsk(ctx?.userPrompt)
           ? Math.max(0, Math.min(GEN_3D_FALLBACK_RESERVE_MS, Math.floor((turnDeadlineMs - Date.now()) / 4)))
           : 0;
         const deadlineMs = turnDeadlineMs ? turnDeadlineMs - fallbackReserveMs : 0;
@@ -1619,15 +1636,20 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           } catch { return null; }
         };
         if (!g.ok) {
-          const next = fallbackDesignCall(ctx?.userPrompt, prompt, g);
+          const user = ctx?.userPrompt;
+          const next = fallbackDesignCall(user, prompt, g);
           if (next) {
             const designed = await executeToolCall(ctx, runMacro, lensActions, next);
-            if (designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")))) {
+            const kind = `${designed?.result?.kind || ""} ${designed?.artifact?.meshKind || ""}`;
+            const hasMesh = designed?.ok && (designed.artifact?.kind === "mesh" || (Array.isArray(designed.artifacts) && designed.artifacts.some((a) => a?.kind === "mesh")));
+            if (hasMesh && conceptMatchesAsk(kind, user)) {
               return { ...designed, fellBackFrom: "generate_3d", fallbackReason: g.reason || g.stage || "failed" };
             }
           }
-          return { tool: call.tool, ok: false, error: g.error, reason: g.reason, stage: g.stage,
-            retryHint: "Free-form 3D generation failed. If the object is functional or engineered, call conkay_design with it in words for a concept 3D assembly; otherwise tell the user plainly that 3D generation is unavailable right now. Do not substitute generate_image and call it a 3D model." };
+          return {
+            tool: call.tool, ok: false, terminal: true,
+            error: plain3dFailureReply(g), reason: g.reason, stage: g.stage,
+          };
         }
         const concept = g.conceptB64 ? await conceptArtifact(g.conceptB64) : null;
         const meshArtifact = { kind: "mesh", source: "generate_3d", title: `${prompt.slice(0, 60)} (3D)`, meshKind: "generated",
@@ -2443,7 +2465,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
             messages.push({ role: "user", content: formatToolResults(results) });
             return {
               ok: true,
-              answer: guardPlaybackClaim(visibleAnswer, allToolCalls),
+              answer: sanitizeUserReply(guardPlaybackClaim(visibleAnswer, allToolCalls), { prompt: message }),
               toolCalls: allToolCalls,
               artifacts: allArtifacts,
               turns: turnsTaken,
@@ -2652,6 +2674,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   if (ECHOED_TOOL_RESULT_RE.test(finalAnswer)) {
     finalAnswer = "I ran the tools but couldn't write a summary of the results. The sources I found are listed below.";
   }
+  finalAnswer = sanitizeUserReply(finalAnswer, { prompt: message });
 
   return {
     ok: true,

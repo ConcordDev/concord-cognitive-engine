@@ -12,6 +12,7 @@
  */
 
 import { userFacingGenerationError } from "../pollinations-image.js";
+import { THREE_D_UNAVAILABLE_REPLY } from "./route-3d-ask.js";
 
 // Ordinary failures the model can recover from on the next turn by trying a
 // different key, part, id, URL or tool (cockpit audit 2026-10-19: one of these
@@ -25,6 +26,9 @@ export const HARD_ERROR_RE = /forbidden_by_governance|governance|halted|not auth
 /** True when a failed tool result is an ordinary, retryable failure. */
 export function isRecoverableToolFailure(r) {
   if (!r || r.ok) return false;
+  // A terminal 3D failure is the reply. Another turn would call a different
+  // tool and substitute an object the user did not ask for.
+  if (r.terminal) return false;
   if (r.retryHint || r.validActions || r.validKeys) return true;
   const err = String(r.error || r.reason || "");
   if (HARD_ERROR_RE.test(err) && !/code_exec_forbidden/.test(err)) return false;
@@ -53,9 +57,67 @@ export function scrubUserFacingToolNames(text) {
   return s.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.])/g, "$1").trim();
 }
 
+// Sentences that exist only inside tool schemas. A model that recites them is
+// leaking instructions, not answering. The short "GPU image generation is
+// offline" line is a real image-failure reply and is not in this list.
+const TOOL_DESCRIPTION_SCRUB = [
+  /GPU image generation is offline\.\s*It makes FLAT 2D pictures only\s*[—–-]?\s*never use it for a 3D model(?:,\s*CAD model,\s*STL or printable part)?\.?/gi,
+  /It makes FLAT 2D pictures only\s*[—–-]?\s*never use it for a 3D model[^.?!…]*[.?!…]?/gi,
+  /Flat pictures only\.\s*Never use this tool for a 3D model,?\s*CAD model,?\s*STL,?\s*or printable part[^.?!…]*(?:Do not quote this instruction to the user)?[.?!…]?/gi,
+  /This is the only image generator\.\s*Never recommend DALL-E[^.?!…]*/gi,
+  /Never recommend DALL-E, Midjourney, Stable Diffusion(?:, Pollinations)?, or any outside (?:image )?service\.?/gi,
+  /If the GPU server is down, say exactly:\s*/gi,
+  /Do not quote this instruction to the user\.?/gi,
+];
+
+// Design and image tool ids. A failed compute or search step still names
+// itself ("I couldn't complete run_compute"); those receipts are not the
+// schema text this pass is stripping.
+const TOOL_IDENT_RE = /\b(?:generate_3d|generate_image|conkay_design|conkay_solve|conkay_compile_brief|conkay_solver_list|conkay_ir_schema)\b/gi;
+
+/**
+ * Last pass on text a person will read. Strips tool identifiers and the
+ * known tool-description sentences (the FLAT 2D image rule, "say exactly").
+ * A 3D ask whose reply was only that internal text becomes a plain retry line.
+ * An image ask keeps the short offline sentence.
+ */
+export function sanitizeUserReply(text, { prompt = "" } = {}) {
+  const original = String(text ?? "");
+  if (!original) return original;
+  let s = original;
+  let stripped = false;
+  for (const re of TOOL_DESCRIPTION_SCRUB) {
+    re.lastIndex = 0;
+    if (!re.test(s)) continue;
+    stripped = true;
+    re.lastIndex = 0;
+    s = s.replace(re, "");
+  }
+  TOOL_IDENT_RE.lastIndex = 0;
+  if (TOOL_IDENT_RE.test(s) || /\[TOOL_(?:CALL|RESULT):/i.test(s)) {
+    stripped = true;
+    s = scrubUserFacingToolNames(s);
+    s = s.replace(TOOL_IDENT_RE, "");
+    s = s.replace(/\[TOOL_(?:CALL|RESULT):[\s\S]*?\]/g, "");
+  }
+  if (!stripped) return original;
+  const asked3d = /\b(?:3[- ]?d|cad|stl)\b/i.test(String(prompt || ""));
+  if (asked3d) s = s.replace(/GPU image generation is offline\.?/gi, "");
+  s = s.replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").replace(/\s+([,.])/g, "$1").replace(/\(\s*\)/g, "").trim();
+  s = s.replace(/^[\s,;:]+/, "").trim();
+  if (!s || /^[\s.…,;:!-]+$/.test(s)) {
+    if (asked3d) return THREE_D_UNAVAILABLE_REPLY;
+    if (/GPU image generation is offline/i.test(original)) return "GPU image generation is offline";
+  }
+  if (!asked3d && /GPU image generation is offline/i.test(original) && !/GPU image generation is offline/i.test(s)) {
+    return s ? `GPU image generation is offline. ${s}` : "GPU image generation is offline";
+  }
+  return s;
+}
+
 const MESH_REPLY = {
-  robot: "The robot layout is shown below. It is a starting arrangement, not a checked design: no structural, motor, or battery sizing was run. Describe a change if you want a different size, or try Agent mode for a fuller design.",
-  concept: "The 3D layout is shown below. It is a concept arrangement, not a checked engineering analysis. Describe a size or material to change it, or try Agent mode for a fuller design.",
+  robot: "The robot layout is shown below. It is a layout approximation, a starting arrangement, not a checked design: no structural, motor, or battery sizing was run. Describe a change if you want a different size, or try Agent mode for a fuller design.",
+  concept: "The 3D layout is shown below. It is a layout approximation, a concept arrangement, not a checked engineering analysis. Describe a size or material to change it, or try Agent mode for a fuller design.",
 };
 
 /** Sentence stored as the chat reply when a turn produced a mesh. No tool names.
@@ -66,7 +128,7 @@ export function userFacingMeshReply(hit) {
   if (/robot/i.test(kind)) return MESH_REPLY.robot;
   if (/concept/i.test(kind)) return MESH_REPLY.concept;
   const instruction = String(hit?.result?.instruction || "").trim();
-  if (instruction) return scrubUserFacingToolNames(instruction);
+  if (instruction) return sanitizeUserReply(instruction);
   return "The 3D model is shown below.";
 }
 
@@ -87,7 +149,7 @@ export function recoveryHint(r) {
     return "Rephrase the part for conkay_design with a supported shape and a span/length, or build it with run_lens_action engineering.parametricSolid / engineering.partMesh, or size it by formula in words.";
   }
   if (/2D|3D/i.test(err)) {
-    return "For a 3D model use conkay_design (stands, trusses, gearboxes, brackets, robots) or generate_3d; generate_image only makes flat pictures.";
+    return "If this is a creature, character, statue or plant, tell the user 3D generation is busy or unavailable and to try again in a minute. Do not call conkay_design for those, and do not substitute a different object. For a robot, car, part, mechanism or furniture the user named, call conkay_design with their own words. generate_image only makes flat pictures.";
   }
   return "Try a different tool, key or input for the same goal; do not repeat the exact call that failed.";
 }
@@ -137,6 +199,10 @@ export function composeToolTurnReply(results) {
   for (const r of Array.isArray(results) ? results : []) {
     if (!r?.ok) {
       const raw = String(r?.error || "it failed");
+      if (r?.terminal || /^3D generation is (?:busy|unavailable)\b/i.test(raw)) {
+        lines.push(sanitizeUserReply(raw));
+        continue;
+      }
       const err = userFacingGenerationError(raw, r?.tool === "generate_3d" ? THREE_D_USER_TIMEOUT : undefined) || raw;
       const label = r?.tool || "that step";
       lines.push(scrubUserFacingToolNames(`I couldn't complete ${label}: ${String(err).replace(/[.!?]+\s*$/, "")}.`));
@@ -148,7 +214,7 @@ export function composeToolTurnReply(results) {
       lines.push(`Saved a ${visibility} DTU titled "${title}" (id: ${r.dtuId}).`);
     }
   }
-  return lines.length ? lines.join("\n") : null;
+  return lines.length ? sanitizeUserReply(lines.join("\n")) : null;
 }
 
 /**
