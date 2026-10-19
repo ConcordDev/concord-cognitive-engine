@@ -755,7 +755,14 @@ export default function registerSavedMacros(_register) {
       const exportedAt = new Date().toISOString();
 
       if (format === "csv") {
-        const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        // INC-147: a cell that starts with = + - @ (or tab/CR) is run as a
+        // formula by Excel/Sheets. Saved titles/notes can come from other
+        // users' posts, so prefix those cells with ' (OWASP CSV injection).
+        const esc = (v) => {
+          let s = String(v ?? "");
+          if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+          return `"${s.replace(/"/g, '""')}"`;
+        };
         const header = [
           "id", "kind", "title", "author", "url", "mediaType",
           "folderId", "tags", "state", "savedAt", "note",
