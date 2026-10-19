@@ -301,19 +301,22 @@ export function getFileNeighborhood(db, repoRoot, filePath) {
   }
 }
 
-export function repoGraphOverview(db, repoRoot) {
+export function repoGraphOverview(db, repoRoot, maxAgeSec = STALE_SEC) {
   if (!db) return { ok: false, reason: "no_db" };
   try {
     const root = repoRoot || process.cwd();
-    const files = db.prepare(`
-      SELECT COUNT(*) AS c FROM runtime_repo_symbols WHERE repo_root = ? AND symbol_kind = 'file'
-    `).get(root)?.c || 0;
-    const exports = db.prepare(`
-      SELECT COUNT(*) AS c FROM runtime_repo_symbols WHERE repo_root = ? AND symbol_kind = 'export'
-    `).get(root)?.c || 0;
-    const last = db.prepare(`
-      SELECT MAX(indexed_at) AS t FROM runtime_repo_symbols WHERE repo_root = ?
-    `).get(root)?.t;
+    // Single set-based freshness query instead of three separate .get() calls.
+    const summary = db.prepare(`
+      SELECT
+        COUNT(CASE WHEN symbol_kind = 'file' THEN 1 END) AS files,
+        COUNT(CASE WHEN symbol_kind = 'export' THEN 1 END) AS exports,
+        MAX(indexed_at) AS last
+      FROM runtime_repo_symbols
+      WHERE repo_root = ?
+    `).get(root);
+    const files = summary?.files || 0;
+    const exports = summary?.exports || 0;
+    const last = summary?.last || null;
     let edges = 0;
     let graphs = null;
     let lastFullIndex = last;
@@ -334,7 +337,7 @@ export function repoGraphOverview(db, repoRoot) {
       graphs,
       lastIndexedAt: last,
       lastFullIndexAt: lastFullIndex,
-      stale: lastFullIndex ? (nowSec() - lastFullIndex) > STALE_SEC : true,
+      stale: lastFullIndex ? (nowSec() - lastFullIndex) > maxAgeSec : true,
     };
   } catch (e) {
     return { ok: false, reason: e?.message || String(e) };
@@ -371,11 +374,18 @@ export function buildFullRepoGraph(db, repoRoot) {
 }
 
 export async function ensureRepoIndexFresh(db, repoRoot, maxAgeSec = STALE_SEC) {
-  const overview = repoGraphOverview(db, repoRoot);
+  // Resolve the root through the allowlist so callers that omit repoRoot
+  // (e.g. the heartbeat) default to the workspace root, not process.cwd().
+  // process.cwd() is the server/ directory at runtime, so the freshness check
+  // previously never matched the indexed rows and forced a full re-index each
+  // cycle.
+  const root = allowedRepoRoot(repoRoot);
+  if (!root) return { ok: false, reason: "repo_root_not_allowed" };
+  const overview = repoGraphOverview(db, root, maxAgeSec);
   if (overview.ok && !overview.stale && overview.files > 0) {
     return { ok: true, refreshed: false, ...overview };
   }
-  const idx = await indexRepo(db, repoRoot);
+  const idx = await indexRepo(db, root);
   return { ok: idx.ok !== false, refreshed: true, ...idx };
 }
 
