@@ -177,15 +177,26 @@ describe("romance-engine library", () => {
     propose(db, "alice", "npc", "bob");
     wed(db, "alice", "npc", "bob");
     const p = conceive(db, "alice", "npc", "bob");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_skill_levels (
+        id TEXT PRIMARY KEY, user_id TEXT, skill_type TEXT,
+        native_world_type TEXT, level INTEGER
+      );
+    `);
+    db.prepare(`INSERT INTO player_skill_levels (id, user_id, skill_type, native_world_type, level)
+      VALUES ('sk1','alice','swords','hub',100), ('sk2','alice','crafting','hub',50)`).run();
+    db.prepare(`UPDATE player_pregnancies SET due_at = ? WHERE id = ?`)
+      .run(Math.floor(Date.now() / 1000) - 5, p.pregnancyId);
     const b = birthChild(db, p.pregnancyId, {
       name: "Aria",
-      parentSkills: { alice: { swords: 100, crafting: 50 }, bob: { swords: 60, music: 80 } },
+      actorUserId: "alice",
+      parentSkills: { alice: { swords: 99999 }, bob: { music: 80 } },
     });
     assert.equal(b.ok, true);
     assert.equal(b.name, "Aria");
-    assert.equal(b.inheritedSkills.swords, 80);   // 100 × 0.80
-    assert.equal(b.inheritedSkills.music, 64);    // 80 × 0.80
+    assert.equal(b.inheritedSkills.swords, 80);   // 100 × 0.80 from the skill record
     assert.equal(b.inheritedSkills.crafting, 40); // 50 × 0.80
+    assert.equal(b.inheritedSkills.music, undefined); // client parentSkills ignored
     const children = listChildren(db, "alice");
     assert.equal(children.length, 1);
   });
@@ -195,7 +206,9 @@ describe("romance-engine library", () => {
     propose(db, "alice", "npc", "bob");
     wed(db, "alice", "npc", "bob");
     const p = conceive(db, "alice", "npc", "bob");
-    const b = birthChild(db, p.pregnancyId, { name: "Aria" });
+    db.prepare(`UPDATE player_pregnancies SET due_at = ? WHERE id = ?`)
+      .run(Math.floor(Date.now() / 1000) - 5, p.pregnancyId);
+    const b = birthChild(db, p.pregnancyId, { name: "Aria", actorUserId: "alice" });
     // Backdate the child's birth by 200 days (> ADULT_DAYS=180)
     db.prepare("UPDATE player_children SET born_at = ? WHERE id = ?")
       .run(Math.floor(Date.now() / 1000) - 200 * 86400, b.childId);
@@ -249,6 +262,8 @@ describe("romance domain macros", () => {
     assert.equal(w.ok, true);
     const c = await call("conceive", ctxAlice(), { partnerId: "bob" });
     assert.equal(c.ok, true);
+    db.prepare(`UPDATE player_pregnancies SET due_at = ? WHERE id = ?`)
+      .run(Math.floor(Date.now() / 1000) - 5, c.pregnancyId);
     const b = await call("birth", ctxAlice(), { pregnancyId: c.pregnancyId, name: "Aria" });
     assert.equal(b.ok, true);
     const kids = await call("children", ctxAlice());

@@ -52,6 +52,8 @@ describe("romance — courtship → marriage → lineage loop", () => {
     const preg = await runMacro("romance", "conceive", { partnerKind: PK, partnerId: PID }, ctx);
     assert.equal(preg.ok, true);
     assert.ok(preg.pregnancyId);
+    ctx.db.prepare("UPDATE player_pregnancies SET due_at = ? WHERE id = ?")
+      .run(Math.floor(Date.now() / 1000) - 5, preg.pregnancyId);
     const born = await runMacro("romance", "birth", { pregnancyId: preg.pregnancyId, name: "Kael" }, ctx);
     assert.equal(born.ok, true);
     assert.equal(born.name, "Kael");

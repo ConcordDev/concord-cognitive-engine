@@ -26,9 +26,77 @@ const PREGNANCY_DAYS       = 30;   // in-game days from conceive to birth
 const ADOLESCENT_DAYS      = 90;
 const ADULT_DAYS           = 180;
 const SKILL_INHERITANCE_FRAC = 0.80;
+const DAILY_PLAYER_INTERACTION_CAP = 24;
 
 function uid(prefix) {
   return `${prefix}_${crypto.randomBytes(6).toString("hex")}`;
+}
+
+function ensureConsentTables(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS player_courtship_proposals (
+      id TEXT PRIMARY KEY,
+      proposer_user_id TEXT NOT NULL,
+      partner_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      resolved_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_courtship_proposals_partner
+      ON player_courtship_proposals (partner_id, status);
+    CREATE TABLE IF NOT EXISTS player_courtship_daily (
+      player_user_id TEXT NOT NULL,
+      partner_kind TEXT NOT NULL,
+      partner_id TEXT NOT NULL,
+      day_key INTEGER NOT NULL,
+      n INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (player_user_id, partner_kind, partner_id, day_key)
+    );
+    CREATE TABLE IF NOT EXISTS player_courtship_notices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_courtship_notices_user
+      ON player_courtship_notices (user_id, created_at DESC);
+  `);
+}
+
+function notePlayerInteraction(db, playerUserId, partnerKind, partnerId) {
+  ensureConsentTables(db);
+  const day = Math.floor(Date.now() / 1000 / 86400);
+  const row = db.prepare(`
+    SELECT n FROM player_courtship_daily
+     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ? AND day_key = ?
+  `).get(playerUserId, partnerKind, partnerId, day);
+  if ((row?.n || 0) >= DAILY_PLAYER_INTERACTION_CAP) {
+    return { ok: false, reason: "daily_cap", cap: DAILY_PLAYER_INTERACTION_CAP };
+  }
+  db.prepare(`
+    INSERT INTO player_courtship_daily (player_user_id, partner_kind, partner_id, day_key, n)
+    VALUES (?, ?, ?, ?, 1)
+    ON CONFLICT(player_user_id, partner_kind, partner_id, day_key) DO UPDATE SET n = n + 1
+  `).run(playerUserId, partnerKind, partnerId, day);
+  return { ok: true };
+}
+
+/** Drop the other player's raw account id from a row the viewer did not author as themselves. */
+export function presentCourtship(row, viewerId) {
+  if (!row || row.partner_kind !== "player") return row;
+  const out = { ...row };
+  if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
+  if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
+  return out;
+}
+
+function presentMarriage(row, viewerId) {
+  if (!row || row.partner_kind !== "player") return row;
+  const out = { ...row };
+  if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
+  if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
+  return out;
 }
 
 /* ───────── Courtship ───────────────────────────────────────────────── */
@@ -41,6 +109,11 @@ export function getCourtship(db, playerUserId, partnerKind, partnerId) {
 
 export function courtInteraction(db, playerUserId, partnerKind, partnerId, sentiment = 1) {
   if (!playerUserId || !partnerId) return { ok: false, reason: "missing_inputs" };
+  if (partnerKind === "player") {
+    if (String(partnerId) === String(playerUserId)) return { ok: false, reason: "cannot_court_self" };
+    const capped = notePlayerInteraction(db, playerUserId, partnerKind, String(partnerId));
+    if (!capped.ok) return capped;
+  }
   const sentimentNum = Math.max(-1, Math.min(1, Number(sentiment) || 1));
   const existing = getCourtship(db, playerUserId, partnerKind, partnerId);
   const delta = COURT_AFFINITY_DELTA * sentimentNum;
@@ -85,10 +158,14 @@ export function listMyCourtships(db, playerUserId, status = null) {
 /* ───────── Engagement + marriage ───────────────────────────────────── */
 
 export function propose(db, playerUserId, partnerKind, partnerId) {
+  if (partnerKind === "player" && String(partnerId) === String(playerUserId)) {
+    return { ok: false, reason: "cannot_court_self" };
+  }
   const c = getCourtship(db, playerUserId, partnerKind, partnerId);
   if (!c) return { ok: false, reason: "no_courtship" };
   if (c.affinity < ENGAGE_THRESHOLD) return { ok: false, reason: "affinity_too_low", required: ENGAGE_THRESHOLD, got: c.affinity };
   if (c.status === "married") return { ok: false, reason: "already_married" };
+  if (partnerKind === "player") return openPlayerProposal(db, playerUserId, String(partnerId));
   db.prepare(`
     UPDATE player_courtship SET status = 'engaged', last_interaction = unixepoch()
     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
@@ -96,7 +173,93 @@ export function propose(db, playerUserId, partnerKind, partnerId) {
   return { ok: true, status: "engaged" };
 }
 
+function openPlayerProposal(db, proposerUserId, partnerId) {
+  ensureConsentTables(db);
+  const existing = db.prepare(`
+    SELECT id FROM player_courtship_proposals
+     WHERE proposer_user_id = ? AND partner_id = ? AND status = 'pending'
+  `).get(proposerUserId, partnerId);
+  if (existing) return { ok: true, status: "pending", proposalId: existing.id };
+  const proposalId = uid("prop");
+  db.prepare(`
+    INSERT INTO player_courtship_proposals (id, proposer_user_id, partner_id, status)
+    VALUES (?, ?, ?, 'pending')
+  `).run(proposalId, proposerUserId, partnerId);
+  // Notice carries the opaque proposal id only — never the proposer's account id.
+  db.prepare(`
+    INSERT INTO player_courtship_notices (id, user_id, kind, payload_json)
+    VALUES (?, ?, 'proposal', ?)
+  `).run(uid("note"), partnerId, JSON.stringify({ proposalId }));
+  return { ok: true, status: "pending", proposalId };
+}
+
+export function acceptProposal(db, actorUserId, proposalId) {
+  if (!actorUserId || !proposalId) return { ok: false, reason: "missing_inputs" };
+  ensureConsentTables(db);
+  const p = db.prepare(`SELECT * FROM player_courtship_proposals WHERE id = ?`).get(String(proposalId));
+  if (!p || p.status !== "pending" || p.partner_id !== actorUserId) return { ok: false, reason: "not_found" };
+  const mine = getCourtship(db, p.proposer_user_id, "player", p.partner_id);
+  if (!mine) return { ok: false, reason: "not_found" };
+  const sharedAffinity = Math.max(Number(mine.affinity) || 0, ENGAGE_THRESHOLD);
+  db.prepare(`
+    UPDATE player_courtship SET status = 'engaged', last_interaction = unixepoch()
+     WHERE player_user_id = ? AND partner_kind = 'player' AND partner_id = ?
+  `).run(p.proposer_user_id, p.partner_id);
+  const theirs = getCourtship(db, actorUserId, "player", p.proposer_user_id);
+  if (!theirs) {
+    db.prepare(`
+      INSERT INTO player_courtship (player_user_id, partner_kind, partner_id, affinity, status)
+      VALUES (?, 'player', ?, ?, 'engaged')
+    `).run(actorUserId, p.proposer_user_id, Math.min(1, sharedAffinity));
+  } else {
+    db.prepare(`
+      UPDATE player_courtship
+         SET status = 'engaged', affinity = ?, last_interaction = unixepoch()
+       WHERE player_user_id = ? AND partner_kind = 'player' AND partner_id = ?
+    `).run(Math.min(1, Math.max(Number(theirs.affinity) || 0, sharedAffinity)), actorUserId, p.proposer_user_id);
+  }
+  db.prepare(`UPDATE player_courtship_proposals SET status = 'accepted', resolved_at = unixepoch() WHERE id = ?`).run(p.id);
+  return { ok: true, status: "engaged", proposalId: p.id };
+}
+
+export function declineProposal(db, actorUserId, proposalId) {
+  if (!actorUserId || !proposalId) return { ok: false, reason: "missing_inputs" };
+  ensureConsentTables(db);
+  const p = db.prepare(`SELECT * FROM player_courtship_proposals WHERE id = ?`).get(String(proposalId));
+  if (!p || p.status !== "pending" || p.partner_id !== actorUserId) return { ok: false, reason: "not_found" };
+  db.prepare(`UPDATE player_courtship_proposals SET status = 'declined', resolved_at = unixepoch() WHERE id = ?`).run(p.id);
+  return { ok: true, status: "declined", proposalId: p.id };
+}
+
+export function listCourtshipNotices(db, userId) {
+  if (!userId) return [];
+  ensureConsentTables(db);
+  const rows = db.prepare(`
+    SELECT id, kind, payload_json, created_at FROM player_courtship_notices
+     WHERE user_id = ? ORDER BY created_at DESC LIMIT 50
+  `).all(userId);
+  return rows.map((r) => {
+    let payload = {};
+    try { payload = JSON.parse(r.payload_json || "{}"); } catch { payload = {}; }
+    if (payload && typeof payload === "object") {
+      delete payload.proposerUserId;
+      delete payload.partnerId;
+      delete payload.userId;
+      delete payload.player_user_id;
+    }
+    return { id: r.id, kind: r.kind, created_at: r.created_at, ...(payload || {}) };
+  });
+}
+
 export function wed(db, playerUserId, partnerKind, partnerId) {
+  if (partnerKind === "player") {
+    if (String(partnerId) === String(playerUserId)) return { ok: false, reason: "cannot_court_self" };
+    const mine = getCourtship(db, playerUserId, "player", partnerId);
+    const theirs = getCourtship(db, partnerId, "player", playerUserId);
+    if (!mine || mine.status !== "engaged" || !theirs || theirs.status !== "engaged") {
+      return { ok: false, reason: "consent_required" };
+    }
+  }
   const c = getCourtship(db, playerUserId, partnerKind, partnerId);
   if (!c) return { ok: false, reason: "no_courtship" };
   if (c.status !== "engaged") return { ok: false, reason: "not_engaged" };
@@ -111,6 +274,12 @@ export function wed(db, playerUserId, partnerKind, partnerId) {
       UPDATE player_courtship SET status = 'married', last_interaction = unixepoch()
       WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
     `).run(playerUserId, partnerKind, partnerId);
+    if (partnerKind === "player") {
+      db.prepare(`
+        UPDATE player_courtship SET status = 'married', last_interaction = unixepoch()
+         WHERE player_user_id = ? AND partner_kind = 'player' AND partner_id = ?
+      `).run(partnerId, playerUserId);
+    }
   });
   tx();
 
@@ -151,7 +320,11 @@ export function wed(db, playerUserId, partnerKind, partnerId) {
 export function dissolveMarriage(db, marriageId, reason = "estranged", expectedUserId = null) {
   const m = db.prepare("SELECT * FROM player_marriages WHERE id = ?").get(marriageId);
   if (!m) return { ok: false, reason: "marriage_not_found" };
-  if (expectedUserId && m.player_user_id !== expectedUserId) return { ok: false, reason: "not_a_party" };
+  if (expectedUserId) {
+    const isOwner = m.player_user_id === expectedUserId;
+    const isPlayerPartner = m.partner_kind === "player" && m.partner_id === expectedUserId;
+    if (!isOwner && !isPlayerPartner) return { ok: false, reason: "not_a_party" };
+  }
   if (m.dissolved_at) return { ok: false, reason: "already_dissolved" };
   db.prepare(`
     UPDATE player_marriages SET dissolved_at = unixepoch(), dissolved_reason = ?
@@ -163,13 +336,33 @@ export function dissolveMarriage(db, marriageId, reason = "estranged", expectedU
     UPDATE player_courtship SET status = ?, last_interaction = unixepoch()
     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
   `).run(courtStatus, m.player_user_id, m.partner_kind, m.partner_id);
+  if (m.partner_kind === "player") {
+    db.prepare(`
+      UPDATE player_courtship SET status = ?, last_interaction = unixepoch()
+       WHERE player_user_id = ? AND partner_kind = 'player' AND partner_id = ?
+    `).run(courtStatus, m.partner_id, m.player_user_id);
+  }
   return { ok: true, dissolvedReason: reason, courtStatus };
 }
 
 export function listMyMarriages(db, playerUserId, activeOnly = true) {
-  return activeOnly
+  const owned = activeOnly
     ? db.prepare("SELECT * FROM player_marriages WHERE player_user_id = ? AND dissolved_at IS NULL ORDER BY married_at DESC").all(playerUserId)
     : db.prepare("SELECT * FROM player_marriages WHERE player_user_id = ? ORDER BY married_at DESC LIMIT 50").all(playerUserId);
+  let asPartner = [];
+  try {
+    asPartner = activeOnly
+      ? db.prepare("SELECT * FROM player_marriages WHERE partner_kind = 'player' AND partner_id = ? AND dissolved_at IS NULL ORDER BY married_at DESC").all(playerUserId)
+      : db.prepare("SELECT * FROM player_marriages WHERE partner_kind = 'player' AND partner_id = ? ORDER BY married_at DESC LIMIT 50").all(playerUserId);
+  } catch { asPartner = []; }
+  const seen = new Set();
+  const out = [];
+  for (const row of [...owned, ...asPartner]) {
+    if (!row || seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.push(presentMarriage(row, playerUserId));
+  }
+  return out;
 }
 
 /* ───────── Pregnancy + birth ───────────────────────────────────────── */
@@ -194,14 +387,55 @@ export function conceive(db, carrierUserId, partnerKind, partnerId) {
   return { ok: true, pregnancyId: id, dueAt };
 }
 
+function loadSkillRecord(db, userId) {
+  if (!db || !userId) return {};
+  try {
+    const rows = db.prepare(
+      `SELECT skill_type, level FROM player_skill_levels WHERE user_id = ?`
+    ).all(userId);
+    const out = {};
+    for (const r of rows || []) {
+      const n = Number(r.level);
+      if (!Number.isFinite(n) || n < 0) continue;
+      out[String(r.skill_type).slice(0, 40)] = Math.min(100, n);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function deriveParentSkills(db, pregnancy) {
+  const bag = {};
+  const carrier = loadSkillRecord(db, pregnancy.carrier_user_id);
+  if (Object.keys(carrier).length) bag.carrier = carrier;
+  if (pregnancy.partner_kind === "player") {
+    const partner = loadSkillRecord(db, pregnancy.partner_id);
+    if (Object.keys(partner).length) bag.partner = partner;
+  }
+  return bag;
+}
+
 export function birthChild(db, pregnancyId, options = {}) {
-  const p = db.prepare("SELECT * FROM player_pregnancies WHERE id = ?").get(pregnancyId);
-  if (!p) return { ok: false, reason: "pregnancy_not_found" };
+  const actor = options.actorUserId ? String(options.actorUserId) : "";
+  let p = null;
+  try {
+    p = db.prepare("SELECT * FROM player_pregnancies WHERE id = ?").get(pregnancyId);
+  } catch {
+    p = null;
+  }
+  // Missing, or not this carrier: one not_found so a stranger cannot probe the row.
+  if (!p || !actor || p.carrier_user_id !== actor) return { ok: false, reason: "not_found" };
   if (p.born_at) return { ok: false, reason: "already_born" };
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (Number(p.due_at) > nowSec) return { ok: false, reason: "not_due" };
   const childId = uid("child");
   const name = String(options.name || `Heir-${childId.slice(-4)}`).slice(0, 80);
-  const inheritedSkills = options.parentSkills ? inheritSkills(options.parentSkills) : {};
-  const personality = options.personality || {};
+  // Client parentSkills are ignored. Inheritance comes from player_skill_levels.
+  const inheritedSkills = inheritSkills(deriveParentSkills(db, p));
+  const personality = options.personality && typeof options.personality === "object" && !Array.isArray(options.personality)
+    ? options.personality
+    : {};
   db.prepare(`
     INSERT INTO player_children
       (id, parent_user_id, other_parent_kind, other_parent_id, name,
@@ -268,4 +502,5 @@ export const ROMANCE_CONSTANTS = Object.freeze({
   ADOLESCENT_DAYS,
   ADULT_DAYS,
   SKILL_INHERITANCE_FRAC,
+  DAILY_PLAYER_INTERACTION_CAP,
 });
