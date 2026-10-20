@@ -16,12 +16,16 @@ import {
   getCourtship,
   listMyCourtships,
   propose,
+  acceptProposal,
+  declineProposal,
+  listCourtshipNotices,
   wed,
   dissolveMarriage,
   listMyMarriages,
   conceive,
   birthChild,
   listChildren,
+  presentCourtship,
   ROMANCE_CONSTANTS,
 } from "../lib/romance-engine.js";
 import { reactToPlayerEvent, getSpouses } from "../lib/spouse-reactivity.js";
@@ -55,7 +59,10 @@ export default function registerCourtshipMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
     const status = input?.status ? String(input.status) : null;
-    return { ok: true, courtships: listMyCourtships(db, userId, status) };
+    return {
+      ok: true,
+      courtships: listMyCourtships(db, userId, status).map((row) => presentCourtship(row, userId)),
+    };
   }, { note: "list the player's courtships (acquainted → married)" });
 
   /**
@@ -70,7 +77,7 @@ export default function registerCourtshipMacros(register) {
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
     const c = getCourtship(db, userId, partnerKindOf(input), String(input.partnerId));
     if (!c) return { ok: false, reason: "no_courtship" };
-    return { ok: true, courtship: c };
+    return { ok: true, courtship: presentCourtship(c, userId) };
   }, { note: "fetch one courtship by partner" });
 
   /**
@@ -102,7 +109,45 @@ export default function registerCourtshipMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
     return propose(db, userId, partnerKindOf(input), String(input.partnerId));
-  }, { note: "propose engagement (gated at ENGAGE_THRESHOLD)" });
+  }, { note: "propose engagement (player partners stay pending until accept)" });
+
+  /**
+   * courtship.accept — the proposed player accepts a pending proposal.
+   * input: { proposalId }
+   */
+  register("courtship", "accept", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input?.proposalId) return { ok: false, reason: "missing_inputs" };
+    return acceptProposal(db, userId, String(input.proposalId));
+  }, { note: "accept a pending player proposal" });
+
+  /**
+   * courtship.decline — the proposed player declines a pending proposal.
+   * input: { proposalId }
+   */
+  register("courtship", "decline", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input?.proposalId) return { ok: false, reason: "missing_inputs" };
+    return declineProposal(db, userId, String(input.proposalId));
+  }, { note: "decline a pending player proposal" });
+
+  /**
+   * courtship.notices — proposals waiting on this player. Payloads are opaque
+   * proposal ids, never the other account's raw id.
+   */
+  register("courtship", "notices", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    return { ok: true, notices: listCourtshipNotices(db, userId) };
+  }, { note: "courtship notices for the caller" });
 
   /**
    * courtship.wed — marriage. Requires status 'engaged' AND affinity ≥
@@ -169,14 +214,16 @@ export default function registerCourtshipMacros(register) {
    */
   register("courtship", "birth", async (ctx, input = {}) => {
     const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
     if (!input?.pregnancyId) return { ok: false, reason: "missing_inputs" };
     return birthChild(db, String(input.pregnancyId), {
       name: input?.name,
-      parentSkills: input?.parentSkills,
+      actorUserId: userId,
       personality: input?.personality,
     });
-  }, { note: "birth a child from a due pregnancy" });
+  }, { note: "birth a due pregnancy carried by the caller; skills are server-side" });
 
   /**
    * courtship.children — the player's children (read).

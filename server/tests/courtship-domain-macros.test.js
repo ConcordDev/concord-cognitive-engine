@@ -147,15 +147,25 @@ describe("courtship domain macros", () => {
     const preg = await macros.get("conceive")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
     assert.equal(preg.ok, true);
     assert.ok(preg.pregnancyId);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_skill_levels (
+        id TEXT PRIMARY KEY, user_id TEXT, skill_type TEXT,
+        native_world_type TEXT, level INTEGER
+      );
+    `);
+    db.prepare(`INSERT INTO player_skill_levels (id, user_id, skill_type, native_world_type, level)
+      VALUES ('sk_u1','u1','swordsmanship','hub',50)`).run();
+    db.prepare(`UPDATE player_pregnancies SET due_at = ? WHERE id = ?`)
+      .run(Math.floor(Date.now() / 1000) - 5, preg.pregnancyId);
 
     const birth = await macros.get("birth")(ctxFor(db, "u1"), {
       pregnancyId: preg.pregnancyId,
       name: "Asbir",
-      parentSkills: { mum: { swordsmanship: 50 } },
+      parentSkills: { mum: { swordsmanship: 99999 } },
     });
     assert.equal(birth.ok, true);
     assert.equal(birth.name, "Asbir");
-    // inheritSkills = 80% of best parent skill — a real computed value.
+    // inheritSkills = 80% of the server skill record, not the client payload.
     assert.ok(Math.abs(birth.inheritedSkills.swordsmanship - 50 * ROMANCE_CONSTANTS.SKILL_INHERITANCE_FRAC) < 1e-9);
 
     const kids = await macros.get("children")(ctxFor(db, "u1"), {});

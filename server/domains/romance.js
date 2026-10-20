@@ -6,6 +6,7 @@ import {
   courtInteraction,
   getCourtship,
   listMyCourtships,
+  presentCourtship,
   propose,
   wed,
   dissolveMarriage,
@@ -53,7 +54,7 @@ export default function registerRomanceMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     const c = getCourtship(db, userId, String(input?.partnerKind || "npc"), String(input?.partnerId || ""));
     if (!c) return { ok: false, reason: "no_courtship" };
-    return { ok: true, courtship: c };
+    return { ok: true, courtship: presentCourtship(c, userId) };
   });
 
   register("romance", "list_courtships", async (ctx, input = {}) => {
@@ -61,7 +62,10 @@ export default function registerRomanceMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
-    return { ok: true, courtships: listMyCourtships(db, userId, input?.status || null) };
+    return {
+      ok: true,
+      courtships: listMyCourtships(db, userId, input?.status || null).map((row) => presentCourtship(row, userId)),
+    };
   });
 
   register("romance", "propose", async (ctx, input = {}) => {
@@ -106,10 +110,12 @@ export default function registerRomanceMacros(register) {
 
   register("romance", "birth", async (ctx, input = {}) => {
     const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
     return birthChild(db, String(input?.pregnancyId || ""), {
       name: input?.name,
-      parentSkills: input?.parentSkills,
+      actorUserId: userId,
       personality: input?.personality,
     });
   });
