@@ -28,6 +28,10 @@ const BITE_MAX_MS = 8000;
 const TENSION_PERFECT = 0.85;         // accuracy >= 0.85 = perfect catch
 const TENSION_GOOD    = 0.55;
 const TENSION_POOR    = 0.20;
+// Client tension is only a hint. 0.85+ would be a perfect tier on accuracy
+// alone (0.8*0.6 + 0.2 base = 0.68, still under perfect unless skill and
+// reaction, measured here, also justify it). Cap below the perfect cutoff.
+const TENSION_HINT_CAP = 0.8;
 
 const RARITY_WEIGHTS = {
   common:    1.0,
@@ -98,6 +102,40 @@ export function castLine({ userId, worldId = "concordia-hub", x = 0, z = 0, biom
 
 export function getSession(sessionId) {
   return _sessions.get(sessionId) || null;
+}
+
+/**
+ * Fishing skill is a server record, never a client field. Missing table or
+ * missing row clamps to 0 so a caller cannot force a perfect catch.
+ */
+export function readFishingSkill(db, userId) {
+  if (!db || !userId) return 0;
+  try {
+    const row = db.prepare(
+      `SELECT level FROM player_skill_levels
+        WHERE user_id = ? AND skill_type = 'fishing'
+        ORDER BY level DESC LIMIT 1`
+    ).get(userId);
+    const level = Number(row?.level);
+    if (!Number.isFinite(level) || level < 0) return 0;
+    return Math.min(100, level);
+  } catch {
+    return 0;
+  }
+}
+
+/** Tension from the client is a bounded hint, never a perfect-catch lever. */
+export function clampTensionHint(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 0.5;
+  return Math.max(0, Math.min(TENSION_HINT_CAP, n));
+}
+
+/** Reaction is reel-time minus the session's bite timestamp. */
+export function measureReactionMs(session, now = Date.now()) {
+  const biteAt = Number(session?.biteAt);
+  if (!Number.isFinite(biteAt)) return 1000;
+  return Math.max(0, now - biteAt);
 }
 
 /**
@@ -206,4 +244,5 @@ export {
   BITE_MAX_MS,
   TENSION_PERFECT,
   TENSION_GOOD,
+  TENSION_HINT_CAP,
 };
