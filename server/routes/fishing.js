@@ -9,6 +9,9 @@ import {
   mintFishCatch,
   getSession,
   listFishForWorld,
+  readFishingSkill,
+  clampTensionHint,
+  measureReactionMs,
 } from "../lib/fishing.js";
 
 export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
@@ -60,16 +63,18 @@ export default function createFishingRouter({ requireAuth, db, realtimeEmit }) {
   // POST /api/fishing/:sessionId/reel — body: { reactionMs, tensionAccuracy, fishingSkill? }
   router.post("/:sessionId/reel", requireAuth, (req, res) => {
     try {
-      const { reactionMs, tensionAccuracy, fishingSkill } = req.body || {};
+      const session = getSession(req.params.sessionId);
+      // Same gate as fishing.reel: another user must not resolve or mint this cast.
+      if (!session || session.userId !== req.user.id) {
+        return res.json({ ok: false, error: "session_not_found" });
+      }
       const result = resolveFishCatch({
         sessionId: req.params.sessionId,
-        reactionMs: Number(reactionMs) || 1000,
-        tensionAccuracy: Number(tensionAccuracy) || 0.5,
-        fishingSkill: Number(fishingSkill) || 0,
+        reactionMs: measureReactionMs(session),
+        tensionAccuracy: clampTensionHint((req.body || {}).tensionAccuracy),
+        fishingSkill: readFishingSkill(db, req.user.id),
       });
       if (!result.ok) return res.json(result);
-
-      const session = getSession(req.params.sessionId);
       const mint = mintFishCatch(db, {
         userId: req.user.id,
         worldId: session?.worldId || "concordia-hub",

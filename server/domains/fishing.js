@@ -23,10 +23,14 @@ import {
   mintFishCatch,
   getSession,
   listFishForWorld,
+  readFishingSkill,
+  clampTensionHint,
+  measureReactionMs,
 } from "../lib/fishing.js";
+import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
 
 function actorId(ctx) {
-  return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || null;
+  return authzActorId(ctx);
 }
 
 function clampStr(v, n, fallback) {
@@ -86,8 +90,11 @@ export default function registerFishingMacros(register) {
   register("fishing", "catches", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || actorId(ctx);
-    if (!userId) return { ok: false, reason: "no_user" };
+    const actor = actorId(ctx);
+    if (!actor) return { ok: false, reason: "no_user" };
+    // Inventory is the caller's. input.userId is ignored unless the caller
+    // is an operator — otherwise anyone could read another angler's catches.
+    const userId = (isAdmin(ctx) && input.userId) ? String(input.userId) : actor;
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     try {
       const catches = db.prepare(`
@@ -152,11 +159,14 @@ export default function registerFishingMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.sessionId) return { ok: false, reason: "no_session_id" };
     const session = getSession(String(input.sessionId));
+    // Ownership is checked BEFORE resolveFishCatch, which marks the session
+    // resolved. A thief must not consume or mint the caster's fish.
+    if (!session || session.userId !== userId) return { ok: false, reason: "session_not_found" };
     const result = resolveFishCatch({
       sessionId: String(input.sessionId),
-      reactionMs: Number(input.reactionMs) || 1000,
-      tensionAccuracy: Number(input.tensionAccuracy) || 0.5,
-      fishingSkill: Number(input.fishingSkill) || 0,
+      reactionMs: measureReactionMs(session),
+      tensionAccuracy: clampTensionHint(input.tensionAccuracy),
+      fishingSkill: readFishingSkill(db, userId),
     });
     if (!result.ok) return { ok: false, reason: result.error };
     const mint = mintFishCatch(db, {
