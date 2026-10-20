@@ -183,6 +183,31 @@ export function moveVehicle(db, vehicleId, requesterKind, requesterId, { pos_x, 
   }
 }
 
+/**
+ * Remove a vehicle. Only the owner may despawn it. Occupants are cleared
+ * in the same transaction so a deleted hull can't keep riders.
+ */
+export function despawnVehicle(db, vehicleId, requesterKind, requesterId) {
+  if (!db || !vehicleId || !requesterKind || !requesterId) return { ok: false, reason: "missing_inputs" };
+  const veh = getVehicle(db, vehicleId);
+  if (!veh) return { ok: false, reason: "vehicle_not_found" };
+  const isOwner = veh.owner_kind === requesterKind && veh.owner_id === requesterId;
+  if (!isOwner) return { ok: false, reason: "not_authorized" };
+  try {
+    const tx = db.transaction(() => {
+      try {
+        db.prepare(`DELETE FROM vehicle_occupants WHERE vehicle_id = ?`).run(vehicleId);
+      } catch { /* occupants table optional on minimal builds */ }
+      const r = db.prepare(`DELETE FROM world_vehicles WHERE id = ?`).run(vehicleId);
+      if (!r.changes) return { ok: false, reason: "vehicle_not_found" };
+      return { ok: true, action: "despawned", vehicleId };
+    });
+    return tx();
+  } catch (err) {
+    return { ok: false, reason: "despawn_failed", error: err?.message };
+  }
+}
+
 export const VEHICLE_CONSTANTS = Object.freeze({
   MAX_POS_DELTA_M,
   DEFAULT_CAPACITY,
