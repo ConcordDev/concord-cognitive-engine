@@ -2,7 +2,7 @@
 // disputes domain (online dispute resolution / arbitration). lensRun family:
 // `registerLensAction("disputes", …)`. Calc macros assert exact computed values;
 // lifecycle macros round-trip through the per-user case substrate; validation
-// macros assert rejection shape (`r.result.ok === false` + error match).
+// macros assert the lens.run rejection shape (`r.ok === false` + error match).
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
@@ -74,8 +74,8 @@ describe("disputes — case lifecycle round-trips", () => {
 
   it("case-open rejects an invalid disputeType (validation)", async () => {
     const bad = await lensRun("disputes", "case-open", { params: { title: "X", disputeType: "nonsense" } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(String(bad.result.error), /invalid disputeType/i);
+    assert.equal(bad.ok, false);
+    assert.match(String(bad.error), /invalid disputeType/i);
   });
 
   it("case-advance: open → under_review, then explicit toStatus", async () => {
@@ -99,8 +99,8 @@ describe("disputes — case lifecycle round-trips", () => {
     assert.ok((detail.result.evidence || []).some((e) => e.label === "Defect photo"), "evidence in detail");
 
     const badKind = await lensRun("disputes", "evidence-add", { params: { caseId, label: "X", kind: "telepathy" } }, ctx);
-    assert.equal(badKind.result.ok, false);
-    assert.match(String(badKind.result.error), /invalid evidence kind/i);
+    assert.equal(badKind.ok, false);
+    assert.match(String(badKind.error), /invalid evidence kind/i);
   });
 
   it("message-post → message-list: message threads with role tallies", async () => {
@@ -125,8 +125,8 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
     // claimant is the actor (the depthCtx user); assigning them is non-neutral
     const claimantId = open.result.case.claimantId;
     const bad = await lensRun("disputes", "mediator-assign", { params: { caseId, mediatorId: claimantId } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(String(bad.result.error), /neutral third party/i);
+    assert.equal(bad.ok, false);
+    assert.match(String(bad.error), /neutral third party/i);
     const good = await lensRun("disputes", "mediator-assign", { params: { caseId, mediatorId: "mediator-7", mediatorName: "Pat" } }, ctx);
     assert.equal(good.ok, true);
     assert.equal(good.result.mediatorName, "Pat");
@@ -134,17 +134,22 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
     assert.equal(good.result.case.status, "mediation");
   });
 
-  it("offer-make → offer-respond(accept): accepting an offer resolves the case", async () => {
-    const open = await lensRun("disputes", "case-open", { params: { title: "Settle this", disputeType: "non_delivery", disputeAmount: 400 } }, ctx);
+  it("offer-make → offer-respond(accept): the other party accepting an offer resolves the case", async () => {
+    const { makeInternalCtx } = await import("../../server.js").then((m) => m.__TEST__);
+    const seller = makeInternalCtx("seller-depth");
+    const open = await lensRun("disputes", "case-open", { params: { title: "Settle this", disputeType: "non_delivery", disputeAmount: 400, respondentId: "seller-depth" } }, ctx);
     const caseId = open.result.case.id;
     const mk = await lensRun("disputes", "offer-make", { params: { caseId, amount: 300, terms: "partial" } }, ctx);
     assert.equal(mk.ok, true);
     assert.equal(mk.result.made.amount, 300);
     assert.equal(mk.result.made.fromRole, "claimant"); // role from auth, not body
     const offerId = mk.result.made.id;
-    const resp = await lensRun("disputes", "offer-respond", { params: { caseId, offerId, decision: "accept" } }, ctx);
+    const self = await lensRun("disputes", "offer-respond", { params: { caseId, offerId, decision: "accept" } }, ctx);
+    assert.equal(self.ok, false);
+    assert.match(String(self.error), /own offer/i);
+    const resp = await lensRun("disputes", "offer-respond", { params: { caseId, offerId, decision: "accept" } }, seller);
     assert.equal(resp.ok, true);
-    assert.equal(resp.result.case.status, "resolved");      // accepting settles
+    assert.equal(resp.result.case.status, "resolved");      // the other party accepting settles
     const detail = await lensRun("disputes", "case-detail", { params: { caseId } }, ctx);
     assert.equal(detail.result.case.outcome.settlementAmount, 300);
   });
@@ -154,8 +159,8 @@ describe("disputes — mediation / offers / escrow / resolution", () => {
     const caseId = open.result.case.id;
     const mk = await lensRun("disputes", "offer-make", { params: { caseId, amount: 50 } }, ctx);
     const bad = await lensRun("disputes", "offer-respond", { params: { caseId, offerId: mk.result.made.id, decision: "maybe" } }, ctx);
-    assert.equal(bad.result.ok, false);
-    assert.match(String(bad.result.error), /accept or reject/i);
+    assert.equal(bad.ok, false);
+    assert.match(String(bad.error), /accept or reject/i);
   });
 
   it("escrow-freeze → escrow-status → escrow-release: full escrow round-trip", async () => {
