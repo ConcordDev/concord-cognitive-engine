@@ -9,6 +9,7 @@
 // STATE.disputesLens → lens-state-persistence. Every handler is wrapped in
 // try/catch and returns { ok, result?, error? } — never throws.
 
+import { isAdmin } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 
 export default function registerDisputesActions(registerLensAction) {
@@ -137,6 +138,48 @@ export default function registerDisputesActions(registerLensAction) {
     if (!c) return null;
     if (!isParty(c, userId)) return null;
     return c;
+  }
+
+  // Parties see their cases. An admin may close a case they are not a party to.
+  function findCaseForResolve(s, ctx, caseId) {
+    if (!caseId) return null;
+    const c = s.casesById.get(String(caseId));
+    if (!c) return null;
+    if (isParty(c, actId(ctx)) || isAdmin(ctx)) return c;
+    return null;
+  }
+
+  const EVIDENCE_URL_MAX = 2048;
+  function evidenceUrl(raw) {
+    if (raw == null || String(raw).trim() === "") return { ok: true, url: null };
+    const url = String(raw).trim();
+    if (url.length > EVIDENCE_URL_MAX) {
+      return { ok: false, error: `evidence url too long (max ${EVIDENCE_URL_MAX})` };
+    }
+    let parsed;
+    try { parsed = new URL(url); } catch {
+      return { ok: false, error: "evidence url must be http or https" };
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { ok: false, error: "evidence url must be http or https" };
+    }
+    return { ok: true, url: parsed.href };
+  }
+
+  // Closing a two-party case is a mediator/admin act, or the claimant
+  // withdrawing their own claim. Negotiated settlement is the offer path
+  // (the other party accepts). A member cannot rule on the other party.
+  function closeAuthority(c, ctx, userId, outcomeType) {
+    if (isAdmin(ctx)) return { ok: true, resolvedRole: "admin" };
+    const roleOnCase = partyRole(c, userId);
+    if (roleOnCase === "mediator") return { ok: true, resolvedRole: "mediator" };
+    if (roleOnCase === "claimant" && outcomeType === "dismissed") {
+      return { ok: true, resolvedRole: "member" };
+    }
+    return {
+      ok: false,
+      error: "only a mediator or admin can close this dispute; the claimant may withdraw it",
+    };
   }
 
   function casesForUser(s, userId) {
@@ -439,19 +482,22 @@ export default function registerDisputesActions(registerLensAction) {
       if (["resolved", "dismissed"].includes(c.status)) {
         return { ok: false, error: "case already closed" };
       }
+      const OPEN_FLOW = ["open", "under_review", "mediation", "escalated"];
       let target = params.toStatus ? String(params.toStatus) : null;
-      if (!target) {
-        const idx = STATUS_FLOW.indexOf(c.status);
-        target = STATUS_FLOW[Math.min(idx + 1, STATUS_FLOW.length - 2)];
+      if (target === "resolved" || target === "dismissed") {
+        return { ok: false, error: "cannot advance a case to resolved or dismissed" };
       }
-      if (!STATUS_FLOW.includes(target)) return { ok: false, error: "invalid target status" };
+      if (!target) {
+        const idx = OPEN_FLOW.indexOf(c.status);
+        if (idx < 0 || idx >= OPEN_FLOW.length - 1) {
+          return { ok: false, error: "no further non-closing stage" };
+        }
+        target = OPEN_FLOW[idx + 1];
+      }
+      if (!OPEN_FLOW.includes(target)) return { ok: false, error: "invalid target status" };
       const prev = c.status;
       c.status = target;
       setStageSla(c);
-      if (["resolved", "dismissed"].includes(target)) {
-        c.resolvedAt = nowIso();
-        c.slaDeadline = null;
-      }
       c.updatedAt = nowIso();
       c.history.push({ at: nowIso(), event: "status_changed", actor: userId, from: prev, to: target });
       saveState();
@@ -475,11 +521,13 @@ export default function registerDisputesActions(registerLensAction) {
       const kind = String(params.kind || "document");
       const ALLOWED = ["document", "screenshot", "photo", "video", "receipt", "correspondence", "file", "witness", "expert"];
       if (!ALLOWED.includes(kind)) return { ok: false, error: "invalid evidence kind" };
+      const urlGate = evidenceUrl(params.url);
+      if (!urlGate.ok) return urlGate;
       const item = {
         id: `ev_${c.id}_${c.evidence.length + 1}`,
         label,
         kind,
-        url: params.url ? String(params.url) : null,
+        url: urlGate.url,
         note: params.note ? String(params.note).slice(0, 500) : "",
         reliability: Math.min(1, Math.max(0, parseFloat(params.reliability) || 0.7)),
         uploadedBy: userId,
@@ -689,6 +737,11 @@ export default function registerDisputesActions(registerLensAction) {
       if (offer.status !== "pending") return { ok: false, error: "offer is no longer pending" };
       const decision = String(params.decision || "");
       if (!["accept", "reject"].includes(decision)) return { ok: false, error: "decision must be accept or reject" };
+      const role = partyRole(c, userId);
+      if (role !== "claimant" && role !== "respondent") {
+        return { ok: false, error: "only the other party can respond to an offer" };
+      }
+      if (offer.fromId === userId) return { ok: false, error: "cannot respond to your own offer" };
       offer.status = decision === "accept" ? "accepted" : "rejected";
       offer.respondedAt = nowIso();
       offer.respondedBy = userId;
@@ -768,7 +821,7 @@ export default function registerDisputesActions(registerLensAction) {
       const s = getDisputesState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actId(ctx);
-      const c = findCase(s, userId, String(params.caseId || ""));
+      const c = findCaseForResolve(s, ctx, String(params.caseId || ""));
       if (!c) return { ok: false, error: "case not found" };
       if (["resolved", "dismissed"].includes(c.status)) return { ok: false, error: "case already closed" };
       const outcomeType = String(params.outcomeType || "");
@@ -782,18 +835,14 @@ export default function registerDisputesActions(registerLensAction) {
       } else if (outcomeType === "negotiated_settlement") {
         refundAmount = Math.max(0, parseFloat(params.settlementAmount) || 0);
       }
-      const roleOnCase = partyRole(c, userId);
-      const actorRole = String(ctx?.actor?.role || ctx?.role || "").toLowerCase();
-      let resolvedRole = "member";
-      if (["admin", "owner", "founder"].includes(actorRole)) resolvedRole = "admin";
-      else if (roleOnCase === "mediator") resolvedRole = "mediator";
-      else if (roleOnCase) resolvedRole = "member";
+      const auth = closeAuthority(c, ctx, userId, outcomeType);
+      if (!auth.ok) return auth;
       c.outcome = {
         type: outcomeType,
         refundAmount,
         rationale: params.rationale ? String(params.rationale).slice(0, 1000) : "",
         resolvedBy: userId,
-        resolvedRole,
+        resolvedRole: auth.resolvedRole,
         resolvedAt: nowIso(),
       };
       c.status = outcomeType === "dismissed" || outcomeType === "no_refund" ? "dismissed" : "resolved";

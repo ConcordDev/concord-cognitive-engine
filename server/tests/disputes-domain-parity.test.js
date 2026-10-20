@@ -24,6 +24,7 @@ beforeEach(() => {
     { id: "user_a", username: "acct_a", displayName: "Acct A" },
     { id: "user_b", username: "acct_b", displayName: "Acct B" },
     { id: "user_c", username: "acct_c", displayName: "Acct C" },
+    { id: "user_admin", username: "acct_admin", displayName: "Admin" },
   ];
   globalThis._concordSTATE = {
     disputesLens: { casesById: new Map(), seq: 1 },
@@ -47,6 +48,7 @@ beforeEach(() => {
 const ctx = { actor: { userId: "user_a", displayName: "Acct A" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b", displayName: "Acct B" }, userId: "user_b" };
 const ctxC = { actor: { userId: "user_c", displayName: "Acct C" }, userId: "user_c" };
+const ctxAdmin = { actor: { userId: "user_admin", role: "admin", displayName: "Admin" }, userId: "user_admin" };
 const RAW_IDS = ["user_a", "user_b", "user_c"];
 function assertNoRawUserIds(value, ids = RAW_IDS) {
   const blob = JSON.stringify(value);
@@ -295,13 +297,14 @@ describe("disputes SLA timers", () => {
 describe("disputes resolution + archive", () => {
   it("case-resolve records an outcome and closes the case", () => {
     const c = openCase();
-    const r = call("case-resolve", ctx, {}, { caseId: c.id, outcomeType: "partial_refund", refundPercent: 50, rationale: "split fault" });
+    const r = call("case-resolve", ctxAdmin, {}, { caseId: c.id, outcomeType: "partial_refund", refundPercent: 50, rationale: "split fault" });
     assert.equal(r.ok, true);
     assert.equal(r.result.case.status, "resolved");
     assert.equal(r.result.outcome.refundAmount, 100);
+    assert.equal(r.result.outcome.resolvedRole, "admin");
   });
 
-  it("F6 member resolve records resolvedRole member (not admin)", () => {
+  it("F6 a party cannot close by ruling; body role is ignored", () => {
     const c = openCase({ respondentId: "user_b" });
     const r = call("case-resolve", ctx, {}, {
       caseId: c.id,
@@ -309,13 +312,17 @@ describe("disputes resolution + archive", () => {
       rationale: "member clicked resolve",
       role: "admin", // ignored — must derive from caller
     });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.outcome.resolvedRole, "member");
+    assert.equal(r.ok, false);
+    const stored = globalThis._concordSTATE.disputesLens.casesById.get(c.id);
+    assert.equal(stored.status, "open");
+    const admin = call("case-resolve", ctxAdmin, {}, { caseId: c.id, outcomeType: "replacement" });
+    assert.equal(admin.ok, true);
+    assert.equal(admin.result.outcome.resolvedRole, "admin");
   });
 
   it("archive-search returns closed cases with analytics", () => {
     const c = openCase();
-    call("case-resolve", ctx, {}, { caseId: c.id, outcomeType: "full_refund" });
+    call("case-resolve", ctxAdmin, {}, { caseId: c.id, outcomeType: "full_refund" });
     const r = call("archive-search", ctx, {}, { query: "damaged" });
     assert.equal(r.ok, true);
     assert.equal(r.result.total, 1);
@@ -326,8 +333,8 @@ describe("disputes resolution + archive", () => {
   it("archive-search filters by outcomeType", () => {
     const c1 = openCase();
     const c2 = openCase({ title: "Second case" });
-    call("case-resolve", ctx, {}, { caseId: c1.id, outcomeType: "full_refund" });
-    call("case-resolve", ctx, {}, { caseId: c2.id, outcomeType: "no_refund" });
+    call("case-resolve", ctxAdmin, {}, { caseId: c1.id, outcomeType: "full_refund" });
+    call("case-resolve", ctxAdmin, {}, { caseId: c2.id, outcomeType: "no_refund" });
     const r = call("archive-search", ctx, {}, { outcomeType: "no_refund" });
     assert.equal(r.ok, true);
     assert.equal(r.result.total, 1);
