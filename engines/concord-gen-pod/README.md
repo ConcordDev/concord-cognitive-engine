@@ -75,3 +75,28 @@ garbled syntax error pointing at an innocent line — this happened once
 files were unaffected, but the script process was killed. Check
 `pgrep -f <script>.sh` on the pod before overwriting; if it's running, let it
 finish (or kill it deliberately) first, or upload to a new filename.
+
+## Live pod runtime (synced from the RunPod pod, 2026-10-19)
+
+The pod runs these files out of `/workspace` (persistent geesefs) and `/pre_start.sh`:
+
+| repo file | pod path | role |
+|---|---|---|
+| `pre_start.sh` | `/pre_start.sh` | RunPod `/start.sh` runs it on every container start; launches `pod-autostart.sh` |
+| `pod-autostart.sh` | `/workspace/pod-autostart.sh` | idempotent start of ollama brain (:11434), ollama bg (:11436), local weight sync, gen-server (:7870) |
+| `start-ollama-a40brain.sh` | `/workspace/start-ollama-a40brain.sh` | chat brain; `LLAMA_ARG_CACHE_RAM=2048` caps llama-server's host prompt cache (default 8 GiB per runner caused cgroup OOMs) |
+| `start-ollama-bg.sh` | `/workspace/start-ollama-bg.sh` | background agents; pinned to CPUs 0-2 with `nice 15`, cache RAM 512 MiB |
+| `sync-local-weights.sh` | `/workspace/gen/sync-local-weights.sh` | copies FLUX + TRELLIS-image-large to `/root/gen/models-local` (container disk) so reloads take ~1 min, not 5-16 min from geesefs |
+| `gen-server-loop.sh` | `/workspace/gen/gen-server-loop.sh` | restart loop; `MALLOC_ARENA_MAX=2`, thread caps (`CONCORD_GEN_THREADS=6`) |
+| `start_gen_server.sh`, `concord_gen_server.py` | `/workspace/...` | gen server |
+
+gen-server behavior added on the pod:
+- FLUX and TRELLIS share the A40 by parking on CPU between requests (`CONCORD_GEN_PARK`), `malloc_trim` after each request.
+- RSS watchdog (`CONCORD_GEN_RSS_RESTART_MB`=24000, `CONCORD_GEN_RSS_IDLE_S`=60) exits for a clean respawn when idle.
+- Startup preload (`CONCORD_GEN_PRELOAD`=`trellis1,flux`, ~55 s) loads both models into CPU RAM after any respawn, so the first mesh does not pay the ~36 s cold load. TRELLIS goes first: built after FLUX nf4 its CPU module init took ~250 s instead of ~28 s.
+- Thread cap (`CONCORD_GEN_THREADS`=6): the container has a 7.65-CPU CFS quota but sees 96 cores; default torch/OpenMP thread counts were throttled in ~42% of CFS periods.
+- While `/mesh` runs, the bg Ollama (`OLLAMA_HOST=127.0.0.1:11436`, incl. runners) is re-pinned to `CONCORD_GEN_BG_YIELD_CPUS` (default `0`) and restored to `CONCORD_GEN_BG_CPUS` (`0-2`) afterwards.
+- `/abort` also stops TRELLIS v1 mid-mesh (abort-aware tqdm in the v1 sampler/postprocessing/render loops).
+- Per-mesh phase timing (`phases`: to_gpu/sample/to_glb/export, to_glb sub-steps, cgroup throttling, major faults) in the `/mesh` response and log.
+
+Memory: the real limit is the container cgroup `memory.max` (~47.7 GiB, no swap) for all processes combined, not a gen-server RSS figure.
