@@ -28,10 +28,32 @@ import {
   dismount,
   moveVehicle,
   occupantCount,
+  despawnVehicle,
 } from "../lib/world-vehicles.js";
+import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
 
 function actorId(ctx) {
-  return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || null;
+  return authzActorId(ctx);
+}
+
+// Operators (admin / owner / founder, or an explicit isAdmin flag) may stamp
+// a non-player owner. There is no realm-officer role in the authz helpers;
+// members always spawn as themselves.
+function isOperator(ctx) {
+  return isAdmin(ctx);
+}
+
+/**
+ * World listings omit owner_id. A get does the same for anyone who is not
+ * the player-owner, and always stamps isMine so the client can tell without
+ * seeing the raw account id.
+ */
+function projectVehicle(vehicle, actor) {
+  const isMine = vehicle.owner_kind === "player" && !!actor && vehicle.owner_id === actor;
+  if (isMine) return { ...vehicle, isMine: true };
+  const projected = { ...vehicle, isMine: false };
+  delete projected.owner_id;
+  return projected;
 }
 
 function clampStr(v, n, fallback) {
@@ -92,7 +114,11 @@ export default function registerGarageMacros(register) {
     if (!input.vehicleId) return { ok: false, reason: "no_vehicle_id" };
     const vehicle = getVehicle(db, String(input.vehicleId));
     if (!vehicle) return { ok: false, reason: "vehicle_not_found" };
-    return { ok: true, vehicle, occupants: occupantCount(db, String(input.vehicleId)) };
+    return {
+      ok: true,
+      vehicle: projectVehicle(vehicle, actorId(ctx)),
+      occupants: occupantCount(db, String(input.vehicleId)),
+    };
   }, { note: "get one vehicle by id (with live occupant count)" });
 
   // ── writes (validate, never throw) ─────────────────────────────────────
@@ -104,11 +130,16 @@ export default function registerGarageMacros(register) {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = actorId(ctx);
-    const ownerKind = clampStr(input.ownerKind, 16, "player");
-    // For a player-owned spawn the owner is always the actor (mirrors the REST
-    // route's anti-spoof rule); other owner kinds carry the caller's ownerId.
+    // Members cannot choose ownerKind/ownerId. A caller-supplied npc/realm/none
+    // owner is ignored and the vehicle is stamped to the actor. Operators may
+    // still spawn realm/npc/none vehicles with an explicit ownerId.
+    let ownerKind = "player";
+    let ownerId = userId;
+    if (isOperator(ctx)) {
+      ownerKind = clampStr(input.ownerKind, 16, "player");
+      ownerId = ownerKind === "player" ? userId : clampStr(input.ownerId, 64, "");
+    }
     if (ownerKind === "player" && !userId) return { ok: false, reason: "no_user" };
-    const ownerId = ownerKind === "player" ? userId : clampStr(input.ownerId, 64, "");
     return spawnVehicle(db, {
       worldId: clampStr(input.worldId, 64, "concordia-hub"),
       kind: clampStr(input.kind, 32, ""),
@@ -167,6 +198,19 @@ export default function registerGarageMacros(register) {
    * bounded server-side (anti-teleport). input: { vehicleId, pos_x, pos_y,
    * pos_z, heading? }
    */
+  /**
+   * garage.despawn — owner-only removal. A non-owner gets not_authorized and
+   * the row stays. input: { vehicleId }
+   */
+  register("garage", "despawn", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.vehicleId) return { ok: false, reason: "no_vehicle_id" };
+    return despawnVehicle(db, String(input.vehicleId), "player", userId);
+  }, { note: "despawn a vehicle the calling player owns" });
+
   register("garage", "move", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
