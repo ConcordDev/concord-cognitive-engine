@@ -44,24 +44,28 @@ export default function createSocialExtendedRouter({ STATE, requireAuth }) {
   // ─── Trending ──────────────────────────────────────────────────────────────
   router.get("/trending/topics", (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
-    res.json({ ok: true, ...getTrendingTopics(STATE, { limit }) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getTrendingTopics(STATE, { limit, viewerId }) });
   });
 
   router.get("/trending/domains", (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
-    res.json({ ok: true, ...getTrendingDomains(STATE, { limit }) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getTrendingDomains(STATE, { limit, viewerId }) });
   });
 
   router.get("/trending/content", (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const hours = Math.min(Math.max(parseInt(req.query.hours, 10) || 24, 1), 168);
-    res.json({ ok: true, ...getTrendingContent(STATE, { limit, hours }) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getTrendingContent(STATE, { limit, hours, viewerId }) });
   });
 
   router.get("/trending/creators", (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 30);
-    res.json({ ok: true, ...getTrendingCreators(STATE, { limit, days }) });
+    const viewerId = req.user?.id || null;
+    res.json({ ok: true, ...getTrendingCreators(STATE, { limit, days, viewerId }) });
   });
 
   // ─── Pinning ───────────────────────────────────────────────────────────────
