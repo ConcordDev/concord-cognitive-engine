@@ -107,6 +107,40 @@ const gradients = [
   'from-teal-400 to-cyan-600',
 ];
 
+function asTrendingCard(raw: {
+  id?: string;
+  dtuId?: string;
+  title?: string;
+  content?: string;
+  authorId?: string;
+  userId?: string;
+  authorName?: string;
+  displayName?: string;
+  username?: string;
+  tags?: string[];
+  citationCount?: number;
+  score?: number;
+  trendScore?: number;
+  createdAt?: string;
+  mediaType?: string;
+  engagement?: TrendingDTU['engagement'];
+}): TrendingDTU {
+  const content = typeof raw?.content === 'string' ? raw.content.trim() : '';
+  const titled = typeof raw?.title === 'string' ? raw.title.trim() : '';
+  return {
+    dtuId: String(raw?.id || raw?.dtuId || ''),
+    title: titled || content || 'Post',
+    authorId: String(raw?.authorId || raw?.userId || ''),
+    authorName: String(raw?.authorName || raw?.displayName || raw?.username || raw?.userId || ''),
+    tags: Array.isArray(raw?.tags) ? raw.tags.filter((tag) => typeof tag === 'string') : [],
+    citationCount: Number(raw?.citationCount) || 0,
+    score: Number(raw?.trendScore ?? raw?.score) || 0,
+    createdAt: String(raw?.createdAt || ''),
+    mediaType: typeof raw?.mediaType === 'string' ? raw.mediaType : undefined,
+    engagement: raw?.engagement,
+  };
+}
+
 function pickGradient(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -352,7 +386,8 @@ function Discovery({
     queryKey: ['trending-dtus', categoryFilter],
     queryFn: async () => {
       const res = await api.get('/api/social/trending', { params: { limit: 20 } });
-      return (res.data.trending || []) as TrendingDTU[];
+      const rows = Array.isArray(res.data.posts) ? res.data.posts : (res.data.trending || []);
+      return rows.map(asTrendingCard);
     },
     enabled: activeTab === 'trending',
   });
@@ -360,19 +395,26 @@ function Discovery({
   const topicsQuery = useQuery({
     queryKey: ['trending-topics'],
     queryFn: async () => {
-      // In production, this would call a dedicated topics endpoint
-      // For now, aggregate tags from trending
       const res = await api.get('/api/social/trending', { params: { limit: 50 } });
-      const trending = (res.data.trending || []) as TrendingDTU[];
-
-      // Aggregate tags
+      const ranked = Array.isArray(res.data.hashtags) ? res.data.hashtags : null;
+      if (ranked) {
+        return ranked.slice(0, 20).map((row: { tag?: string; topic?: string; count?: number }) => {
+          const count = Number(row.count) || 0;
+          return {
+            tag: String(row.tag || row.topic || ''),
+            count,
+            category: 'general',
+            change: count > 2 ? ('up' as const) : ('stable' as const),
+          };
+        }).filter((row) => row.tag);
+      }
+      const trending = (Array.isArray(res.data.posts) ? res.data.posts : (res.data.trending || [])).map(asTrendingCard);
       const tagCounts = new Map<string, number>();
       for (const item of trending) {
         for (const tag of item.tags || []) {
           tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         }
       }
-
       return Array.from(tagCounts.entries())
         .map(([tag, count]) => ({
           tag,
@@ -650,7 +692,7 @@ function Discovery({
 
       {/* Content area */}
       <div className="space-y-3">
-        {/* Trending DTUs */}
+        {/* Trending social posts */}
         {activeTab === 'trending' && (
           <>
             {trendingQuery.isLoading ? (
@@ -670,7 +712,7 @@ function Discovery({
               <EmptyState
                 icon={TrendingUp}
                 title="No Trending Content"
-                description="Check back soon for trending DTUs and content."
+                description="Check back soon for trending posts and hashtags."
               />
             )}
           </>

@@ -22,6 +22,8 @@ import {
   getFollowingActivity,
   getCreatorAnalyticsView,
   getTrendingTopics,
+  getExploreFeed,
+  listSocialTrending,
   recipientResolvable,
   pinPost,
   unpinPost,
@@ -164,6 +166,29 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     const STATE = stateOf();
     if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
     res.json(getCreatorAnalyticsView(STATE, userId));
+  });
+
+  // Mounted ahead of the inline handlers in server.js. Explore must pass
+  // the signed-in viewer into canViewPost (the inline handler omits it).
+  router.get("/feed/explore", (req, res) => {
+    const STATE = stateOf();
+    const viewerId = req.user?.id || null;
+    if (!STATE) return res.json({ ok: true, source: "social-explore", posts: [], total: 0 });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 100);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const topic = typeof req.query.topic === "string" && req.query.topic ? req.query.topic : undefined;
+    const result = getExploreFeed(STATE, { limit, offset, topic, viewerId });
+    res.json({ ...result, source: "social-explore" });
+  });
+
+  // Social posts and hashtags ranked from engagement in the social store.
+  // The inline handler calls computeTrending, which ranks published DTUs.
+  router.get("/trending", (req, res) => {
+    const STATE = stateOf();
+    const viewerId = req.user?.id || null;
+    if (!STATE) return res.json({ ok: true, source: "social-trending", posts: [], hashtags: [], trending: [] });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    res.json(listSocialTrending(STATE, { limit, viewerId }));
   });
 
   router.get("/topics/trending", (req, res) => {
