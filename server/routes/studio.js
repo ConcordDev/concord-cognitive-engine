@@ -496,10 +496,16 @@ export default function createStudioRouter({ db, requireAuth }) {
           }
           fs.writeFileSync(part, body);
         } else {
-          let size = 0;
-          try { size = fs.statSync(part).size; } catch { return res.status(409).json({ ok: false, error: "upload not started", expectedOffset: 0 }); }
-          if (size !== offset) return res.status(409).json({ ok: false, error: "offset mismatch", expectedOffset: size });
-          fs.appendFileSync(part, body);
+          // One descriptor for check + write (no stat/append race).
+          let fd;
+          try { fd = fs.openSync(part, "r+"); } catch { return res.status(409).json({ ok: false, error: "upload not started", expectedOffset: 0 }); }
+          try {
+            const size = fs.fstatSync(fd).size;
+            if (size !== offset) return res.status(409).json({ ok: false, error: "offset mismatch", expectedOffset: size });
+            fs.writeSync(fd, body, 0, body.length, offset);
+          } finally {
+            fs.closeSync(fd);
+          }
         }
         const size = fs.statSync(part).size;
         if (size === total) {
