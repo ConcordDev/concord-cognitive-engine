@@ -26,12 +26,11 @@
  *   └───────────────────────────┴────────────────┘
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Globe2, Users, Bell, BarChart3,
-  Sparkles, Activity, Loader2, Bookmark, Play, Radio,
-  MessageSquare, Shield, Plus,
+  Activity, Loader2, Plus, Home, Compass, Inbox, User,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -68,15 +67,18 @@ import { ModerationPanel } from '@/components/social/ModerationPanel';
 import { ReelsFeed } from '@/components/reels/ReelsFeed';
 import { RoomList } from '@/components/audio-rooms/RoomList';
 import RoomStage from '@/components/audio-rooms/RoomStage';
-import { FeedView } from '@/components/social/feed/FeedView';
+import { DMInbox } from '@/components/social/feed/DMInbox';
 import { RankedFeed } from '@/components/social/RankedFeed';
 import { SocialLists } from '@/components/social/SocialLists';
 import { SocialGroups } from '@/components/social/SocialGroups';
-import { ShareToSocial } from '@/components/social/ShareToSocial';
-import { TipForm } from '@/components/social/TipForm';
 import { AdminModerationQueue } from '@/components/social/AdminModerationQueue';
 
-type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved' | 'moderation';
+import { parseSocialPlace, type SocialPlaceId } from '@/lib/social-places';
+
+type PlaceId = SocialPlaceId;
+type HomeFeed = 'following' | 'forYou';
+type InboxTab = 'messages' | 'notifications';
+type YouTab = 'posts' | 'saved' | 'analytics' | 'muted';
 
 interface MeResponse {
   ok: boolean;
@@ -109,10 +111,21 @@ export default function SocialHubPage() {
   useLensNav('social');
   useLensIdentity('social');
   const { isLive, lastUpdated } = useRealtimeLens('social');
-  const [activeTab, setActiveTab] = useState<TabId>('following');
-  // Phase 12 — Spaces stage modal target. RoomList sets this when the
-  // user clicks Join; the modal mounts <RoomStage> which owns the
-  // WebRTC mesh (mic, hand, leave).
+  const router = useRouter();
+  const pathname = usePathname() || '/lenses/social';
+  const searchParams = useSearchParams();
+  const view = parseSocialPlace(searchParams?.get('view') ?? null);
+  const setView = useCallback((next: PlaceId) => {
+    const sp = new URLSearchParams(searchParams?.toString() || '');
+    if (next === 'home') sp.delete('view');
+    else sp.set('view', next);
+    const q = sp.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+  const [homeFeed, setHomeFeed] = useState<HomeFeed>('following');
+  const [inboxTab, setInboxTab] = useState<InboxTab>('notifications');
+  const [youTab, setYouTab] = useState<YouTab>('posts');
+  // Live audio Room stage. RoomList sets this when the user clicks Join.
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [storyRequest, setStoryRequest] = useState(0);
 
@@ -125,14 +138,17 @@ export default function SocialHubPage() {
     staleTime: 60 * 1000,
   });
 
-  const currentUserId = me?.user?.id || 'current-user';
+  const currentUserId = me?.user?.id || '';
   const railUserId = me?.user?.id || null;
 
   useEffect(() => {
-    const open = () => setActiveTab('notifications');
+    const open = () => {
+      setInboxTab('notifications');
+      setView('inbox');
+    };
     window.addEventListener('notifications:open-all', open);
     return () => window.removeEventListener('notifications:open-all', open);
-  }, []);
+  }, [setView]);
 
   useEffect(() => {
     const id = me?.user?.id;
@@ -142,7 +158,7 @@ export default function SocialHubPage() {
       try {
         const existing = await api.get(`/api/social/profile/${encodeURIComponent(id)}`);
         if (existing?.data?.ok && existing.data.profile) {
-          if (existing.data.profile.feedDefault === 'forYou') setActiveTab('discover');
+          if (existing.data.profile.feedDefault === 'forYou') setHomeFeed('forYou');
           return;
         }
       } catch { /* no profile yet */ }
@@ -177,223 +193,252 @@ export default function SocialHubPage() {
       }
     },
     refetchInterval: 30_000,
-    enabled: !!currentUserId,
+    enabled: Boolean(currentUserId),
   });
   const unreadCount = unreadData?.count ?? 0;
 
-  const TABS: { id: TabId; label: string; keys: string; icon: typeof Globe2; badge?: number }[] = [
-    { id: 'feed',          label: 'Feed',          keys: '1',          icon: MessageSquare },
-    { id: 'discover',      label: 'For You',       keys: '2',    icon: Sparkles },
-    { id: 'reels',         label: 'Reels',         keys: '3', icon: Play },
-    { id: 'spaces',        label: 'Spaces',        keys: '4',    icon: Radio },
-    { id: 'following',     label: 'Following',     keys: '5',   icon: Users },
-    { id: 'notifications', label: 'Notifications', keys: '6',        icon: Bell, badge: unreadCount },
-    { id: 'saved',         label: 'Saved',         keys: '7',          icon: Bookmark },
-    { id: 'analytics',     label: 'Analytics',     keys: '8',    icon: BarChart3 },
-    { id: 'moderation',    label: 'Moderation',    keys: '9',      icon: Shield },
+  const PLACES: { id: PlaceId | 'create'; label: string; keys: string; icon: typeof Home; badge?: number }[] = [
+    { id: 'home', label: 'Home', keys: '1', icon: Home },
+    { id: 'explore', label: 'Explore', keys: '2', icon: Compass },
+    { id: 'create', label: 'Create', keys: 'n', icon: Plus },
+    { id: 'inbox', label: 'Inbox', keys: '3', icon: Inbox, badge: unreadCount },
+    { id: 'you', label: 'You', keys: '4', icon: User },
   ];
 
-
   const startPost = () => {
-    setActiveTab('feed');
+    setView('home');
     requestAnimationFrame(() => {
-      const box = document.querySelector<HTMLElement>('#social-main textarea, #social-main [contenteditable="true"]');
+      const box = document.querySelector<HTMLElement>('#social-main textarea, #social-quick-post textarea, #social-main [contenteditable="true"]');
       box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       box?.focus();
     });
   };
 
+  const onPlace = (id: PlaceId | 'create') => {
+    if (id === 'create') {
+      startPost();
+      return;
+    }
+    setView(id);
+  };
+
   useLensCommand(
     [
-      ...TABS.map((t) => ({
-        id: `tab-${t.id}`,
+      ...PLACES.map((t) => ({
+        id: `place-${t.id}`,
         keys: t.keys,
         description: t.label,
         category: 'navigation' as const,
-        action: () => setActiveTab(t.id),
+        action: () => onPlace(t.id),
       })),
       { id: 'social-post', keys: 'n', description: 'New post', category: 'actions' as const, action: startPost },
     ],
     { lensId: 'social' },
   );
 
+  const subTabClass = (on: boolean) => cn(
+    'inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] transition-colors',
+    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+  );
+
   return (
     <LensShell lensId="social" asMain={false}>
-
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
-      <div data-lens-theme="social" className="relative min-h-full px-8 pb-28 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Social</h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 pt-2">
-            <PushEnableButton />
-            <StreakIndicator userId={currentUserId} />
-            <DMIndicator userId={currentUserId} />
-            <NotificationBell
-              userId={currentUserId}
-              onViewAll={() => setActiveTab('notifications')}
-            />
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          </div>
-        </div>
+      <div data-lens-theme="social" className="relative min-h-full px-4 lg:px-8 pb-28 pt-6">
+        <div className="mx-auto flex max-w-[1120px] gap-5">
+          <nav className="hidden lg:flex w-44 shrink-0 flex-col gap-1 sticky top-6 self-start" aria-label="Social places">
+            {PLACES.map((t) => {
+              const Icon = t.icon;
+              const on = t.id === 'create' ? false : view === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type={t.id === 'create' ? 'submit' : 'button'}
+                  form={t.id === 'create' ? 'social-quick-post' : undefined}
+                  onClick={() => onPlace(t.id)}
+                  aria-label={t.label}
+                  aria-current={on ? 'page' : undefined}
+                  className={cn(
+                    'inline-flex min-h-[44px] items-center gap-3 rounded-full px-3 text-[15px] transition-colors',
+                    t.id === 'create'
+                      ? 'bg-teal-400 text-black font-medium hover:bg-teal-300'
+                      : on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-100',
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  {t.label}
+                  {!!t.badge && t.id !== 'create' && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                      {t.badge > 99 ? '99+' : t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
 
-        <nav className="mb-5 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Social views">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const on = activeTab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setActiveTab(t.id)}
-                title={`${t.label} (${t.keys})`}
-                className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {t.label}
-                {!!t.badge && (
-                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
-                    {t.badge > 99 ? '99+' : t.badge}
-                  </span>
-                )}
-                <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 sm:inline-block">{t.keys}</kbd>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="mb-5 rounded-2xl border border-white/10 bg-[#111] px-4 py-2.5">
-          <StoriesBar
-            currentUserId={currentUserId}
-            onCreateStory={() => {
-              setStoryRequest((n) => n + 1);
-              setActiveTab('feed');
-            }}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-          <main id="social-main" className="min-w-0 space-y-4">
-            <QuickPostComposer
-              currentUserId={currentUserId}
-              username={me?.user?.username || me?.user?.displayName || null}
-              storyRequest={storyRequest}
-            />
-
-            {/* Tab content */}
-            {activeTab === 'feed' && (
-              <FeedView
-                currentUserId={currentUserId}
-                username={me?.user?.username || me?.user?.displayName || currentUserId}
-              />
-            )}
-
-            {activeTab === 'discover' && (
-              <>
-                <RankedFeed currentUserId={currentUserId} />
-                <Discovery currentUserId={currentUserId} />
-              </>
-            )}
-
-            {activeTab === 'following' && (
-              <FollowingTimeline
-                currentUserId={currentUserId}
-                onFindPeople={() => setActiveTab('discover')}
-              />
-            )}
-
-            {activeTab === 'notifications' && (
-              <NotificationCenter
-                userId={currentUserId}
-                mode="panel"
-                onViewAll={() => setActiveTab('notifications')}
-              />
-            )}
-
-            {activeTab === 'reels' && (
-              <ReelsFeed />
-            )}
-
-            {activeTab === 'spaces' && (
-              <RoomList
-                currentUserId={me?.user?.id || null}
-                onJoin={(roomId) => setActiveRoomId(roomId)}
-              />
-            )}
-
-            {activeTab === 'saved' && (
-              <BookmarksList currentUserId={currentUserId} />
-            )}
-
-            {activeTab === 'analytics' && (
-              <CreatorAnalytics userId={currentUserId} />
-            )}
-
-            {activeTab === 'moderation' && (
-              <>
-                <AdminModerationQueue />
-                <ModerationPanel />
-              </>
-            )}
-          </main>
-
-          {/* RIGHT RAIL */}
-          <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-            {railUserId && (
-              <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-                <UserProfile userId={railUserId} currentUserId={currentUserId} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Social</h1>
               </div>
-            )}
-            <FindPeople />
-            <SocialLists />
-            <SocialGroups currentUserId={currentUserId} />
-            <ShareToSocial />
-            <TipForm />
-            <SocialPreferencesForm />
-            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-              <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
+              <div className="flex shrink-0 items-center gap-3 pt-2">
+                <PushEnableButton />
+                {currentUserId ? <StreakIndicator userId={currentUserId} /> : null}
+                {currentUserId ? <DMIndicator userId={currentUserId} /> : null}
+                {currentUserId ? (
+                  <NotificationBell
+                    userId={currentUserId}
+                    onViewAll={() => { setInboxTab('notifications'); setView('inbox'); }}
+                  />
+                ) : null}
+                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-              <SuggestedFollows currentUserId={currentUserId} />
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-              <SocialPresenceRail />
-            </div>
-          </aside>
-        </div>
 
-        <button
-          type="submit"
-          form="social-quick-post"
-          onClick={startPost}
-          title="New post (N)"
-          aria-label="Post"
-          className="fixed bottom-8 right-8 z-30 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
-        >
-          <Plus className="h-4 w-4" />
-          Post
-        </button>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,640px)_320px]">
+              <main id="social-main" className="min-w-0 max-w-[640px] space-y-4">
+                {view === 'home' && (
+                  <>
+                    <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Home feed">
+                      <button type="button" role="tab" aria-selected={homeFeed === 'following'} className={subTabClass(homeFeed === 'following')} onClick={() => setHomeFeed('following')}>Following</button>
+                      <button type="button" role="tab" aria-selected={homeFeed === 'forYou'} className={subTabClass(homeFeed === 'forYou')} onClick={() => setHomeFeed('forYou')}>For You</button>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-2.5">
+                      <StoriesBar
+                        currentUserId={currentUserId || 'anon'}
+                        onCreateStory={() => {
+                          setStoryRequest((n) => n + 1);
+                          startPost();
+                        }}
+                      />
+                    </div>
+                    <p className="text-sm text-zinc-500">Share something you made...</p>
+                    {currentUserId ? (
+                      <QuickPostComposer
+                        currentUserId={currentUserId}
+                        username={me?.user?.username || me?.user?.displayName || null}
+                        storyRequest={storyRequest}
+                      />
+                    ) : null}
+                    {homeFeed === 'following' ? (
+                      <FollowingTimeline
+                        currentUserId={currentUserId}
+                        onFindPeople={() => setView('explore')}
+                      />
+                    ) : (
+                      currentUserId ? <RankedFeed currentUserId={currentUserId} /> : null
+                    )}
+                  </>
+                )}
+
+                {view === 'explore' && (
+                  <>
+                    {currentUserId ? <FindPeople /> : null}
+                    <Discovery currentUserId={currentUserId || ''} />
+                    <SocialLists />
+                    <SocialGroups currentUserId={currentUserId} />
+                    <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
+                      <h2 className="mb-2 font-vault text-lg text-zinc-100">Clips</h2>
+                      <ReelsFeed />
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
+                      <h2 className="mb-2 font-vault text-lg text-zinc-100">Rooms</h2>
+                      <RoomList
+                        currentUserId={me?.user?.id || null}
+                        onJoin={(roomId) => setActiveRoomId(roomId)}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {view === 'inbox' && (
+                  <>
+                    <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="Inbox">
+                      <button type="button" role="tab" aria-selected={inboxTab === 'messages'} className={subTabClass(inboxTab === 'messages')} onClick={() => setInboxTab('messages')}>Messages</button>
+                      <button type="button" role="tab" aria-selected={inboxTab === 'notifications'} className={subTabClass(inboxTab === 'notifications')} onClick={() => setInboxTab('notifications')}>
+                        Notifications
+                        {unreadCount > 0 ? (
+                          <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                        ) : null}
+                      </button>
+                    </div>
+                    {inboxTab === 'messages' && currentUserId ? (
+                      <DMInbox currentUserId={currentUserId} />
+                    ) : null}
+                    {inboxTab === 'notifications' && currentUserId ? (
+                      <NotificationCenter userId={currentUserId} mode="panel" onViewAll={() => setInboxTab('notifications')} />
+                    ) : null}
+                  </>
+                )}
+
+                {view === 'you' && (
+                  <>
+                    <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="You">
+                      {([
+                        ['posts', 'Posts'],
+                        ['saved', 'Saved'],
+                        ['analytics', 'Analytics'],
+                        ['muted', 'Muted & blocked'],
+                      ] as const).map(([id, label]) => (
+                        <button key={id} type="button" role="tab" aria-selected={youTab === id} className={subTabClass(youTab === id)} onClick={() => setYouTab(id)}>{label}</button>
+                      ))}
+                    </div>
+                    {youTab === 'posts' && railUserId ? (
+                      <>
+                        <UserProfile userId={railUserId} currentUserId={currentUserId} />
+                        <SocialPresenceRail />
+                      </>
+                    ) : null}
+                    {youTab === 'saved' && currentUserId ? <BookmarksList currentUserId={currentUserId} /> : null}
+                    {youTab === 'analytics' && currentUserId ? <CreatorAnalytics userId={currentUserId} /> : null}
+                    {youTab === 'muted' ? (
+                      <>
+                        <AdminModerationQueue />
+                        <ModerationPanel />
+                        <SocialPreferencesForm />
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </main>
+
+              <aside className="hidden lg:block space-y-4 lg:sticky lg:top-6 lg:self-start">
+                <div className="rounded-2xl border border-white/10 bg-[#111] p-3">
+                  <h2 className="mb-2 text-sm font-medium text-zinc-200">Live Rooms now</h2>
+                  <RoomList
+                    currentUserId={me?.user?.id || null}
+                    onJoin={(roomId) => setActiveRoomId(roomId)}
+                  />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
+                  <h2 className="px-3 pt-3 text-sm font-medium text-zinc-200">Who to follow</h2>
+                  <SuggestedFollows currentUserId={currentUserId} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
+                  <TrendingTopics onTopicClick={() => setView('explore')} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
+                  <h2 className="px-3 pt-3 text-sm font-medium text-zinc-200">Follow packs</h2>
+                  <SocialLists />
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Mobile tab bar */}
       <MobileTabBar
         tabs={[
-          { id: 'feed',          label: 'Feed',     icon: MessageSquare },
-          { id: 'discover',      label: 'For You',  icon: Sparkles },
-          { id: 'reels',         label: 'Reels',    icon: Play },
-          { id: 'spaces',        label: 'Spaces',   icon: Radio },
-          { id: 'following',     label: 'Follow',   icon: Users },
-          { id: 'notifications', label: 'Alerts',   icon: Bell, badgeCount: unreadCount },
+          { id: 'home', label: 'Home', icon: Home },
+          { id: 'explore', label: 'Explore', icon: Compass },
+          { id: 'create', label: 'Create', icon: Plus, accent: true },
+          { id: 'inbox', label: 'Inbox', icon: Inbox, badgeCount: unreadCount },
+          { id: 'you', label: 'You', icon: User },
         ]}
-        active={activeTab}
-        onSelect={(id) => setActiveTab(id as TabId)}
+        active={view}
+        onSelect={(id) => onPlace(id as PlaceId | 'create')}
       />
 
       {/* Spaces — WebRTC room stage modal */}

@@ -26,6 +26,7 @@ export interface MobileTab {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badgeCount?: number;
+  accent?: boolean;
 }
 
 export interface MobileTabBarProps {
@@ -59,12 +60,17 @@ export function MobileTabBar({ tabs, active, onSelect, className }: MobileTabBar
             type="button"
             onClick={() => onSelect(t.id)}
             aria-current={isActive ? 'page' : undefined}
+            aria-label={t.label}
             className={cn(
-              'flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors',
-              isActive ? 'text-indigo-300' : 'text-zinc-400 hover:text-zinc-300',
+              'flex-1 flex flex-col items-center justify-center min-h-[44px] py-2 gap-0.5 relative transition-colors',
+              t.accent
+                ? 'text-black'
+                : isActive ? 'text-indigo-300' : 'text-zinc-400 hover:text-zinc-300',
             )}
           >
-            <Icon className="w-5 h-5" aria-hidden="true" />
+            <span className={cn(t.accent && 'flex h-11 w-11 items-center justify-center rounded-full bg-teal-400')}>
+              <Icon className={cn('w-5 h-5', t.accent && 'text-black')} aria-hidden="true" />
+            </span>
             <span className="text-[10px]">{t.label}</span>
             {typeof t.badgeCount === 'number' && t.badgeCount > 0 && (
               <span className="absolute top-1 right-[calc(50%-1rem)] min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-mono flex items-center justify-center">
