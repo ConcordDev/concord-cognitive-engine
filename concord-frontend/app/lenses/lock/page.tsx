@@ -12,9 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Lock, Activity, ShieldAlert } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -37,8 +34,6 @@ export default function LockLensPage() {
   useLensNav('lock');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('lock');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<LockView>('sovereignty');
 
   useLensCommand(
@@ -74,12 +69,11 @@ export default function LockLensPage() {
 
   return (
     <LensShell lensId="lock" asMain={false}>
-      <FirstRunTour lensId="lock" />
+
       <DepthBadge lensId="lock" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="lock"
         crumb="Lock"
-        title={`Your sovereignty lock${active === 'sovereignty' && who ? `, ${who}` : ''}`}
         subtitle="70% sovereignty lock and a JFR-style concurrency profiler"
         actions={
           <>

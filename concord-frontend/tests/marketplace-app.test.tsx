@@ -58,7 +58,6 @@ vi.mock('@/components/marketplace/CartPanel', () => ({ CartPanel: () => <div>Car
 vi.mock('@/components/marketplace/PurchasesPanel', () => ({ PurchasesPanel: () => <div>PurchasesPanel</div> }));
 vi.mock('@/components/marketplace/WatchlistPanel', () => ({ WatchlistPanel: () => <div>WatchlistPanel</div> }));
 vi.mock('@/components/marketplace/AnalyticsPanel', () => ({ AnalyticsPanel: () => <div>AnalyticsPanel</div> }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));

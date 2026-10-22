@@ -44,7 +44,7 @@ describe('game design card', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<GameDesignLens />);
     expect(await view.findByText('No design open.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The design' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Game Design' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New design' })).toBeEnabled();
     expect(view.getAllByTestId('gd-rule')).toHaveLength(2);
     expect(view.container.querySelector('input')).toBeNull();
@@ -124,11 +124,11 @@ describe('game design card', () => {
     expect(view.queryByRole('heading', { name: 'Lost design' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<GameDesignLens />);
-    expect(await view.findByRole('heading', { name: 'The design, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Game Design' })).toBeInTheDocument();
     expect(await view.findByText('No design open.')).toBeInTheDocument();
   });
 

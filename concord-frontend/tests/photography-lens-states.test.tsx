@@ -44,7 +44,7 @@ describe('photography card', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<PhotographyLens />);
     expect(await view.findByText('No roll loaded.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The roll' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Photography' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Import a roll' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Catalog')).toBeNull();
@@ -132,11 +132,11 @@ describe('photography card', () => {
     expect(view.queryByRole('heading', { name: 'Lost roll' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<PhotographyLens />);
-    expect(await view.findByRole('heading', { name: 'The roll, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Photography' })).toBeInTheDocument();
     expect(await view.findByText('No roll loaded.')).toBeInTheDocument();
   });
 

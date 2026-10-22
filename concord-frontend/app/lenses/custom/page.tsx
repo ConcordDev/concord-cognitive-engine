@@ -11,10 +11,7 @@ import { Wand2, Rocket, Link2, LayoutGrid, Database, GitBranch, Plus } from 'luc
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PublicGistGallery } from '@/components/custom/PublicGistGallery';
@@ -26,17 +23,15 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type View = 'builder' | 'data' | 'gists';
 
-const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof LayoutGrid }[] = [
-  { id: 'builder', label: 'Builder', keys: '1', title: 'Build your own lens', hint: 'Drag-drop canvas, data binding, preview, publish', icon: LayoutGrid },
-  { id: 'data', label: 'Data utilities', keys: '2', title: 'Shape your data', hint: 'Schema design, templates, validation rules, field transforms', icon: Database },
-  { id: 'gists', label: 'Gist gallery', keys: '3', title: 'Borrow from the community', hint: 'Public GitHub gists', icon: GitBranch },
+const VIEWS: { id: View; label: string; keys: string; hint: string; icon: typeof LayoutGrid }[] = [
+  { id: 'builder', label: 'Builder', keys: '1', hint: 'Drag-drop canvas, data binding, preview, publish', icon: LayoutGrid },
+  { id: 'data', label: 'Data utilities', keys: '2', hint: 'Schema design, templates, validation rules, field transforms', icon: Database },
+  { id: 'gists', label: 'Gist gallery', keys: '3', hint: 'Public GitHub gists', icon: GitBranch },
 ];
 
 export default function CustomLensPage() {
   useLensNav('custom');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('custom');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [stats, setStats] = useState<CanvasBuilderStats>({ canvasCount: 0, publishedCount: 0, bindingCount: 0, paletteCount: 0 });
   const [view, setView] = useState<View>('builder');
 
@@ -63,7 +58,6 @@ export default function CustomLensPage() {
     { lensId: 'custom' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
   const statCards = [
     { icon: LayoutGrid, color: 'text-neon-purple', value: stats.canvasCount, label: 'Canvases' },
     { icon: Rocket, color: 'text-neon-green', value: stats.publishedCount, label: 'Published' },
@@ -73,12 +67,11 @@ export default function CustomLensPage() {
 
   return (
     <LensShell lensId="custom" asMain={false}>
-      <FirstRunTour lensId="custom" />
+
       <DepthBadge lensId="custom" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="custom"
         crumb="Custom"
-        title={`${current.title}${view === 'builder' && who ? `, ${who}` : ''}`}
         subtitle="A no-code app builder: bind widgets to any macro or REST endpoint, wire actions, and publish straight into the sidebar."
         actions={
           <>

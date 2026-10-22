@@ -15,9 +15,6 @@ import {
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubChemPanel } from '@/components/chem/PubChemPanel';
@@ -68,8 +65,6 @@ function ChemPane({ active, go }: { active: ChemView; go: (v: ChemView) => void 
 
 export default function ChemLensPage() {
   useLensNav('chem');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ChemView>('reactions');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
 
@@ -86,12 +81,11 @@ export default function ChemLensPage() {
 
   return (
     <LensShell lensId="chem" asMain={false}>
-      <FirstRunTour lensId="chem" />
+
       <DepthBadge lensId="chem" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="chem"
         crumb="Chemistry"
-        title={`Run a reaction${active === 'reactions' && who ? `, ${who}` : ''}`}
         subtitle="Elements, reactions, compounds, workbench, structure lab and safety."
         tabs={VIEWS}
         activeTab={active}

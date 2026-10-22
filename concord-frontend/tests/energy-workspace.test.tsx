@@ -45,7 +45,7 @@ describe('EnergyWorkspace north-star flow', () => {
     const view = render(<EnergyWorkspace who="Ramaj" />);
 
     await waitFor(() => expect(view.getByText('No meter selected')).toBeInTheDocument());
-    expect(view.getByText('The load, Ramaj')).toBeInTheDocument();
+    expect(view.getByText('Energy')).toBeInTheDocument();
     fireEvent.click(view.getAllByRole('button', { name: 'Choose a meter' })[0]);
     expect(view.getByRole('dialog', { name: 'Choose a meter' })).toBeInTheDocument();
     expect(view.getByText(/No meters are connected yet/i)).toBeInTheDocument();

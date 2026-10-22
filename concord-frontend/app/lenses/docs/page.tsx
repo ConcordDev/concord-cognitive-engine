@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -29,8 +28,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { WorkspacePanel } from '@/components/docs/WorkspacePanel';
 import { GuidePanel } from '@/components/docs/GuidePanel';
@@ -41,13 +38,6 @@ import { requestNewDoc } from '@/components/docs/DocsWorkspace';
 import { getDocsPublishable } from '@/components/docs/docsSession';
 import { loadDocsExportPayload } from '@/components/docs/exportPages';
 
-const TITLES: Record<string, string> = {
-  workspace: 'The document',
-  guide: 'The handbook',
-  analysis: 'How it reads',
-  hub: 'The API, documented',
-  tooling: 'Reference worth keeping',
-};
 
 type DocsView = 'workspace' | 'guide' | 'analysis' | 'hub' | 'tooling';
 
@@ -86,8 +76,6 @@ export default function DocsLensPage() {
     lastUpdated,
   } = useRealtimeLens('docs');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DocsView>('workspace');
   const newDoc = useCallback(() => {
     setActive('workspace');
@@ -123,7 +111,7 @@ export default function DocsLensPage() {
 
   return (
     <LensShell lensId="docs" asMain={false}>
-      <FirstRunTour lensId="docs" />
+
       <DepthBadge lensId="docs" size="sm" className="ml-2" />
       <a href="#docs-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
         Skip to docs content
@@ -131,10 +119,7 @@ export default function DocsLensPage() {
       <div data-lens-theme="docs" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Docs</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {TITLES[active]}{active === 'workspace' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Docs</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

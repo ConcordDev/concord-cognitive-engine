@@ -18,15 +18,12 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { DensityToggle } from '@/components/ui/DensityToggle';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { HlrTracesLab } from '@/components/reasoning/HlrTracesPanel';
 import { ConstraintCheckPanel } from '@/components/reasoning/ConstraintCheckPanel';
@@ -38,14 +35,14 @@ import { ReasoningArxiv } from '@/components/reasoning/ReasoningArxiv';
 
 type View = 'traces' | 'constraints' | 'chains' | 'maps' | 'analysis' | 'workbench' | 'library';
 
-const TABS: { id: View; label: string; kbd: string; icon: typeof Activity; title: string }[] = [
-  { id: 'traces', label: 'Traces', kbd: 't', icon: Activity, title: 'How it got there' },
-  { id: 'constraints', label: 'Constraints', kbd: 'c', icon: ShieldAlert, title: 'What must hold' },
-  { id: 'chains', label: 'Chains', kbd: 'h', icon: Workflow, title: 'Step by step' },
-  { id: 'maps', label: 'Maps', kbd: 'm', icon: GitBranch, title: 'The argument, mapped' },
-  { id: 'analysis', label: 'Analysis', kbd: 'n', icon: BarChart3, title: 'Test the reasoning' },
-  { id: 'workbench', label: 'Workbench', kbd: 'w', icon: Wrench, title: 'Build an argument' },
-  { id: 'library', label: 'Library', kbd: 'l', icon: BookOpen, title: 'What the literature says' },
+const TABS: { id: View; label: string; kbd: string; icon: typeof Activity; }[] = [
+  { id: 'traces', label: 'Traces', kbd: 't', icon: Activity },
+  { id: 'constraints', label: 'Constraints', kbd: 'c', icon: ShieldAlert },
+  { id: 'chains', label: 'Chains', kbd: 'h', icon: Workflow },
+  { id: 'maps', label: 'Maps', kbd: 'm', icon: GitBranch },
+  { id: 'analysis', label: 'Analysis', kbd: 'n', icon: BarChart3 },
+  { id: 'workbench', label: 'Workbench', kbd: 'w', icon: Wrench },
+  { id: 'library', label: 'Library', kbd: 'l', icon: BookOpen },
 ];
 
 const PANELS: Record<View, ComponentType> = {
@@ -62,10 +59,7 @@ export default function ReasoningLensPage() {
   useLensNav('reasoning');
   useLensIdentity('reasoning');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('reasoning');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<View>('traces');
-  const current = TABS.find((t) => t.id === active)!;
   const Panel = PANELS[active];
 
   useLensCommand(
@@ -83,15 +77,12 @@ export default function ReasoningLensPage() {
 
   return (
     <LensShell lensId="reasoning" asMain={false}>
-      <FirstRunTour lensId="reasoning" />
+
       <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
       <div data-lens-theme="reasoning" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Reasoning</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'traces' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Reasoning</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

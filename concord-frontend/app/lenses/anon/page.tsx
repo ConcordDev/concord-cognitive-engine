@@ -3,13 +3,11 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
@@ -46,20 +44,17 @@ const EXAMPLE_RECORDS: PrivacyRecord[] = [
 
 type AnonView = 'messenger' | 'lab' | 'network';
 
-const VIEWS: { id: AnonView; label: string; keys: string; title: string; hint: string; icon: typeof Lock }[] = [
-  { id: 'messenger', label: 'Messenger', keys: '1', title: 'Say it without a name', hint: 'Pseudonymous messages stored encrypted on Concord\u2019s server', icon: MessageSquare },
-  { id: 'lab', label: 'Privacy lab', keys: '2', title: 'How hidden is your data', hint: 'k-anonymity, re-identification risk, differential privacy', icon: Gauge },
-  { id: 'network', label: 'Network', keys: '3', title: 'How your traffic travels', hint: 'Tor network status', icon: Network },
+const VIEWS: { id: AnonView; label: string; keys: string; hint: string; icon: typeof Lock }[] = [
+  { id: 'messenger', label: 'Messenger', keys: '1', hint: 'Pseudonymous messages stored encrypted on Concord\u2019s server', icon: MessageSquare },
+  { id: 'lab', label: 'Privacy lab', keys: '2', hint: 'k-anonymity, re-identification risk, differential privacy', icon: Gauge },
+  { id: 'network', label: 'Network', keys: '3', hint: 'Tor network status', icon: Network },
 ];
 
 export default function AnonLensPage() {
   useLensNav('anon');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('anon');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<AnonView>('messenger');
-  const current = VIEWS.find((v) => v.id === view)!;
   const newConversation = () => {
     setView('messenger');
     requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('anon:new-conversation')));
@@ -142,15 +137,12 @@ export default function AnonLensPage() {
 
   return (
     <LensShell lensId="anon" asMain={false}>
-      <FirstRunTour lensId="anon" />
+
       <DepthBadge lensId="anon" size="sm" className="ml-2" />
       <div data-lens-theme="anon" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Anonymous</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{view === 'messenger' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Anonymous</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

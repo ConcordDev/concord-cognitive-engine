@@ -15,8 +15,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface AlertRow {
@@ -101,8 +99,6 @@ async function readDesk(): Promise<{ alerts: AlertRow[]; frontId: string | null 
 
 export default function CommandCenterPage() {
   useLensNav('command-center');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [frontId, setFrontId] = useState<string | null>(null);
@@ -309,10 +305,7 @@ export default function CommandCenterPage() {
   return (
     <LensShell lensId="command-center" asMain={false}>
       <div data-lens-theme="command-center" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Command Center</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The one alert{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Command Center</h1>
 
         <section aria-label="Alert" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
           {phase === 'loading' && (

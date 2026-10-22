@@ -11,13 +11,10 @@ import { useState, type ComponentType } from 'react';
 import { Smile, Activity, Clock, BarChart3, Thermometer, Sparkles, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -34,13 +31,13 @@ import { AnalysisToolsPanel } from '@/components/affect/AnalysisToolsPanel';
 
 type AffectView = 'mood' | 'dimensions' | 'events' | 'policy' | 'health' | 'analysis';
 
-const VIEWS: { id: AffectView; label: string; keys: string; title: string; hint: string; icon: typeof Smile }[] = [
-  { id: 'mood', title: 'How you feel', label: 'Mood', keys: '1', hint: 'Check-ins and scale', icon: Smile },
-  { id: 'dimensions', title: 'Your seven dimensions', label: 'Dimensions', keys: '2', hint: '7D ATS radar', icon: Activity },
-  { id: 'events', title: 'What moved you', label: 'Event Log', keys: '3', hint: 'Affective events', icon: Clock },
-  { id: 'policy', title: 'What it changes', label: 'Policies', keys: '4', hint: 'Derived control signals', icon: BarChart3 },
-  { id: 'health', title: 'How you are holding up', label: 'Health', keys: '5', hint: 'Warnings and recovery', icon: Thermometer },
-  { id: 'analysis', title: 'Read the tone', label: 'Analysis', keys: '6', hint: 'VAD / arc / empathy', icon: Sparkles },
+const VIEWS: { id: AffectView; label: string; keys: string; hint: string; icon: typeof Smile }[] = [
+  { id: 'mood', label: 'Mood', keys: '1', hint: 'Check-ins and scale', icon: Smile },
+  { id: 'dimensions', label: 'Dimensions', keys: '2', hint: '7D ATS radar', icon: Activity },
+  { id: 'events', label: 'Event Log', keys: '3', hint: 'Affective events', icon: Clock },
+  { id: 'policy', label: 'Policies', keys: '4', hint: 'Derived control signals', icon: BarChart3 },
+  { id: 'health', label: 'Health', keys: '5', hint: 'Warnings and recovery', icon: Thermometer },
+  { id: 'analysis', label: 'Analysis', keys: '6', hint: 'VAD / arc / empathy', icon: Sparkles },
 ];
 
 const PANELS: Record<AffectView, ComponentType> = {
@@ -55,8 +52,6 @@ const PANELS: Record<AffectView, ComponentType> = {
 export default function AffectLensPage() {
   useLensNav('affect');
   useLensIdentity('affect');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('affect');
   const [active, setActive] = useState<AffectView>('dimensions');
 
@@ -75,20 +70,16 @@ export default function AffectLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="affect" asMain={false}>
-      <FirstRunTour lensId="affect" />
+
       <DepthBadge lensId="affect" size="sm" className="ml-2" />
       <AffectSessionProvider>
         <div data-lens-theme="affect" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[14px] text-zinc-500">Affect</p>
-              <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                {current.title}{active === 'dimensions' && who ? `, ${who}` : ''}
-              </h1>
+              <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Affect</h1>
               <p className="max-w-2xl text-[14px] text-zinc-500">
                 Affective Translation Spine: 7D state, derived policy, mood research tools.
               </p>

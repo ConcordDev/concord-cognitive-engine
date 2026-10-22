@@ -62,7 +62,7 @@ describe('vault cabinet', () => {
     const view = render(<VaultPage />);
     expect(await view.findByText('Nothing unlocked.')).toBeInTheDocument();
     expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The vault' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'TheVault' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Open the vault' })).toBeEnabled();
     expect(view.queryByText('Admitted')).toBeNull();
     expect(view.queryByText(/curator/i)).toBeNull();
@@ -129,11 +129,11 @@ describe('vault cabinet', () => {
     expect(view.queryByRole('button', { name: /Lost tape/ })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     cabinet();
     const view = render(<VaultPage />);
-    expect(await view.findByRole('heading', { name: 'The vault, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'TheVault' })).toBeInTheDocument();
     expect(await view.findByText('Nothing unlocked.')).toBeInTheDocument();
   });
 

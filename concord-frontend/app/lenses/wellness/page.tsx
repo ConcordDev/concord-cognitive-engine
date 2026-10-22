@@ -12,7 +12,6 @@ import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WellnessSection } from '@/components/wellness/WellnessSection';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
@@ -26,8 +25,6 @@ import { WearableImportPanel } from '@/components/wellness/WearableImportPanel';
 import { DailyRecommendationPanel } from '@/components/wellness/DailyRecommendationPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { Activity, Brain, Heart, Moon, Users } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface DashboardSummary {
   habitCount: number;
@@ -138,16 +135,14 @@ function WellnessOverview() {
 
 type WellnessView = 'today' | 'mind' | 'body' | 'community';
 
-const VIEWS: { id: WellnessView; label: string; keys: string; title: string; hint: string; icon: typeof Heart }[] = [
-  { id: 'today', label: 'Today', keys: '1', title: 'How you are doing', hint: 'Overview, daily recommendation and metrics', icon: Heart },
-  { id: 'mind', label: 'Mind', keys: '2', title: 'Slow things down', hint: 'Therapeutic fields, CBT records and guided sessions', icon: Brain },
-  { id: 'body', label: 'Body', keys: '3', title: 'What your body is saying', hint: 'Wearable import and sleep / strain / recovery / HRV', icon: Moon },
-  { id: 'community', label: 'Community', keys: '4', title: 'You are not doing this alone', hint: 'Wellness community feed', icon: Users },
+const VIEWS: { id: WellnessView; label: string; keys: string; hint: string; icon: typeof Heart }[] = [
+  { id: 'today', label: 'Today', keys: '1', hint: 'Overview, daily recommendation and metrics', icon: Heart },
+  { id: 'mind', label: 'Mind', keys: '2', hint: 'Therapeutic fields, CBT records and guided sessions', icon: Brain },
+  { id: 'body', label: 'Body', keys: '3', hint: 'Wearable import and sleep / strain / recovery / HRV', icon: Moon },
+  { id: 'community', label: 'Community', keys: '4', hint: 'Wellness community feed', icon: Users },
 ];
 
 export default function WellnessPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<WellnessView>('today');
   const navViews = omitCommunityRedditViews(VIEWS, ['community']);
   useLensCommand([
@@ -160,16 +155,14 @@ export default function WellnessPage() {
     })),
   ], { lensId: 'wellness' });
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="wellness" asMain={false}>
-      <FirstRunTour lensId="wellness" />
+
       <DepthBadge lensId="wellness" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="wellness"
         crumb="Wellness"
-        title={`${current.title}${view === 'today' && who ? `, ${who}` : ''}`}
         subtitle="Recovery, mood, habits, guided CBT and meditation. No medical claims; this is a tool, not treatment. You can revoke any therapeutic field at any time."
         tabs={navViews.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { Layers, Shield, Brain, GraduationCap, AlertTriangle, Briefcase, BadgeCheck, Users, Rocket } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensErrorBoundary } from '@/components/lens/LensErrorBoundary';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -65,14 +64,13 @@ export default function StrategicAddsPage() {
 
   return (
     <LensShell lensId="strategic-adds" asMain={false}>
-      <FirstRunTour lensId="strategic-adds" />
+
       <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
 
       <NorthStarFrame
         lensId="strategic-adds"
         theme="command"
         crumb="Strategic adds"
-        title="Pick the next bet"
         subtitle="Productized hub for the eight next adds. Each tab is wired to real substrate already in the repo."
         tabs={TABS.map(({ id, label, icon }, i) => ({ id, label, icon, keys: String(i + 1) }))}
         activeTab={tab}

@@ -11,9 +11,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { FunctionSquare, Grid3x3, BookOpen, Library } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -47,8 +44,6 @@ export default function MathLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('math');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<'engine' | 'algebra' | 'notebook' | 'library'>('engine');
 
   useLensCommand(
@@ -64,12 +59,11 @@ export default function MathLensPage() {
 
   return (
     <LensShell lensId="math" asMain={false}>
-      <FirstRunTour lensId="math" />
+
       <DepthBadge lensId="math" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="math"
         crumb="Math"
-        title={`Work it out${active === 'engine' && who ? `, ${who}` : ''}`}
         subtitle="Computer algebra, plot and solve on the same engine as the macros"
         actions={
           <>

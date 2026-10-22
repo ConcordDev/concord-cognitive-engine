@@ -13,9 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Boxes, Layout, Package, Plus, Zap } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -50,8 +47,6 @@ export default function AppMakerLens() {
   useLensIdentity('app-maker');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('app-maker');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<AppMakerView>('studio');
 
   useLensCommand(
@@ -69,12 +64,11 @@ export default function AppMakerLens() {
 
   return (
     <LensShell lensId="app-maker" asMain={false}>
-      <FirstRunTour lensId="app-maker" />
+
       <DepthBadge lensId="app-maker" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="app-maker"
         crumb="App Maker"
-        title={`Build an app${active === 'studio' && who ? `, ${who}` : ''}`}
         subtitle="Compose apps from primitives, one view machine"
         actions={
           <>

@@ -12,7 +12,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => undefined }));
@@ -133,7 +132,7 @@ describe('CrisisOpsLensPage — four UX states + a11y', () => {
     lensRunMock.mockResolvedValue({ data: { ok: true, crises: [], suggestions: [] } });
     await renderPage();
     await waitFor(() => {
-      const h1 = screen.getByRole('heading', { level: 1, name: /all quiet/i });
+      const h1 = screen.getByRole('heading', { level: 1, name: /crisis ops/i });
       expect(h1).toBeInTheDocument();
     });
   });

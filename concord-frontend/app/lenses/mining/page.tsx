@@ -8,7 +8,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { MshaLookup } from '@/components/mining/MshaLookup';
@@ -21,26 +20,22 @@ import { GisPitMap } from '@/components/mining/GisPitMap';
 import { EnvironmentalCompliance } from '@/components/mining/EnvironmentalCompliance';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Hammer as Pickaxe, Mountain, Gem, HardHat, Truck, Map, Calculator, ShieldCheck } from 'lucide-react';
 
 type ModeTab = 'Sites' | 'Geology' | 'Plan' | 'Fleet' | 'Map' | 'MSHA' | 'Environmental' | 'Calcs';
 
-const MODE_TABS: { key: ModeTab; label: string; keys: string; title: string; hint: string; icon: typeof Pickaxe }[] = [
-  { key: 'Sites', label: 'Sites & Safety', keys: 's', title: 'Your mine sites', hint: 'Site registry, production, incident log, ops dashboard', icon: Mountain },
-  { key: 'Geology', label: 'Geology', keys: 'g', title: 'What is in the ground', hint: 'Drill-hole database, 3D block model, grade-tonnage curve', icon: Gem },
-  { key: 'Plan', label: 'Mine Plan', keys: 'p', title: 'Plan the pit', hint: 'Open-pit shell design and JORC / NI 43-101 reserve reporting', icon: Pickaxe },
-  { key: 'Fleet', label: 'Fleet & Schedule', keys: 'f', title: 'Keep the fleet moving', hint: 'Equipment management and production scheduling', icon: Truck },
-  { key: 'Map', label: 'GIS Map', keys: 'm', title: 'See it on the map', hint: 'Geo-referenced sites and drill collars', icon: Map },
-  { key: 'MSHA', label: 'MSHA Compliance', keys: 'h', title: 'Check the federal record', hint: 'Real federal mine and violations lookup', icon: HardHat },
-  { key: 'Environmental', label: 'Environmental', keys: 'e', title: 'Permits and reclamation', hint: 'Permit / inspection compliance and reclamation status', icon: ShieldCheck },
-  { key: 'Calcs', label: 'Quick Calcs', keys: 'c', title: 'Run the numbers', hint: 'Ore grade, blast design, safety metrics, resource estimate', icon: Calculator },
+const MODE_TABS: {key: ModeTab; label: string; keys: string; hint: string; icon: typeof Pickaxe }[] = [
+  { key: 'Sites', label: 'Sites & Safety', keys: 's', hint: 'Site registry, production, incident log, ops dashboard', icon: Mountain },
+  { key: 'Geology', label: 'Geology', keys: 'g', hint: 'Drill-hole database, 3D block model, grade-tonnage curve', icon: Gem },
+  { key: 'Plan', label: 'Mine Plan', keys: 'p', hint: 'Open-pit shell design and JORC / NI 43-101 reserve reporting', icon: Pickaxe },
+  { key: 'Fleet', label: 'Fleet & Schedule', keys: 'f', hint: 'Equipment management and production scheduling', icon: Truck },
+  { key: 'Map', label: 'GIS Map', keys: 'm', hint: 'Geo-referenced sites and drill collars', icon: Map },
+  { key: 'MSHA', label: 'MSHA Compliance', keys: 'h', hint: 'Real federal mine and violations lookup', icon: HardHat },
+  { key: 'Environmental', label: 'Environmental', keys: 'e', hint: 'Permit / inspection compliance and reclamation status', icon: ShieldCheck },
+  { key: 'Calcs', label: 'Quick Calcs', keys: 'c', hint: 'Ore grade, blast design, safety metrics, resource estimate', icon: Calculator },
 ];
 
 export default function MiningLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Sites');
 
   useLensCommand(
@@ -57,16 +52,14 @@ export default function MiningLensPage() {
     { lensId: 'mining' },
   );
 
-  const current = MODE_TABS.find((t) => t.key === activeMode)!;
 
   return (
     <LensShell lensId="mining" asMain={false}>
-      <FirstRunTour lensId="mining" />
+
       <DepthBadge lensId="mining" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="mining"
         crumb="Mining Operations"
-        title={`${current.title}${activeMode === 'Sites' && who ? `, ${who}` : ''}`}
         subtitle="Mine sites, geology, pit planning, fleet and MSHA compliance."
         tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, keys: t.keys, hint: t.hint, icon: t.icon }))}
         activeTab={activeMode}

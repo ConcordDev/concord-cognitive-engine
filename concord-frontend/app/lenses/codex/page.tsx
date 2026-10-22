@@ -8,10 +8,7 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { BookOpen, Landmark, Plus } from 'lucide-react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
@@ -24,16 +21,14 @@ import { cn } from '@/lib/utils';
 
 type CodexView = 'spine' | 'browse';
 
-const TABS: { id: CodexView; label: string; keys: string; title: string; hint: string; icon: typeof BookOpen }[] = [
-  { id: 'browse', label: 'Browse canon', keys: 'b', title: 'The codex page', hint: 'Search and filter every recorded truth', icon: BookOpen },
-  { id: 'spine', label: 'The Pillars', keys: 'p', title: 'The three pillars', hint: 'The load-bearing events of the canon', icon: Landmark },
+const TABS: { id: CodexView; label: string; keys: string; hint: string; icon: typeof BookOpen }[] = [
+  { id: 'browse', label: 'Browse canon', keys: 'b', hint: 'Search and filter every recorded truth', icon: BookOpen },
+  { id: 'spine', label: 'The Pillars', keys: 'p', hint: 'The load-bearing events of the canon', icon: Landmark },
 ];
 
 function CodexLensInner() {
   const searchParams = useSearchParams();
   const deepLinkId = searchParams.get('id');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<CodexView>('browse');
   const [facets, setFacets] = useState<Facets | null>(null);
   const [spine, setSpine] = useState<LoreEvent[]>([]);
@@ -71,20 +66,16 @@ function CodexLensInner() {
     return () => { cancelled = true; };
   }, []);
 
-  const current = TABS.find((t) => t.id === active)!;
   const onFacets = useCallback((f: Facets) => setFacets(f), []);
 
   return (
     <LensShell lensId="codex" asMain={false}>
-      <FirstRunTour lensId="codex" />
+
       <DepthBadge lensId="codex" size="sm" className="ml-2" />
       <div data-lens-theme="codex" className="relative min-h-full px-8 pb-28 pt-6">
         {deepLinkId && <DeepLinkModal deepLinkId={deepLinkId} />}
 
-        <p className="text-[14px] text-zinc-500">Codex</p>
-        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{active === 'browse' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Codex</h1>
         <p className="mb-5 text-[14px] text-zinc-500">
           The canon of Concordia — {facets?.count ?? '…'} recorded truths across {facets?.worlds.length ?? '…'} worlds.
         </p>

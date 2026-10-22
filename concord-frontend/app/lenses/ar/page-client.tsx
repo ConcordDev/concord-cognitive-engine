@@ -72,14 +72,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Glasses, Camera, Boxes, ScanEye, Library, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -98,8 +95,6 @@ const TABS: { id: Tab; label: string; hotkey: string; icon: typeof Boxes; descri
 
 export default function ARLensPage() {
   useLensNav('ar');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   const [tab, setTab] = useState<Tab>('studio');
   useLensCommand(
@@ -328,15 +323,12 @@ export default function ARLensPage() {
 
   return (
     <LensShell lensId="ar" asMain={false}>
-      <FirstRunTour lensId="ar" />
+
       <div data-lens-theme="ar" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <header className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[14px] text-zinc-500">Augmented reality</p>
-              <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                {tab === 'studio' ? `Place something in the world${who ? `, ${who}` : ''}` : tab === 'diagnostics' ? 'Check how it anchors' : 'Every model you can place'}
-              </h1>
+              <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Augmented reality</h1>
               <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
                 WebXR scene authoring — spatial anchors, 3D placement, behaviors, and publish-to-phone.
               </p>

@@ -25,15 +25,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DreamPredictions } from '@/components/dreams/DreamPredictions';
 import { DreamReader } from '@/components/dreams/DreamReader';
 import { DreamLibrary } from '@/components/dreams/DreamLibrary';
 import { lensRun } from '@/lib/api/client';
 import { Library, Moon, BookOpen } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface DreamDtu { id: string; title?: string; data?: unknown }
@@ -59,8 +56,6 @@ const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof M
 ];
 
 export default function DreamsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('recent');
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,13 +93,10 @@ export default function DreamsPage() {
 
   return (
     <LensShell lensId="dreams" asMain={false}>
-      <FirstRunTour lensId="dreams" />
+
       <DepthBadge lensId="dreams" size="sm" className="ml-2" />
       <div data-lens-theme="dreams" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Dreams</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {tab === 'recent' ? `Last night's note${who ? `, ${who}` : ''}` : 'The dream library'}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Dreams</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Dream views">
           {TABS.map((t) => {

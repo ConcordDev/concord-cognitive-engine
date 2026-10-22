@@ -23,10 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Ghost, Swords, Trophy, Radar } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
@@ -91,15 +88,13 @@ const STAGE_TONE: Record<string, string> = {
 
 type GhostView = 'residues' | 'hunts' | 'hunters';
 
-const VIEWS: { id: GhostView; label: string; keys: string; title: string; hint: string; icon: typeof Ghost }[] = [
-  { id: 'residues', label: 'Residues', keys: '1', title: 'What the world left behind', hint: 'Spectral residues, filters and the spectral plane', icon: Ghost },
-  { id: 'hunts', label: 'Hunts', keys: '2', title: 'Your hunts', hint: 'Active hunts, saved dossiers and confront history', icon: Swords },
-  { id: 'hunters', label: 'Hunters', keys: '3', title: 'Who is hunting', hint: 'Hunter leaderboard and live hauntings', icon: Trophy },
+const VIEWS: { id: GhostView; label: string; keys: string; hint: string; icon: typeof Ghost }[] = [
+  { id: 'residues', label: 'Residues', keys: '1', hint: 'Spectral residues, filters and the spectral plane', icon: Ghost },
+  { id: 'hunts', label: 'Hunts', keys: '2', hint: 'Active hunts, saved dossiers and confront history', icon: Swords },
+  { id: 'hunters', label: 'Hunters', keys: '3', hint: 'Hunter leaderboard and live hauntings', icon: Trophy },
 ];
 
 export default function GhostTrackerPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<GhostView>('residues');
   const [residues, setResidues] = useState<Residue[]>([]);
   const [driftTypes, setDriftTypes] = useState<string[]>([]);
@@ -178,16 +173,14 @@ export default function GhostTrackerPage() {
   const active = residues.filter((r) => !r.confronted);
   const extinguished = residues.filter((r) => r.confronted);
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="ghost-tracker" asMain={false}>
-      <FirstRunTour lensId="ghost-tracker" />
+
       <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ghost-tracker"
         crumb="Ghost Tracker"
-        title={`${current.title}${view === 'residues' && who ? `, ${who}` : ''}`}
         subtitle="Spectral residues left by drift events. Track, investigate, then confront one to extinguish it."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

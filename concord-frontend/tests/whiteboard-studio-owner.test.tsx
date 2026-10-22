@@ -158,14 +158,14 @@ describe('WhiteboardStudio owner actions', () => {
   it('stays on the board when a read comes back 404', async () => {
     getBoardMock.mockRejectedValue(Object.assign(new Error('missing'), { response: { status: 404 } }));
     renderStudio();
-    await waitFor(() => expect(screen.getByText(/Sketch it, Ramaj/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Whiteboard/)).toBeTruthy());
     expect(screen.queryByText('missing')).toBeNull();
   });
 
   it('opens a saved board, renames it, and deletes it', async () => {
     renderStudio();
     await waitFor(() => expect(screen.getByRole('button', { name: /Plan/ })).toBeTruthy());
-    expect(screen.getByText(/Sketch it, Ramaj/)).toBeTruthy();
+    expect(screen.getByText(/Whiteboard/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Plan/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
     fireEvent.change(screen.getByLabelText('Board name'), { target: { value: 'Plan v2' } });

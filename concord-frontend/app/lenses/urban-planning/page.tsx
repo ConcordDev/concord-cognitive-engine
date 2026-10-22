@@ -38,9 +38,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import {
@@ -78,16 +75,16 @@ type ModeTab =
   | 'Reports'
   | 'County';
 
-const MODE_TABS: { key: ModeTab; label: string; keys: string; title: string; hint: string; icon: typeof Building2 }[] = [
-  { key: 'Dashboard', label: 'Dashboard', keys: 'd', title: 'The state of the plan', hint: 'Live counts across parcels, scenarios, comments and projects', icon: BarChart3 },
-  { key: 'Zoning', label: 'Zoning & Site', keys: 'z', title: 'What the site allows', hint: 'FAR, walkability, density and traffic-impact calculators', icon: Ruler },
-  { key: 'Parcels', label: 'Parcels & Massing', keys: 'p', title: 'Shape the parcels', hint: 'Track parcels and model their 3D massing envelope', icon: LandPlot },
-  { key: 'Scenarios', label: 'Scenarios', keys: 's', title: 'Compare the futures', hint: 'Alternative development scenarios with population, jobs and emissions', icon: Layers },
-  { key: 'Projects', label: 'Projects', keys: 'j', title: 'From proposal to built', hint: 'Permit-status lifecycle with audit trail', icon: ClipboardList },
-  { key: 'Transit', label: 'Transit', keys: 't', title: 'Who the network reaches', hint: 'Transit walk-shed coverage', icon: TrainFront },
-  { key: 'Comments', label: 'Public comment', keys: 'c', title: 'What people are saying', hint: 'Stakeholder public-comment review', icon: MessagesSquare },
-  { key: 'Reports', label: 'Impacts & export', keys: 'r', title: 'Take the plan with you', hint: 'Impact dashboards and a shareable plan report', icon: FileText },
-  { key: 'County', label: 'County data', keys: 'y', title: 'The numbers behind the place', hint: 'Live Census ACS demographics and HUD income limits', icon: Landmark },
+const MODE_TABS: {key: ModeTab; label: string; keys: string; hint: string; icon: typeof Building2 }[] = [
+  { key: 'Dashboard', label: 'Dashboard', keys: 'd', hint: 'Live counts across parcels, scenarios, comments and projects', icon: BarChart3 },
+  { key: 'Zoning', label: 'Zoning & Site', keys: 'z', hint: 'FAR, walkability, density and traffic-impact calculators', icon: Ruler },
+  { key: 'Parcels', label: 'Parcels & Massing', keys: 'p', hint: 'Track parcels and model their 3D massing envelope', icon: LandPlot },
+  { key: 'Scenarios', label: 'Scenarios', keys: 's', hint: 'Alternative development scenarios with population, jobs and emissions', icon: Layers },
+  { key: 'Projects', label: 'Projects', keys: 'j', hint: 'Permit-status lifecycle with audit trail', icon: ClipboardList },
+  { key: 'Transit', label: 'Transit', keys: 't', hint: 'Transit walk-shed coverage', icon: TrainFront },
+  { key: 'Comments', label: 'Public comment', keys: 'c', hint: 'Stakeholder public-comment review', icon: MessagesSquare },
+  { key: 'Reports', label: 'Impacts & export', keys: 'r', hint: 'Impact dashboards and a shareable plan report', icon: FileText },
+  { key: 'County', label: 'County data', keys: 'y', hint: 'Live Census ACS demographics and HUD income limits', icon: Landmark },
 ];
 
 interface DashboardCounts {
@@ -108,8 +105,6 @@ interface ProjectListResult { count: number; byStatus: Record<string, number> }
 export default function UrbanPlanningLensPage() {
   useLensNav('urban-planning');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('urban-planning');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
 
   useLensCommand(
@@ -122,7 +117,6 @@ export default function UrbanPlanningLensPage() {
     })),
     { lensId: 'urban-planning' },
   );
-  const current = MODE_TABS.find((t) => t.key === activeMode)!;
 
   // Honest dashboard counts — pulled from the real parcel/scenario/comment
   // macros (parcel-list, scenario-list, comment-list) on mount, not a
@@ -171,12 +165,11 @@ export default function UrbanPlanningLensPage() {
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
-      <FirstRunTour lensId="urban-planning" />
+
       <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="urban-planning"
         crumb="Urban planning"
-        title={`${current.title}${activeMode === 'Dashboard' && who ? `, ${who}` : ''}`}
         subtitle="Parcels, 3D massing, scenario planning, transit coverage and impact dashboards."
         actions={(
           <>

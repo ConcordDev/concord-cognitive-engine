@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Shared north-star lens chrome: breadcrumb, serif title, optional pill views,
- * right-hand actions slot, cross-lens recents and the teal floating CTA.
+ * Shared lens chrome: the lens name as the heading, optional factual subtitle,
+ * pill views, right-hand actions, cross-lens recents and the teal floating CTA.
  * Pages own their state, data and commands; this only lays out the chrome.
  */
 
@@ -29,8 +29,8 @@ export interface NorthStarCta {
 interface NorthStarFrameProps {
   lensId: string;
   theme?: string;
+  /** Lens name shown as the page heading. */
   crumb: string;
-  title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   tabs?: NorthStarTab[];
@@ -42,16 +42,15 @@ interface NorthStarFrameProps {
 }
 
 export function NorthStarFrame({
-  lensId, theme, crumb, title, subtitle, actions, tabs, activeTab, onTab, tabsLabel, cta, children,
+  lensId, theme, crumb, subtitle, actions, tabs, activeTab, onTab, tabsLabel, cta, children,
 }: NorthStarFrameProps) {
   const CtaIcon = cta?.icon;
   return (
     <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">{crumb}</p>
           <h1 className={cn('font-vault mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>
-            {title}
+            {crumb}
           </h1>
           {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">{subtitle}</p>}
         </div>

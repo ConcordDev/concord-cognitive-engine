@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -64,7 +62,6 @@ export function CollabHub() {
   const { user } = useAuth();
   const myUserId = user?.id || 'anon';
   const myName = user?.username || 'You';
-  const who = titleCaseDisplayName(user?.username);
   const {
     isLoading,
     isError,
@@ -177,7 +174,6 @@ export function CollabHub() {
     { lensId: 'collab' },
   );
 
-  const currentTab = TABS.find((t) => t.key === activeTab)!;
 
   const PILLS: { key: FilterPill; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -227,12 +223,11 @@ export function CollabHub() {
   }
   return (
     <>
-      <FirstRunTour lensId="collab" />
+
       <DepthBadge lensId="collab" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="collab"
         crumb="Files & rooms"
-        title={`${currentTab.title}${activeTab === 'active' && who ? `, ${who}` : ''}`}
         subtitle="Live docs, session rooms, and presence."
         actions={
           <div className="flex flex-wrap items-center gap-2">

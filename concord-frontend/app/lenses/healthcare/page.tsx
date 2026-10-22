@@ -8,7 +8,7 @@
  * components/healthcare/ (ClinicalArtifactsPanel + EpicSection router).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Activity,
   Archive,
@@ -21,7 +21,6 @@ import {
   Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -30,8 +29,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
@@ -55,8 +52,6 @@ export default function HealthcareLensPage() {
   useLensNav('healthcare');
   useLensIdentity('healthcare');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('healthcare');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<EpicNav>('dashboard');
 
   const go = useCallback((id: EpicNav) => setActive(id), []);
@@ -72,14 +67,9 @@ export default function HealthcareLensPage() {
     { lensId: 'healthcare' },
   );
 
-  const activeLabel = useMemo(
-    () => COMMANDS.find((c) => c.id === active)?.description ?? active,
-    [active],
-  );
-
   return (
     <LensShell lensId="healthcare" asMain={false}>
-      <FirstRunTour lensId="healthcare" />
+
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
       <div data-lens-theme="healthcare" className="space-y-4 p-4 pb-20 lg:p-5 lg:pb-6">
         <a href="#healthcare-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-[var(--lens-accent)]">
@@ -89,10 +79,7 @@ export default function HealthcareLensPage() {
 
         <header className="flex items-start justify-between gap-4 px-4 pt-2 lg:px-3">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Healthcare</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {active === 'dashboard' && who ? `Your clinic today, ${who}` : activeLabel}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Healthcare</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <HeartPulse className="h-4 w-4 text-blue-300" aria-hidden />

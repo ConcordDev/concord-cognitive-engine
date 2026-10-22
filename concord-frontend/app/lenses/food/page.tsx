@@ -14,9 +14,6 @@ import {
   UtensilsCrossed as MobileTabKitchen,
 } from 'lucide-react';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FoodYelpSection } from '@/components/food/FoodYelpSection';
 import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
@@ -61,8 +58,6 @@ export default function FoodLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('food');
   const [activeView, setActive] = useState<FoodView>('cook');
   const reduced = prefersReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -78,24 +73,14 @@ export default function FoodLensPage() {
   );
 
   const tabs = VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }));
-  const titles: Record<FoodView, string> = {
-    cook: `Cook something good${who ? `, ${who}` : ''}`,
-    plan: 'Plan the week',
-    pantry: 'Know what you have',
-    kitchen: 'Run the kitchen',
-    track: 'See what you eat',
-    discover: 'Find your next meal',
-    ops: 'Work the pass',
-  };
 
   return (
     <LensShell lensId="food" asMain={false}>
-      <FirstRunTour lensId="food" />
+
       <DepthBadge lensId="food" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="food"
         crumb="Food"
-        title={titles[activeView]}
         subtitle="Cook from a card, plan the week, shop the pantry."
         actions={(
           <>

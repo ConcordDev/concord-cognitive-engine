@@ -18,9 +18,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -46,22 +43,10 @@ import { PipingProvider } from '@/components/panel-polish';
 
 type TabKey = 'culture' | 'economy' | 'autonomy' | 'conflict' | 'teaching' | 'persona' | 'explorer' | 'actions';
 
-const TITLES: Record<TabKey, string> = {
-  culture: 'The traditions people keep',
-  economy: 'Who holds what',
-  autonomy: 'Where agents say no',
-  conflict: 'Disputes awaiting settlement',
-  teaching: 'Who is teaching whom',
-  persona: 'The voices in the world',
-  explorer: 'Explore the data behind it',
-  actions: 'Act on the society',
-};
 
 export default function SocietyLensPage() {
   useLensNav('society');
   const [activeTab, setActiveTab] = useState<TabKey>('culture');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   // Lens-scoped keyboard commands.
   useLensCommand(
@@ -160,12 +145,11 @@ export default function SocietyLensPage() {
 
   return (
     <LensShell lensId="society" asMain={false}>
-      <FirstRunTour lensId="society" />
+
       <DepthBadge lensId="society" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="society"
         crumb="Society"
-        title={`${TITLES[activeTab]}${activeTab === 'culture' && who ? `, ${who}` : ''}`}
         subtitle="Culture, entity economy, autonomy, conflict, teaching and personas across the NPC society."
         tabs={tabs.map((t) => ({ id: t.key, label: t.count != null ? `${t.label} ${t.count}` : t.label, icon: t.icon, keys: t.keys }))}
         activeTab={activeTab}

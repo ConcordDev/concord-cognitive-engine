@@ -4,9 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -42,18 +39,16 @@ const FORKS_FALLBACK: {
 type ForkView = 'lineage' | 'lab' | 'insights' | 'network' | 'watchlist';
 type ForkStatusFilter = 'all' | 'active' | 'merged' | 'abandoned';
 
-const FORK_TABS: { id: ForkView; label: string; icon: typeof GitFork; keys: string; title: string; hint: string }[] = [
-  { id: 'lineage', label: 'Lineage', icon: GitFork, keys: 'g', title: 'Where every branch came from', hint: 'Fork tree, merge status and details' },
-  { id: 'lab', label: 'Lab', icon: FlaskConical, keys: 'a', title: 'Pull a fork apart', hint: 'Fork analysis lab' },
-  { id: 'insights', label: 'Insights', icon: Eye, keys: 'i', title: 'What the forks are telling you', hint: 'Fork insights' },
-  { id: 'network', label: 'Network', icon: Network, keys: 'n', title: 'Who forked from whom', hint: 'Fork network explorer' },
-  { id: 'watchlist', label: 'Watchlist', icon: Layers, keys: 'w', title: 'Repos you are watching', hint: 'Repository watchlist' },
+const FORK_TABS: { id: ForkView; label: string; icon: typeof GitFork; keys: string; hint: string }[] = [
+  { id: 'lineage', label: 'Lineage', icon: GitFork, keys: 'g', hint: 'Fork tree, merge status and details' },
+  { id: 'lab', label: 'Lab', icon: FlaskConical, keys: 'a', hint: 'Fork analysis lab' },
+  { id: 'insights', label: 'Insights', icon: Eye, keys: 'i', hint: 'Fork insights' },
+  { id: 'network', label: 'Network', icon: Network, keys: 'n', hint: 'Fork network explorer' },
+  { id: 'watchlist', label: 'Watchlist', icon: Layers, keys: 'w', hint: 'Repository watchlist' },
 ];
 
 export default function ForkLensPage() {
   useLensNav('fork');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('fork');
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ForkView>('lineage');
@@ -217,16 +212,14 @@ export default function ForkLensPage() {
       </div>
     );
   }
-  const currentTab = FORK_TABS.find((t) => t.id === activeView)!;
 
   return (
     <LensShell lensId="fork" asMain={false}>
-      <FirstRunTour lensId="fork" />
+
       <DepthBadge lensId="fork" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="fork"
         crumb="Fork"
-        title={`${currentTab.title}${activeView === 'lineage' && who ? `, ${who}` : ''}`}
         subtitle="Visualize entity forks and workspace lineages."
         actions={
           <div className="flex flex-wrap items-center gap-2">

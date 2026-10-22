@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -18,8 +17,6 @@ import SleepRecovery from '@/components/fitness/SleepRecovery';
 import ActivityRings from '@/components/fitness/ActivityRings';
 import WorkoutPlanner from '@/components/fitness/WorkoutPlanner';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -168,23 +165,6 @@ interface FitnessArtifact {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const TAB_TITLES: Record<ModeTab | 'Training', string> = {
-  Training: 'Your training',
-  Clients: 'Your clients',
-  Programs: 'Programs that progress',
-  Workouts: 'Workouts worth repeating',
-  Classes: 'Classes on the calendar',
-  Teams: 'Your teams',
-  Recruiting: 'Who is next',
-  Log: 'Log the work',
-  HRZones: 'Train in the right zone',
-  Recovery: 'Recover on purpose',
-  Activity: 'Close your rings',
-  AIPlan: 'A plan built for you',
-  Finish: 'Finish strong',
-  Routes: 'Where you ran',
-  Feed: 'What athletes are sharing',
-};
 
 const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType: ArtifactType }[] = [
   { id: 'Clients', icon: Users, defaultType: 'Client' },
@@ -350,8 +330,6 @@ export default function FitnessApp() {
   /* ---------- core state ---------- */
   const [surface, setSurface] = useState<'training' | 'coaching'>('training');
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
 
@@ -750,12 +728,11 @@ export default function FitnessApp() {
 
   return (
     <LensShell lensId="fitness" asMain={false}>
-      <FirstRunTour lensId="fitness" />
+
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
     <NorthStarFrame
       lensId="fitness"
       crumb="Fitness"
-      title={`${TAB_TITLES[surface === 'training' ? 'Training' : activeTab]}${surface === 'training' && who ? `, ${who}` : ''}`}
       subtitle="A personal training log and a coach's client app in one place: workouts, heart-rate zones, recovery, rings, AI plans, routes, and the full coaching book."
       actions={(
         <>

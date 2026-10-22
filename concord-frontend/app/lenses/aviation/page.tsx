@@ -8,9 +8,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -48,8 +45,6 @@ export default function AviationLensPage() {
   useLensIdentity('aviation');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('aviation');
   const [active, setActive] = useState<AvView>('dashboard');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     TABS.map((t) => ({
@@ -74,27 +69,15 @@ export default function AviationLensPage() {
   const reduceMotion = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const titles: Record<AvView, string> = {
-    dashboard: `Clear for departure${who ? `, ${who}` : ''}`,
-    flights: 'Plan the flight',
-    pilots: 'Know your crew',
-    fleet: 'Keep the fleet moving',
-    maintenance: 'Keep it airworthy',
-    charter: 'Quote the charter',
-    wb: 'Balance the load',
-    weather: 'Read the sky',
-    efb: 'Fly the moving map',
-  };
 
   return (
     <LensShell lensId="aviation" asMain={false}>
-      <FirstRunTour lensId="aviation" />
+
       <DepthBadge lensId="aviation" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="aviation"
         theme="aviation"
         crumb="Aviation"
-        title={titles[active]}
         subtitle="Flights, fleet, W&B, weather, moving map."
         actions={(
           <>

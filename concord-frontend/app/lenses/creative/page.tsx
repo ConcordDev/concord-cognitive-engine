@@ -31,7 +31,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreativeDashboardStrip } from '@/components/creative/CreativeDashboardStrip';
 import { CreativeBoardsSection } from '@/components/creative/CreativeBoardsSection';
@@ -43,8 +42,6 @@ import { CreativeActionPanel } from '@/components/creative/CreativeActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -70,8 +67,6 @@ const VIEWS: { id: CreativeView; label: string; keys: string; icon: typeof Clapp
 export default function CreativeLensPage() {
   useLensNav('creative');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<CreativeView>('studio');
   const navViews = omitCommunityRedditViews(VIEWS, ['community']);
 
@@ -96,21 +91,14 @@ export default function CreativeLensPage() {
 
   const creativeArtifacts = creativeDTUs.filter((d: DTU) => d.artifact);
 
-  const titles: Record<CreativeView, string> = {
-    studio: `Run the production${who ? `, ${who}` : ''}`,
-    bench: 'Work the producer bench',
-    library: 'Shape your library',
-    community: 'Steal like an artist',
-  };
 
   return (
     <LensShell lensId="creative" asMain={false}>
-      <FirstRunTour lensId="creative" />
+
       <DepthBadge lensId="creative" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="creative"
         crumb="Creative"
-        title={titles[view]}
         subtitle="Boards, production management and a producer bench."
         actions={(
           <>

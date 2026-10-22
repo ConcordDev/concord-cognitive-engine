@@ -17,10 +17,7 @@ import { motion } from 'framer-motion';
 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { RefreshCw, ShoppingBag, Store, Repeat } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { api } from '@/lib/api/client';
 import axios from 'axios';
@@ -67,10 +64,10 @@ const fmtTime = (epochSec: number) => {
 
 type BlackMarketView = 'market' | 'stall' | 'exchange';
 
-const VIEWS: { id: BlackMarketView; label: string; keys: string; title: string; hint: string; icon: typeof Store }[] = [
-  { id: 'market', label: 'Market', keys: 'm', title: 'Intercepted, and for sale', hint: 'Intercepted Concord Link messages', icon: ShoppingBag },
-  { id: 'stall', label: "Sael's stall", keys: 'l', title: "Sael's stall", hint: 'Browse the fence stall', icon: Store },
-  { id: 'exchange', label: 'Exchange', keys: 'x', title: 'The underground exchange', hint: 'Underground exchange', icon: Repeat },
+const VIEWS: { id: BlackMarketView; label: string; keys: string; hint: string; icon: typeof Store }[] = [
+  { id: 'market', label: 'Market', keys: 'm', hint: 'Intercepted Concord Link messages', icon: ShoppingBag },
+  { id: 'stall', label: "Sael's stall", keys: 'l', hint: 'Browse the fence stall', icon: Store },
+  { id: 'exchange', label: 'Exchange', keys: 'x', hint: 'Underground exchange', icon: Repeat },
 ];
 
 export default function BlackMarketPage() {
@@ -78,8 +75,6 @@ export default function BlackMarketPage() {
   const viewLog = useArtifacts<{ at: string }>('black-market', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('black-market');
   void viewLog; void recordView;
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<BlackMarketView>('market');
   const [listings, setListings] = useState<Listing[]>([]);
   const [reputation, setReputation] = useState<FenceReputation[]>([]);
@@ -190,16 +185,14 @@ export default function BlackMarketPage() {
     : level === 'basic' ? 'border-cyan-500/40 bg-cyan-950/20 text-cyan-200'
     : 'border-slate-700 bg-slate-900/40 text-slate-300';
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="black-market" asMain={false}>
-      <FirstRunTour lensId="black-market" />
+
       <DepthBadge lensId="black-market" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="black-market"
         crumb="Black Market"
-        title={`${current.title}${view === 'market' && who ? `, ${who}` : ''}`}
         subtitle="Sael's stall. Intercepted Concord Link messages, sender and receiver redacted, payload revealed on purchase. Sparks only."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.id === 'market' && listings.length ? `${v.label} ${listings.length}` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

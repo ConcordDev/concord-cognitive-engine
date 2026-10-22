@@ -11,12 +11,9 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { FileText, Mic, Radio, Sliders, Sparkles } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -34,12 +31,12 @@ import { VoiceAnalyzeView } from '@/components/voice/VoiceAnalyzeView';
 
 type VoiceView = 'booth' | 'transcripts' | 'meetings' | 'library' | 'analyze';
 
-const VIEWS: { id: VoiceView; label: string; keys: string; title: string; hint: string; icon: typeof Mic }[] = [
-  { id: 'booth', label: 'Booth', title: 'Say something', keys: '1', hint: 'Descript recorder', icon: Mic },
-  { id: 'transcripts', label: 'Transcripts', title: 'Everything you said', keys: '2', hint: 'Otter workspace', icon: FileText },
-  { id: 'meetings', label: 'Meetings', title: 'Who said what, live', keys: '3', hint: 'Live + studio + bot', icon: Radio },
-  { id: 'library', label: 'Library', title: 'Tools for your voice', keys: '4', hint: 'Voice tooling repos', icon: Sparkles },
-  { id: 'analyze', label: 'Analyze', title: 'What the voice reveals', keys: '5', hint: 'Diarize · sentiment', icon: Sliders },
+const VIEWS: { id: VoiceView; label: string; keys: string; hint: string; icon: typeof Mic }[] = [
+  { id: 'booth', label: 'Booth', keys: '1', hint: 'Descript recorder', icon: Mic },
+  { id: 'transcripts', label: 'Transcripts', keys: '2', hint: 'Otter workspace', icon: FileText },
+  { id: 'meetings', label: 'Meetings', keys: '3', hint: 'Live + studio + bot', icon: Radio },
+  { id: 'library', label: 'Library', keys: '4', hint: 'Voice tooling repos', icon: Sparkles },
+  { id: 'analyze', label: 'Analyze', keys: '5', hint: 'Diarize · sentiment', icon: Sliders },
 ];
 
 const PANELS: Record<VoiceView, ComponentType> = {
@@ -56,8 +53,6 @@ export default function VoiceLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('voice');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<VoiceView>('booth');
   const record = () => {
     setActive('booth');
@@ -75,7 +70,6 @@ export default function VoiceLensPage() {
     { lensId: 'voice' },
   );
 
-  const view = VIEWS.find((v) => v.id === active)!;
   const Panel = PANELS[active];
   const motionProps = useMemo(
     () =>
@@ -92,15 +86,12 @@ export default function VoiceLensPage() {
 
   return (
     <LensShell lensId="voice" asMain={false}>
-      <FirstRunTour lensId="voice" />
+
       <DepthBadge lensId="voice" size="sm" className="ml-2" />
       <div data-lens-theme="voice" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Voice</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {view.title}{active === 'booth' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Voice</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {realtimeAlerts.length > 0 && (

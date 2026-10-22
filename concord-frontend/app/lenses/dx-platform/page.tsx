@@ -14,9 +14,6 @@ import { Rocket, SlidersHorizontal, Terminal, Activity } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 import { DxWorkbench } from "@/components/dx-platform/DxWorkbench";
@@ -41,16 +38,8 @@ const VIEWS: { id: DxView; label: string; keys: string; hint: string; icon: type
   { id: 'pulse', label: 'Pulse', keys: '4', hint: 'Live developer-tooling pulse', icon: Activity },
 ];
 
-const TITLES: Record<DxView, string> = {
-  start: 'Concord DX Platform',
-  tune: 'Make the lints yours',
-  workbench: 'Work the whole codebase',
-  pulse: 'How the tooling is running',
-};
 
 export default function DxPlatformPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DxView>('start');
   useLensCommand([
     ...VIEWS.map((v) => ({
@@ -87,13 +76,12 @@ export default function DxPlatformPage() {
 
   return (
     <LensShell lensId="dx-platform" asMain={false}>
-      <FirstRunTour lensId="dx-platform" />
+
       <DepthBadge lensId="dx-platform" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="dx-platform"
-        crumb="DX"
-        title={TITLES[view]}
-        subtitle={view === 'start' ? `Detectors, repair-cortex proposals, per-codebase severity tuning, and shadow-DTU cross-file context, streamed live to your editor${who ? `, ${who}` : ''}. Pay-as-you-go via your Concord Coin wallet.` : VIEWS.find((v) => v.id === view)!.hint}
+        crumb="DX Platform"
+        subtitle={view === 'start' ? `Detectors, repair-cortex proposals, per-codebase severity tuning, and shadow-DTU cross-file context, streamed live to your editor. Pay-as-you-go via your Concord Coin wallet.` : VIEWS.find((v) => v.id === view)!.hint}
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as DxView)}

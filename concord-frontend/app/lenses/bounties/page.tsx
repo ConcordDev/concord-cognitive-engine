@@ -17,10 +17,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy, Target, Wrench, ShieldAlert, Plus } from 'lucide-react';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { GhsaAdvisories, type BountyDraftFromAdvisory } from '@/components/bounties/GhsaAdvisories';
 import { CreateBountyForm, type BountyPrefill } from '@/components/bounties/CreateBountyForm';
 import { BountyCard } from '@/components/bounties/BountyCard';
@@ -57,16 +55,15 @@ const EMPTY_FILTERS: FilterState = {
 
 type BountyTab = 'board' | 'autofix' | 'advisories';
 
-const TABS: { id: BountyTab; label: string; keys: string; title: string; hint: string; icon: typeof Target }[] = [
-  { id: 'board', label: 'Bounty board', keys: 'g b', title: 'Put a price on the work', hint: 'Post, claim, review and pay out bounties', icon: Target },
-  { id: 'autofix', label: 'Autofix staking', keys: 'g a', title: 'Back the patch you trust', hint: 'Stake CC on competing autofix patches', icon: Wrench },
-  { id: 'advisories', label: 'Advisories', keys: 'g v', title: 'Turn advisories into bounties', hint: 'GitHub security advisories you can convert to bounties', icon: ShieldAlert },
+const TABS: { id: BountyTab; label: string; keys: string; hint: string; icon: typeof Target }[] = [
+  { id: 'board', label: 'Bounty board', keys: 'g b', hint: 'Post, claim, review and pay out bounties', icon: Target },
+  { id: 'autofix', label: 'Autofix staking', keys: 'g a', hint: 'Stake CC on competing autofix patches', icon: Wrench },
+  { id: 'advisories', label: 'Advisories', keys: 'g v', hint: 'GitHub security advisories you can convert to bounties', icon: ShieldAlert },
 ];
 
 export default function BountiesPage() {
   const { user } = useAuth();
   const currentUserId = user?.id || 'anon';
-  const who = titleCaseDisplayName(user?.username);
 
   const [tab, setTab] = useState<BountyTab>('board');
   const postBounty = useCallback(() => {
@@ -179,16 +176,14 @@ export default function BountiesPage() {
     return { openPool, paidOut };
   }, [bounties]);
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="bounties" asMain={false}>
-      <FirstRunTour lensId="bounties" />
+
       <DepthBadge lensId="bounties" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="bounties"
         crumb="Bounties"
-        title={`${current.title}${tab === 'board' && who ? `, ${who}` : ''}`}
         subtitle="Post a bounty, claimants submit work, you review and pay out, with milestones, categories, a leaderboard and dispute arbitration. Currency: CC."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
         activeTab={tab}

@@ -17,7 +17,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -25,8 +24,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { StudioPanel } from '@/components/art/StudioPanel';
 import { GalleryPanel } from '@/components/art/GalleryPanel';
@@ -47,15 +44,15 @@ type ArtView =
   | 'palettes'
   | 'workbench';
 
-const VIEWS: { id: ArtView; label: string; keys: string; title: string; hint: string; icon: typeof Brush }[] = [
-  { id: 'studio', title: 'What are we painting', label: 'Studio', keys: '1', hint: 'Layers · brushes', icon: Brush },
-  { id: 'gallery', title: 'What is on the wall', label: 'Gallery', keys: '2', hint: 'Browse · upload', icon: Grid },
-  { id: 'canvas', title: 'What are we sketching', label: 'Canvas', keys: '3', hint: 'Quick sketch', icon: ImageIcon },
-  { id: 'marketplace', title: 'What is for sale', label: 'Market', keys: '4', hint: 'Listings', icon: ShoppingBag },
-  { id: 'my-art', title: 'What you own', label: 'My art', keys: '5', hint: 'Owned pieces', icon: Layers },
-  { id: 'museum', title: 'What the museums hold', label: 'Museum', keys: '6', hint: 'Met · AIC', icon: Landmark },
-  { id: 'palettes', title: 'What colors go together', label: 'Palettes', keys: '7', hint: 'Harmony', icon: Droplets },
-  { id: 'workbench', title: 'What the piece says', label: 'Workbench', keys: '8', hint: 'Style · score', icon: Wand2 },
+const VIEWS: { id: ArtView; label: string; keys: string; hint: string; icon: typeof Brush }[] = [
+  { id: 'studio', label: 'Studio', keys: '1', hint: 'Layers · brushes', icon: Brush },
+  { id: 'gallery', label: 'Gallery', keys: '2', hint: 'Browse · upload', icon: Grid },
+  { id: 'canvas', label: 'Canvas', keys: '3', hint: 'Quick sketch', icon: ImageIcon },
+  { id: 'marketplace', label: 'Market', keys: '4', hint: 'Listings', icon: ShoppingBag },
+  { id: 'my-art', label: 'My art', keys: '5', hint: 'Owned pieces', icon: Layers },
+  { id: 'museum', label: 'Museum', keys: '6', hint: 'Met · AIC', icon: Landmark },
+  { id: 'palettes', label: 'Palettes', keys: '7', hint: 'Harmony', icon: Droplets },
+  { id: 'workbench', label: 'Workbench', keys: '8', hint: 'Style · score', icon: Wand2 },
 ];
 
 /** Macro dump stays off the studio unless a developer asks for it. */
@@ -85,8 +82,6 @@ export default function ArtLensPage() {
   useLensIdentity('art');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('art');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ArtView>('studio');
 
   useLensCommand(
@@ -103,7 +98,6 @@ export default function ArtLensPage() {
     { lensId: 'art' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   const Panel = PANELS[active];
   const motionProps = useMemo(
@@ -120,15 +114,12 @@ export default function ArtLensPage() {
 
   return (
     <LensShell lensId="art" asMain={false}>
-      <FirstRunTour lensId="art" />
+
       <DepthBadge lensId="art" size="sm" className="ml-2" />
       <div data-lens-theme="art" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Art</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'studio' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Art</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

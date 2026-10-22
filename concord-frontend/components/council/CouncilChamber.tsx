@@ -7,7 +7,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
@@ -224,16 +223,16 @@ interface Persona {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TABS: { id: CouncilTab; label: string; title: string; icon: typeof FileText }[] = [
-  { id: 'proposals', title: "What is on the table", label: 'Proposals', icon: FileText },
-  { id: 'voting', title: "What is being decided", label: 'Voting', icon: Vote },
-  { id: 'meetings', title: "When we meet", label: 'Meetings', icon: CalendarClock },
-  { id: 'debates', title: "Who is speaking", label: 'Debates', icon: MessageSquare },
-  { id: 'budget', title: "Where the money goes", label: 'Budget', icon: DollarSign },
-  { id: 'archive', title: "What was decided", label: 'Archive', icon: Archive },
-  { id: 'audit', title: "What happened and who did it", label: 'Audit', icon: Shield },
-  { id: 'stakeholders', title: "Who has a voice", label: 'Stakeholders', icon: Users },
-  { id: 'workbench', title: "Weigh it with the voices", label: 'Workbench', icon: Gavel },
+const TABS: { id: CouncilTab; label: string; icon: typeof FileText }[] = [
+  { id: 'proposals', label: 'Proposals', icon: FileText },
+  { id: 'voting', label: 'Voting', icon: Vote },
+  { id: 'meetings', label: 'Meetings', icon: CalendarClock },
+  { id: 'debates', label: 'Debates', icon: MessageSquare },
+  { id: 'budget', label: 'Budget', icon: DollarSign },
+  { id: 'archive', label: 'Archive', icon: Archive },
+  { id: 'audit', label: 'Audit', icon: Shield },
+  { id: 'stakeholders', label: 'Stakeholders', icon: Users },
+  { id: 'workbench', label: 'Workbench', icon: Gavel },
 ];
 
 const PROPOSAL_TYPES: { value: ProposalType; label: string }[] = [
@@ -2763,17 +2762,14 @@ export default function CouncilLensPage() {
   // ===== MAIN RENDER =====
   return (
     <LensShell lensId="council" asMain={false}>
-      <FirstRunTour lensId="council" />
+
       <DepthBadge lensId="council" size="sm" className="ml-2" />
     <div data-lens-theme="council" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
       {/* Header */}
       <header>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-[22rem]">
-            <p className="text-[14px] text-zinc-500">Council</p>
-            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {activeTab === 'proposals' ? 'What is the question' : (TABS.find((t) => t.id === activeTab)?.title ?? 'Council')}
-            </h1>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Council</h1>
             <p className="text-[14px] text-zinc-500">
               Governance, deliberation, and collective decision-making
             </p>

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PodcastPlayerSection } from '@/components/podcast/PodcastPlayerSection';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
@@ -28,22 +27,19 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 type PodcastView = 'episodes' | 'create' | 'analytics' | 'listen' | 'itunes' | 'actions';
 
-const VIEWS: { id: PodcastView; title: string; label: string; keys: string; hint: string; icon: typeof Mic2 }[] = [
-  { id: 'episodes', title: 'Your show', label: 'Episodes', keys: 'g e', hint: 'Your show episodes', icon: Mic2 },
-  { id: 'create', title: 'Make a new episode', label: 'New Episode', keys: 'g c', hint: 'Record / upload', icon: Plus },
-  { id: 'analytics', title: 'Who is listening', label: 'Analytics', keys: 'g a', hint: 'Plays · DTUs', icon: BarChart3 },
-  { id: 'listen', title: 'What you are listening to', label: 'Listening Hub', keys: 'g l', hint: 'RSS · sync · rules', icon: Headphones },
-  { id: 'itunes', title: 'Find a show', label: 'iTunes Search', keys: 'g i', hint: 'Apple directory', icon: Search },
-  { id: 'actions', title: 'The studio workbench', label: 'Studio', keys: 'g x', hint: 'Workbench macros', icon: CircleDot },
+const VIEWS: { id: PodcastView; label: string; keys: string; hint: string; icon: typeof Mic2 }[] = [
+  { id: 'episodes', label: 'Episodes', keys: 'g e', hint: 'Your show episodes', icon: Mic2 },
+  { id: 'create', label: 'New Episode', keys: 'g c', hint: 'Record / upload', icon: Plus },
+  { id: 'analytics', label: 'Analytics', keys: 'g a', hint: 'Plays · DTUs', icon: BarChart3 },
+  { id: 'listen', label: 'Listening Hub', keys: 'g l', hint: 'RSS · sync · rules', icon: Headphones },
+  { id: 'itunes', label: 'iTunes Search', keys: 'g i', hint: 'Apple directory', icon: Search },
+  { id: 'actions', label: 'Studio', keys: 'g x', hint: 'Workbench macros', icon: CircleDot },
 ];
 
 function ListenPanel() {
@@ -71,8 +67,6 @@ export default function PodcastLensPage() {
   useLensIdentity('podcast');
   const { isLive, lastUpdated } = useRealtimeLens('podcast');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PodcastView>('episodes');
   const [rssCopied, setRssCopied] = useState(false);
 
@@ -103,7 +97,6 @@ export default function PodcastLensPage() {
     }
   }, []);
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   const Panel: ComponentType<{ onCreated?: () => void }> =
     active === 'episodes' ? EpisodesPanel :
@@ -115,15 +108,12 @@ export default function PodcastLensPage() {
 
   return (
     <LensShell lensId="podcast" asMain={false}>
-      <FirstRunTour lensId="podcast" />
+
       <DepthBadge lensId="podcast" size="sm" className="ml-2" />
       <div data-lens-theme="podcast" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Podcast</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'episodes' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Podcast</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {isLive && <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />}

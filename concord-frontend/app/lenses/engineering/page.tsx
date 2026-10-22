@@ -29,13 +29,10 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   EngineeringFeaProvider,
   useEngineeringFea,
@@ -43,24 +40,22 @@ import {
 import { EngineeringPane } from '@/components/engineering/EngineeringPane';
 import type { EngView } from '@/components/engineering/types';
 
-const VIEWS: { id: EngView; label: string; keys: string; title: string; icon: typeof Box }[] = [
-  { id: 'geometry', label: 'Geometry', keys: '1', title: 'The shape of it', icon: Box },
-  { id: 'model', label: 'Model', keys: '2', title: 'The structural model', icon: Atom },
-  { id: 'loads', label: 'Loads', keys: '3', title: 'What it has to carry', icon: Weight },
-  { id: 'materials', label: 'Materials', keys: '4', title: 'What it is made of', icon: FlaskConical },
-  { id: 'analysis', label: 'Analysis', keys: 'a', title: 'How it behaves', icon: BarChart3 },
-  { id: 'bom', label: 'BOM', keys: 'b', title: 'Everything it takes to build', icon: ClipboardList },
-  { id: 'tolerance', label: 'Tolerance', keys: 't', title: 'How tight it has to be', icon: Ruler },
-  { id: 'calcs', label: 'Calcs', keys: 'c', title: 'Run the numbers', icon: Calculator },
-  { id: 'physics', label: 'Multi-physics', keys: 'p', title: 'Heat, wind and current', icon: Flame },
-  { id: 'results', label: 'Results', keys: 'r', title: 'What the solver found', icon: Activity },
-  { id: 'feed', label: 'Feed', keys: 'f', title: 'What engineers are saying', icon: MessageSquare },
-  { id: 'actions', label: 'Actions', keys: 'x', title: 'Every engineering tool', icon: Sparkles },
+const VIEWS: { id: EngView; label: string; keys: string; icon: typeof Box }[] = [
+  { id: 'geometry', label: 'Geometry', keys: '1', icon: Box },
+  { id: 'model', label: 'Model', keys: '2', icon: Atom },
+  { id: 'loads', label: 'Loads', keys: '3', icon: Weight },
+  { id: 'materials', label: 'Materials', keys: '4', icon: FlaskConical },
+  { id: 'analysis', label: 'Analysis', keys: 'a', icon: BarChart3 },
+  { id: 'bom', label: 'BOM', keys: 'b', icon: ClipboardList },
+  { id: 'tolerance', label: 'Tolerance', keys: 't', icon: Ruler },
+  { id: 'calcs', label: 'Calcs', keys: 'c', icon: Calculator },
+  { id: 'physics', label: 'Multi-physics', keys: 'p', icon: Flame },
+  { id: 'results', label: 'Results', keys: 'r', icon: Activity },
+  { id: 'feed', label: 'Feed', keys: 'f', icon: MessageSquare },
+  { id: 'actions', label: 'Actions', keys: 'x', icon: Sparkles },
 ];
 
 function EngineeringDesk() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { active, setActive, runFEA, running, status, summary } = useEngineeringFea();
 
   useLensCommand(
@@ -74,13 +69,11 @@ function EngineeringDesk() {
     { lensId: 'engineering' },
   );
 
-  const current = VIEWS.find((v) => v.id === active) ?? VIEWS[0];
 
   return (
     <NorthStarFrame
       lensId="engineering"
       crumb="Engineering"
-      title={`${current.title}${active === 'geometry' && who ? `, ${who}` : ''}`}
       subtitle="FEA, structural, thermal, electrical and hydraulic."
       tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
       activeTab={active}
@@ -149,7 +142,7 @@ export default function EngineeringPage() {
 
   return (
     <LensShell lensId="engineering" asMain={false}>
-      <FirstRunTour lensId="engineering" />
+
       <DepthBadge lensId="engineering" size="sm" className="ml-2" />
       <EngineeringFeaProvider>
         <EngineeringDesk />

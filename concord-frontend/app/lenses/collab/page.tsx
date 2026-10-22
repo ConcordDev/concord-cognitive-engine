@@ -15,8 +15,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface RoomRow {
@@ -76,8 +74,6 @@ async function readRooms(): Promise<RoomRow[]> {
 
 export default function CollabLensPage() {
   useLensNav('collab');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -170,10 +166,7 @@ export default function CollabLensPage() {
   return (
     <LensShell lensId="collab" asMain={false}>
       <div data-lens-theme="collab" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Collab</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The room{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Collab</h1>
 
         <section
           aria-label="Room"

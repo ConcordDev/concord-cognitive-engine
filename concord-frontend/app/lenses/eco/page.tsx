@@ -12,7 +12,6 @@ import { useCallback, useState } from 'react';
 import { Bird, Building2, Flame, Leaf, Plus, Wind } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -37,27 +36,23 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 type View = 'air' | 'life' | 'footprint' | 'do' | 'org';
 
-const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Wind }[] = [
-  { id: 'air', label: 'Air', keys: '1', title: 'The air around you', hint: 'Weather, radar, AQI and alerts', icon: Wind },
-  { id: 'life', label: 'Life', keys: '2', title: 'What lives near you', hint: 'Identify, log and browse species', icon: Bird },
-  { id: 'footprint', label: 'Footprint', keys: '3', title: 'What you leave behind', hint: 'Carbon, trend and solar', icon: Leaf },
-  { id: 'do', label: 'Do', keys: '4', title: 'What you can change', hint: 'Cited actions and habit streaks', icon: Flame },
-  { id: 'org', label: 'Organization', keys: '5', title: 'How an organization scores', hint: 'Corporate ESG, not personal', icon: Building2 },
+const VIEWS: { id: View; label: string; keys: string; hint: string; icon: typeof Wind }[] = [
+  { id: 'air', label: 'Air', keys: '1', hint: 'Weather, radar, AQI and alerts', icon: Wind },
+  { id: 'life', label: 'Life', keys: '2', hint: 'Identify, log and browse species', icon: Bird },
+  { id: 'footprint', label: 'Footprint', keys: '3', hint: 'Carbon, trend and solar', icon: Leaf },
+  { id: 'do', label: 'Do', keys: '4', hint: 'Cited actions and habit streaks', icon: Flame },
+  { id: 'org', label: 'Organization', keys: '5', hint: 'Corporate ESG, not personal', icon: Building2 },
 ];
 
 export default function EcoLensPage() {
   useLensNav('eco');
   useLensIdentity('eco');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('eco');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('air');
   const [footprintRefreshKey, setFootprintRefreshKey] = useState(0);
   const [lifeRefreshKey, setLifeRefreshKey] = useState(0);
@@ -101,19 +96,15 @@ export default function EcoLensPage() {
     }
   }, []);
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="eco" asMain={false}>
-      <FirstRunTour lensId="eco" />
+
       <DepthBadge lensId="eco" size="sm" className="ml-2" />
       <div data-lens-theme="eco" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Ecosystem</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{view === 'air' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Ecosystem</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

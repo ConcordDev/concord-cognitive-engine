@@ -12,7 +12,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { StageCard, type StageView } from '@/components/expedition-journal/StageCard';
@@ -20,8 +19,6 @@ import { ExpeditionSummary, type SummaryData, type Badge } from '@/components/ex
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { Loader2, CheckCircle2, AlertTriangle, Compass, Map as MapIcon, Trophy, SkipForward } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface WorldCatalogEntry {
   worldId: string;
@@ -55,8 +52,6 @@ export default function ExpeditionJournalPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<'world' | 'summary'>('world');
 
   const [worldsKey, setWorldsKey] = useState(0);
@@ -130,12 +125,11 @@ export default function ExpeditionJournalPage() {
 
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
-      <FirstRunTour lensId="expedition-journal" />
+
       <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="expedition-journal"
         crumb="Expedition Journal"
-        title={tab === 'world' ? `Where the road leads${who ? `, ${who}` : ''}` : 'Everything you have charted'}
         subtitle="Server-backed expedition progress per canon world: journal entries, screenshots, XP and badges. Press ] to cycle worlds, S for the summary."
         tabs={[
           { id: 'world', label: 'World expeditions', icon: MapIcon, hint: 'Per-world stages and journal' },

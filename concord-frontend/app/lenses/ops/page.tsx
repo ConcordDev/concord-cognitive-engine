@@ -13,7 +13,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
@@ -21,9 +20,7 @@ import { IncidentConsole } from '@/components/ops/IncidentConsole';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { apiHelpers, isForbidden } from '@/lib/api/client';
 import { AdminRequiredState } from '@/components/common/EmptyState';
 import { useState } from 'react';
@@ -55,8 +52,6 @@ async function runGatedDomain<T>(domain: string, action: string, input: Record<s
 
 export default function OpsLensPage() {
   useLensNav('ops');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
 
@@ -102,15 +97,15 @@ export default function OpsLensPage() {
     queryFn: () => runGatedDomain<{ explorations?: Array<{ id: string; domain?: string; createdAt?: string }> }>('explore', 'history', { limit: 20 }),
   });
 
-  const tabs: { key: TabKey; label: string; keys: string; title: string; hint: string; icon: LucideIcon; count?: number }[] = [
-    { key: 'incidents', label: 'Incidents', keys: 'i', title: 'Whatever is on fire', hint: 'Incident console: triage, ack, resolve', icon: Siren },
-    { key: 'attention', label: 'Attention', keys: 'a', title: 'Where the system is looking', hint: 'Civilization attention allocator', icon: Eye, count: attention.data?.allocations ? Object.keys(attention.data.allocations).length : undefined },
-    { key: 'repair_network', label: 'Repair net', keys: 'r', title: 'Who is fixing what', hint: 'Distributed repair network', icon: Wrench, count: repairNet.data?.pendingFixes },
-    { key: 'physical', label: 'Physical DTUs', keys: 'p', title: 'What the substrate can measure', hint: 'Physical DTU types and metrics', icon: Database, count: physical.data?.types?.types?.length },
-    { key: 'explore', label: 'Explorations', keys: 'x', title: 'Adjacent possibilities', hint: 'Reality explorations history', icon: Compass, count: explore.data?.explorations?.length },
-    { key: 'dtu', label: 'DTU substrate', keys: 'd', title: 'The substrate controls', hint: 'Admin-tier DTU macros', icon: Cpu },
-    { key: 'oncall', label: 'On-call', keys: 'o', title: 'Who gets paged next', hint: 'On-call, runbook, escalation and post-mortem workbench', icon: PhoneCall },
-    { key: 'repos', label: 'SRE repos', keys: 'g', title: 'Tooling worth stealing', hint: 'Ops / SRE tooling repos on GitHub', icon: GitBranch },
+ const tabs: {key: TabKey; label: string; keys: string; hint: string; icon: LucideIcon; count?: number }[] = [
+    { key: 'incidents', label: 'Incidents', keys: 'i', hint: 'Incident console: triage, ack, resolve', icon: Siren },
+    { key: 'attention', label: 'Attention', keys: 'a', hint: 'Civilization attention allocator', icon: Eye, count: attention.data?.allocations ? Object.keys(attention.data.allocations).length : undefined },
+    { key: 'repair_network', label: 'Repair net', keys: 'r', hint: 'Distributed repair network', icon: Wrench, count: repairNet.data?.pendingFixes },
+    { key: 'physical', label: 'Physical DTUs', keys: 'p', hint: 'Physical DTU types and metrics', icon: Database, count: physical.data?.types?.types?.length },
+    { key: 'explore', label: 'Explorations', keys: 'x', hint: 'Reality explorations history', icon: Compass, count: explore.data?.explorations?.length },
+    { key: 'dtu', label: 'DTU substrate', keys: 'd', hint: 'Admin-tier DTU macros', icon: Cpu },
+    { key: 'oncall', label: 'On-call', keys: 'o', hint: 'On-call, runbook, escalation and post-mortem workbench', icon: PhoneCall },
+    { key: 'repos', label: 'SRE repos', keys: 'g', hint: 'Ops / SRE tooling repos on GitHub', icon: GitBranch },
   ];
 
   useLensCommand(
@@ -134,19 +129,17 @@ export default function OpsLensPage() {
     </LensShell>
   );
 
-  const current = tabs.find((t) => t.key === activeTab)!;
   const card = 'rounded-2xl border border-white/10 bg-[#111] p-4';
   const btn = 'inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/15 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-teal-400/40';
   const spin = <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden />;
 
   return (
     <LensShell lensId="ops" asMain={false}>
-      <FirstRunTour lensId="ops" />
+
       <DepthBadge lensId="ops" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ops"
         crumb="Ops"
-        title={`${current.title}${activeTab === 'incidents' && who ? `, ${who}` : ''}`}
         subtitle="Incidents, attention budget, repair network, physical DTUs, explorations and on-call, with the substrate's admin macros one tab away."
         tabs={tabs.map((t) => ({ id: t.key, label: t.count != null ? `${t.label} ${t.count}` : t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
         activeTab={activeTab}

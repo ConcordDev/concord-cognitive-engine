@@ -13,7 +13,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { ShieldAlert, MapPinned, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun, isForbidden } from '@/lib/api/client';
@@ -28,8 +27,6 @@ import { AlertsPanel } from '@/components/crisis-ops/AlertsPanel';
 import { ResourcePanel } from '@/components/crisis-ops/ResourcePanel';
 import { IncidentReportPanel } from '@/components/crisis-ops/IncidentReportPanel';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface Crisis {
   id: string;
@@ -46,8 +43,6 @@ interface SkillSuggestion {
 const ACTIVE_WORLD_KEY = 'concordia:activeWorldId';
 
 export default function CrisisOpsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('concordia-hub');
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
@@ -94,13 +89,12 @@ export default function CrisisOpsPage() {
 
   return (
     <LensShell lensId="crisis-ops" asMain={false}>
-      <FirstRunTour lensId="crisis-ops" />
+
       <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="crisis-ops"
         theme="crisis-ops"
         crumb="Crisis Ops"
-        title={crises.length > 0 ? `${crises.length} active, ${who || 'responder'}` : `All quiet${who ? `, ${who}` : ''}`}
         subtitle="Operational crisis-response console: map, triage, playbooks, command and resources."
         actions={
           reports.items.length > 0 ? (

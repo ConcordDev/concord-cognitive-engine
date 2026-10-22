@@ -2,12 +2,9 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // Translation lens — machine translation through Concord's local LLM.
 // Wires the REAL `translation` backend domain (languages / detect / translate
@@ -47,8 +44,6 @@ const DOMAIN = 'translation';
 
 export default function TranslationLens() {
   useLensNav('translation');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [formalities, setFormalities] = useState<string[]>(['neutral', 'formal', 'informal']);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -120,13 +115,10 @@ export default function TranslationLens() {
 
   return (
     <LensShell lensId="translation" asMain={false}>
-      <FirstRunTour lensId="translation" />
+
       <DepthBadge lensId="translation" size="sm" className="ml-2" />
       <div data-lens-theme="translation" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Translation</p>
-        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          Say it another way{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Translation</h1>
         <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">
           Machine translation on your own hardware — powered by the local LLM. Text never leaves your server.
         </p>

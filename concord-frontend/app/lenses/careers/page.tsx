@@ -2,8 +2,6 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Careers lens — the client door into the living-career system (jobs = sports =
@@ -80,8 +78,6 @@ const NEGOTIABLE = new Set(['offered', 'countered']);
 type LoadState = 'loading' | 'error' | 'disabled' | 'ready';
 
 export default function CareersLens() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [state, setState] = useState<LoadState>('loading');
@@ -236,7 +232,6 @@ export default function CareersLens() {
     <NorthStarFrame
       lensId="careers"
       crumb="Careers"
-      title={`Pick a trade${who ? `, ${who}` : ''}`}
       subtitle="Jobs and sports run on one engine: play a shift, climb a ten-tier ladder, and negotiate contracts with real employers."
       actions={
         <button onClick={() => void refresh()} className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-white" aria-label="Refresh careers" title="Refresh">

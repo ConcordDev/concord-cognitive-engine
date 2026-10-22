@@ -11,7 +11,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
@@ -30,8 +29,6 @@ import { VisibilityPanel } from '@/components/logistics/VisibilityPanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   Truck, Package, Warehouse, Route, ShieldCheck, Navigation, Map, LayoutGrid, TowerControl, Plus,
   Truck as MTabTruck, Package as MTabShip, Warehouse as MTabWh, MapPin as MTabRoute, ShieldCheck as MTabCompliance,
@@ -41,17 +38,6 @@ type LogView =
   | 'fleet' | 'shipments' | 'tracker' | 'warehouse' | 'routes' | 'compliance' | 'map'
   | 'workbench' | 'visibility';
 
-const TITLES: Record<LogView, string> = {
-  fleet: 'Run the fleet',
-  shipments: 'Move the freight',
-  tracker: 'Track every load',
-  warehouse: 'Count the stock',
-  routes: 'Plan the routes',
-  compliance: 'Stay compliant',
-  map: 'See the fleet',
-  workbench: 'Work the TMS desk',
-  visibility: 'See the whole chain',
-};
 
 const VIEWS: { id: LogView; label: string; keys: string; icon: typeof Truck }[] = [
   { id: 'fleet', label: 'Fleet', keys: 'f', icon: Truck },
@@ -67,8 +53,6 @@ const VIEWS: { id: LogView; label: string; keys: string; icon: typeof Truck }[] 
 
 export default function LogisticsLensPage() {
   useLensNav('logistics');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<LogView>('fleet');
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
@@ -86,12 +70,11 @@ export default function LogisticsLensPage() {
 
   return (
     <LensShell lensId="logistics" asMain={false}>
-      <FirstRunTour lensId="logistics" />
+
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="logistics"
         crumb="Logistics"
-        title={`${TITLES[active]}${active === 'fleet' && who ? `, ${who}` : ''}`}
         subtitle="Fleet, shipments, warehouse, routes, and compliance"
         actions={(
           <>

@@ -11,9 +11,6 @@ import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
 import { PeriodicTable } from '@/components/materials/PeriodicTable';
@@ -74,8 +71,6 @@ export default function MaterialsLensPage() {
   useLensNav('materials');
   const reduceMotion = useReducedMotion();
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('materials');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MaterialsView>('library');
 
   useLensCommand(
@@ -93,12 +88,11 @@ export default function MaterialsLensPage() {
 
   return (
     <LensShell lensId="materials" asMain={false}>
-      <FirstRunTour lensId="materials" />
+
       <DepthBadge lensId="materials" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="materials"
         crumb="Materials"
-        title={`Find the right material${active === 'library' && who ? `, ${who}` : ''}`}
         subtitle="Library, tests, Materials Project search, corrosion and crystal structure."
         tabs={VIEWS}
         activeTab={active}

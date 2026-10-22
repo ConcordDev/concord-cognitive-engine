@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MusicStreamingSection } from '@/components/music/MusicStreamingSection';
 import type { SessionTrack, SessionScene, SessionClip } from '@/components/music/SessionView';
@@ -75,19 +74,6 @@ import type {
  *  welded MusicBrainz / workbench accordions. */
 export type MusicAppView = MusicLensView | 'artists' | 'tools' | 'listen';
 
-const VIEW_TITLES: Partial<Record<MusicAppView, string>> = {
-  home: 'What are we hearing',
-  listen: 'What is playing',
-  browse: 'What is out there',
-  session: 'What are we making',
-  marketplace: 'What is for sale',
-  library: 'What you keep',
-  search: 'What are you looking for',
-  artists: 'Who is making it',
-  tools: 'What the numbers say',
-  upload: 'What are we releasing',
-  revenue: 'What it earned',
-};
 import { previewRoyaltyObligations, ROYALTY_CONSTANTS } from '@/lib/music/royalty-cascade';
 import { TrackCard } from '@/components/music/TrackCard';
 import { ArtistProfile } from '@/components/music/ArtistProfile';
@@ -276,7 +262,6 @@ export function MusicWorkspace() {
   // ---- View State (single union — Apple Music sidebar + Ableton session) ----
   const [view, setView] = useState<MusicAppView>('home');
   const { user: authUser } = useAuth();
-  const who = titleCaseDisplayName(authUser?.username);
 
   // ---- Session (Ableton-shape clip launcher) — real, persisted arrangement ----
   const {
@@ -816,15 +801,12 @@ export function MusicWorkspace() {
   // ---- Render ----
   return (
     <LensShell lensId="music" asMain={false} disableAgentFab={true}>
-      <FirstRunTour lensId="music" />
+
       <DepthBadge lensId="music" size="sm" className="ml-2" />
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
       <header className="flex-shrink-0 px-8 pt-6">
-        <p className="text-[14px] text-zinc-500">Music</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {VIEW_TITLES[view] ?? 'Music'}{view === 'home' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Music</h1>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 no-scrollbar" aria-label="Music views">
             {[

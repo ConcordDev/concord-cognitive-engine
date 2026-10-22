@@ -3,14 +3,11 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ProjectsSection } from '@/components/projects/ProjectsSection';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -19,18 +16,15 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function ProjectsLensPage() {
   useLensNav('projects');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('projects');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [showRepos, setShowRepos] = useState(false);
 
   return (
     <LensShell lensId="projects" asMain={false}>
-      <FirstRunTour lensId="projects" />      <DepthBadge lensId="projects" size="sm" className="ml-2" />
+<DepthBadge lensId="projects" size="sm" className="ml-2" />
     <div data-lens-theme="projects" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">Projects</p>
-          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">What&apos;s in flight{who ? `, ${who}` : ''}</h1>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Projects</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

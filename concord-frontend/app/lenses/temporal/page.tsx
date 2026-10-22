@@ -13,13 +13,10 @@ import { useState } from 'react';
 import { Activity, Diamond, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { ForecastWorkbench } from '@/components/temporal/ForecastWorkbench';
 import { TimeCrystals } from '@/components/temporal/TimeCrystals';
@@ -27,17 +24,15 @@ import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 
 type View = 'series' | 'rhythms' | 'tooling';
 
-const VIEWS: { id: View; label: string; title: string; hint: string; icon: typeof Activity }[] = [
-  { id: 'series', label: 'Series', title: 'What the series says', hint: 'Import, forecast, decompose, detect anomalies and changepoints, backtest', icon: Activity },
-  { id: 'rhythms', label: 'Rhythms', title: 'What keeps repeating', hint: 'Time crystals, archaeology and substrate diff', icon: Diamond },
-  { id: 'tooling', label: 'Tooling', title: 'Time-series tooling', hint: 'Open-source forecasting repos', icon: Wrench },
+const VIEWS: { id: View; label: string; hint: string; icon: typeof Activity }[] = [
+  { id: 'series', label: 'Series', hint: 'Import, forecast, decompose, detect anomalies and changepoints, backtest', icon: Activity },
+  { id: 'rhythms', label: 'Rhythms', hint: 'Time crystals, archaeology and substrate diff', icon: Diamond },
+  { id: 'tooling', label: 'Tooling', hint: 'Open-source forecasting repos', icon: Wrench },
 ];
 
 export default function TemporalLensPage() {
   useLensNav('temporal');
   useLensIdentity('temporal');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('series');
 
   useLensCommand(
@@ -51,17 +46,13 @@ export default function TemporalLensPage() {
     { lensId: 'temporal' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="temporal" asMain={false}>
-      <FirstRunTour lensId="temporal" />
+
       <DepthBadge lensId="temporal" size="sm" className="ml-2" />
       <div data-lens-theme="temporal" className="relative min-h-full px-8 pb-10 pt-6">
-        <p className="text-[14px] text-zinc-500">Temporal</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{view === 'series' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Temporal</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Temporal views">
           {VIEWS.map((v, i) => {

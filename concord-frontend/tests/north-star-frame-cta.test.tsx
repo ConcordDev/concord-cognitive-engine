@@ -13,7 +13,6 @@ describe('NorthStarFrame CTA — mobile tab bar clearance (F3)', () => {
       <NorthStarFrame
         lensId="announcements"
         crumb="Announcements"
-        title="What's new"
         cta={{ label: 'Compose', onClick }}
       >
         <p>feed</p>
@@ -31,7 +30,6 @@ describe('NorthStarFrame CTA — mobile tab bar clearance (F3)', () => {
       <NorthStarFrame
         lensId="announcements"
         crumb="Announcements"
-        title="What's new"
         cta={{ label: 'Compose', onClick }}
       >
         <p>feed</p>

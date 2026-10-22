@@ -16,8 +16,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle, Loader2, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 type Role = 'tank' | 'healer' | 'dps' | 'support' | 'any';
@@ -40,8 +38,6 @@ const ROLES: Role[] = ['tank', 'healer', 'dps', 'support', 'any'];
 const WORLDS = ['concordia-hub', 'tunya', 'sovereign-ruins', 'crime', 'cyber', 'superhero', 'fantasy', 'lattice-crucible'];
 
 export default function LfgLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [reloadKey, setReloadKey] = useState(0);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const hasRows = useRef(false);
@@ -153,7 +149,6 @@ export default function LfgLensPage() {
       <NorthStarFrame
         lensId="lfg"
         crumb="Looking for group"
-        title={`Who is looking, ${who || 'traveller'}`}
         subtitle="Find or post group requests across every world. Invite a poster and a party forms."
         actions={(
           <button onClick={refresh} aria-label="Refresh requests" className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-300 hover:bg-white/10">

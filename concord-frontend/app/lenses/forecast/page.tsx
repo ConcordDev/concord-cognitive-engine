@@ -15,13 +15,10 @@ import { CalendarDays, Clock, Bell, MapPin, Target, Archive, Sun, RefreshCw, Loa
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import { WeatherForecast } from '@/components/forecast/WeatherForecast';
@@ -45,21 +42,19 @@ interface Forecast {
 
 type Tab = 'now' | 'multiday' | 'hourly' | 'regional' | 'accuracy' | 'archive' | 'alerts';
 
-const TABS: Array<{ id: Tab; label: string; keys: string; title: string; icon: typeof Sun }> = [
-  { id: 'now', label: '24h', keys: '1', title: 'Tomorrow', icon: Sun },
-  { id: 'multiday', label: 'Multi-day', keys: '2', title: 'The days ahead', icon: CalendarDays },
-  { id: 'hourly', label: 'Hourly', keys: '3', title: 'Hour by hour', icon: Clock },
-  { id: 'regional', label: 'Per-district', keys: '4', title: 'District by district', icon: MapPin },
-  { id: 'accuracy', label: 'Accuracy', keys: '5', title: 'How right it was', icon: Target },
-  { id: 'archive', label: 'Archive', keys: '6', title: 'What was forecast', icon: Archive },
-  { id: 'alerts', label: 'Alerts', keys: '7', title: 'What to be told about', icon: Bell },
+const TABS: Array<{ id: Tab; label: string; keys: string; icon: typeof Sun }> = [
+  { id: 'now', label: '24h', keys: '1', icon: Sun },
+  { id: 'multiday', label: 'Multi-day', keys: '2', icon: CalendarDays },
+  { id: 'hourly', label: 'Hourly', keys: '3', icon: Clock },
+  { id: 'regional', label: 'Per-district', keys: '4', icon: MapPin },
+  { id: 'accuracy', label: 'Accuracy', keys: '5', icon: Target },
+  { id: 'archive', label: 'Archive', keys: '6', icon: Archive },
+  { id: 'alerts', label: 'Alerts', keys: '7', icon: Bell },
 ];
 
 export default function ForecastPage() {
   useLensNav('forecast');
   useLensIdentity('forecast');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState('concordia-hub');
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,20 +109,16 @@ export default function ForecastPage() {
     { lensId: 'forecast' },
   );
 
-  const current = TABS.find((t) => t.id === tab)!;
   const card = 'rounded-2xl border border-white/10 bg-[#111] p-5';
 
   return (
     <LensShell lensId="forecast" asMain={false}>
-      <FirstRunTour lensId="forecast" />
+
       <DepthBadge lensId="forecast" size="sm" className="ml-2" />
       <div data-lens-theme="forecast" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Forecast</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{tab === 'now' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Forecast</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <input

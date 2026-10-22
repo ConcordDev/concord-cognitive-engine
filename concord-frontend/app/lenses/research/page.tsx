@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -27,8 +26,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { SearchDeskPanel } from '@/components/research/SearchDeskPanel';
 import { ResearchLibrarySection } from '@/components/research/ResearchLibrarySection';
@@ -38,12 +35,12 @@ import { ResearchWorkbench } from '@/components/research/ResearchWorkbench';
 
 type ResearchView = 'search' | 'library' | 'crossref' | 'arxiv' | 'workbench';
 
-const VIEWS: { id: ResearchView; label: string; keys: string; title: string; hint: string; icon: typeof Search }[] = [
-  { id: 'search', title: 'What the substrate knows', label: 'Search', keys: 's', hint: 'DTU search · analyze', icon: Search },
-  { id: 'library', title: 'What you have collected', label: 'Library', keys: 'l', hint: 'Zotero references', icon: BookMarked },
-  { id: 'crossref', title: 'Resolve any DOI', label: 'CrossRef', keys: 'c', hint: 'DOI lookup', icon: Link2 },
-  { id: 'arxiv', title: 'What is new on arXiv', label: 'arXiv', keys: 'a', hint: 'Preprint feed', icon: Newspaper },
-  { id: 'workbench', title: 'Where the notes live', label: 'Workbench', keys: 'n', hint: 'Notes · graph · canvas', icon: FileText },
+const VIEWS: { id: ResearchView; label: string; keys: string; hint: string; icon: typeof Search }[] = [
+  { id: 'search', label: 'Search', keys: 's', hint: 'DTU search · analyze', icon: Search },
+  { id: 'library', label: 'Library', keys: 'l', hint: 'Zotero references', icon: BookMarked },
+  { id: 'crossref', label: 'CrossRef', keys: 'c', hint: 'DOI lookup', icon: Link2 },
+  { id: 'arxiv', label: 'arXiv', keys: 'a', hint: 'Preprint feed', icon: Newspaper },
+  { id: 'workbench', label: 'Workbench', keys: 'n', hint: 'Notes · graph · canvas', icon: FileText },
 ];
 
 function LibraryPanel() {
@@ -83,10 +80,7 @@ export default function ResearchLensPage() {
   useLensIdentity('research');
   const reduceMotion = useReducedMotion();
   const { isLive, lastUpdated } = useRealtimeLens('research');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ResearchView>('search');
-  const current = VIEWS.find((v) => v.id === active)!;
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -114,15 +108,12 @@ export default function ResearchLensPage() {
 
   return (
     <LensShell lensId="research" asMain={false}>
-      <FirstRunTour lensId="research" />
+
       <DepthBadge lensId="research" size="sm" className="ml-2" />
       <div data-lens-theme="research" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Research</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'search' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Research</h1>
           </div>
           {active !== 'search' && (
             <div className="flex shrink-0 items-center gap-3 pt-2">

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
@@ -16,10 +15,8 @@ import { AccountSecurityPanel } from '@/components/settings/AccountSecurityPanel
 import { PresenceStatusControl } from '@/components/settings/PresenceStatusControl';
 import { WorldVisibilityControl } from '@/components/settings/WorldVisibilityControl';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { loadPreferenceExport } from '@/lib/settings/export-preferences';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ShieldCheck, Monitor } from 'lucide-react';
 
 type Tab = 'account' | 'world';
@@ -30,8 +27,6 @@ const TABS: { id: Tab; label: string; icon: typeof ShieldCheck }[] = [
 ];
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('account');
   const [prefVersion, setPrefVersion] = useState(0);
   const [exportNote, setExportNote] = useState<string | null>(null);
@@ -74,12 +69,11 @@ export default function SettingsPage() {
 
   return (
     <LensShell lensId="settings" asMain={false}>
-      <FirstRunTour lensId="settings" />
+
       <DepthBadge lensId="settings" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="settings"
         crumb="Settings"
-        title={`Your settings${who ? `, ${who}` : ''}`}
         subtitle="Account and security first. World graphics, bindings, and snapshots sit one tab over."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
         activeTab={tab}

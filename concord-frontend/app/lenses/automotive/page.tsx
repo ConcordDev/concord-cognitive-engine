@@ -26,9 +26,6 @@ import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GarageSection } from '@/components/automotive/GarageSection';
 import { AdvancedToolsPanel } from '@/components/automotive/AdvancedToolsPanel';
@@ -42,11 +39,11 @@ import { Car, Gauge, DollarSign, AlertTriangle, Shield, Wrench, ScanSearch, Hist
 
 type AutoView = 'garage' | 'service' | 'vin' | 'history';
 
-const VIEWS: { id: AutoView; label: string; keys: string; title: string; icon: typeof Car }[] = [
-  { id: 'garage', label: 'Garage', keys: '1', title: 'Your garage', icon: Car },
-  { id: 'service', label: 'Service & tools', keys: '2', title: 'Keep it running', icon: Wrench },
-  { id: 'vin', label: 'VIN & recalls', keys: '3', title: 'Decode any VIN', icon: ScanSearch },
-  { id: 'history', label: 'History', keys: '4', title: 'Every mile on record', icon: History },
+const VIEWS: { id: AutoView; label: string; keys: string; icon: typeof Car }[] = [
+  { id: 'garage', label: 'Garage', keys: '1', icon: Car },
+  { id: 'service', label: 'Service & tools', keys: '2', icon: Wrench },
+  { id: 'vin', label: 'VIN & recalls', keys: '3', icon: ScanSearch },
+  { id: 'history', label: 'History', keys: '4', icon: History },
 ];
 
 interface DashboardSummary {
@@ -81,10 +78,7 @@ const RENEWAL_STATUS_COLOUR: Record<UpcomingRenewal['status'], string> = {
 export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<AutoView>('garage');
-  const current = VIEWS.find((v) => v.id === view)!;
 
   useEffect(() => {
     let cancelled = false;
@@ -111,12 +105,11 @@ export default function AutomotiveLensPage() {
 
   return (
     <LensShell lensId="automotive" asMain={false}>
-      <FirstRunTour lensId="automotive" />      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
+<DepthBadge lensId="automotive" size="sm" className="ml-2" />
       <div data-lens-theme="automotive">
       <NorthStarFrame
         lensId="automotive"
         crumb="Automotive"
-        title={`${current.title}${view === 'garage' && who ? `, ${who}` : ''}`}
         subtitle="Garage, fuel & service logs, maintenance reminders, cost of ownership, and vehicle history."
         actions={<LensFeedButton domain="automotive" />}
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}

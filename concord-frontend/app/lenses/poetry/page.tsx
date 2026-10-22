@@ -17,8 +17,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Poem {
@@ -92,8 +90,6 @@ function LineNumbers({ count }: { count: number }) {
 
 export default function PoetryPage() {
   useLensNav('poetry');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [poems, setPoems] = useState<Poem[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -185,10 +181,7 @@ export default function PoetryPage() {
   return (
     <LensShell lensId="poetry" asMain={false}>
       <div data-lens-theme="poetry" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Poetry</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The poem{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Poetry</h1>
 
         <section
           aria-label="Poem"

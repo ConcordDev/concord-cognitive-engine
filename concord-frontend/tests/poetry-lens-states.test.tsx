@@ -49,7 +49,7 @@ describe('poetry page', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<PoetryLens />);
     expect(await view.findByText('// the page is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The poem' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Poetry' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New poem' })).toBeEnabled();
     expect(view.getByTestId('po-caret')).toBeInTheDocument();
     expect(view.container.querySelector('input, textarea')).toBeNull();
@@ -164,11 +164,11 @@ describe('poetry page', () => {
     expect(view.getAllByTestId('po-line').map((node) => node.textContent)).toEqual(['Other line.']);
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<PoetryLens />);
-    expect(await view.findByRole('heading', { name: 'The poem, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Poetry' })).toBeInTheDocument();
     expect(await view.findByText('// the page is empty.')).toBeInTheDocument();
   });
 

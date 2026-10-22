@@ -10,18 +10,13 @@ import { useCallback, useState } from 'react';
 import { Scale } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { DecisionToolkit, TOOL_TABS, type ToolTab } from '@/components/ethics/DecisionToolkit';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 export default function EthicsLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<ToolTab>('multiframework');
 
   const analyze = useCallback(() => {
@@ -49,12 +44,11 @@ export default function EthicsLensPage() {
 
   return (
     <LensShell lensId="ethics" asMain={false}>
-      <FirstRunTour lensId="ethics" />
+
       <DepthBadge lensId="ethics" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ethics"
         crumb="Ethics"
-        title={`What is the right call${who ? `, ${who}` : ''}?`}
         subtitle="Multi-framework decision analysis, stakeholder equity, bias auditing, and a personal case library."
         cta={{ label: 'Analyze a decision', icon: Scale, onClick: analyze, title: 'Analyze a decision (N)' }}
       >

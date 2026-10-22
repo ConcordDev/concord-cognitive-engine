@@ -13,13 +13,10 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Bot, Brain, Network, Search, Users, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { SwarmRegistryPanel } from '@/components/entity/SwarmRegistryPanel';
 import { MindsPanel } from '@/components/entity/MindsPanel';
@@ -28,12 +25,12 @@ import { WikidataSearch } from '@/components/entity/WikidataSearch';
 import { AgentStatusPanel } from '@/components/entity/AgentStatusPanel';
 import type { EntityView } from '@/components/entity/entity-model';
 
-const VIEWS: { id: EntityView; label: string; keys: string; title: string; hint: string; icon: typeof Bot }[] = [
-  { id: 'registry', label: 'Registry', keys: '1', title: 'Who is in the graph', hint: 'World-model entities, relations and simulation', icon: Users },
-  { id: 'minds', label: 'Minds', keys: '2', title: 'Who is thinking', hint: 'Emergent entities and their qualia', icon: Brain },
-  { id: 'graph', label: 'Graph', keys: '3', title: 'How it all connects', hint: 'Knowledge-graph workbench', icon: Network },
-  { id: 'wikidata', label: 'Wikidata', keys: '4', title: 'Bring one in from Wikidata', hint: 'Live Wikidata import', icon: Search },
-  { id: 'agents', label: 'Agents', keys: '5', title: 'What the agents are doing', hint: 'Research agent status', icon: Bot },
+const VIEWS: { id: EntityView; label: string; keys: string; hint: string; icon: typeof Bot }[] = [
+  { id: 'registry', label: 'Registry', keys: '1', hint: 'World-model entities, relations and simulation', icon: Users },
+  { id: 'minds', label: 'Minds', keys: '2', hint: 'Emergent entities and their qualia', icon: Brain },
+  { id: 'graph', label: 'Graph', keys: '3', hint: 'Knowledge-graph workbench', icon: Network },
+  { id: 'wikidata', label: 'Wikidata', keys: '4', hint: 'Live Wikidata import', icon: Search },
+  { id: 'agents', label: 'Agents', keys: '5', hint: 'Research agent status', icon: Bot },
 ];
 
 const PANELS: Record<Exclude<EntityView, 'registry'>, ComponentType> = {
@@ -47,8 +44,6 @@ export default function EntityLensPage() {
   useLensNav('entity');
   useLensIdentity('entity');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<EntityView>('registry');
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -72,7 +67,6 @@ export default function EntityLensPage() {
     { lensId: 'entity' },
   );
 
-  const view = VIEWS.find((v) => v.id === active)!;
   const Panel = active === 'registry' ? null : PANELS[active];
   const motionProps = useMemo(
     () => (reduceMotion
@@ -83,13 +77,10 @@ export default function EntityLensPage() {
 
   return (
     <LensShell lensId="entity" asMain={false}>
-      <FirstRunTour lensId="entity" />
+
       <DepthBadge lensId="entity" size="sm" className="ml-2" />
       <div data-lens-theme="entity" className="relative min-h-full px-8 pb-10 pt-6">
-        <p className="text-[14px] text-zinc-500">Entities</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {view.title}{active === 'registry' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Entities</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Entity views">
           {VIEWS.map((v) => {

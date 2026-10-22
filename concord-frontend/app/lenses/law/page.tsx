@@ -75,7 +75,6 @@ import { useCallback, useRef, useState } from 'react';
 import { BookOpen, FileText, Briefcase, BarChart3, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -85,8 +84,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // Reused, already-real bespoke components.
 import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
@@ -110,11 +107,11 @@ import type { CaseFileSummary } from '@/components/law/case-types';
 
 type GroupId = 'research' | 'contracts' | 'cases' | 'analytics';
 
-const GROUPS: { id: GroupId; label: string; hotkey: string; title: string; hint: string; icon: typeof BookOpen }[] = [
-  { id: 'research', label: 'Research', hotkey: '1', title: 'What the record says', hint: 'Case law, dockets, patents and alerts', icon: BookOpen },
-  { id: 'contracts', label: 'Contracts', hotkey: '2', title: 'Where every contract stands', hint: 'Contract lifecycle, playbooks and obligations', icon: FileText },
-  { id: 'cases', label: 'Case Files', hotkey: '3', title: 'Your matters', hint: 'Case files and deadlines', icon: Briefcase },
-  { id: 'analytics', label: 'Analytics & Tools', hotkey: '4', title: 'Numbers behind the work', hint: 'Case analytics, text search, billing and compliance', icon: BarChart3 },
+const GROUPS: { id: GroupId; label: string; hotkey: string; hint: string; icon: typeof BookOpen }[] = [
+  { id: 'research', label: 'Research', hotkey: '1', hint: 'Case law, dockets, patents and alerts', icon: BookOpen },
+  { id: 'contracts', label: 'Contracts', hotkey: '2', hint: 'Contract lifecycle, playbooks and obligations', icon: FileText },
+  { id: 'cases', label: 'Case Files', hotkey: '3', hint: 'Case files and deadlines', icon: Briefcase },
+  { id: 'analytics', label: 'Analytics & Tools', hotkey: '4', hint: 'Case analytics, text search, billing and compliance', icon: BarChart3 },
 ];
 
 function Panel({ title, right, children, className }: { title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
@@ -131,8 +128,6 @@ function Panel({ title, right, children, className }: { title: string; right?: R
 
 export default function LawLensPage() {
   useLensNav('law');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('research');
   const bodyRef = useRef<HTMLDivElement>(null);
   const [contractList, setContractList] = useState<{ id: string; title: string }[]>([]);
@@ -162,7 +157,6 @@ export default function LawLensPage() {
     });
   }, []);
 
-  const current = GROUPS.find((g) => g.id === group)!;
 
   const renderGroup = () => {
     switch (group) {
@@ -240,12 +234,11 @@ export default function LawLensPage() {
 
   return (
     <LensShell lensId="law" asMain={false}>
-      <FirstRunTour lensId="law" />
+
       <DepthBadge lensId="law" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="law"
         crumb="Law & Contracts"
-        title={`${current.title}${group === 'research' && who ? `, ${who}` : ''}`}
         subtitle="Case-law and patent research from real public sources, the contract lifecycle, and case-file tooling."
         actions={
           <>

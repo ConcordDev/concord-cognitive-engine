@@ -35,7 +35,6 @@ import {
   Rss,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -44,8 +43,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 import ProjectDeskPanel from '@/components/trades/ProjectDeskPanel';
@@ -158,8 +155,6 @@ export default function TradesLensPage() {
   useLensNav('trades');
   useLensIdentity('trades');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('trades');
   const [active, setActive] = useState<TradesView>('project');
   const go = useCallback((id: TradesView) => setActive(id), []);
@@ -191,7 +186,7 @@ export default function TradesLensPage() {
 
   return (
     <LensShell lensId="trades" asMain={false}>
-      <FirstRunTour lensId="trades" />
+
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
       <div data-lens-theme="trades" className="lens-trades relative min-h-full px-8 pb-28 pt-6">
         <a href="#trades-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-teal-500">
@@ -199,10 +194,7 @@ export default function TradesLensPage() {
         </a>
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Trades &amp; Construction · {activeLabel}</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {active === 'project' ? `What is on the job${who ? `, ${who}` : ''}` : activeLabel}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Trades &amp; Construction · {activeLabel}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

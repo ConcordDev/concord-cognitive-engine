@@ -18,11 +18,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users2, LineChart, Swords, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { AllianceWorkspace } from '@/components/alliance/AllianceWorkspace';
 import { AllianceAnalyticsPanel } from '@/components/alliance/AllianceAnalyticsPanel';
@@ -53,8 +50,6 @@ const TABS: { id: TabId; label: string; icon: typeof Users2; hotkey: string; des
 export default function AllianceLensPage() {
   useLensNav('alliance');
   const [tab, setTab] = useState<TabId>('workspace');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   const summary = useMacroDispatchFeedback<AllianceSummary>();
   const [notifs, setNotifs] = useState<Notifications | null>(null);
@@ -94,20 +89,14 @@ export default function AllianceLensPage() {
   const activeProposals = data?.alliances.reduce((acc, a) => acc + (a.activeProposals || 0), 0) ?? 0;
 
   const tabs = TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hotkey, hint: t.desc }));
-  const titles: Record<TabId, string> = {
-    workspace: `Stand with your allies${who ? `, ${who}` : ''}`,
-    analytics: 'Weigh the alliance',
-    intel: 'Read the faction wars',
-  };
   const unread = (notifs?.totalUnread || 0) + (notifs?.pendingInvites || 0);
 
   return (
     <LensShell lensId="alliance" asMain={false}>
-      <FirstRunTour lensId="alliance" />
+
       <NorthStarFrame
         lensId="alliance"
         crumb="Alliance"
-        title={titles[tab]}
         subtitle={<span className="inline-flex items-center gap-2">Cross-group collaboration &amp; diplomatic analysis <DepthBadge lensId="alliance" size="sm" /></span>}
         actions={(
           <>

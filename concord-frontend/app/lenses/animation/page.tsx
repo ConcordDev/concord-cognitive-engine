@@ -14,8 +14,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Shot {
@@ -52,8 +50,6 @@ async function readShots(): Promise<Shot[]> {
 
 export default function AnimationPage() {
   useLensNav('animation');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [shots, setShots] = useState<Shot[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -138,10 +134,7 @@ export default function AnimationPage() {
   return (
     <LensShell lensId="animation" asMain={false}>
       <div data-lens-theme="animation" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Animation</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The shot{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Animation</h1>
 
         <section
           aria-label="Shot"

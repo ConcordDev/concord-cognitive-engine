@@ -33,14 +33,11 @@
 import { useRef, useState } from 'react';
 import { Orbit, Plus, Sparkles, CalendarClock, Radio, Bot } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -70,8 +67,6 @@ export default function AstronomyLensPage() {
   useLensNav('astronomy');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('astronomy');
   const [group, setGroup] = useState<GroupId>('sky');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
@@ -134,21 +129,13 @@ export default function AstronomyLensPage() {
     }
   };
 
-  const titles: Record<GroupId, string> = {
-    sky: `Look up${who ? `, ${who}` : ''}`,
-    log: 'Log what you observed',
-    calc: 'Work out the orbit',
-    live: 'Follow the sky live',
-    assistant: 'Ask the observatory',
-  };
 
   return (
     <LensShell lensId="astronomy" asMain={false}>
-      <FirstRunTour lensId="astronomy" />
+
       <NorthStarFrame
         lensId="astronomy"
         crumb="Astronomy"
-        title={titles[group]}
         subtitle="Celestial catalog, observation logging, and mission-planning calculators"
         actions={(
           <>

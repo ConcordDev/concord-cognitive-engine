@@ -23,7 +23,6 @@ vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => {} }));
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div data-testid="lens-shell">{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => <div data-testid="live-indicator" /> }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => <button>Export DTU</button> }));
@@ -92,7 +91,7 @@ describe('defense lens — one brief architecture', () => {
     mockRollupsOk();
     render(<DefenseLensPage />);
 
-    expect(screen.getByRole('heading', { name: 'The brief, Ramaj' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Defense' })).toBeInTheDocument();
     expect(screen.getByText('No brief open.')).toBeInTheDocument();
     expect(lensRun).not.toHaveBeenCalled();
 

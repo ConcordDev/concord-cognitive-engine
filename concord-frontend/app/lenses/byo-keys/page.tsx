@@ -24,11 +24,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { KeyRound, Gauge, ShieldCheck, Users, Boxes } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
@@ -88,17 +85,15 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 
 type ByoView = 'keys' | 'usage' | 'reliability' | 'org' | 'catalog';
 
-const VIEWS: { id: ByoView; label: string; keys: string; title: string; hint: string; icon: typeof KeyRound }[] = [
-  { id: 'keys', label: 'Keys', keys: '1', title: 'Your keys', hint: 'Brain mode and per-slot provider keys', icon: KeyRound },
-  { id: 'usage', label: 'Usage', keys: '2', title: 'What your keys are costing', hint: 'Spend, budgets and rate limits', icon: Gauge },
-  { id: 'reliability', label: 'Reliability', keys: '3', title: 'Keep the brains answering', hint: 'Key health checks and fallback chain', icon: ShieldCheck },
-  { id: 'org', label: 'Org & MCP', keys: '4', title: 'Share keys and tools with a team', hint: 'Organisation keys and MCP servers', icon: Users },
-  { id: 'catalog', label: 'Catalog', keys: '5', title: 'Every model you could route to', hint: 'Live OpenRouter model catalog', icon: Boxes },
+const VIEWS: { id: ByoView; label: string; keys: string; hint: string; icon: typeof KeyRound }[] = [
+  { id: 'keys', label: 'Keys', keys: '1', hint: 'Brain mode and per-slot provider keys', icon: KeyRound },
+  { id: 'usage', label: 'Usage', keys: '2', hint: 'Spend, budgets and rate limits', icon: Gauge },
+  { id: 'reliability', label: 'Reliability', keys: '3', hint: 'Key health checks and fallback chain', icon: ShieldCheck },
+  { id: 'org', label: 'Org & MCP', keys: '4', hint: 'Organisation keys and MCP servers', icon: Users },
+  { id: 'catalog', label: 'Catalog', keys: '5', hint: 'Live OpenRouter model catalog', icon: Boxes },
 ];
 
 export default function ByoKeysLens() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ByoView>('keys');
   useLensCommand(VIEWS.map((v) => ({
     id: `byo-keys-${v.id}`,
@@ -207,16 +202,14 @@ export default function ByoKeysLens() {
 
   const selectedProvider = providers.find(p => p.id === form.provider);
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="byo-keys" asMain={false}>
-      <FirstRunTour lensId="byo-keys" />
+
       <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="byo-keys"
         crumb="BYO keys"
-        title={`${current.title}${view === 'keys' && who ? `, ${who}` : ''}`}
         subtitle="Five Concord brains on the GPU pod. A key you add routes that slot to your provider."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

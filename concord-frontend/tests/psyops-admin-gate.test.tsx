@@ -58,7 +58,6 @@ vi.mock('@/components/lens/NorthStarFrame', () => ({
     React.createElement('div', { 'data-testid': 'psyops-frame' }, title, children),
 }));
 
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/psyops/PsyopsReference', () => ({ PsyopsReference: () => null }));
 vi.mock('@/components/psyops/DetectionRules', () => ({ DetectionRules: () => null }));

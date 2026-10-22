@@ -3,9 +3,6 @@
 import { useCallback, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingDashboardSection } from '@/components/marketing/MarketingDashboardSection';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
@@ -66,8 +63,6 @@ export default function MarketingLensPage() {
   useLensNav('marketing');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('marketing');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [studioTab, setStudioTab] = useState<StudioTab>('email');
 
   const composeEmail = useCallback(() => {
@@ -111,13 +106,12 @@ export default function MarketingLensPage() {
 
   return (
     <LensShell lensId="marketing" asMain={false}>
-      <FirstRunTour lensId="marketing" />
+
       <DepthBadge lensId="marketing" size="sm" className="ml-2" />
 
       <NorthStarFrame
         lensId="marketing"
         crumb="Marketing"
-        title={`Grow your audience${who ? `, ${who}` : ''}`}
         subtitle="Campaigns, leads, content, automation and analytics."
         actions={
           <>

@@ -24,13 +24,10 @@ import {
   Truck, LayoutDashboard, Network, ClipboardList, Newspaper, Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 import { SupplyChainOverview } from '@/components/supplychain/SupplyChainOverview';
 import { SupplyChainPlanner } from '@/components/supplychain/SupplyChainPlanner';
@@ -55,8 +52,6 @@ const TABS = DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, 
 
 export default function SupplyChainLensPage() {
   useLensNav('supplychain');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('overview');
   const tabs = omitCommunityRedditViews(TABS, ['pulse']);
 
@@ -78,17 +73,13 @@ export default function SupplyChainLensPage() {
     { lensId: 'supplychain' }
   );
 
-  const current = DESTINATIONS.find((d) => d.id === dest)!;
-  const title = dest === 'overview' ? `Your supply chain${who ? `, ${who}` : ''}` : current.label;
-
   return (
     <LensShell lensId="supplychain" asMain={false}>
-      <FirstRunTour lensId="supplychain" />
+
       <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="supplychain"
         crumb="Supply chain"
-        title={title}
         subtitle="End-to-end visibility, exception management and what-if planning over your real shipment, network, inventory and procurement state."
         tabs={tabs}
         activeTab={dest}

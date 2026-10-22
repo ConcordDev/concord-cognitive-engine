@@ -9,9 +9,6 @@ import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -41,8 +38,6 @@ const VIEWS: { id: MedView; label: string; keys: string; icon: LucideIcon }[] = 
 export default function MeditationLensPage() {
   useLensNav('meditation');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MedView>('session');
   const [practiceTick, setPracticeTick] = useState(0);
   const notifyPractice = () => setPracticeTick((t) => t + 1);
@@ -60,12 +55,11 @@ export default function MeditationLensPage() {
 
   return (
     <LensShell lensId="meditation" asMain={false}>
-      <FirstRunTour lensId="meditation" />
+
       <DepthBadge lensId="meditation" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="meditation"
         crumb="Meditation"
-        title={`Take a breath${who ? `, ${who}` : ''}`}
         subtitle="A quiet session player and streak. Tap a goal, pick a length, breathe."
         tabs={VIEWS}
         activeTab={active}

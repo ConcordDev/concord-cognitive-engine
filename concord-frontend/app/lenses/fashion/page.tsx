@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Shirt } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -21,14 +20,10 @@ import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 export default function FashionLensPage() {
   useLensNav('fashion');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<FashionTabId>('closet');
   const [exportSnapshot, setExportSnapshot] = useState<Record<string, unknown>>({});
 
@@ -65,12 +60,11 @@ export default function FashionLensPage() {
 
   return (
     <LensShell lensId="fashion" asMain={false}>
-      <FirstRunTour lensId="fashion" />
+
       <DepthBadge lensId="fashion" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="fashion"
         crumb="Fashion"
-        title={`What you will wear next${who ? `, ${who}` : ''}`}
         subtitle="Digital closet, outfits, AI stylist, wear calendar, packing plans, community and resale."
         actions={
           <>

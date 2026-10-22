@@ -12,11 +12,8 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
 import { OverviewPanel } from '@/components/lattice/OverviewPanel';
@@ -33,16 +30,16 @@ type LatticeView =
   | 'overview' | 'consent' | 'brains' | 'training'
   | 'schedule' | 'refresh' | 'audit' | 'federation' | 'repos';
 
-const VIEWS: { id: LatticeView; label: string; keys: string; title: string; hint: string; icon: typeof Activity }[] = [
-  { id: 'overview', label: 'Overview', keys: 'o', title: 'The lattice', hint: 'Brain health, corpus size and recent runs', icon: Activity },
-  { id: 'consent', label: 'Consent', keys: 'c', title: 'What you have consented to', hint: 'Opt-in training corpus', icon: ShieldCheck },
-  { id: 'brains', label: 'Brains', keys: 'b', title: 'The brains', hint: 'Per-brain models and versions', icon: Brain },
-  { id: 'training', label: 'Training', keys: 't', title: 'Every training run', hint: 'Run history, eval deltas, rollback', icon: LineChart },
-  { id: 'schedule', label: 'Schedule', keys: 's', title: 'When the lattice refreshes', hint: 'Refresh schedule and A/B', icon: CalendarClock },
-  { id: 'refresh', label: 'Refresh', keys: 'r', title: 'Refresh the lattice', hint: 'Trigger and watch a refresh', icon: RefreshCw },
-  { id: 'audit', label: 'Audit', keys: 'a', title: 'What changed and drifted', hint: 'Audit trail and drift', icon: ScrollText },
-  { id: 'federation', label: 'Federation', keys: 'f', title: 'The federation', hint: 'Peers sharing the lattice', icon: Network },
-  { id: 'repos', label: 'Repos', keys: 'g', title: 'Lattice tooling', hint: 'External reference repos', icon: Github },
+const VIEWS: { id: LatticeView; label: string; keys: string; hint: string; icon: typeof Activity }[] = [
+  { id: 'overview', label: 'Overview', keys: 'o', hint: 'Brain health, corpus size and recent runs', icon: Activity },
+  { id: 'consent', label: 'Consent', keys: 'c', hint: 'Opt-in training corpus', icon: ShieldCheck },
+  { id: 'brains', label: 'Brains', keys: 'b', hint: 'Per-brain models and versions', icon: Brain },
+  { id: 'training', label: 'Training', keys: 't', hint: 'Run history, eval deltas, rollback', icon: LineChart },
+  { id: 'schedule', label: 'Schedule', keys: 's', hint: 'Refresh schedule and A/B', icon: CalendarClock },
+  { id: 'refresh', label: 'Refresh', keys: 'r', hint: 'Trigger and watch a refresh', icon: RefreshCw },
+  { id: 'audit', label: 'Audit', keys: 'a', hint: 'Audit trail and drift', icon: ScrollText },
+  { id: 'federation', label: 'Federation', keys: 'f', hint: 'Peers sharing the lattice', icon: Network },
+  { id: 'repos', label: 'Repos', keys: 'g', hint: 'External reference repos', icon: Github },
 ];
 
 function TrainingPanel() {
@@ -100,8 +97,6 @@ const PANELS: Record<LatticeView, ComponentType> = {
 
 export default function LatticeLensPage() {
   useLensNav('lattice');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<LatticeView>('overview');
 
   useLensCommand(
@@ -119,17 +114,13 @@ export default function LatticeLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="lattice" asMain={false}>
-      <FirstRunTour lensId="lattice" />
+
       <DepthBadge lensId="lattice" size="sm" className="ml-2" />
       <div data-lens-theme="lattice" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Lattice</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{active === 'overview' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Lattice</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Lattice sections">
           {VIEWS.map(({ id, label, keys, hint, icon: Icon }) => {

@@ -2,7 +2,6 @@
 
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -23,8 +22,6 @@ import ShopFloorSuite from '@/components/manufacturing/ShopFloorSuite';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -48,14 +45,14 @@ import {
 // ---------------------------------------------------------------------------
 type ModeTab = 'oeeBoard' | 'woBoard' | 'spc' | 'shopFloor' | 'tools' | 'actions' | 'community';
 
-const MODE_TABS: { id: ModeTab; label: string; title: string; keys?: string; icon: typeof Cog }[] = [
-  { id: 'shopFloor', label: 'Shop Floor', title: 'What the floor is doing', keys: 's', icon: Factory },
-  { id: 'oeeBoard', label: 'OEE Board', title: 'How well the machines run', keys: 'o', icon: Gauge },
-  { id: 'woBoard', label: 'Work Orders', title: 'What is in the queue', keys: 'w', icon: ClipboardList },
-  { id: 'spc', label: 'Quality / SPC', title: 'Whether the process holds', keys: 'q', icon: ShieldCheck },
-  { id: 'tools', label: 'Tools', title: 'Shop-floor calculators', keys: 't', icon: Wrench },
-  { id: 'actions', label: 'Actions', title: 'Every manufacturing action', icon: Zap },
-  { id: 'community', label: 'Community', title: 'What other makers are saying', icon: MessagesSquare },
+const MODE_TABS: { id: ModeTab; label: string; keys?: string; icon: typeof Cog }[] = [
+  { id: 'shopFloor', label: 'Shop Floor', keys: 's', icon: Factory },
+  { id: 'oeeBoard', label: 'OEE Board', keys: 'o', icon: Gauge },
+  { id: 'woBoard', label: 'Work Orders', keys: 'w', icon: ClipboardList },
+  { id: 'spc', label: 'Quality / SPC', keys: 'q', icon: ShieldCheck },
+  { id: 'tools', label: 'Tools', keys: 't', icon: Wrench },
+  { id: 'actions', label: 'Actions', icon: Zap },
+  { id: 'community', label: 'Community', icon: MessagesSquare },
 ];
 
 interface MfgKpis {
@@ -106,8 +103,6 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
   const [mode, setMode] = useState<ModeTab>('shopFloor');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('manufacturing');
 
   useLensCommand(
@@ -157,17 +152,15 @@ export default function ManufacturingLensPage() {
   });
   const k = kpis || EMPTY_KPIS;
 
-  const current = MODE_TABS.find((t) => t.id === mode)!;
 
   return (
     <LensShell lensId="manufacturing" asMain={false}>
-      <FirstRunTour lensId="manufacturing" />
+
       <DepthBadge lensId="manufacturing" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="manufacturing"
         theme="dashboard"
         crumb="Manufacturing"
-        title={`${current.title}${mode === 'shopFloor' && who ? `, ${who}` : ''}`}
         subtitle="OEE, work orders, quality/SPC and shop-floor execution (MES)."
         actions={(
           <>

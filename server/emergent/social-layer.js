@@ -847,39 +847,110 @@ function publicIdentity(userId, profile) {
   return { username, displayName };
 }
 
+function asList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function mediaKind(mediaType) {
+  return mediaType === "video" || mediaType === "audio" || mediaType === "image" ? mediaType : "image";
+}
+
+function mediaList(post) {
+  if (Array.isArray(post?.media)) return post.media;
+  if (typeof post?.mediaUrl === "string" && post.mediaUrl) {
+    return [{ kind: mediaKind(post.mediaType), url: post.mediaUrl, alt: "", caption: "" }];
+  }
+  return [];
+}
+
+function reactionTotalOf(post) {
+  const reactions = post?.reactions;
+  if (!reactions) return 0;
+  if (reactions instanceof Map) {
+    let total = 0;
+    for (const users of reactions.values()) {
+      if (users instanceof Set || Array.isArray(users)) total += users.size || users.length || 0;
+    }
+    return total;
+  }
+  if (typeof reactions === "object") {
+    let total = 0;
+    for (const value of Object.values(reactions)) {
+      if (typeof value === "number") total += value;
+      else if (value instanceof Set || Array.isArray(value)) total += value.size || value.length || 0;
+    }
+    return total;
+  }
+  return 0;
+}
+
+function bookmarkCountOf(post) {
+  if (post?.bookmarks instanceof Set) return post.bookmarks.size;
+  if (Array.isArray(post?.bookmarks)) return post.bookmarks.length;
+  return Number(post?.bookmarkCount) || 0;
+}
+
 function serializePost(post) {
   const reactions = {};
-  if (post.reactions) {
+  if (post.reactions instanceof Map) {
     for (const [type, users] of post.reactions) {
-      reactions[type] = users.size;
+      reactions[type] = users instanceof Set ? users.size : (Array.isArray(users) ? users.length : 0);
+    }
+  } else if (post.reactions && typeof post.reactions === "object") {
+    for (const [type, value] of Object.entries(post.reactions)) {
+      if (typeof value === "number") reactions[type] = value;
+      else if (value instanceof Set || Array.isArray(value)) reactions[type] = value.size || value.length || 0;
     }
   }
   const who = publicIdentity(post.userId, null);
   const storedHandle = post.username && post.username !== post.userId ? post.username : null;
   const storedName = post.displayName && post.displayName !== post.userId ? post.displayName : null;
+  const tags = asList(post.tags);
+  const hashtags = Array.isArray(post.hashtags) ? post.hashtags : tags;
+  const comments = asList(post.comments);
+  const shares = asList(post.shares);
+  const mentionedUsers = asList(post.mentionedUsers);
+  const media = mediaList(post);
+  const commentCount = comments.length;
+  const shareCount = shares.length;
+  const body = post.body || post.content || "";
+  const content = post.content || post.body || "";
+  const poll = post.poll && Array.isArray(post.poll.options) ? post.poll : null;
   return {
     id: post.id,
     userId: post.userId,
     username: storedHandle || who.username,
     displayName: storedName || who.displayName || storedHandle || who.username,
-    content: post.content,
-    title: post.title,
-    mediaType: post.mediaType,
-    mediaUrl: post.mediaUrl,
-    tags: post.tags,
-    mentionedUsers: post.mentionedUsers,
+    content,
+    body,
+    title: post.title || "",
+    mediaType: post.mediaType || (media[0]?.kind || "text"),
+    mediaUrl: post.mediaUrl || media[0]?.url || null,
+    media,
+    tags,
+    hashtags,
+    mentions: mentionedUsers,
+    mentionedUsers,
+    comments,
     taggedProducts: post.taggedProducts || [],
     linkedDTUs: post.linkedDTUs || [],
     reactions,
-    commentCount: post.comments.length,
-    shareCount: post.shares.length,
-    bookmarkCount: post.bookmarks.size,
-    viewCount: post.viewCount,
-    watchTimeMs: post.watchTimeMs,
+    reactionCounts: reactions,
+    reactionTotal: reactionTotalOf(post),
+    commentCount,
+    replyCount: commentCount,
+    shareCount,
+    repostCount: post.lensReposts instanceof Set ? post.lensReposts.size : shareCount,
+    bookmarkCount: bookmarkCountOf(post),
+    viewerReaction: null,
+    viewerReposted: false,
+    viewCount: post.viewCount || 0,
+    watchTimeMs: post.watchTimeMs || 0,
     createdAt: post.createdAt,
     expiresAt: post.expiresAt,
     isPinned: post.isPinned,
-    pollOptions: post.pollOptions ? post.pollOptions.map(o => ({ text: o.text, voteCount: o.votes.size })) : null,
+    poll,
+    pollOptions: Array.isArray(post.pollOptions) ? post.pollOptions.map(o => ({ text: o.text, voteCount: o.votes instanceof Set ? o.votes.size : (Array.isArray(o.votes) ? o.votes.length : 0) })) : null,
     threadParentId: post.threadParentId,
     threadPosition: post.threadPosition,
     groupId: post.groupId,
@@ -888,6 +959,7 @@ function serializePost(post) {
     listing: post.listing || null,
     federationVisibility: post.federationVisibility || 'local',
     apActivityId: post.apActivityId || null,
+    quoteOf: post.quoteOf || null,
   };
 }
 
@@ -899,13 +971,46 @@ export function getPost(STATE, postId, viewerId = null) {
 }
 
 export function deletePost(STATE, { userId, postId }) {
+  if (!userId || userId === "anon") return { ok: false, status: 401, error: "auth required" };
   const social = getSocialState(STATE);
-  const post = requireVisiblePost(STATE, postId, userId);
-  if (!post) return { ok: false, error: "Post not found" };
-  if (post.userId !== userId) return { ok: false, error: "Only owner can delete" };
-  social.posts.delete(postId);
+  const id = String(postId || "");
+  const post = social.posts.get(id);
+  if (!post) return { ok: false, status: 404, error: "Post not found" };
+  if (post.userId !== userId) return { ok: false, status: 403, error: "Only owner can delete" };
+  social.posts.delete(id);
+  const lens = STATE?.socialLens;
+  if (lens && typeof lens === "object") {
+    if (lens.posts instanceof Map && lens.posts !== social.posts) lens.posts.delete(id);
+    if (lens.replies instanceof Map) lens.replies.delete(id);
+    if (lens.reactions instanceof Map) lens.reactions.delete(id);
+    if (lens.reposts instanceof Map) lens.reposts.delete(id);
+  }
+  if (social.feedCache instanceof Map) social.feedCache.clear();
+  if (Array.isArray(social.trending)) social.trending = [];
+  social.trendingComputedAt = 0;
+  social.postListings?.delete?.(id);
+  social.postClicks?.delete?.(id);
+  social.postEarnings?.delete?.(id);
+  if (social.groups instanceof Map) {
+    for (const group of social.groups.values()) {
+      if (Array.isArray(group?.postIds)) group.postIds = group.postIds.filter((pid) => pid !== id);
+    }
+  }
+  const db = STATE?.db;
+  if (db && typeof db.prepare === "function") {
+    for (const sql of [
+      "DELETE FROM social_posts WHERE id = ?",
+      "DELETE FROM social_post_records WHERE id = ?",
+      "DELETE FROM social_replies WHERE post_id = ?",
+      "DELETE FROM social_reactions WHERE post_id = ?",
+      "DELETE FROM social_bookmarks WHERE post_id = ?",
+      "DELETE FROM social_post_fts WHERE post_id = ?",
+    ]) {
+      try { db.prepare(sql).run(id); } catch { /* table may be absent */ }
+    }
+  }
   scheduleSocialFlush(STATE);
-  return { ok: true, postId };
+  return { ok: true, postId: id };
 }
 
 export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
@@ -979,6 +1084,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
     replies: [],
   };
 
+  if (!Array.isArray(post.comments)) post.comments = [];
   if (parentCommentId) {
     const parent = post.comments.find(c => c.id === parentCommentId);
     if (parent) parent.replies.push(comment);
@@ -1039,7 +1145,7 @@ export function getComments(STATE, postId, { limit = 50, viewerId = null } = {})
   function serializeComment(c) {
     return { id: c.id, userId: c.userId, content: c.content, parentCommentId: c.parentCommentId, audience: c.audience || "everyone", createdAt: c.createdAt, replies: (c.replies || []).filter(visible).map(serializeComment) };
   }
-  const comments = post.comments.filter(visible);
+  const comments = asList(post.comments).filter(visible);
   return { ok: true, comments: comments.slice(0, limit).map(serializeComment), total: comments.length };
 }
 
@@ -1052,6 +1158,7 @@ export function sharePost(STATE, { userId, postId, commentary }) {
   if (isBlocked(STATE, userId, post.userId)) return blockedResult();
 
   const share = { userId, commentary: commentary || "", timestamp: new Date().toISOString() };
+  if (!Array.isArray(post.shares)) post.shares = [];
   post.shares.push(share);
 
   if (post.userId !== userId) {
@@ -1064,7 +1171,8 @@ export function getShares(STATE, postId, viewerId = null) {
   const social = getSocialState(STATE);
   const post = requireVisiblePost(STATE, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
-  return { ok: true, shares: post.shares, total: post.shares.length };
+  const shares = asList(post.shares);
+  return { ok: true, shares, total: shares.length };
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────
@@ -1093,9 +1201,10 @@ export function getUserBookmarks(STATE, userId, { limit = 30, offset = 0 } = {})
 // ── Feed Algorithm ───────────────────────────────────────────────────────
 
 function getEngagementScore(post) {
-  let reactionCount = 0;
-  for (const users of post.reactions.values()) reactionCount += users.size;
-  return reactionCount * 3 + post.comments.length * 5 + post.shares.length * 8 + post.bookmarks.size * 4 + post.viewCount * 0.1;
+  const reactionCount = reactionTotalOf(post);
+  const comments = asList(post?.comments).length;
+  const shares = asList(post?.shares).length;
+  return reactionCount * 3 + comments * 5 + shares * 8 + bookmarkCountOf(post) * 4 + (post?.viewCount || 0) * 0.1;
 }
 
 function getRecencyBoost(createdAt) {
@@ -1123,9 +1232,10 @@ export function getForYouFeed(STATE, userId, { limit = 30, offset = 0 } = {}) {
     const engagement = getEngagementScore(post);
     const recency = getRecencyBoost(post.createdAt);
     let interestOverlap = 1;
-    if (interestTags.size > 0 && post.tags.length > 0) {
+    const tags = asList(post.tags);
+    if (interestTags.size > 0 && tags.length > 0) {
       let overlap = 0;
-      for (const t of post.tags) if (interestTags.has(t)) overlap++;
+      for (const t of tags) if (interestTags.has(t)) overlap++;
       interestOverlap = 1 + overlap;
     }
     scored.push({ post, score: (engagement + 1) * recency * interestOverlap });
@@ -1157,7 +1267,7 @@ export function getExploreFeed(STATE, { limit = 30, offset = 0, topic, viewerId 
   social.metrics.feedRequests++;
   const scored = [];
   for (const post of social.posts.values()) {
-    if (topic && !post.tags.includes(topic)) continue;
+    if (topic && !asList(post.tags).includes(topic)) continue;
     // Explore stays a public surface, including for the author.
     if (postAudience(post) !== "public") continue;
     if (!canViewPost(viewerId, post, STATE)) continue;
@@ -1492,7 +1602,7 @@ export function getTrendingTopics(STATE, { limit = 20, viewerId = null } = {}) {
   for (const post of social.posts.values()) {
     if (new Date(post.createdAt).getTime() < cutoff) continue;
     if (!canViewPost(viewerId, post, STATE)) continue;
-    for (const tag of post.tags) {
+    for (const tag of asList(post.tags)) {
       tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
     }
   }
@@ -1536,7 +1646,7 @@ export function getPostsByTopic(STATE, topic, { limit = 30, offset = 0, viewerId
   const posts = [];
   for (const post of social.posts.values()) {
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
-    if (!post.tags.includes(topic)) continue;
+    if (!asList(post.tags).includes(topic)) continue;
     if (!canViewPost(viewerId, post, STATE)) continue;
     posts.push(post);
   }
@@ -1702,9 +1812,20 @@ export function getPostAnalytics(STATE, postId, viewerId = null) {
 
   let reactionCount = 0;
   const reactionBreakdown = {};
-  for (const [type, users] of post.reactions) {
-    reactionBreakdown[type] = users.size;
-    reactionCount += users.size;
+  if (post.reactions instanceof Map) {
+    for (const [type, users] of post.reactions) {
+      const n = users instanceof Set ? users.size : (Array.isArray(users) ? users.length : 0);
+      reactionBreakdown[type] = n;
+      reactionCount += n;
+    }
+  } else if (post.reactions && typeof post.reactions === "object") {
+    for (const [type, value] of Object.entries(post.reactions)) {
+      const n = typeof value === "number"
+        ? value
+        : (value instanceof Set || Array.isArray(value) ? (value.size || value.length || 0) : 0);
+      reactionBreakdown[type] = n;
+      reactionCount += n;
+    }
   }
 
   return {
@@ -1713,11 +1834,11 @@ export function getPostAnalytics(STATE, postId, viewerId = null) {
     views: post.viewCount,
     reactions: reactionCount,
     reactionBreakdown,
-    comments: post.comments.length,
-    shares: post.shares.length,
-    bookmarks: post.bookmarks.size,
+    comments: asList(post.comments).length,
+    shares: asList(post.shares).length,
+    bookmarks: bookmarkCountOf(post),
     watchTimeMs: post.watchTimeMs,
-    reachEstimate: post.viewCount + post.shares.length * 10,
+    reachEstimate: (post.viewCount || 0) + asList(post.shares).length * 10,
   };
 }
 
@@ -1921,12 +2042,10 @@ export function processScheduledPosts(STATE) {
 // ── Trending Engine (velocity-based) ────────────────────────────────────
 
 function getTrendingScore(post) {
-  let reactionCount = 0;
-  for (const users of post.reactions.values()) reactionCount += users.size;
-  const likes = reactionCount;
-  const comments = post.comments.length;
-  const saves = post.bookmarks.size;
-  const shares = post.shares.length;
+  const likes = reactionTotalOf(post);
+  const comments = asList(post?.comments).length;
+  const saves = bookmarkCountOf(post);
+  const shares = asList(post?.shares).length;
   const raw = likes * 3 + comments * 5 + saves * 4 + shares * 8;
   const hoursOld = (Date.now() - new Date(post.createdAt).getTime()) / 3600000;
   const recencyBoost = 1 / (hoursOld + 1);

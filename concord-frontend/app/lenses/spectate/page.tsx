@@ -22,8 +22,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 const AUTHORED_WORLDS: Record<string, { name: string; desc: string }> = {
   'concordia-hub':         { name: 'Concordia Hub',     desc: 'The walled city of the four-faction Compact.' },
@@ -66,9 +64,9 @@ interface Position {
 type LoadState = 'loading' | 'error' | 'ready';
 type SpectateView = 'worlds' | 'positions';
 
-const VIEWS: { id: SpectateView; label: string; keys: string; title: string; hint: string; icon: typeof Eye }[] = [
-  { id: 'worlds', label: 'Worlds', keys: '1', title: 'What is happening right now', hint: 'Live spectacles and open prediction markets', icon: Eye },
-  { id: 'positions', label: 'My positions', keys: '2', title: 'Your SPARKS on the line', hint: 'Open and resolved prediction wagers', icon: History },
+const VIEWS: { id: SpectateView; label: string; keys: string; hint: string; icon: typeof Eye }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', hint: 'Live spectacles and open prediction markets', icon: Eye },
+  { id: 'positions', label: 'My positions', keys: '2', hint: 'Open and resolved prediction wagers', icon: History },
 ];
 
 export default function SpectateIndexPage() {
@@ -76,8 +74,6 @@ export default function SpectateIndexPage() {
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<SpectateView>('worlds');
 
   const refresh = useCallback(async (isInitial: boolean) => {
@@ -170,14 +166,12 @@ export default function SpectateIndexPage() {
     { lensId: 'spectate' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="spectate" asMain={false}>
       <NorthStarFrame
         lensId="spectate"
         crumb="Spectate"
-        title={`${current.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
         subtitle="Live faction wars, PvP tournaments and election nights, read-only. Watch any world and follow its prediction markets."
         actions={
           state === 'ready' ? (

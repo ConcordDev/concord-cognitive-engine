@@ -30,8 +30,7 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import WhiteboardWorkbench from '@/components/whiteboard/WhiteboardWorkbench';
 import { WhiteboardInspector } from './WhiteboardInspector';
@@ -82,8 +81,6 @@ export function WhiteboardStudio({
   const [showModeMenu, setShowModeMenu] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
   const [moreTools, setMoreTools] = useState(false);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   /* canvas state */
   const [tool, setTool] = useState<Tool>('select');
@@ -852,8 +849,7 @@ export function WhiteboardStudio({
       {/* Greeting + board switcher, over the canvas (north star 14) */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between px-8 pt-4">
         <div className="pointer-events-auto">
-          <p className="text-[13px] text-zinc-500">Whiteboard</p>
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">{who ? `Sketch it, ${who}` : 'Sketch it'}</h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Whiteboard</h1>
         </div>
         <div className="pointer-events-auto relative flex items-center gap-4 pt-1 text-[13px]">
           {saveMutation.isPending && <span className="text-zinc-600">Saving…</span>}

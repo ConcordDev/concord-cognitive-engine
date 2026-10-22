@@ -286,10 +286,23 @@ export function ensureSocialHydrated(STATE) {
       social.follows.get(row.follower_id).add(row.followed_id);
       social.followers.get(row.followed_id).add(row.follower_id);
     }
-    for (const row of db.prepare("SELECT payload_json FROM social_post_records").all()) {
+    for (const row of db.prepare("SELECT payload_json, privacy FROM social_post_records").all()) {
       if (!row.payload_json) continue;
       const post = postFromPayload(JSON.parse(row.payload_json));
-      if (post?.id) social.posts.set(post.id, post);
+      if (!post?.id) continue;
+      // The privacy column is the stored audience. A payload that omitted
+      // it (or says public while the column says private) must not leak.
+      const rank = { public: 0, followers: 1, private: 2 };
+      const fromPayload = post.privacy === "followers" || post.privacy === "private" || post.privacy === "public" ? post.privacy : "public";
+      const fromColumn = row.privacy === "followers" || row.privacy === "private" || row.privacy === "public" ? row.privacy : fromPayload;
+      post.privacy = (rank[fromColumn] || 0) > (rank[fromPayload] || 0) ? fromColumn : fromPayload;
+      if (!Array.isArray(post.media)) post.media = [];
+      if (!Array.isArray(post.tags)) post.tags = [];
+      if (!Array.isArray(post.hashtags)) post.hashtags = [];
+      if (!Array.isArray(post.mentionedUsers)) post.mentionedUsers = [];
+      if (!Array.isArray(post.comments)) post.comments = [];
+      if (!Array.isArray(post.shares)) post.shares = [];
+      social.posts.set(post.id, post);
     }
     const byThread = new Map();
     for (const row of db.prepare("SELECT * FROM social_dm_messages ORDER BY created_at ASC").all()) {

@@ -29,10 +29,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import {
@@ -157,17 +155,15 @@ function formatOverdue(overdueS: number | undefined): string {
 
 type ObsView = 'worlds' | 'factions' | 'realms' | 'districts' | 'liveness';
 
-const OBS_TABS: { id: ObsView; label: string; keys: string; title: string; hint: string; icon: typeof Radar }[] = [
-  { id: 'worlds', label: 'Worlds', keys: '1', title: 'The state of every world', hint: 'Per-world population, factions, realms and districts', icon: Globe2 },
-  { id: 'factions', label: 'Factions', keys: '2', title: 'Who is allied, at war, or watching', hint: 'Faction stance, momentum and relations', icon: Flag },
-  { id: 'realms', label: 'Realms', keys: '3', title: 'Who rules, and how securely', hint: 'Realm legitimacy, treasury, tax and citizens', icon: Crown },
-  { id: 'districts', label: 'Districts', keys: '4', title: 'How densely the world is built', hint: 'District area, buildings and lighting', icon: Building2 },
-  { id: 'liveness', label: 'Liveness', keys: '5', title: 'Whether the simulation is alive', hint: 'Faction scheduler liveness findings', icon: ShieldAlert },
+const OBS_TABS: { id: ObsView; label: string; keys: string; hint: string; icon: typeof Radar }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', hint: 'Per-world population, factions, realms and districts', icon: Globe2 },
+  { id: 'factions', label: 'Factions', keys: '2', hint: 'Faction stance, momentum and relations', icon: Flag },
+  { id: 'realms', label: 'Realms', keys: '3', hint: 'Realm legitimacy, treasury, tax and citizens', icon: Crown },
+  { id: 'districts', label: 'Districts', keys: '4', hint: 'District area, buildings and lighting', icon: Building2 },
+  { id: 'liveness', label: 'Liveness', keys: '5', hint: 'Faction scheduler liveness findings', icon: ShieldAlert },
 ];
 
 export default function WorldObservatoryPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ObsView>('worlds');
   const [overview, setOverview] = useState<WorldSummary[]>([]);
   /** Platform-wide distinct stuck schedulers from overview (not a sum of per-world rows). */
@@ -345,12 +341,11 @@ export default function WorldObservatoryPage() {
 
   return (
     <LensShell lensId="world-observatory" asMain={false}>
-      <FirstRunTour lensId="world-observatory" />
+
       <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="world-observatory"
         crumb="World observatory"
-        title={`${currentTab.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
         subtitle="Population, faction, realm, and district state across every world — read-only mission control."
         actions={
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">

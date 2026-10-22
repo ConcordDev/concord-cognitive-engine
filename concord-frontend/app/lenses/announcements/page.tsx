@@ -33,8 +33,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Megaphone, PenSquare, RefreshCcw, Info } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { EmptyState, ErrorState, Skeleton, StatusDot, type StatusDotState } from '@/components/ui';
 import { subscribe } from '@/lib/realtime/socket';
 import { lensRun } from '@/lib/api/client';
@@ -59,8 +57,6 @@ function readDeepLinkId(): string | null {
 }
 
 export default function AnnouncementsLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [reloadKey, setReloadKey] = useState(0);
   const [items, setItems] = useState<Announcement[]>([]);
   const [filter, setFilter] = useState<FilterKind>('all');
@@ -175,7 +171,6 @@ export default function AnnouncementsLensPage() {
       <NorthStarFrame
         lensId="announcements"
         crumb="Announcements"
-        title={`What's new, ${who || 'traveller'}`}
         subtitle="What's shipped, what's coming: feature drops, balance changes, events, news and the roadmap."
         actions={(
           <>

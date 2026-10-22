@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -24,8 +23,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { NotebookPanel } from '@/components/linguistics/NotebookPanel';
 import { AnalyzePanel } from '@/components/linguistics/AnalyzePanel';
@@ -37,17 +34,17 @@ import {
   type ModeTab,
 } from '@/components/linguistics/linguistics-shared';
 
-const VIEWS: { id: LinguisticsView; label: string; keys: string; title: string; hint: string; icon: typeof Languages }[] = [
-  { id: 'Analyses', title: 'The utterance', label: 'Analyses', keys: '1', hint: 'Morphosyntax notes', icon: FileText },
-  { id: 'Lexicon', title: 'The words', label: 'Lexicon', keys: '2', hint: 'Lexicon entries', icon: BookOpen },
-  { id: 'Grammars', title: 'The rules', label: 'Grammars', keys: '3', hint: 'Grammar sketches', icon: Type },
-  { id: 'Corpora', title: 'The corpus', label: 'Corpora', keys: '4', hint: 'Corpus collections', icon: Hash },
-  { id: 'Translations', title: 'Side by side', label: 'Translations', keys: '5', hint: 'Parallel text', icon: Globe },
-  { id: 'Dashboard', title: 'The shape of your work', label: 'Dashboard', keys: '6', hint: 'Counts overview', icon: Sparkles },
-  { id: 'analyze', title: 'Read a text closely', label: 'Analyze', keys: 'a', hint: 'Quick analysis', icon: Type },
-  { id: 'lookup', title: 'Look it up', label: 'Lookup', keys: 'l', hint: 'Rhyme · dictionary', icon: Search },
-  { id: 'learning', title: 'Learn it', label: 'Learning', keys: 'w', hint: 'Vocab · quiz · decks', icon: GraduationCap },
-  { id: 'workbench', title: 'The workbench', label: 'Workbench', keys: 'b', hint: 'Action panel', icon: Wand2 },
+const VIEWS: { id: LinguisticsView; label: string; keys: string; hint: string; icon: typeof Languages }[] = [
+  { id: 'Analyses', label: 'Analyses', keys: '1', hint: 'Morphosyntax notes', icon: FileText },
+  { id: 'Lexicon', label: 'Lexicon', keys: '2', hint: 'Lexicon entries', icon: BookOpen },
+  { id: 'Grammars', label: 'Grammars', keys: '3', hint: 'Grammar sketches', icon: Type },
+  { id: 'Corpora', label: 'Corpora', keys: '4', hint: 'Corpus collections', icon: Hash },
+  { id: 'Translations', label: 'Translations', keys: '5', hint: 'Parallel text', icon: Globe },
+  { id: 'Dashboard', label: 'Dashboard', keys: '6', hint: 'Counts overview', icon: Sparkles },
+  { id: 'analyze', label: 'Analyze', keys: 'a', hint: 'Quick analysis', icon: Type },
+  { id: 'lookup', label: 'Lookup', keys: 'l', hint: 'Rhyme · dictionary', icon: Search },
+  { id: 'learning', label: 'Learning', keys: 'w', hint: 'Vocab · quiz · decks', icon: GraduationCap },
+  { id: 'workbench', label: 'Workbench', keys: 'b', hint: 'Action panel', icon: Wand2 },
 ];
 
 const NOTEBOOK_MODES = new Set<LinguisticsView>([
@@ -57,8 +54,6 @@ const NOTEBOOK_MODES = new Set<LinguisticsView>([
 export default function LinguisticsLensPage() {
   useLensNav('linguistics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('linguistics');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<LinguisticsView>('Analyses');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -110,7 +105,6 @@ export default function LinguisticsLensPage() {
     [reduceMotion],
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   let body: ReactNode = null;
   if (NOTEBOOK_MODES.has(active)) {
@@ -127,15 +121,12 @@ export default function LinguisticsLensPage() {
 
   return (
     <LensShell lensId="linguistics" asMain={false}>
-      <FirstRunTour lensId="linguistics" />
+
       <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
       <div data-lens-theme="linguistics" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Linguistics</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'Analyses' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Linguistics</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
             {realtimeAlerts.length > 0 && (

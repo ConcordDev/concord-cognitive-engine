@@ -21,9 +21,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
 import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
@@ -55,18 +52,16 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 
 type ObserveView = 'compose' | 'platform' | 'ops' | 'tooling';
 
-const VIEWS: { id: ObserveView; label: string; keys: string; hint: string; title: string; icon: typeof Eye }[] = [
-  { id: 'compose', label: 'Compose', keys: '1', title: 'Watch, do not intervene', hint: 'Compose a citable empirical report from a world', icon: FileText },
-  { id: 'platform', label: 'Telemetry', keys: '2', title: 'What the system is doing', hint: 'Live metrics, logs, traces, monitors and on-call', icon: Activity },
-  { id: 'ops', label: 'Ops actions', keys: '3', title: 'Run an ops action', hint: 'Service log, alerts, SLO and incident actions', icon: Wrench },
-  { id: 'tooling', label: 'Tooling', keys: '4', title: 'Observability tooling', hint: 'Open-source observability repos on GitHub', icon: GitBranch },
+const VIEWS: { id: ObserveView; label: string; keys: string; hint: string; icon: typeof Eye }[] = [
+  { id: 'compose', label: 'Compose', keys: '1', hint: 'Compose a citable empirical report from a world', icon: FileText },
+  { id: 'platform', label: 'Telemetry', keys: '2', hint: 'Live metrics, logs, traces, monitors and on-call', icon: Activity },
+  { id: 'ops', label: 'Ops actions', keys: '3', hint: 'Service log, alerts, SLO and incident actions', icon: Wrench },
+  { id: 'tooling', label: 'Tooling', keys: '4', hint: 'Open-source observability repos on GitHub', icon: GitBranch },
 ];
 
 export default function ObservePage() {
   useLensNav('observe');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('observe');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ObserveView>('compose');
   const [worldId, setWorldId] = useState('concordia-hub');
   const [focus, setFocus] = useState('');
@@ -91,16 +86,14 @@ export default function ObservePage() {
     setComposing(false);
   };
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="observe" asMain={false}>
-      <FirstRunTour lensId="observe" />
+
       <DepthBadge lensId="observe" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="observe"
         crumb="Observer"
-        title={`${current.title}${view === 'compose' && who ? `, ${who}` : ''}`}
         subtitle="Every composition becomes a citable empirical-report DTU. Royalties flow to you when others cite it."
         actions={
           <>

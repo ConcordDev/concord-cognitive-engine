@@ -13,10 +13,8 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { TimelineRoadmap } from '@/components/timeline/TimelineRoadmap';
@@ -51,14 +49,14 @@ function tabFromLocation(): Tab {
   return TAB_IDS.includes(value as Tab) ? (value as Tab) : 'roadmap';
 }
 
-const TABS: { id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof LayoutList }[] = [
-  { id: 'roadmap', label: 'Roadmap', keys: 'g r', title: 'When it lands', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
-  { id: 'feed', label: 'Feed', keys: 'g f', title: 'What you have shared', hint: 'Your posts, reactions and comments', icon: LayoutList },
-  { id: 'timeline', label: 'Post history', keys: 'g t', title: 'Your posts over time', hint: 'Every post on an axis, colored by audience', icon: GitBranch },
-  { id: 'albums', label: 'Albums', keys: 'g a', title: 'Your albums', hint: 'Media albums', icon: LayoutGrid },
-  { id: 'memories', label: 'Memories', keys: 'g m', title: 'On this day', hint: 'What you posted on this day before', icon: Clock },
-  { id: 'notifications', label: 'Alerts', keys: 'g n', title: 'What you missed', hint: 'Reactions, comments and mentions', icon: Bell },
-  { id: 'profile', label: 'Profile', keys: 'g p', title: 'Your profile', hint: 'Your profile and stats', icon: UserCircle },
+const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof LayoutList }[] = [
+  { id: 'roadmap', label: 'Roadmap', keys: 'g r', hint: 'Milestones and goals on a week ruler', icon: CalendarRange },
+  { id: 'feed', label: 'Feed', keys: 'g f', hint: 'Your posts, reactions and comments', icon: LayoutList },
+  { id: 'timeline', label: 'Post history', keys: 'g t', hint: 'Every post on an axis, colored by audience', icon: GitBranch },
+  { id: 'albums', label: 'Albums', keys: 'g a', hint: 'Media albums', icon: LayoutGrid },
+  { id: 'memories', label: 'Memories', keys: 'g m', hint: 'What you posted on this day before', icon: Clock },
+  { id: 'notifications', label: 'Alerts', keys: 'g n', hint: 'Reactions, comments and mentions', icon: Bell },
+  { id: 'profile', label: 'Profile', keys: 'g p', hint: 'Your profile and stats', icon: UserCircle },
 ];
 
 // Map post privacy to a TimelineView tone so the axis colour-codes audience.
@@ -73,7 +71,6 @@ export default function TimelineLensPage() {
   useLensIdentity('timeline');
   const { isLive, lastUpdated } = useRealtimeLens('timeline');
   const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const viewerId = user?.id || 'anon';
 
   const [tab, setTab] = useState<Tab>('roadmap');
@@ -167,20 +164,16 @@ export default function TimelineLensPage() {
     { lensId: 'timeline' },
   );
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="timeline" asMain={false}>
-      <FirstRunTour lensId="timeline" />
+
       <DepthBadge lensId="timeline" size="sm" className="ml-2" />
       <div data-lens-theme="timeline" className="relative min-h-full">
         <div className="px-8 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[14px] text-zinc-500">Timeline</p>
-              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                {current.title}{tab === 'roadmap' && who ? `, ${who}` : ''}
-              </h1>
+              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Timeline</h1>
             </div>
             <div className="flex shrink-0 items-center gap-3 pt-2">
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

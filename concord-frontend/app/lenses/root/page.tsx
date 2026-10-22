@@ -4,9 +4,6 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ExpressionEvaluator } from '@/components/root/ExpressionEvaluator';
@@ -113,20 +110,18 @@ const GLYPH_REF = Object.entries(GLYPHS).map(([digit, glyph]) => ({
 
 type RootView = 'convert' | 'compute' | 'notebook' | 'learn' | 'metrics';
 
-const VIEWS: { id: RootView; label: string; keys: string; title: string; hint: string; icon: typeof Calculator }[] = [
-  { id: 'convert', label: 'Convert', keys: '1', title: 'Say a number in glyphs', hint: 'Decimal and glyph converter with glyph keyboard', icon: ArrowRightLeft },
-  { id: 'compute', label: 'Compute', keys: '2', title: 'Do arithmetic where numbers mean something', hint: 'Operation playground, expression evaluator, bitwise and modular ops', icon: Calculator },
-  { id: 'notebook', label: 'Notebook', keys: '3', title: 'What you have worked out', hint: 'Saved computations with reload and share', icon: Library },
-  { id: 'learn', label: 'Learn', keys: '4', title: 'Learn the base-6 glyphs', hint: 'Glyph reference and worked-example tutorial', icon: GraduationCap },
-  { id: 'metrics', label: 'Metrics', keys: '5', title: 'How the algebra is being used', hint: 'Live refusal-algebra metrics', icon: Activity },
+const VIEWS: { id: RootView; label: string; keys: string; hint: string; icon: typeof Calculator }[] = [
+  { id: 'convert', label: 'Convert', keys: '1', hint: 'Decimal and glyph converter with glyph keyboard', icon: ArrowRightLeft },
+  { id: 'compute', label: 'Compute', keys: '2', hint: 'Operation playground, expression evaluator, bitwise and modular ops', icon: Calculator },
+  { id: 'notebook', label: 'Notebook', keys: '3', hint: 'Saved computations with reload and share', icon: Library },
+  { id: 'learn', label: 'Learn', keys: '4', hint: 'Glyph reference and worked-example tutorial', icon: GraduationCap },
+  { id: 'metrics', label: 'Metrics', keys: '5', hint: 'Live refusal-algebra metrics', icon: Activity },
 ];
 
 const CARD = 'rounded-2xl border border-white/10 bg-[#111] p-4';
 
 /* ─── Component ─── */
 export default function RootLens() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<RootView>('convert');
   useLensCommand(VIEWS.map((v) => ({
     id: `root-${v.id}`,
@@ -226,7 +221,6 @@ export default function RootLens() {
   }, []);
 
   const canSave = !isNaN(parseFloat(opA)) && !isNaN(parseFloat(opB)) && !!opResult;
-  const current = VIEWS.find((v) => v.id === view)!;
 
   const glyphReference = (
     <section className={CARD}>
@@ -250,12 +244,11 @@ export default function RootLens() {
 
   return (
     <LensShell lensId="root" asMain={false}>
-      <FirstRunTour lensId="root" />
+
       <DepthBadge lensId="root" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="root"
         crumb="Root"
-        title={`${current.title}${view === 'convert' && who ? `, ${who}` : ''}`}
         subtitle="Refusal Algebra: a base-6 numeral system where numbers carry meaning."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

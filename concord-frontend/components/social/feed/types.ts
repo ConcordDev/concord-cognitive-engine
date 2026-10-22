@@ -35,6 +35,10 @@ export interface SocialPost {
   poll: SocialPoll | null;
   quoteOf: string | null;
   hashtags: string[];
+  tags?: string[];
+  mentions?: string[];
+  comments?: unknown[];
+  content?: string;
   createdAt: string;
   sensitiveHidden?: boolean;
   replyCount: number;

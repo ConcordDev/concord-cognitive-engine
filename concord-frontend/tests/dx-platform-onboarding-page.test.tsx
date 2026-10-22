@@ -22,7 +22,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/dx-platform/DevToolingPulse', () => ({ DevToolingPulse: () => null }));
 vi.mock('@/components/dx-platform/DxWorkbench', () => ({ DxWorkbench: () => null }));
@@ -57,7 +56,7 @@ describe('/lenses/dx-platform — onboarding progress restore (nested envelope)'
   it('leaves steps not-done when the fetch fails (no crash, honest default state)', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))));
     const { getByText } = render(<DxPlatformPage />);
-    await waitFor(() => expect(getByText('Concord DX Platform')).toBeInTheDocument());
+    await waitFor(() => expect(getByText('DX Platform')).toBeInTheDocument());
     const step2 = getByText("Click 'Sign in with Concord'").closest('div.rounded');
     expect(step2?.textContent).not.toMatch(/✓/);
   });

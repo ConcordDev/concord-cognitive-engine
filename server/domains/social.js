@@ -18,6 +18,7 @@ import {
   recipientResolvable,
   canonicalSocial,
   canViewPost,
+  deletePost as deleteLayerPost,
   sendMessage as layerSendMessage,
   getConversations,
   getMessages,
@@ -113,9 +114,16 @@ export default function registerSocialActions(registerLensAction) {
       if (!post.content && post.body) post.content = post.body;
       if (!post.body && post.content) post.body = post.content;
       if (!Array.isArray(post.hashtags)) post.hashtags = [];
+      if (!Array.isArray(post.tags)) post.tags = [];
+      if (!Array.isArray(post.mentionedUsers)) post.mentionedUsers = [];
       if (!Array.isArray(post.comments)) post.comments = [];
       if (!Array.isArray(post.shares)) post.shares = [];
-      if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set();
+      if (!Array.isArray(post.media)) {
+        const url = typeof post.mediaUrl === "string" ? post.mediaUrl : "";
+        const kind = post.mediaType === "video" || post.mediaType === "audio" || post.mediaType === "image" ? post.mediaType : "image";
+        post.media = url ? [{ kind, url, alt: "", caption: "" }] : [];
+      }
+      if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set(Array.isArray(post.bookmarks) ? post.bookmarks : []);
       if (!(post.reactions instanceof Map)) post.reactions = new Map();
       if (!post.privacy) post.privacy = "public";
       // A shared Map is serialized twice. A cycle collapses the second copy
@@ -219,7 +227,12 @@ export default function registerSocialActions(registerLensAction) {
     const hideMedia = post.sensitive === true && viewerId !== post.userId && viewer?.showSensitive !== true;
     return {
       ...post,
-      media: hideMedia ? [] : post.media,
+      media: hideMedia ? [] : (Array.isArray(post.media) ? post.media : []),
+      hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],
+      tags: Array.isArray(post.tags) ? post.tags : [],
+      mentionedUsers: Array.isArray(post.mentionedUsers) ? post.mentionedUsers : [],
+      mentions: Array.isArray(post.mentionedUsers) ? post.mentionedUsers : [],
+      comments: Array.isArray(post.comments) ? post.comments : [],
       mediaUrl: hideMedia ? null : post.mediaUrl,
       sensitiveHidden: hideMedia,
       username: who.username,
@@ -231,6 +244,12 @@ export default function registerSocialActions(registerLensAction) {
       viewerReaction: viewerId ? (reactMap.get(viewerId) || null) : null,
       viewerReposted: viewerId ? repostSet.has(viewerId) : false,
     };
+  }
+
+  function visibleStored(s, postId, viewerId) {
+    const stored = s.posts.get(postId);
+    if (!stored || !canViewPost(viewerId, stored, globalThis._concordSTATE)) return null;
+    return stored;
   }
 
   const REACTION_KINDS = ["like", "love", "celebrate", "insightful", "laugh", "sad"];
@@ -320,7 +339,7 @@ export default function registerSocialActions(registerLensAction) {
       const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
       const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
       const items = [...s.posts.values()]
-        .filter((p) => p && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
+        .filter((p) => p && !p.isStory && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
         .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
         .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
         .slice(0, limit)
@@ -342,16 +361,8 @@ export default function registerSocialActions(registerLensAction) {
     const post = s.posts.get(postId);
     if (!post) return { ok: false, error: "post not found" };
     if (post.userId !== userId) return { ok: false, error: "only the author can delete this post" };
-    s.posts.delete(postId);
-    s.replies.delete(postId);
-    s.reactions.delete(postId);
-    s.reposts.delete(postId);
-    const db = ctx?.db || globalThis._concordSTATE?.db;
-    if (db && typeof db.prepare === "function") {
-      try {
-        db.prepare("DELETE FROM social_posts WHERE id = ? AND (user_id = ? OR author_id = ?)").run(postId, userId, userId);
-      } catch { /* table may be absent */ }
-    }
+    const removed = deleteLayerPost(globalThis._concordSTATE, { userId, postId });
+    if (!removed.ok) return { ok: false, error: removed.status === 403 ? "only the author can delete this post" : "post not found" };
     save();
     return { ok: true, result: { id: postId, deleted: true } };
   });
@@ -360,7 +371,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "addReply", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     const body = clip(params.body, 1000);
     if (!body) return { ok: false, error: "reply body required" };
     const parentId = params.parentId ? String(params.parentId) : null;
@@ -368,7 +380,6 @@ export default function registerSocialActions(registerLensAction) {
     if (parentId && !list.some((r) => r.id === parentId)) {
       return { ok: false, error: "parent reply not found" };
     }
-    const userId = actor(ctx);
     const replyLimit = assertSocialRate(canonicalSocial(globalThis._concordSTATE).profiles.get(userId), userId, "comment");
     if (!replyLimit.ok) return { ok: false, status: replyLimit.status, error: replyLimit.error };
     const who = authorIdentity(ctx, userId, params.username, params.displayName);
@@ -430,10 +441,10 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "react", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     const kind = String(params.reaction || "like").toLowerCase();
     if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "unknown reaction kind" };
-    const userId = actor(ctx);
     if (!s.reactions.has(postId)) s.reactions.set(postId, new Map());
     const map = s.reactions.get(postId);
     let viewerReaction;
@@ -451,8 +462,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "repost", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     if (!s.reposts.has(postId)) s.reposts.set(postId, new Set());
     const set = s.reposts.get(postId);
     let viewerReposted;
@@ -597,6 +608,7 @@ export default function registerSocialActions(registerLensAction) {
     const limit = Math.min(50, Math.max(1, parseInt(params.limit, 10) || 12));
     const counts = new Map();
     for (const p of s.posts.values()) {
+      if ((p.privacy || "public") !== "public") continue;
       if (!canViewPost(viewerId, p, globalThis._concordSTATE)) continue;
       const tags = Array.isArray(p?.hashtags) ? p.hashtags : [];
       for (const t of tags) {
@@ -651,10 +663,10 @@ export default function registerSocialActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("social", "shareTargets", (_ctx, _a, params = {}) => {
+  registerLensAction("social", "shareTargets", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    if (!visibleStored(s, postId, actor(ctx))) return { ok: false, error: "post not found" };
     const permalink = `/lenses/social/post/${postId}`;
     return {
       ok: true,
@@ -882,7 +894,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "votePoll", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const post = s.posts.get(String(params.postId || ""));
-    if (!post) return { ok: false, error: "post not found" };
+    const me = actor(ctx);
+    if (!post || !canViewPost(me, post, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
     if (!post.poll) return { ok: false, error: "post has no poll" };
     if (post.poll.closesAt && Date.parse(post.poll.closesAt) <= Date.now()) {
       return { ok: false, error: "poll is closed" };
@@ -890,7 +903,6 @@ export default function registerSocialActions(registerLensAction) {
     const optId = String(params.optionId || "");
     const opt = post.poll.options.find((o) => o.id === optId);
     if (!opt) return { ok: false, error: "unknown poll option" };
-    const me = actor(ctx);
     const prior = post.poll.voters[me];
     if (prior === optId) return { ok: false, error: "you already voted for that option" };
     if (prior) {
@@ -919,9 +931,9 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const post = s.posts.get(String(params.postId || ""));
-    if (!post) return { ok: false, error: "post not found" };
-    if (!post.poll) return { ok: false, error: "post has no poll" };
     const me = actor(ctx);
+    if (!post || !canViewPost(me, post, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
+    if (!post.poll) return { ok: false, error: "post has no poll" };
     const totalVotes = post.poll.options.reduce((n, o) => n + o.votes, 0);
     const closed = !!post.poll.closesAt && Date.parse(post.poll.closesAt) <= Date.now();
     return {

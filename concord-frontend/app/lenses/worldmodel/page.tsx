@@ -16,10 +16,7 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -45,16 +42,16 @@ type WmView =
   | 'ingest'
   | 'arxiv';
 
-const VIEWS: { id: WmView; label: string; icon: LucideIcon; keys: string; title: string; countKey?: 'entities' | 'relations' }[] = [
-  { id: 'graph', label: 'Graph', icon: Network, keys: 'g', title: 'The model' },
-  { id: 'entities', label: 'Entities', icon: Boxes, keys: 'e', title: 'Everything in the model', countKey: 'entities' },
-  { id: 'relations', label: 'Relations', icon: GitFork, keys: 'r', title: 'How things connect', countKey: 'relations' },
-  { id: 'simulate', label: 'Simulate', icon: Play, keys: 'i', title: 'What happens if' },
-  { id: 'compare', label: 'Compare', icon: GitCompareArrows, keys: 'c', title: 'Two futures, side by side' },
-  { id: 'snapshots', label: 'Snapshots', icon: Camera, keys: 'n', title: 'The model, frozen in time' },
-  { id: 'library', label: 'Library', icon: LibraryIcon, keys: 'l', title: 'Models you can open' },
-  { id: 'ingest', label: 'Ingest', icon: Upload, keys: 'd', title: 'Feed the model' },
-  { id: 'arxiv', label: 'arXiv', icon: FileSearch, keys: 'x', title: 'Research behind world models' },
+const VIEWS: { id: WmView; label: string; icon: LucideIcon; keys: string; countKey?: 'entities' | 'relations' }[] = [
+  { id: 'graph', label: 'Graph', icon: Network, keys: 'g' },
+  { id: 'entities', label: 'Entities', icon: Boxes, keys: 'e', countKey: 'entities' },
+  { id: 'relations', label: 'Relations', icon: GitFork, keys: 'r', countKey: 'relations' },
+  { id: 'simulate', label: 'Simulate', icon: Play, keys: 'i' },
+  { id: 'compare', label: 'Compare', icon: GitCompareArrows, keys: 'c' },
+  { id: 'snapshots', label: 'Snapshots', icon: Camera, keys: 'n' },
+  { id: 'library', label: 'Library', icon: LibraryIcon, keys: 'l' },
+  { id: 'ingest', label: 'Ingest', icon: Upload, keys: 'd' },
+  { id: 'arxiv', label: 'arXiv', icon: FileSearch, keys: 'x' },
 ];
 
 const PANELS: Record<WmView, ComponentType> = {
@@ -72,8 +69,6 @@ const PANELS: Record<WmView, ComponentType> = {
 export default function WorldmodelLensPage() {
   useLensNav('worldmodel');
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<WmView>('graph');
 
   useLensCommand(
@@ -120,20 +115,16 @@ export default function WorldmodelLensPage() {
   };
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
   const stats = status.data;
 
   return (
     <LensShell lensId="worldmodel" asMain={false}>
-      <FirstRunTour lensId="worldmodel" />
+
       <DepthBadge lensId="worldmodel" size="sm" className="ml-2" />
       <div data-lens-theme="worldmodel" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">World Model</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'graph' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">World Model</h1>
           </div>
           {stats && (
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pt-3 text-[13px] text-zinc-500">

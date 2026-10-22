@@ -13,9 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Briefcase, Gavel, Scale, Shield } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -42,8 +39,6 @@ export default function DisputesPage() {
   useLensNav('disputes');
   useLensIdentity('disputes');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DisputesView>('cases');
 
   useLensCommand(
@@ -72,12 +67,11 @@ export default function DisputesPage() {
 
   return (
     <LensShell lensId="disputes" asMain={false}>
-      <FirstRunTour lensId="disputes" />
+
       <DepthBadge lensId="disputes" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="disputes"
         crumb="Disputes"
-        title={`Settle it fairly${who ? `, ${who}` : ''}`}
         subtitle="Resolution Center cases and the ODR workbench: one dispute desk, from filing to precedent."
         tabs={VIEWS}
         activeTab={active}

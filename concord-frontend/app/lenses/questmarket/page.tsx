@@ -16,12 +16,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import {
   Swords, Target, Trophy, TrendingUp, Gift, Shield, FileCheck2, ShieldCheck,
@@ -45,8 +42,6 @@ type Tab =
   | 'achievements' | 'leaderboard' | 'rewards' | 'guilds' | 'planner';
 
 export default function QuestmarketLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('quests');
   // Bumping this key forces wallet / stats / reputation / achievements to
   // re-fetch after any transactional macro mutates server state.
@@ -96,26 +91,14 @@ export default function QuestmarketLensPage() {
     { lensId: 'questmarket' },
   );
 
-  const TITLES: Record<Tab, string> = {
-    quests: `Pick your next quest${who ? `, ${who}` : ''}`,
-    claims: 'Work your claims',
-    verify: 'Judge the submissions',
-    bounties: 'Hunt the bounties',
-    achievements: 'Earn your rank',
-    leaderboard: 'See who leads',
-    rewards: 'Run your economy',
-    guilds: 'Rally your guild',
-    planner: 'Plan the campaign',
-  };
 
   return (
     <LensShell lensId="questmarket" asMain={false}>
-      <FirstRunTour lensId="questmarket" />
+
       <DepthBadge lensId="questmarket" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="questmarket"
         crumb="Questmarket"
-        title={TITLES[tab]}
         subtitle="Escrowed quest credits (QC), accept → submit → verify lifecycle, reputation, achievements, and guilds"
         tabs={TABS.map((t) => ({
           id: t.id,

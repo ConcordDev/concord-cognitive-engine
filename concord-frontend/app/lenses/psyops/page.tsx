@@ -22,8 +22,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { AdminRequiredState } from '@/components/common/EmptyState';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PsyopsReference } from '@/components/psyops/PsyopsReference';
 import { DetectionRules } from '@/components/psyops/DetectionRules';
@@ -66,18 +64,17 @@ async function skillMacro(name: string, input: Record<string, unknown> = {}) {
 
 type Tab = 'console' | 'incidents' | 'rules' | 'skill' | 'reference';
 
-const TABS: { id: Tab; label: string; title: string; hint: string; icon: typeof Siren }[] = [
-  { id: 'console', label: 'Console', title: 'What is moving out of pattern', hint: 'Signal scanner, alert triage and quarantine log', icon: Siren },
-  { id: 'incidents', label: 'Incidents', title: 'How the alerts connect', hint: 'Correlate selected alerts into incidents', icon: GitMerge },
-  { id: 'rules', label: 'Rules', title: 'What counts as an anomaly', hint: 'Configurable detection rules', icon: SlidersHorizontal },
-  { id: 'skill', label: 'Skill divergence', title: 'Who is learning wrong', hint: 'NPC skill-divergence reflex scan', icon: Activity },
-  { id: 'reference', label: 'Reference', title: 'How detection works', hint: 'Signals, thresholds and methodology', icon: BookOpen },
+const TABS: { id: Tab; label: string; hint: string; icon: typeof Siren }[] = [
+  { id: 'console', label: 'Console', hint: 'Signal scanner, alert triage and quarantine log', icon: Siren },
+  { id: 'incidents', label: 'Incidents', hint: 'Correlate selected alerts into incidents', icon: GitMerge },
+  { id: 'rules', label: 'Rules', hint: 'Configurable detection rules', icon: SlidersHorizontal },
+  { id: 'skill', label: 'Skill divergence', hint: 'NPC skill-divergence reflex scan', icon: Activity },
+  { id: 'reference', label: 'Reference', hint: 'Signals, thresholds and methodology', icon: BookOpen },
 ];
 
 export default function PsyopsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const isOperator = isPsyopsOperator(user?.role);
-  const who = titleCaseDisplayName(user?.username);
   useLensCommand([
     ...TABS.map((t, i) => ({ id: `psyops-tab-${t.id}`, keys: String(i + 1), description: `${t.label} — ${t.hint}`, category: 'navigation' as const, action: () => setTab(t.id) })),
     { id: 'psyops-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
@@ -169,16 +166,14 @@ export default function PsyopsPage() {
     </LensShell>
   );
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="psyops" asMain={false}>
-      <FirstRunTour lensId="psyops" />
+
       <DepthBadge lensId="psyops" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="psyops"
         crumb="Psyops Watch"
-        title={`${current.title}${tab === 'console' && who ? `, ${who}` : ''}`}
         subtitle="Behavioral threat-detection console: statistical anomaly scanning across skill, economy, content and network signals, with triage, incident correlation and audited quarantine."
         actions={(
           <NotificationBell

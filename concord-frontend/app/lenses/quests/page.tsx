@@ -26,8 +26,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle, Gift } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Objective {
@@ -51,8 +49,6 @@ type Tab = 'active' | 'completed' | 'available';
 type LoadState = 'loading' | 'error' | 'ready';
 
 export default function QuestsLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('active');
   const [quests, setQuests] = useState<Quest[]>([]);
   const [state, setState] = useState<LoadState>('loading');
@@ -166,18 +162,12 @@ export default function QuestsLensPage() {
     available: quests.filter((q) => q.status === 'available' || q.status === 'open').length,
   }), [quests]);
   const unclaimed = quests.filter((q) => q.status === 'completed').length;
-  const TITLES: Record<Tab, string> = {
-    active: `What you are on, ${who || 'adventurer'}`,
-    completed: 'What you have finished',
-    available: 'What is on offer',
-  };
 
   return (
     <LensShell lensId="quests" asMain={false}>
       <NorthStarFrame
         lensId="quests"
         crumb="Quest log"
-        title={TITLES[tab]}
         subtitle={`${quests.length} total quest${quests.length === 1 ? '' : 's'}${partyId ? ' · in a party, so active quests can be shared' : ''}`}
         actions={
           <button onClick={refresh} aria-label="Refresh quests" title="Refresh quests" className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-400 hover:text-zinc-100">

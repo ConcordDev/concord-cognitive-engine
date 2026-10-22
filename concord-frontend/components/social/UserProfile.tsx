@@ -31,6 +31,7 @@ import { cn, formatRelativeTime, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ProfileEditDialog } from './ProfileEditDialog';
+import { OwnPostDelete } from './OwnPostDelete';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,8 +58,11 @@ interface UserProfileData {
 }
 
 interface FeedItem {
+  id?: string;
   dtuId: string;
-  title: string;
+  title?: string;
+  content?: string;
+  userId?: string;
   authorId: string;
   authorName: string;
   tags: string[];
@@ -133,7 +137,7 @@ function StatCard({
 
 // ── Content Item ─────────────────────────────────────────────────────────────
 
-function ContentItem({ item }: { item: FeedItem }) {
+function ContentItem({ item, canDelete, onDeleted }: { item: FeedItem; canDelete?: boolean; onDeleted?: () => void }) {
   const MediaIcon = item.mediaType ? MEDIA_TYPE_ICONS[item.mediaType] || FileText : BookOpen;
 
   return (
@@ -147,7 +151,7 @@ function ContentItem({ item }: { item: FeedItem }) {
           <MediaIcon className="w-5 h-5 text-neon-cyan" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-white font-medium truncate">{item.title}</h4>
+          <h4 className="text-white font-medium truncate">{item.title || item.content || 'Post'}</h4>
           <div className="flex items-center gap-3 mt-1">
             {item.createdAt && (
               <span className="text-xs text-gray-400">{formatRelativeTime(item.createdAt)}</span>
@@ -164,6 +168,11 @@ function ContentItem({ item }: { item: FeedItem }) {
               </span>
             )}
           </div>
+          {canDelete && item.id && (
+            <div className="mt-2">
+              <OwnPostDelete postId={item.id} onDeleted={onDeleted} />
+            </div>
+          )}
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {item.tags.slice(0, 4).map((tag) => (
@@ -699,7 +708,14 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
               <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
             </div>
           ) : contentQuery.data && contentQuery.data.length > 0 ? (
-            contentQuery.data.map((item) => <ContentItem key={item.dtuId} item={item} />)
+            contentQuery.data.map((item) => (
+              <ContentItem
+                key={item.id || item.dtuId}
+                item={item}
+                canDelete={isOwnProfile && activeTab === 'posts' && !!item.id}
+                onDeleted={() => { void queryClient.invalidateQueries({ queryKey: ['user-content', userId] }); }}
+              />
+            ))
           ) : (
             <div className="text-center py-12">
               <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />

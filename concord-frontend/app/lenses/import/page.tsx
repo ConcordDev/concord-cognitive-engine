@@ -12,9 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Upload, Archive, Wrench, Layers, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -74,8 +71,6 @@ export default function ImportLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('import');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<ImportView>('desk');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -106,21 +101,14 @@ export default function ImportLensPage() {
     [reduceMotion],
   );
 
-  const titles: Record<ImportView, string> = {
-    desk: `Bring it in${who ? `, ${who}` : ''}`,
-    restore: 'Restore what you exported',
-    parity: 'Map and shape the data',
-    tools: 'Reach for the right ETL tool',
-  };
 
   return (
     <LensShell lensId="import" asMain={false}>
-      <FirstRunTour lensId="import" />
+
       <DepthBadge lensId="import" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="import"
         crumb="Import"
-        title={titles[active]}
         subtitle="Airbyte / Stitch desk: drop any file, validate, restore DTUs."
         actions={(
           <>

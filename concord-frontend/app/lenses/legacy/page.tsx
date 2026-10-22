@@ -9,7 +9,6 @@
 import { useCallback, useState } from 'react';
 import { FolderSearch, ClipboardList, ScanSearch } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { CodebaseScanner } from '@/components/legacy/CodebaseScanner';
@@ -17,8 +16,6 @@ import { PortfolioAssessment } from '@/components/legacy/PortfolioAssessment';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -31,8 +28,6 @@ export default function LegacyLensPage() {
   useLensNav('legacy');
   useLensIdentity('legacy');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('legacy');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('scan');
 
   const scan = useCallback(() => {
@@ -55,12 +50,11 @@ export default function LegacyLensPage() {
 
   return (
     <LensShell lensId="legacy" asMain={false}>
-      <FirstRunTour lensId="legacy" />
+
       <DepthBadge lensId="legacy" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="legacy"
         crumb="Legacy"
-        title={view === 'scan' ? `What you inherited${who ? `, ${who}` : ''}` : 'What the portfolio risks'}
         subtitle="Technical debt, dependency graphs, migration roadmaps and cloud-readiness for real, aging systems."
         actions={
           <>

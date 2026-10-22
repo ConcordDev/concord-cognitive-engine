@@ -13,13 +13,10 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { BarChart3, Activity, RefreshCw, Siren } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -31,11 +28,11 @@ import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
 
 type CriView = 'scores' | 'distribution' | 'loop' | 'crisis';
 
-const VIEWS: { id: CriView; label: string; keys: string; title: string; hint: string; icon: typeof BarChart3 }[] = [
-  { id: 'scores', label: 'Scores', keys: '1', title: 'The index', hint: 'CRETI scorecard', icon: BarChart3 },
-  { id: 'distribution', label: 'Distribution', keys: '2', title: 'How quality is spread', hint: 'Quality histogram', icon: Activity },
-  { id: 'loop', label: 'Quality loop', keys: '3', title: 'Whether quality is improving', hint: 'Trend · rules · remediate', icon: RefreshCw },
-  { id: 'crisis', label: 'Crisis', keys: '4', title: 'What the crisis costs', hint: 'Severity · timeline · impact', icon: Siren },
+const VIEWS: { id: CriView; label: string; keys: string; hint: string; icon: typeof BarChart3 }[] = [
+  { id: 'scores', label: 'Scores', keys: '1', hint: 'CRETI scorecard', icon: BarChart3 },
+  { id: 'distribution', label: 'Distribution', keys: '2', hint: 'Quality histogram', icon: Activity },
+  { id: 'loop', label: 'Quality loop', keys: '3', hint: 'Trend · rules · remediate', icon: RefreshCw },
+  { id: 'crisis', label: 'Crisis', keys: '4', hint: 'Severity · timeline · impact', icon: Siren },
 ];
 
 function CrisisPanel() {
@@ -58,10 +55,7 @@ export default function CRILensPage() {
   useLensIdentity('cri');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('cri');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<CriView>('scores');
-  const current = VIEWS.find((v) => v.id === active)!;
 
   useLensCommand(
     [
@@ -92,7 +86,7 @@ export default function CRILensPage() {
 
   return (
     <LensShell lensId="cri" asMain={false}>
-      <FirstRunTour lensId="cri" />
+
       <DepthBadge lensId="cri" size="sm" className="ml-2" />
       <div data-lens-theme="cri" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#cri-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -101,10 +95,7 @@ export default function CRILensPage() {
 
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">CRI</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'scores' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">CRI</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
             {realtimeAlerts.length > 0 && (

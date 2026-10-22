@@ -13,10 +13,7 @@ import {
   Rocket, BarChart3, Satellite, Flame, Radio, Users, Orbit, Eye, Newspaper, Bookmark, BookOpen,
 } from 'lucide-react';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -69,8 +66,6 @@ export default function SpaceLensPage() {
   useLensIdentity('space');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('space');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SpaceView>('dashboard');
 
   useLensCommand(
@@ -98,12 +93,11 @@ export default function SpaceLensPage() {
 
   return (
     <LensShell lensId="space" asMain={false}>
-      <FirstRunTour lensId="space" />
+
       <DepthBadge lensId="space" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="space"
         crumb="Space"
-        title={`${active === 'dashboard' ? 'Mission control' : (VIEWS.find((v) => v.id === active)?.label ?? 'Space')}${active === 'dashboard' && who ? `, ${who}` : ''}`}
         subtitle="Missions, satellites, telemetry and orbital management"
         actions={
           <>

@@ -10,14 +10,11 @@ import { Atom, BookOpen } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { ComposerPanel } from '@/components/quantum/ComposerPanel';
 import { ResearchPanel } from '@/components/quantum/ResearchPanel';
 import { type QuantumView } from '@/components/quantum/quantum-shared';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 const PANELS: Record<QuantumView, ComponentType> = {
   composer: ComposerPanel,
@@ -26,8 +23,6 @@ const PANELS: Record<QuantumView, ComponentType> = {
 
 export default function QuantumLensPage() {
   useLensNav('quantum');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<QuantumView>('composer');
 
   useLensCommand(
@@ -43,12 +38,11 @@ export default function QuantumLensPage() {
 
   return (
     <LensShell lensId="quantum" asMain={false}>
-      <FirstRunTour lensId="quantum" />
+
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="quantum"
         crumb="Quantum"
-        title={active === 'composer' ? `Build a circuit${who ? `, ${who}` : ''}` : 'What the field is publishing'}
         subtitle="Visual circuit composer with a real state-vector simulator."
         tabs={[
           { id: 'composer', label: 'Composer', icon: Atom, keys: 'c', hint: 'Circuit composer' },

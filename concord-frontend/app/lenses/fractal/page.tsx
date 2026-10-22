@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, ImageDown, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -21,15 +20,11 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 export default function FractalLensPage() {
   useLensNav('fractal');
   useLensIdentity('fractal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fractal');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [showRepos, setShowRepos] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -48,15 +43,12 @@ export default function FractalLensPage() {
 
   return (
     <LensShell lensId="fractal" asMain={false}>
-      <FirstRunTour lensId="fractal" />
+
       <DepthBadge lensId="fractal" size="sm" className="ml-2" />
       <div data-lens-theme="fractal" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Fractal</p>
-            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              What are we exploring{who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Fractal</h1>
             <p className="mb-5 max-w-3xl text-[14px] leading-relaxed text-zinc-500">
               Mandelbrot, Julia, Burning Ship, Tricorn and Multibrot rendering, orbit inspection, deep-zoom animation, structural analysis and a 3D Mandelbulb.
             </p>

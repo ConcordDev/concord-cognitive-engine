@@ -5,7 +5,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { SavedSearchesPanel } from '@/components/genesis/SavedSearchesPanel';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
 import { RosterExplorer, type RosterFilters } from '@/components/genesis/RosterExplorer';
@@ -16,8 +15,6 @@ import { GenesisMetrics } from '@/components/genesis/GenesisMetrics';
 import { ActivityFeed, type FeedEvent } from '@/components/genesis/ActivityFeed';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Cpu, Zap, MessageSquare, Star, X, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useSocket } from '@/hooks/useSocket';
 
@@ -39,8 +36,6 @@ interface EmergentIdentity {
 type DetailTab = 'timeline' | 'lineage';
 
 export default function GenesisLens() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('genesis', { type: 'view-event', limit: 5 });
@@ -158,15 +153,12 @@ export default function GenesisLens() {
 
   return (
     <LensShell lensId="genesis" asMain={false}>
-      <FirstRunTour lensId="genesis" />
+
       <DepthBadge lensId="genesis" size="sm" className="ml-2" />
       <div data-lens-theme="genesis" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Genesis</p>
-            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              Where it starts{who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Genesis</h1>
             <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
           </div>
           {isLive && (

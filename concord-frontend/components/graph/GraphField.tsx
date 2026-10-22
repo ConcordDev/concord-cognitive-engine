@@ -23,8 +23,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, X } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { cn } from '@/lib/utils';
@@ -129,8 +127,6 @@ const RING: Record<string, string> = { hyper: '#2dd4bf', mega: '#a78bfa' };
 const short = (s: string, n = 26) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 export function GraphField() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const qc = useQueryClient();
   const [centerId, setCenterId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -242,7 +238,7 @@ export function GraphField() {
               </>
             )}
           </p>
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">{who ? `How it connects, ${who}` : 'How it connects'}</h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Graph</h1>
         </div>
       </div>
       {err && <p className="mt-2 text-[13px] text-rose-300" role="alert">{err}</p>}

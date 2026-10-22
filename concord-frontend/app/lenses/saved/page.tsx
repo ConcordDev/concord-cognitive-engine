@@ -12,10 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Bookmark, FolderOpen, Plus } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SavedDeskPanel } from '@/components/saved/SavedDeskPanel';
 import { SocialBookmarksPanel } from '@/components/saved/SocialBookmarksPanel';
@@ -31,8 +28,6 @@ const VIEWS: { id: SavedView; label: string; keys: string; icon: typeof FolderOp
 
 export default function SavedLensPage() {
   useLensIdentity('saved');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SavedView>('collections');
   const [saveFormOpen, setSaveFormOpen] = useState(false);
@@ -61,14 +56,11 @@ export default function SavedLensPage() {
 
   return (
     <LensShell lensId="saved" asMain={false}>
-      <FirstRunTour lensId="saved" />
+
       <DepthBadge lensId="saved" size="sm" className="ml-2" />
 
       <div data-lens-theme="saved" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Saved</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {active === 'collections' ? "What's worth keeping" : 'What you bookmarked'}{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Saved</h1>
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Saved views">
             {VIEWS.map((v) => {

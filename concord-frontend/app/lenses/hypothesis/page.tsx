@@ -12,11 +12,8 @@ import { BarChart3, BookOpen, FlaskConical, Plus } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -28,17 +25,15 @@ import { cn } from '@/lib/utils';
 
 type View = 'lab' | 'stats' | 'arxiv';
 
-const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof FlaskConical }[] = [
-  { id: 'lab', label: 'Lab', keys: 'g l', title: 'What you are testing', hint: 'Propose, test, predict, confirm or reject', icon: FlaskConical },
-  { id: 'stats', label: 'Statistics', keys: 'g s', title: 'Does the data agree', hint: 'Full test battery, datasets, corrections, APA reports', icon: BarChart3 },
-  { id: 'arxiv', label: 'arXiv', keys: 'g a', title: 'What the papers say', hint: 'Reference feed from arXiv', icon: BookOpen },
+const VIEWS: { id: View; label: string; keys: string; hint: string; icon: typeof FlaskConical }[] = [
+  { id: 'lab', label: 'Lab', keys: 'g l', hint: 'Propose, test, predict, confirm or reject', icon: FlaskConical },
+  { id: 'stats', label: 'Statistics', keys: 'g s', hint: 'Full test battery, datasets, corrections, APA reports', icon: BarChart3 },
+  { id: 'arxiv', label: 'arXiv', keys: 'g a', hint: 'Reference feed from arXiv', icon: BookOpen },
 ];
 
 export default function HypothesisLensPage() {
   useLensNav('hypothesis');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('hypothesis');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('lab');
 
   const propose = useCallback(() => {
@@ -61,19 +56,15 @@ export default function HypothesisLensPage() {
     { lensId: 'hypothesis' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="hypothesis" asMain={false}>
-      <FirstRunTour lensId="hypothesis" />
+
       <DepthBadge lensId="hypothesis" size="sm" className="ml-2" />
       <div data-lens-theme="hypothesis" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Hypothesis</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{view === 'lab' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Hypothesis</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

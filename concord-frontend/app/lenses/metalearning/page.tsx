@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -24,8 +23,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { StrategiesDeskPanel } from '@/components/metalearning/StrategiesDeskPanel';
 import { SpacedRepetitionPanel } from '@/components/metalearning/SpacedRepetitionPanel';
 import { LearningPlanPanel } from '@/components/metalearning/LearningPlanPanel';
@@ -49,27 +46,24 @@ export type MlView =
   | 'analysis'
   | 'feed';
 
-const TABS: { id: MlView; label: string; icon: typeof Brain; keys: string; title: string }[] = [
-  { id: 'strategies', title: 'How you learn best', label: 'Strategies', icon: Sparkles, keys: '1' },
-  { id: 'spaced', title: 'What to review today', label: 'Spaced', icon: Brain, keys: '2' },
-  { id: 'plan', title: 'The path to the goal', label: 'Plan', icon: BookOpen, keys: '3' },
-  { id: 'techniques', title: 'Methods that work', label: 'Techniques', icon: Lightbulb, keys: '4' },
-  { id: 'progress', title: 'How far you have come', label: 'Progress', icon: BarChart3, keys: '5' },
-  { id: 'goals', title: 'What you are aiming at', label: 'Goals', icon: Target, keys: '6' },
-  { id: 'experiments', title: 'Test a strategy', label: 'Experiments', icon: FlaskConical, keys: '7' },
-  { id: 'journal', title: 'What you studied', label: 'Journal', icon: NotebookPen, keys: '8' },
-  { id: 'analysis', title: 'What the data says', label: 'Analysis', icon: Puzzle, keys: '9' },
-  { id: 'feed', title: 'What the research says', label: 'Research', icon: Rss, keys: '0' },
+const TABS: { id: MlView; label: string; icon: typeof Brain; keys: string; }[] = [
+  { id: 'strategies', label: 'Strategies', icon: Sparkles, keys: '1' },
+  { id: 'spaced', label: 'Spaced', icon: Brain, keys: '2' },
+  { id: 'plan', label: 'Plan', icon: BookOpen, keys: '3' },
+  { id: 'techniques', label: 'Techniques', icon: Lightbulb, keys: '4' },
+  { id: 'progress', label: 'Progress', icon: BarChart3, keys: '5' },
+  { id: 'goals', label: 'Goals', icon: Target, keys: '6' },
+  { id: 'experiments', label: 'Experiments', icon: FlaskConical, keys: '7' },
+  { id: 'journal', label: 'Journal', icon: NotebookPen, keys: '8' },
+  { id: 'analysis', label: 'Analysis', icon: Puzzle, keys: '9' },
+  { id: 'feed', label: 'Research', icon: Rss, keys: '0' },
 ];
 
 export default function MetalearningLensPage() {
   useLensNav('metalearning');
   useLensIdentity('metalearning');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('metalearning');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MlView>('strategies');
-  const current = TABS.find((t) => t.id === active)!;
 
   useLensCommand(
     TABS.map((t) => ({
@@ -84,7 +78,7 @@ export default function MetalearningLensPage() {
 
   return (
     <LensShell lensId="metalearning" asMain={false}>
-      <FirstRunTour lensId="metalearning" />
+
       <DepthBadge lensId="metalearning" size="sm" className="ml-2" />
       <div data-lens-theme="metalearning" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#metalearning-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -93,10 +87,7 @@ export default function MetalearningLensPage() {
 
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Meta-learning</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'strategies' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Meta-learning</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

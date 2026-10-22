@@ -3,8 +3,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -33,21 +31,20 @@ import { StatTile, StatTileGrid } from '@/components/ui/StatTile';
 
 type Tab = 'board' | 'import' | 'matrix' | 'themes' | 'rootcause' | 'interventions' | 'trends' | 'wellbeing';
 
-const TABS: { id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof Heart }[] = [
-  { id: 'board', label: 'Pain Board', keys: 'b', title: 'Where it hurts', hint: 'Every logged pain point, grouped by theme', icon: LayoutList },
-  { id: 'import', label: 'Feedback Import', keys: 'i', title: 'Bring in raw feedback', hint: 'Analyze feedback text and promote it to pains', icon: Inbox },
-  { id: 'matrix', label: 'Priority Matrix', keys: 'm', title: 'What to fix first', hint: 'Severity against frequency', icon: Grid2x2 },
-  { id: 'themes', label: 'Themes', keys: 't', title: 'What the pains have in common', hint: 'Clustered themes and unthemed pains', icon: Network },
-  { id: 'rootcause', label: 'Root Cause', keys: 'c', title: 'Why it keeps happening', hint: 'Root-cause analysis per pain', icon: GitBranch },
-  { id: 'interventions', label: 'Interventions', keys: 'v', title: 'What you are doing about it', hint: 'Plan and track interventions', icon: Wrench },
-  { id: 'trends', label: 'Trends', keys: 'n', title: 'Whether it is getting better', hint: 'Trend view and report export', icon: TrendingUp },
-  { id: 'wellbeing', label: 'Engine Wellbeing', keys: 'w', title: 'How the engine is holding up', hint: 'Operator-only reality-gate metrics', icon: Brain },
+const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof Heart }[] = [
+  { id: 'board', label: 'Pain Board', keys: 'b', hint: 'Every logged pain point, grouped by theme', icon: LayoutList },
+  { id: 'import', label: 'Feedback Import', keys: 'i', hint: 'Analyze feedback text and promote it to pains', icon: Inbox },
+  { id: 'matrix', label: 'Priority Matrix', keys: 'm', hint: 'Severity against frequency', icon: Grid2x2 },
+  { id: 'themes', label: 'Themes', keys: 't', hint: 'Clustered themes and unthemed pains', icon: Network },
+  { id: 'rootcause', label: 'Root Cause', keys: 'c', hint: 'Root-cause analysis per pain', icon: GitBranch },
+  { id: 'interventions', label: 'Interventions', keys: 'v', hint: 'Plan and track interventions', icon: Wrench },
+  { id: 'trends', label: 'Trends', keys: 'n', hint: 'Trend view and report export', icon: TrendingUp },
+  { id: 'wellbeing', label: 'Engine Wellbeing', keys: 'w', hint: 'Operator-only reality-gate metrics', icon: Brain },
 ];
 
 export default function SufferingLensPage() {
   useLensNav('suffering');
-  const { user, isLoading: authLoading } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
+  const { isLoading: authLoading } = useAuth();
   const [tab, setTab] = useState<Tab>('board');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -107,16 +104,14 @@ export default function SufferingLensPage() {
   );
 
   const openPains = pains.filter((p) => p.status !== 'resolved').length;
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="suffering" asMain={false}>
-      <FirstRunTour lensId="suffering" />
+
       <DepthBadge lensId="suffering" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="suffering"
         crumb="Suffering"
-        title={`${current.title}${tab === 'board' && who ? `, ${who}` : ''}`}
         subtitle="Pain-point mapping, root-cause analysis and intervention tracking."
         actions={
           <div className="flex flex-wrap gap-2 text-sm" aria-busy={loading || authLoading}>

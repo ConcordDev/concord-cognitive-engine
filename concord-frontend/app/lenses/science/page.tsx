@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -32,8 +31,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DashboardPanel } from '@/components/science/DashboardPanel';
 import { ArtifactsPanel } from '@/components/science/ArtifactsPanel';
 import { LabPanel } from '@/components/science/LabPanel';
@@ -53,17 +50,17 @@ type ScienceView =
   | 'arxiv'
   | 'workbench';
 
-const VIEWS: { id: ScienceView; label: string; keys: string; title: string; icon: typeof FlaskConical }[] = [
-  { id: 'dashboard', label: 'Dashboard', keys: 'd', title: 'Your lab at a glance', icon: BarChart3 },
-  { id: 'notebook', label: 'Notebook', keys: '1', title: 'What you are testing', icon: BookOpen },
-  { id: 'samples', label: 'Samples', keys: '2', title: 'What is on the bench', icon: TestTubes },
-  { id: 'equipment', label: 'Equipment', keys: '3', title: 'What you run it on', icon: Wrench },
-  { id: 'analysis', label: 'Analysis', keys: '4', title: 'What the data says', icon: LineChart },
-  { id: 'protocols', label: 'Protocols', keys: '5', title: 'How it is done', icon: ClipboardList },
-  { id: 'publications', label: 'Publications', keys: '6', title: 'What you have published', icon: GraduationCap },
-  { id: 'lab', label: 'Lab', keys: 'l', title: 'Run something in the lab', icon: FlaskConical },
-  { id: 'arxiv', label: 'arXiv', keys: 'x', title: 'What the field is reading', icon: BookOpen },
-  { id: 'workbench', label: 'Workbench', keys: 'w', title: 'Work the numbers', icon: Sigma },
+const VIEWS: { id: ScienceView; label: string; keys: string; icon: typeof FlaskConical }[] = [
+  { id: 'dashboard', label: 'Dashboard', keys: 'd', icon: BarChart3 },
+  { id: 'notebook', label: 'Notebook', keys: '1', icon: BookOpen },
+  { id: 'samples', label: 'Samples', keys: '2', icon: TestTubes },
+  { id: 'equipment', label: 'Equipment', keys: '3', icon: Wrench },
+  { id: 'analysis', label: 'Analysis', keys: '4', icon: LineChart },
+  { id: 'protocols', label: 'Protocols', keys: '5', icon: ClipboardList },
+  { id: 'publications', label: 'Publications', keys: '6', icon: GraduationCap },
+  { id: 'lab', label: 'Lab', keys: 'l', icon: FlaskConical },
+  { id: 'arxiv', label: 'arXiv', keys: 'x', icon: BookOpen },
+  { id: 'workbench', label: 'Workbench', keys: 'w', icon: Sigma },
 ];
 
 const ARTIFACT_FOR: Partial<Record<ScienceView, ArtifactType>> = {
@@ -88,8 +85,6 @@ export default function ScienceLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('science');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ScienceView>('dashboard');
 
   useLensCommand(
@@ -105,16 +100,14 @@ export default function ScienceLensPage() {
 
   const artifactType = ARTIFACT_FOR[active];
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="science" asMain={false}>
-      <FirstRunTour lensId="science" />
+
       <DepthBadge lensId="science" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="science"
         crumb="Science"
-        title={`${current.title}${active === 'dashboard' && who ? `, ${who}` : ''}`}
         subtitle="Lab notebook, samples, equipment, analysis, protocols and publications."
         actions={
           <>

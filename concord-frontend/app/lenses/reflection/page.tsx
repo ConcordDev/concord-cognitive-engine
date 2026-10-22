@@ -3,7 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -19,8 +18,6 @@ import {
 } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 
@@ -40,8 +37,6 @@ type Mode = 'journal' | 'selfcritique';
 
 export default function ReflectionLensPage() {
   useLensNav('reflection');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<Mode>('journal');
   const newEntry = useCallback(() => {
     setMode('journal');
@@ -134,16 +129,12 @@ export default function ReflectionLensPage() {
 
   return (
     <LensShell lensId="reflection" asMain={false}>
-      <FirstRunTour lensId="reflection" />
+
       <div data-lens-theme="reflection" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
         <div>
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[14px] text-zinc-500">Reflection</p>
-              <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                {mode === 'journal' ? `Your reflections${who ? `, ${who}` : ''}` : 'How the engine sees itself'}
-                <DepthBadge lensId="reflection" size="sm" className="ml-2 align-middle" />
-              </h1>
+              <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Reflection <DepthBadge lensId="reflection" size="sm" className="ml-2 align-middle" /></h1>
             </div>
           </div>
           <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">

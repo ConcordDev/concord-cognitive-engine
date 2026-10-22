@@ -20,12 +20,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FilePlus, HeartHandshake, Users, MessagesSquare } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import { InsuranceChatter } from '@/components/death-insurance/InsuranceChatter';
@@ -58,15 +55,13 @@ interface PayoutHistoryResult {
 
 type DeskView = 'pacts' | 'payouts' | 'community';
 
-const VIEWS: { id: DeskView; label: string; keys: string; title: string; hint: string; icon: typeof Users }[] = [
-  { id: 'pacts', label: 'Pacts', keys: '1', title: 'Who inherits what', hint: 'Write pacts, review the inheritance graph and pacts you benefit from', icon: Users },
-  { id: 'payouts', label: 'Payouts', keys: '2', title: 'What has been paid out', hint: 'Fired payout history and notifications', icon: HeartHandshake },
-  { id: 'community', label: 'Community', keys: '3', title: 'Talk it through', hint: 'Inheritance community chatter', icon: MessagesSquare },
+const VIEWS: { id: DeskView; label: string; keys: string; hint: string; icon: typeof Users }[] = [
+  { id: 'pacts', label: 'Pacts', keys: '1', hint: 'Write pacts, review the inheritance graph and pacts you benefit from', icon: Users },
+  { id: 'payouts', label: 'Payouts', keys: '2', hint: 'Fired payout history and notifications', icon: HeartHandshake },
+  { id: 'community', label: 'Community', keys: '3', hint: 'Inheritance community chatter', icon: MessagesSquare },
 ];
 
 export default function DeathInsurancePage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DeskView>('pacts');
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
@@ -144,17 +139,15 @@ export default function DeathInsurancePage() {
     { lensId: 'death-insurance' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
   const card = 'rounded-2xl border border-white/10 bg-[#111] p-4';
 
   return (
     <LensShell lensId="death-insurance" asMain={false}>
-      <FirstRunTour lensId="death-insurance" />
+
       <DepthBadge lensId="death-insurance" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="death-insurance"
         crumb="Inheritance"
-        title={`${current.title}${view === 'pacts' && who ? `, ${who}` : ''}`}
         subtitle="If you fall in Concordia, named friends inherit a share of your sparks. Currency: Sparks only. CC stays separate per the no-pay-to-win invariant. A beneficiary cannot equal the insured, and payouts cannot fire within 24h of writing."
         tabs={navViews.map((v) => ({ id: v.id, label: v.id === 'pacts' && unreadHigh > 0 ? `${v.label} (${unreadHigh} urgent)` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

@@ -27,31 +27,33 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Users, Activity, Loader2, Plus, Home, Compass, Inbox, User,
+  Activity, Loader2, Plus, Home, Compass, Inbox, User,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
+import { OwnPostDelete } from '@/components/social/OwnPostDelete';
 import { Discovery } from '@/components/social/Discovery';
 import { NotificationBell } from '@/components/social/NotificationBell';
 import { NotificationCenter } from '@/components/social/NotificationCenter';
 import { UserProfile } from '@/components/social/UserProfile';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
+import { TrendingTopics } from '@/components/social/TrendingTopics';
 import { FindPeople } from '@/components/social/FindPeople';
 import { SocialPreferencesForm } from '@/components/social/SocialPreferencesForm';
 import { PushEnableButton } from '@/components/social/PushEnableButton';
@@ -195,16 +197,13 @@ export default function SocialHubPage() {
   });
   const unreadCount = unreadData?.count ?? 0;
 
-  const who = titleCaseDisplayName(me?.user?.username || me?.user?.displayName);
-  const homeTitle = who ? `Home, ${who}` : 'Home';
-  const PLACES: { id: PlaceId | 'create'; label: string; keys: string; title: string; icon: typeof Home; badge?: number }[] = [
-    { id: 'home', label: 'Home', keys: '1', title: homeTitle, icon: Home },
-    { id: 'explore', label: 'Explore', keys: '2', title: 'Find people and posts', icon: Compass },
-    { id: 'create', label: 'Create', keys: 'n', title: 'Share something', icon: Plus },
-    { id: 'inbox', label: 'Inbox', keys: '3', title: 'Messages and notifications', icon: Inbox, badge: unreadCount },
-    { id: 'you', label: 'You', keys: '4', title: 'Your profile', icon: User },
+  const PLACES: { id: PlaceId | 'create'; label: string; keys: string; icon: typeof Home; badge?: number }[] = [
+    { id: 'home', label: 'Home', keys: '1', icon: Home },
+    { id: 'explore', label: 'Explore', keys: '2', icon: Compass },
+    { id: 'create', label: 'Create', keys: 'n', icon: Plus },
+    { id: 'inbox', label: 'Inbox', keys: '3', icon: Inbox, badge: unreadCount },
+    { id: 'you', label: 'You', keys: '4', icon: User },
   ];
-  const currentPlace = PLACES.find((t) => t.id === (view === 'home' ? 'home' : view)) || PLACES[0];
 
   const startPost = () => {
     setView('home');
@@ -244,7 +243,6 @@ export default function SocialHubPage() {
 
   return (
     <LensShell lensId="social" asMain={false}>
-      <FirstRunTour lensId="social" />
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
       <div data-lens-theme="social" className="relative min-h-full px-4 lg:px-8 pb-28 pt-6">
@@ -283,10 +281,7 @@ export default function SocialHubPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[14px] text-zinc-500">Social</p>
-                <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                  {currentPlace.title}
-                </h1>
+                <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Social</h1>
               </div>
               <div className="flex shrink-0 items-center gap-3 pt-2">
                 <PushEnableButton />
@@ -328,7 +323,10 @@ export default function SocialHubPage() {
                       />
                     ) : null}
                     {homeFeed === 'following' ? (
-                      <FollowingTimeline currentUserId={currentUserId} />
+                      <FollowingTimeline
+                        currentUserId={currentUserId}
+                        onFindPeople={() => setView('explore')}
+                      />
                     ) : (
                       currentUserId ? <RankedFeed currentUserId={currentUserId} /> : null
                     )}
@@ -419,6 +417,9 @@ export default function SocialHubPage() {
                   <SuggestedFollows currentUserId={currentUserId} />
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
+                  <TrendingTopics onTopicClick={() => setView('explore')} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
                   <h2 className="px-3 pt-3 text-sm font-medium text-zinc-200">Follow packs</h2>
                   <SocialLists />
                 </div>
@@ -457,7 +458,9 @@ export default function SocialHubPage() {
  * accounts the user follows.  Pulls from /api/social/following-activity
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
-function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
+function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: string; onFindPeople?: () => void }) {
+  const queryClient = useQueryClient();
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [seenHead, setSeenHead] = useState<string | null>(() => {
     if (typeof window === 'undefined' || !currentUserId || currentUserId === 'current-user') return null;
     try { return localStorage.getItem(`social-following-cursor:${currentUserId}`); } catch { return null; }
@@ -500,21 +503,26 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
       newer += 1;
     }
   }
-  const visible = newer > 0 ? items.slice(newer) : items;
+  const visible = (newer > 0 ? items.slice(newer) : items).filter((item) => !removed.has(item.id));
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Couldn’t load your timeline"
+        message={error instanceof Error ? error.message : 'We couldn’t reach your following timeline just now.'}
+      />
+    );
+  }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-        <Users className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-zinc-300 mb-1">
-          {error ? 'Couldn’t load your timeline' : 'No activity yet'}
-        </h3>
-        <p className="text-xs text-zinc-400 max-w-md mx-auto">
-          {error
-            ? 'We couldn’t reach your following timeline just now. Check your connection and try again in a moment.'
-            : 'Follow some creators — their DTUs, posts, and reactions will surface here in reverse-chronological order.'}
-        </p>
-      </div>
+      <EmptyStateCTA
+        lensId="social"
+        headline="No activity yet"
+        caption="Follow some people. Their posts show up here in reverse-chronological order."
+        buttonLabel="Find people"
+        onAction={() => onFindPeople?.()}
+      />
     );
   }
 
@@ -549,6 +557,15 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
             <span className="text-[10px] text-zinc-400 ml-auto">
               {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
             </span>
+            {item.kind === 'post' && item.userId === currentUserId && (
+              <OwnPostDelete
+                postId={item.id}
+                onDeleted={() => {
+                  setRemoved((prev) => new Set(prev).add(item.id));
+                  void queryClient.invalidateQueries({ queryKey: ['social-following-activity', currentUserId] });
+                }}
+              />
+            )}
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
           {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}

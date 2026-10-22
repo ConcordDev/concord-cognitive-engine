@@ -22,9 +22,6 @@ import {
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SentinelCves } from '@/components/sentinel/SentinelCves';
@@ -41,8 +38,6 @@ type TabKey = 'shield' | 'triage' | 'monitors' | 'metrics' | 'rules' | 'semantic
 
 export default function SentinelLensPage() {
   useLensNav('sentinel');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<TabKey>('shield');
   // Bumped whenever a triage / monitor / intel action mutates state so the
   // metrics + timeline surface refetches.
@@ -74,11 +69,10 @@ export default function SentinelLensPage() {
 
   return (
     <LensShell lensId="sentinel" asMain={false}>
-      <FirstRunTour lensId="sentinel" />      <DepthBadge lensId="sentinel" size="sm" className="ml-2" />
+<DepthBadge lensId="sentinel" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sentinel"
         crumb="Sentinel"
-        title={`Threat console${who ? `, ${who}` : ''}`}
         subtitle="Shield, triage, monitor and intel in one console"
         tabs={tabs}
         activeTab={activeTab}

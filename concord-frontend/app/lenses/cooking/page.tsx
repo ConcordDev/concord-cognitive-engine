@@ -4,9 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeBoxSection } from '@/components/cooking/RecipeBoxSection';
 import { RecipeKitchen } from '@/components/cooking/RecipeKitchen';
@@ -142,13 +139,6 @@ function CookingTimer() {
 
 type CookingView = 'recipes' | 'kitchen' | 'nutrition' | 'timer' | 'bench';
 
-const COOKING_TITLES: Record<CookingView, string> = {
-  recipes: 'What is cooking',
-  kitchen: 'Cook it step by step',
-  nutrition: 'What is in it',
-  timer: 'Keep an eye on the clock',
-  bench: 'The kitchen bench',
-};
 
 const COOKING_TABS: { id: CookingView; label: string; icon: typeof BookOpen; keys: string }[] = [
   { id: 'recipes', label: 'Recipes', icon: BookOpen, keys: 'r' },
@@ -195,18 +185,15 @@ export default function CookingLensPage() {
     return () => { cancelled = true; };
   }, [refreshTick]);
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="cooking" asMain={false}>
-      <FirstRunTour lensId="cooking" />
+
       <DepthBadge lensId="cooking" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="cooking"
         theme="cooking"
         crumb="Cooking"
-        title={`${COOKING_TITLES[activeView]}${activeView === 'recipes' && who ? `, ${who}` : ''}`}
         subtitle="Recipes, meal prep and kitchen management."
         actions={
           <>

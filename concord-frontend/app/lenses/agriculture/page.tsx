@@ -5,7 +5,6 @@ import { Wheat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -18,8 +17,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { AgricultureActionPanel } from '@/components/agriculture/AgricultureActionPanel';
 import { ActionResultPanel } from '@/components/agriculture/ActionResultPanel';
 import { DeereWorkbenchPanel } from '@/components/agriculture/DeereWorkbenchPanel';
@@ -45,19 +42,8 @@ export default function AgricultureLensPage() {
   );
 }
 
-const DESK_TITLES: Partial<Record<FarmDeskView, string>> = {
-  ops: 'Your farm today',
-  map: 'Every field on the map',
-  workbench: 'The Ops Center',
-  precision: 'The view from the field',
-  operator: 'Plans for the season',
-  scout: 'What is out in the field',
-};
-
 function AgricultureFarmDesk() {
   useLensIdentity('agriculture');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('agriculture');
   const {
     latestData: weatherData,
@@ -109,17 +95,13 @@ function AgricultureFarmDesk() {
     body = <ScoutPanel />;
   }
 
-  const label = FARM_DESK_TABS.find((t) => t.id === active)?.label;
-  const title = DESK_TITLES[active] ?? `Your ${label?.toLowerCase() ?? 'farm'} records`;
-
   return (
     <LensShell lensId="agriculture" asMain={false}>
-      <FirstRunTour lensId="agriculture" />
+
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="agriculture"
         crumb="Agriculture"
-        title={`${title}${active === 'ops' && who ? `, ${who}` : ''}`}
         subtitle="Fields, fleet, field view and harvest."
         actions={
           <>

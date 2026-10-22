@@ -32,7 +32,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { LoadoutPicker, type ActiveLoadout } from '@/components/sandbox/LoadoutPicker';
@@ -41,8 +40,6 @@ import { TelemetryOverlay } from '@/components/sandbox/TelemetryOverlay';
 import { ReplayPanel, type ReplayController, type ReplayFrame } from '@/components/sandbox/ReplayPanel';
 import { SandboxArena3D } from '@/components/sandbox/SandboxArena3D';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, GitBranch } from 'lucide-react';
@@ -104,8 +101,6 @@ const VIEWS: { id: SandboxView; label: string; keys: string; hint: string; icon:
 
 function CombatSandboxInner() {
   const params = useSearchParams();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<SandboxView>('arena');
   const initial = Math.max(1, Math.min(MAX_DUMMIES, Number(params?.get('dummies')) || DEFAULT_DUMMIES));
 
@@ -319,7 +314,6 @@ function CombatSandboxInner() {
     <NorthStarFrame
       lensId="sandbox"
       crumb="Sandbox"
-      title={view === 'arena' ? `Feel the hit, ${who || 'tester'}` : 'Playground repos'}
       subtitle="A private arena of real training dummies resolving through the live combat pipeline — tune loadouts, slow time, record and replay."
       tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
       activeTab={view}
@@ -454,7 +448,7 @@ function CombatSandboxInner() {
 export default function CombatSandboxPage() {
   return (
     <LensShell lensId="sandbox" asMain={false}>
-      <FirstRunTour lensId="sandbox" />
+
       <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
       <Suspense fallback={<div className="h-64 w-full rounded-2xl bg-slate-900" />}>
         <CombatSandboxInner />

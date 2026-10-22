@@ -17,12 +17,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -38,16 +35,16 @@ import { LensInfraPanel } from '@/components/meta/LensInfraPanel';
 
 type TabKey = 'overview' | 'health' | 'dev-portal' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
 
-const TABS: { key: TabKey; label: string; keys: string; title: string; hint: string; icon: typeof Layers }[] = [
-  { key: 'overview', label: 'Overview', keys: '1', title: 'What the system is', hint: 'Inventory totals and import graph', icon: Layers },
-  { key: 'health', label: 'Health', keys: '2', title: 'Whether it is holding up', hint: 'Live system health', icon: Activity },
-  { key: 'lenses', label: 'Lenses', keys: '3', title: 'Every lens, and what backs it', hint: 'Lens catalog and wiring', icon: Eye },
-  { key: 'components', label: 'Components', keys: '4', title: 'Every component in the tree', hint: 'Component inventory', icon: Package },
-  { key: 'wiring', label: 'Wiring', keys: '5', title: 'How the pieces connect', hint: 'Frontend-to-backend wiring map', icon: GitBranch },
-  { key: 'orphans', label: 'Orphans', keys: '6', title: 'What nothing points to', hint: 'Unreferenced files and routes', icon: AlertTriangle },
-  { key: 'search', label: 'Search', keys: '7', title: 'Find anything in the codebase', hint: 'Inventory search', icon: Search },
-  { key: 'lens-infra', label: 'Infrastructure', keys: '8', title: 'What every lens shares', hint: 'Shared lens infrastructure', icon: Cog },
-  { key: 'dev-portal', label: 'Dev portal', keys: '9', title: 'Build against Concord', hint: 'API explorer and developer tools', icon: Server },
+const TABS: {key: TabKey; label: string; keys: string; hint: string; icon: typeof Layers }[] = [
+  { key: 'overview', label: 'Overview', keys: '1', hint: 'Inventory totals and import graph', icon: Layers },
+  { key: 'health', label: 'Health', keys: '2', hint: 'Live system health', icon: Activity },
+  { key: 'lenses', label: 'Lenses', keys: '3', hint: 'Lens catalog and wiring', icon: Eye },
+  { key: 'components', label: 'Components', keys: '4', hint: 'Component inventory', icon: Package },
+  { key: 'wiring', label: 'Wiring', keys: '5', hint: 'Frontend-to-backend wiring map', icon: GitBranch },
+  { key: 'orphans', label: 'Orphans', keys: '6', hint: 'Unreferenced files and routes', icon: AlertTriangle },
+  { key: 'search', label: 'Search', keys: '7', hint: 'Inventory search', icon: Search },
+  { key: 'lens-infra', label: 'Infrastructure', keys: '8', hint: 'Shared lens infrastructure', icon: Cog },
+  { key: 'dev-portal', label: 'Dev portal', keys: '9', hint: 'API explorer and developer tools', icon: Server },
 ];
 
 export default function MetaLensPage() {
@@ -55,8 +52,6 @@ export default function MetaLensPage() {
   useLensIdentity('meta');
   const { isLive, lastUpdated } = useRealtimeLens('meta');
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TabKey>('overview');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -90,19 +85,15 @@ export default function MetaLensPage() {
     { lensId: 'meta' },
   );
 
-  const current = TABS.find((t) => t.key === active)!;
 
   return (
     <LensShell lensId="meta" asMain={false}>
-      <FirstRunTour lensId="meta" />
+
       <DepthBadge lensId="meta" size="sm" className="ml-2" />
       <div data-lens-theme="meta" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Meta</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'overview' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Meta</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

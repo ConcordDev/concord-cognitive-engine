@@ -15,13 +15,10 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLiveStatus } from '@/components/system/useLiveStatus';
 import { useSystemCartograph } from '@/components/system/cartographShared';
 import {
@@ -53,8 +50,6 @@ type SysView =
 export default function SystemLensPage() {
   useLensNav('system');
   useLensIdentity('system');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SysView>('overview');
   const { live, setLive, status: liveStatus } = useLiveStatus();
   const { heartbeats, coveragePct, data, handleRefresh, isFetching } = useSystemCartograph();
@@ -122,33 +117,14 @@ export default function SystemLensPage() {
     }
   })();
 
-  const TITLES: Record<SysView, string> = {
-    overview: `Read the system${who ? `, ${who}` : ''}`,
-    metrics: 'Watch the metrics',
-    alerts: 'Triage the alerts',
-    logs: 'Read the logs',
-    hbhealth: 'Check the heartbeats',
-    traces: 'Follow the traces',
-    dashboard: 'Build your dashboard',
-    trend: 'See the trend',
-    heartbeats: 'Inventory the heartbeats',
-    gaps: 'Find the gaps',
-    coverage: 'Measure the coverage',
-    drift: 'Catch the drift',
-    analytics: 'Analyze usage',
-    plugins: 'Manage the plugins',
-    substrate: 'Inspect the substrate',
-    health: 'Check system health',
-  };
 
   return (
     <LensShell lensId="system" asMain={false}>
-      <FirstRunTour lensId="system" />
+
       <DepthBadge lensId="system" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="system"
         crumb="System"
-        title={TITLES[active]}
         subtitle="Cartograph + live telemetry"
         actions={(
           <button

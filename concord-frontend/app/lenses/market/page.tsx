@@ -11,12 +11,9 @@ import { Store, LineChart, Flame, Crosshair, Eye, Plus } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
@@ -31,19 +28,17 @@ import SectorHeatmap, { type SectorHeatmapQuote } from '@/components/lens/Sector
 
 type MarketView = 'listings' | 'analysis' | 'heatmaps' | 'competitors' | 'intel';
 
-const TABS: { id: MarketView; label: string; keys: string; title: string; hint: string; icon: typeof Store }[] = [
-  { id: 'listings', label: 'Listings', keys: 'l', title: 'What is for sale', hint: 'DTU marketplace listings', icon: Store },
-  { id: 'analysis', label: 'Analysis', keys: 'a', title: 'Read the market', hint: 'Analysis workbench', icon: LineChart },
-  { id: 'heatmaps', label: 'Heatmaps', keys: 'h', title: 'Where the heat is', hint: 'Market heatmap, watchlist and sectors', icon: Flame },
-  { id: 'competitors', label: 'Competitors', keys: 'c', title: 'Who you are up against', hint: 'Competitor tracker', icon: Crosshair },
-  { id: 'intel', label: 'Intel', keys: 'i', title: 'What the field is doing', hint: 'Competitive intelligence', icon: Eye },
+const TABS: { id: MarketView; label: string; keys: string; hint: string; icon: typeof Store }[] = [
+  { id: 'listings', label: 'Listings', keys: 'l', hint: 'DTU marketplace listings', icon: Store },
+  { id: 'analysis', label: 'Analysis', keys: 'a', hint: 'Analysis workbench', icon: LineChart },
+  { id: 'heatmaps', label: 'Heatmaps', keys: 'h', hint: 'Market heatmap, watchlist and sectors', icon: Flame },
+  { id: 'competitors', label: 'Competitors', keys: 'c', hint: 'Competitor tracker', icon: Crosshair },
+  { id: 'intel', label: 'Intel', keys: 'i', hint: 'Competitive intelligence', icon: Eye },
 ];
 
 export default function MarketLensPage() {
   useLensNav('market');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('market');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MarketView>('listings');
 
   const newListing = useCallback(() => {
@@ -69,16 +64,14 @@ export default function MarketLensPage() {
     { lensId: 'market' },
   );
 
-  const current = TABS.find((t) => t.id === active)!;
 
   return (
     <LensShell lensId="market" asMain={false}>
-      <FirstRunTour lensId="market" />
+
       <DepthBadge lensId="market" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="market"
         crumb="Market"
-        title={`${current.title}${active === 'listings' && who ? `, ${who}` : ''}`}
         subtitle="DTU marketplace, listings, economy simulation and competitive intel."
         actions={
           <>

@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
 import { FieldLog } from '@/components/geology/FieldLog';
@@ -62,12 +61,11 @@ export default function GeologyLensPage() {
 
   return (
     <LensShell lensId="geology" asMain={false}>
-      <FirstRunTour lensId="geology" />
+
       <DepthBadge lensId="geology" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="geology"
         crumb="Geology"
-        title="Read the ground"
         subtitle="Field observations, rock and mineral ID, structural geology, seismic hazard and stratigraphy."
         tabs={TABS.map(({ key, label, icon }) => ({ id: key, label, icon }))}
         activeTab={activeTab}

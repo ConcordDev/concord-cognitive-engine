@@ -13,7 +13,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Sparkles, Hash, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { getLensManifest } from '@/lib/lenses/manifest';
 import type { SocialPost, TrendingHashtag } from './types';
+import { normalizePosts } from './normalizePost';
 import { FeedComposer } from './FeedComposer';
 import { PostCard } from './PostCard';
 import { HashtagPage } from './HashtagPage';
@@ -51,7 +54,7 @@ export function FeedView({ currentUserId, username, hideComposer = false }: Feed
     ]);
     setLoading(false);
     if (feedR.data?.ok && feedR.data.result) {
-      setPosts(feedR.data.result.posts || []);
+      setPosts(normalizePosts(feedR.data.result.posts));
       setFeedError(null);
     } else {
       // A failed feed is not an empty feed. Leave any posts already shown
@@ -80,7 +83,7 @@ export function FeedView({ currentUserId, username, hideComposer = false }: Feed
     const timer = setInterval(() => {
       void (async () => {
         const feedR = await lensRun<{ posts: SocialPost[] }>('social', 'feed', { limit: 50 });
-        if (feedR.data?.ok && feedR.data.result) setIncoming(feedR.data.result.posts || []);
+        if (feedR.data?.ok && feedR.data.result) setIncoming(normalizePosts(feedR.data.result.posts));
       })();
     }, 30_000);
     return () => clearInterval(timer);
@@ -198,13 +201,17 @@ export function FeedView({ currentUserId, username, hideComposer = false }: Feed
               <Loader2 className="w-4 h-4 animate-spin" /> Loading feed…
             </div>
           ) : posts.length === 0 && !feedError ? (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-              <Sparkles className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
-              <h3 className="text-sm font-medium text-zinc-300">No posts yet</h3>
-              <p className="mt-1 text-xs text-zinc-400">
-                Write the first post — add media, a poll, or quote an existing post.
-              </p>
-            </div>
+            <EmptyStateCTA
+              lensId="social"
+              headline="No posts yet"
+              caption={getLensManifest('social')?.emptyState?.caption || 'Write something you made.'}
+              buttonLabel="Write your first post"
+              onAction={() => {
+                const box = document.querySelector<HTMLElement>('#social-main textarea, #social-quick-post textarea');
+                box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                box?.focus();
+              }}
+            />
           ) : posts.length > 0 ? (
             <div className="space-y-2">
               {(() => {
@@ -213,7 +220,7 @@ export function FeedView({ currentUserId, username, hideComposer = false }: Feed
                 return (
                   <button
                     type="button"
-                    onClick={() => { setPosts(incoming || []); setIncoming(null); }}
+                    onClick={() => { setPosts(normalizePosts(incoming || [])); setIncoming(null); }}
                     className="w-full rounded-lg border border-teal-400/40 bg-teal-400/10 px-3 py-2 text-sm text-teal-200"
                   >
                     Show {count} new {count === 1 ? 'post' : 'posts'}

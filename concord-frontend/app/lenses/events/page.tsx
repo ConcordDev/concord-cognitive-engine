@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
 import { EventPlanner } from '@/components/events/EventPlanner';
@@ -21,8 +20,6 @@ import {
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Sparkles, CalendarHeart, Globe2 } from 'lucide-react';
@@ -34,18 +31,18 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 /** Luma / Partiful: one invite feed, one host console, no accordion pile. */
 export type EventsView = ModeTab | 'host' | 'plan' | 'earth';
 
-const VIEWS: { id: EventsView; label: string; keys?: string; title: string }[] = [
-  { id: 'dashboard', label: 'Discover', keys: 'd', title: 'Find the next gathering' },
-  { id: 'events', label: 'Events', keys: 'e', title: 'Track every event' },
-  { id: 'host', label: 'Host', keys: 'h', title: 'Host the night' },
-  { id: 'venues', label: 'Venues', keys: 'n', title: 'Scout the venues' },
-  { id: 'vendors', label: 'Vendors', keys: 'v', title: 'Line up the vendors' },
-  { id: 'guests', label: 'Guests', keys: 'g', title: 'Manage the guest list' },
-  { id: 'runofshow', label: 'Run of show', keys: 'r', title: 'Call the run of show' },
-  { id: 'budget', label: 'Budget', keys: 'b', title: 'Keep the budget honest' },
-  { id: 'tickets', label: 'Tickets', keys: 't', title: 'Sell the tickets' },
-  { id: 'plan', label: 'Plan', keys: 'p', title: 'Plan it out' },
-  { id: 'earth', label: 'Earth', title: 'Watch the Earth' },
+const VIEWS: { id: EventsView; label: string; keys?: string; }[] = [
+  { id: 'dashboard', label: 'Discover', keys: 'd' },
+  { id: 'events', label: 'Events', keys: 'e' },
+  { id: 'host', label: 'Host', keys: 'h' },
+  { id: 'venues', label: 'Venues', keys: 'n' },
+  { id: 'vendors', label: 'Vendors', keys: 'v' },
+  { id: 'guests', label: 'Guests', keys: 'g' },
+  { id: 'runofshow', label: 'Run of show', keys: 'r' },
+  { id: 'budget', label: 'Budget', keys: 'b' },
+  { id: 'tickets', label: 'Tickets', keys: 't' },
+  { id: 'plan', label: 'Plan', keys: 'p' },
+  { id: 'earth', label: 'Earth' },
 ];
 
 const WORKBENCH_VIEWS = new Set<EventsView>(MODE_TABS.map((t) => t.id));
@@ -56,8 +53,6 @@ export default function EventsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('events');
   const [activeView, setActive] = useState<EventsView>('dashboard');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -75,16 +70,14 @@ export default function EventsLensPage() {
     { lensId: 'events' },
   );
 
-  const current = VIEWS.find((v) => v.id === activeView)!;
 
   return (
     <LensShell lensId="events" asMain={false}>
-      <FirstRunTour lensId="events" />
+
       <DepthBadge lensId="events" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="events"
         crumb="Events"
-        title={`${current.title}${activeView === 'dashboard' && who ? `, ${who}` : ''}`}
         subtitle="Invite, host, check in — Luma-dense, nothing invented."
         actions={(
           <>

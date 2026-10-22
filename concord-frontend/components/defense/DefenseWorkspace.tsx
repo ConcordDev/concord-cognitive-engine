@@ -50,7 +50,7 @@ function isBriefTool(value: unknown): value is BriefTool {
   return typeof value === 'string' && TOOL_IDS.has(value as BriefTool);
 }
 
-export function DefenseWorkspace({ who }: { who: string }) {
+export function DefenseWorkspace() {
   useLensIdentity('defense');
   const { restore, persist } = useLensStatePersistence('defense');
   const [initialState] = useState(() => restore());
@@ -122,10 +122,7 @@ export function DefenseWorkspace({ who }: { who: string }) {
   return (
     <div data-lens-theme="defense" className="relative min-h-full bg-[#07090b] px-4 pb-28 pt-6 sm:px-8">
       <header>
-        <p className="text-sm text-zinc-600">Defense</p>
-        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">
-          The brief{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Defense</h1>
       </header>
 
       {!opened ? (

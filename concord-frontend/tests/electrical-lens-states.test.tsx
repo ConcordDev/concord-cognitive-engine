@@ -15,7 +15,6 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ramaj' 
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/electrical/ElectricalDeskPanel', () => ({
   ElectricalDeskPanel: (props: { mode: string; createOnMount?: boolean }) => {
@@ -49,7 +48,7 @@ beforeEach(() => {
 describe('Electrical north-star workspace', () => {
   it('matches the concept with one empty job and one primary action', () => {
     const { getByText, queryByRole } = render(<ElectricalLensPage />);
-    expect(getByText('The job, Ramaj')).toBeInTheDocument();
+    expect(getByText('Electrical')).toBeInTheDocument();
     expect(getByText('No job open.')).toBeInTheDocument();
     expect(getByText('+ New job')).toBeInTheDocument();
     expect(queryByRole('navigation', { name: 'Electrical job tools' })).toBeNull();

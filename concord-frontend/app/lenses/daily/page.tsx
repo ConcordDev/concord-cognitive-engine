@@ -10,7 +10,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DailyTodayPanel } from '@/components/daily/DailyTodayPanel';
 import { JournalStudio } from '@/components/daily/JournalStudio';
@@ -23,10 +22,10 @@ import { cn } from '@/lib/utils';
 
 type DailyView = 'journal' | 'studio' | 'inspiration';
 
-const TABS: { id: DailyView; label: string; title: string; hint: string; icon: typeof BookOpen; keys: string }[] = [
-  { id: 'journal', label: 'Today', title: 'Today', hint: 'Mood, habits, reminders and the day journal', icon: BookOpen, keys: 'j' },
-  { id: 'studio', label: 'Studio', title: 'Write it down', hint: 'Journal studio', icon: PenLine, keys: 's' },
-  { id: 'inspiration', label: 'Inspiration', title: 'Something to start from', hint: 'Quotes and prompts', icon: Quote, keys: 'i' },
+const TABS: { id: DailyView; label: string; hint: string; icon: typeof BookOpen; keys: string }[] = [
+  { id: 'journal', label: 'Today', hint: 'Mood, habits, reminders and the day journal', icon: BookOpen, keys: 'j' },
+  { id: 'studio', label: 'Studio', hint: 'Journal studio', icon: PenLine, keys: 's' },
+  { id: 'inspiration', label: 'Inspiration', hint: 'Quotes and prompts', icon: Quote, keys: 'i' },
 ];
 
 export default function DailyLensPage() {
@@ -39,7 +38,6 @@ export default function DailyLensPage() {
   const [view, setView] = useState<DailyView>('journal');
   const timeZone = resolveCalendarTimeZone(profileTimeZone(user));
   const dateTitle = formatDateKey(calendarDateKey(new Date(), timeZone));
-  const current = TABS.find((t) => t.id === view)!;
 
   useLensCommand(
     [
@@ -57,16 +55,14 @@ export default function DailyLensPage() {
 
   return (
     <LensShell lensId="daily" asMain={false}>
-      <FirstRunTour lensId="daily" />
+
       <DepthBadge lensId="daily" size="sm" className="ml-2" />
       <div data-lens-theme="daily" className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden text-white">
         <header className="shrink-0 px-8 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[14px] text-zinc-500">Daily · {current.title}</p>
-              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-                {view === 'journal' ? dateTitle : current.title}
-              </h1>
+              <p className="text-[14px] text-zinc-500">Daily</p>
+              <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">{view === 'journal' ? dateTitle : 'Daily'}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-3 pt-2">
               {who && <span className="hidden text-[13px] text-zinc-500 sm:inline">{who}</span>}

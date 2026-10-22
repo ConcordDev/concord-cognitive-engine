@@ -55,7 +55,7 @@ describe('cognition card', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
     expect(await view.findByText('No trace yet.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The trace' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Cognition' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Open a trace' })).toBeEnabled();
     expect(view.getAllByTestId('cg-rule')).toHaveLength(3);
     expect(view.container.querySelector('input')).toBeNull();
@@ -152,11 +152,11 @@ describe('cognition card', () => {
     expect(view.queryByRole('heading', { name: 'Lost trace' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitionLens />);
-    expect(await view.findByRole('heading', { name: 'The trace, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Cognition' })).toBeInTheDocument();
     expect(await view.findByText('No trace yet.')).toBeInTheDocument();
   });
 

@@ -16,7 +16,6 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
 import { ComponentWorkbench } from '@/components/ux-suite/ComponentWorkbench';
@@ -86,12 +85,11 @@ export default function UxSuiteLensPage() {
   const router = useRouter();
   return (
     <LensShell lensId="ux-suite" asMain={false}>
-      <FirstRunTour lensId="ux-suite" />
+
       <DepthBadge lensId="ux-suite" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ux-suite"
         crumb="UX suite"
-        title="Every interface piece, in its real home"
         subtitle={`${COMPONENTS.length} absorbed UX components, each wired to where it runs. No mock data.`}
         cta={{ label: 'System overview', icon: Settings, onClick: () => router.push('/lenses/system') }}
       >

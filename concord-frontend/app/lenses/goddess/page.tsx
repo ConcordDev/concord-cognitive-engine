@@ -13,9 +13,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GoddessGallery } from '@/components/goddess/GoddessGallery';
 import { DispatchDetail } from '@/components/goddess/DispatchDetail';
@@ -36,8 +33,6 @@ export default function GoddessPage() {
     { id: 'goddess-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'goddess' });
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,21 +77,19 @@ export default function GoddessPage() {
 
   const openDispatch = (id: number) => { setOpenId(id); };
 
-  const TABS: { id: Tab; label: string; title: string; icon: typeof Radio }[] = [
-    { id: 'feed', label: 'Feed', title: 'What Concordia is saying', icon: Radio },
-    { id: 'archive', label: 'Archive', title: 'Everything she has said', icon: Archive },
-    { id: 'alerts', label: 'Alerts', title: 'Hear it when it matters', icon: Bell },
+  const TABS: { id: Tab; label: string; icon: typeof Radio }[] = [
+    { id: 'feed', label: 'Feed', icon: Radio },
+    { id: 'archive', label: 'Archive', icon: Archive },
+    { id: 'alerts', label: 'Alerts', icon: Bell },
   ];
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="goddess">
-      <FirstRunTour lensId="goddess" />
+
       <DepthBadge lensId="goddess" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="goddess"
         crumb="Concordia"
-        title={openId !== null ? 'A single dispatch' : `${current.title}${tab === 'feed' && who ? `, ${who}` : ''}`}
         subtitle="Ambient broadcasts from Concordia, composed hourly from world ecosystem score, refusal-field strength, and drift events."
         actions={
           <label className="flex items-center gap-2 text-xs text-zinc-400" htmlFor="goddess-world">

@@ -12,7 +12,6 @@ import { useState, type ComponentType } from 'react';
 import { Focus, Layers, Brain, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -20,8 +19,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { FocusDeskPanel } from '@/components/attention/FocusDeskPanel';
 import { ThreadsDeskPanel } from '@/components/attention/ThreadsDeskPanel';
@@ -29,10 +26,10 @@ import { EmergentDeskPanel } from '@/components/attention/EmergentDeskPanel';
 
 type AttentionView = 'focus' | 'threads' | 'emergent';
 
-const VIEWS: { id: AttentionView; label: string; keys: string; title: string; hint: string; icon: typeof Focus }[] = [
-  { id: 'focus', title: 'Where your focus goes', label: 'Focus', keys: '1', hint: 'Pomodoro · planner · macros', icon: Focus },
-  { id: 'threads', title: 'What is holding your attention', label: 'Threads', keys: '2', hint: 'Cognitive threads · queue', icon: Layers },
-  { id: 'emergent', title: 'What runs in the background', label: 'Cognition', keys: '3', hint: 'Dream · forget · repair', icon: Brain },
+const VIEWS: { id: AttentionView; label: string; keys: string; hint: string; icon: typeof Focus }[] = [
+  { id: 'focus', label: 'Focus', keys: '1', hint: 'Pomodoro · planner · macros', icon: Focus },
+  { id: 'threads', label: 'Threads', keys: '2', hint: 'Cognitive threads · queue', icon: Layers },
+  { id: 'emergent', label: 'Cognition', keys: '3', hint: 'Dream · forget · repair', icon: Brain },
 ];
 
 const PANELS: Record<AttentionView, ComponentType> = {
@@ -44,8 +41,6 @@ const PANELS: Record<AttentionView, ComponentType> = {
 export default function AttentionLensPage() {
   useLensNav('attention');
   useLensIdentity('attention');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('attention');
   const [active, setActive] = useState<AttentionView>('focus');
 
@@ -68,11 +63,10 @@ export default function AttentionLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="attention" asMain={false}>
-      <FirstRunTour lensId="attention" />
+
       <DepthBadge lensId="attention" size="sm" className="ml-2" />
       <div data-lens-theme="attention" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#attention-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -80,10 +74,7 @@ export default function AttentionLensPage() {
         </a>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Attention</p>
-            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'focus' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Attention</h1>
             <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">
               Focus sessions, cognitive threads, and emergent cognition.
             </p>

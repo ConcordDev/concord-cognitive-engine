@@ -3,9 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
@@ -41,13 +38,13 @@ interface GrowthOrgan {
 
 type BioTab = 'organisms' | 'experiments' | 'sequences' | 'analyzer' | 'literature' | 'actions';
 
-const TABS: { key: BioTab; label: string; keys: string; title: string; hint: string; icon: typeof Bug }[] = [
-  { key: 'organisms', label: 'Organisms', keys: 'o', title: 'The living system', hint: 'Bio age, systems, growth organs and homeostasis', icon: Bug },
-  { key: 'experiments', label: 'Experiments', keys: 'e', title: 'Run the analysis bench', hint: 'Alignment, expression, phylogenetics, motifs, pathways', icon: Microscope },
-  { key: 'sequences', label: 'Sequences', keys: 's', title: 'Design and clone', hint: 'Plasmid maps, MSA, in-silico cloning, CRISPR guides', icon: Dna },
-  { key: 'analyzer', label: 'Analyzer', keys: 'a', title: 'Read a sequence', hint: 'Sequence analyzer', icon: FlaskConical },
-  { key: 'literature', label: 'Literature', keys: 'l', title: 'What the field is publishing', hint: 'arXiv q-bio, PubMed and live feeds', icon: BookOpen },
-  { key: 'actions', label: 'Actions', keys: 't', title: 'Every bio macro', hint: 'Bio action workbench', icon: Wand2 },
+const TABS: {key: BioTab; label: string; keys: string; hint: string; icon: typeof Bug }[] = [
+  { key: 'organisms', label: 'Organisms', keys: 'o', hint: 'Bio age, systems, growth organs and homeostasis', icon: Bug },
+  { key: 'experiments', label: 'Experiments', keys: 'e', hint: 'Alignment, expression, phylogenetics, motifs, pathways', icon: Microscope },
+  { key: 'sequences', label: 'Sequences', keys: 's', hint: 'Plasmid maps, MSA, in-silico cloning, CRISPR guides', icon: Dna },
+  { key: 'analyzer', label: 'Analyzer', keys: 'a', hint: 'Sequence analyzer', icon: FlaskConical },
+  { key: 'literature', label: 'Literature', keys: 'l', hint: 'arXiv q-bio, PubMed and live feeds', icon: BookOpen },
+  { key: 'actions', label: 'Actions', keys: 't', hint: 'Bio action workbench', icon: Wand2 },
 ];
 
 export default function BioLensPage() {
@@ -55,8 +52,6 @@ export default function BioLensPage() {
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<BioTab>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
@@ -111,7 +106,6 @@ export default function BioLensPage() {
       </div>
     );
   }
-  const current = TABS.find((t) => t.key === activeTab)!;
   const card = 'rounded-2xl border border-white/10 bg-[#111] p-4';
   const homeo = bioData?.homeostasis as Record<string, number> | undefined;
   const homeoRows = (['energy', 'coherence', 'stability', 'adaptation'] as const)
@@ -121,12 +115,11 @@ export default function BioLensPage() {
 
   return (
     <LensShell lensId="bio" asMain={false}>
-      <FirstRunTour lensId="bio" />
+
       <DepthBadge lensId="bio" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="bio"
         crumb="Bio"
-        title={`${current.title}${activeTab === 'organisms' && who ? `, ${who}` : ''}`}
         subtitle="Biological system simulation, Growth OS metrics and a full sequence-analysis bench."
         actions={
           <div className="flex items-center gap-3">

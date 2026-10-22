@@ -13,7 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { GitBranch, PenLine, Plus, Radio, Workflow } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -22,8 +21,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { ThreadMapPanel } from '@/components/thread/ThreadMapPanel';
 import { ComposerPanel } from '@/components/thread/ComposerPanel';
@@ -32,11 +29,11 @@ import { FeedPanel } from '@/components/thread/FeedPanel';
 
 type ThreadView = 'map' | 'composer' | 'studio' | 'feed';
 
-const VIEWS: { id: ThreadView; label: string; keys: string; title: string; hint: string; icon: typeof GitBranch }[] = [
-  { id: 'map', title: 'How the conversation branches', label: 'Map', keys: '1', hint: 'Branching tree', icon: GitBranch },
-  { id: 'composer', title: 'What to say next', label: 'Composer', keys: '2', hint: 'Write a post', icon: PenLine },
-  { id: 'studio', title: 'Shape the thread', label: 'Studio', keys: '3', hint: 'Thread studio', icon: Workflow },
-  { id: 'feed', title: 'What is being said', label: 'Feed', keys: '4', hint: 'Live feed', icon: Radio },
+const VIEWS: { id: ThreadView; label: string; keys: string; hint: string; icon: typeof GitBranch }[] = [
+  { id: 'map', label: 'Map', keys: '1', hint: 'Branching tree', icon: GitBranch },
+  { id: 'composer', label: 'Composer', keys: '2', hint: 'Write a post', icon: PenLine },
+  { id: 'studio', label: 'Studio', keys: '3', hint: 'Thread studio', icon: Workflow },
+  { id: 'feed', label: 'Feed', keys: '4', hint: 'Live feed', icon: Radio },
 ];
 
 
@@ -51,8 +48,6 @@ export default function ThreadLensPage() {
   useLensNav('thread');
   useLensIdentity('thread');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('thread');
   const [active, setActive] = useState<ThreadView>('map');
@@ -69,7 +64,6 @@ export default function ThreadLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
   const motionProps = useMemo(
     () =>
       reduceMotion
@@ -85,15 +79,12 @@ export default function ThreadLensPage() {
 
   return (
     <LensShell lensId="thread" asMain={false}>
-      <FirstRunTour lensId="thread" />
+
       <DepthBadge lensId="thread" size="sm" className="ml-2" />
       <div data-lens-theme="thread" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Thread</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'map' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Thread</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {realtimeAlerts.length > 0 && (

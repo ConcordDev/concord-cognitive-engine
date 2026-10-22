@@ -17,8 +17,22 @@ vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => {} }));
 vi.mock('@/hooks/useRealtimeLens', () => ({
   useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
 }));
+// The page reads the active place from the URL (?view=). Mirror that here:
+// router.replace() updates urlState, useSearchParams() reads it back, so a
+// test can start on (or navigate to) any of the five places.
+const urlState = vi.hoisted(() => ({ view: '' }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({
+    push: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+    replace: (url: string) => {
+      const m = /[?&]view=([^&]+)/.exec(String(url));
+      urlState.view = m ? m[1] : '';
+    },
+  }),
+  usePathname: () => '/lenses/social',
+  useSearchParams: () => new URLSearchParams(urlState.view ? `view=${urlState.view}` : ''),
 }));
 vi.mock('next/image', () => ({
   default: (props: { alt?: string }) => React.createElement('img', { alt: props.alt || '' }),
@@ -30,7 +44,6 @@ vi.mock('@/lib/realtime/socket', () => ({
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
 vi.mock('@/components/audio-rooms/RoomStage', () => ({ default: () => null }));
@@ -87,7 +100,8 @@ vi.mock('@/lib/api/client', () => ({
 import SocialHubPage from '@/app/lenses/social/page';
 import { FeedView } from '@/components/social/feed/FeedView';
 
-function renderPage() {
+function renderPage(view = '') {
+  urlState.view = view;
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -97,7 +111,7 @@ function renderPage() {
 }
 
 describe('social honest controls', () => {
-  beforeEach(() => { calls.length = 0; });
+  beforeEach(() => { calls.length = 0; urlState.view = ''; });
 
   it('hides the empty export, domain rail, and live video tab', async () => {
     renderPage();
@@ -123,7 +137,9 @@ describe('social honest controls', () => {
   });
 
   it('creates a public profile on first visit and edits it through a real save', async () => {
-    renderPage();
+    // The profile card lives in the You place (Posts tab) under the
+    // five-place IA.
+    renderPage('you');
     await waitFor(() => {
       expect(calls.some((c) => c.method === 'POST' && c.url === '/api/social/profile')).toBe(true);
     });
@@ -141,12 +157,15 @@ describe('social honest controls', () => {
     renderPage();
     await screen.findByText('music');
     expect(calls.some((c) => c.url === '/api/social/topics/trending')).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: /Your Story/i }));
+    // StoriesBar renders "Your Story" once its /api/social/stories query
+    // settles — wait for it instead of assuming it beat the trending fetch.
+    fireEvent.click(await screen.findByRole('button', { name: /Your Story/i }));
     expect(screen.getByRole('button', { name: /^24h Story$/i })).toBeInTheDocument();
   });
 
   it('analytics renders without a daily series and does not invent earnings', async () => {
-    renderPage();
+    // Analytics is a sub-tab of the You place under the five-place IA.
+    renderPage('you');
     fireEvent.click(await screen.findByRole('tab', { name: /Analytics/i }));
     expect(await screen.findByText('Engagement Rate')).toBeInTheDocument();
     expect(screen.queryByText(/Last 7 Days/i)).not.toBeInTheDocument();

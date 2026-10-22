@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
@@ -17,8 +16,7 @@ import { apiHelpers, lensRun } from '@/lib/api/client';
 import { COUNTRIES as WB_COUNTRIES, INDICATORS as WB_INDICATORS } from '@/components/global/indicators';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { getCommandPaletteLenses } from '@/lib/lens-registry';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -47,8 +45,6 @@ interface CatalogIndicator { code: string; name: string; sourceNote: string; top
 export default function GlobalLensPage() {
   useLensNav('global');
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
@@ -154,21 +150,19 @@ export default function GlobalLensPage() {
   }
 
   const tabs = [
-    { key: 'explore' as const, label: 'Data Explorer', icon: Compass, keys: 'e', title: `The world in numbers${who ? `, ${who}` : ''}`, hint: 'World Bank map, time series, comparison and country profiles' },
-    { key: 'index' as const, label: 'Development Index', icon: Award, keys: 'i', title: 'Who is pulling ahead', hint: 'Composite country ranking from live indicators' },
-    { key: 'correlate' as const, label: 'Correlations', icon: GitBranch, keys: 'c', title: 'What moves together', hint: 'Cross-country indicator correlation' },
-    { key: 'search' as const, label: 'Search', icon: Search, keys: 's', title: 'Find it across everything', hint: 'Your DTUs and the World Bank catalog in one search' },
+    { key: 'explore' as const, label: 'Data Explorer', icon: Compass, keys: 'e', hint: 'World Bank map, time series, comparison and country profiles' },
+    { key: 'index' as const, label: 'Development Index', icon: Award, keys: 'i', hint: 'Composite country ranking from live indicators' },
+    { key: 'correlate' as const, label: 'Correlations', icon: GitBranch, keys: 'c', hint: 'Cross-country indicator correlation' },
+    { key: 'search' as const, label: 'Search', icon: Search, keys: 's', hint: 'Your DTUs and the World Bank catalog in one search' },
   ];
-  const currentTab = tabs.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="global" asMain={false}>
-      <FirstRunTour lensId="global" />
+
       <DepthBadge lensId="global" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="global"
         crumb="Global"
-        title={currentTab.title}
         subtitle={`${total.toLocaleString()} DTUs in your global corpus, plus live World Bank open data.`}
         actions={
           <>
