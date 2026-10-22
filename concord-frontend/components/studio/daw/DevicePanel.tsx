@@ -84,6 +84,17 @@ function fmt(v: number, unit?: string) {
   return `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v)}${unit === 'dB' ? 'dB' : unit === ':1' ? ':1' : ''}`;
 }
 
+/** Flex items shrink by default; `truncate` + a shrinking `w-14` clip labels
+ *  (Gate's "Threshold"/"Range" collapsed to a cut-off letter). Keep the same
+ *  column width so other cards don't reflow, but never shrink or ellipsis. */
+function ParamLabel({ children }: { children: string }) {
+  return (
+    <span className="w-14 shrink-0 leading-tight" title={children}>
+      {children}
+    </span>
+  );
+}
+
 export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInstance; onChange: (fx: EffectInstance, key?: string) => void; onRemove?: () => void; onMove?: (d: -1 | 1) => void }) {
   const s = specOf(fx.type);
   if (!s) {
@@ -113,17 +124,17 @@ export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInsta
           const v = Number(fx.params[ps.key] ?? ps.def);
           return (
             <label key={ps.key} className="flex items-center gap-1 text-[10px] text-zinc-400">
-              <span className="w-14 truncate">{ps.label}</span>
-              <input type="range" min={ps.min} max={ps.max} step={ps.step} value={v} onChange={(e) => onChange({ ...fx, params: { ...fx.params, [ps.key]: Number(e.target.value) } }, `fx-${fx.id}-${ps.key}`)} className="h-1 flex-1 accent-violet-400" />
-              <span className="w-11 text-right tabular-nums text-zinc-300">{fmt(v, ps.unit)}</span>
+              <ParamLabel>{ps.label}</ParamLabel>
+              <input type="range" min={ps.min} max={ps.max} step={ps.step} value={v} onChange={(e) => onChange({ ...fx, params: { ...fx.params, [ps.key]: Number(e.target.value) } }, `fx-${fx.id}-${ps.key}`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
+              <span className="w-11 shrink-0 text-right tabular-nums text-zinc-300">{fmt(v, ps.unit)}</span>
             </label>
           );
         })}
         {hasWet && (
           <label className="flex items-center gap-1 text-[10px] text-zinc-400">
-            <span className="w-14">Mix</span>
-            <input type="range" min={0} max={1} step={0.01} value={fx.wet} onChange={(e) => onChange({ ...fx, wet: Number(e.target.value) }, `fx-${fx.id}-wet`)} className="h-1 flex-1 accent-violet-400" />
-            <span className="w-11 text-right tabular-nums text-zinc-300">{Math.round(fx.wet * 100)}%</span>
+            <ParamLabel>Mix</ParamLabel>
+            <input type="range" min={0} max={1} step={0.01} value={fx.wet} onChange={(e) => onChange({ ...fx, wet: Number(e.target.value) }, `fx-${fx.id}-wet`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
+            <span className="w-11 shrink-0 text-right tabular-nums text-zinc-300">{Math.round(fx.wet * 100)}%</span>
           </label>
         )}
       </div>
@@ -156,8 +167,8 @@ function InstrumentCard({ project, track, onTrack, onPreset }: { project: DAWPro
             ['Release', preset.ampEnvelope.release, 0.01, 4, 0.01, (v: number) => ({ ...preset, ampEnvelope: { ...preset.ampEnvelope, release: v } })],
           ] as const).map(([label, v, min, max, step, apply]) => (
             <label key={label} className="flex items-center gap-1 text-[10px] text-zinc-400">
-              <span className="w-14">{label}</span>
-              <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => onPreset(apply(Number(e.target.value)), `preset-${preset.id}-${label}`)} className="h-1 flex-1 accent-violet-400" />
+              <ParamLabel>{label}</ParamLabel>
+              <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => onPreset(apply(Number(e.target.value)), `preset-${preset.id}-${label}`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
             </label>
           ))}
           <div className="text-[9px] text-zinc-600">Edits apply to every track using “{preset.name}” in this song.</div>
