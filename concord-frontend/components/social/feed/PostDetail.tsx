@@ -33,11 +33,16 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loadedId, setLoadedId] = useState(postId);
+  const [reloadKey, setReloadKey] = useState(0);
   if (loadedId !== postId) {
     setLoadedId(postId);
     setLoading(true);
     setError(null);
   }
+  const reload = useCallback(() => {
+    setLoading(true);
+    setReloadKey((n) => n + 1);
+  }, []);
 
   const copyLink = useCallback(async () => {
     const r = await lensRun<{ permalink: string }>('social', 'shareTargets', { postId });
@@ -69,7 +74,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [postId]);
+  }, [postId, reloadKey]);
 
   return (
     <div className="space-y-3">
@@ -110,7 +115,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
                 post={quoted}
                 username={username}
                 currentUserId={currentUserId}
-                onChanged={load}
+                onChanged={reload}
                 onQuote={onQuote}
                 onOpenHashtag={onOpenHashtag}
                 onOpenDetail={onOpenDetail}
@@ -121,7 +126,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
             post={post}
             username={username}
             currentUserId={currentUserId}
-            onChanged={load}
+            onChanged={reload}
             onQuote={onQuote}
             onOpenHashtag={onOpenHashtag}
             onOpenDetail={onOpenDetail}
