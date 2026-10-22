@@ -95,12 +95,18 @@ export default function registerSocialActions(registerLensAction) {
     // ids preserved. Replies, reactions and reposts live on the post so the
     // SQLite snapshot and the Feed tab see the same object.
     const layer = canonicalSocial(STATE);
-    if (!s.__postsAliased) {
+    // `__postsAliased` is a process flag. The lens snapshot persists it as
+    // true, and the next boot builds a new empty canonical post map. Skipping
+    // the copy and then aliasing `s.posts` onto that empty map dropped every
+    // restored post, so the feed came back empty (reactions were still on
+    // `s.reactions`, with nothing left to attach them to). Copy whenever the
+    // lens map is a different object.
+    if (s.posts && s.posts !== layer.posts) {
       for (const [id, post] of [...s.posts.entries()]) {
         if (post && !layer.posts.has(id)) layer.posts.set(id, post);
       }
-      s.__postsAliased = true;
     }
+    s.__postsAliased = true;
     s.posts = layer.posts;
     for (const post of s.posts.values()) {
       if (!post || typeof post !== "object") continue;
@@ -112,13 +118,16 @@ export default function registerSocialActions(registerLensAction) {
       if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set();
       if (!(post.reactions instanceof Map)) post.reactions = new Map();
       if (!post.privacy) post.privacy = "public";
-      if (!(post.lensReactions instanceof Map)) {
-        const prior = s.reactions.get(post.id);
-        post.lensReactions = prior instanceof Map ? prior : new Map();
+      // A shared Map is serialized twice. A cycle collapses the second copy
+      // to an empty envelope, so prefer whichever side still has members.
+      const priorReactions = s.reactions.get(post.id);
+      if (!(post.lensReactions instanceof Map) || (post.lensReactions.size === 0 && priorReactions instanceof Map && priorReactions.size > 0)) {
+        post.lensReactions = priorReactions instanceof Map ? priorReactions : new Map();
       }
       s.reactions.set(post.id, post.lensReactions);
-      if (!(post.lensReposts instanceof Set)) {
-        post.lensReposts = asSet(s.reposts.get(post.id));
+      const priorReposts = asSet(s.reposts.get(post.id));
+      if (!(post.lensReposts instanceof Set) || (post.lensReposts.size === 0 && priorReposts.size > 0)) {
+        post.lensReposts = priorReposts;
       }
       s.reposts.set(post.id, post.lensReposts);
       if (!Array.isArray(post.lensReplies)) {
