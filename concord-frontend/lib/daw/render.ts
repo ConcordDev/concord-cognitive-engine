@@ -82,6 +82,7 @@ export async function renderProject(project: DAWProject, audio: Map<string, PcmA
   }
   graph.sync(song);
   const bpb = song.timeSignature?.[0] || 4;
+  graph.applyAutomation(song, start, end, (beat) => (constant ? (beat - start) * spb : secondsBetween(map, start, beat)));
   const events = collectEvents(start, end, {
     tracks: song.tracks,
     beatsPerBar: bpb,

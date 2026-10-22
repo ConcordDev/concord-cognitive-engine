@@ -15,6 +15,7 @@ import { playSynthNote, playDrum } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import type { PcmAudio } from './render';
 import { bakePitchEdits } from './dsp/pitch/editor';
+import { correlation } from './dsp/live-loudness';
 
 export type TransportState = 'stopped' | 'playing' | 'counting-in';
 type Listener = () => void;
@@ -58,6 +59,7 @@ export class StudioEngine {
         if (ev.kind !== 'click' && ev.beat >= 0 && this.state === 'counting-in') { this.state = 'playing'; this.emit(); }
         this.graph.schedule(ev, time, spb);
       },
+      onWindow: (from, to, timeAt) => this.graph.applyAutomation(this.project, from, to, timeAt),
       clock: {
         now: () => this.ctx.currentTime,
         setInterval: (fn, ms) => setInterval(fn, ms),
@@ -174,6 +176,7 @@ export class StudioEngine {
   stop(): void {
     this.scheduler.stop();
     this.stopVoices();
+    this.graph.loudness.reset();
     this.launched = {};
     this.state = 'stopped';
     if (this.pruneTimer) { clearInterval(this.pruneTimer); this.pruneTimer = null; }
@@ -247,6 +250,37 @@ export class StudioEngine {
   // ── Meters ──
   trackPeakDb(trackId: string): number { return peakDb(this.graph.channels.get(trackId)?.analyser); }
   masterPeakDb(): number { return peakDb(this.graph.masterAnalyser); }
+
+  /** Peak, RMS, and correlation from the stereo tap. Correlation is 0 until the tap exists. */
+  trackMeter(trackId: string): { peak: number; rms: number; correlation: number } {
+    const ch = this.graph.channels.get(trackId);
+    const left = new Float32Array(1024);
+    const right = new Float32Array(1024);
+    if (ch?.analyserL && ch.analyserR) {
+      ch.analyserL.getFloatTimeDomainData(left as Float32Array<ArrayBuffer>);
+      ch.analyserR.getFloatTimeDomainData(right as Float32Array<ArrayBuffer>);
+    }
+    let peak = 0;
+    let sum = 0;
+    for (let i = 0; i < left.length; i++) {
+      peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
+      sum += left[i] * left[i] + right[i] * right[i];
+    }
+    const rms = Math.sqrt(sum / Math.max(1, left.length * 2));
+    return {
+      peak: peak > 1e-6 ? 20 * Math.log10(peak) : -120,
+      rms: rms > 1e-8 ? 20 * Math.log10(rms) : -120,
+      correlation: ch?.analyserL ? correlation(left, right) : 0,
+    };
+  }
+
+  deviceReductionDb(trackId: string, effectId: string): number {
+    return this.graph.channels.get(trackId)?.chain.reductionDb(effectId) ?? 0;
+  }
+
+  masterLoudness(): { integratedLufs: number; truePeakDbtp: number } {
+    return { integratedLufs: this.graph.loudness.integratedLufs(), truePeakDbtp: this.graph.loudness.truePeakDbtp() };
+  }
 
   dispose(): void {
     this.stop();

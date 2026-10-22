@@ -11,7 +11,7 @@ import { LayoutList, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
-import { assetMeta, newId, trackKind, createTrack, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
+import { assetMeta, newId, trackKind, createTrack, createBus, createVca, effect, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
 import { beatAfter, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
 import { planRecording, recordingStartBeat } from '@/lib/daw/record-plan';
 import { addTake } from '@/lib/daw/takes';
@@ -534,6 +534,18 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                   onTrack={onTrack}
                   onMasterVolume={(db) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, volume: db } }), 'master-vol')}
                   onToggleMastering={() => edit((p) => ({ ...p, masteringChain: { ...p.masteringChain, enabled: !p.masteringChain.enabled } }))}
+                  onAutomation={(mode) => edit((p) => ({ ...p, transport: { ...p.transport, automation: mode } }))}
+                  onAddReturn={(kind) => edit((p) => {
+                    const i = p.tracks.length;
+                    const track = kind === 'vca'
+                      ? createVca(i)
+                      : createBus(i, kind === 'reverb' ? 'Reverb' : 'Delay', [
+                        kind === 'reverb'
+                          ? effect('reverb', 'Reverb', { decay: 2.2, preDelay: 0.02 }, 1)
+                          : effect('delay', 'Delay', { time: 0.375, feedback: 0.35, tone: 5000 }, 0.35),
+                      ]);
+                    return { ...p, tracks: [...p.tracks, track] };
+                  })}
                 />
               )}
             </div>

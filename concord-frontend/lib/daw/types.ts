@@ -34,6 +34,7 @@ export interface TransportConfig {
   punchOut?: number;
   /** Bars of playback before the punch. 0–4. */
   punchPreRollBars?: number;
+  automation?: 'read' | 'off';
 }
 
 // ============================================================================
@@ -57,13 +58,15 @@ export interface DAWTrack {
   height: number; // px
   instrumentId: string | null;
   effectChain: EffectInstance[];
-  sendLevels: Record<string, number>; // busId -> level
+  sendLevels: Record<string, number>; // busId -> dB, 0 is unity
+  sendPre?: Record<string, boolean>; // busId -> pre-fader when true
   clips: DAWClip[];
   automationLanes: AutomationLane[];
   inputSource: string | null; // for audio recording
   outputTarget: string; // 'master' or bus id
-  /** Pre-insert trim in dB (gain staging). */
-  trimDb?: number;
+  vca?: boolean;
+  vcaId?: string | null;
+  trimDb?: number; // pre-insert trim, dB
   /** Mix role (drives Auto Mix cleanup choices). */
   role?: TrackRole;
   /** Sidechain-style ducking: dip this track whenever `sourceTrackId` plays a note (e.g. bass under kick). */
@@ -327,7 +330,7 @@ export type EffectType =
   | 'distortion' | 'overdrive' | 'bitcrusher' | 'waveshaper'
   | 'chorus' | 'phaser' | 'flanger' | 'tremolo' | 'vibrato'
   | 'filter' | 'autoFilter' | 'autoWah'
-  | 'stereoWidener' | 'pan'
+  | 'stereoWidener' | 'pan' | 'utility'
   | 'pitchShift' | 'frequencyShifter'
   | 'pitchCorrect';
 
@@ -369,7 +372,7 @@ export interface AutomationLane {
 export interface AutomationPoint {
   id: string;
   beat: number;
-  value: number; // normalized 0-1
+  value: number; // volume lanes store dB; pan is -1..1
   curve: AutomationCurve;
 }
 

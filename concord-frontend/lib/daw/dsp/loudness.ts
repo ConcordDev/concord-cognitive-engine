@@ -102,14 +102,30 @@ export function integratedLoudness(channels: Float32Array[], fs: number): number
   return integratedFromPrefix(kWeightedPrefix(channels, fs), fs);
 }
 
-function integratedFromPrefix(pre: Float64Array[], fs: number): number {
-  const blocks = blockPowers(pre, fs, 0.4, 0.1);
-  const abs = blocks.filter((p) => toLufs(p) > -70);
+/** Mean square of a K-weighted block. Live metering feeds 400 ms blocks here. */
+export function kWeightedMeanSquare(channels: Float32Array[], fs: number): number {
+  if (!channels.length || !channels[0]?.length) return 0;
+  const pre = kWeightedPrefix(channels, fs);
+  const len = pre[0].length - 1;
+  if (!len) return 0;
+  const w = channelWeights(pre.length);
+  let p = 0;
+  for (let c = 0; c < pre.length; c++) p += (w[c] * pre[c][len]) / len;
+  return p;
+}
+
+/** Same absolute and relative gates as integrated loudness, on block powers. */
+export function integratedFromBlockPowers(powers: number[]): number {
+  const abs = powers.filter((p) => toLufs(p) > -70);
   if (!abs.length) return -Infinity;
   const relGate = toLufs(abs.reduce((a, b) => a + b, 0) / abs.length) - 10;
   const gated = abs.filter((p) => toLufs(p) > relGate);
   if (!gated.length) return -Infinity;
   return toLufs(gated.reduce((a, b) => a + b, 0) / gated.length);
+}
+
+function integratedFromPrefix(pre: Float64Array[], fs: number): number {
+  return integratedFromBlockPowers(blockPowers(pre, fs, 0.4, 0.1));
 }
 
 function percentile(sorted: number[], q: number): number {

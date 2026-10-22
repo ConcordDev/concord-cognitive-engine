@@ -82,6 +82,17 @@ export function createTrack(kind: NewTrackKind, index: number, opts: { name?: st
   };
 }
 
+/** A bus sums audio. It is not a clip lane. `fx` is the return's insert chain. */
+export function createBus(index: number, name: string, fx?: EffectInstance[]): DAWTrack {
+  const t = createTrack('audio', index, { name, role: 'fx' });
+  return { ...t, type: 'bus', instrumentId: null, effectChain: fx || [] };
+}
+
+/** VCA scales member faders after automation. It does not sum audio. */
+export function createVca(index: number, name = 'VCA'): DAWTrack {
+  return { ...createBus(index, name), vca: true };
+}
+
 export function trackKind(t: DAWTrack): NewTrackKind {
   if (t.type === 'audio') return 'audio';
   return isDrumInstrument(t.instrumentId) ? 'drums' : 'instrument';
