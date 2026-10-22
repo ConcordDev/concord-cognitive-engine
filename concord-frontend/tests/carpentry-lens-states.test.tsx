@@ -25,7 +25,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'sam' } }) }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => React.createElement('span', { 'data-testid': 'depth-badge' }) }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => React.createElement('div', { 'data-testid': 'cross-lens-recents' }) }));
 

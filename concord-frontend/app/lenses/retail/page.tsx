@@ -5,7 +5,6 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -62,7 +61,7 @@ export default function RetailLensPage() {
 
   return (
     <LensShell lensId="retail" asMain={false}>
-      <FirstRunTour lensId="retail" />
+
       <DepthBadge lensId="retail" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="retail"

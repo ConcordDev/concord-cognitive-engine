@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { createSimplexNoise2D } from '@/lib/world-lens/simplex-noise';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TriviaPanel } from '@/components/game/TriviaPanel';
 import { GameFeed } from '@/components/game/GameFeed';
@@ -917,7 +916,7 @@ export default function GameApp() {
   }
   return (
     <LensShell lensId="game" asMain={false}>
-      <FirstRunTour lensId="game" />
+
       <DepthBadge lensId="game" size="sm" className="ml-2" />
     <div data-lens-theme="game" className="px-8 pb-28 pt-6 space-y-6 min-h-screen">
       {/* Header */}

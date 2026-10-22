@@ -15,7 +15,6 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ramaj' 
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/electrical/ElectricalDeskPanel', () => ({
   ElectricalDeskPanel: (props: { mode: string; createOnMount?: boolean }) => {

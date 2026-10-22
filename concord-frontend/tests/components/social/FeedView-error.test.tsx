@@ -52,8 +52,30 @@ describe('FeedView feed failure', () => {
     await waitFor(() => {
       expect(screen.getByText('No posts yet')).toBeTruthy();
     });
-    expect(screen.getByText(/Write the first post/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Write your first post/i })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('empty-state action focuses the composer', async () => {
+    lensRunMock.mockImplementation(async (_domain: string, action: string) => {
+      if (action === 'feed') {
+        return { data: { ok: true, result: { posts: [] }, error: null } };
+      }
+      return { data: { ok: true, result: { trending: [] }, error: null } };
+    });
+    render(
+      <div id="social-main">
+        <FeedView currentUserId="user_a" username="ana" />
+      </div>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Write your first post/i })).toBeTruthy();
+    });
+    const box = document.querySelector('#social-main textarea') as HTMLTextAreaElement;
+    expect(box).toBeTruthy();
+    const focus = vi.spyOn(box, 'focus');
+    screen.getByRole('button', { name: /Write your first post/i }).click();
+    expect(focus).toHaveBeenCalled();
   });
 
   it('drops [object Object] and [object object] trending tags', async () => {

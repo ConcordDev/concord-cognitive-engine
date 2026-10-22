@@ -46,7 +46,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { TravelTripsSection } from '@/components/travel/TravelTripsSection';
@@ -113,7 +112,7 @@ export default function TravelLensPage() {
 
   return (
     <LensShell lensId="travel" asMain={false}>
-      <FirstRunTour lensId="travel" />
+
       <DepthBadge lensId="travel" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="travel"

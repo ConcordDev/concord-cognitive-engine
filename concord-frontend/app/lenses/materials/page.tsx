@@ -13,7 +13,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MpSearch } from '@/components/materials/MpSearch';
 import { PeriodicTable } from '@/components/materials/PeriodicTable';
@@ -93,7 +92,7 @@ export default function MaterialsLensPage() {
 
   return (
     <LensShell lensId="materials" asMain={false}>
-      <FirstRunTour lensId="materials" />
+
       <DepthBadge lensId="materials" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="materials"

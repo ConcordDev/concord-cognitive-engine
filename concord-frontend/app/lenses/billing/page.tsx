@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import { BarChart3, History, CreditCard, Layers, Landmark } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { BillingWorkbench, type BillingView } from '@/components/billing/BillingWorkbench';
@@ -51,7 +50,7 @@ export default function BillingPage() {
 
   return (
     <LensShell lensId="billing" asMain={false}>
-      <FirstRunTour lensId="billing" />
+
       <DepthBadge lensId="billing" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="billing"

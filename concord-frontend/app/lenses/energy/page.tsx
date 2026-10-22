@@ -1,7 +1,6 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EnergyWorkspace } from '@/components/energy/EnergyWorkspace';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,7 +12,7 @@ export default function EnergyLensPage() {
 
   return (
     <LensShell lensId="energy" asMain={false}>
-      <FirstRunTour lensId="energy" />
+
       <DepthBadge lensId="energy" size="sm" className="ml-2" />
       <EnergyWorkspace who={who} />
     </LensShell>

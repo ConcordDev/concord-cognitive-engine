@@ -32,7 +32,6 @@ vi.mock('@/components/lens/NorthStarFrame', () => ({
     </div>
   ),
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: null }) }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));

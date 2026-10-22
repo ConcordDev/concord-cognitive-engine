@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -149,7 +148,7 @@ export default function EngineeringPage() {
 
   return (
     <LensShell lensId="engineering" asMain={false}>
-      <FirstRunTour lensId="engineering" />
+
       <DepthBadge lensId="engineering" size="sm" className="ml-2" />
       <EngineeringFeaProvider>
         <EngineeringDesk />

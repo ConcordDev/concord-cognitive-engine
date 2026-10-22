@@ -21,7 +21,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldBuilderInspo } from '@/components/world-creator/WorldBuilderInspo';
 import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -63,7 +62,7 @@ export default function WorldCreatorPage() {
 
   return (
     <LensShell lensId="world-creator" asMain={false}>
-      <FirstRunTour lensId="world-creator" />
+
       <DepthBadge lensId="world-creator" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="world-creator"

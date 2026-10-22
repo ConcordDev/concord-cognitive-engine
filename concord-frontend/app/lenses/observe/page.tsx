@@ -23,7 +23,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ObservabilityRepos } from '@/components/observe/ObservabilityRepos';
 import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
@@ -95,7 +94,7 @@ export default function ObservePage() {
 
   return (
     <LensShell lensId="observe" asMain={false}>
-      <FirstRunTour lensId="observe" />
+
       <DepthBadge lensId="observe" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="observe"

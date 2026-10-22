@@ -11,7 +11,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { PipingProvider } from '@/components/panel-polish';
@@ -239,7 +238,7 @@ export default function GovernmentLensPage() {
 
   return (
     <LensShell lensId="government" asMain={false}>
-      <FirstRunTour lensId="government" />
+
       <DepthBadge lensId="government" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="government"

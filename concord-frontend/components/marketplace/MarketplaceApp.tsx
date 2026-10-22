@@ -24,7 +24,6 @@ import {
   ShoppingCart as MobileTabCart,
   Store as MobileTabStore,
 } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -120,7 +119,7 @@ export function MarketplaceApp() {
 
   return (
     <>
-      <FirstRunTour lensId="marketplace" />
+
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
       <div className="lens-marketplace relative min-h-full space-y-5 px-8 pb-28 pt-6" data-lens-theme="marketplace">
         <header className="flex items-start justify-between gap-4">

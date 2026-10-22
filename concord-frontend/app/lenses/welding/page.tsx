@@ -14,7 +14,6 @@ import { useState } from 'react';
 import { Calculator, MessageSquare, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeldingFeed } from '@/components/welding/WeldingFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -54,7 +53,7 @@ export default function WeldingLensPage() {
 
   return (
     <LensShell lensId="welding" asMain={false}>
-      <FirstRunTour lensId="welding" />
+
       <DepthBadge lensId="welding" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="welding"

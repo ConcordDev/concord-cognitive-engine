@@ -13,7 +13,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
@@ -141,7 +140,7 @@ export default function OpsLensPage() {
 
   return (
     <LensShell lensId="ops" asMain={false}>
-      <FirstRunTour lensId="ops" />
+
       <DepthBadge lensId="ops" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ops"

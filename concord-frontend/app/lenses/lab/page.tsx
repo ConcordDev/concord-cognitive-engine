@@ -4,7 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
 import { ELNWorkbench } from '@/components/lab/ELNWorkbench';
@@ -112,7 +111,7 @@ export default function LabLensPage() {
   }
   return (
     <LensShell lensId="lab" asMain={false}>
-      <FirstRunTour lensId="lab" />
+
       <DepthBadge lensId="lab" size="sm" className="ml-2" />
     <div data-lens-theme="lab" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">

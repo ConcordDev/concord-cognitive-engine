@@ -7,7 +7,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
@@ -2763,7 +2762,7 @@ export default function CouncilLensPage() {
   // ===== MAIN RENDER =====
   return (
     <LensShell lensId="council" asMain={false}>
-      <FirstRunTour lensId="council" />
+
       <DepthBadge lensId="council" size="sm" className="ml-2" />
     <div data-lens-theme="council" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
       {/* Header */}

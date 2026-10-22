@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
@@ -208,7 +207,7 @@ export default function SessionsLensPage() {
 
   return (
     <LensShell lensId="sessions" asMain={false}>
-      <FirstRunTour lensId="sessions" />
+
       <DepthBadge lensId="sessions" size="sm" className="ml-2" />
 
       <NorthStarFrame

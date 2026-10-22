@@ -28,7 +28,6 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GarageSection } from '@/components/automotive/GarageSection';
 import { AdvancedToolsPanel } from '@/components/automotive/AdvancedToolsPanel';
@@ -111,7 +110,7 @@ export default function AutomotiveLensPage() {
 
   return (
     <LensShell lensId="automotive" asMain={false}>
-      <FirstRunTour lensId="automotive" />      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
+<DepthBadge lensId="automotive" size="sm" className="ml-2" />
       <div data-lens-theme="automotive">
       <NorthStarFrame
         lensId="automotive"

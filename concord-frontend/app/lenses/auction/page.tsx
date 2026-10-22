@@ -11,7 +11,6 @@ import { useCallback, useState } from 'react';
 import { Gavel, BarChart3, ShoppingCart } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,7 +53,7 @@ export default function AuctionLensPage() {
 
   return (
     <LensShell lensId="auction" asMain={false}>
-      <FirstRunTour lensId="auction" />
+
       <DepthBadge lensId="auction" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="auction"

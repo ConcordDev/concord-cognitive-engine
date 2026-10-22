@@ -8,7 +8,6 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { BookOpen, Landmark, Plus } from 'lucide-react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -76,7 +75,7 @@ function CodexLensInner() {
 
   return (
     <LensShell lensId="codex" asMain={false}>
-      <FirstRunTour lensId="codex" />
+
       <DepthBadge lensId="codex" size="sm" className="ml-2" />
       <div data-lens-theme="codex" className="relative min-h-full px-8 pb-28 pt-6">
         {deepLinkId && <DeepLinkModal deepLinkId={deepLinkId} />}

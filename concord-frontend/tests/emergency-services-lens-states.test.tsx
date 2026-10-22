@@ -18,7 +18,6 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ramaj' 
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div data-testid="lens-shell">{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/emergency-services/CADConsole', () => ({ CADConsole: () => <div data-testid="cad-console" /> }));
 vi.mock('@/components/emergency-services/AgencyMutualAidPanel', () => ({ AgencyMutualAidPanel: () => <div data-testid="agency-panel" /> }));

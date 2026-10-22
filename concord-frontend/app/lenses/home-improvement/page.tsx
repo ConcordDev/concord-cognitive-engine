@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
 import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -119,7 +118,7 @@ export default function HomeImprovementLensPage() {
 
   return (
     <LensShell lensId="home-improvement" asMain={false}>
-      <FirstRunTour lensId="home-improvement" />
+
       <DepthBadge lensId="home-improvement" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="home-improvement"

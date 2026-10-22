@@ -34,8 +34,9 @@ import {
   MessageSquare, Shield, Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -220,7 +221,7 @@ export default function SocialHubPage() {
 
   return (
     <LensShell lensId="social" asMain={false}>
-      <FirstRunTour lensId="social" />
+
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
       <div data-lens-theme="social" className="relative min-h-full px-8 pb-28 pt-6">
@@ -307,7 +308,10 @@ export default function SocialHubPage() {
             )}
 
             {activeTab === 'following' && (
-              <FollowingTimeline currentUserId={currentUserId} />
+              <FollowingTimeline
+                currentUserId={currentUserId}
+                onFindPeople={() => setActiveTab('discover')}
+              />
             )}
 
             {activeTab === 'notifications' && (
@@ -412,7 +416,7 @@ export default function SocialHubPage() {
  * accounts the user follows.  Pulls from /api/social/following-activity
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
-function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
+function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: string; onFindPeople?: () => void }) {
   const [seenHead, setSeenHead] = useState<string | null>(() => {
     if (typeof window === 'undefined' || !currentUserId || currentUserId === 'current-user') return null;
     try { return localStorage.getItem(`social-following-cursor:${currentUserId}`); } catch { return null; }
@@ -457,19 +461,24 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
   }
   const visible = newer > 0 ? items.slice(newer) : items;
 
+  if (error) {
+    return (
+      <ErrorState
+        title="Couldn’t load your timeline"
+        message={error instanceof Error ? error.message : 'We couldn’t reach your following timeline just now.'}
+      />
+    );
+  }
+
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-        <Users className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-zinc-300 mb-1">
-          {error ? 'Couldn’t load your timeline' : 'No activity yet'}
-        </h3>
-        <p className="text-xs text-zinc-400 max-w-md mx-auto">
-          {error
-            ? 'We couldn’t reach your following timeline just now. Check your connection and try again in a moment.'
-            : 'Follow some creators — their DTUs, posts, and reactions will surface here in reverse-chronological order.'}
-        </p>
-      </div>
+      <EmptyStateCTA
+        lensId="social"
+        headline="No activity yet"
+        caption="Follow some people. Their posts show up here in reverse-chronological order."
+        buttonLabel="Find people"
+        onAction={() => onFindPeople?.()}
+      />
     );
   }
 

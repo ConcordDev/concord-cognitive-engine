@@ -101,7 +101,6 @@ vi.mock('@/store/ui', () => ({
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LensAgentFab', () => ({ default: () => null }));
 vi.mock('@/components/lens/LensContextPanel', () => ({ LensContextPanel: () => null }));

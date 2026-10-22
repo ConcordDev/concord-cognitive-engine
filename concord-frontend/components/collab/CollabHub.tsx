@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -227,7 +226,7 @@ export function CollabHub() {
   }
   return (
     <>
-      <FirstRunTour lensId="collab" />
+
       <DepthBadge lensId="collab" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="collab"

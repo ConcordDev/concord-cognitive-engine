@@ -37,7 +37,6 @@ import {
   LayoutDashboard, ScrollText, Network, Newspaper, Play,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { PhilosophyOverview } from '@/components/philosophy/PhilosophyOverview';
@@ -96,7 +95,7 @@ export default function PhilosophyLensPage() {
 
   return (
     <LensShell lensId="philosophy" asMain={false}>
-      <FirstRunTour lensId="philosophy" />
+
       <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
       <div data-lens-theme="philosophy" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">Philosophy</p>

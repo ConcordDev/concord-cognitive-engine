@@ -9,7 +9,6 @@ import { useCallback, useRef, useState } from 'react';
 import { Hammer, Library, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,7 +45,7 @@ export default function MoveBuilderLensPage() {
 
   return (
     <LensShell lensId="move-builder" asMain={false}>
-      <FirstRunTour lensId="move-builder" />
+
       <DepthBadge lensId="move-builder" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="move-builder"

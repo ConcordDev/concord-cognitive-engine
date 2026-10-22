@@ -14,7 +14,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -103,7 +102,7 @@ function DTUBrowserPageInner() {
 
   return (
     <LensShell lensId="dtus" asMain={false}>
-      <FirstRunTour lensId="dtus" />
+
       <DepthBadge lensId="dtus" size="sm" className="ml-2" />
       <div data-lens-theme="dtus" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

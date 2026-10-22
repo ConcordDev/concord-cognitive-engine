@@ -30,7 +30,6 @@ vi.mock('@/lib/realtime/socket', () => ({
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
 vi.mock('@/components/audio-rooms/RoomStage', () => ({ default: () => null }));

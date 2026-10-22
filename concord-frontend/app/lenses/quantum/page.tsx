@@ -10,7 +10,6 @@ import { Atom, BookOpen } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { ComposerPanel } from '@/components/quantum/ComposerPanel';
@@ -43,7 +42,7 @@ export default function QuantumLensPage() {
 
   return (
     <LensShell lensId="quantum" asMain={false}>
-      <FirstRunTour lensId="quantum" />
+
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="quantum"

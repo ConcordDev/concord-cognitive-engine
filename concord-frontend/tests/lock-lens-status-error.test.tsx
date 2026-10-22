@@ -52,7 +52,6 @@ vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null })
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
 vi.mock('@/components/lens/ConnectiveTissueBar', () => ({ ConnectiveTissueBar: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/NorthStarFrame', () => ({
   NorthStarFrame: ({ children }: { children: React.ReactNode }) =>

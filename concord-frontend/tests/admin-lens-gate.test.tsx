@@ -83,7 +83,6 @@ vi.mock('@/components/lens/NorthStarFrame', () => ({
     React.createElement('div', { 'data-testid': 'admin-frame' }, children),
 }));
 
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));

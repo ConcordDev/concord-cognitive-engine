@@ -20,7 +20,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -160,7 +159,7 @@ export default function SocietyLensPage() {
 
   return (
     <LensShell lensId="society" asMain={false}>
-      <FirstRunTour lensId="society" />
+
       <DepthBadge lensId="society" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="society"

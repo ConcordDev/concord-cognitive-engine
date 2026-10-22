@@ -15,7 +15,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -69,7 +68,7 @@ export default function AppMakerLens() {
 
   return (
     <LensShell lensId="app-maker" asMain={false}>
-      <FirstRunTour lensId="app-maker" />
+
       <DepthBadge lensId="app-maker" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="app-maker"

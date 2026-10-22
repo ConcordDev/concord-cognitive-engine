@@ -7,7 +7,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Activity, Bug, FileSearch, GitPullRequest, ListChecks, ScanSearch, ShieldCheck, TrendingDown } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api/client';
@@ -204,7 +203,7 @@ export default function CodeQualityLensPage() {
 
   return (
     <LensShell lensId="code-quality" asMain={false}>
-      <FirstRunTour lensId="code-quality" />
+
       <DepthBadge lensId="code-quality" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="code-quality"

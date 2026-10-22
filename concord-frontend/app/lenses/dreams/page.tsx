@@ -25,7 +25,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DreamPredictions } from '@/components/dreams/DreamPredictions';
 import { DreamReader } from '@/components/dreams/DreamReader';
@@ -98,7 +97,7 @@ export default function DreamsPage() {
 
   return (
     <LensShell lensId="dreams" asMain={false}>
-      <FirstRunTour lensId="dreams" />
+
       <DepthBadge lensId="dreams" size="sm" className="ml-2" />
       <div data-lens-theme="dreams" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">Dreams</p>

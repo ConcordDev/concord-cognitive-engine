@@ -26,7 +26,6 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -125,7 +124,7 @@ export default function SportsLensPage() {
 
   return (
     <LensShell lensId="sports" asMain={false}>
-      <FirstRunTour lensId="sports" />
+
       <DepthBadge lensId="sports" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sports"

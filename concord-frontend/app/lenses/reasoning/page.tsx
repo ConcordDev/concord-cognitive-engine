@@ -18,7 +18,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -83,7 +82,7 @@ export default function ReasoningLensPage() {
 
   return (
     <LensShell lensId="reasoning" asMain={false}>
-      <FirstRunTour lensId="reasoning" />
+
       <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
       <div data-lens-theme="reasoning" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

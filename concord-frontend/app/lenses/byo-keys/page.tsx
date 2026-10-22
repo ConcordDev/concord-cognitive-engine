@@ -28,7 +28,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { KeyRound, Gauge, ShieldCheck, Users, Boxes } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
@@ -211,7 +210,7 @@ export default function ByoKeysLens() {
 
   return (
     <LensShell lensId="byo-keys" asMain={false}>
-      <FirstRunTour lensId="byo-keys" />
+
       <DepthBadge lensId="byo-keys" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="byo-keys"

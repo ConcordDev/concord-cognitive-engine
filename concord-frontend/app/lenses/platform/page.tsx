@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -322,7 +321,7 @@ export default function PlatformPage() {
 
   return (
     <LensShell lensId="platform" asMain={false}>
-      <FirstRunTour lensId="platform" />
+
       <DepthBadge lensId="platform" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="platform"

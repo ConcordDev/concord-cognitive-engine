@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -84,7 +83,7 @@ export default function MetalearningLensPage() {
 
   return (
     <LensShell lensId="metalearning" asMain={false}>
-      <FirstRunTour lensId="metalearning" />
+
       <DepthBadge lensId="metalearning" size="sm" className="ml-2" />
       <div data-lens-theme="metalearning" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#metalearning-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">

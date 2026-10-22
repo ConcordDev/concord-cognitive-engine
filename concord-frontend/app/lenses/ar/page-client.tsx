@@ -72,7 +72,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Glasses, Camera, Boxes, ScanEye, Library, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
@@ -328,7 +327,7 @@ export default function ARLensPage() {
 
   return (
     <LensShell lensId="ar" asMain={false}>
-      <FirstRunTour lensId="ar" />
+
       <div data-lens-theme="ar" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <header className="space-y-4">
           <div className="flex items-start justify-between gap-4">

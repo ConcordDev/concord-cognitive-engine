@@ -5,7 +5,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { SavedSearchesPanel } from '@/components/genesis/SavedSearchesPanel';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
 import { RosterExplorer, type RosterFilters } from '@/components/genesis/RosterExplorer';
@@ -158,7 +157,7 @@ export default function GenesisLens() {
 
   return (
     <LensShell lensId="genesis" asMain={false}>
-      <FirstRunTour lensId="genesis" />
+
       <DepthBadge lensId="genesis" size="sm" className="ml-2" />
       <div data-lens-theme="genesis" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

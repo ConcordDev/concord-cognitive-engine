@@ -26,7 +26,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Ghost, Swords, Trophy, Radar } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { HauntingsFeed } from '@/components/ghost-tracker/HauntingsFeed';
@@ -182,7 +181,7 @@ export default function GhostTrackerPage() {
 
   return (
     <LensShell lensId="ghost-tracker" asMain={false}>
-      <FirstRunTour lensId="ghost-tracker" />
+
       <DepthBadge lensId="ghost-tracker" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ghost-tracker"

@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ExpressionEvaluator } from '@/components/root/ExpressionEvaluator';
@@ -250,7 +249,7 @@ export default function RootLens() {
 
   return (
     <LensShell lensId="root" asMain={false}>
-      <FirstRunTour lensId="root" />
+
       <DepthBadge lensId="root" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="root"

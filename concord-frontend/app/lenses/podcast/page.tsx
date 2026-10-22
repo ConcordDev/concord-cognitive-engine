@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PodcastPlayerSection } from '@/components/podcast/PodcastPlayerSection';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
@@ -115,7 +114,7 @@ export default function PodcastLensPage() {
 
   return (
     <LensShell lensId="podcast" asMain={false}>
-      <FirstRunTour lensId="podcast" />
+
       <DepthBadge lensId="podcast" size="sm" className="ml-2" />
       <div data-lens-theme="podcast" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

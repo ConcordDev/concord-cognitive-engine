@@ -21,7 +21,6 @@ import {
   Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -79,7 +78,7 @@ export default function HealthcareLensPage() {
 
   return (
     <LensShell lensId="healthcare" asMain={false}>
-      <FirstRunTour lensId="healthcare" />
+
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
       <div data-lens-theme="healthcare" className="space-y-4 p-4 pb-20 lg:p-5 lg:pb-6">
         <a href="#healthcare-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-[var(--lens-accent)]">

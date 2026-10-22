@@ -19,7 +19,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FoundryWorldsPanel } from '@/components/foundry/FoundryWorldsPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
@@ -66,7 +65,7 @@ export default function FoundryLensPage() {
 
   return (
     <LensShell lensId="foundry" asMain={false}>
-      <FirstRunTour lensId="foundry" />
+
       <DepthBadge lensId="foundry" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="foundry"

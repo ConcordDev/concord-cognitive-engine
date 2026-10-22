@@ -15,7 +15,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -81,7 +80,7 @@ export default function OrganLensPage() {
 
   return (
     <LensShell lensId="organ" asMain={false}>
-      <FirstRunTour lensId="organ" />
+
       <DepthBadge lensId="organ" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="organ"

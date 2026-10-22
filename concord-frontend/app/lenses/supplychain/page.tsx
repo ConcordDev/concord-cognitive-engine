@@ -24,7 +24,6 @@ import {
   Truck, LayoutDashboard, Network, ClipboardList, Newspaper, Users,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -83,7 +82,7 @@ export default function SupplyChainLensPage() {
 
   return (
     <LensShell lensId="supplychain" asMain={false}>
-      <FirstRunTour lensId="supplychain" />
+
       <DepthBadge lensId="supplychain" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="supplychain"

@@ -10,7 +10,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Compass, Boxes, Star, Plus, Code2 as Github } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -50,7 +49,7 @@ export default function SubWorldsPage() {
 
   return (
     <LensShell lensId="sub-worlds" asMain={false}>
-      <FirstRunTour lensId="sub-worlds" />
+
       <DepthBadge lensId="sub-worlds" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sub-worlds"

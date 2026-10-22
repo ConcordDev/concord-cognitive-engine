@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react';
 import { Scale } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
@@ -49,7 +48,7 @@ export default function EthicsLensPage() {
 
   return (
     <LensShell lensId="ethics" asMain={false}>
-      <FirstRunTour lensId="ethics" />
+
       <DepthBadge lensId="ethics" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ethics"

@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
@@ -82,7 +81,7 @@ export default function TransferLensPage() {
 
   return (
     <LensShell lensId="transfer" asMain={false}>
-      <FirstRunTour lensId="transfer" />
+
       <DepthBadge lensId="transfer" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="transfer"

@@ -4,7 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoteFeed } from '@/components/vote/VoteFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -77,7 +76,7 @@ export default function VoteLensPage() {
 
   return (
     <LensShell lensId="vote" asMain={false}>
-      <FirstRunTour lensId="vote" />
+
       <DepthBadge lensId="vote" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="vote"

@@ -16,7 +16,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -99,7 +98,7 @@ function TickLensInner() {
 
   return (
     <LensShell lensId="tick" asMain={false}>
-      <FirstRunTour lensId="tick" />
+
       <DepthBadge lensId="tick" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="tick"

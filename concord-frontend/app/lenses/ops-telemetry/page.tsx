@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -88,7 +87,7 @@ export default function OpsTelemetryPage() {
 
   return (
     <LensShell lensId="ops-telemetry" asMain={false}>
-      <FirstRunTour lensId="ops-telemetry" />
+
       <DepthBadge lensId="ops-telemetry" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ops-telemetry"

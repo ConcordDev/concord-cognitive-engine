@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -111,7 +110,7 @@ export default function SufferingLensPage() {
 
   return (
     <LensShell lensId="suffering" asMain={false}>
-      <FirstRunTour lensId="suffering" />
+
       <DepthBadge lensId="suffering" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="suffering"

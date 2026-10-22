@@ -11,7 +11,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LogisticsChatter } from '@/components/logistics/LogisticsChatter';
@@ -86,7 +85,7 @@ export default function LogisticsLensPage() {
 
   return (
     <LensShell lensId="logistics" asMain={false}>
-      <FirstRunTour lensId="logistics" />
+
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="logistics"

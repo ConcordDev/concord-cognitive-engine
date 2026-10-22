@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SimRepos } from '@/components/sim/SimRepos';
 import { StudioPanel } from '@/components/sim/StudioPanel';
@@ -989,7 +988,7 @@ export function SimConsole() {
 
   return (
     <>
-      <FirstRunTour lensId="sim" />
+
       <DepthBadge lensId="sim" size="sm" className="ml-2" />
     <div data-lens-theme="sim" className={cn(ds.pageContainer, 'relative pb-28')}>
       {/* ── Header ──────────────────────────────────────────────────────── */}

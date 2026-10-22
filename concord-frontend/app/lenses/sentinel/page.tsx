@@ -24,7 +24,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { SentinelCves } from '@/components/sentinel/SentinelCves';
@@ -74,7 +73,7 @@ export default function SentinelLensPage() {
 
   return (
     <LensShell lensId="sentinel" asMain={false}>
-      <FirstRunTour lensId="sentinel" />      <DepthBadge lensId="sentinel" size="sm" className="ml-2" />
+<DepthBadge lensId="sentinel" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sentinel"
         crumb="Sentinel"

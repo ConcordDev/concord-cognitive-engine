@@ -16,7 +16,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { TimelineRoadmap } from '@/components/timeline/TimelineRoadmap';
@@ -171,7 +170,7 @@ export default function TimelineLensPage() {
 
   return (
     <LensShell lensId="timeline" asMain={false}>
-      <FirstRunTour lensId="timeline" />
+
       <DepthBadge lensId="timeline" size="sm" className="ml-2" />
       <div data-lens-theme="timeline" className="relative min-h-full">
         <div className="px-8 pt-6">

@@ -15,7 +15,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SavedDeskPanel } from '@/components/saved/SavedDeskPanel';
 import { SocialBookmarksPanel } from '@/components/saved/SocialBookmarksPanel';
@@ -61,7 +60,7 @@ export default function SavedLensPage() {
 
   return (
     <LensShell lensId="saved" asMain={false}>
-      <FirstRunTour lensId="saved" />
+
       <DepthBadge lensId="saved" size="sm" className="ml-2" />
 
       <div data-lens-theme="saved" className="relative min-h-full px-8 pb-28 pt-6">

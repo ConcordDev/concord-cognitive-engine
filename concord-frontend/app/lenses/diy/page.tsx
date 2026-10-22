@@ -22,7 +22,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { DiyLibraryPanel } from '@/components/diy/DiyLibraryPanel';
@@ -90,7 +89,7 @@ export default function DIYLensPage() {
 
   return (
     <LensShell lensId="diy" asMain={false}>
-      <FirstRunTour lensId="diy" />
+
       <DepthBadge lensId="diy" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="diy"

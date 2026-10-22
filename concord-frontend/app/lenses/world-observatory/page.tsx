@@ -29,7 +29,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -345,7 +344,7 @@ export default function WorldObservatoryPage() {
 
   return (
     <LensShell lensId="world-observatory" asMain={false}>
-      <FirstRunTour lensId="world-observatory" />
+
       <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="world-observatory"

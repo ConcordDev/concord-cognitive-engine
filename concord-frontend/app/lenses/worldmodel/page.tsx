@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -125,7 +124,7 @@ export default function WorldmodelLensPage() {
 
   return (
     <LensShell lensId="worldmodel" asMain={false}>
-      <FirstRunTour lensId="worldmodel" />
+
       <DepthBadge lensId="worldmodel" size="sm" className="ml-2" />
       <div data-lens-theme="worldmodel" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

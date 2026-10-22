@@ -18,7 +18,6 @@
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -54,7 +53,7 @@ function NewsLensInner() {
 
   return (
     <LensShell lensId="news" asMain={false}>
-      <FirstRunTour lensId="news" />
+
       <DepthBadge lensId="news" size="sm" className="ml-2" />
       <IntelDesk initialCategory={initialCategory} />
     </LensShell>

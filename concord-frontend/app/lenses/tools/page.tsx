@@ -14,7 +14,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { ToolsRepos } from '@/components/tools/ToolsRepos';
@@ -63,7 +62,7 @@ export default function ToolsLensPage() {
 
   return (
     <LensShell lensId="tools" asMain={false}>
-      <FirstRunTour lensId="tools" />
+
       <DepthBadge lensId="tools" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="tools"

@@ -54,7 +54,6 @@
 import { useState, useCallback } from 'react';
 import { Layers, BookOpen, Wand2, Users, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DensityToggle } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
@@ -130,7 +129,7 @@ export default function HistoryLensPage() {
 
   return (
     <LensShell lensId="history" asMain={false}>
-      <FirstRunTour lensId="history" />
+
       <DepthBadge lensId="history" size="sm" className="ml-2" />
       <div data-lens-theme="history" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

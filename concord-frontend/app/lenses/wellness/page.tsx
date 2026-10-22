@@ -12,7 +12,6 @@ import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WellnessSection } from '@/components/wellness/WellnessSection';
 import { WellnessFeed } from '@/components/wellness/WellnessFeed';
@@ -164,7 +163,7 @@ export default function WellnessPage() {
 
   return (
     <LensShell lensId="wellness" asMain={false}>
-      <FirstRunTour lensId="wellness" />
+
       <DepthBadge lensId="wellness" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="wellness"

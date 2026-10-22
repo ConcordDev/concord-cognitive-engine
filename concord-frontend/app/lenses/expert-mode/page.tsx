@@ -27,7 +27,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 import { AnswerActionPanel } from '@/components/expert-mode/AnswerActionPanel';
@@ -258,7 +257,7 @@ export default function ExpertModeLens() {
 
   return (
     <LensShell lensId="expert-mode" asMain={false}>
-      <FirstRunTour lensId="expert-mode" />
+
       <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
 
       <div data-lens-theme="expert-mode" className="relative min-h-full px-8 pb-28 pt-6 text-zinc-100">

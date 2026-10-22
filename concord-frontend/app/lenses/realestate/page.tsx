@@ -13,7 +13,6 @@ import { BarChart3, Building2, Calculator, Map as MapIcon, Search } from 'lucide
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -86,7 +85,7 @@ export default function RealEstateLensPage() {
 
   return (
     <LensShell lensId="realestate" asMain={false}>
-      <FirstRunTour lensId="realestate" />
+
       <DepthBadge lensId="realestate" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="realestate"

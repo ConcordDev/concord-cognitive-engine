@@ -28,7 +28,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import {
   ProductivityTaskSection,
@@ -99,7 +98,7 @@ export default function ProductivityLensPage() {
 
   return (
     <LensShell lensId="productivity" asMain={false}>
-      <FirstRunTour lensId="productivity" />
+
       <DepthBadge lensId="productivity" size="sm" className="ml-2" />
       <div data-lens-theme="productivity" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

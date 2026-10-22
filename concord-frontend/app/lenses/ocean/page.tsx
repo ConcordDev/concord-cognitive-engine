@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
 import { NoaaTidesPanel } from '@/components/ocean/NoaaTidesPanel';
@@ -89,7 +88,7 @@ export default function OceanLensPage() {
 
   return (
     <LensShell lensId="ocean" asMain={false}>
-      <FirstRunTour lensId="ocean" />
+
       <DepthBadge lensId="ocean" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="ocean"

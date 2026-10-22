@@ -12,7 +12,6 @@ import { AlertTriangle, HelpCircle, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -51,7 +50,7 @@ export default function ForgeLensPage() {
 
   return (
     <LensShell lensId="forge" asMain={false}>
-      <FirstRunTour lensId="forge" />
+
       <DepthBadge lensId="forge" size="sm" className="ml-2" />
       <div data-lens-theme="forge" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

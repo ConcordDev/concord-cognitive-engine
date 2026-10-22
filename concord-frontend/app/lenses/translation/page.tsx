@@ -2,7 +2,6 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -120,7 +119,7 @@ export default function TranslationLens() {
 
   return (
     <LensShell lensId="translation" asMain={false}>
-      <FirstRunTour lensId="translation" />
+
       <DepthBadge lensId="translation" size="sm" className="ml-2" />
       <div data-lens-theme="translation" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">Translation</p>

@@ -30,7 +30,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'sam' } }) }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 
 import MoveBuilderLensPage from '@/app/lenses/move-builder/page';

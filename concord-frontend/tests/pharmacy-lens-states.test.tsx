@@ -55,7 +55,6 @@ vi.mock('@/components/lens/LensShell', () => ({
 }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
 vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));

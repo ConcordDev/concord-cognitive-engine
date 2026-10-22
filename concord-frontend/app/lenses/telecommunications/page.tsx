@@ -22,7 +22,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
@@ -99,7 +98,7 @@ export default function TelecommunicationsLensPage() {
 
   return (
     <LensShell lensId="telecommunications" asMain={false}>
-      <FirstRunTour lensId="telecommunications" />
+
       <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="telecommunications"

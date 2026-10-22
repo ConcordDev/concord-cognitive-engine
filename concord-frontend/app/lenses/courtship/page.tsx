@@ -11,7 +11,6 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Heart, Crown, Baby, History, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -78,7 +77,7 @@ export default function CourtshipLensPage() {
 
   return (
     <LensShell lensId="courtship" asMain={false}>
-      <FirstRunTour lensId="courtship" />
+
       <DepthBadge lensId="courtship" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="courtship"

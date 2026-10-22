@@ -81,7 +81,6 @@ vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: (p: Recor
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'ada' } }) }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));

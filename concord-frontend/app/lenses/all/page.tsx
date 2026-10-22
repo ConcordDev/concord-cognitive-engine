@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -119,7 +118,7 @@ export default function AllLensesPage() {
 
   return (
     <LensShell lensId="all" asMain={false}>
-      <FirstRunTour lensId="all" />      <DepthBadge lensId="all" size="sm" className="ml-2" />
+<DepthBadge lensId="all" size="sm" className="ml-2" />
     <NorthStarFrame
       lensId="all"
       crumb="Lens Hub"

@@ -9,7 +9,6 @@
 import { useCallback, useState } from 'react';
 import { Activity, BookOpen, Cpu, Waves } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { NeuroFeed } from '@/components/neuro/NeuroFeed';
@@ -67,7 +66,7 @@ export default function NeuroLensPage() {
 
   return (
     <LensShell lensId="neuro" asMain={false}>
-      <FirstRunTour lensId="neuro" />
+
       <DepthBadge lensId="neuro" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="neuro"

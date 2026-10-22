@@ -16,7 +16,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
@@ -73,7 +72,7 @@ export default function MarketLensPage() {
 
   return (
     <LensShell lensId="market" asMain={false}>
-      <FirstRunTour lensId="market" />
+
       <DepthBadge lensId="market" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="market"

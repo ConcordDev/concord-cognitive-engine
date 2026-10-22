@@ -17,7 +17,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Coins, Layers, TrendingUp, Globe2, Lock } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StakingMarkets } from '@/components/staking/StakingMarkets';
 import { StakingPools, type Pool } from '@/components/staking/StakingPools';
@@ -93,7 +92,7 @@ export default function StakingPage() {
 
   return (
     <LensShell lensId="staking">
-      <FirstRunTour lensId="staking" />
+
       <DepthBadge lensId="staking" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="staking"

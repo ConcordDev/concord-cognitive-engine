@@ -11,7 +11,6 @@ import { useState, type ComponentType } from 'react';
 import { Smile, Activity, Clock, BarChart3, Thermometer, Sparkles, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -79,7 +78,7 @@ export default function AffectLensPage() {
 
   return (
     <LensShell lensId="affect" asMain={false}>
-      <FirstRunTour lensId="affect" />
+
       <DepthBadge lensId="affect" size="sm" className="ml-2" />
       <AffectSessionProvider>
         <div data-lens-theme="affect" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">

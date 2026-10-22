@@ -2,7 +2,6 @@
 
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManufacturingFeed } from '@/components/manufacturing/ManufacturingFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -161,7 +160,7 @@ export default function ManufacturingLensPage() {
 
   return (
     <LensShell lensId="manufacturing" asMain={false}>
-      <FirstRunTour lensId="manufacturing" />
+
       <DepthBadge lensId="manufacturing" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="manufacturing"

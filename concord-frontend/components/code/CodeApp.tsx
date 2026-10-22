@@ -11,7 +11,6 @@ import { lensRun } from '@/lib/api/client';
 import { parseExecStatus, publishExecStatus } from '@/components/code/codeExecGate';
 import { Blocks, Flame, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { SessionRail } from '@/components/lens/SessionRail';
@@ -87,7 +86,7 @@ export default function CodeApp() {
   return (
     <LensShell lensId="code" asMain={false} disableAgentFab={true}>
       <CodeProjectProvider>
-        <FirstRunTour lensId="code" />
+
         <DepthBadge lensId="code" size="sm" className="ml-2" />
         <ShellPreview lensId="code" defaultOpen={true} />
 

@@ -10,7 +10,6 @@
 import { useCallback, useState } from 'react';
 import { Users, Calculator, LineChart, UserPlus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { HrHrisSection } from '@/components/hr/HrHrisSection';
@@ -69,7 +68,7 @@ export default function HRLensPage() {
 
   return (
     <LensShell lensId="hr" asMain={false}>
-      <FirstRunTour lensId="hr" />
+
       <DepthBadge lensId="hr" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="hr"

@@ -40,7 +40,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import {
@@ -171,7 +170,7 @@ export default function UrbanPlanningLensPage() {
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
-      <FirstRunTour lensId="urban-planning" />
+
       <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="urban-planning"

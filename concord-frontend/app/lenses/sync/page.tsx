@@ -16,7 +16,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SyncDashboard } from '@/components/sync/SyncDashboard';
 import { SyncthingReleases } from '@/components/sync/SyncthingReleases';
@@ -73,7 +72,7 @@ export default function SyncPage() {
 
   return (
     <LensShell lensId="sync" asMain={false}>
-      <FirstRunTour lensId="sync" />
+
       <DepthBadge lensId="sync" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sync"

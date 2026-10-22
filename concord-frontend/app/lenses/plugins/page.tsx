@@ -12,7 +12,6 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,7 +34,7 @@ export default function PluginsPage() {
 
   return (
     <LensShell lensId="plugins" asMain={false}>
-      <FirstRunTour lensId="plugins" />
+
       <DepthBadge lensId="plugins" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="plugins"
