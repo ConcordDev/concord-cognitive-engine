@@ -54,6 +54,9 @@ import { NotificationCenter } from '@/components/social/NotificationCenter';
 import { UserProfile } from '@/components/social/UserProfile';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
 import { TrendingTopics } from '@/components/social/TrendingTopics';
+import { FindPeople } from '@/components/social/FindPeople';
+import { SocialPreferencesForm } from '@/components/social/SocialPreferencesForm';
+import { PushEnableButton } from '@/components/social/PushEnableButton';
 import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { DMIndicator } from '@/components/social/DMIndicator';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
@@ -208,6 +211,7 @@ export default function SocialHubPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
+            <PushEnableButton />
             <StreakIndicator userId={currentUserId} />
             <DMIndicator userId={currentUserId} />
             <NotificationBell
@@ -321,6 +325,8 @@ export default function SocialHubPage() {
                 <UserProfile userId={railUserId} currentUserId={currentUserId} />
               </div>
             )}
+            <FindPeople />
+            <SocialPreferencesForm />
             <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
             </div>
@@ -376,6 +382,7 @@ export default function SocialHubPage() {
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
 function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
+  const [seenHead, setSeenHead] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery<{ items?: FollowingActivityItem[] } | null>({
     queryKey: ['social-following-activity', currentUserId],
     queryFn: async () => {
@@ -388,6 +395,7 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
       return r?.data;
     },
     staleTime: 30 * 1000,
+    refetchInterval: 30_000,
   });
 
   if (isLoading) {
@@ -399,6 +407,16 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
   }
 
   const items = data?.items || [];
+  const headId = items[0]?.id || null;
+  if (headId && seenHead === null) setSeenHead(headId);
+  let newer = 0;
+  if (seenHead) {
+    for (const item of items) {
+      if (item.id === seenHead) break;
+      newer += 1;
+    }
+  }
+  const visible = newer > 0 ? items.slice(newer) : items;
 
   if (items.length === 0) {
     return (
@@ -417,8 +435,18 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
   }
 
   return (
+    <div className="space-y-2">
+      {newer > 0 && (
+        <button
+          type="button"
+          onClick={() => setSeenHead(headId)}
+          className="w-full rounded-lg border border-teal-400/40 bg-teal-400/10 px-3 py-2 text-sm text-teal-200"
+        >
+          Show {newer} new {newer === 1 ? 'post' : 'posts'}
+        </button>
+      )}
     <ul className="space-y-2">
-      {items.map(item => (
+      {visible.map(item => (
         <li
           key={item.id}
           className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/30 transition-colors"
@@ -442,6 +470,7 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
         </li>
       ))}
     </ul>
+    </div>
   );
 }
 

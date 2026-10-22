@@ -40,6 +40,8 @@ interface PostMutationInput {
   expiresAt?: string;
   mentionedUsers?: string[];
   federationVisibility?: FederationVisibility;
+  privacy?: 'public' | 'followers' | 'private';
+  replyAudience?: 'everyone' | 'followers' | 'mentioned';
 }
 
 // Phase 11 (Item 12) — federation visibility.
@@ -65,6 +67,9 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
   const [storySeen, setStorySeen] = useState(storyRequest);
   const [showSuccess, setShowSuccess] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
+  const [privacy, setPrivacy] = useState<'public' | 'followers' | 'private'>('public');
+  const [replyAudience, setReplyAudience] = useState<'everyone' | 'followers' | 'mentioned'>('everyone');
+  const [draftNote, setDraftNote] = useState<string | null>(null);
   // Federation visibility — defaults to 'local' so users opt in to
   // federation explicitly. No surprise outbound fanout.
   const [federationVisibility, setFederationVisibility] = useState<FederationVisibility>('local');
@@ -80,6 +85,8 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       const body: Record<string, unknown> = { content: input.content };
       if (input.tags && input.tags.length > 0) body.tags = input.tags;
       if (input.mentionedUsers && input.mentionedUsers.length > 0) body.mentionedUsers = input.mentionedUsers;
+      if (input.privacy) body.privacy = input.privacy;
+      if (input.replyAudience) body.replyAudience = input.replyAudience;
       if (input.federationVisibility && input.federationVisibility !== 'local') {
         body.federationVisibility = input.federationVisibility;
       }
@@ -133,8 +140,22 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       isStory: mode === 'story',
       mentionedUsers: liveMentionedUsers(text, mentionedUsers),
       federationVisibility,
+      privacy,
+      replyAudience,
     });
-  }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers, federationVisibility]);
+  }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers, federationVisibility, privacy, replyAudience]);
+
+  const saveDraft = useCallback(async () => {
+    const text = content.trim();
+    if (!text) return;
+    setDraftNote(null);
+    try {
+      const res = await api.post('/api/social/drafts', { content: text });
+      setDraftNote(res.data?.ok === false ? (res.data.error || 'Draft was not saved.') : 'Draft saved.');
+    } catch {
+      setDraftNote('Draft was not saved.');
+    }
+  }, [content]);
 
   const remaining = MAX_LEN - content.length;
   const overLimit = remaining < 0;
@@ -151,7 +172,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         className,
       )}
     >
-      <header className="flex items-center gap-1 px-3 py-1.5 border-b border-zinc-800/60">
+      <header className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-zinc-800/60">
         <button
           type="button"
           onClick={() => setMode('post')}
@@ -210,6 +231,34 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
             'local' so posts never leave the instance unless the
             user explicitly opts in. */}
         <select
+          aria-label="Who can see this"
+          value={privacy}
+          onChange={(e) => setPrivacy(e.target.value as 'public' | 'followers' | 'private')}
+          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
+        >
+          <option value="public">Public</option>
+          <option value="followers">Followers</option>
+          <option value="private">Private</option>
+        </select>
+        <select
+          aria-label="Who can reply"
+          value={replyAudience}
+          onChange={(e) => setReplyAudience(e.target.value as 'everyone' | 'followers' | 'mentioned')}
+          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
+        >
+          <option value="everyone">Replies: everyone</option>
+          <option value="followers">Replies: followers</option>
+          <option value="mentioned">Replies: mentioned</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => void saveDraft()}
+          disabled={!content.trim()}
+          className="text-[10px] rounded border border-zinc-700 px-2 py-0.5 text-zinc-300 disabled:opacity-40"
+        >
+          Save draft
+        </button>
+        <select
           value={federationVisibility}
           onChange={(e) => setFederationVisibility(e.target.value as FederationVisibility)}
           className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400 hover:text-zinc-200"
@@ -249,6 +298,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         </button>
       </div>
 
+      {draftNote && <p className="px-3 pb-2 text-[11px] text-zinc-400">{draftNote}</p>}
       {errorMsg && (
         <div className="px-3 py-1.5 border-t border-zinc-800/40 text-[11px] text-rose-300/80 bg-rose-500/5">
           <AlertTriangle className="inline w-3 h-3 mr-1" /> {errorMsg}

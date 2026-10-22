@@ -23,7 +23,28 @@ import {
   getCreatorAnalyticsView,
   getTrendingTopics,
   recipientResolvable,
+  pinPost,
+  unpinPost,
+  getPinnedPosts,
+  getProfile,
+  recallMessage,
 } from "../emergent/social-layer.js";
+import {
+  editPost,
+  saveDraft,
+  listDrafts,
+  deleteDraft,
+  setSocialPreferences,
+  findUserByUsername,
+  acceptMessageRequest,
+  declineMessageRequest,
+  hideMessageForUser,
+  listMessageRequests,
+  groupNotifications,
+  setUserMute,
+  setUserBlock,
+  reportSocialTarget,
+} from "../lib/social-loop.js";
 
 function stateOf() {
   return globalThis._concordSTATE || null;
@@ -69,6 +90,7 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     res.json({
       ok: true,
       notifications: (result.notifications || []).map(presentNotification),
+      grouped: groupNotifications(result.notifications),
       total: result.total,
     });
   });
@@ -194,7 +216,7 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
   });
 
   router.get("/dm/:conversationId", auth, (req, res, next) => {
-    if (req.params.conversationId === "conversations") return next();
+    if (req.params.conversationId === "conversations" || req.params.conversationId === "requests") return next();
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
     const STATE = stateOf();
@@ -216,6 +238,154 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
       citedDtuId: req.body?.citedDtuId,
       citingDtuId: req.body?.citingDtuId,
     }));
+  });
+
+  router.post("/posts/:id/edit", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, editPost(STATE, { userId, postId: req.params.id, content: req.body?.content }));
+  });
+
+  router.get("/drafts", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(listDrafts(STATE, userId));
+  });
+
+  router.post("/drafts", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, saveDraft(STATE, { userId, draftId: req.body?.id, content: req.body?.content }));
+  });
+
+  router.delete("/drafts/:id", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, deleteDraft(STATE, { userId, draftId: req.params.id }));
+  });
+
+  router.post("/preferences", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, setSocialPreferences(STATE, userId, {
+      dmPolicy: req.body?.dmPolicy,
+      readReceipts: req.body?.readReceipts,
+      interests: req.body?.interests,
+      notificationTypes: req.body?.notificationTypes,
+    }));
+  });
+
+  router.get("/users/by-username/:username", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, findUserByUsername(STATE, req.params.username, db || STATE.db));
+  });
+
+  router.get("/dm/requests", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(listMessageRequests(STATE, userId));
+  });
+
+  router.post("/dm/requests/accept", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier
+    const fromUserId = req.body?.fromUserId;
+    sendLayer(res, acceptMessageRequest(STATE, { userId, fromUserId }));
+  });
+
+  router.post("/dm/requests/decline", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier
+    const fromUserId = req.body?.fromUserId;
+    sendLayer(res, declineMessageRequest(STATE, { userId, fromUserId }));
+  });
+
+  router.post("/dm/hide", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, hideMessageForUser(STATE, { userId, messageId: req.body?.messageId }));
+  });
+
+  router.post("/dm/recall", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, recallMessage(STATE, { userId, messageId: req.body?.messageId }));
+  });
+
+  router.post("/posts/:id/pin", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const result = req.body?.pinned === false
+      ? unpinPost(STATE, { userId, postId: req.params.id })
+      : pinPost(STATE, { userId, postId: req.params.id });
+    sendLayer(res, result);
+  });
+
+  router.post("/people/:id/mute", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, setUserMute(STATE, { userId, targetId: req.params.id, muted: req.body?.muted }));
+  });
+
+  router.post("/people/:id/block", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, setUserBlock(STATE, { userId, targetId: req.params.id, blocked: req.body?.blocked }));
+  });
+
+  router.post("/people/:id/report", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, reportSocialTarget(STATE, {
+      userId,
+      targetId: req.params.id,
+      targetType: "profile",
+      reason: req.body?.reason,
+    }));
+  });
+
+  router.get("/profile/:userId", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, getProfile(STATE, req.params.userId));
+  });
+
+  router.get("/pinned/:userId", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const result = getPinnedPosts(STATE, req.params.userId, req.user?.id || null);
+    sendLayer(res, result);
   });
 
   return router;

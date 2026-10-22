@@ -41,6 +41,7 @@ export interface SocialPost {
   repostCount: number;
   viewerReaction: string | null;
   viewerReposted: boolean;
+  editedAt?: string | null;
 }
 
 export interface SocialReply {
@@ -68,6 +69,8 @@ export interface DMMessage {
   from: string;
   body: string;
   createdAt: string;
+  recalled?: boolean;
+  readBy?: string[];
 }
 
 export interface LiveStream {
