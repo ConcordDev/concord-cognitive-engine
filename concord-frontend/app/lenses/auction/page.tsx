@@ -13,23 +13,19 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { BoardPanel } from '@/components/auction/BoardPanel';
 import { MarketPanel } from '@/components/auction/MarketPanel';
 import { BuyOrdersPanel } from '@/components/auction/BuyOrdersPanel';
 
 type AuctionView = 'board' | 'market' | 'buy-orders';
 
-const VIEWS: { id: AuctionView; label: string; keys: string; title: string; hint: string; icon: typeof Gavel }[] = [
-  { id: 'board', label: 'Board', keys: '1', title: 'What is on the block', hint: 'Active auctions', icon: Gavel },
-  { id: 'market', label: 'Market', keys: '2', title: 'Where prices are heading', hint: 'Price history and depth', icon: BarChart3 },
-  { id: 'buy-orders', label: 'Buy orders', keys: '3', title: 'Wait for the right price', hint: 'Escrowed standing buy orders', icon: ShoppingCart },
+const VIEWS: { id: AuctionView; label: string; keys: string; hint: string; icon: typeof Gavel }[] = [
+  { id: 'board', label: 'Board', keys: '1', hint: 'Active auctions', icon: Gavel },
+  { id: 'market', label: 'Market', keys: '2', hint: 'Price history and depth', icon: BarChart3 },
+  { id: 'buy-orders', label: 'Buy orders', keys: '3', hint: 'Escrowed standing buy orders', icon: ShoppingCart },
 ];
 
 export default function AuctionLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<AuctionView>('board');
   const [marketSeed, setMarketSeed] = useState('');
 
@@ -49,7 +45,6 @@ export default function AuctionLensPage() {
     { lensId: 'auction' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="auction" asMain={false}>
@@ -58,7 +53,6 @@ export default function AuctionLensPage() {
       <NorthStarFrame
         lensId="auction"
         crumb="Auction house"
-        title={`${current.title}${active === 'board' && who ? `, ${who}` : ''}`}
         subtitle="Time-bound bidding with 60s snipe protection and a 5% platform fee."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={active}

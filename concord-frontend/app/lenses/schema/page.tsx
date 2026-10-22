@@ -18,26 +18,22 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench, SCHEMA_TOOL_TABS, type SchemaTab } from '@/components/schema/SchemaWorkbench';
 
 type View = SchemaTab | 'tooling';
 
-const NAV: { id: View; label: string; title: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'canvas', label: 'Canvas', title: 'The shape of the data', icon: LayoutGrid },
-  ...SCHEMA_TOOL_TABS.map((t) => ({ id: t.id as View, label: t.label, title: t.label, icon: t.icon })),
-  { id: 'tooling', label: 'Tooling', title: 'Schema tooling', icon: Wrench },
+const NAV: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'canvas', label: 'Canvas', icon: LayoutGrid },
+  ...SCHEMA_TOOL_TABS.map((t) => ({ id: t.id as View, label: t.label, icon: t.icon })),
+  { id: 'tooling', label: 'Tooling', icon: Wrench },
 ];
 
 export default function SchemaLensPage() {
   useLensNav('schema');
   useLensIdentity('schema');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('schema');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('canvas');
   const [newSignal, setNewSignal] = useState(0);
 
@@ -58,7 +54,6 @@ export default function SchemaLensPage() {
   );
 
   const onCanvas = view === 'canvas';
-  const current = NAV.find((n) => n.id === view)!;
 
   return (
     <LensShell lensId="schema" asMain={false}>
@@ -67,10 +62,7 @@ export default function SchemaLensPage() {
       <div data-lens-theme="schema" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Schema</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {onCanvas ? `${current.title}${who ? `, ${who}` : ''}` : current.title}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Schema</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

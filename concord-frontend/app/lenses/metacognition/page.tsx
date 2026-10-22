@@ -27,8 +27,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { AwarenessPanel } from '@/components/metacognition/AwarenessPanel';
 import { IntrospectionPanel } from '@/components/metacognition/IntrospectionPanel';
@@ -49,16 +47,14 @@ const VIEWS: {
   id: MetacogView;
   label: string;
   keys: string;
-  hint: string;
-  title: string;
-  icon: typeof Brain;
+  hint: string;icon: typeof Brain;
 }[] = [
-  { id: 'awareness', label: 'Self-Awareness', keys: 'd', hint: 'Calibration · blind spots · knowledge map', title: 'How well you know yourself', icon: Eye },
-  { id: 'introspection', label: 'Introspection', keys: 'i', hint: 'Failure patterns · recommendations', title: 'Where your thinking slips', icon: Lightbulb },
-  { id: 'predictions', label: 'Predictions', keys: 'p', hint: 'Log · resolve · Brier / learning curve', title: 'What you expect to happen', icon: Crosshair },
-  { id: 'learning', label: 'Learning', keys: 'l', hint: 'Assess · skill timeline · patterns', title: 'How you learn', icon: BookOpen },
-  { id: 'journal', label: 'Decision Journal', keys: 'j', hint: 'Journal · calibration report', title: 'Decisions, written down', icon: NotebookPen },
-  { id: 'practice', label: 'Practice', keys: 'r', hint: 'Bias · accuracy · strategies · toolkit', title: 'Train the habit', icon: Sparkles },
+  { id: 'awareness', label: 'Self-Awareness', keys: 'd', hint: 'Calibration · blind spots · knowledge map', icon: Eye },
+  { id: 'introspection', label: 'Introspection', keys: 'i', hint: 'Failure patterns · recommendations', icon: Lightbulb },
+  { id: 'predictions', label: 'Predictions', keys: 'p', hint: 'Log · resolve · Brier / learning curve', icon: Crosshair },
+  { id: 'learning', label: 'Learning', keys: 'l', hint: 'Assess · skill timeline · patterns', icon: BookOpen },
+  { id: 'journal', label: 'Decision Journal', keys: 'j', hint: 'Journal · calibration report', icon: NotebookPen },
+  { id: 'practice', label: 'Practice', keys: 'r', hint: 'Bias · accuracy · strategies · toolkit', icon: Sparkles },
 ];
 
 const PANELS: Record<MetacogView, ComponentType> = {
@@ -75,8 +71,6 @@ export default function MetacognitionLensPage() {
   useLensIdentity('metacognition');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('metacognition');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<MetacogView>('awareness');
 
   useLensCommand(
@@ -91,7 +85,6 @@ export default function MetacognitionLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="metacognition" asMain={false}>
@@ -100,10 +93,7 @@ export default function MetacognitionLensPage() {
       <div data-lens-theme="metacognition" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Metacognition</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'awareness' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Metacognition</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

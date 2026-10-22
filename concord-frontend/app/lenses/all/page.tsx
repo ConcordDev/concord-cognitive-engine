@@ -18,16 +18,12 @@ import { RecentLensesStrip } from '@/components/all/RecentLensesStrip';
 import { CommandPalette } from '@/components/all/CommandPalette';
 import { SubstratePulsePanel } from '@/components/all/SubstratePulsePanel';
 import { lensRun } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface LensBadge { count: number; lastSeenAt: string | null; total: number }
 interface BadgesResult { badges: Record<string, LensBadge> }
 
 export default function AllLensesPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('all', { type: 'view-event', limit: 5 });
   const recordView = useCreateArtifact<{ at: string }>('all');
@@ -122,7 +118,6 @@ export default function AllLensesPage() {
     <NorthStarFrame
       lensId="all"
       crumb="Lens Hub"
-      title={`Where to next${who ? `, ${who}` : ''}`}
       subtitle="Search, pin, and jump to any lens or action."
       actions={<LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />}
       cta={{ label: 'Command palette', icon: Command, onClick: () => setPaletteOpen(true), title: 'Open the command palette (Cmd/Ctrl+K)' }}

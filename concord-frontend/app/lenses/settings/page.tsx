@@ -15,10 +15,8 @@ import { AccountSecurityPanel } from '@/components/settings/AccountSecurityPanel
 import { PresenceStatusControl } from '@/components/settings/PresenceStatusControl';
 import { WorldVisibilityControl } from '@/components/settings/WorldVisibilityControl';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { loadPreferenceExport } from '@/lib/settings/export-preferences';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ShieldCheck, Monitor } from 'lucide-react';
 
 type Tab = 'account' | 'world';
@@ -29,8 +27,6 @@ const TABS: { id: Tab; label: string; icon: typeof ShieldCheck }[] = [
 ];
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('account');
   const [prefVersion, setPrefVersion] = useState(0);
   const [exportNote, setExportNote] = useState<string | null>(null);
@@ -78,7 +74,6 @@ export default function SettingsPage() {
       <NorthStarFrame
         lensId="settings"
         crumb="Settings"
-        title={`Your settings${who ? `, ${who}` : ''}`}
         subtitle="Account and security first. World graphics, bindings, and snapshots sit one tab over."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
         activeTab={tab}

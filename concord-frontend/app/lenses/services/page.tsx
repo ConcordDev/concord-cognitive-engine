@@ -14,8 +14,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Scissors, CalendarRange, MessageSquare, TrendingUp } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -74,8 +72,6 @@ export default function ServicesLensPage() {
   useLensIdentity('services');
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('services');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ServicesView>('desk');
   const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
@@ -110,7 +106,6 @@ export default function ServicesLensPage() {
       <NorthStarFrame
         lensId="services"
         crumb="Services"
-        title={`Run your appointments${active === 'desk' && who ? `, ${who}` : ''}`}
         subtitle="Bookings, POS, staff and retention for a service business."
         tabs={navViews}
         activeTab={active}

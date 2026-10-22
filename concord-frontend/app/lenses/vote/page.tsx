@@ -81,7 +81,6 @@ export default function VoteLensPage() {
       <NorthStarFrame
         lensId="vote"
         crumb="Governance"
-        title="Decide together"
         subtitle="Plurality, ranked-choice, approval, score and quadratic voting, with liquid democracy, verifiable receipts and Polis-style opinion clustering."
         actions={
           <>

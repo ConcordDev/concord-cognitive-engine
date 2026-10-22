@@ -6,8 +6,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PharmacyOverview } from '@/components/pharmacy/PharmacyOverview';
 import { PharmacyRxSection } from '@/components/pharmacy/PharmacyRxSection';
 import { FdaDrugReference } from '@/components/pharmacy/FdaDrugReference';
@@ -30,8 +28,6 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof Pill; key: st
 export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [destination, setDestination] = useState<Destination>('overview');
   const [referenceTab, setReferenceTab] = useState<'lookup' | 'browse' | 'tools'>('lookup');
 
@@ -51,7 +47,6 @@ export default function PharmacyLensPage() {
       <NorthStarFrame
         lensId="pharmacy"
         crumb="Pharmacy"
-        title={`Your medications${who ? `, ${who}` : ''}`}
         subtitle="Dose adherence, refills, pricing and FDA drug safety reference"
         tabs={DESTINATIONS.map((d) => ({ id: d.id, label: d.label, icon: d.icon, keys: d.key }))}
         activeTab={destination}

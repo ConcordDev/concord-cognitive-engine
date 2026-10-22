@@ -19,7 +19,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import type { FeedTab } from '@/components/feed/useFeedPosts';
 
@@ -28,21 +27,20 @@ type FeedView = FeedTab | 'profile' | 'tools' | 'hn';
 const TIMELINE: FeedTab[] = ['for-you', 'following', 'releases', 'trending'];
 const isTimeline = (v: FeedView): v is FeedTab => (TIMELINE as string[]).includes(v);
 
-const VIEWS: { id: FeedView; label: string; keys: string; title: string; hint: string; icon: typeof Home }[] = [
-  { id: 'for-you', label: 'For you', keys: 'f', title: 'The next thing', hint: 'Ranked posts and DTUs for you', icon: Home },
-  { id: 'following', label: 'Following', keys: 'l', title: 'Who you follow', hint: 'Posts from people you follow', icon: Rss },
-  { id: 'trending', label: 'Explore', keys: 't', title: 'What is catching on', hint: 'Trending posts and people to follow', icon: Search },
-  { id: 'releases', label: 'Releases', keys: 'r', title: 'What just shipped', hint: 'New releases from the substrate', icon: Newspaper },
-  { id: 'profile', label: 'Profile', keys: 'p', title: 'Your profile', hint: 'Your posts, followers and stats', icon: User },
-  { id: 'tools', label: 'Tools', keys: 'g', title: 'Tune your feed', hint: 'Ranking, threads, lists, polls, saved and spaces', icon: Wrench },
-  { id: 'hn', label: 'HN', keys: 'h', title: 'The front page of Hacker News', hint: 'Live Hacker News front page', icon: Newspaper },
+const VIEWS: { id: FeedView; label: string; keys: string; hint: string; icon: typeof Home }[] = [
+  { id: 'for-you', label: 'For you', keys: 'f', hint: 'Ranked posts and DTUs for you', icon: Home },
+  { id: 'following', label: 'Following', keys: 'l', hint: 'Posts from people you follow', icon: Rss },
+  { id: 'trending', label: 'Explore', keys: 't', hint: 'Trending posts and people to follow', icon: Search },
+  { id: 'releases', label: 'Releases', keys: 'r', hint: 'New releases from the substrate', icon: Newspaper },
+  { id: 'profile', label: 'Profile', keys: 'p', hint: 'Your posts, followers and stats', icon: User },
+  { id: 'tools', label: 'Tools', keys: 'g', hint: 'Ranking, threads, lists, polls, saved and spaces', icon: Wrench },
+  { id: 'hn', label: 'HN', keys: 'h', hint: 'Live Hacker News front page', icon: Newspaper },
 ];
 
 export default function FeedLensPage() {
   useLensNav('feed');
   useLensIdentity('feed');
   const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<FeedView>('for-you');
 
   const compose = useCallback(() => {
@@ -70,17 +68,13 @@ export default function FeedLensPage() {
     { lensId: 'feed' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="feed" asMain={false}>
 
       <DepthBadge lensId="feed" size="sm" className="ml-2" />
       <div className="lens-feed relative min-h-full px-8 pb-28 pt-6" data-lens-theme="feed">
-        <p className="text-[14px] text-zinc-500">Feed</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{view === 'for-you' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Feed</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Feed views">
           {VIEWS.map((v) => {

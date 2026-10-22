@@ -59,10 +59,10 @@ describe('crafting bench', () => {
     await waitFor(() => expect(getByRole('status').textContent).toMatch(/Opening the bench/));
   });
 
-  it('greets the signed-in person and says the bench is clear', async () => {
+  it('shows the lens name signed-in and says the bench is clear', async () => {
     authAndRecipes([]);
     const { getByRole, getByText } = render(<CraftingPage />);
-    await waitFor(() => expect(getByRole('heading', { name: 'The piece on the bench, Ramaj' })).toBeInTheDocument());
+    await waitFor(() => expect(getByRole('heading', { name: 'Crafting' })).toBeInTheDocument());
     expect(getByText('The bench is clear.')).toBeInTheDocument();
     expect(apiGet.mock.calls.some((call) => call[0] === '/api/personal-locker/dtus')).toBe(false);
     expect(apiGet.mock.calls.some((call) => String(call[0]).includes('/api/crafting/character/'))).toBe(false);
@@ -148,7 +148,7 @@ describe('crafting bench', () => {
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Iron Sword' } });
     await act(async () => { fireEvent.click(button); });
     await waitFor(() => expect(getByRole('alert').textContent).toMatch(/Skill crafting requires level 10/));
-    expect(getByRole('heading', { name: 'The piece on the bench, Ramaj' })).toBeInTheDocument();
+    expect(getByRole('heading', { name: 'Crafting' })).toBeInTheDocument();
   });
 
   it('says so when the follow-up list does not contain the new id', async () => {

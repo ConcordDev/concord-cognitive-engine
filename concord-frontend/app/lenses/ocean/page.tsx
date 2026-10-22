@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TidePredictions } from '@/components/ocean/TidePredictions';
 import { NoaaTidesPanel } from '@/components/ocean/NoaaTidesPanel';
@@ -54,8 +52,6 @@ export default function OceanLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('ocean');
 
   const [activeTab, setActiveTab] = useState<OceanTab>('tides');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -78,13 +74,6 @@ export default function OceanLensPage() {
   });
 
   const tabs = TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys }));
-  const titles: Record<OceanTab, string> = {
-    tides: `Read the tide${who ? `, ${who}` : ''}`,
-    waves: 'Feel the swell',
-    live: 'Watch the water move',
-    logbook: 'Log your time on the water',
-    map: 'Chart your spots',
-  };
 
   return (
     <LensShell lensId="ocean" asMain={false}>
@@ -93,7 +82,6 @@ export default function OceanLensPage() {
       <NorthStarFrame
         lensId="ocean"
         crumb="Ocean Operations"
-        title={titles[activeTab]}
         subtitle="Tides, marine forecasts, live vessel & buoy data, and a personal dive/surf/fishing logbook"
         actions={(
           <>

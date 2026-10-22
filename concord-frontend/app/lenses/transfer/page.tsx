@@ -4,8 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
@@ -26,19 +24,17 @@ import { TransferAnalysisPanel } from '@/components/transfer/TransferAnalysisPan
 
 type TransferView = 'analogies' | 'etl' | 'migration' | 'repos';
 
-const VIEWS: { id: TransferView; label: string; title: string; hint: string; icon: typeof Shuffle }[] = [
-  { id: 'analogies', label: 'Analogies', title: 'What carries over', hint: 'Find analogies, classify domains, review history', icon: Shuffle },
-  { id: 'etl', label: 'ETL workbench', title: 'Move the data', hint: 'Connectors, pipelines, transforms and sync', icon: Network },
-  { id: 'migration', label: 'Migration', title: 'Plan the migration', hint: 'Schema mapping, data quality and migration plan', icon: FileSearch },
-  { id: 'repos', label: 'Repos', title: 'Open-source ETL tooling', hint: 'ETL and data-migration repos on GitHub', icon: Boxes },
+const VIEWS: { id: TransferView; label: string; hint: string; icon: typeof Shuffle }[] = [
+  { id: 'analogies', label: 'Analogies', hint: 'Find analogies, classify domains, review history', icon: Shuffle },
+  { id: 'etl', label: 'ETL workbench', hint: 'Connectors, pipelines, transforms and sync', icon: Network },
+  { id: 'migration', label: 'Migration', hint: 'Schema mapping, data quality and migration plan', icon: FileSearch },
+  { id: 'repos', label: 'Repos', hint: 'ETL and data-migration repos on GitHub', icon: Boxes },
 ];
 
 export default function TransferLensPage() {
   useLensNav('transfer');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('transfer');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<TransferView>('analogies');
   const [sourceText, setSourceText] = useState('');
   const [targetDomain, setTargetDomain] = useState('');
@@ -77,7 +73,6 @@ export default function TransferLensPage() {
     { lensId: 'transfer' }
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="transfer" asMain={false}>
@@ -86,7 +81,6 @@ export default function TransferLensPage() {
       <NorthStarFrame
         lensId="transfer"
         crumb="Transfer"
-        title={`${current.title}${view === 'analogies' && who ? `, ${who}` : ''}`}
         subtitle="Transfer learning: find analogies, classify domains, apply patterns across contexts, and move data between systems."
         actions={(
           <>

@@ -44,7 +44,7 @@ function isElectricalTool(value: unknown): value is ElectricalTool {
   return typeof value === 'string' && TOOL_IDS.has(value as ElectricalTool);
 }
 
-export function ElectricalWorkspace({ who }: { who: string }) {
+export function ElectricalWorkspace() {
   useLensIdentity('electrical');
   const { restore, persist } = useLensStatePersistence('electrical');
   const [initialState] = useState(() => restore());
@@ -101,10 +101,7 @@ export function ElectricalWorkspace({ who }: { who: string }) {
   return (
     <div data-lens-theme="electrical" className="relative min-h-full bg-[#080808] px-4 pb-28 pt-6 sm:px-8">
       <header>
-        <p className="text-sm text-zinc-600">Electrical</p>
-        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">
-          The job{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Electrical</h1>
       </header>
 
       {!opened ? (

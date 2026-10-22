@@ -111,8 +111,7 @@ export default function LedgerLensPage() {
     <LensShell lensId="ledger" asMain={false}>
       <NorthStarFrame
         lensId="ledger"
-        crumb="Concordia"
-        title="Concordia world ledger (game world)"
+        crumb="Concordia world ledger (game world)"
         subtitle="Concordia game-world economy. Faction funding and extraction liens, read from the world books."
         cta={{ label: 'Re-read the books', icon: BookOpen, onClick: () => void load(), title: `Re-run the anomaly audit for ${worldId}`, disabled: loading }}
       >

@@ -33,8 +33,6 @@ import { CalculatorsPanel } from '@/components/home-improvement/CalculatorsPanel
 import type { HiView } from '@/components/home-improvement/hi-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -97,8 +95,6 @@ const PANELS: Record<HiView, ComponentType> = {
 export default function HomeImprovementLensPage() {
   useLensNav('home-improvement');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('home-improvement');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<HiView>('projects');
   const navTabs = omitCommunityRedditViews(TABS, ['discussion']);
@@ -123,7 +119,6 @@ export default function HomeImprovementLensPage() {
       <NorthStarFrame
         lensId="home-improvement"
         crumb="Home improvement"
-        title={`Build the next room${active === 'projects' && who ? `, ${who}` : ''}`}
         subtitle="Projects, budget, calculators, timeline, contractors, shopping, inventory and maintenance."
         actions={
           <>

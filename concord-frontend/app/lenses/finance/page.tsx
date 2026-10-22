@@ -37,8 +37,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { PriceFeedProvider, priceFeedLabel, useSharedPriceFeed, type PriceFeedStatus } from '@/lib/finance/price-feed';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SnapshotModal } from '@/components/finance/SnapshotModal';
@@ -81,15 +79,15 @@ type GroupId =
   | 'macro'
   | 'assistant';
 
-const GROUPS: { id: GroupId; title: string; label: string; hotkey: string; icon: typeof PieChart }[] = [
-  { id: 'overview', title: 'What you hold', label: 'Overview', hotkey: '1', icon: PieChart },
-  { id: 'positions', title: 'What you own', label: 'Positions', hotkey: '2', icon: Briefcase },
-  { id: 'cashflow', title: 'Where money moves', label: 'Cash-flow', hotkey: '3', icon: ArrowLeftRight },
-  { id: 'accounts', title: 'Where it lives', label: 'Accounts', hotkey: '4', icon: Building2 },
-  { id: 'planning', title: 'Where you are headed', label: 'Planning', hotkey: '5', icon: Target },
-  { id: 'bills', title: 'What is due', label: 'Bills & Budget', hotkey: '6', icon: Receipt },
-  { id: 'macro', title: 'What the world is doing', label: 'Macro data', hotkey: '7', icon: Globe2 },
-  { id: 'assistant', title: 'Ask about your money', label: 'Assistant', hotkey: '8', icon: Sparkles },
+const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof PieChart }[] = [
+  { id: 'overview', label: 'Overview', hotkey: '1', icon: PieChart },
+  { id: 'positions', label: 'Positions', hotkey: '2', icon: Briefcase },
+  { id: 'cashflow', label: 'Cash-flow', hotkey: '3', icon: ArrowLeftRight },
+  { id: 'accounts', label: 'Accounts', hotkey: '4', icon: Building2 },
+  { id: 'planning', label: 'Planning', hotkey: '5', icon: Target },
+  { id: 'bills', label: 'Bills & Budget', hotkey: '6', icon: Receipt },
+  { id: 'macro', label: 'Macro data', hotkey: '7', icon: Globe2 },
+  { id: 'assistant', label: 'Assistant', hotkey: '8', icon: Sparkles },
 ];
 
 const INDEX_NAMES: Record<string, string> = {
@@ -130,8 +128,6 @@ function FinanceTerminal() {
   const priceFeed = useSharedPriceFeed();
   const feedStatus: PriceFeedStatus = priceFeed?.status ?? 'loading';
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('overview');
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -210,7 +206,6 @@ function FinanceTerminal() {
     { lensId: 'finance' },
   );
 
-  const current = GROUPS.find((g) => g.id === group)!;
 
   const GroupBody: ComponentType = useMemo(() => {
     switch (group) {
@@ -242,10 +237,7 @@ function FinanceTerminal() {
       <div data-lens-theme="finance" className="relative min-h-full space-y-5 px-8 pb-28 pt-6 text-gray-200">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Finance</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{group === 'overview' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Finance</h1>
             <div className="mt-2 flex items-center gap-2 text-[12px] text-zinc-500">
               <StatusDot state={feedDot(feedStatus)} size="xs" />
               <span>{priceFeedLabel(feedStatus)}</span>

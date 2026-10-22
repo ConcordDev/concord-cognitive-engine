@@ -22,8 +22,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { InferenceDeskPanel, type DeskMode } from '@/components/inference/InferenceDeskPanel';
 import { RuleEnginePanel } from '@/components/inference/RuleEnginePanel';
@@ -31,14 +29,14 @@ import { FrameworksPanel } from '@/components/inference/FrameworksPanel';
 
 type View = DeskMode | 'rules' | 'frameworks';
 
-const TABS: { id: View; label: string; keys: string; icon: typeof GitMerge; title: string }[] = [
-  { id: 'facts', label: 'Facts', keys: 'f', icon: Plus, title: 'What you know' },
-  { id: 'query', label: 'Query', keys: 'q', icon: Search, title: 'Ask the knowledge base' },
-  { id: 'syllogism', label: 'Syllogism', keys: 's', icon: GitMerge, title: 'If this, then that' },
-  { id: 'forward', label: 'Forward', keys: 'o', icon: Zap, title: 'Chain forward from the facts' },
-  { id: 'unify', label: 'Unify', keys: 'u', icon: Link, title: 'Make two terms match' },
-  { id: 'rules', label: 'Rule engine', keys: 'r', icon: Database, title: 'The rules doing the work' },
-  { id: 'frameworks', label: 'Frameworks', keys: 'w', icon: BookOpen, title: 'Prolog, Drools and friends' },
+const TABS: { id: View; label: string; keys: string; icon: typeof GitMerge; }[] = [
+  { id: 'facts', label: 'Facts', keys: 'f', icon: Plus },
+  { id: 'query', label: 'Query', keys: 'q', icon: Search },
+  { id: 'syllogism', label: 'Syllogism', keys: 's', icon: GitMerge },
+  { id: 'forward', label: 'Forward', keys: 'o', icon: Zap },
+  { id: 'unify', label: 'Unify', keys: 'u', icon: Link },
+  { id: 'rules', label: 'Rule engine', keys: 'r', icon: Database },
+  { id: 'frameworks', label: 'Frameworks', keys: 'w', icon: BookOpen },
 ];
 
 const DESK: DeskMode[] = ['facts', 'query', 'syllogism', 'forward', 'unify'];
@@ -57,12 +55,9 @@ function InferencePane({ active }: { active: View }) {
 export default function InferenceLensPage() {
   useLensNav('inference');
   useLensIdentity('inference');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('inference');
   const [active, setActive] = useState<View>('facts');
-  const current = TABS.find((t) => t.id === active)!;
 
   useLensCommand(
     TABS.map((t) => ({
@@ -82,10 +77,7 @@ export default function InferenceLensPage() {
       <div data-lens-theme="inference" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Inference</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'facts' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Inference</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

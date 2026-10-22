@@ -18,14 +18,10 @@ import { CreatorNav, CREATOR_COMMANDS, CREATOR_VIEW_LABELS } from '@/components/
 import { CreatorProvider, useCreator } from '@/components/creator/CreatorProvider';
 import { CreatorWorkPane } from '@/components/creator/CreatorWorkPane';
 import type { CreatorView } from '@/components/creator/types';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 function CreatorChrome() {
   const { view, setView, me, refreshAll } = useCreator();
   useLensIdentity('creator');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const activeLabel = CREATOR_VIEW_LABELS[view] ?? 'Creator Studio';
   useLensCommand(
     CREATOR_COMMANDS.map((c) => ({
@@ -44,10 +40,7 @@ function CreatorChrome() {
       <div data-lens-theme="creator" className="relative min-h-full px-8 pb-28 pt-6">
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Creator Studio · {activeLabel}</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {view === 'home' ? `Your studio today${who ? `, ${who}` : ''}` : activeLabel}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Creator Studio · {activeLabel}</h1>
             <p className="mt-2 text-[13px] text-zinc-500">Pipeline, listings, audience, and the royalty cascade, in one desk.</p>
             {me?.userId && <KnowledgeEntrepreneurBadge userId={me.userId} />}
           </div>

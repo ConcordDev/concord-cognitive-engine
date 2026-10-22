@@ -8,8 +8,6 @@ import { StudioPanel } from '@/components/sim/StudioPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -139,15 +137,6 @@ interface ModelTemplate {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const TAB_TITLES: Record<SimTab, string> = {
-  scenarios: 'What are we simulating',
-  parameters: 'What can change',
-  runs: 'What is running',
-  results: 'What the runs show',
-  comparison: 'How the scenarios compare',
-  models: 'Models you can start from',
-  studio: 'Build a model',
-};
 
 const TAB_CONFIG: Array<{ key: SimTab; label: string; icon: React.ReactNode }> = [
   { key: 'scenarios', label: 'Scenarios', icon: <FlaskConical className="w-4 h-4" /> },
@@ -548,8 +537,6 @@ function getEmptyResults(): SimResults {
 export function SimConsole() {
   useLensNav('sim');
   useLensIdentity('sim');
-  const { user: authUser } = useAuth();
-  const who = titleCaseDisplayName(authUser?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('sim');
   const queryClient = useQueryClient();
 
@@ -994,10 +981,7 @@ export function SimConsole() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">Simulation</p>
-          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-            {TAB_TITLES[activeTab]}{activeTab === 'scenarios' && who ? `, ${who}` : ''}
-          </h1>
+          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Simulation</h1>
           <p className="max-w-3xl text-[14px] leading-relaxed text-zinc-500">
             Multi-paradigm lab: Monte Carlo, agent-based, stock-and-flow and discrete-event models, with sensitivity analysis and run comparison.
           </p>

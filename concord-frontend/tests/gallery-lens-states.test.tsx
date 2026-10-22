@@ -50,7 +50,7 @@ describe('gallery wall', () => {
     });
     const view = render(<GalleryPage />);
     expect(await view.findByText('The wall is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The wall' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Gallery' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Hang a work' })).toBeEnabled();
     expect(view.queryByText('Browse')).toBeNull();
     expect(view.queryByText('Sigil gallery')).toBeNull();
@@ -125,14 +125,14 @@ describe('gallery wall', () => {
     expect(view.queryByRole('heading', { name: 'Lost study' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'collection-list') return list([]);
       throw new Error(action);
     });
     const view = render(<GalleryPage />);
-    expect(await view.findByRole('heading', { name: 'The wall, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Gallery' })).toBeInTheDocument();
     expect(await view.findByText('The wall is empty.')).toBeInTheDocument();
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('collection-detail');
   });

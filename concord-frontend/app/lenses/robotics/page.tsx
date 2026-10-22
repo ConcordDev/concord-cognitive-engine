@@ -90,7 +90,6 @@ export default function RoboticsLensPage() {
       <NorthStarFrame
         lensId="robotics"
         crumb="Robotics"
-        title="Run the fleet"
         subtitle="Fleet ops, telemetry, mission sequencing, kinematics, path planning and teleop."
         actions={
           <>

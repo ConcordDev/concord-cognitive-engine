@@ -8,8 +8,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SelfFeed } from '@/components/self/SelfFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -65,8 +63,6 @@ const TABS: { id: TabKey; label: string; icon: LucideIcon }[] = [
 
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TabKey>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
   const bump = () => setRefreshKey((k) => k + 1);
@@ -90,7 +86,6 @@ export default function UnifiedSelfLensPage() {
       <NorthStarFrame
         lensId="self"
         crumb="Self"
-        title={`${active === 'overview' ? 'How you are doing' : (TABS.find((t) => t.id === active)?.label ?? 'Self')}${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Quantified-self ledger: trends, correlations, goals and streaks"
         tabs={TABS}
         activeTab={active}

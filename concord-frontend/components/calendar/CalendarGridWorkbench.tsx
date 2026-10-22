@@ -19,9 +19,7 @@ import { Skeleton } from '@/components/ui';
 import { EventActionRail } from '@/components/calendar/EventActionRail';
 import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, eventSavedSentence, eventUpdatedSentence } from '@/components/calendar/calendarKeep';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
-import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -312,8 +310,6 @@ function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode } = {}) {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   // State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1564,12 +1560,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   }
   return (
     <div data-lens-theme="calendar" className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col">
-      {/* Header — serif greeting, period label, quiet view switch */}
+      {/* Header — name heading, period label, quiet view switch */}
       <header className="flex items-end justify-between gap-4 px-8 pt-4 pb-5">
         <div className="min-w-0">
-          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
-            {who ? `Your week, ${who}` : 'Your week'}
-          </h1>
+          <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Calendar</h1>
           <div className="mt-1 flex items-center gap-1 text-[15px] text-zinc-400">
             <button
               type="button"

@@ -24,8 +24,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import {
   Landmark,
@@ -92,9 +90,9 @@ type GovView =
   | 'records'
   | 'court';
 
-const GROUPS: { id: string; label: string; title: string; hint: string; icon: typeof Landmark; items: { id: GovView; label: string }[] }[] = [
+const GROUPS: { id: string; label: string; hint: string; icon: typeof Landmark; items: { id: GovView; label: string }[] }[] = [
   {
-    id: 'oversight', label: 'Oversight', title: 'How your government is doing', hint: 'Caseload, bills, spending, FOIA, alerts and open data', icon: Landmark,
+    id: 'oversight', label: 'Oversight', hint: 'Caseload, bills, spending, FOIA, alerts and open data', icon: Landmark,
     items: [
       { id: 'overview', label: 'Caseload' },
       { id: 'bills', label: 'Bills' },
@@ -105,7 +103,7 @@ const GROUPS: { id: string; label: string; title: string; hint: string; icon: ty
     ],
   },
   {
-    id: 'congress', label: 'Congress', title: 'Who speaks for you', hint: 'Representatives, advocacy, elections, meetings and lookups', icon: Megaphone,
+    id: 'congress', label: 'Congress', hint: 'Representatives, advocacy, elections, meetings and lookups', icon: Megaphone,
     items: [
       { id: 'reps', label: 'My reps' },
       { id: 'advocacy', label: 'Advocacy' },
@@ -115,7 +113,7 @@ const GROUPS: { id: string; label: string; title: string; hint: string; icon: ty
     ],
   },
   {
-    id: 'services', label: '311 / Permits', title: 'Get something fixed or approved', hint: '311, pin-drop reports, permit desk, inspections, payments and routing', icon: Inbox,
+    id: 'services', label: '311 / Permits', hint: '311, pin-drop reports, permit desk, inspections, payments and routing', icon: Inbox,
     items: [
       { id: 'sr', label: '311' },
       { id: 'reporter', label: 'Pin-drop' },
@@ -130,7 +128,7 @@ const GROUPS: { id: string; label: string; title: string; hint: string; icon: ty
     ],
   },
   {
-    id: 'cases', label: 'Case files', title: 'Every file on record', hint: 'Permits, public works, code, emergency, records and court', icon: FolderOpen,
+    id: 'cases', label: 'Case files', hint: 'Permits, public works, code, emergency, records and court', icon: FolderOpen,
     items: [
       { id: 'permits', label: 'Permits' },
       { id: 'works', label: 'Public works' },
@@ -205,8 +203,6 @@ function CivicPane({
 export default function GovernmentLensPage() {
   useLensNav('government');
   useLensIdentity('government');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('government');
   const [active, setActive] = useState<GovView>('overview');
 
@@ -243,7 +239,6 @@ export default function GovernmentLensPage() {
       <NorthStarFrame
         lensId="government"
         crumb="Government"
-        title={`${group.title}${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Civic ops: caseload, bills, spending, FOIA, 311 and permits, representatives and case files, all against real government macros."
         actions={(
           <>

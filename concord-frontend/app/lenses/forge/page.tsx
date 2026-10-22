@@ -15,15 +15,11 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
 import ForgeStudio from '@/components/forge/ForgeStudio';
 import ForgeSharedView from '@/components/forge/ForgeSharedView';
 
 export default function ForgeLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -55,10 +51,7 @@ export default function ForgeLensPage() {
       <div data-lens-theme="forge" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Forge</p>
-            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              What&apos;s in the forge{who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Forge</h1>
             <p className="mb-5 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
               Pick a template, configure 13 subsystems, generate a single-file TypeScript app you can publish as a DTU.
             </p>

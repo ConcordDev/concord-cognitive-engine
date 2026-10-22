@@ -35,8 +35,6 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { WatchPanel } from '@/components/environment/WatchPanel';
 import { FieldOpsPanel, type FieldOpsKind } from '@/components/environment/FieldOpsPanel';
 import { CarbonWorkbenchPanel } from '@/components/environment/CarbonWorkbenchPanel';
@@ -60,22 +58,22 @@ export type EnvView =
   | 'goals'
   | 'map';
 
-const TABS: { id: EnvView; label: string; icon: typeof Wind; keys: string; title: string }[] = [
-  { id: 'watch', label: 'Watch', icon: Wind, keys: 'w', title: 'The air and water around you' },
-  { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'd', title: 'Your sites at a glance' },
-  { id: 'sites', label: 'Sites', icon: MapPin, keys: 's', title: 'Where you monitor' },
-  { id: 'species', label: 'Species', icon: Bug, keys: 'p', title: 'What lives at your sites' },
-  { id: 'sampling', label: 'Sampling', icon: FlaskConical, keys: 'a', title: 'What the samples show' },
-  { id: 'trails', label: 'Trails', icon: Footprints, keys: 't', title: 'Where you walk and survey' },
-  { id: 'waste', label: 'Waste', icon: Recycle, keys: 'u', title: 'What gets thrown away' },
-  { id: 'compliance', label: 'Permits', icon: ShieldCheck, keys: 'c', title: 'What you are permitted to do' },
-  { id: 'diversion', label: 'Diversion', icon: Calculator, keys: 'v', title: 'How much stays out of landfill' },
-  { id: 'field', label: 'Trends', icon: Trees, keys: 'f', title: 'How conditions are trending' },
-  { id: 'ledger', label: 'Emissions log', icon: Leaf, keys: 'n', title: 'What you have emitted' },
-  { id: 'ghg', label: 'GHG desk', icon: Factory, keys: 'g', title: 'Your greenhouse gas inventory' },
-  { id: 'resources', label: 'Resources', icon: Droplets, keys: 'r', title: 'What you consume' },
-  { id: 'goals', label: 'Goals', icon: Target, keys: 'o', title: 'What you are working toward' },
-  { id: 'map', label: 'Map', icon: Map, keys: 'm', title: 'Everything on the map' },
+const TABS: { id: EnvView; label: string; icon: typeof Wind; keys: string; }[] = [
+  { id: 'watch', label: 'Watch', icon: Wind, keys: 'w' },
+  { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'd' },
+  { id: 'sites', label: 'Sites', icon: MapPin, keys: 's' },
+  { id: 'species', label: 'Species', icon: Bug, keys: 'p' },
+  { id: 'sampling', label: 'Sampling', icon: FlaskConical, keys: 'a' },
+  { id: 'trails', label: 'Trails', icon: Footprints, keys: 't' },
+  { id: 'waste', label: 'Waste', icon: Recycle, keys: 'u' },
+  { id: 'compliance', label: 'Permits', icon: ShieldCheck, keys: 'c' },
+  { id: 'diversion', label: 'Diversion', icon: Calculator, keys: 'v' },
+  { id: 'field', label: 'Trends', icon: Trees, keys: 'f' },
+  { id: 'ledger', label: 'Emissions log', icon: Leaf, keys: 'n' },
+  { id: 'ghg', label: 'GHG desk', icon: Factory, keys: 'g' },
+  { id: 'resources', label: 'Resources', icon: Droplets, keys: 'r' },
+  { id: 'goals', label: 'Goals', icon: Target, keys: 'o' },
+  { id: 'map', label: 'Map', icon: Map, keys: 'm' },
 ];
 
 const FIELD_KIND: Partial<Record<EnvView, FieldOpsKind>> = {
@@ -94,8 +92,6 @@ const FIELD_KIND: Partial<Record<EnvView, FieldOpsKind>> = {
 export default function EnvironmentLensPage() {
   useLensNav('environment');
   useLensIdentity('environment');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeView, setActiveView] = useState<EnvView>('watch');
 
   useLensCommand(
@@ -109,7 +105,6 @@ export default function EnvironmentLensPage() {
     { lensId: 'environment' },
   );
 
-  const current = TABS.find((t) => t.id === activeView)!;
 
   return (
     <LensShell lensId="environment" asMain={false}>
@@ -118,7 +113,6 @@ export default function EnvironmentLensPage() {
       <NorthStarFrame
         lensId="environment"
         crumb="Environment"
-        title={`${current.title}${activeView === 'watch' && who ? `, ${who}` : ''}`}
         subtitle="NOAA / Open-Meteo air quality, Superfund, USGS, field survey and GHG Protocol inventory."
         actions={
           <>

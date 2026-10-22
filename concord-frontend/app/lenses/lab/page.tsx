@@ -17,8 +17,6 @@ import { motion } from 'framer-motion';
 import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Microscope, Activity, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -26,8 +24,6 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 export default function LabLensPage() {
   useLensNav('lab');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('lab');
 
   const [code, setCode] = useState('');
@@ -116,10 +112,7 @@ export default function LabLensPage() {
     <div data-lens-theme="lab" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">Lab</p>
-          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-            What is on the bench{who ? `, ${who}` : ''}
-          </h1>
+          <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Lab</h1>
           <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
             Run experiments against the growth organs, keep the notebook and inventory, and explore what could be.
           </p>

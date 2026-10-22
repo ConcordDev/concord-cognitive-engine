@@ -8,8 +8,6 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Calculator } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -48,8 +46,6 @@ import { PipingProvider } from '@/components/panel-polish';
 
 export default function AccountingLensPage() {
   useLensNav('accounting');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('accounting');
 
   // Wallet balance — the platform CC wallet, a distinct concept from the
@@ -92,10 +88,7 @@ export default function AccountingLensPage() {
       <div data-lens-theme="accounting" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Accounting</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {booksNav === 'dashboard' ? `Where the books stand${who ? `, ${who}` : ''}` : 'Your books'}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Accounting</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {balance != null && (

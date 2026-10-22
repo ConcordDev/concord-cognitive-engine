@@ -949,7 +949,6 @@ function DashboardPage() {
               <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                 {core.name}
               </span>
-              <span className="text-[10px] text-gray-400">{core.tagline}</span>
             </Link>
           );
         })}

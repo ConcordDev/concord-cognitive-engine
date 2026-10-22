@@ -42,7 +42,7 @@ describe('creative writing page', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CreativeWritingPage />);
     expect(await view.findByText('// the page is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The page' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Creative Writing' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New page' })).toBeEnabled();
     expect(view.queryByText('Studio')).toBeNull();
     expect(view.queryByText('Gutenberg')).toBeNull();
@@ -104,11 +104,11 @@ describe('creative writing page', () => {
     expect(view.queryByRole('heading', { name: 'Lost page' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CreativeWritingPage />);
-    expect(await view.findByRole('heading', { name: 'The page, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Creative Writing' })).toBeInTheDocument();
     expect(await view.findByText('// the page is empty.')).toBeInTheDocument();
   });
 

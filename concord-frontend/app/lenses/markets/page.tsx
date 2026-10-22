@@ -15,8 +15,6 @@ import { Loader2, CandlestickChart } from 'lucide-react';
 import { SkeletonTableRows, EmptyState, ErrorState } from '@/components/ui';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
@@ -64,8 +62,6 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 }
 
 export default function MarketsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   useLensCommand([
     { id: 'markets-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'markets' });
@@ -124,7 +120,6 @@ export default function MarketsPage() {
       <NorthStarFrame
         lensId="markets"
         crumb="Markets"
-        title={who ? `What is moving, ${who}` : 'What is moving'}
         subtitle="Live quotes and research, user-created prediction markets, and Spark-denominated spectator bets. Sparks are earned by playing — no real money."
         actions={
           <DTUExportButton

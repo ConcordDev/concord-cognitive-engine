@@ -49,7 +49,7 @@ describe('collab room card', () => {
     const view = render(<CollabLensPage />);
     expect(await view.findByText('No room open.')).toBeInTheDocument();
     expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The room' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Collab' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Open a room' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Invitations')).toBeNull();
@@ -134,11 +134,11 @@ describe('collab room card', () => {
     expect(view.getByTestId('cb-title')).toBeInTheDocument();
   });
 
-  it('greets the signed-in name', async () => {
+  it('shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CollabLensPage />);
-    expect(await view.findByRole('heading', { name: 'The room, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Collab' })).toBeInTheDocument();
   });
 
   it('stays on the composer when open is refused', async () => {

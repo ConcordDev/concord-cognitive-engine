@@ -37,15 +37,12 @@ import { DensityToggle, ErrorState } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface LostCard { id: string; petName: string; status: string }
 
 export default function PetsLensPage() {
   useLensNav('pets');
-  const { user } = useAuth();
 
   const [activeLostCards, setActiveLostCards] = useState<LostCard[]>([]);
   const [lostLoading, setLostLoading] = useState(true);
@@ -88,7 +85,6 @@ export default function PetsLensPage() {
     { lensId: 'pets' },
   );
 
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="pets" asMain={false}>
@@ -97,7 +93,6 @@ export default function PetsLensPage() {
       <NorthStarFrame
         lensId="pets"
         crumb="Pets"
-        title={who ? `How your pets are doing, ${who}` : 'How your pets are doing'}
         subtitle="Health records, vaccines, feeding, caregivers and lost-pet ID cards for pets you own."
         actions={
           <div className="flex items-center gap-2">

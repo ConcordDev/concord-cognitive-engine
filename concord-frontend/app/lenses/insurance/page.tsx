@@ -17,8 +17,6 @@ import AmsWorkbench from '@/components/insurance/AmsWorkbench';
 import MutualAidPactsPanel from '@/components/insurance/MutualAidPactsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   LayoutDashboard,
   DollarSign,
@@ -48,12 +46,12 @@ import LiveFeed from '@/components/lens/LiveFeed';
 
 type ModeTab = 'Overview' | 'Quotes' | 'GapAnalysis' | 'AMS' | 'Pacts';
 
-const MODE_TABS: { id: ModeTab; icon: typeof LayoutDashboard; label: string; title: string }[] = [
-  { id: 'Overview', icon: LayoutDashboard, label: 'Overview', title: 'Your book of business' },
-  { id: 'Quotes', icon: DollarSign, label: 'Quote Shopping', title: 'The best price for the cover' },
-  { id: 'GapAnalysis', icon: AlertTriangle, label: 'Coverage Gaps', title: 'Where you are exposed' },
-  { id: 'AMS', icon: Building2, label: 'Agency Workbench', title: 'Run the agency' },
-  { id: 'Pacts', icon: HeartHandshake, label: 'Mutual-Aid Pacts', title: 'Cover each other' },
+const MODE_TABS: { id: ModeTab; icon: typeof LayoutDashboard; label: string; }[] = [
+  { id: 'Overview', icon: LayoutDashboard, label: 'Overview' },
+  { id: 'Quotes', icon: DollarSign, label: 'Quote Shopping' },
+  { id: 'GapAnalysis', icon: AlertTriangle, label: 'Coverage Gaps' },
+  { id: 'AMS', icon: Building2, label: 'Agency Workbench' },
+  { id: 'Pacts', icon: HeartHandshake, label: 'Mutual-Aid Pacts' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -64,8 +62,6 @@ export default function InsuranceLensPage() {
   useLensNav('insurance');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('insurance');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<ModeTab>('Overview');
   const [visionNote, setVisionNote] = useState<{ analysis: string; tags?: string[] } | null>(null);
 
@@ -80,7 +76,6 @@ export default function InsuranceLensPage() {
     { lensId: "insurance" }
   );
 
-  const current = MODE_TABS.find((t) => t.id === mode)!;
 
   return (
     <LensShell lensId="insurance" asMain={false}>
@@ -89,7 +84,6 @@ export default function InsuranceLensPage() {
       <NorthStarFrame
         lensId="insurance"
         crumb="Insurance"
-        title={`${current.title}${mode === 'Overview' && who ? `, ${who}` : ''}`}
         subtitle="Policies, claims, quotes, coverage gaps, agency management and mutual-aid pacts."
         actions={
           <>

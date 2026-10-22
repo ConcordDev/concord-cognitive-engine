@@ -14,8 +14,6 @@ import { useState } from 'react';
 import { Boxes, Loader2, Hammer, GitBranch, Plus } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FoundryWorldsPanel } from '@/components/foundry/FoundryWorldsPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
@@ -35,16 +33,14 @@ const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas')
 
 type View = 'worlds' | 'studio' | 'tooling';
 
-const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Boxes }[] = [
-  { id: 'worlds', label: 'Worlds', keys: '1', title: 'Build a game', hint: 'Your worlds and the block canvas', icon: Boxes },
-  { id: 'studio', label: 'Builder studio', keys: '2', title: 'Script, test and ship', hint: 'Visual scripting, playtest, assets, multiplayer, marketplace, analytics', icon: Hammer },
-  { id: 'tooling', label: 'Tooling', keys: '3', title: 'World-building tooling', hint: 'Open-source world-building tools on GitHub', icon: GitBranch },
+const VIEWS: { id: View; label: string; keys: string; hint: string; icon: typeof Boxes }[] = [
+  { id: 'worlds', label: 'Worlds', keys: '1', hint: 'Your worlds and the block canvas', icon: Boxes },
+  { id: 'studio', label: 'Builder studio', keys: '2', hint: 'Visual scripting, playtest, assets, multiplayer, marketplace, analytics', icon: Hammer },
+  { id: 'tooling', label: 'Tooling', keys: '3', hint: 'Open-source world-building tools on GitHub', icon: GitBranch },
 ];
 
 export default function FoundryLensPage() {
   const { total: worldArtifacts } = useLensData('foundry', 'foundry_world', { noSeed: true });
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('worlds');
 
   useLensCommand(
@@ -61,7 +57,6 @@ export default function FoundryLensPage() {
     { lensId: 'foundry' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="foundry" asMain={false}>
@@ -70,7 +65,6 @@ export default function FoundryLensPage() {
       <NorthStarFrame
         lensId="foundry"
         crumb="Foundry"
-        title={`${current.title}${view === 'worlds' && who ? `, ${who}` : ''}`}
         subtitle="Compose terrain, living NPCs, combat, economies and more into a persistent, cross-world game. No code, no infrastructure."
         actions={
           <span

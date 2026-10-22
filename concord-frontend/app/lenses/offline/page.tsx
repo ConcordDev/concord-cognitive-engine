@@ -5,8 +5,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
 import { StorageQuotaPanel } from '@/components/offline/StorageQuotaPanel';
@@ -31,8 +29,6 @@ export default function OfflineLensPage() {
   useLensNav('offline');
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [replicationKey, setReplicationKey] = useState(0);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   // Conflicts surfaced by a push are held until the user resolves them.
   const handleConflicts = useCallback((c: Conflict[]) => {
@@ -93,7 +89,6 @@ export default function OfflineLensPage() {
       <NorthStarFrame
         lensId="offline"
         crumb="Offline"
-        title={`Work without a connection${who ? `, ${who}` : ''}`}
         subtitle="Local-first sync workbench: IndexedDB write-through, service-worker caching, CRDT conflict resolution and bidirectional replication."
         cta={{ label: 'Open replication', icon: RefreshCw, onClick: jumpReplication, title: 'Jump to replication (S)' }}
       >

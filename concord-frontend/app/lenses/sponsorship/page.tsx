@@ -18,23 +18,19 @@ import { MySponsorships } from '@/components/sponsorship/MySponsorships';
 import { BillingDashboard } from '@/components/sponsorship/BillingDashboard';
 import { SponsorInbox } from '@/components/sponsorship/SponsorInbox';
 import { CreatorHub } from '@/components/sponsorship/CreatorHub';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type Tab = 'discover' | 'memberships' | 'billing' | 'inbox' | 'creator' | 'repos';
 
-const TABS: { id: Tab; label: string; keys: string; title: string; icon: typeof Compass }[] = [
-  { id: 'discover', label: 'Discover', keys: 'g d', title: 'Creators worth backing', icon: Compass },
-  { id: 'memberships', label: 'My memberships', keys: 'g m', title: 'Who you support', icon: Heart },
-  { id: 'billing', label: 'Billing', keys: 'g b', title: 'What you have given', icon: CreditCard },
-  { id: 'inbox', label: 'Inbox', keys: 'g i', title: 'Thank-yous and dispatches', icon: Inbox },
-  { id: 'creator', label: 'Creator hub', keys: 'g c', title: 'Your supporters', icon: Sparkles },
-  { id: 'repos', label: 'Open source', keys: 'g o', title: 'Back the code you use', icon: GitBranch },
+const TABS: { id: Tab; label: string; keys: string; icon: typeof Compass }[] = [
+  { id: 'discover', label: 'Discover', keys: 'g d', icon: Compass },
+  { id: 'memberships', label: 'My memberships', keys: 'g m', icon: Heart },
+  { id: 'billing', label: 'Billing', keys: 'g b', icon: CreditCard },
+  { id: 'inbox', label: 'Inbox', keys: 'g i', icon: Inbox },
+  { id: 'creator', label: 'Creator hub', keys: 'g c', icon: Sparkles },
+  { id: 'repos', label: 'Open source', keys: 'g o', icon: GitBranch },
 ];
 
 export default function SponsorshipPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('discover');
   const [refreshKey, setRefreshKey] = useState(0);
   const bump = () => setRefreshKey((k) => k + 1);
@@ -53,7 +49,6 @@ export default function SponsorshipPage() {
     { lensId: 'sponsorship' },
   );
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="sponsorship" asMain={false}>
@@ -62,7 +57,6 @@ export default function SponsorshipPage() {
       <NorthStarFrame
         lensId="sponsorship"
         crumb="Sponsorship"
-        title={`${current.title}${tab === 'discover' && who ? `, ${who}` : ''}`}
         subtitle="Support NPC-creators with recurring CC. Pick a tier, unlock sponsor-only dispatches, track billing and climb the leaderboard."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, keys: t.keys, icon: t.icon }))}
         activeTab={tab}

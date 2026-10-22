@@ -18,8 +18,6 @@ import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -53,8 +51,6 @@ export default function RealEstateLensPage() {
   useLensNav('realestate');
   useLensIdentity('realestate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('realestate');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<RealEstateView>('search');
 
@@ -90,7 +86,6 @@ export default function RealEstateLensPage() {
       <NorthStarFrame
         lensId="realestate"
         crumb="Real estate"
-        title={`Find your next place${active === 'search' && who ? `, ${who}` : ''}`}
         subtitle="Map, listing inspector, comps, pipeline and in-world property."
         actions={
           <>

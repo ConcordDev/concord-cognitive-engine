@@ -91,7 +91,7 @@ describe('defense lens — one brief architecture', () => {
     mockRollupsOk();
     render(<DefenseLensPage />);
 
-    expect(screen.getByRole('heading', { name: 'The brief, Ramaj' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Defense' })).toBeInTheDocument();
     expect(screen.getByText('No brief open.')).toBeInTheDocument();
     expect(lensRun).not.toHaveBeenCalled();
 

@@ -4,8 +4,6 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -78,8 +76,6 @@ export default function MasonryLensPage() {
   useLensNav('masonry');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('masonry');
   const stats = useMasonryStats();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="masonry" asMain={false}>
@@ -87,7 +83,6 @@ export default function MasonryLensPage() {
       <NorthStarFrame
         lensId="masonry"
         crumb="Masonry"
-        title={`Jobs, bids and brick${who ? `, ${who}` : ''}`}
         subtitle="Takeoff, proposals, scheduling, photos, change orders, price book, invoicing, code library and clients"
         actions={
           <>

@@ -2,9 +2,7 @@
 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 /**
  * Civic Bonds lens — the transparency surface for the micro-bond engine.
@@ -93,8 +91,6 @@ export default function CivicBondsLens() {
   const [draftTarget, setDraftTarget] = useState(20);
   const [creating, setCreating] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const titleReady = draftTitle.trim().length > 0;
 
   const refresh = useCallback(async () => {
@@ -239,7 +235,6 @@ export default function CivicBondsLens() {
       <NorthStarFrame
         lensId="civic-bonds"
         crumb={`Civic Bonds · ${worldId}`}
-        title={`Fund what the world needs, ${who}`}
         subtitle="Pledge sparks to community projects, vote on drives, and audit every pledge on the public ledger."
         actions={
           <button onClick={() => void refresh()} className="rounded-full border border-white/10 p-2 text-zinc-400 hover:text-white" aria-label="Refresh civic bonds">

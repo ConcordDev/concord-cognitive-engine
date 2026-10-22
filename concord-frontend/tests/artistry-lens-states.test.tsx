@@ -42,7 +42,7 @@ describe('artistry study', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<ArtistryLens />);
     expect(await view.findByText('The study is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The study' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New study' })).toBeEnabled();
     expect(view.queryByText('Feed')).toBeNull();
     expect(view.queryByText('Sketchpad')).toBeNull();
@@ -105,11 +105,11 @@ describe('artistry study', () => {
     expect(view.queryByRole('heading', { name: 'Lost study' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<ArtistryLens />);
-    expect(await view.findByRole('heading', { name: 'The study, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Artistry' })).toBeInTheDocument();
     expect(await view.findByText('The study is empty.')).toBeInTheDocument();
   });
 

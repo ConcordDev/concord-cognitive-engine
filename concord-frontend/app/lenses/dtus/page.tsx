@@ -19,8 +19,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { BrowserPanel } from '@/components/dtus/BrowserPanel';
@@ -30,11 +28,11 @@ import { OpsPanel } from '@/components/dtus/OpsPanel';
 
 type DtusView = 'browser' | 'workbench' | 'trending' | 'ops';
 
-const VIEWS: { id: DtusView; label: string; keys: string; title: string; hint: string }[] = [
-  { id: 'browser', title: 'One unit of thought', label: 'Browser', keys: '1', hint: 'Vault list · compute actions' },
-  { id: 'workbench', title: 'Cite it, trace it, layer it', label: 'Workbench', keys: '2', hint: 'Citation · lineage · bulk · layers' },
-  { id: 'trending', title: 'What the lattice is reading', label: 'Trending', keys: '3', hint: 'Discovery trending' },
-  { id: 'ops', title: 'Probe the substrate', label: 'Operations', keys: '4', hint: 'Substrate macro probes' },
+const VIEWS: { id: DtusView; label: string; keys: string; hint: string }[] = [
+  { id: 'browser', label: 'Browser', keys: '1', hint: 'Vault list · compute actions' },
+  { id: 'workbench', label: 'Workbench', keys: '2', hint: 'Citation · lineage · bulk · layers' },
+  { id: 'trending', label: 'Trending', keys: '3', hint: 'Discovery trending' },
+  { id: 'ops', label: 'Operations', keys: '4', hint: 'Substrate macro probes' },
 ];
 
 function TrendingPane() {
@@ -59,8 +57,6 @@ function DTUBrowserPageInner() {
   const initialQuery = searchParams.get('q') || '';
   const reduceMotion = useReducedMotion();
   const { isLive, lastUpdated } = useRealtimeLens('dtus');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DtusView>('browser');
   const [viewsOpen, setViewsOpen] = useState(false);
   const browse = useCallback(() => {
@@ -87,7 +83,6 @@ function DTUBrowserPageInner() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -107,10 +102,7 @@ function DTUBrowserPageInner() {
       <div data-lens-theme="dtus" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">DTU Browser</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'browser' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">DTU Browser</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

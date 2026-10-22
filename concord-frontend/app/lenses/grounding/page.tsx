@@ -39,8 +39,6 @@ import { ShieldCheck, Antenna, Radio } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -61,8 +59,6 @@ const DESTINATIONS: { id: Destination; label: string; icon: typeof ShieldCheck; 
 
 export default function GroundingLensPage() {
   useLensNav('grounding');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('factcheck');
   const destinations = omitCommunityRedditViews(DESTINATIONS, ['pulse']);
 
@@ -83,7 +79,6 @@ export default function GroundingLensPage() {
       <NorthStarFrame
         lensId="grounding"
         crumb="Grounding"
-        title={`Check it against reality${who ? `, ${who}` : ''}`}
         subtitle="Two real substrates: claim and fact verification, and embodied real-world sensor anchoring."
         actions={<DepthBadge lensId="grounding" size="sm" />}
         tabs={destinations.map((d) => ({ id: d.id, label: d.label, icon: d.icon, hint: d.desc }))}

@@ -17,8 +17,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface TraceRow {
@@ -83,8 +81,6 @@ async function readTraces(): Promise<TraceRow[]> {
 
 export default function CognitionPage() {
   useLensNav('cognition');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [traces, setTraces] = useState<TraceRow[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -176,10 +172,7 @@ export default function CognitionPage() {
   return (
     <LensShell lensId="cognition" asMain={false}>
       <div data-lens-theme="cognition" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Cognition</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The trace{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Cognition</h1>
 
         <section
           aria-label="Trace"

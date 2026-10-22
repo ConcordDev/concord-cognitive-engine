@@ -20,14 +20,10 @@ import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 export default function FashionLensPage() {
   useLensNav('fashion');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<FashionTabId>('closet');
   const [exportSnapshot, setExportSnapshot] = useState<Record<string, unknown>>({});
 
@@ -69,7 +65,6 @@ export default function FashionLensPage() {
       <NorthStarFrame
         lensId="fashion"
         crumb="Fashion"
-        title={`What you will wear next${who ? `, ${who}` : ''}`}
         subtitle="Digital closet, outfits, AI stylist, wear calendar, packing plans, community and resale."
         actions={
           <>

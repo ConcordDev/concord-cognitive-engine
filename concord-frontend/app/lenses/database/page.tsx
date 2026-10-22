@@ -21,8 +21,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { ConnectionStrip } from '@/components/database/ConnectionStrip';
 import { LiveClientPanel } from '@/components/database/LiveClientPanel';
@@ -63,8 +61,6 @@ export default function DatabaseLensPage() {
   useLensIdentity('database');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('database');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<DbView>('live');
   const [seedSql, setSeedSql] = useState<string | null>(null);
 
@@ -89,7 +85,6 @@ export default function DatabaseLensPage() {
     { lensId: 'database' },
   );
 
-  const current = TABS.find((t) => t.id === active)!;
 
   return (
     <LensShell lensId="database" asMain={false}>
@@ -98,10 +93,7 @@ export default function DatabaseLensPage() {
       <div data-lens-theme="database" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Database</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {active === 'live' ? `What are we querying${who ? `, ${who}` : ''}` : current.label}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Database</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

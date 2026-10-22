@@ -3,8 +3,6 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -49,8 +47,6 @@ export default function RetailLensPage() {
   useLensNav('retail');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('retail');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -66,7 +62,6 @@ export default function RetailLensPage() {
       <NorthStarFrame
         lensId="retail"
         crumb="Retail & Commerce"
-        title={`Run the register${who ? `, ${who}` : ''}`}
         subtitle="Point of sale, catalog, fulfillment, storefront & ops — one real backend, no seeded data."
         actions={(
           <>

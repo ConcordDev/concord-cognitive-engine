@@ -13,8 +13,6 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Calendar, Calculator, Newspaper } from 'lucide-react';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -55,8 +53,6 @@ const PAGE_TABS: { id: PageTab; label: string; icon: typeof Calendar }[] = [
 export default function PlumbingLensPage() {
   useLensNav('plumbing');
   const { latestData: realtimeData, isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('plumbing');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<PageTab>('operations');
   const pageTabs = omitCommunityRedditViews(PAGE_TABS, ['feed']);
 
@@ -93,7 +89,6 @@ export default function PlumbingLensPage() {
       <NorthStarFrame
         lensId="plumbing"
         crumb="Plumbing"
-        title={`Jobs on the board${who ? `, ${who}` : ''}`}
         subtitle="Dispatch, quote-to-invoice, maintenance plans and IPC/UPC trade calculators"
         actions={
           <>

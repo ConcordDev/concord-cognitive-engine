@@ -271,7 +271,6 @@ export interface CoreLensConfig {
   name: string;
   icon: LucideIcon;
   description: string;
-  tagline: string;
   path: string;
   color: string;
   /** IDs of lenses absorbed into this core lens */
@@ -288,7 +287,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'Chat',
     icon: MessageSquare,
     description: 'AI conversations, forums, governance discussions, and daily notes',
-    tagline: 'Think out loud',
     path: '/lenses/chat',
     color: 'neon-cyan',
     absorbedLensIds: ['thread', 'forum', 'daily', 'council', 'anon', 'voice', 'feed', 'news'],
@@ -298,7 +296,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'Board',
     icon: Layout,
     description: 'Tasks, goals, calendar, timeline, and spaced repetition',
-    tagline: 'Get things done',
     path: '/lenses/board',
     color: 'neon-purple',
     absorbedLensIds: ['goals', 'calendar', 'timeline', 'srs', 'whiteboard'],
@@ -308,7 +305,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'Graph',
     icon: Share2,
     description: 'Knowledge graph, schemas, entities, and ecosystem mapping',
-    tagline: 'Connect everything',
     path: '/lenses/graph',
     color: 'neon-green',
     absorbedLensIds: ['schema', 'entity', 'temporal', 'eco', 'meta'],
@@ -318,7 +314,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'Code',
     icon: Code,
     description: 'Editor, debugger, database explorer, and repository browser',
-    tagline: 'Build and ship',
     path: '/lenses/code',
     color: 'neon-blue',
     absorbedLensIds: ['debug', 'database', 'repos'],
@@ -328,7 +323,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'Studio',
     icon: Music,
     description: 'Music production, visual art, game dev, and creative tools',
-    tagline: 'Create anything',
     path: '/lenses/studio',
     color: 'neon-pink',
     absorbedLensIds: ['music', 'art', 'fractal', 'game', 'sim', 'ar', 'podcast'],
@@ -338,7 +332,6 @@ export const CORE_LENSES: CoreLensConfig[] = [
     name: 'World',
     icon: Globe,
     description: 'Concordia — the 3D world: enter via the Concord Link, live events, quests, inventory anywhere',
-    tagline: 'Enter Concordia',
     path: '/lenses/world',
     color: 'neon-cyan',
     absorbedLensIds: ['ledger'],

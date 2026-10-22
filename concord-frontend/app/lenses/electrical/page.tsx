@@ -3,18 +3,14 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ElectricalWorkspace } from '@/components/electrical/ElectricalWorkspace';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 export default function ElectricalLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="electrical" asMain={false}>
 
       <DepthBadge lensId="electrical" size="sm" className="ml-2" />
-      <ElectricalWorkspace who={who} />
+      <ElectricalWorkspace />
     </LensShell>
   );
 }

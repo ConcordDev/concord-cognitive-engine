@@ -18,8 +18,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -53,8 +51,6 @@ export default function SecurityLensPage() {
   useLensIdentity('security');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('security');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SecurityView>('soc');
 
@@ -90,7 +86,6 @@ export default function SecurityLensPage() {
       <NorthStarFrame
         lensId="security"
         crumb="Security"
-        title={`Watch the perimeter${active === 'soc' && who ? `, ${who}` : ''}`}
         subtitle="SIEM, cases, advisories, scanner and vulnerability management."
         actions={
           <>

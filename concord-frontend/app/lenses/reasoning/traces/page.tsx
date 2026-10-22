@@ -12,12 +12,8 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { HlrTracesPanel } from '@/components/reasoning/HlrTracesPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 export default function ReasoningTracesPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   const openTrace = useCallback(() => {
     const first = document.querySelector<HTMLElement>('[role="listbox"][aria-label="Reasoning traces"] [role="option"]');
@@ -39,10 +35,7 @@ export default function ReasoningTracesPage() {
 
       <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
       <div data-lens-theme="reasoning" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">HLR Traces</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The trace{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">HLR Traces</h1>
 
         <HlrTracesPanel />
 

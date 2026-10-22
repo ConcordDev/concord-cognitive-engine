@@ -19,9 +19,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-
 interface RawEvent {
   id: string;
   type: string;
@@ -41,19 +38,17 @@ interface AuditEntry {
 
 type AuditView = 'overview' | 'log' | 'compliance' | 'vulns' | 'bench';
 
-const VIEWS: { id: AuditView; label: string; keys: string; title: string; hint: string; icon: typeof Eye }[] = [
-  { id: 'overview', label: 'Overview', keys: 'g o', title: 'Everything the system did', hint: 'Event totals, immutable chain and recent entries', icon: LayoutList },
-  { id: 'log', label: 'Log', keys: 'g l', title: 'The full audit log', hint: 'Searchable, filterable event log', icon: ScrollText },
-  { id: 'compliance', label: 'Compliance', keys: 'g c', title: 'Controls, evidence and findings', hint: 'Frameworks, evidence, monitoring, policies and vendors', icon: ShieldCheck },
-  { id: 'vulns', label: 'Vulnerabilities', keys: 'g v', title: 'Look up a CVE', hint: 'CVE search', icon: Bug },
-  { id: 'bench', label: 'Auditor bench', keys: 'g b', title: 'Run the auditor tools', hint: 'Compliance check, trail analysis, risk score, sampling plan', icon: Wrench },
+const VIEWS: { id: AuditView; label: string; keys: string; hint: string; icon: typeof Eye }[] = [
+  { id: 'overview', label: 'Overview', keys: 'g o', hint: 'Event totals, immutable chain and recent entries', icon: LayoutList },
+  { id: 'log', label: 'Log', keys: 'g l', hint: 'Searchable, filterable event log', icon: ScrollText },
+  { id: 'compliance', label: 'Compliance', keys: 'g c', hint: 'Frameworks, evidence, monitoring, policies and vendors', icon: ShieldCheck },
+  { id: 'vulns', label: 'Vulnerabilities', keys: 'g v', hint: 'CVE search', icon: Bug },
+  { id: 'bench', label: 'Auditor bench', keys: 'g b', hint: 'Compliance check, trail analysis, risk score, sampling plan', icon: Wrench },
 ];
 
 const CARD = 'rounded-2xl border border-white/10 bg-[#111] p-4';
 
 export default function AuditLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<AuditView>('overview');
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
@@ -136,7 +131,6 @@ export default function AuditLensPage() {
       </div>
     );
   }
-  const current = VIEWS.find((v) => v.id === view)!;
   const showEntries = view === 'overview' || view === 'log';
 
   const stats = [
@@ -154,7 +148,6 @@ export default function AuditLensPage() {
       <NorthStarFrame
         lensId="audit"
         crumb="Audit"
-        title={`${current.title}${view === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Searchable log of shadow DTUs, terminal audits and verifier events, with compliance automation and an auditor bench."
         actions={
           <div className="flex flex-wrap items-center gap-2">

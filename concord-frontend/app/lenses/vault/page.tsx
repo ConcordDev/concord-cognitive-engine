@@ -15,8 +15,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
 import { vaultSubmissionKeepRecord } from '@/components/lens/recordKeep';
@@ -115,8 +113,6 @@ async function readCabinet(): Promise<Work[]> {
 
 export default function VaultPage() {
   useLensNav('vault');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [works, setWorks] = useState<Work[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -203,10 +199,7 @@ export default function VaultPage() {
   return (
     <LensShell lensId="vault" asMain={false}>
       <div data-lens-theme="vault" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">TheVault</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The vault{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">TheVault</h1>
 
         <div className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 sm:grid-cols-[minmax(0,16rem)_1fr]">
           <section aria-label="Cabinet" className="border-white/10 px-5 py-6 sm:border-r">

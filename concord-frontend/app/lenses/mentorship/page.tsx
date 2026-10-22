@@ -46,8 +46,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { MENTORSHIP_PROGRAM_CHANGED } from '@/lib/mentorship/program-stats';
 
 interface ProgramReport {
@@ -64,22 +62,20 @@ interface ProgramReport {
 
 type TabId = 'directory' | 'requests' | 'sessions' | 'goals' | 'messages' | 'tools' | 'program' | 'community';
 
-const TABS: { id: TabId; label: string; icon: typeof Users; hotkey: string; title: string; hint: string }[] = [
-  { id: 'directory', label: 'Directory', icon: Users, hotkey: '1', title: 'Find someone to learn from', hint: 'Mentor directory and matching' },
-  { id: 'requests', label: 'Requests', icon: Inbox, hotkey: '2', title: 'Who is asking for you', hint: 'Mentorship requests in and out' },
-  { id: 'sessions', label: 'Sessions', icon: Calendar, hotkey: '3', title: 'Time on the calendar', hint: 'Scheduled and completed sessions' },
-  { id: 'goals', label: 'Goals', icon: Target, hotkey: '4', title: 'What you are working toward', hint: 'Mentorship goals and progress' },
-  { id: 'messages', label: 'Messages', icon: MessageSquare, hotkey: '5', title: 'Keep the conversation going', hint: 'Mentor / mentee messages' },
-  { id: 'tools', label: 'Coaching Tools', icon: Wrench, hotkey: '6', title: 'Run the numbers on a pairing', hint: 'Match scoring, progress, feedback and development plans' },
-  { id: 'program', label: 'Program', icon: BarChart3, hotkey: '7', title: 'How the program is doing', hint: 'Program-level reporting' },
-  { id: 'community', label: 'Community', icon: MessagesSquare, hotkey: '8', title: 'Mentors talking shop', hint: 'Mentorship community feed' },
+const TABS: { id: TabId; label: string; icon: typeof Users; hotkey: string; hint: string }[] = [
+  { id: 'directory', label: 'Directory', icon: Users, hotkey: '1', hint: 'Mentor directory and matching' },
+  { id: 'requests', label: 'Requests', icon: Inbox, hotkey: '2', hint: 'Mentorship requests in and out' },
+  { id: 'sessions', label: 'Sessions', icon: Calendar, hotkey: '3', hint: 'Scheduled and completed sessions' },
+  { id: 'goals', label: 'Goals', icon: Target, hotkey: '4', hint: 'Mentorship goals and progress' },
+  { id: 'messages', label: 'Messages', icon: MessageSquare, hotkey: '5', hint: 'Mentor / mentee messages' },
+  { id: 'tools', label: 'Coaching Tools', icon: Wrench, hotkey: '6', hint: 'Match scoring, progress, feedback and development plans' },
+  { id: 'program', label: 'Program', icon: BarChart3, hotkey: '7', hint: 'Program-level reporting' },
+  { id: 'community', label: 'Community', icon: MessagesSquare, hotkey: '8', hint: 'Mentorship community feed' },
 ];
 
 export default function MentorshipLensPage() {
   useLensNav('mentorship');
   const { isLive, lastUpdated, latestData, insights } = useRealtimeLens('mentorship');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<TabId>('directory');
 
   const stats = useMacroDispatchFeedback<ProgramReport>();
@@ -109,7 +105,6 @@ export default function MentorshipLensPage() {
   const report = stats.status === 'done' ? stats.result : null;
   const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="mentorship" asMain={false}>
@@ -118,7 +113,6 @@ export default function MentorshipLensPage() {
       <NorthStarFrame
         lensId="mentorship"
         crumb="Mentorship"
-        title={`${current.title}${tab === 'directory' && who ? `, ${who}` : ''}`}
         subtitle="Mentor marketplace, matching and program tracking. Every number and score comes from the mentorship engine."
         actions={
           <div className="flex items-center gap-2">

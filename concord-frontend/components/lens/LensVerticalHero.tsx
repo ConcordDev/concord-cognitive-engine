@@ -10,7 +10,7 @@
  * understanding, lab, quantum, projects, anon, schema, veterinary,
  * etc.) to "solid vertical" by adding a real workspace surface.
  * Composes:
- *   - manifest-driven title + icon + tagline (no per-lens authoring)
+ *   - manifest-driven title + icon (no per-lens authoring)
  *   - live useLensData() pulled-count + recent activity
  *   - auto-discovered featured actions (top 6 from
  *     /api/lens-actions/<domain>, hand-prioritized by isAnalysis →
@@ -198,8 +198,6 @@ export function LensVerticalHero({
     await onRun(name, parsed);
   }, [onRun, paramText]);
 
-  const tagline = manifest?.emptyState?.caption || manifest?.label || lensId;
-
   return (
     <section
       className={cn(
@@ -234,7 +232,6 @@ export function LensVerticalHero({
             </span>
           )}
         </div>
-        <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{tagline}</p>
       </header>
 
       <div className="grid grid-cols-3 divide-x divide-zinc-800/60 border-b border-zinc-800/60">

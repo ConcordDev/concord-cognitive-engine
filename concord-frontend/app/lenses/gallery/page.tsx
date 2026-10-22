@@ -17,8 +17,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Work {
@@ -63,8 +61,6 @@ async function readCollection(id: string): Promise<Work[]> {
 
 export default function GalleryPage() {
   useLensNav('gallery');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [works, setWorks] = useState<Work[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -154,10 +150,7 @@ export default function GalleryPage() {
   return (
     <LensShell lensId="gallery" asMain={false}>
       <div data-lens-theme="gallery" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Gallery</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The wall{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Gallery</h1>
 
         <section
           aria-label="Wall"

@@ -20,8 +20,6 @@ import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 import { DeityDetailPanel } from '@/components/deities/DeityDetailPanel';
 import { MyDevotionPanel } from '@/components/deities/MyDevotionPanel';
 import { DeitySigil, type ToneVector } from '@/components/deities/DeitySigil';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Compass, Flame, Sparkles } from 'lucide-react';
 
 interface Deity {
@@ -40,15 +38,13 @@ type SortKind = 'popularity' | 'newest' | 'tone';
 
 type DeityView = 'pantheon' | 'devotion' | 'explore';
 
-const VIEWS: { id: DeityView; label: string; keys: string; title: string; hint: string; icon: typeof Flame }[] = [
-  { id: 'pantheon', label: 'Pantheon', keys: '1', title: 'The gods people made', hint: 'Search, filter, compose and make pilgrimage', icon: Flame },
-  { id: 'devotion', label: 'My devotion', keys: '2', title: 'Where your faith stands', hint: 'Your alignment across every deity', icon: Sparkles },
-  { id: 'explore', label: 'Explore', keys: '3', title: 'Chart the whole pantheon', hint: 'Pantheon explorer', icon: Compass },
+const VIEWS: { id: DeityView; label: string; keys: string; hint: string; icon: typeof Flame }[] = [
+  { id: 'pantheon', label: 'Pantheon', keys: '1', hint: 'Search, filter, compose and make pilgrimage', icon: Flame },
+  { id: 'devotion', label: 'My devotion', keys: '2', hint: 'Your alignment across every deity', icon: Sparkles },
+  { id: 'explore', label: 'Explore', keys: '3', hint: 'Pantheon explorer', icon: Compass },
 ];
 
 export default function DeitiesPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DeityView>('pantheon');
   const [deities, setDeities] = useState<Deity[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -142,11 +138,7 @@ export default function DeitiesPage() {
     bumpRefresh();
   };
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
-  const frameTitle = selectedId
-    ? 'A deity, up close'
-    : `${current.title}${view === 'pantheon' && who ? `, ${who}` : ''}`;
 
   return (
     <LensShell lensId="deities" asMain={false}>
@@ -155,7 +147,6 @@ export default function DeitiesPage() {
       <NorthStarFrame
         lensId="deities"
         crumb="Deities"
-        title={frameTitle}
         subtitle="Player-composed patron deities. Commune, devote, earn blessings."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

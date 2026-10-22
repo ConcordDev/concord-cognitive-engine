@@ -90,7 +90,6 @@ export default function UxSuiteLensPage() {
       <NorthStarFrame
         lensId="ux-suite"
         crumb="UX suite"
-        title="Every interface piece, in its real home"
         subtitle={`${COMPONENTS.length} absorbed UX components, each wired to where it runs. No mock data.`}
         cta={{ label: 'System overview', icon: Settings, onClick: () => router.push('/lenses/system') }}
       >

@@ -59,34 +59,27 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 type Workbench = 'practice' | 'analyzer' | 'docket' | 'qa' | 'caselaw';
 
 const WORKBENCH_TABS: {
   id: Workbench;
-  label: string;
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  label: string;icon: React.ComponentType<{ className?: string }>;
   key: string;
   hint: string;
 }[] = [
-  { id: 'practice', title: 'Your practice', label: 'Practice', icon: Briefcase, key: 'P', hint: 'Matters, billing, trust, documents' },
-  { id: 'analyzer', title: 'What a contract risks', label: 'Analyzer', icon: Brain, key: 'Y', hint: 'AI contract risk-flagging' },
-  { id: 'docket', title: 'What is on the docket', label: 'Docket', icon: Gavel, key: 'K', hint: 'Quick case log + deadlines' },
-  { id: 'qa', title: 'Ask the research desk', label: 'Q&A', icon: MessageSquare, key: 'Q', hint: 'Jurisdiction-aware research' },
-  { id: 'caselaw', title: 'What the courts held', label: 'Case Law', icon: Search, key: 'L', hint: 'CourtListener opinion search' },
+  { id: 'practice', label: 'Practice', icon: Briefcase, key: 'P', hint: 'Matters, billing, trust, documents' },
+  { id: 'analyzer', label: 'Analyzer', icon: Brain, key: 'Y', hint: 'AI contract risk-flagging' },
+  { id: 'docket', label: 'Docket', icon: Gavel, key: 'K', hint: 'Quick case log + deadlines' },
+  { id: 'qa', label: 'Q&A', icon: MessageSquare, key: 'Q', hint: 'Jurisdiction-aware research' },
+  { id: 'caselaw', label: 'Case Law', icon: Search, key: 'L', hint: 'CourtListener opinion search' },
 ];
 
 export default function LegalLensPage() {
   useLensNav('legal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [workbench, setWorkbench] = useState<Workbench>('practice');
-  const current = WORKBENCH_TABS.find((t) => t.id === workbench)!;
 
   useLensCommand(
     [
@@ -105,10 +98,7 @@ export default function LegalLensPage() {
       <div data-lens-theme="legal" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Legal</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{workbench === 'practice' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Legal</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

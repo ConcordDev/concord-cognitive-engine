@@ -13,8 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Heart, Network, Activity, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -46,8 +44,6 @@ export default function OrganLensPage() {
   useLensNav('organ');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('organ');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<OrganView>('designer');
 
   useLensCommand(
@@ -85,7 +81,6 @@ export default function OrganLensPage() {
       <NorthStarFrame
         lensId="organ"
         crumb="Organ"
-        title={`Organizations and organs${active === 'designer' && who ? `, ${who}` : ''}`}
         subtitle="Org design plus Concord's own self-model organ registry"
         actions={
           <>

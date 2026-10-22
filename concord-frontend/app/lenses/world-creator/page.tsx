@@ -17,8 +17,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Hammer, Lightbulb } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -36,8 +34,6 @@ const VIEWS: { id: CreatorView; label: string; keys: string; hint: string; icon:
 
 export default function WorldCreatorPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
   const [view, setView] = useState<CreatorView>('drafts');
   const navViews = omitCommunityRedditViews(VIEWS, ['inspiration']);
@@ -54,12 +50,6 @@ export default function WorldCreatorPage() {
     })),
   ], { lensId: 'world-creator' });
 
-  const title = editingDraft
-    ? 'Shape the world'
-    : view === 'inspiration'
-      ? 'Borrow a spark'
-      : `Build a world${who ? `, ${who}` : ''}`;
-
   return (
     <LensShell lensId="world-creator" asMain={false}>
 
@@ -67,7 +57,6 @@ export default function WorldCreatorPage() {
       <NorthStarFrame
         lensId="world-creator"
         crumb="World creator"
-        title={title}
         subtitle="Sculpt a scene, place props, spawn points, zones, NPCs and factions, tune the rule modulators, then playtest straight into the world lens. You become the world's sole creator; there is no admin role."
         actions={(
           <Link href="/lenses/world" className="text-[13px] text-zinc-500 hover:text-zinc-200">

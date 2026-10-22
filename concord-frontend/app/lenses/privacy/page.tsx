@@ -12,8 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Shield, Scale, Database, MessageCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -44,8 +42,6 @@ export default function PrivacySharingPage() {
   useLensNav('privacy');
   useLensIdentity('privacy');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PrivacyView>('controls');
   const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
@@ -80,7 +76,6 @@ export default function PrivacySharingPage() {
       <NorthStarFrame
         lensId="privacy"
         crumb="Privacy"
-        title={`Your controls${who ? `, ${who}` : ''}`}
         subtitle="Download what is yours. Requests, sharing and flows sit in the other tabs."
         tabs={navViews}
         activeTab={active}

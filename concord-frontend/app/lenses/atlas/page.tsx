@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AtlasSection } from '@/components/atlas/AtlasSection';
 import { useQuery } from '@tanstack/react-query';
@@ -39,20 +37,18 @@ type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage' | 'privacy' | 'q
 
 type AtlasView = 'map' | TomoTab;
 
-const VIEWS: { id: AtlasView; label: string; keys: string; title: string; hint: string; icon: typeof Map }[] = [
-  { id: 'map', label: 'Map & trips', keys: 'g m', title: 'Where to next', hint: 'Places, trips and navigation', icon: MapPinned },
-  { id: 'terrain', label: 'Terrain', keys: 'g t', title: 'What the ground is made of', hint: 'Reconstructed terrain and material for a tile', icon: Map },
-  { id: 'signals', label: 'Signals', keys: 'g s', title: 'What the air is carrying', hint: 'Signal taxonomy, spectrum and classification', icon: Radio },
-  { id: 'anomalies', label: 'Anomalies', keys: 'g a', title: 'What changed that should not have', hint: 'Detected signal anomalies', icon: AlertTriangle },
-  { id: 'coverage', label: 'Coverage', keys: 'g c', title: 'How much of the world is mapped', hint: 'Tomography coverage', icon: Layers },
-  { id: 'privacy', label: 'Privacy', keys: 'g p', title: 'What the atlas refuses to see', hint: 'Privacy zones and interior-never-generated verification', icon: ShieldCheck },
-  { id: 'query', label: 'Query', keys: 'g q', title: 'Ask the atlas a spatial question', hint: 'Spatial queries', icon: Search },
+const VIEWS: { id: AtlasView; label: string; keys: string; hint: string; icon: typeof Map }[] = [
+  { id: 'map', label: 'Map & trips', keys: 'g m', hint: 'Places, trips and navigation', icon: MapPinned },
+  { id: 'terrain', label: 'Terrain', keys: 'g t', hint: 'Reconstructed terrain and material for a tile', icon: Map },
+  { id: 'signals', label: 'Signals', keys: 'g s', hint: 'Signal taxonomy, spectrum and classification', icon: Radio },
+  { id: 'anomalies', label: 'Anomalies', keys: 'g a', hint: 'Detected signal anomalies', icon: AlertTriangle },
+  { id: 'coverage', label: 'Coverage', keys: 'g c', hint: 'Tomography coverage', icon: Layers },
+  { id: 'privacy', label: 'Privacy', keys: 'g p', hint: 'Privacy zones and interior-never-generated verification', icon: ShieldCheck },
+  { id: 'query', label: 'Query', keys: 'g q', hint: 'Spatial queries', icon: Search },
 ];
 
 export default function AtlasLensPage() {
   useLensNav('atlas');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<AtlasView>('map');
 
   useLensCommand(
@@ -66,7 +62,6 @@ export default function AtlasLensPage() {
     { lensId: 'atlas' }
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="atlas" asMain={false}>
@@ -79,7 +74,6 @@ export default function AtlasLensPage() {
       <NorthStarFrame
         lensId="atlas"
         crumb="Atlas"
-        title={`${current.title}${view === 'map' && who ? `, ${who}` : ''}`}
         subtitle={view === 'map' ? 'Places, trips and navigation' : 'Signal tomography and spatial intelligence'}
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

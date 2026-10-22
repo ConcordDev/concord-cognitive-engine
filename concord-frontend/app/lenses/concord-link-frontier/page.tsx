@@ -14,8 +14,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface LinkRow {
@@ -82,8 +80,6 @@ const GRID = {
 
 export default function ConcordLinkFrontierPage() {
   useLensNav('concord-link-frontier');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -274,10 +270,7 @@ export default function ConcordLinkFrontierPage() {
   return (
     <LensShell lensId="concord-link-frontier" asMain={false}>
       <div data-lens-theme="concord-link-frontier" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Concord Link Frontier</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The frontier link{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Concord Link Frontier</h1>
 
         <section aria-label="Link" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5" style={GRID}>
           {phase === 'loading' && (

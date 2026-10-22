@@ -16,8 +16,6 @@ import { ReplantingPanel } from '@/components/forestry/ReplantingPanel';
 import { CarbonCreditPanel } from '@/components/forestry/CarbonCreditPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { TreePine, Calculator, Flame, Ruler, Bug, Coins, Map, Plus } from 'lucide-react';
 
 /**
@@ -29,19 +27,17 @@ import { TreePine, Calculator, Flame, Ruler, Bug, Coins, Map, Plus } from 'lucid
 
 type ForestryTab = 'stands' | 'calculators' | 'fire' | 'growth' | 'pests' | 'carbon' | 'map';
 
-const TABS: { key: ForestryTab; label: string; keys: string; title: string; hint: string; icon: typeof TreePine }[] = [
-  { key: 'stands', label: 'Stands', keys: 's', title: 'Your stands', hint: 'Stand registry, activities, dashboard', icon: TreePine },
-  { key: 'calculators', label: 'Calculators', keys: 'c', title: 'Run the timber numbers', hint: 'Board feet, volume, site index, harvest planning', icon: Calculator },
-  { key: 'fire', label: 'Fire Watch', keys: 'f', title: 'What is burning near you', hint: 'Live wildfire incidents', icon: Flame },
-  { key: 'growth', label: 'Growth & Inventory', keys: 'g', title: 'How the forest will grow', hint: 'Growth and yield projection, timber cruise', icon: Ruler },
-  { key: 'pests', label: 'Pests & Replanting', keys: 'p', title: 'Protect and renew', hint: 'Pest and disease tracking, replanting plans', icon: Bug },
-  { key: 'carbon', label: 'Carbon Credits', keys: 'b', title: 'What the carbon is worth', hint: 'Carbon stock and credit estimates', icon: Coins },
-  { key: 'map', label: 'Map & Wildlife', keys: 'm', title: 'Draw and survey', hint: 'Stand polygons and GBIF wildlife', icon: Map },
+const TABS: {key: ForestryTab; label: string; keys: string; hint: string; icon: typeof TreePine }[] = [
+  { key: 'stands', label: 'Stands', keys: 's', hint: 'Stand registry, activities, dashboard', icon: TreePine },
+  { key: 'calculators', label: 'Calculators', keys: 'c', hint: 'Board feet, volume, site index, harvest planning', icon: Calculator },
+  { key: 'fire', label: 'Fire Watch', keys: 'f', hint: 'Live wildfire incidents', icon: Flame },
+  { key: 'growth', label: 'Growth & Inventory', keys: 'g', hint: 'Growth and yield projection, timber cruise', icon: Ruler },
+  { key: 'pests', label: 'Pests & Replanting', keys: 'p', hint: 'Pest and disease tracking, replanting plans', icon: Bug },
+  { key: 'carbon', label: 'Carbon Credits', keys: 'b', hint: 'Carbon stock and credit estimates', icon: Coins },
+  { key: 'map', label: 'Map & Wildlife', keys: 'm', hint: 'Stand polygons and GBIF wildlife', icon: Map },
 ];
 
 export default function ForestryLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<ForestryTab>('stands');
 
   useLensCommand(
@@ -58,7 +54,6 @@ export default function ForestryLensPage() {
     { lensId: 'forestry' },
   );
 
-  const current = TABS.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="forestry" asMain={false}>
@@ -67,7 +62,6 @@ export default function ForestryLensPage() {
       <NorthStarFrame
         lensId="forestry"
         crumb="Forestry"
-        title={`${current.title}${activeTab === 'stands' && who ? `, ${who}` : ''}`}
         subtitle="Timber stands, harvest planning, fire management, growth and yield, pests and carbon credits."
         tabs={TABS.map((t) => ({ id: t.key, label: t.label, keys: t.keys, hint: t.hint, icon: t.icon }))}
         activeTab={activeTab}

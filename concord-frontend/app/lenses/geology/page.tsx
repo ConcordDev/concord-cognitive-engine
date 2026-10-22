@@ -66,7 +66,6 @@ export default function GeologyLensPage() {
       <NorthStarFrame
         lensId="geology"
         crumb="Geology"
-        title="Read the ground"
         subtitle="Field observations, rock and mineral ID, structural geology, seismic hazard and stratigraphy."
         tabs={TABS.map(({ key, label, icon }) => ({ id: key, label, icon }))}
         activeTab={activeTab}

@@ -13,8 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Download, Wrench, LayoutGrid } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -41,8 +39,6 @@ export default function ExportLensPage() {
   useLensNav('export');
   useLensIdentity('export');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ExportView>('desk');
 
   useLensCommand(
@@ -76,7 +72,6 @@ export default function ExportLensPage() {
       <NorthStarFrame
         lensId="export"
         crumb="Export"
-        title={`The export${who ? `, ${who}` : ''}`}
         subtitle="Your DTUs, in the format you pick. The shared library is a separate choice."
         tabs={VIEWS}
         activeTab={active}

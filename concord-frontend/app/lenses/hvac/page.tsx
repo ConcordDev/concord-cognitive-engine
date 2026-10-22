@@ -17,8 +17,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -56,8 +54,6 @@ export default function HVACLensPage() {
   const reduceMotion = useReducedMotion();
   useLensNav('hvac');
   const { latestData: realtimeData, isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('hvac');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<HvacView>('jobs');
   const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
 
@@ -104,7 +100,6 @@ export default function HVACLensPage() {
       <NorthStarFrame
         lensId="hvac"
         crumb="HVAC"
-        title={`Climate work${who ? `, ${who}` : ''}`}
         subtitle="Jobs, estimates, codes, materials, CRM, invoicing, inspections, certs and load estimates"
         actions={
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

@@ -14,8 +14,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Coins, Layers, TrendingUp, Globe2, Lock } from 'lucide-react';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { StakingMarkets } from '@/components/staking/StakingMarkets';
@@ -29,18 +27,15 @@ import { MaturityReminders } from '@/components/staking/MaturityReminders';
 
 type StakeView = 'stake' | 'positions' | 'earnings' | 'markets';
 
-const VIEWS: { id: StakeView; label: string; keys: string; title: string; icon: typeof Coins }[] = [
-  { id: 'stake', label: 'Stake', keys: '1', title: 'Put your CC to work', icon: Coins },
-  { id: 'positions', label: 'Positions', keys: '2', title: 'What you have locked', icon: Layers },
-  { id: 'earnings', label: 'Earnings', keys: '3', title: 'What it has earned', icon: TrendingUp },
-  { id: 'markets', label: 'Markets', keys: '4', title: 'How the real world stakes', icon: Globe2 },
+const VIEWS: { id: StakeView; label: string; keys: string; icon: typeof Coins }[] = [
+  { id: 'stake', label: 'Stake', keys: '1', icon: Coins },
+  { id: 'positions', label: 'Positions', keys: '2', icon: Layers },
+  { id: 'earnings', label: 'Earnings', keys: '3', icon: TrendingUp },
+  { id: 'markets', label: 'Markets', keys: '4', icon: Globe2 },
 ];
 
 export default function StakingPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<StakeView>('stake');
-  const current = VIEWS.find((v) => v.id === view)!;
   useLensCommand(
     [
       {
@@ -97,7 +92,6 @@ export default function StakingPage() {
       <NorthStarFrame
         lensId="staking"
         crumb="Finance"
-        title={`${current.title}${view === 'stake' && who ? `, ${who}` : ''}`}
         subtitle="Lock Concord Coin and earn yield from the treasury share of marketplace fees. APR is honestly variable, based on real marketplace activity. Currency: CC."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
         activeTab={view}

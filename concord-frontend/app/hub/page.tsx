@@ -298,7 +298,6 @@ function CoreLensHeroCard({ core }: { core: CoreLensConfig }) {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-white">{core.name}</h3>
-          <p className="text-[10px] text-gray-400">{core.tagline}</p>
         </div>
         <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
       </div>
