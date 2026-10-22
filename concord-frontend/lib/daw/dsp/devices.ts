@@ -11,10 +11,17 @@ import type { EffectInstance } from '../types';
 import { mulberry32, hashString, dbToGain } from './rng';
 import { createPitchDevice } from './pitch/runtime';
 import { pitchWorkletReady } from '../worklets/load-pitch-worklet';
+import { PITCH_RANGES, pitchLatencySamples } from './pitch/core';
+import { eq8HasBands } from './eq-bands';
+import { createDeesser, createEightBand, createKeyedCompressor, createUtility } from './mix-devices';
 
 export interface DeviceNode {
   input: AudioNode;
   output: AudioNode;
+  /** External sidechain key. Unset when the device listens to itself. */
+  keyInput?: AudioNode;
+  latencySamples?: number;
+  reduction?: () => number;
   dispose(): void;
 }
 
@@ -144,40 +151,89 @@ function createGate(ctx: BaseAudioContext, p: Record<string, unknown>): DeviceNo
   declick.type = 'lowpass';
   declick.frequency.value = cutoffForTime(0.002);
   declick.Q.value = 0;
-  input.connect(rect).connect(env).connect(envGain).connect(shaper).connect(declick).connect(vca.gain);
-  const nodes: AudioNode[] = [input, output, vca, rect, env, envGain, shaper, declick];
-  return { input, output, dispose: () => nodes.forEach((n) => { try { n.disconnect(); } catch { /* noop */ } }) };
+  const key = ctx.createGain();
+  const external = typeof p.sidechain === 'string' && p.sidechain.length > 0;
+  const hpfHz = num(p.scHpf, 0);
+  const keyNodes: AudioNode[] = [];
+  let src: AudioNode = external ? key : input;
+  if (hpfHz > 20) {
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = Math.min(5000, hpfHz);
+    hp.Q.value = 0.707;
+    src.connect(hp);
+    src = hp;
+    keyNodes.push(hp);
+  }
+  src.connect(rect);
+  rect.connect(env).connect(envGain).connect(shaper).connect(declick).connect(vca.gain);
+  const nodes: AudioNode[] = [input, output, vca, rect, env, envGain, shaper, declick, key, ...keyNodes];
+  return {
+    input,
+    output,
+    keyInput: external ? key : undefined,
+    dispose: () => nodes.forEach((n) => { try { n.disconnect(); } catch { /* noop */ } }),
+  };
+}
+
+function createEq3(ctx: BaseAudioContext, p: Record<string, unknown>): DeviceNode {
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowshelf';
+  low.frequency.value = num(p.lowFreq, 200);
+  low.gain.value = num(p.lowGain, 0);
+  const mid = ctx.createBiquadFilter();
+  mid.type = 'peaking';
+  mid.frequency.value = num(p.midFreq, 1000);
+  mid.Q.value = num(p.midQ, 0.9);
+  mid.gain.value = num(p.midGain, 0);
+  const high = ctx.createBiquadFilter();
+  high.type = 'highshelf';
+  high.frequency.value = num(p.highFreq, 6000);
+  high.gain.value = num(p.highGain, 0);
+  const nodes: AudioNode[] = [];
+  if (num(p.highPass, 0) > 0) {
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = num(p.highPass, 80);
+    hp.Q.value = 0.707;
+    nodes.push(hp);
+  }
+  nodes.push(low, mid, high);
+  return chain(nodes);
 }
 
 export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): DeviceNode | null {
   const p = effect.params || {};
   switch (effect.type) {
-    case 'eq3':
     case 'eq8':
-    case 'parametricEQ': {
-      const low = ctx.createBiquadFilter();
-      low.type = 'lowshelf';
-      low.frequency.value = num(p.lowFreq, 200);
-      low.gain.value = num(p.lowGain, 0);
-      const mid = ctx.createBiquadFilter();
-      mid.type = 'peaking';
-      mid.frequency.value = num(p.midFreq, 1000);
-      mid.Q.value = num(p.midQ, 0.9);
-      mid.gain.value = num(p.midGain, 0);
-      const high = ctx.createBiquadFilter();
-      high.type = 'highshelf';
-      high.frequency.value = num(p.highFreq, 6000);
-      high.gain.value = num(p.highGain, 0);
-      const nodes: AudioNode[] = [];
-      if (num(p.highPass, 0) > 0) {
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = num(p.highPass, 80);
-        hp.Q.value = 0.707;
-        nodes.push(hp);
-      }
-      nodes.push(low, mid, high);
-      return chain(nodes);
+    case 'parametricEQ':
+      if (eq8HasBands(p)) return createEightBand(ctx, p);
+      // Legacy eq8 stored a 3-band curve. Keep that sound until the user opts into bands.
+      return createEq3(ctx, p);
+    case 'eq3':
+      return createEq3(ctx, p);
+    case 'deesser':
+      return createDeesser(ctx, p);
+    case 'utility':
+      return createUtility(ctx, p);
+    case 'compressor': {
+      const external = typeof p.sidechain === 'string' && String(p.sidechain).length > 0;
+      if (external) return createKeyedCompressor(ctx, p, true);
+      const c = ctx.createDynamicsCompressor();
+      c.threshold.value = num(p.threshold, -18);
+      c.ratio.value = num(p.ratio, 3);
+      c.attack.value = num(p.attack, 0.01);
+      c.release.value = num(p.release, 0.2);
+      // Leave the browser knee (30 dB) when the project has no knee, so old compressors stay put.
+      if (p.knee != null && Number.isFinite(Number(p.knee))) c.knee.value = Number(p.knee);
+      const makeup = ctx.createGain();
+      const auto = num(p.autoMakeup, 0) !== 0;
+      const makeupDb = auto ? Math.max(0, -num(p.threshold, -18) * (1 - 1 / Math.max(1, num(p.ratio, 3))) * 0.5) : num(p.makeup, 0);
+      makeup.gain.value = dbToGain(makeupDb);
+      return {
+        ...chain([c, makeup]),
+        reduction: () => c.reduction,
+      };
     }
     case 'filter':
     case 'autoFilter': {
@@ -187,17 +243,6 @@ export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): Dev
       f.frequency.value = num(p.frequency, 1000);
       f.Q.value = num(p.resonance, 0.707);
       return chain([f]);
-    }
-    case 'compressor': {
-      const c = ctx.createDynamicsCompressor();
-      c.threshold.value = num(p.threshold, -18);
-      c.ratio.value = num(p.ratio, 3);
-      c.attack.value = num(p.attack, 0.01);
-      c.release.value = num(p.release, 0.2);
-      c.knee.value = num(p.knee, 6);
-      const makeup = ctx.createGain();
-      makeup.gain.value = dbToGain(num(p.makeup, 0));
-      return chain([c, makeup]);
     }
     case 'limiter': {
       // Live-safe brickwall approximation. Exports additionally run the
@@ -324,8 +369,13 @@ export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): Dev
     }
     case 'gate':
       return createGate(ctx, p);
-    case 'pitchCorrect':
-      return createPitchDevice(ctx, effect);
+    case 'pitchCorrect': {
+      const node = createPitchDevice(ctx, effect);
+      if (!node) return null;
+      const idx = Math.max(0, Math.min(PITCH_RANGES.length - 1, Math.round(num(p.range, 1))));
+      const mode = num(p.quality, 0) !== 0 ? 'quality' as const : 'low' as const;
+      return { ...node, latencySamples: pitchLatencySamples(ctx.sampleRate || 48000, PITCH_RANGES[idx].minHz, mode) };
+    }
     default:
       return null;
   }
@@ -335,7 +385,7 @@ export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): Dev
 export class DeviceChain {
   readonly input: GainNode;
   readonly output: GainNode;
-  private devices: DeviceNode[] = [];
+  private devices: Array<{ id: string; node: DeviceNode }> = [];
   private key = '';
   constructor(private ctx: BaseAudioContext) {
     this.input = ctx.createGain();
@@ -351,7 +401,7 @@ export class DeviceChain {
     if (key === this.key) return;
     this.key = key;
     try { this.input.disconnect(); } catch { /* noop */ }
-    this.devices.forEach((d) => d.dispose());
+    this.devices.forEach((d) => d.node.dispose());
     this.devices = [];
     let last: AudioNode = this.input;
     for (const e of list) {
@@ -359,14 +409,27 @@ export class DeviceChain {
       if (!d) continue;
       last.connect(d.input);
       last = d.output;
-      this.devices.push(d);
+      this.devices.push({ id: e.id, node: d });
     }
     last.connect(this.output);
   }
 
+  latencySamples(): number {
+    return this.devices.reduce((sum, d) => sum + (d.node.latencySamples || 0), 0);
+  }
+
+  keyInput(effectId: string): AudioNode | null {
+    return this.devices.find((d) => d.id === effectId)?.node.keyInput || null;
+  }
+
+  reductionDb(effectId: string): number {
+    const fn = this.devices.find((d) => d.id === effectId)?.node.reduction;
+    return fn ? fn() : 0;
+  }
+
   dispose(): void {
     try { this.input.disconnect(); this.output.disconnect(); } catch { /* noop */ }
-    this.devices.forEach((d) => d.dispose());
+    this.devices.forEach((d) => d.node.dispose());
     this.devices = [];
   }
 }

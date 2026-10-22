@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Plus, Power, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, EffectInstance, EffectType, SynthPreset } from '@/lib/daw/types';
 import { effect } from '@/lib/daw/project';
+import { eq8HasBands, eq8Params } from '@/lib/daw/dsp/eq-bands';
 import { instrumentOptions, isDrumInstrument, resolveTrackPreset } from '@/lib/daw/presets';
+import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { newPitchCorrect, PitchCorrectCard } from './PitchCorrectCard';
+import { Eq8Card } from './Eq8Card';
+import { useBeatFrame } from './engine-hooks';
 
 interface ParamSpec { key: string; label: string; min: number; max: number; step: number; def: number; unit?: string }
 
@@ -25,7 +29,22 @@ export const DEVICE_SPECS: Array<{ type: EffectType; name: string; wet?: number;
     { key: 'ratio', label: 'Ratio', min: 1, max: 20, step: 0.1, def: 3, unit: ':1' },
     { key: 'attack', label: 'Attack', min: 0.001, max: 0.2, step: 0.001, def: 0.01, unit: 's' },
     { key: 'release', label: 'Release', min: 0.02, max: 1, step: 0.01, def: 0.2, unit: 's' },
+    { key: 'knee', label: 'Knee', min: 0, max: 30, step: 0.5, def: 30, unit: 'dB' },
     { key: 'makeup', label: 'Makeup', min: 0, max: 18, step: 0.5, def: 0, unit: 'dB' },
+    { key: 'autoMakeup', label: 'Auto gain', min: 0, max: 1, step: 1, def: 0 },
+  ] },
+  { type: 'deesser', name: 'De-esser', params: [
+    { key: 'freq', label: 'Split', min: 2000, max: 12000, step: 50, def: 6000, unit: 'Hz' },
+    { key: 'threshold', label: 'Threshold', min: -48, max: 0, step: 0.5, def: -24, unit: 'dB' },
+    { key: 'ratio', label: 'Ratio', min: 1, max: 12, step: 0.1, def: 4, unit: ':1' },
+    { key: 'listen', label: 'Listen', min: 0, max: 1, step: 1, def: 0 },
+  ] },
+  { type: 'utility', name: 'Utility', params: [
+    { key: 'gain', label: 'Gain', min: -24, max: 24, step: 0.1, def: 0, unit: 'dB' },
+    { key: 'invertL', label: 'Invert L', min: 0, max: 1, step: 1, def: 0 },
+    { key: 'invertR', label: 'Invert R', min: 0, max: 1, step: 1, def: 0 },
+    { key: 'mono', label: 'Mono', min: 0, max: 1, step: 1, def: 0 },
+    { key: 'swap', label: 'Swap L/R', min: 0, max: 1, step: 1, def: 0 },
   ] },
   { type: 'gate', name: 'Gate', params: [
     { key: 'threshold', label: 'Threshold', min: -80, max: 0, step: 0.5, def: -45, unit: 'dB' },
@@ -96,7 +115,7 @@ function ParamLabel({ children }: { children: string }) {
   );
 }
 
-export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInstance; onChange: (fx: EffectInstance, key?: string) => void; onRemove?: () => void; onMove?: (d: -1 | 1) => void }) {
+export function DeviceCard({ fx, onChange, onRemove, onMove, tracks, trackId }: { fx: EffectInstance; onChange: (fx: EffectInstance, key?: string) => void; onRemove?: () => void; onMove?: (d: -1 | 1) => void; tracks?: DAWTrack[]; trackId?: string }) {
   const s = specOf(fx.type);
   if (!s) {
     // Saved by an older Studio version; the engine does not process this type.
@@ -131,6 +150,10 @@ export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInsta
             </label>
           );
         })}
+        {(fx.type === 'compressor' || fx.type === 'gate') && tracks && (
+          <SidechainFields fx={fx} tracks={tracks} trackId={trackId} onChange={onChange} />
+        )}
+        {(fx.type === 'compressor' || fx.type === 'deesser') && trackId && <ReductionReadout trackId={trackId} effectId={fx.id} />}
         {hasWet && (
           <label className="flex items-center gap-1 text-[10px] text-zinc-400">
             <ParamLabel>Mix</ParamLabel>
@@ -141,6 +164,43 @@ export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInsta
       </div>
     </div>
   );
+}
+
+function SidechainFields({ fx, tracks, trackId, onChange }: { fx: EffectInstance; tracks: DAWTrack[]; trackId?: string; onChange: (fx: EffectInstance, key?: string) => void }) {
+  const current = typeof fx.params.sidechain === 'string' ? fx.params.sidechain : '';
+  const hpf = Number(fx.params.scHpf ?? 0);
+  const choices = tracks.filter((t) => t.id !== trackId && !t.vca && t.type !== 'master');
+  return (
+    <>
+      <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+        <ParamLabel>Key</ParamLabel>
+        <select aria-label="Sidechain source" value={choices.some((t) => t.id === current) ? current : ''} onChange={(e) => {
+          const params = { ...fx.params };
+          if (e.target.value) params.sidechain = e.target.value;
+          else delete params.sidechain;
+          onChange({ ...fx, params }, `fx-${fx.id}-sidechain`);
+        }} className="min-w-0 flex-1 rounded bg-black/40 px-1 py-0.5 text-[10px] text-zinc-100">
+          <option value="">Self</option>
+          {choices.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </label>
+      <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+        <ParamLabel>Key HPF</ParamLabel>
+        <input aria-label="Sidechain high-pass" type="range" min={0} max={5000} step={10} value={Number.isFinite(hpf) ? hpf : 0} onChange={(e) => onChange({ ...fx, params: { ...fx.params, scHpf: Number(e.target.value) } }, `fx-${fx.id}-scHpf`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
+        <span className="w-11 shrink-0 text-right tabular-nums text-zinc-300">{Math.round(hpf)}Hz</span>
+      </label>
+    </>
+  );
+}
+
+function ReductionReadout({ trackId, effectId }: { trackId: string; effectId: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useBeatFrame(() => {
+    if (!ref.current) return;
+    const db = getStudioEngine().deviceReductionDb(trackId, effectId);
+    ref.current.textContent = db < -0.05 ? `GR ${db.toFixed(1)}` : '';
+  });
+  return <span ref={ref} className="text-[10px] tabular-nums text-amber-300/90" data-testid="studio-gr" />;
 }
 
 function InstrumentCard({ project, track, onTrack, onPreset }: { project: DAWProject; track: DAWTrack; onTrack: (patch: Partial<DAWTrack>) => void; onPreset: (p: SynthPreset, key?: string) => void }) {
@@ -202,11 +262,14 @@ export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: De
   return (
     <div className="flex h-full gap-2 overflow-x-auto p-2" data-testid="studio-devices">
       {track.type !== 'audio' && <InstrumentCard project={project} track={track} onTrack={onTrack} onPreset={onPreset} />}
-      {fxs.map((fx, i) => (
-        fx.type === 'pitchCorrect'
-          ? <PitchCorrectCard key={fx.id} fx={fx} project={project} onChange={(nfx, key) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key)} onRemove={() => onEffects(fxs.filter((x) => x.id !== fx.id))} onMove={(d) => move(i, d)} />
-          : <DeviceCard key={fx.id} fx={fx} onChange={(nfx, key) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key)} onRemove={() => onEffects(fxs.filter((x) => x.id !== fx.id))} onMove={(d) => move(i, d)} />
-      ))}
+      {fxs.map((fx, i) => {
+        const change = (nfx: EffectInstance, key?: string) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key);
+        const remove = () => onEffects(fxs.filter((x) => x.id !== fx.id));
+        const onMove = (d: -1 | 1) => move(i, d);
+        if (fx.type === 'pitchCorrect') return <PitchCorrectCard key={fx.id} fx={fx} project={project} onChange={change} onRemove={remove} onMove={onMove} />;
+        if ((fx.type === 'eq8' || fx.type === 'parametricEQ') && eq8HasBands(fx.params)) return <Eq8Card key={fx.id} fx={fx} onChange={change} onRemove={remove} onMove={onMove} />;
+        return <DeviceCard key={fx.id} fx={fx} tracks={project.tracks} trackId={track.id} onChange={change} onRemove={remove} onMove={onMove} />;
+      })}
       <div className="relative w-32 flex-shrink-0">
         <button onClick={() => setMenu((m) => !m)} className="flex h-full max-h-40 w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 text-xs text-zinc-400 hover:text-white" data-testid="studio-add-device">
           <Plus className="h-4 w-4" /> Add device
@@ -216,6 +279,7 @@ export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: De
             {DEVICE_SPECS.map((s) => (
               <button key={s.type} onClick={() => { onEffects([...fxs, newDevice(s.type)]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">{s.name}</button>
             ))}
+            <button type="button" onClick={() => { onEffects([...fxs, effect('eq8', '8-band EQ', eq8Params(), 1)]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">8-band EQ</button>
             <button type="button" onClick={() => { onEffects([...fxs, newPitchCorrect()]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">Pitch Correct</button>
           </div>
         )}

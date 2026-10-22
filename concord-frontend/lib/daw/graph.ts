@@ -19,15 +19,26 @@ import { PITCH_RANGES, pitchLatencySec } from './dsp/pitch/core';
 import { pitchNodeBound, pushPitchSettings } from './dsp/pitch/runtime';
 import { settingsFromEffect } from './dsp/pitch/settings';
 import { equalPowerGain } from './dsp/fades';
+import { audibleIds, buildRoutePlan, type RouteTrack } from './routing';
+import { gainPoints, valueAtBeat, type AutoPoint } from './automation';
+import { LiveLoudness } from './dsp/live-loudness';
 
 export interface ChannelNodes {
   input: GainNode;
   chain: DeviceChain;
   duck: GainNode;
   fader: GainNode;
+  /** Present only while this track is a VCA member. Unity otherwise and unwired. */
+  vca: GainNode;
   pan: StereoPannerNode;
   mute: GainNode;
+  directDelay: DelayNode;
+  keyDelay: DelayNode;
+  keyTap: GainNode;
   analyser?: AnalyserNode;
+  analyserL?: AnalyserNode;
+  analyserR?: AnalyserNode;
+  sends: Array<{ busId: string; pre: boolean; gain: GainNode; delay: DelayNode | null }>;
 }
 
 export interface GraphOptions {
@@ -120,8 +131,7 @@ function scheduleSpanGain(
 
 export function isTrackAudible(track: DAWTrack, tracks: DAWTrack[], only?: string[] | null): boolean {
   if (only && !only.includes(track.id)) return false;
-  const anySolo = tracks.some((t) => t.solo);
-  return !track.mute && (!anySolo || track.solo);
+  return audibleIds(tracks).has(track.id);
 }
 
 export class ProjectGraph {
@@ -136,6 +146,8 @@ export class ProjectGraph {
   private buffers = new Map<string, AudioBuffer>();
   private voices = new Set<{ v: Voice; end: number }>();
   private project: DAWProject | null = null;
+  private topology = '';
+  readonly loudness = new LiveLoudness();
   /** Live input, pre-insert. Not used by the offline render. */
   private monitor: { node: AudioNode; trackId: string } | null = null;
 
@@ -157,6 +169,17 @@ export class ProjectGraph {
       this.masterAnalyser = null;
     }
     this.masterFader.connect(opts.destination);
+    const live = ctx as AudioContext;
+    if (opts.analysers && typeof live.createScriptProcessor === 'function') {
+      const proc = live.createScriptProcessor(2048, 2, 2);
+      const silent = live.createGain();
+      silent.gain.value = 0;
+      this.masterFader.connect(proc);
+      proc.connect(silent).connect(opts.destination);
+      proc.onaudioprocess = (ev) => {
+        this.loudness.push(ev.inputBuffer.getChannelData(0), ev.inputBuffer.getChannelData(1), live.sampleRate);
+      };
+    }
   }
 
   setBuffer(id: string, buf: AudioBuffer): void {
@@ -183,14 +206,29 @@ export class ProjectGraph {
         const pan = this.ctx.createStereoPanner();
         const mute = this.ctx.createGain();
         input.connect(chain.input);
-        chain.output.connect(duck).connect(fader).connect(pan).connect(mute).connect(this.masterIn);
+        chain.output.connect(duck).connect(fader).connect(pan).connect(mute);
+        const vca = this.ctx.createGain();
+        vca.gain.value = 1;
+        const directDelay = this.ctx.createDelay(1);
+        const keyDelay = this.ctx.createDelay(1);
+        const keyTap = this.ctx.createGain();
         let analyser: AnalyserNode | undefined;
+        let analyserL: AnalyserNode | undefined;
+        let analyserR: AnalyserNode | undefined;
         if (this.opts.analysers) {
           analyser = this.ctx.createAnalyser();
           analyser.fftSize = 1024;
           pan.connect(analyser);
+          const split = this.ctx.createChannelSplitter(2);
+          analyserL = this.ctx.createAnalyser();
+          analyserR = this.ctx.createAnalyser();
+          analyserL.fftSize = 1024;
+          analyserR.fftSize = 1024;
+          pan.connect(split);
+          split.connect(analyserL, 0);
+          split.connect(analyserR, 1);
         }
-        ch = { input, chain, duck, fader, pan, mute, analyser };
+        ch = { input, chain, duck, fader, vca, pan, mute, directDelay, keyDelay, keyTap, analyser, analyserL, analyserR, sends: [] };
         this.channels.set(t.id, ch);
       }
       ch.input.gain.value = dbToGain(Math.max(-48, Math.min(36, t.trimDb || 0)));
@@ -206,14 +244,151 @@ export class ProjectGraph {
     for (const [id, ch] of this.channels) {
       if (live.has(id)) continue;
       if (this.monitor?.trackId === id) this.detachMonitor();
-      try { ch.mute.disconnect(); ch.input.disconnect(); } catch { /* noop */ }
+      try { ch.mute.disconnect(); ch.input.disconnect(); ch.fader.disconnect(); } catch { /* noop */ }
+      ch.sends.forEach((s) => { try { s.gain.disconnect(); } catch { /* noop */ } });
       ch.chain.dispose();
       this.channels.delete(id);
     }
+    this.rewire(project);
     this.masterChain.set(project.masterBus?.inserts);
     this.masteringChain.set(this.opts.bypassMastering ? [] : masteringEffects(project));
     const mv = project.masterBus?.volume;
     this.masterFader.gain.value = Number.isFinite(mv) ? dbToGain(Math.min(12, mv as number)) : 1;
+  }
+
+  /** Connect outputs, sends, and sidechain keys. A zero delay is a direct wire. */
+  private rewire(project: DAWProject): void {
+    const sr = this.ctx.sampleRate || 48000;
+    const rows: RouteTrack[] = project.tracks.map((t) => {
+      const ch = this.channels.get(t.id);
+      const advance = Math.round(this.pitchLeadSec(t) * sr);
+      const net = Math.max(0, (ch?.chain.latencySamples() || 0) - advance);
+      return {
+        id: t.id, type: t.type, mute: t.mute, solo: t.solo, vca: t.vca, outputTarget: t.outputTarget,
+        sendLevels: t.sendLevels, sendPre: t.sendPre, effectLatency: net,
+      };
+    });
+    const plan = buildRoutePlan(rows);
+    const links: Array<{ trackId: string; effectId: string; sourceId: string }> = [];
+    for (const t of project.tracks) {
+      for (const fx of t.effectChain || []) {
+        const source = fx.params?.sidechain;
+        if (typeof source === 'string' && source) links.push({ trackId: t.id, effectId: fx.id, sourceId: source });
+      }
+    }
+    const vcaGain = new Map<string, number>();
+    for (const t of project.tracks) {
+      if (!t.vcaId) continue;
+      const group = project.tracks.find((g) => g.id === t.vcaId && g.vca);
+      let gain = 1;
+      if (group) gain = Number.isFinite(group.volume) ? dbToGain(Math.min(12, group.volume)) : 0;
+      vcaGain.set(t.id, gain);
+    }
+    const topo = JSON.stringify({ direct: plan.direct, sends: plan.sends, links, vca: [...vcaGain.keys()] });
+    if (topo !== this.topology) {
+      this.topology = topo;
+      for (const [id, ch] of this.channels) {
+        try { ch.mute.disconnect(); ch.fader.disconnect(); ch.keyTap.disconnect(); } catch { /* noop */ }
+        ch.sends.forEach((s) => { try { s.gain.disconnect(); s.delay?.disconnect(); } catch { /* noop */ } });
+        ch.sends = [];
+        const direct = plan.direct[id];
+        if (vcaGain.has(id)) {
+          ch.vca.gain.value = vcaGain.get(id) || 1;
+          ch.fader.connect(ch.vca).connect(ch.pan);
+        } else {
+          ch.fader.connect(ch.pan);
+        }
+        if (!direct || project.tracks.find((t) => t.id === id)?.vca) continue;
+        const dest = direct.destId === 'master' ? this.masterIn : this.channels.get(direct.destId)?.input;
+        if (!dest) continue;
+        this.connectDelayed(ch.mute, dest, ch.directDelay, direct.delaySamples / sr);
+        for (const send of plan.sends[id] || []) {
+          const bus = this.channels.get(send.busId);
+          if (!bus) continue;
+          const gain = this.ctx.createGain();
+          const delay = send.delaySamples > 0 ? this.ctx.createDelay(1) : null;
+          const tap = send.pre ? ch.duck : ch.mute;
+          if (delay) {
+            delay.delayTime.value = Math.min(1, send.delaySamples / sr);
+            tap.connect(gain).connect(delay).connect(bus.input);
+          } else tap.connect(gain).connect(bus.input);
+          ch.sends.push({ busId: send.busId, pre: send.pre, gain, delay });
+        }
+        if (links.some((l) => l.sourceId === id)) {
+          this.connectDelayed(ch.mute, ch.keyTap, ch.keyDelay, (plan.keyDelay[id] || 0) / sr);
+        }
+      }
+    }
+    for (const ch of this.channels.values()) {
+      try { ch.keyTap.disconnect(); } catch { /* no key listeners */ }
+    }
+    for (const link of links) {
+      const src = this.channels.get(link.sourceId);
+      const key = this.channels.get(link.trackId)?.chain.keyInput(link.effectId);
+      if (src && key) try { src.keyTap.connect(key); } catch { /* node already torn down */ }
+    }
+    for (const [id, gain] of vcaGain) {
+      const ch = this.channels.get(id);
+      if (ch) ch.vca.gain.value = gain;
+    }
+    for (const [id, ch] of this.channels) {
+      const track = project.tracks.find((t) => t.id === id);
+      const open = track ? audibleIds(project.tracks).has(id) : true;
+      for (const send of ch.sends) {
+        const level = track?.sendLevels?.[send.busId];
+        send.gain.gain.value = open && Number.isFinite(level) ? dbToGain(level as number) : 0;
+      }
+      const delaySec = (plan.direct[id]?.delaySamples || 0) / sr;
+      if (ch.directDelay) ch.directDelay.delayTime.value = Math.min(1, delaySec);
+    }
+  }
+
+  private connectDelayed(from: AudioNode, to: AudioNode, delay: DelayNode, seconds: number): void {
+    if (seconds > 0.00005) {
+      delay.delayTime.value = Math.min(1, seconds);
+      from.connect(delay).connect(to);
+    } else from.connect(to);
+  }
+
+  /**
+   * Schedule volume (dB → linear gain), pan, and send levels for this window.
+   * Off mode leaves the static fader alone. Touch, latch, and write are not
+   * offered: only lanes that already exist are read.
+   */
+  applyAutomation(project: DAWProject | null, fromBeat: number, toBeat: number, timeAt: (beat: number) => number): void {
+    if (!project || project.transport?.automation === 'off' || !(toBeat > fromBeat)) return;
+    const now = (this.ctx as AudioContext).currentTime || 0;
+    for (const t of project.tracks) {
+      const ch = this.channels.get(t.id);
+      if (!ch) continue;
+      for (const lane of t.automationLanes || []) {
+        if (!lane.points?.length) continue;
+        const points = lane.points as AutoPoint[];
+        if (lane.parameterPath === 'volume') {
+          const samples = gainPoints(points, fromBeat, toBeat, dbToGain);
+          this.rampParam(ch.fader.gain, samples, timeAt, now);
+        } else if (lane.parameterPath === 'pan') {
+          const samples = gainPoints(points, fromBeat, toBeat, (v) => Math.max(-1, Math.min(1, v)), 0.0625).map((s) => ({ beat: s.beat, gain: valueAtBeat(points, s.beat) }));
+          this.rampParam(ch.pan.pan, samples, timeAt, now);
+        } else if (lane.parameterPath.startsWith('send:')) {
+          const busId = lane.parameterPath.slice(5);
+          const send = ch.sends.find((s) => s.busId === busId);
+          if (!send) continue;
+          this.rampParam(send.gain.gain, gainPoints(points, fromBeat, toBeat, dbToGain), timeAt, now);
+        }
+      }
+    }
+  }
+
+  private rampParam(param: AudioParam, samples: Array<{ beat: number; gain: number }>, timeAt: (beat: number) => number, now: number): void {
+    if (!samples.length) return;
+    const start = Math.max(now, timeAt(samples[0].beat));
+    param.cancelScheduledValues(start);
+    param.setValueAtTime(samples[0].gain, start);
+    for (let i = 1; i < samples.length; i++) {
+      const t = timeAt(samples[i].beat);
+      if (t > start) param.linearRampToValueAtTime(samples[i].gain, t);
+    }
   }
 
   /**

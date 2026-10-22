@@ -15,6 +15,7 @@
 import type { DAWTrack, DAWClip } from './types';
 import { beatAfter, bpmAt, isConstantTempo, resolveTempo, secondsBetween, type TempoPoint } from './tempo-map';
 import { auditionSpec, clipGaps, compPlaybackSpecs } from './takes';
+import { audibleIds } from './routing';
 
 export type EventKind = 'note' | 'audio' | 'click';
 
@@ -97,8 +98,8 @@ export interface CollectOptions {
 const EPS = 1e-9;
 
 function audibleTracks(tracks: DAWTrack[]): DAWTrack[] {
-  const anySolo = tracks.some((t) => t.solo);
-  return tracks.filter((t) => !t.mute && (!anySolo || t.solo) && t.type !== 'master' && t.type !== 'bus');
+  const ids = audibleIds(tracks);
+  return tracks.filter((t) => ids.has(t.id));
 }
 
 /** Occurrences of a clip's content: one for plain clips, repeats for looped/session clips. */
@@ -265,6 +266,7 @@ export interface SchedulerConfig {
   getSource(): CollectSource;
   /** Called for each event with its absolute AudioContext start time. */
   onEvent(ev: TimelineEvent, time: number, secPerBeat: number): void;
+  onWindow?(fromBeat: number, toBeat: number, timeAt: (beat: number) => number): void;
   clock: SchedulerClock;
   lookaheadSec?: number;
   intervalMs?: number;
@@ -349,6 +351,7 @@ export class LookaheadScheduler {
       if (wraps && loop) windowEnd = loop.end;
       const segTime = this.nextTime;
       const segBeat = this.nextBeat;
+      this.cfg.onWindow?.(segBeat, windowEnd, (beat) => segTime + (constant ? (beat - segBeat) * spb : secondsBetween(map, segBeat, beat)));
       for (const ev of collectEvents(segBeat, windowEnd, src, { catchUp: this.firstWindow })) {
         const dt = constant ? (ev.beat - segBeat) * spb : secondsBetween(map, segBeat, ev.beat);
         const evSpb = constant ? spb : 60 / bpmAt(map, ev.beat);
