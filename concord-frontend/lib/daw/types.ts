@@ -489,6 +489,8 @@ export interface DAWProject {
   bpm: number;
   key: string;
   scale: string;
+  /** Bit i set means pitch class i (C = 0) is allowed. Used only when scale is "custom". */
+  scaleMask?: number;
   timeSignature: TimeSignature;
   genre: string | null;
   tracks: DAWTrack[];

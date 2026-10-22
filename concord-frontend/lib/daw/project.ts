@@ -221,6 +221,12 @@ export function writeTempoPoints(p: DAWProject, points: TempoPoint[]): DAWProjec
 }
 
 /** Make any saved or legacy snapshot safe to open (fills missing fields, never throws). */
+function sanitizeScaleMask(v: unknown): number | undefined {
+  const n = Number(v);
+  if (!Number.isInteger(n)) return undefined;
+  return Math.max(0, Math.min(0xfff, n));
+}
+
 export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'): DAWProject {
   const base = createProject(fallbackTitle);
   if (!raw || typeof raw !== 'object') return base;
@@ -255,6 +261,9 @@ export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'):
     id: typeof r.id === 'string' && r.id ? r.id : base.id,
     title: typeof r.title === 'string' && r.title ? r.title : fallbackTitle,
     bpm,
+    key: typeof r.key === 'string' && r.key.trim() ? r.key : base.key,
+    scale: typeof r.scale === 'string' && r.scale.trim() ? r.scale : base.scale,
+    scaleMask: sanitizeScaleMask(r.scaleMask),
     tracks,
     timeSignature: Array.isArray(r.timeSignature) && r.timeSignature.length === 2 ? r.timeSignature : [4, 4],
     masterBus: r.masterBus && typeof r.masterBus === 'object' ? { ...base.masterBus, ...r.masterBus, inserts: Array.isArray(r.masterBus.inserts) ? r.masterBus.inserts : [] } : base.masterBus,

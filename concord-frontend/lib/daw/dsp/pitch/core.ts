@@ -91,7 +91,12 @@ const ROOTS: Record<string, number> = {
   'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11, Cb: 11,
 };
 
-export function scaleMaskFor(key: string, scale: string): { mask: number; known: boolean } {
+export function scaleMaskFor(key: string, scale: string, customMask?: number): { mask: number; known: boolean } {
+  if ((scale || '').trim().toLowerCase() === 'custom') {
+    const m = Number(customMask);
+    if (!Number.isInteger(m) || m <= 0 || m > 0xfff) return { mask: 0xfff, known: false };
+    return { mask: m, known: true };
+  }
   const root = ROOTS[(key || 'C').trim()] ?? null;
   const steps = SCALE_STEPS[(scale || '').trim().toLowerCase()];
   if (root === null || !steps) return { mask: 0xfff, known: false };

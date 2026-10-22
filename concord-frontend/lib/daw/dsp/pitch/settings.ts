@@ -25,12 +25,12 @@ const num = (v: unknown, d: number) => {
   return Number.isFinite(n) ? n : d;
 };
 
-export function settingsFromEffect(fx: EffectInstance, project: { key: string; scale: string }, sampleRate: number): PitchSettings {
+export function settingsFromEffect(fx: EffectInstance, project: { key: string; scale: string; scaleMask?: number }, sampleRate: number): PitchSettings {
   const range = PITCH_RANGES[Math.max(0, Math.min(PITCH_RANGES.length - 1, Math.round(num(fx.params.range, 1))))];
   const useProject = num(fx.params.useProject, 1) !== 0;
   const key = useProject ? project.key : String(fx.params.keyName ?? 'C');
   const scale = useProject ? project.scale : String(fx.params.scaleName ?? 'chromatic');
-  const scaled = scaleMaskFor(key, scale);
+  const scaled = scaleMaskFor(key, scale, useProject ? project.scaleMask : undefined);
   return {
     sampleRate,
     retuneMs: Math.max(0, Math.min(400, num(fx.params.retuneMs, 0))),
