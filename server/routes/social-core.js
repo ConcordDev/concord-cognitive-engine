@@ -396,7 +396,7 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
   router.get("/profile/:userId", auth, (req, res) => {
     const STATE = stateOf();
     if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
-    sendLayer(res, getProfile(STATE, req.params.userId));
+    sendLayer(res, getProfile(STATE, req.params.userId, req.user?.id || null));
   });
 
   router.get("/feed/following", auth, (req, res) => {

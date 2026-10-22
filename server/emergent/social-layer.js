@@ -168,7 +168,61 @@ export function upsertProfile(STATE, userId, profileData) {
   return { ok: true, profile, isNew };
 }
 
-export function getProfile(STATE, userId) {
+// Fields a stranger may see. Everything else on the profile object is a
+// per-user setting (searches, mutes, lists, DM policy, email, …) and is
+// returned only to the owner. New settings stay private until they are
+// added here on purpose.
+const PUBLIC_PROFILE_KEYS = [
+  "userId",
+  "displayName",
+  "username",
+  "bio",
+  "avatar",
+  "isPublic",
+  "specialization",
+  "website",
+  "createdAt",
+  "updatedAt",
+];
+
+const PUBLIC_STAT_KEYS = [
+  "dtuCount",
+  "publicDtuCount",
+  "citationCount",
+  "followerCount",
+  "followingCount",
+];
+
+function publicStats(stats) {
+  const src = stats && typeof stats === "object" ? stats : {};
+  const out = {};
+  for (const key of PUBLIC_STAT_KEYS) out[key] = src[key] || 0;
+  return out;
+}
+
+/**
+ * Allowlist projection. `viewerId` equal to `profile.userId` receives the
+ * stored profile except `email`, which is never part of a social profile
+ * response. Every other viewer receives PUBLIC_PROFILE_KEYS plus public stats.
+ */
+export function profileForViewer(profile, viewerId = null) {
+  if (!profile || typeof profile !== "object") return null;
+  const owner = !!viewerId && viewerId === profile.userId;
+  if (owner) {
+    const copy = { ...profile };
+    if (copy.stats && typeof copy.stats === "object") copy.stats = { ...copy.stats };
+    delete copy.email;
+    return copy;
+  }
+  const view = {};
+  for (const key of PUBLIC_PROFILE_KEYS) {
+    if (profile[key] !== undefined) view[key] = profile[key];
+  }
+  view.stats = publicStats(profile.stats);
+  return view;
+}
+
+export function getProfile(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
   const profile = social.profiles.get(userId);
   if (!profile) return { ok: false, error: "Profile not found" };
@@ -204,14 +258,12 @@ export function getProfile(STATE, userId) {
   profile.stats.citationCount = citationCount;
 
   const who = publicIdentity(userId, profile);
-  return {
-    ok: true,
-    profile: {
-      ...profile,
-      displayName: who.displayName || profile.displayName,
-      username: who.username,
-    },
+  const shaped = {
+    ...profile,
+    displayName: who.displayName || profile.displayName,
+    username: who.username,
   };
+  return { ok: true, profile: profileForViewer(shaped, viewerId) };
 }
 
 export function listProfiles(STATE, options = {}) {
@@ -233,7 +285,8 @@ export function listProfiles(STATE, options = {}) {
   });
 
   const limit = options.limit || 50;
-  return { ok: true, profiles: profiles.slice(0, limit), total: profiles.length };
+  const page = profiles.slice(0, limit).map((p) => profileForViewer(p, null));
+  return { ok: true, profiles: page, total: profiles.length };
 }
 
 // ── Follow System ────────────────────────────────────────────────────────
