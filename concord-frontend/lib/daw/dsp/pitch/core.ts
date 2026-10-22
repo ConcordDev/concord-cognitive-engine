@@ -399,3 +399,24 @@ export function removeLatency(signal: Float32Array, latency: number): Float32Arr
   out.set(signal.subarray(latency), 0);
   return out;
 }
+
+/**
+ * Time-varying pitch ratio through the same delay reader as Pitch Correct.
+ * `ratioAt(i)` is the read speed at input sample i (1 leaves the pitch alone).
+ * The latency is the delay to remove so the clip stays on the timeline.
+ */
+export function shiftSignalByRatio(
+  input: Float32Array,
+  ratioAt: (index: number) => number,
+  sampleRate: number,
+): { output: Float32Array; latency: number } {
+  const latency = pitchLatencySamples(sampleRate, 70, 'low');
+  const shift = makeShift(latency);
+  const output = new Float32Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    let ratio = ratioAt(i);
+    if (!Number.isFinite(ratio)) ratio = 1;
+    output[i] = shiftSample(shift, input[i], Math.max(0.25, Math.min(4, ratio))).wet;
+  }
+  return { output, latency };
+}

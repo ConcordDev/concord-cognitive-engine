@@ -14,6 +14,7 @@ import { projectTempoPoints, secondsBetween } from './tempo-map';
 import { playSynthNote, playDrum } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import type { PcmAudio } from './render';
+import { bakePitchEdits } from './dsp/pitch/editor';
 
 export type TransportState = 'stopped' | 'playing' | 'counting-in';
 type Listener = () => void;
@@ -42,6 +43,8 @@ export class StudioEngine {
   private metronome = false;
   private noLoop = false;
   private audition: { trackId: string; takeId: string } | null = null;
+  private clipBuffers: Record<string, string> = {};
+  private bakingPitch = false;
   private listeners = new Set<Listener>();
   private loaded = new Map<string, PcmAudio>();
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
@@ -78,6 +81,7 @@ export class StudioEngine {
       mode: this.mode,
       launched: this.launched,
       audition: this.audition,
+      bufferOverrides: this.clipBuffers,
     };
   }
 
@@ -104,6 +108,7 @@ export class StudioEngine {
   setProject(p: DAWProject): void {
     this.project = p;
     this.graph.sync(p);
+    this.refreshPitchEdits();
   }
 
   setMetronome(on: boolean): void { this.metronome = on; }
@@ -120,6 +125,23 @@ export class StudioEngine {
     const buf = this.ctx.createBuffer(a.channels.length, a.channels[0].length, a.sampleRate);
     a.channels.forEach((ch, i) => buf.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
     this.graph.setBuffer(id, buf);
+    if (!this.bakingPitch) this.refreshPitchEdits();
+  }
+
+  /** Rebuild derived Pitch Editor buffers when edits or source audio change. */
+  private refreshPitchEdits(): void {
+    const project = this.project;
+    if (!project || this.bakingPitch) return;
+    const baked = bakePitchEdits(project, this.loaded);
+    const prev = JSON.stringify(this.clipBuffers);
+    this.bakingPitch = true;
+    try {
+      for (const [id, pcm] of baked.produced) this.setAudio(id, pcm);
+    } finally {
+      this.bakingPitch = false;
+    }
+    this.clipBuffers = baked.overrides;
+    if (JSON.stringify(this.clipBuffers) !== prev && this.state !== 'stopped') this.seek(this.getBeat());
   }
   hasAudio(id: string): boolean { return this.loaded.has(id); }
   audioMap(): Map<string, PcmAudio> { return this.loaded; }

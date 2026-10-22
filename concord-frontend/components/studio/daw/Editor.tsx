@@ -35,8 +35,8 @@ import { DevicePanel } from './DevicePanel';
 import { MixerPanel, MASTER_ID } from './MixerPanel';
 import { Inspector, MasterPanel } from './Inspector';
 import { BrowserPanel, type BrowserPayload } from './BrowserPanel';
-import { WaveThumb } from './ClipShapes';
 import { ExportDialog, AutoMixDialog, VersionsDialog, AskProducerDialog } from './Dialogs';
+import { PitchEditor } from './PitchEditor';
 import { PublishDialog } from './PublishDialog';
 import * as ops from './ops';
 import { useTakeLane } from './useTakeLane';
@@ -497,12 +497,12 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                     onAudition={(pitch, vel) => engine.previewNote(found.track.id, pitch, vel)}
                   />
                 ) : clip && clip.type === 'audio' ? (
-                  <div className="h-full p-3">
-                    <div className="mb-1 text-[11px] text-zinc-400">{clip.name} · {(project.audioAssets?.[clip.audioBufferId || '']?.duration || 0).toFixed(2)} s</div>
-                    <div className="h-[calc(100%-1.5rem)] rounded bg-black/30">
-                      <WaveThumb asset={project.audioAssets?.[clip.audioBufferId || '']} clip={clip} width={1200} height={160} bpm={bpmAt(projectTempoPoints(project), clip.startBeat)} />
-                    </div>
-                  </div>
+                  <PitchEditor
+                    clip={clip}
+                    project={project}
+                    pcm={clip.audioBufferId ? engine.audioMap().get(clip.audioBufferId) || null : null}
+                    onEdits={(doc, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, pitchEdits: doc || undefined })), key)}
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-xs text-zinc-600">
                     {track && trackKind(track) !== 'audio' ? 'Double-click in the track lane (or an empty Session slot) to make a MIDI clip, then draw notes here.' : track ? 'Press R (or the record button) to record onto the armed track.' : 'Add a track to start.'}

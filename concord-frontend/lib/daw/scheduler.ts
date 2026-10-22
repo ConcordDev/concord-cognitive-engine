@@ -82,6 +82,8 @@ export interface CollectSource {
   launched?: Record<string, LaunchedClip | undefined>;
   /** Play this take on its track instead of the comp and arrangement clips. */
   audition?: { trackId: string; takeId: string } | null;
+  /** Derived clip audio (Pitch Editor). The saved clip still points at the dry asset. */
+  bufferOverrides?: Record<string, string>;
 }
 
 export interface CollectOptions {
@@ -125,19 +127,21 @@ function collectClip(
   tempo: TempoPoint[] | null,
   opts: CollectOptions,
   out: TimelineEvent[],
+  bufferOverrides?: Record<string, string>,
 ): void {
   if (clipEnd <= from || clipStart >= to) return;
   const variable = !!tempo && !isConstantTempo(tempo);
   const secPerBeat = 60 / bpm;
   for (const base of clipIterations(clipStart, clipEnd, loopLen, from, to)) {
     const iterEnd = Math.min(base + loopLen, clipEnd);
-    if (clip.type === 'audio' && clip.audioBufferId) {
+    const bufferId = bufferOverrides?.[clip.id] || clip.audioBufferId;
+    if (clip.type === 'audio' && bufferId) {
       const playStart = base;
       const rateBpm = variable && tempo ? bpmAt(tempo, base) : bpm;
       const fullSec = (iterEnd - base) * (60 / rateBpm);
       if (playStart >= from - EPS && playStart < to) {
         out.push({
-          kind: 'audio', trackId: track.id, clipId: clip.id, beat: playStart, bufferId: clip.audioBufferId,
+          kind: 'audio', trackId: track.id, clipId: clip.id, beat: playStart, bufferId,
           offsetSec: Math.max(0, clip.offset || 0), lengthBeats: iterEnd - playStart,
           durationSec: variable ? fullSec : undefined,
           rateSecPerBeat: variable ? 60 / rateBpm : undefined,
@@ -147,7 +151,7 @@ function collectClip(
         const elapsed = variable && tempo ? secondsBetween(tempo, base, from) : (from - playStart) * secPerBeat;
         if (variable && elapsed >= fullSec - 1e-4) continue;
         out.push({
-          kind: 'audio', trackId: track.id, clipId: clip.id, beat: from, bufferId: clip.audioBufferId,
+          kind: 'audio', trackId: track.id, clipId: clip.id, beat: from, bufferId,
           offsetSec: Math.max(0, clip.offset || 0) + elapsed, lengthBeats: iterEnd - from,
           durationSec: variable ? Math.max(0, fullSec - elapsed) : undefined,
           rateSecPerBeat: variable ? 60 / rateBpm : undefined,
@@ -195,7 +199,7 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
         if (!l) continue;
         const clip = track.clips.find((c) => c.id === l.clipId);
         if (!clip) continue;
-        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out);
+        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out, src.bufferOverrides);
       } else if (src.audition && src.audition.trackId === track.id) {
         const take = (track.takes || []).find((tk) => tk.id === src.audition?.takeId);
         const points = tempo || [{ beat: 0, bpm: src.bpm, curve: 'step' as const }];
@@ -224,13 +228,14 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
                 lengthBeats: gap.end - gap.start,
                 offset: Math.max(0, (clip.offset || 0) + (gap.start - clip.startBeat) * rate),
                 looped: false,
+                audioBufferId: src.bufferOverrides?.[clip.id] || clip.audioBufferId,
               };
               collectClip(track, virtual, virtual.startBeat, virtual.startBeat + virtual.lengthBeats, virtual.lengthBeats, f, to, src.bpm, tempo, opts, out);
             }
             continue;
           }
           const loopLen = clip.looped && clip.loopLength > 0 ? clip.loopLength : clip.lengthBeats;
-          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out);
+          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out, src.bufferOverrides);
         }
       }
     }
