@@ -168,5 +168,6 @@ describe('computeRecordOffsetSec (latency compensation)', () => {
     expect(computeRecordOffsetSec({ baseLatency: 0.01, outputLatency: 0.02, trackLatency: 0.005 })).toBeCloseTo(0.025);
     expect(computeRecordOffsetSec({ outputLatency: 9 })).toBe(0.5);
     expect(computeRecordOffsetSec({ baseLatency: NaN, outputLatency: -1 })).toBe(0);
+    expect(computeRecordOffsetSec({ baseLatency: 0.01, outputLatency: 0.02, measuredSec: 0.041 })).toBeCloseTo(0.041);
   });
 });

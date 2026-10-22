@@ -7,6 +7,7 @@
 import type { DAWProject, DAWTrack, DAWClip, MIDINote, EffectInstance, TrackRole, AudioAssetMeta, TempoAutomation } from './types';
 import { isDrumInstrument } from './presets';
 import { clampTempo, type TempoPoint } from './tempo-map';
+import { sanitizeComp, sanitizeTakes } from './takes';
 
 export const TRACK_COLORS = ['#7c3aed', '#ec4899', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#a855f7', '#14b8a6', '#f97316'];
 
@@ -253,6 +254,8 @@ export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'):
         loopLength: Math.max(0.25, num(c.loopLength, num(c.lengthBeats, 4))),
         midiNotes: c.type === 'audio' ? c.midiNotes : Array.isArray(c.midiNotes) ? c.midiNotes : [],
       })),
+      takes: sanitizeTakes(t.takes),
+      comp: sanitizeComp(t.comp, sanitizeTakes(t.takes)),
     } as DAWTrack;
   });
   return {
@@ -269,7 +272,16 @@ export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'):
     masterBus: r.masterBus && typeof r.masterBus === 'object' ? { ...base.masterBus, ...r.masterBus, inserts: Array.isArray(r.masterBus.inserts) ? r.masterBus.inserts : [] } : base.masterBus,
     masteringChain: r.masteringChain && typeof r.masteringChain === 'object' ? { ...base.masteringChain, ...r.masteringChain } : base.masteringChain,
     arrangement: { ...base.arrangement, ...(r.arrangement || {}), tempo: sanitizeTempo(r.arrangement?.tempo) },
-    transport: { ...base.transport, ...(r.transport || {}), bpm },
+    transport: {
+      ...base.transport,
+      ...(r.transport || {}),
+      bpm,
+      loopRecord: r.transport?.loopRecord === true,
+      punchEnabled: r.transport?.punchEnabled === true,
+      punchIn: Math.max(0, num(r.transport?.punchIn, 0)),
+      punchOut: Math.max(0, num(r.transport?.punchOut, 16)),
+      punchPreRollBars: Math.max(0, Math.min(4, Math.round(num(r.transport?.punchPreRollBars, 1)))),
+    },
     audioBuffers: {},
     audioAssets: r.audioAssets && typeof r.audioAssets === 'object' ? r.audioAssets : {},
     synthPresets: r.synthPresets && typeof r.synthPresets === 'object' ? r.synthPresets : {},

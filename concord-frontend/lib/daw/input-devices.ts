@@ -32,6 +32,8 @@ export interface InputPrefs {
   /** Mute software monitoring. The interface's own knob is the monitor. */
   directMonitor: boolean;
   countInBars: number;
+  /** Loopback offset in seconds, keyed by device id. Absent until calibration accepts. */
+  latencyByDevice: Record<string, number>;
 }
 
 export const DEFAULT_INPUT_PREFS: InputPrefs = {
@@ -44,6 +46,7 @@ export const DEFAULT_INPUT_PREFS: InputPrefs = {
   monitorThroughFx: true,
   directMonitor: false,
   countInBars: 1,
+  latencyByDevice: {},
 };
 
 const PREFS_KEY = 'concord_studio_input_v1';
@@ -181,6 +184,7 @@ export function loadInputPrefs(storage: Pick<Storage, 'getItem'> | null = safeSt
       monitorThroughFx: p.monitorThroughFx !== false,
       directMonitor: p.directMonitor === true,
       countInBars: Number.isFinite(p.countInBars) ? Math.max(0, Math.min(4, Math.round(Number(p.countInBars)))) : 1,
+      latencyByDevice: sanitizeLatencyMap(p.latencyByDevice),
     };
   } catch {
     return { ...DEFAULT_INPUT_PREFS };
@@ -194,6 +198,16 @@ export function saveInputPrefs(prefs: InputPrefs, storage: Pick<Storage, 'setIte
   } catch {
     /* private mode / quota: preference just isn't remembered */
   }
+}
+
+function sanitizeLatencyMap(v: unknown): Record<string, number> {
+  if (!v || typeof v !== 'object') return {};
+  const out: Record<string, number> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof k !== 'string' || !k) continue;
+    if (typeof val === 'number' && Number.isFinite(val) && val >= 0 && val <= 0.5) out[k] = val;
+  }
+  return out;
 }
 
 function safeStorage(): Storage | null {
@@ -363,7 +377,10 @@ export function classifyMicError(
  * Playback reaches the ears `outputLatency` late, and the captured input arrives
  * `inputLatency` late (track setting when exposed, else the context's base latency).
  */
-export function computeRecordOffsetSec(l: { baseLatency?: number; outputLatency?: number; trackLatency?: number }): number {
+export function computeRecordOffsetSec(l: { baseLatency?: number; outputLatency?: number; trackLatency?: number; measuredSec?: number }): number {
+  if (typeof l.measuredSec === 'number' && Number.isFinite(l.measuredSec) && l.measuredSec >= 0) {
+    return Math.min(0.5, l.measuredSec);
+  }
   const finite = (v: number | undefined) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
   const input = finite(l.trackLatency) || finite(l.baseLatency);
   const out = finite(l.outputLatency);

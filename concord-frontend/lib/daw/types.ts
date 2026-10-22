@@ -3,6 +3,10 @@
  * Covers: sequencer, mixer, piano roll, synths, effects, automation, DTU integration
  */
 
+import type { AudioTake, CompRegion } from './take-types';
+
+export type { AudioTake, CompRegion };
+
 // ============================================================================
 // Transport & Timeline
 // ============================================================================
@@ -20,6 +24,15 @@ export interface TransportConfig {
   loopEnd: number; // in beats
   metronome: boolean;
   preRoll: number; // bars
+  /** When loop is on, record one take per pass instead of a single arrangement clip. */
+  loopRecord?: boolean;
+  /** Capture continuously and keep only the punch range. */
+  punchEnabled?: boolean;
+  /** Used when the loop is off. Beats. */
+  punchIn?: number;
+  punchOut?: number;
+  /** Bars of playback before the punch. 0–4. */
+  punchPreRollBars?: number;
 }
 
 // ============================================================================
@@ -56,6 +69,13 @@ export interface DAWTrack {
   duck?: { sourceTrackId: string; depthDb: number; releaseMs: number; pitches?: number[] };
   /** Recording input settings for this track. */
   recordInput?: { channelMode: 'stereo' | 'mono1' | 'mono2'; latencyMs?: number };
+  /** Recorded passes. Audio assets are immutable; deleting a take does not delete the asset. */
+  takes?: AudioTake[];
+  /**
+   * Comp lane. When this is non-empty, these regions replace arrangement audio
+   * clips where they overlap. Flatten clears this and keeps the takes.
+   */
+  comp?: CompRegion[];
 }
 
 export type TrackRole = 'vocal' | 'drums' | 'kick' | 'bass' | 'keys' | 'guitar' | 'synth' | 'pad' | 'fx' | 'other';

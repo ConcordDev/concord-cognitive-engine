@@ -86,6 +86,7 @@ export class InputRecorder {
   private captureChannels = 1;
   private deviceLostCb: (() => void) | null = null;
   private trackLatency = 0;
+  private measuredOffset: number | null = null;
   private mode: CaptureKind = 'closed';
 
   constructor(ctx: AudioContext) {
@@ -294,9 +295,19 @@ export class InputRecorder {
   }
 
   /** Latency compensation (seconds) applied to each take's start time. */
+  /** Per-device loopback offset. Null clears it and the reported input+output sum is used. */
+  setMeasuredOffset(sec: number | null): void {
+    this.measuredOffset = typeof sec === 'number' && Number.isFinite(sec) && sec >= 0 ? sec : null;
+  }
+
   latencyOffsetSec(): number {
     const c = this.ctx as AudioContext & { outputLatency?: number };
-    return computeRecordOffsetSec({ baseLatency: c.baseLatency, outputLatency: c.outputLatency, trackLatency: this.trackLatency });
+    return computeRecordOffsetSec({
+      baseLatency: c.baseLatency,
+      outputLatency: c.outputLatency,
+      trackLatency: this.trackLatency,
+      measuredSec: this.measuredOffset ?? undefined,
+    });
   }
 
   start(): boolean {
@@ -306,7 +317,7 @@ export class InputRecorder {
     return true;
   }
 
-  stop(): CapturedTake | null {
+  stop(opts?: { compensate?: boolean }): CapturedTake | null {
     if (!this.acc.open) return null;
     const gen = this.acc.gen;
     const first = this.acc.firstTime;
@@ -314,10 +325,11 @@ export class InputRecorder {
     disarmCapture(this.acc);
     this.worklet?.port.postMessage({ type: 'arm', on: false, gen });
     if (!channels.length || channels[0].length === 0 || first === null) return null;
+    const compensate = opts?.compensate !== false;
     return {
       channels,
       sampleRate: this.ctx.sampleRate,
-      startTime: first - this.latencyOffsetSec(),
+      startTime: first - (compensate ? this.latencyOffsetSec() : 0),
       durationSec: channels[0].length / this.ctx.sampleRate,
     };
   }

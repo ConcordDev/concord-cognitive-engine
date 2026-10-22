@@ -36,6 +36,16 @@ export function duplicateTrack(p: DAWProject, id: string): DAWProject {
   if (i < 0) return p;
   const src = p.tracks[i];
   const tid = newId('trk');
+  const takeIds = new Map<string, string>();
+  const takes = (src.takes || []).map((t) => {
+    const id = newId('take');
+    takeIds.set(t.id, id);
+    return { ...t, id };
+  });
+  const comp = (src.comp || []).flatMap((r) => {
+    const takeId = takeIds.get(r.takeId);
+    return takeId ? [{ ...r, takeId }] : [];
+  });
   const copy: DAWTrack = {
     ...src,
     id: tid,
@@ -43,6 +53,8 @@ export function duplicateTrack(p: DAWProject, id: string): DAWProject {
     armed: false,
     clips: src.clips.map((c) => ({ ...c, id: newId('clip'), trackId: tid, midiNotes: c.midiNotes?.map((n) => ({ ...n, id: newId('n') })) })),
     effectChain: src.effectChain.map((e) => ({ ...e, id: e.id.startsWith('am-') ? e.id : newId('fx') })),
+    takes,
+    comp,
   };
   const tracks = [...p.tracks];
   tracks.splice(i + 1, 0, copy);

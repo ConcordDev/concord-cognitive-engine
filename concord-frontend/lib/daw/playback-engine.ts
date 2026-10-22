@@ -41,6 +41,7 @@ export class StudioEngine {
   private countInBeats = 0;
   private metronome = false;
   private noLoop = false;
+  private audition: { trackId: string; takeId: string } | null = null;
   private listeners = new Set<Listener>();
   private loaded = new Map<string, PcmAudio>();
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
@@ -76,7 +77,18 @@ export class StudioEngine {
       metronome: this.metronome,
       mode: this.mode,
       launched: this.launched,
+      audition: this.audition,
     };
+  }
+
+  getAudition(): { trackId: string; takeId: string } | null {
+    return this.audition;
+  }
+
+  /** Audition one take. Pass null to hear the comp again. Restarts playback when running. */
+  setAudition(next: { trackId: string; takeId: string } | null): void {
+    this.audition = next;
+    if (this.state !== 'stopped') this.seek(this.getBeat());
   }
 
   subscribe(fn: Listener): () => void {

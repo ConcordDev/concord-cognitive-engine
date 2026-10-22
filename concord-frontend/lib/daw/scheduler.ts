@@ -14,6 +14,7 @@
 
 import type { DAWTrack, DAWClip } from './types';
 import { beatAfter, bpmAt, isConstantTempo, resolveTempo, secondsBetween, type TempoPoint } from './tempo-map';
+import { auditionSpec, clipGaps, compPlaybackSpecs } from './takes';
 
 export type EventKind = 'note' | 'audio' | 'click';
 
@@ -49,6 +50,10 @@ export interface AudioEvent {
   /** Seconds per beat used for fades: the tempo at the clip start, not the ramp. */
   rateSecPerBeat?: number;
   gainDb: number;
+  /** Explicit fades in seconds. When set, they replace the clip's beat fades. */
+  fadeInSec?: number;
+  fadeOutSec?: number;
+  fadeShape?: 'linear' | 'equalPower';
 }
 
 export interface ClickEvent {
@@ -75,6 +80,8 @@ export interface CollectSource {
   /** 'arrange' plays the timeline; 'session' plays only launched clips. */
   mode: 'arrange' | 'session';
   launched?: Record<string, LaunchedClip | undefined>;
+  /** Play this take on its track instead of the comp and arrangement clips. */
+  audition?: { trackId: string; takeId: string } | null;
 }
 
 export interface CollectOptions {
@@ -189,9 +196,39 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
         const clip = track.clips.find((c) => c.id === l.clipId);
         if (!clip) continue;
         collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out);
+      } else if (src.audition && src.audition.trackId === track.id) {
+        const take = (track.takes || []).find((tk) => tk.id === src.audition?.takeId);
+        const points = tempo || [{ beat: 0, bpm: src.bpm, curve: 'step' as const }];
+        if (take) {
+          const spec = auditionSpec(take, f, to, points, !!opts.catchUp);
+          if (spec) out.push({ kind: 'audio', trackId: track.id, ...spec });
+        }
       } else {
+        const comp = track.comp || [];
+        const points = tempo || [{ beat: 0, bpm: src.bpm, curve: 'step' as const }];
+        if (comp.length) {
+          for (const spec of compPlaybackSpecs(track.takes || [], comp, f, to, points, !!opts.catchUp)) {
+            out.push({ kind: 'audio', trackId: track.id, ...spec });
+          }
+        }
         for (const clip of track.clips) {
           if (clip.slot !== undefined && clip.slot !== null) continue; // Session-only clip
+          if (comp.length && clip.type === 'audio') {
+            if (clip.looped) continue;
+            const rate = 60 / bpmAt(points, clip.startBeat);
+            for (const gap of clipGaps(clip.startBeat, clip.startBeat + clip.lengthBeats, comp)) {
+              const virtual: DAWClip = {
+                ...clip,
+                id: `${clip.id}@${gap.start.toFixed(4)}`,
+                startBeat: gap.start,
+                lengthBeats: gap.end - gap.start,
+                offset: Math.max(0, (clip.offset || 0) + (gap.start - clip.startBeat) * rate),
+                looped: false,
+              };
+              collectClip(track, virtual, virtual.startBeat, virtual.startBeat + virtual.lengthBeats, virtual.lengthBeats, f, to, src.bpm, tempo, opts, out);
+            }
+            continue;
+          }
           const loopLen = clip.looped && clip.loopLength > 0 ? clip.loopLength : clip.lengthBeats;
           collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out);
         }
