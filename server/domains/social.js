@@ -17,6 +17,7 @@ import {
   isBlocked,
   recipientResolvable,
   canonicalSocial,
+  canViewPost,
   sendMessage as layerSendMessage,
   getConversations,
   getMessages,
@@ -310,7 +311,7 @@ export default function registerSocialActions(registerLensAction) {
       const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
       const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
       const items = [...s.posts.values()]
-        .filter((p) => p && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+        .filter((p) => p && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
         .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
         .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
         .slice(0, limit)
@@ -394,8 +395,11 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "replyTree", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const stored = s.posts.get(postId);
+    const viewerId = actor(ctx);
+    if (!stored || !canViewPost(viewerId, stored, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
     const flat = (s.replies.get(postId) || []).slice()
+      .filter((r) => !isBlocked(globalThis._concordSTATE, viewerId, r.userId))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .map((r) => {
         const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
@@ -568,7 +572,7 @@ export default function registerSocialActions(registerLensAction) {
     const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
     const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
     const posts = [...s.posts.values()]
-      .filter((p) => Array.isArray(p?.hashtags) && p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+      .filter((p) => Array.isArray(p?.hashtags) && p.hashtags.includes(tag) && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
       .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
@@ -578,11 +582,13 @@ export default function registerSocialActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("social", "trendingHashtags", (_ctx, _a, params = {}) => {
+  registerLensAction("social", "trendingHashtags", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const viewerId = actor(ctx);
     const limit = Math.min(50, Math.max(1, parseInt(params.limit, 10) || 12));
     const counts = new Map();
     for (const p of s.posts.values()) {
+      if (!canViewPost(viewerId, p, globalThis._concordSTATE)) continue;
       const tags = Array.isArray(p?.hashtags) ? p.hashtags : [];
       for (const t of tags) {
         const label = topicLabel(t);
@@ -603,10 +609,12 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const stored = s.posts.get(postId);
     const viewerId = actor(ctx);
+    if (!stored || !canViewPost(viewerId, stored, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
     const post = hydratePost(s, postId, viewerId, ctx);
     const flat = (s.replies.get(postId) || []).slice()
+      .filter((r) => !isBlocked(globalThis._concordSTATE, viewerId, r.userId))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .map((r) => {
         const who = authorIdentity(ctx, r.userId, r.username, r.displayName);
@@ -618,7 +626,10 @@ export default function registerSocialActions(registerLensAction) {
       if (node.parentId && byId.has(node.parentId)) byId.get(node.parentId).children.push(node);
       else roots.push(node);
     }
-    const quoted = post.quoteOf ? hydratePost(s, post.quoteOf, viewerId, ctx) : null;
+    const quotedStored = post.quoteOf ? s.posts.get(post.quoteOf) : null;
+    const quoted = quotedStored && canViewPost(viewerId, quotedStored, globalThis._concordSTATE)
+      ? hydratePost(s, post.quoteOf, viewerId, ctx)
+      : null;
     return {
       ok: true,
       result: {

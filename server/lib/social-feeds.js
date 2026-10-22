@@ -3,7 +3,7 @@
  * Lists, packs, mutes of a post or author, and recent searches live on the
  * profile object, which the phase 2 snapshot already writes.
  */
-import { canonicalSocial, getFollowingFeed, getForYouFeed, followUser, createNotification, isBlocked } from "../emergent/social-layer.js";
+import { canonicalSocial, getFollowingFeed, getForYouFeed, followUser, createNotification, isBlocked, canViewPost } from "../emergent/social-layer.js";
 import { scheduleSocialFlush } from "./social-persist.js";
 import { textHitsKeywordMute } from "./social-safety.js";
 
@@ -42,12 +42,9 @@ function shapeForViewer(STATE, viewerId, row) {
 }
 
 function visiblePost(STATE, post, viewerId) {
-  if (!post) return false;
-  if (isBlocked(STATE, viewerId, post.userId) || isMuted(STATE, viewerId, post.userId)) return false;
-  const privacy = post.privacy || "public";
-  if (privacy === "public") return true;
-  if (viewerId && viewerId === post.userId) return true;
-  return false;
+  if (!canViewPost(viewerId, post, STATE)) return false;
+  if (isMuted(STATE, viewerId, post.userId)) return false;
+  return true;
 }
 
 function whyFor(STATE, userId, post) {

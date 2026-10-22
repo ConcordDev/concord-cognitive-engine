@@ -170,7 +170,7 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     const STATE = stateOf();
     if (!STATE) return res.json({ ok: true, topics: [] });
     const limit = Math.min(Number(req.query.limit) || 10, 50);
-    const result = getTrendingTopics(STATE, { limit });
+    const result = getTrendingTopics(STATE, { limit, viewerId: req.user?.id || null });
     const topics = (result.topics || []).map((row) => ({
       tag: row.topic,
       topic: row.topic,

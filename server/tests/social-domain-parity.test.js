@@ -146,8 +146,13 @@ describe("social — media attachments", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.attachment.kind, "image");
   });
+  it("accepts an audio attachment", () => {
+    const r = call("registerMedia", ctxA, { kind: "audio", url: "https://x.test/a.mp3" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.attachment.mime, "audio/*");
+  });
   it("rejects a bad url or kind", () => {
-    assert.equal(call("registerMedia", ctxA, { kind: "audio", url: "https://x" }).ok, false);
+    assert.equal(call("registerMedia", ctxA, { kind: "script", url: "https://x.test/a.js" }).ok, false);
     assert.equal(call("registerMedia", ctxA, { kind: "image", url: "ftp://x" }).ok, false);
     assert.equal(call("registerMedia", ctxA, { kind: "image", url: "data:image/png;base64,aaaa" }).ok, false);
   });
