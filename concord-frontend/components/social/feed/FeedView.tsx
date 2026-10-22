@@ -31,9 +31,11 @@ type View =
 interface FeedViewProps {
   currentUserId: string;
   username: string;
+  /** Home already mounts QuickPostComposer; keep a single composer in the DOM. */
+  hideComposer?: boolean;
 }
 
-export function FeedView({ currentUserId, username }: FeedViewProps) {
+export function FeedView({ currentUserId, username, hideComposer = false }: FeedViewProps) {
   const [view, setView] = useState<View>({ kind: 'feed' });
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [trending, setTrending] = useState<TrendingHashtag[]>([]);
@@ -153,12 +155,14 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
 
       {view.kind === 'feed' && (
         <>
-          <FeedComposer
-            username={username}
-            quotePost={quotePost}
-            onClearQuote={() => setQuotePost(null)}
-            onPosted={loadFeed}
-          />
+          {!hideComposer && (
+            <FeedComposer
+              username={username}
+              quotePost={quotePost}
+              onClearQuote={() => setQuotePost(null)}
+              onPosted={loadFeed}
+            />
+          )}
 
           {trending.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">

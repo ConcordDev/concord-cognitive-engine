@@ -35,6 +35,8 @@ vi.mock('@/lib/api/client', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/lenses/social',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/lib/realtime/socket', () => ({
@@ -117,10 +119,10 @@ describe('social lens page — real unread badge (ManifestActionBar removed)', (
     await waitFor(() => expect(bellButton).toHaveTextContent('3'));
   });
 
-  it('the same real count also badges the Notifications tab (shared query, not two fake numbers)', async () => {
+  it('the same real count also badges Inbox (shared query, not two fake numbers)', async () => {
     renderPage();
-    const tab = await screen.findByRole('tab', { name: /Notifications/i });
-    await waitFor(() => expect(tab).toHaveTextContent('3'));
+    const inbox = await screen.findByRole('button', { name: /^Inbox$/i });
+    await waitFor(() => expect(inbox).toHaveTextContent('3'));
   });
 
   it('clicking the topbar bell opens the real dropdown preview (a genuine state change, not decoration)', async () => {
