@@ -45,6 +45,21 @@ import {
   setUserBlock,
   reportSocialTarget,
 } from "../lib/social-loop.js";
+import {
+  followingFeed,
+  forYouFeed,
+  feedbackPost,
+  setFeedPreference,
+  createList,
+  addListMember,
+  listFeed,
+  getLists,
+  createPack,
+  joinPack,
+  followHashtag,
+  hashtagPosts,
+  searchSocial,
+} from "../lib/social-feeds.js";
 
 function stateOf() {
   return globalThis._concordSTATE || null;
@@ -379,6 +394,112 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     const STATE = stateOf();
     if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
     sendLayer(res, getProfile(STATE, req.params.userId));
+  });
+
+  router.get("/feed/following", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(followingFeed(STATE, userId, { limit: Number(req.query.limit || 30) }));
+  });
+
+  router.get("/feed/for-you", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(forYouFeed(STATE, userId, { limit: Number(req.query.limit || 30) }));
+  });
+
+  router.post("/feed/feedback", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, feedbackPost(STATE, userId, { postId: req.body?.postId, action: req.body?.action }));
+  });
+
+  router.post("/feed/preference", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, setFeedPreference(STATE, userId, req.body?.feedDefault));
+  });
+
+  router.get("/lists", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, getLists(STATE, userId));
+  });
+
+  router.post("/lists", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, createList(STATE, userId, req.body?.name));
+  });
+
+  router.post("/lists/:id/members", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, addListMember(STATE, userId, req.params.id, req.body?.memberId));
+  });
+
+  router.get("/lists/:id/feed", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, listFeed(STATE, userId, req.params.id));
+  });
+
+  router.post("/packs", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, createPack(STATE, userId, { name: req.body?.name, people: req.body?.people, feeds: req.body?.feeds }));
+  });
+
+  router.post("/packs/:id/join", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier
+    const ownerId = req.body?.ownerId;
+    sendLayer(res, joinPack(STATE, userId, req.params.id, ownerId));
+  });
+
+  router.post("/hashtags/:tag/follow", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, followHashtag(STATE, userId, req.params.tag, req.body?.follow !== false));
+  });
+
+  router.get("/hashtags/:tag", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(hashtagPosts(STATE, userId, req.params.tag));
+  });
+
+  router.get("/search", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    res.json(searchSocial(STATE, userId, req.query.q));
   });
 
   router.get("/pinned/:userId", auth, (req, res) => {
