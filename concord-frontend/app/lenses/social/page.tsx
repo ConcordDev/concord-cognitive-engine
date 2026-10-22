@@ -68,6 +68,8 @@ import { ReelsFeed } from '@/components/reels/ReelsFeed';
 import { RoomList } from '@/components/audio-rooms/RoomList';
 import RoomStage from '@/components/audio-rooms/RoomStage';
 import { FeedView } from '@/components/social/feed/FeedView';
+import { RankedFeed } from '@/components/social/RankedFeed';
+import { SocialLists } from '@/components/social/SocialLists';
 
 type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved' | 'moderation';
 
@@ -90,7 +92,7 @@ export default function SocialHubPage() {
   useLensNav('social');
   useLensIdentity('social');
   const { isLive, lastUpdated } = useRealtimeLens('social');
-  const [activeTab, setActiveTab] = useState<TabId>('feed');
+  const [activeTab, setActiveTab] = useState<TabId>('following');
   // Phase 12 — Spaces stage modal target. RoomList sets this when the
   // user clicks Join; the modal mounts <RoomStage> which owns the
   // WebRTC mesh (mic, hand, leave).
@@ -122,7 +124,10 @@ export default function SocialHubPage() {
     (async () => {
       try {
         const existing = await api.get(`/api/social/profile/${encodeURIComponent(id)}`);
-        if (existing?.data?.ok && existing.data.profile) return;
+        if (existing?.data?.ok && existing.data.profile) {
+          if (existing.data.profile.feedDefault === 'forYou') setActiveTab('discover');
+          return;
+        }
       } catch { /* no profile yet */ }
       if (cancel) return;
       try {
@@ -279,7 +284,10 @@ export default function SocialHubPage() {
             )}
 
             {activeTab === 'discover' && (
-              <Discovery currentUserId={currentUserId} />
+              <>
+                <RankedFeed currentUserId={currentUserId} />
+                <Discovery currentUserId={currentUserId} />
+              </>
             )}
 
             {activeTab === 'following' && (
@@ -326,6 +334,7 @@ export default function SocialHubPage() {
               </div>
             )}
             <FindPeople />
+            <SocialLists />
             <SocialPreferencesForm />
             <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
@@ -382,17 +391,25 @@ export default function SocialHubPage() {
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
 function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
-  const [seenHead, setSeenHead] = useState<string | null>(null);
+  const [seenHead, setSeenHead] = useState<string | null>(() => {
+    if (typeof window === 'undefined' || !currentUserId || currentUserId === 'current-user') return null;
+    try { return localStorage.getItem(`social-following-cursor:${currentUserId}`); } catch { return null; }
+  });
+  useEffect(() => {
+    if (!seenHead || !currentUserId || currentUserId === 'current-user') return;
+    try { localStorage.setItem(`social-following-cursor:${currentUserId}`, seenHead); } catch { /* private mode */ }
+  }, [seenHead, currentUserId]);
   const { data, isLoading, error } = useQuery<{ items?: FollowingActivityItem[] } | null>({
     queryKey: ['social-following-activity', currentUserId],
     queryFn: async () => {
-      const r = await api.get<{ items?: FollowingActivityItem[]; error?: string }>(
-        `/api/social/following-activity?limit=40`,
+      const r = await api.get<{ posts?: FollowingActivityItem[]; error?: string }>(
+        `/api/social/feed/following?limit=40`,
       );
       if (r?.data && (r.data as { ok?: boolean }).ok === false) {
         throw new Error(r.data.error || 'Couldn’t load your timeline');
       }
-      return r?.data;
+      const posts = r?.data?.posts || [];
+      return { items: posts.map((post) => ({ ...post, kind: 'post', content: post.content || '' })) };
     },
     staleTime: 30 * 1000,
     refetchInterval: 30_000,

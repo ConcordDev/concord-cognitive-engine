@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Hash, Loader2, ArrowLeft, Users } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import type { SocialPost } from './types';
 import { PostCard } from './PostCard';
 
@@ -27,6 +27,7 @@ export function HashtagPage({ tag, username, currentUserId, onBack, onOpenHashta
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [contributors, setContributors] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [followNote, setFollowNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,7 +39,16 @@ export function HashtagPage({ tag, username, currentUserId, onBack, onOpenHashta
     }
   }, [tag]);
 
-  useEffect(() => { void load(); }, [load]);
+  const follow = useCallback(async () => {
+    const res = await api.post(`/api/social/hashtags/${encodeURIComponent(tag)}/follow`, { follow: true });
+    setFollowNote(res.data?.ok === false ? (res.data.error || 'Could not follow this hashtag.') : `Following #${tag}`);
+  }, [tag]);
+
+  useEffect(() => {
+    let cancel = false;
+    queueMicrotask(() => { if (!cancel) void load(); });
+    return () => { cancel = true; };
+  }, [load]);
 
   return (
     <div className="space-y-3">
@@ -59,7 +69,9 @@ export function HashtagPage({ tag, username, currentUserId, onBack, onOpenHashta
             {' '}{posts.length} post{posts.length === 1 ? '' : 's'}
           </p>
         </div>
+        <button type="button" onClick={() => void follow()} className="ml-auto text-xs text-teal-300">Follow hashtag</button>
       </div>
+      {followNote && <p className="text-[11px] text-zinc-400">{followNote}</p>}
 
       {loading ? (
         <div className="flex items-center gap-2 p-6 text-sm text-zinc-400">
