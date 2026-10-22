@@ -31,6 +31,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@conform-to/zod": "^1.20.2",
     "@dimforge/rapier3d-compat": "^0.19.3",
     "@excalidraw/excalidraw": "^0.18.0",

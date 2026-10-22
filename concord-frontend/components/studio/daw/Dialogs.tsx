@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack } from '@/lib/daw/types';
 import type { PcmAudio, ExportResult, ExportFormat } from '@/lib/daw/render';
 import { exportProject } from '@/lib/daw/render';
+import { MP3_BITRATES, MP3_VBR_SUPPORTED, type Mp3Bitrate } from '@/lib/daw/mp3-encode';
 import { LOUDNESS_TARGETS } from '@/lib/daw/dsp/limiter';
 import type { LoudnessReport } from '@/lib/daw/dsp/loudness';
 import { autoMixAndMaster, type AutoMixResult } from '@/lib/daw/automix';
@@ -69,31 +70,45 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
   const projectRate = project.sampleRate || getStudioEngine().ctx.sampleRate || 48000;
   const [format, setFormat] = useState<ExportFormat>('wav');
   const [bitDepth, setBitDepth] = useState<16 | 24 | 32>(24);
+  const [bitrate, setBitrate] = useState<Mp3Bitrate>(320);
+  const [artist, setArtist] = useState('');
   const [rate, setRate] = useState<number>(projectRate >= 48000 ? 48000 : 44100);
   const [targetId, setTargetId] = useState<string>('streaming');
   const [stems, setStems] = useState(false);
   const [busy, setBusy] = useState<{ label: string; f: number } | null>(null);
   const [res, setRes] = useState<ExportResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const target = LOUDNESS_TARGETS.find((t) => t.id === targetId) || null;
   const forced16 = target?.bitDepth === 16;
-  const effDepth: 16 | 24 | 32 = forced16 ? 16 : format === 'flac' && bitDepth === 32 ? 24 : bitDepth;
+  const effDepth: 16 | 24 | 32 = forced16 ? 16 : format === 'flac' && bitDepth === 32 ? 24 : format === 'mp3' ? 16 : bitDepth;
+  const mp3Rate = rate === 48000 ? 48000 : 44100;
+
+  const cancel = () => { abortRef.current?.abort(); };
 
   const run = async (): Promise<ExportResult | null> => {
     setErr(null); setRes(null);
+    abortRef.current?.abort();
+    const ctl = new AbortController();
+    abortRef.current = ctl;
     setBusy({ label: 'Rendering', f: 0 });
     try {
+      const key = [project.key, project.scale].filter(Boolean).join(' ');
       const r = await exportProject(project, getAudio(), {
-        format, bitDepth: effDepth, sampleRate: rate, stems,
+        format, bitDepth: effDepth, sampleRate: format === 'mp3' ? mp3Rate : rate, stems, bitrate,
+        tags: format === 'mp3' ? { title: project.title, artist: artist.trim() || undefined, bpm: project.bpm, key: key || undefined } : undefined,
         target: target ? { lufs: target.lufs, ceilingDb: target.ceilingDb } : null,
+        signal: ctl.signal,
         onProgress: (label, f) => setBusy({ label, f }),
       });
       setRes(r);
       return r;
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (e instanceof Error && e.name === 'AbortError') setErr('Export cancelled');
+      else setErr(e instanceof Error ? e.message : String(e));
       return null;
     } finally {
+      if (abortRef.current === ctl) abortRef.current = null;
       setBusy(null);
     }
   };
@@ -108,15 +123,24 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
           <select className={sel} value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)} data-testid="studio-export-format">
             <option value="wav">WAV</option>
             <option value="flac">FLAC (lossless, smaller)</option>
+            <option value="mp3">MP3 (CBR)</option>
           </select>
         </label>
-        <label>Bit depth
-          <select className={sel} value={effDepth} disabled={forced16} onChange={(e) => setBitDepth(Number(e.target.value) as 16 | 24 | 32)} data-testid="studio-export-depth">
-            <option value={16}>16-bit (TPDF dither)</option>
-            <option value={24}>24-bit (TPDF dither)</option>
-            {format === 'wav' && <option value={32}>32-bit float</option>}
-          </select>
-        </label>
+        {format === 'mp3' ? (
+          <label>Bitrate
+            <select className={sel} value={bitrate} onChange={(e) => setBitrate(Number(e.target.value) as Mp3Bitrate)} data-testid="studio-export-bitrate">
+              {MP3_BITRATES.map((b) => <option key={b} value={b}>{b} kbps CBR</option>)}
+            </select>
+          </label>
+        ) : (
+          <label>Bit depth
+            <select className={sel} value={effDepth} disabled={forced16} onChange={(e) => setBitDepth(Number(e.target.value) as 16 | 24 | 32)} data-testid="studio-export-depth">
+              <option value={16}>16-bit (TPDF dither)</option>
+              <option value={24}>24-bit (TPDF dither)</option>
+              {format === 'wav' && <option value={32}>32-bit float</option>}
+            </select>
+          </label>
+        )}
         <label>Sample rate
           <select className={sel} value={rate} onChange={(e) => setRate(Number(e.target.value))}>
             <option value={44100}>44.1 kHz{Math.round(projectRate) === 44100 ? ' (project)' : ''}</option>
@@ -129,14 +153,23 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
             {LOUDNESS_TARGETS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </label>
+        {format === 'mp3' && (
+          <label className="col-span-2">Artist (ID3)
+            <input className={sel} value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist" aria-label="MP3 artist" data-testid="studio-export-artist" />
+          </label>
+        )}
         <label className="col-span-2 flex items-center gap-2"><input type="checkbox" checked={stems} onChange={(e) => setStems(e.target.checked)} /> Also export stems (one file per track, same processing, no master limiter)</label>
       </div>
       <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
-        Rendered offline through the same engine as playback (32-bit float). MP3 isn&apos;t offered yet: it needs an encoder that would bloat the app. Export WAV or FLAC and convert if a site requires MP3.
+        Rendered offline through the same engine as playback (32-bit float). MP3 is encoded with lamejs (LGPL-3.0) on a background thread at {MP3_BITRATES.join('/')} kbps CBR, 44.1 or 48 kHz, stereo, with ID3 title, artist, BPM and key.
+        {MP3_VBR_SUPPORTED ? '' : ' V0 VBR is not in that encoder’s public API, so it is not offered.'}
       </p>
-      <button onClick={() => void run()} disabled={!!busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60" data-testid="studio-export-run">
-        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {busy.label} {Math.round(busy.f * 100)}%</> : 'Render'}
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button onClick={() => void run()} disabled={!!busy} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60" data-testid="studio-export-run">
+          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {busy.label} {Math.round(busy.f * 100)}%</> : 'Render'}
+        </button>
+        {busy && <button onClick={cancel} className="rounded-lg bg-white/10 px-3 text-xs text-zinc-200 hover:bg-white/20" data-testid="studio-export-cancel">Cancel</button>}
+      </div>
       {err && <div className="mt-2 rounded bg-red-500/10 p-2 text-xs text-red-300">{err}</div>}
       {res && (
         <div className="mt-3 space-y-2">
@@ -167,9 +200,10 @@ export const LIBRARY_UPLOAD_MAX_BYTES = 95 * 1024 * 1024;
  */
 export async function uploadMixToLibrary(file: { name: string; blob: Blob }, title: string, project: DAWProject): Promise<string> {
   if (file.blob.size > LIBRARY_UPLOAD_MAX_BYTES) {
-    throw new Error(`This mix is ${(file.blob.size / 1048576).toFixed(0)} MB, over the 95 MB upload limit. Choose FLAC or 16-bit and render again.`);
+    throw new Error(`This mix is ${(file.blob.size / 1048576).toFixed(0)} MB, over the 95 MB upload limit. Choose MP3, FLAC, or 16-bit and render again.`);
   }
-  const type = file.blob.type || (file.name.toLowerCase().endsWith('.flac') ? 'audio/flac' : 'audio/wav');
+  const lower = file.name.toLowerCase();
+  const type = file.blob.type || (lower.endsWith('.flac') ? 'audio/flac' : lower.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav');
   const r = await api.post('/api/artifact/upload', file.blob, {
     headers: { 'Content-Type': type, 'X-Filename': encodeURIComponent(file.name), 'X-Title': encodeURIComponent(title), 'X-Domain': 'music' },
     timeout: 300000,
@@ -238,6 +272,8 @@ export function AutoMixDialog({ project, getAudio, onApply, onRevert, onClose }:
   const target = LOUDNESS_TARGETS.find((t) => t.id === targetId)!;
 
   const projectRef = useRef(project);
+  // Latest project for the unmount cleanup, which runs after this render.
+  // eslint-disable-next-line react-hooks/refs
   projectRef.current = project;
   // Leaving the dialog always returns the engine to the real project.
   useEffect(() => () => { getStudioEngine().setProject(projectRef.current); }, []);
@@ -317,8 +353,14 @@ export function VersionsDialog({ project, saveNow, onRestored, onClose }: { proj
   const [busy, setBusy] = useState(false);
   const saved = !project.id.startsWith('local_');
   const refresh = async () => { if (saved) setList(await studioTransport.versions(project.id).catch(() => [])); else setList([]); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void refresh(); }, [project.id]);
+  useEffect(() => {
+    let cancelled = false;
+    const job = saved
+      ? studioTransport.versions(project.id).catch(() => [] as VersionMeta[])
+      : Promise.resolve([] as VersionMeta[]);
+    void job.then((rows) => { if (!cancelled) setList(rows); });
+    return () => { cancelled = true; };
+  }, [project.id, saved]);
   const snap = async () => {
     setBusy(true);
     try { await saveNow(); await studioTransport.snapshot(project.id, label || `Snapshot ${new Date().toLocaleString()}`); setLabel(''); await refresh(); showToast('success', 'Snapshot saved'); }
