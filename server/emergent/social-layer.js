@@ -6,6 +6,7 @@
  */
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { ensureSocialHydrated, scheduleSocialFlush } from "../lib/social-persist.js";
 
 
 // ── Realtime emit hookup (Phase 11, Item 4) ─────────────────────────────
@@ -72,7 +73,12 @@ function getSocialState(STATE) {
   if (!s.postListings) s.postListings = new Map();
   if (!s.postClicks) s.postClicks = new Map();
   if (!s.postEarnings) s.postEarnings = new Map();
+  ensureSocialHydrated(STATE);
   return STATE._social;
+}
+
+export function canonicalSocial(STATE) {
+  return getSocialState(STATE);
 }
 
 function blockedSet(bucket) {
@@ -154,6 +160,7 @@ export function upsertProfile(STATE, userId, profileData) {
   const isNew = !existing;
   social.profiles.set(userId, profile);
   if (isNew) social.metrics.totalProfiles++;
+  scheduleSocialFlush(STATE);
 
   return { ok: true, profile, isNew };
 }
@@ -252,6 +259,7 @@ export function followUser(STATE, followerId, followedId) {
 
   // Invalidate feed cache for follower
   social.feedCache.delete(followerId);
+  scheduleSocialFlush(STATE);
 
   return { ok: true, followerId, followedId, isNew: !alreadyFollowing };
 }
@@ -266,6 +274,7 @@ export function unfollowUser(STATE, followerId, followedId) {
   followSet.delete(followedId);
   followerSet?.delete(followerId);
   social.metrics.totalFollows = Math.max(0, social.metrics.totalFollows - 1);
+  scheduleSocialFlush(STATE);
 
   // Invalidate feed cache
   social.feedCache.delete(followerId);
@@ -693,6 +702,7 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
 
   social.posts.set(id, post);
   persistSocialPostRow(post);
+  scheduleSocialFlush(STATE);
 
   // Create mention notifications
   if (post.mentionedUsers.length) {
@@ -804,6 +814,7 @@ export function deletePost(STATE, { userId, postId }) {
   if (!post) return { ok: false, error: "Post not found" };
   if (post.userId !== userId) return { ok: false, error: "Only owner can delete" };
   social.posts.delete(postId);
+  scheduleSocialFlush(STATE);
   return { ok: true, postId };
 }
 
@@ -838,6 +849,7 @@ export function addReaction(STATE, { userId, postId, type }) {
       createNotification(STATE, { userId: post.userId, type: "like", fromUserId: userId, postId, content: `${userId} reacted ${type} to your post` });
     }
   }
+  scheduleSocialFlush(STATE);
   return { ok: true, postId, type, added: !toggled };
 }
 
@@ -891,6 +903,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
     createNotification(STATE, { userId: mentioned, type: "mention", fromUserId: userId, postId, content: `${userId} mentioned you in a comment` });
   }
 
+  scheduleSocialFlush(STATE);
   return { ok: true, comment: { id: comment.id, userId: comment.userId, content: comment.content, parentCommentId: comment.parentCommentId, mentionedUsers: comment.mentionedUsers, createdAt: comment.createdAt } };
 }
 
@@ -1098,6 +1111,7 @@ export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) 
 
   social.messages.get(convId).push(msg);
   createNotification(STATE, { userId: toUserId, type: "dm", fromUserId, content: `New message from ${fromUserId}` });
+  scheduleSocialFlush(STATE);
 
   return { ok: true, message: { id: msg.id, conversationId: msg.conversationId, fromUserId: msg.fromUserId, toUserId: msg.toUserId, content: msg.content, mediaUrl: msg.mediaUrl, createdAt: msg.createdAt } };
 }
@@ -1202,6 +1216,7 @@ export function createNotification(STATE, { userId, type, fromUserId, postId, co
   if (arr.length > 500) arr.length = 500;
 
   _fireNotificationSocket(userId, notif);
+  scheduleSocialFlush(STATE);
 
   return { ok: true, notification: notif };
 }

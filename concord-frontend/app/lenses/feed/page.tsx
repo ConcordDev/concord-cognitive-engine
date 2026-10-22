@@ -109,7 +109,7 @@ export default function FeedLensPage() {
 
         <div className="flex min-w-0">
           {isTimeline(view) && <FeedTimelinePanel tab={view} onDiscover={() => setView('trending')} />}
-          {view === 'profile' && <FeedProfilePanel onNavigateToUser={() => setView('trending')} />}
+          {view === 'profile' && <FeedProfilePanel userId={user?.id || null} onNavigateToUser={() => setView('trending')} />}
           {view === 'tools' && <FeedToolsView />}
           {view === 'hn' && (
             <div className="min-w-0 max-w-3xl flex-1">
