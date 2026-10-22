@@ -180,6 +180,9 @@ function DiegeticLensLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Lenses that own the whole viewport and skip the universal lens chrome. */
+const FULL_BLEED_LENSES: ReadonlySet<string> = new Set(['studio']);
+
 /**
  * FE-012 + FE-014: Lens layout with loading isolation, error containment,
  * automatic CoreLensNav for core workspace lenses, and universal features
@@ -193,7 +196,10 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
   const diegetic = useDiegetic();
 
   // In-world station frame: render the lens bare (chrome lives in the world).
-  if (diegetic) {
+  // Studio is a full-screen music app with its own transport and panels, so
+  // it also renders without the generic lens chrome (header, tool panels,
+  // cross-lens panels, activity timeline).
+  if (diegetic || FULL_BLEED_LENSES.has(lensName)) {
     return <DiegeticLensLayout>{children}</DiegeticLensLayout>;
   }
 

@@ -39,6 +39,7 @@ export class StudioEngine {
   private startBeat = 0;
   private countInBeats = 0;
   private metronome = false;
+  private noLoop = false;
   private listeners = new Set<Listener>();
   private loaded = new Map<string, PcmAudio>();
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
@@ -59,7 +60,7 @@ export class StudioEngine {
       },
       loop: () => {
         const t = this.project?.transport;
-        return { enabled: this.mode === 'arrange' && !!t?.loopEnabled, start: t?.loopStart ?? 0, end: t?.loopEnd ?? 0 };
+        return { enabled: this.mode === 'arrange' && !this.noLoop && !!t?.loopEnabled, start: t?.loopStart ?? 0, end: t?.loopEnd ?? 0 };
       },
     });
   }
@@ -116,8 +117,9 @@ export class StudioEngine {
   }
 
   /** Start from `fromBeat`; `countInBars` > 0 plays clicks first (recording). */
-  async play(fromBeat = 0, opts: { countInBars?: number } = {}): Promise<number> {
+  async play(fromBeat = 0, opts: { countInBars?: number; noLoop?: boolean } = {}): Promise<number> {
     await this.resume();
+    this.noLoop = !!opts.noLoop;
     this.stopVoices();
     const bpb = this.project?.timeSignature?.[0] || 4;
     this.countInBeats = Math.max(0, Math.round((opts.countInBars || 0) * bpb));
@@ -142,6 +144,13 @@ export class StudioEngine {
 
   private stopVoices() {
     this.graph.stopAll(this.ctx.currentTime);
+  }
+
+  /** Move the playhead; restarts playback from there when running. */
+  seek(beat: number): void {
+    const b = Math.max(0, beat);
+    if (this.state === 'stopped') { this.startBeat = b; this.emit(); return; }
+    void this.play(b);
   }
 
   /** Beat at the playhead (accounts for output latency so the line matches what you hear). */

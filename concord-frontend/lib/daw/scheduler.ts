@@ -161,6 +161,7 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
         collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, opts, out);
       } else {
         for (const clip of track.clips) {
+          if (clip.slot !== undefined && clip.slot !== null) continue; // Session-only clip
           const loopLen = clip.looped && clip.loopLength > 0 ? clip.loopLength : clip.lengthBeats;
           collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, opts, out);
         }

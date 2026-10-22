@@ -576,15 +576,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     category: 'creative',
     dataTier: 'REAL_LIVE',
     emptyState: {
-      headline: 'New session, blank canvas.',
-      caption: 'Add tracks, drop in effects, mix, and bounce. Sessions stream to Concordia\'s soundscape per district.',
-      firstActionLabel: 'Create your first session',
+      headline: 'Start a song.',
+      caption: 'Record vocals and instruments, program beats and MIDI, mix and master. Everything saves automatically.',
+      firstActionLabel: 'Start a song',
     },
     firstRunGuide: {
       steps: [
-        { caption: 'Tracks list on the left. Hit + to add audio / MIDI / synth tracks.' },
-        { caption: 'The Mixer pane shows fader strips with effects chains. Mastering is a separate panel — ship-ready loudness.' },
-        { caption: 'Render a mixdown → DTU. Publish to marketplace or attach to Concordia districts as ambient soundscape.' },
+        { caption: 'Pick a template or open a recent project. Add Audio, Instrument or Drum tracks with the + buttons.' },
+        { caption: 'To record: arm an audio track, allow the mic, pick your interface or mic in the Input panel, then press R. Use headphones.' },
+        { caption: 'Mixer and Devices sit under the timeline. Auto Mix balances and masters in one click; Export renders WAV/FLAC with loudness readouts.' },
       ],
     },
   },
