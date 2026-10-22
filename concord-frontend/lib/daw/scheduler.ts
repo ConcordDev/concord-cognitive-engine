@@ -16,6 +16,9 @@ import type { DAWTrack, DAWClip } from './types';
 import { beatAfter, bpmAt, isConstantTempo, resolveTempo, secondsBetween, type TempoPoint } from './tempo-map';
 import { auditionSpec, clipGaps, compPlaybackSpecs } from './takes';
 import { audibleIds } from './routing';
+import { swingBeat } from './swing';
+import { patternToNotes } from './drum-steps';
+import type { DrumPattern } from './types';
 
 export type EventKind = 'note' | 'audio' | 'click';
 
@@ -85,6 +88,8 @@ export interface CollectSource {
   audition?: { trackId: string; takeId: string } | null;
   /** Derived clip audio (Pitch Editor). The saved clip still points at the dry asset. */
   bufferOverrides?: Record<string, string>;
+  swing?: number;
+  drumPatterns?: Record<string, DrumPattern>;
 }
 
 export interface CollectOptions {
@@ -128,9 +133,10 @@ function collectClip(
   tempo: TempoPoint[] | null,
   opts: CollectOptions,
   out: TimelineEvent[],
-  bufferOverrides?: Record<string, string>,
+  src: CollectSource,
 ): void {
   if (clipEnd <= from || clipStart >= to) return;
+  const bufferOverrides = src.bufferOverrides;
   const variable = !!tempo && !isConstantTempo(tempo);
   const secPerBeat = 60 / bpm;
   for (const base of clipIterations(clipStart, clipEnd, loopLen, from, to)) {
@@ -163,14 +169,19 @@ function collectClip(
       }
       continue;
     }
-    for (const n of clip.midiNotes || []) {
+    // A resolved pattern replaces drawn notes for this clip. The window stays on the
+    // straight beat; swing moves only the time the note is heard.
+    const pattern = clip.patternId ? src.drumPatterns?.[clip.patternId] : undefined;
+    const pass = Math.max(0, Math.round((base - clipStart) / Math.max(loopLen, EPS)));
+    const notes = pattern ? patternToNotes(pattern, pass) : (clip.midiNotes || []);
+    for (const n of notes) {
       if (n.startBeat < 0 || n.startBeat >= loopLen - EPS) continue;
       const beat = base + n.startBeat;
       if (beat >= iterEnd - EPS) continue;
       if (beat < from - EPS || beat >= to) continue;
       const lengthBeats = Math.max(0.01, Math.min(n.lengthBeats, iterEnd - beat));
       out.push({
-        kind: 'note', trackId: track.id, clipId: clip.id, beat, pitch: n.pitch,
+        kind: 'note', trackId: track.id, clipId: clip.id, beat: swingBeat(beat, src.swing || 0), pitch: n.pitch,
         velocity: Math.max(1, Math.min(127, n.velocity || 100)),
         lengthBeats,
         durationSec: variable && tempo ? Math.max(0.01, secondsBetween(tempo, beat, beat + lengthBeats)) : undefined,
@@ -202,7 +213,7 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
         if (!l) continue;
         const clip = track.clips.find((c) => c.id === l.clipId);
         if (!clip) continue;
-        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out, src.bufferOverrides);
+        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out, src);
       } else if (src.audition && src.audition.trackId === track.id) {
         const take = (track.takes || []).find((tk) => tk.id === src.audition?.takeId);
         const points = tempo || [{ beat: 0, bpm: src.bpm, curve: 'step' as const }];
@@ -233,12 +244,12 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
                 looped: false,
                 audioBufferId: src.bufferOverrides?.[clip.id] || clip.audioBufferId,
               };
-              collectClip(track, virtual, virtual.startBeat, virtual.startBeat + virtual.lengthBeats, virtual.lengthBeats, f, to, src.bpm, tempo, opts, out);
+              collectClip(track, virtual, virtual.startBeat, virtual.startBeat + virtual.lengthBeats, virtual.lengthBeats, f, to, src.bpm, tempo, opts, out, src);
             }
             continue;
           }
           const loopLen = clip.looped && clip.loopLength > 0 ? clip.loopLength : clip.lengthBeats;
-          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out, src.bufferOverrides);
+          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out, src);
         }
       }
     }

@@ -63,6 +63,7 @@ export interface InstrumentOption {
 export const DRUM_KITS: InstrumentOption[] = [
   { id: 'drums:808', name: '808 Kit', category: 'drums', kind: 'drums' },
   { id: 'drums:acoustic', name: 'Studio Kit', category: 'drums', kind: 'drums' },
+  { id: 'drums:sampler', name: 'Sampler', category: 'drums', kind: 'drums' },
 ];
 
 /** Keep the first preset for each id (and drop entries without an id). Order preserved. */

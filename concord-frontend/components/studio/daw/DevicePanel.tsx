@@ -7,6 +7,7 @@ import type { DAWProject, DAWTrack, EffectInstance, EffectType, SynthPreset } fr
 import { effect } from '@/lib/daw/project';
 import { eq8HasBands, eq8Params } from '@/lib/daw/dsp/eq-bands';
 import { instrumentOptions, isDrumInstrument, resolveTrackPreset } from '@/lib/daw/presets';
+import { buildSlices, type SampleSlice } from '@/lib/daw/sampler';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { newPitchCorrect, PitchCorrectCard } from './PitchCorrectCard';
 import { Eq8Card } from './Eq8Card';
@@ -203,10 +204,24 @@ function ReductionReadout({ trackId, effectId }: { trackId: string; effectId: st
   return <span ref={ref} className="text-[10px] tabular-nums text-amber-300/90" data-testid="studio-gr" />;
 }
 
-function InstrumentCard({ project, track, onTrack, onPreset }: { project: DAWProject; track: DAWTrack; onTrack: (patch: Partial<DAWTrack>) => void; onPreset: (p: SynthPreset, key?: string) => void }) {
+function InstrumentCard({ project, track, sample, onTrack, onPreset }: {
+  project: DAWProject;
+  track: DAWTrack;
+  sample: { channel: Float32Array; sampleRate: number } | null;
+  onTrack: (patch: Partial<DAWTrack>) => void;
+  onPreset: (p: SynthPreset, key?: string) => void;
+}) {
   const opts = instrumentOptions(project.synthPresets);
   const drums = isDrumInstrument(track.instrumentId);
   const preset = drums ? null : resolveTrackPreset(track.instrumentId, project.synthPresets);
+  const [sliceIndex, setSliceIndex] = useState(0);
+  const slices = track.slices || [];
+  const slice = slices[Math.min(sliceIndex, Math.max(0, slices.length - 1))];
+  const writeSlice = (patch: Partial<SampleSlice>) => {
+    if (!slice) return;
+    const i = Math.min(sliceIndex, slices.length - 1);
+    onTrack({ slices: slices.map((s, n) => n === i ? { ...s, ...patch } : s) });
+  };
   return (
     <div className="flex w-56 flex-shrink-0 flex-col rounded-lg border border-violet-400/20 bg-[#1a1724] p-2">
       <div className="mb-1 text-[11px] font-medium text-violet-200">Instrument</div>
@@ -232,10 +247,39 @@ function InstrumentCard({ project, track, onTrack, onPreset }: { project: DAWPro
               <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => onPreset(apply(Number(e.target.value)), `preset-${preset.id}-${label}`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
             </label>
           ))}
-          <div className="text-[9px] text-zinc-600">Edits apply to every track using “{preset.name}” in this song.</div>
+          <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+            <ParamLabel>Glide</ParamLabel>
+            <input aria-label="Glide" type="range" min={0} max={400} step={5} value={Math.round((preset.portamento || 0) * 1000)} onChange={(e) => onPreset({ ...preset, portamento: Number(e.target.value) / 1000 }, `preset-${preset.id}-glide`)} className="h-1 min-w-0 flex-1 accent-violet-400" />
+          </label>
+          <div className="text-[9px] text-zinc-600">Glide bends a new note from the previous pitch while that note is still sounding. The envelope still restarts. Edits apply to every track using “{preset.name}”.</div>
         </div>
       )}
-      {drums && <div className="text-[10px] text-zinc-500">Kick, snare, clap, hats, toms, crash — open the clip to program steps.</div>}
+      {track.instrumentId === 'drums:sampler' && sample && (
+        <div className="space-y-1 text-[10px] text-zinc-400">
+          <button type="button" className="w-full rounded bg-white/10 py-1 text-zinc-100" onClick={() => onTrack({ slices: buildSlices(sample.channel, sample.sampleRate, 'transient') })}>Slice at transients</button>
+          <button type="button" className="w-full rounded bg-white/10 py-1 text-zinc-100" onClick={() => onTrack({ slices: buildSlices(sample.channel, sample.sampleRate, 'grid') })}>Slice on 1/4 notes</button>
+          {slice && (
+            <>
+              <label className="flex items-center gap-1">Slice
+                <select aria-label="Slice" value={Math.min(sliceIndex, slices.length - 1)} onChange={(e) => setSliceIndex(Number(e.target.value))} className="flex-1 rounded bg-black/40 px-1 text-zinc-100">
+                  {slices.map((_, i) => <option key={i} value={i}>{i + 1}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1">Pitch
+                <input aria-label="Slice pitch" type="number" min={-24} max={24} value={slice.pitch || 0} onChange={(e) => writeSlice({ pitch: Number(e.target.value) || 0 })} className="w-14 rounded bg-black/40 px-1 text-zinc-100" />
+                st
+              </label>
+              <label className="flex items-center gap-1"><input aria-label="Slice reverse" type="checkbox" checked={!!slice.reverse} onChange={(e) => writeSlice({ reverse: e.target.checked })} />Reverse</label>
+              <label className="flex items-center gap-1">Attack<input aria-label="Slice attack" type="range" min={0.001} max={1} step={0.001} value={slice.attack ?? 0.005} onChange={(e) => writeSlice({ attack: Number(e.target.value) })} className="h-1 flex-1" /></label>
+              <label className="flex items-center gap-1">Decay<input aria-label="Slice decay" type="range" min={0.01} max={2} step={0.01} value={slice.decay ?? 0.1} onChange={(e) => writeSlice({ decay: Number(e.target.value) })} className="h-1 flex-1" /></label>
+              <label className="flex items-center gap-1">Sustain<input aria-label="Slice sustain" type="range" min={0} max={1} step={0.01} value={slice.sustain ?? 0.8} onChange={(e) => writeSlice({ sustain: Number(e.target.value) })} className="h-1 flex-1" /></label>
+              <label className="flex items-center gap-1">Release<input aria-label="Slice release" type="range" min={0.01} max={2} step={0.01} value={slice.release ?? 0.05} onChange={(e) => writeSlice({ release: Number(e.target.value) })} className="h-1 flex-1" /></label>
+            </>
+          )}
+        </div>
+      )}
+      {track.instrumentId === 'drums:sampler' && !sample && <p className="text-[10px] text-zinc-500">Add an audio clip on this track to slice it into pads.</p>}
+      {drums && track.instrumentId !== 'drums:sampler' && <div className="text-[10px] text-zinc-500">Kick, snare, clap, hats, toms, crash — open the clip to program steps.</div>}
     </div>
   );
 }
@@ -243,12 +287,13 @@ function InstrumentCard({ project, track, onTrack, onPreset }: { project: DAWPro
 export interface DevicePanelProps {
   project: DAWProject;
   track: DAWTrack | null;
+  sample?: { channel: Float32Array; sampleRate: number } | null;
   onTrack: (patch: Partial<DAWTrack>, key?: string) => void;
   onEffects: (fx: EffectInstance[], key?: string) => void;
   onPreset: (p: SynthPreset, key?: string) => void;
 }
 
-export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: DevicePanelProps) {
+export function DevicePanel({ project, track, sample, onTrack, onEffects, onPreset }: DevicePanelProps) {
   const [menu, setMenu] = useState(false);
   if (!track) return <div className="flex h-full items-center justify-center text-xs text-zinc-600">Select a track to see its devices.</div>;
   const fxs = track.effectChain;
@@ -261,7 +306,7 @@ export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: De
   };
   return (
     <div className="flex h-full gap-2 overflow-x-auto p-2" data-testid="studio-devices">
-      {track.type !== 'audio' && <InstrumentCard project={project} track={track} onTrack={onTrack} onPreset={onPreset} />}
+      {track.type !== 'audio' && <InstrumentCard project={project} track={track} sample={sample || null} onTrack={onTrack} onPreset={onPreset} />}
       {fxs.map((fx, i) => {
         const change = (nfx: EffectInstance, key?: string) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key);
         const remove = () => onEffects(fxs.filter((x) => x.id !== fx.id));

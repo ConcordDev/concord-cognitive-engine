@@ -26,6 +26,14 @@ function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
 
 export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
 
+/** Exponential pitch glide. The midpoint is the geometric mean. */
+export function glideHz(fromHz: number, toHz: number, tSec: number, glideSec: number): number {
+  if (!(toHz > 0)) return 0;
+  if (!(fromHz > 0) || !(glideSec > 0) || tSec >= glideSec) return toHz;
+  if (tSec <= 0) return fromHz;
+  return fromHz * (toHz / fromHz) ** (tSec / glideSec);
+}
+
 function oscType(s: OscillatorShape): OscillatorType {
   if (s === 'sine' || s === 'square' || s === 'sawtooth' || s === 'triangle') return s;
   return s === 'pulse' || s === 'pwm' ? 'square' : 'sawtooth';
@@ -40,6 +48,7 @@ export function playSynthNote(
   velocity: number,
   time: number,
   dur: number,
+  glideFromHz?: number,
 ): Voice {
   const env = preset.ampEnvelope;
   const fenv = preset.filterEnvelope;
@@ -91,7 +100,15 @@ export function playSynthNote(
     for (let u = 0; u < unison; u++) {
       const osc = ctx.createOscillator();
       osc.type = oscType(o.shape);
-      osc.frequency.value = hz * Math.pow(2, o.octave || 0);
+      const target = hz * Math.pow(2, o.octave || 0);
+      const glideSec = Math.max(0, Math.min(2, preset.portamento || 0));
+      const from = glideSec > 0 && glideFromHz && glideFromHz > 0 ? glideFromHz * Math.pow(2, o.octave || 0) : 0;
+      if (from > 1 && Math.abs(from - target) > 0.5) {
+        osc.frequency.setValueAtTime(from, time);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(1, target), time + glideSec);
+      } else {
+        osc.frequency.value = target;
+      }
       const spread = unison > 1 ? ((u / (unison - 1)) * 2 - 1) * (preset.unisonDetune || 0) : 0;
       osc.detune.value = (o.detune || 0) + spread;
       const g = ctx.createGain();
