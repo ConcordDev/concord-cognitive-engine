@@ -16,8 +16,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { requestAskQuestion } from '@/components/answers/AnswersQA';
@@ -27,10 +25,10 @@ import { StackOverflowPanel } from '@/components/answers/StackOverflowPanel';
 
 type AnswersView = 'oracle' | 'qa' | 'stackoverflow';
 
-const VIEWS: { id: AnswersView; label: string; keys: string; title: string; hint: string; icon: typeof Eye }[] = [
-  { id: 'oracle', label: 'Oracle', keys: 'o', title: 'The question', hint: '30 hard problems', icon: Eye },
-  { id: 'qa', label: 'Q&A', keys: 'q', title: 'What people are asking', hint: 'Ask · answer · tags', icon: MessagesSquare },
-  { id: 'stackoverflow', label: 'Stack Overflow', keys: 's', title: 'What Stack Overflow says', hint: 'External search', icon: Search },
+const VIEWS: { id: AnswersView; label: string; keys: string; hint: string; icon: typeof Eye }[] = [
+  { id: 'oracle', label: 'Oracle', keys: 'o', hint: '30 hard problems', icon: Eye },
+  { id: 'qa', label: 'Q&A', keys: 'q', hint: 'Ask · answer · tags', icon: MessagesSquare },
+  { id: 'stackoverflow', label: 'Stack Overflow', keys: 's', hint: 'External search', icon: Search },
 ];
 
 export default function AnswersLensPage() {
@@ -42,8 +40,6 @@ export default function AnswersLensPage() {
   useLensNav('answers');
   useLensIdentity('answers');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<AnswersView>('oracle');
 
   const ask = useCallback(() => {
@@ -65,7 +61,6 @@ export default function AnswersLensPage() {
     { lensId: 'answers' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   const motionProps = useMemo(
     () => (reduceMotion
@@ -84,10 +79,7 @@ export default function AnswersLensPage() {
 
       <DepthBadge lensId="answers" size="sm" className="ml-2" />
       <div data-lens-theme="answers" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">The Answers</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {current.title}{active === 'oracle' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">The Answers</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Answers views">
           {VIEWS.map((v) => {

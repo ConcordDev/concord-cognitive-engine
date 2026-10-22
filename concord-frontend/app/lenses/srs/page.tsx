@@ -6,7 +6,6 @@ import { SrsRepos } from '@/components/srs/SrsRepos';
 import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -165,17 +164,13 @@ export default function SRSLensPage() {
     { lensId: 'srs' }
   );
 
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <LensShell lensId="srs" asMain={false}>
       <div data-lens-theme="srs" className="relative min-h-full px-8 pb-28 pt-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[13px] text-zinc-500">Study</p>
-            <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
-              {who ? `What do you still know, ${who}` : 'What do you still know'}
-            </h1>
+            <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Study</h1>
           </div>
           <div className="flex items-center gap-5 pt-1 text-[13px]">
             {view === 'review' && !dueQuery.isLoading && (

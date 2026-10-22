@@ -7,8 +7,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -35,8 +33,6 @@ const TAB_KEYS: Record<Tab, string> = { workflows: 'z', connectors: 'c', webhook
 export default function IntegrationsLensPage() {
   useLensNav('integrations');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<Tab>('workflows');
   const [showCreate, setShowCreate] = useState(false);
 
@@ -100,12 +96,6 @@ export default function IntegrationsLensPage() {
     { id: 'webhooks', label: 'Webhooks', icon: Webhook, count: webhooks?.count },
     { id: 'analysis', label: 'Analysis', icon: Activity },
   ];
-  const TITLES: Record<Tab, string> = {
-    workflows: `Wire your workflows${who ? `, ${who}` : ''}`,
-    connectors: 'Link your apps',
-    webhooks: 'Listen for events',
-    analysis: 'Analyze the plumbing',
-  };
 
   return (
     <LensShell lensId="integrations" asMain={false}>
@@ -114,7 +104,6 @@ export default function IntegrationsLensPage() {
       <NorthStarFrame
         lensId="integrations"
         crumb="Integrations"
-        title={TITLES[active]}
         subtitle="Zapier-style workflows, app connectors, webhooks & integration analysis"
         actions={(
           <>

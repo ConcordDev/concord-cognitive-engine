@@ -54,7 +54,7 @@ describe('cognitive replay card', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
     expect(await view.findByText('No moment chosen.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'Replay the moment' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Cognitive Replay' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Choose a moment' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Wrapped')).toBeNull();
@@ -139,11 +139,11 @@ describe('cognitive replay card', () => {
     expect(view.getByTestId('cr-title')).toBeInTheDocument();
   });
 
-  it('greets the signed-in name', async () => {
+  it('shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    expect(await view.findByRole('heading', { name: 'Replay the moment, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Cognitive Replay' })).toBeInTheDocument();
   });
 
   it('loads a stored moment and does not render a brain', async () => {

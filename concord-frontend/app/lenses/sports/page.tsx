@@ -24,8 +24,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -83,8 +81,6 @@ export default function SportsLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('sports');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SportsView>('scores');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -111,16 +107,6 @@ export default function SportsLensPage() {
     [reduceMotion],
   );
 
-  const titles: Record<SportsView, string> = {
-    scores: `Catch the score${who ? `, ${who}` : ''}`,
-    club: 'Follow your teams',
-    matches: 'Track your fixtures',
-    stats: 'Read your record',
-    training: 'Log the work',
-    leagues: 'Run the league',
-    spectator: 'Call the game',
-    activity: 'Work the numbers',
-  };
 
   return (
     <LensShell lensId="sports" asMain={false}>
@@ -129,7 +115,6 @@ export default function SportsLensPage() {
       <NorthStarFrame
         lensId="sports"
         crumb="Sports"
-        title={titles[active]}
         subtitle="ESPN scores + FotMob fixtures: live board, personal matches, leagues."
         actions={(
           <>

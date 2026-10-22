@@ -4,8 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthSection } from '@/components/mental-health/MentalHealthSection';
@@ -38,17 +36,15 @@ interface WellnessResult { wellnessScore: number; breakdown: Record<string, stri
 
 type MhView = 'today' | 'analysis' | 'toolkit' | 'support';
 
-const VIEWS: { id: MhView; label: string; keys: string; title: string; hint: string; icon: typeof Sun }[] = [
-  { id: 'today', label: 'Today', keys: '1', title: 'How are you feeling', hint: 'Check-ins, mood, sleep, breathing and practice', icon: Sun },
-  { id: 'analysis', label: 'Analysis', keys: '2', title: 'Make sense of it', hint: 'Coping strategies and your wellness score', icon: Brain },
-  { id: 'toolkit', label: 'Toolkit', keys: '3', title: 'Everything in reach', hint: 'Worksheets, safety plan, reminders and therapist report', icon: Wrench },
-  { id: 'support', label: 'Support', keys: '4', title: 'You are not alone', hint: 'Crisis lines and trusted health information', icon: LifeBuoy },
+const VIEWS: { id: MhView; label: string; keys: string; hint: string; icon: typeof Sun }[] = [
+  { id: 'today', label: 'Today', keys: '1', hint: 'Check-ins, mood, sleep, breathing and practice', icon: Sun },
+  { id: 'analysis', label: 'Analysis', keys: '2', hint: 'Coping strategies and your wellness score', icon: Brain },
+  { id: 'toolkit', label: 'Toolkit', keys: '3', hint: 'Worksheets, safety plan, reminders and therapist report', icon: Wrench },
+  { id: 'support', label: 'Support', keys: '4', hint: 'Crisis lines and trusted health information', icon: LifeBuoy },
 ];
 
 export default function MentalHealthLensPage() {
   useLensNav('mental-health');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<MhView>('today');
   useLensCommand([
     ...VIEWS.map((v) => ({
@@ -59,7 +55,6 @@ export default function MentalHealthLensPage() {
       action: () => setView(v.id),
     })),
   ], { lensId: 'mental-health' });
-  const current = VIEWS.find((v) => v.id === view)!;
 
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mental-health');
 
@@ -120,7 +115,6 @@ export default function MentalHealthLensPage() {
       <NorthStarFrame
         lensId="mental-health"
         crumb="Mental health"
-        title={`${current.title}${view === 'today' && who ? `, ${who}` : ''}`}
         subtitle="Mood tracking, journaling, coping strategies and crisis support. For self-reflection, not treatment."
         actions={(
           <>

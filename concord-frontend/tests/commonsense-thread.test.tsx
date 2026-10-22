@@ -75,7 +75,7 @@ describe('commonsense thread', () => {
     install([]);
     const view = render(<CommonsenseLensPage />);
     expect(await view.findByText('The thread is empty.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The obvious check' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Commonsense' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Ask' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('ConceptNet')).toBeNull();

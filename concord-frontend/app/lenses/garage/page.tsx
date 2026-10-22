@@ -45,7 +45,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { useAuth } from '@/hooks/useAuth';
@@ -103,8 +102,7 @@ const KIND_ICON_NAME: Record<string, IconName> = {
 type FleetTab = 'world' | 'mine';
 
 export default function GarageLensPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [worldId, setWorldId] = useState('concordia-hub');
   const [worldIdDraft, setWorldIdDraft] = useState('concordia-hub');
@@ -265,7 +263,6 @@ export default function GarageLensPage() {
       <NorthStarFrame
         lensId="garage"
         crumb="Garage"
-        title={`Your fleet${who ? `, ${who}` : ''}`}
         subtitle="Fleet browser, spawn depot, and inspector for world vehicles."
         actions={
           <>

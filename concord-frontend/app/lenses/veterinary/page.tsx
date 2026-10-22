@@ -53,8 +53,6 @@ import { CalculatorsPanel } from '@/components/veterinary/CalculatorsPanel';
 import { StatTile, StatTileGrid, Skeleton, ErrorState, DensityToggle } from '@/components/ui';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface DashboardData {
@@ -68,23 +66,21 @@ type ModeTab =
   | 'Dashboard' | 'Patients' | 'Appointments' | 'Billing' | 'Records'
   | 'Pharmacy' | 'Lab' | 'Inventory' | 'Reminders' | 'Owner Portal' | 'Calculators';
 
-const TABS: { key: ModeTab; label: string; title: string; icon: typeof Heart; hotkey: string }[] = [
-  { key: 'Dashboard', label: 'Dashboard', title: 'Your practice today', icon: BarChart3, hotkey: '1' },
-  { key: 'Patients', label: 'Patients', title: 'The patients in your care', icon: Heart, hotkey: '2' },
-  { key: 'Appointments', label: 'Appointments', title: 'Who is coming in', icon: Calendar, hotkey: '3' },
-  { key: 'Billing', label: 'Billing', title: 'What is owed', icon: Receipt, hotkey: '4' },
-  { key: 'Records', label: 'SOAP Records', title: 'What you charted', icon: ClipboardList, hotkey: '5' },
-  { key: 'Pharmacy', label: 'Pharmacy', title: 'What is in the dispensary', icon: Pill, hotkey: '6' },
-  { key: 'Lab', label: 'Lab & Imaging', title: 'What the tests show', icon: FlaskConical, hotkey: '7' },
-  { key: 'Inventory', label: 'Inventory', title: 'What is on the shelf', icon: Boxes, hotkey: '8' },
-  { key: 'Reminders', label: 'Reminders', title: 'Who is due', icon: BellRing, hotkey: '9' },
-  { key: 'Owner Portal', label: 'Owner Portal', title: 'What owners see', icon: UserCircle, hotkey: '0' },
-  { key: 'Calculators', label: 'Calculators', title: 'Dose and fluid math', icon: Calculator, hotkey: 'c' },
+const TABS: {key: ModeTab; label: string; icon: typeof Heart; hotkey: string }[] = [
+  { key: 'Dashboard', label: 'Dashboard', icon: BarChart3, hotkey: '1' },
+  { key: 'Patients', label: 'Patients', icon: Heart, hotkey: '2' },
+  { key: 'Appointments', label: 'Appointments', icon: Calendar, hotkey: '3' },
+  { key: 'Billing', label: 'Billing', icon: Receipt, hotkey: '4' },
+  { key: 'Records', label: 'SOAP Records', icon: ClipboardList, hotkey: '5' },
+  { key: 'Pharmacy', label: 'Pharmacy', icon: Pill, hotkey: '6' },
+  { key: 'Lab', label: 'Lab & Imaging', icon: FlaskConical, hotkey: '7' },
+  { key: 'Inventory', label: 'Inventory', icon: Boxes, hotkey: '8' },
+  { key: 'Reminders', label: 'Reminders', icon: BellRing, hotkey: '9' },
+  { key: 'Owner Portal', label: 'Owner Portal', icon: UserCircle, hotkey: '0' },
+  { key: 'Calculators', label: 'Calculators', icon: Calculator, hotkey: 'c' },
 ];
 
 export default function VeterinaryLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -109,7 +105,6 @@ export default function VeterinaryLensPage() {
   const dash = stats.status === 'done' ? stats.result : null;
   const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
-  const current = TABS.find((t) => t.key === activeMode)!;
 
   return (
     <LensShell lensId="veterinary" asMain={false}>
@@ -117,7 +112,6 @@ export default function VeterinaryLensPage() {
       <NorthStarFrame
         lensId="veterinary"
         crumb="Veterinary"
-        title={`${current.title}${activeMode === 'Dashboard' && who ? `, ${who}` : ''}`}
         subtitle="Patients, scheduling, billing, SOAP charting, pharmacy, lab and inventory."
         actions={
           <>

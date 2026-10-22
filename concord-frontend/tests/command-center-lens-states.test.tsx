@@ -79,7 +79,7 @@ describe('command center alert desk', () => {
     install([]);
     const view = render(<CommandCenterPage />);
     expect(await view.findByText('No alert in front of you.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The one alert' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Command Center' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Refresh' })).toBeEnabled();
     expect(view.getByRole('button', { name: 'File an alert' })).toBeInTheDocument();
     expect(view.container.querySelector('input')).toBeNull();
@@ -215,11 +215,11 @@ describe('command center alert desk', () => {
     expect(after).toBeGreaterThan(before);
   });
 
-  it('greets the signed-in operator and stays on the composer when filing is refused', async () => {
+  it('shows the lens name signed-in and stays on the composer when filing is refused', async () => {
     authUser.current = { username: 'ramaj' };
     install([]);
     const view = render(<CommandCenterPage />);
-    expect(await view.findByRole('heading', { name: 'The one alert, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Command Center' })).toBeInTheDocument();
     fireEvent.click(view.getByRole('button', { name: 'File an alert' }));
     fireEvent.change(view.getByTestId('cc-title'), { target: { value: 'Disk pressure' } });
     fireEvent.change(view.getByTestId('cc-line-input'), { target: { value: 'tight' } });

@@ -13,8 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { HardHat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -51,8 +49,6 @@ export default function ConstructionLensPage() {
   useLensNav('construction');
   useLensIdentity('construction');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<ConstrView>('jobs');
 
   useLensCommand(
@@ -86,7 +82,6 @@ export default function ConstructionLensPage() {
       <NorthStarFrame
         lensId="construction"
         crumb="Construction"
-        title={`Run the job site${active === 'jobs' && who ? `, ${who}` : ''}`}
         subtitle="Jobs, estimates, inspections, field paperwork, OSHA and Procore in one GC desk."
         tabs={SHELL_VIEWS}
         activeTab={active}

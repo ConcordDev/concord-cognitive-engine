@@ -43,7 +43,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -182,20 +181,18 @@ export default function SocialHubPage() {
   });
   const unreadCount = unreadData?.count ?? 0;
 
-  const TABS: { id: TabId; label: string; keys: string; title: string; icon: typeof Globe2; badge?: number }[] = [
-    { id: 'feed',          label: 'Feed',          keys: '1', title: "What's moving",          icon: MessageSquare },
-    { id: 'discover',      label: 'For You',       keys: '2', title: 'What you might like',    icon: Sparkles },
-    { id: 'reels',         label: 'Reels',         keys: '3', title: 'Watch something short', icon: Play },
-    { id: 'spaces',        label: 'Spaces',        keys: '4', title: 'Who is talking live',    icon: Radio },
-    { id: 'following',     label: 'Following',     keys: '5', title: 'What your people did',   icon: Users },
-    { id: 'notifications', label: 'Notifications', keys: '6', title: 'What you missed',        icon: Bell, badge: unreadCount },
-    { id: 'saved',         label: 'Saved',         keys: '7', title: 'What you kept',          icon: Bookmark },
-    { id: 'analytics',     label: 'Analytics',     keys: '8', title: 'How your posts land',    icon: BarChart3 },
-    { id: 'moderation',    label: 'Moderation',    keys: '9', title: 'What needs a look',      icon: Shield },
+  const TABS: { id: TabId; label: string; keys: string; icon: typeof Globe2; badge?: number }[] = [
+    { id: 'feed',          label: 'Feed',          keys: '1',          icon: MessageSquare },
+    { id: 'discover',      label: 'For You',       keys: '2',    icon: Sparkles },
+    { id: 'reels',         label: 'Reels',         keys: '3', icon: Play },
+    { id: 'spaces',        label: 'Spaces',        keys: '4',    icon: Radio },
+    { id: 'following',     label: 'Following',     keys: '5',   icon: Users },
+    { id: 'notifications', label: 'Notifications', keys: '6',        icon: Bell, badge: unreadCount },
+    { id: 'saved',         label: 'Saved',         keys: '7',          icon: Bookmark },
+    { id: 'analytics',     label: 'Analytics',     keys: '8',    icon: BarChart3 },
+    { id: 'moderation',    label: 'Moderation',    keys: '9',      icon: Shield },
   ];
 
-  const who = titleCaseDisplayName(me?.user?.username || me?.user?.displayName);
-  const currentTab = TABS.find((t) => t.id === activeTab)!;
 
   const startPost = () => {
     setActiveTab('feed');
@@ -228,10 +225,7 @@ export default function SocialHubPage() {
       <div data-lens-theme="social" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Social</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {currentTab.title}{activeTab === 'feed' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Social</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <PushEnableButton />

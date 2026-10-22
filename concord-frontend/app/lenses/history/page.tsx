@@ -56,8 +56,6 @@ import { Layers, BookOpen, Wand2, Users, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DensityToggle } from '@/components/ui';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -73,18 +71,16 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 
 type GroupId = 'timelines' | 'wikipedia' | 'tools' | 'notebook';
 
-const GROUPS: { id: GroupId; label: string; hotkey: string; title: string; icon: typeof Layers; description: string }[] = [
-  { id: 'timelines', title: 'The record', label: 'Timelines', hotkey: '1', icon: Layers, description: 'Build, visualize, map, compare and publish dated timelines' },
-  { id: 'wikipedia', title: 'What the sources say', label: 'Wikipedia Research', hotkey: '2', icon: BookOpen, description: 'Search articles, browse On This Day, cite sources' },
-  { id: 'tools', title: 'How to read it', label: 'Analysis Tools', hotkey: '3', icon: Wand2, description: 'Ad-hoc timeline/source/period/causation analyzers' },
-  { id: 'notebook', title: 'The people in it', label: 'Figures Notebook', hotkey: '4', icon: Users, description: 'Personal notes on historical figures' },
+const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof Layers; description: string }[] = [
+  { id: 'timelines', label: 'Timelines', hotkey: '1', icon: Layers, description: 'Build, visualize, map, compare and publish dated timelines' },
+  { id: 'wikipedia', label: 'Wikipedia Research', hotkey: '2', icon: BookOpen, description: 'Search articles, browse On This Day, cite sources' },
+  { id: 'tools', label: 'Analysis Tools', hotkey: '3', icon: Wand2, description: 'Ad-hoc timeline/source/period/causation analyzers' },
+  { id: 'notebook', label: 'Figures Notebook', hotkey: '4', icon: Users, description: 'Personal notes on historical figures' },
 ];
 
 export default function HistoryLensPage() {
   useLensNav('history');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [group, setGroup] = useState<GroupId>('timelines');
   const [dashboardRefreshToken, setDashboardRefreshToken] = useState(0);
 
@@ -125,7 +121,6 @@ export default function HistoryLensPage() {
     { lensId: 'history' },
   );
 
-  const current = GROUPS.find((g) => g.id === group)!;
 
   return (
     <LensShell lensId="history" asMain={false}>
@@ -134,10 +129,7 @@ export default function HistoryLensPage() {
       <div data-lens-theme="history" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">History</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{group === 'timelines' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">History</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <DensityToggle variant="dropdown" />

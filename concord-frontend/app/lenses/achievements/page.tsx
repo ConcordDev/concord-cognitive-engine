@@ -41,7 +41,6 @@ import { Trophy, AlertTriangle, RefreshCw, Search, Medal, BarChart3 } from 'luci
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { subscribe } from '@/lib/realtime/socket';
@@ -67,7 +66,6 @@ const HIGHLIGHT_MS = 3600;
 
 function AchievementsLensInner() {
   const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<AchView>('gallery');
   const params = useSearchParams();
   // useSearchParams() can legitimately return null (Next.js docs — outside a
@@ -285,7 +283,6 @@ function AchievementsLensInner() {
       <NorthStarFrame
         lensId="achievements"
         crumb="Achievements"
-        title={view === 'gallery' ? `What you have earned${who ? `, ${who}` : ''}` : 'How far you have come'}
         subtitle={subtitle}
         tabs={[
           { id: 'gallery', label: 'Gallery', icon: Trophy, keys: 'g', hint: 'Every achievement, titles and community activity' },

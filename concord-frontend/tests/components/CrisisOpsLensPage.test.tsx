@@ -132,7 +132,7 @@ describe('CrisisOpsLensPage — four UX states + a11y', () => {
     lensRunMock.mockResolvedValue({ data: { ok: true, crises: [], suggestions: [] } });
     await renderPage();
     await waitFor(() => {
-      const h1 = screen.getByRole('heading', { level: 1, name: /all quiet/i });
+      const h1 = screen.getByRole('heading', { level: 1, name: /crisis ops/i });
       expect(h1).toBeInTheDocument();
     });
   });

@@ -28,8 +28,6 @@ import {
 import { cn } from '@/lib/utils';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { StatTile } from '@/components/ui/StatTile';
 import { DensityToggle } from '@/components/ui/DensityToggle';
@@ -58,8 +56,6 @@ function relTime(iso: string): string {
 }
 
 export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsCategory } = {}) {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [mode, setMode] = useState<DeskMode>('live');
   const [category, setCategory] = useState<NewsCategory>(initialCategory);
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
@@ -143,7 +139,6 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
       lensId="news"
       theme="news"
       crumb="News"
-      title={`${mode === 'live' ? 'What changed' : 'What you follow'}${mode === 'live' && who ? `, ${who}` : ''}`}
       subtitle={mode === 'live'
         ? 'Live GDELT headlines with source attribution, a daily briefing, bias / event / narrative analysis and citable pulled intelligence.'
         : 'Your followed topics and sources, saved stories, story clusters and bias spectrum.'}

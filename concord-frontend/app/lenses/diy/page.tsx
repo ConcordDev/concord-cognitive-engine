@@ -20,8 +20,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { DiyLibraryPanel } from '@/components/diy/DiyLibraryPanel';
@@ -49,8 +47,6 @@ const DESK_MODES = new Set<DiyView>([
 export default function DIYLensPage() {
   useLensNav('diy');
   const { latestData, isLive, lastUpdated, insights } = useRealtimeLens('diy');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DiyView>('projects');
   const navViews = omitCommunityRedditViews(VIEWS, ['showcase']);
@@ -94,7 +90,6 @@ export default function DIYLensPage() {
       <NorthStarFrame
         lensId="diy"
         crumb="DIY"
-        title={`What are we building${who ? `, ${who}` : ''}`}
         subtitle="Projects, tools, materials, instructions, ideas and a gallery: the whole workshop."
         actions={(
           <>

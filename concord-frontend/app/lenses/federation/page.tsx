@@ -8,8 +8,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -34,23 +32,21 @@ type FedView =
   | 'network' | 'search' | 'peers' | 'sync'
   | 'moderation' | 'policy' | 'relays' | 'metrics' | 'keys' | 'fediverse';
 
-const VIEWS: { id: FedView; label: string; keys: string; title: string; icon: typeof Network }[] = [
-  { id: 'network', label: 'Network', keys: 'n', title: 'The nodes you are linked to', icon: Globe },
-  { id: 'search', label: 'Search', keys: 's', title: 'Search across every peer', icon: Search },
-  { id: 'peers', label: 'Peers', keys: 'p', title: 'Who you trust', icon: Users },
-  { id: 'policy', label: 'Defederation', keys: 'b', title: 'Who you have shut out', icon: ShieldX },
-  { id: 'moderation', label: 'Moderation', keys: 'm', title: 'What needs a ruling', icon: Inbox },
-  { id: 'sync', label: 'Sync', keys: 'y', title: 'Keep the lattices in step', icon: Zap },
-  { id: 'relays', label: 'Relays', keys: 'r', title: 'How messages travel', icon: Radio },
-  { id: 'metrics', label: 'Metrics', keys: 'd', title: 'How the network is behaving', icon: BarChart3 },
-  { id: 'keys', label: 'Actor keys', keys: 'k', title: 'Prove who you are', icon: KeyRound },
-  { id: 'fediverse', label: 'Fediverse', keys: 'f', title: 'Beyond Concord', icon: Share2 },
+const VIEWS: { id: FedView; label: string; keys: string; icon: typeof Network }[] = [
+  { id: 'network', label: 'Network', keys: 'n', icon: Globe },
+  { id: 'search', label: 'Search', keys: 's', icon: Search },
+  { id: 'peers', label: 'Peers', keys: 'p', icon: Users },
+  { id: 'policy', label: 'Defederation', keys: 'b', icon: ShieldX },
+  { id: 'moderation', label: 'Moderation', keys: 'm', icon: Inbox },
+  { id: 'sync', label: 'Sync', keys: 'y', icon: Zap },
+  { id: 'relays', label: 'Relays', keys: 'r', icon: Radio },
+  { id: 'metrics', label: 'Metrics', keys: 'd', icon: BarChart3 },
+  { id: 'keys', label: 'Actor keys', keys: 'k', icon: KeyRound },
+  { id: 'fediverse', label: 'Fediverse', keys: 'f', icon: Share2 },
 ];
 
 export default function FederationPage() {
   useLensNav('federation');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<FedView>('network');
   const [status, setStatus] = useState<FederationStatus | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
@@ -112,7 +108,6 @@ export default function FederationPage() {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="federation" asMain={false}>
@@ -122,7 +117,6 @@ export default function FederationPage() {
         <NorthStarFrame
           lensId="federation"
           crumb="Network"
-          title={`${current.title}${active === 'network' && who ? `, ${who}` : ''}`}
           subtitle="Concord nodes peer with each other to share knowledge, trust, and DTU lineage."
           tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
           activeTab={active}

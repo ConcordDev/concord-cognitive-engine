@@ -24,8 +24,6 @@ import { PersonaDetailPanel } from '@/components/personas/PersonaDetailPanel';
 import { runPersona, readEnvelope } from '@/components/personas/persona-envelope';
 import { lensRun } from '@/lib/api/client';
 import { Package, Plus, Store, UserRound, Wand2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 interface PersonaPackage {
@@ -39,8 +37,6 @@ interface PersonaPackage {
 type Tab = 'mine' | 'browse' | 'create' | 'npc';
 
 export default function PersonasPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<PersonaDetail[]>([]);
   const [loadingMine, setLoadingMine] = useState(true);
@@ -139,11 +135,11 @@ export default function PersonasPage() {
     } else flash(`Failed: ${r.error || 'unknown'}`);
   };
 
-  const TABS: Array<{ id: Tab; label: string; hint: string; title: string; icon: typeof UserRound }> = [
-    { id: 'mine', label: 'My Personas', hint: 'g m', title: "Who you're talking with", icon: UserRound },
-    { id: 'browse', label: 'Marketplace', hint: 'g b', title: 'Characters worth meeting', icon: Store },
-    { id: 'create', label: 'Create', hint: 'g c', title: 'Author a character', icon: Wand2 },
-    { id: 'npc', label: 'NPC Packaging', hint: 'g n', title: 'Package an NPC', icon: Package },
+  const TABS: Array<{ id: Tab; label: string; hint: string; icon: typeof UserRound }> = [
+    { id: 'mine', label: 'My Personas', hint: 'g m', icon: UserRound },
+    { id: 'browse', label: 'Marketplace', hint: 'g b', icon: Store },
+    { id: 'create', label: 'Create', hint: 'g c', icon: Wand2 },
+    { id: 'npc', label: 'NPC Packaging', hint: 'g n', icon: Package },
   ];
 
   // Discoverable, keyboard-first navigation (Linear-style). Registered in the
@@ -159,17 +155,13 @@ export default function PersonasPage() {
   ], { lensId: 'personas' });
 
   const startPersona = () => { goTab('create'); setCreating(true); };
-  const currentTab = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="personas" asMain={false}>
 
       <DepthBadge lensId="personas" size="sm" className="ml-2" />
       <div data-lens-theme="personas" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Personas</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {currentTab.title}{tab === 'mine' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Personas</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Persona views">
           {TABS.map((t) => {

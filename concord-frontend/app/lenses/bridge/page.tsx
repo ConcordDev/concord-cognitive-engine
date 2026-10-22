@@ -15,8 +15,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -52,8 +50,6 @@ export default function BridgeLens() {
   useLensNav('bridge');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('bridge');
   const [active, setActive] = useState<BridgeView>('activity');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [selectedDtuId, setSelectedDtuId] = useState<string | null>(null);
   const {
     organisms, organismStatus,
@@ -75,15 +71,6 @@ export default function BridgeLens() {
     { lensId: 'bridge' },
   );
 
-  const titles: Record<BridgeView, string> = {
-    activity: `Watch the bridge${who ? `, ${who}` : ''}`,
-    organisms: 'Meet the organisms',
-    debates: 'Hear the debates',
-    lifecycle: 'Follow the births',
-    emergents: 'See what emerged',
-    federation: 'Connect the federation',
-    actions: 'Act on the bridge',
-  };
 
   return (
     <LensShell lensId="bridge" asMain={false}>
@@ -92,7 +79,6 @@ export default function BridgeLens() {
       <NorthStarFrame
         lensId="bridge"
         crumb="Organism Bridge"
-        title={titles[active]}
         subtitle="Emergent ↔ Knowledge Organism communication"
         actions={(
           <>

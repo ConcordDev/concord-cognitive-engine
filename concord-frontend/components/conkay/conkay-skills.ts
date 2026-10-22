@@ -182,12 +182,10 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
           : `Here's your brief. ${dtus.length} DTU${dtus.length === 1 ? '' : 's'} in your archive, ${last7} new this week. ${people} ${people === 1 ? 'person is' : 'people are'} around, and ${events.length} live event${events.length === 1 ? '' : 's'}.`;
       return {
         spoken,
-        viz: { type: 'metrics', title: 'Your brief', data: metrics },
+        viz: { type: 'metrics', data: metrics },
         dtuRefs: dtus.slice(0, 5).map((d) => ({ id: d.id, title: d.title, tier: d.tier })),
-        acting: true,
-      };
-    },
-  },
+        acting: true };
+    } },
   {
     id: 'activity',
     label: 'My activity',
@@ -207,17 +205,15 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
         const key = calendarDateKey(d);
         buckets.push({
           x: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-          y: dtus.filter((x) => x.createdAt && calendarDateKey(new Date(x.createdAt)) === key).length,
-        });
+          y: dtus.filter((x) => x.createdAt && calendarDateKey(new Date(x.createdAt)) === key).length });
       }
       const total14 = buckets.reduce((s, b) => s + b.y, 0);
       const spoken =
         dtus.length === 0
           ? `You haven't created anything yet — your activity chart fills in as you build.`
           : `You've created ${dtus.length} DTU${dtus.length === 1 ? '' : 's'} total, ${total14} in the last two weeks. Here's your rhythm.`;
-      return { spoken, viz: { type: 'series', title: 'Your last 14 days', data: buckets }, acting: true };
-    },
-  },
+      return { spoken, viz: { type: 'series', data: buckets }, acting: true };
+    } },
   {
     id: 'world',
     label: 'World pulse',
@@ -238,9 +234,8 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
         { label: 'Live events', value: String(events.length) },
       ];
       const spoken = `${people} ${people === 1 ? 'person is' : 'people are'} around right now, and ${events.length} event${events.length === 1 ? '' : 's'} ${events.length === 1 ? 'is' : 'are'} live. Say "enter the world" and I'll take you in.`;
-      return { spoken, viz: { type: 'metrics', title: 'World pulse', data: metrics }, acting: true };
-    },
-  },
+      return { spoken, viz: { type: 'metrics', data: metrics }, acting: true };
+    } },
   {
     id: 'enter-world',
     label: 'Enter the world',
@@ -261,14 +256,9 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
         "I can act on your real Concord data directly: brief you, search your archive, chart your activity, read the world's pulse, take you into Concordia, and open any lens by name. Ask me anything else and I'll reason it through with the brains and your archives.",
       viz: {
         type: 'graph',
-        title: 'ConKay skills',
         data: {
           nodes: CONKAY_SKILLS.filter((s) => s.id !== 'help').map((s) => ({ id: s.id, label: s.label })),
-          edges: [],
-        },
-      },
-    }),
-  },
+          edges: [] } } }) },
   {
     id: 'open',
     label: 'Open a lens',

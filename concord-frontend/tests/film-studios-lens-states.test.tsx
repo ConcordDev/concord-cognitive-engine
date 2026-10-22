@@ -50,7 +50,7 @@ describe('film studios production', () => {
     const view = render(<FilmStudiosPage />);
     expect(await view.findByText('No production open.')).toBeInTheDocument();
     expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The production' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Film Studios' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New production' })).toBeEnabled();
     expect(view.queryByRole('button', { name: 'Add scene' })).toBeNull();
     expect(view.queryByRole('button', { name: 'Discover' })).toBeNull();
@@ -171,11 +171,11 @@ describe('film studios production', () => {
     expect(lensRun.mock.calls.filter((call) => call[1] === 'scene-list').length).toBeGreaterThan(before);
   });
 
-  it('GREETING: names the signed-in person', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<FilmStudiosPage />);
-    expect(await view.findByRole('heading', { name: 'The production, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Film Studios' })).toBeInTheDocument();
   });
 
   it('LOAD: skips a row with a blank title', async () => {

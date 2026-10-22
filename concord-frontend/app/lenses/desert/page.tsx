@@ -21,8 +21,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   Sun,
   Thermometer,
@@ -54,8 +52,6 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Sun }[] = [
 export default function DesertLensPage() {
   useLensNav('desert');
   const { latestData, isLive, lastUpdated, insights } = useRealtimeLens('desert');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeMode, setActiveMode] = useState<ModeTab>('Weather');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -76,7 +72,6 @@ export default function DesertLensPage() {
       <NorthStarFrame
         lensId="desert"
         crumb="Desert Operations"
-        title={`Read the desert before you go${who ? `, ${who}` : ''}`}
         subtitle="Expedition planning, heat and UV safety, resources, solar siting and survival prep for arid environments."
         actions={(
           <>

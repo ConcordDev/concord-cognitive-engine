@@ -60,8 +60,6 @@ import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
 import { StatTile, StatTileGrid, ErrorState, Skeleton, DensityToggle } from '@/components/ui';
 import { Compass, Globe2, Wrench, Plane, Plus } from 'lucide-react';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type TopTab = 'trips' | 'reference' | 'tools';
 
@@ -75,16 +73,14 @@ interface TravelDashboard {
   totalBooked: number;
 }
 
-const TOP_TABS: { id: TopTab; label: string; title: string; icon: typeof Compass; hint: string }[] = [
-  { id: 'trips', label: 'My Trips', title: 'Where you are headed', icon: Compass, hint: 'trips · saved places · price watches · documents' },
-  { id: 'reference', label: 'Destination Reference', title: 'What to know before you land', icon: Globe2, hint: 'country · visa · currency · postal · parks' },
-  { id: 'tools', label: 'Quick Tools', title: 'Do the trip math', icon: Wrench, hint: 'budget · packing · jet lag · visa calculators' },
+const TOP_TABS: { id: TopTab; label: string; icon: typeof Compass; hint: string }[] = [
+  { id: 'trips', label: 'My Trips', icon: Compass, hint: 'trips · saved places · price watches · documents' },
+  { id: 'reference', label: 'Destination Reference', icon: Globe2, hint: 'country · visa · currency · postal · parks' },
+  { id: 'tools', label: 'Quick Tools', icon: Wrench, hint: 'budget · packing · jet lag · visa calculators' },
 ];
 
 export default function TravelLensPage() {
   useLensNav('travel');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [tab, setTab] = useState<TopTab>('trips');
   const dashFeedback = useMacroDispatchFeedback<TravelDashboard>();
 
@@ -108,7 +104,6 @@ export default function TravelLensPage() {
   const dash = dashFeedback.result;
   const dashLoading = dashFeedback.status === 'dispatched' || dashFeedback.status === 'running';
 
-  const current = TOP_TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="travel" asMain={false}>
@@ -117,7 +112,6 @@ export default function TravelLensPage() {
       <NorthStarFrame
         lensId="travel"
         crumb="Travel"
-        title={`${current.title}${tab === 'trips' && who ? `, ${who}` : ''}`}
         subtitle="Trip planning, itineraries, price watches and destination reference."
         actions={<DensityToggle variant="dropdown" />}
         tabs={TOP_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, hint: t.hint }))}

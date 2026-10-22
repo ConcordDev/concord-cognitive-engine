@@ -31,8 +31,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -82,8 +80,6 @@ const VIEWS: { id: ResonanceView; label: string; keys: string; icon: typeof Radi
 export default function ResonanceBoundaryPage() {
   useLensNav('resonance');
   useLensIdentity('resonance');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('resonance');
 
@@ -185,10 +181,7 @@ export default function ResonanceBoundaryPage() {
       <div data-lens-theme="resonance" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Resonance</p>
-            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              What still resonates{who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Resonance</h1>
             <p className="mb-5 text-[13px] text-zinc-500">
               x&sup2; &minus; x = 0 &middot; boundary detection &middot; constraint alignment &middot;{' '}
               <span style={{ color: meta.color }}>{meta.label}</span>

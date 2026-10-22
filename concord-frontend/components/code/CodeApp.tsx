@@ -20,8 +20,7 @@ import { CodeEditorWorkspacePanel } from '@/components/code/CodeEditorWorkspaceP
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { cn } from '@/lib/utils';
 
 // These three views are closed until the user opens them. Loading them
@@ -41,8 +40,6 @@ const EXTRA_TABS: { id: Exclude<CodeExtras, 'none'>; label: string; keys: string
 
 export default function CodeApp() {
   useLensNav('code');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [extras, setExtras] = useState<CodeExtras>('none');
 
   // The editor's Run button is the only one. This publishes the server
@@ -91,10 +88,7 @@ export default function CodeApp() {
         <ShellPreview lensId="code" defaultOpen={true} />
 
         <div data-lens-theme="code" className="px-6 pb-6 pt-6">
-          <p className="text-[14px] text-zinc-500">Code</p>
-          <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-            What are we building{who ? `, ${who}` : ''}
-          </h1>
+          <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Code</h1>
 
           <nav className="mb-5 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Code extras" role="tablist">
             <button

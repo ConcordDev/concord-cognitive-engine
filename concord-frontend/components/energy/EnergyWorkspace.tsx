@@ -55,7 +55,7 @@ function isEnergyView(value: unknown): value is EnergyView {
   return typeof value === 'string' && VIEW_IDS.has(value as EnergyView);
 }
 
-export function EnergyWorkspace({ who }: { who: string }) {
+export function EnergyWorkspace() {
   useLensIdentity('energy');
   const { restore, persist } = useLensStatePersistence('energy');
   const [initialState] = useState(() => restore());
@@ -126,10 +126,7 @@ export function EnergyWorkspace({ who }: { who: string }) {
   return (
     <div data-lens-theme="energy" className="relative min-h-full bg-[#080808] px-4 pb-28 pt-6 sm:px-8">
       <header>
-        <p className="text-sm text-zinc-600">Energy</p>
-        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">
-          The load{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Energy</h1>
         {selectedMeter && (
           <p className="mt-2 text-sm text-zinc-500">
             <span className="text-zinc-300">{selectedMeter.name}</span> is the active meter.

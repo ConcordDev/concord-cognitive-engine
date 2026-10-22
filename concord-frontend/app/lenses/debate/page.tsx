@@ -15,8 +15,6 @@ import { GitBranch, MessageSquare, Timer } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -49,8 +47,6 @@ export default function DebateLensPage() {
   useLensNav('debate');
   useLensIdentity('debate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debate');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DebateView>('floor');
   const navViews = omitCommunityRedditViews(VIEWS, ['cmv']);
@@ -105,7 +101,6 @@ export default function DebateLensPage() {
       <NorthStarFrame
         lensId="debate"
         crumb="Debate"
-        title={`Argue it out${active === 'floor' && who ? `, ${who}` : ''}`}
         subtitle="Kialo-style claim tree plus a timed debate floor: one argumentation desk."
         actions={
           <>

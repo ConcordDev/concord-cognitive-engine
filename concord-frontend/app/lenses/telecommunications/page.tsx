@@ -18,10 +18,8 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
@@ -49,8 +47,6 @@ interface OverviewCounts {
 export default function TelecommunicationsLensPage() {
   useLensNav('telecommunications');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('telecommunications');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [overview, setOverview] = useState<OverviewCounts | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [rfTab, setRfTab] = useState<(typeof RF_PLANNER_TABS)[number]['key']>('sites');
@@ -103,7 +99,6 @@ export default function TelecommunicationsLensPage() {
       <NorthStarFrame
         lensId="telecommunications"
         crumb="Telecommunications"
-        title={`Your network${who ? `, ${who}` : ''}`}
         subtitle="RF network planning, spectrum allocation, outage and SLA tracking, and NOC ops"
         actions={
           <>

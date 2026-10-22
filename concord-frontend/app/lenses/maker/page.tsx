@@ -16,8 +16,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Make {
@@ -54,8 +52,6 @@ async function readBench(): Promise<Make[]> {
 
 export default function MakerPage() {
   useLensNav('maker');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [makes, setMakes] = useState<Make[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -140,10 +136,7 @@ export default function MakerPage() {
   return (
     <LensShell lensId="maker" asMain={false}>
       <div data-lens-theme="maker" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Maker</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The make{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Maker</h1>
 
         <section
           aria-label="Bench"

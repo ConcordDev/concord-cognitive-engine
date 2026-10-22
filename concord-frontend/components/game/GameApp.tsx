@@ -14,7 +14,6 @@ import { XpActivityFeed } from '@/components/game/XpActivityFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
@@ -236,7 +235,6 @@ export default function GameApp() {
   );
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
   const { user: authUser } = useAuth();
-  const who = titleCaseDisplayName(authUser?.username);
   const [playerXp, setPlayerXp] = useState(0);
   const [showCreateChallenge, setShowCreateChallenge] = useState(false);
   const [newChallenge, setNewChallenge] = useState({ name: '', description: '', difficulty: 'medium' as Quest['difficulty'], xpReward: 300 });
@@ -877,17 +875,17 @@ export default function GameApp() {
   const level = profile.level || 1;
   const progressPct = ((playerXp) / ((profile.nextLevelXp as number) || 1000)) * 100;
 
-  const TABS: { id: MainTab; label: string; keys: string; title: string; icon: typeof Trophy }[] = [
-    { id: 'dashboard', label: 'Dashboard', keys: 'd', title: 'Your progress', icon: BarChart3 },
-    { id: 'habits', label: 'Habit Hub', keys: 'b', title: 'What you keep doing', icon: Flame },
-    { id: 'design', label: 'Design Lab', keys: 'g', title: 'Design a game', icon: FlaskConical },
-    { id: 'quests', label: 'Quests', keys: 'q', title: 'What is worth doing', icon: Target },
-    { id: 'achievements', label: 'Achievements', keys: 'a', title: 'What you have earned', icon: Trophy },
-    { id: 'leaderboard', label: 'Leaderboard', keys: 'l', title: 'How you stack up', icon: Users },
-    { id: 'history', label: 'XP History', keys: 'i', title: 'Where your XP came from', icon: TrendingUp },
-    { id: 'minigame', label: 'Mini-Game', keys: 'm', title: 'Take a break', icon: Gamepad2 },
-    { id: 'trivia', label: 'Trivia', keys: 'v', title: 'Test what you know', icon: Sparkles },
-    { id: 'feed', label: 'Feed', keys: 'f', title: 'What players are doing', icon: MessageSquare },
+  const TABS: { id: MainTab; label: string; keys: string; icon: typeof Trophy }[] = [
+    { id: 'dashboard', label: 'Dashboard', keys: 'd', icon: BarChart3 },
+    { id: 'habits', label: 'Habit Hub', keys: 'b', icon: Flame },
+    { id: 'design', label: 'Design Lab', keys: 'g', icon: FlaskConical },
+    { id: 'quests', label: 'Quests', keys: 'q', icon: Target },
+    { id: 'achievements', label: 'Achievements', keys: 'a', icon: Trophy },
+    { id: 'leaderboard', label: 'Leaderboard', keys: 'l', icon: Users },
+    { id: 'history', label: 'XP History', keys: 'i', icon: TrendingUp },
+    { id: 'minigame', label: 'Mini-Game', keys: 'm', icon: Gamepad2 },
+    { id: 'trivia', label: 'Trivia', keys: 'v', icon: Sparkles },
+    { id: 'feed', label: 'Feed', keys: 'f', icon: MessageSquare },
   ];
 
 
@@ -922,10 +920,7 @@ export default function GameApp() {
       {/* Header */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">Game</p>
-          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-            {activeTab === 'dashboard' ? `Ready to level up${who ? `, ${who}` : ''}` : (TABS.find((t) => t.id === activeTab)?.title ?? 'Game')}
-          </h1>
+          <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Game</h1>
           <p className="max-w-3xl text-[14px] leading-relaxed text-zinc-500">
             Quests, habits, achievements, leaderboards, a design lab, trivia and a mini-game, all earning real XP.
           </p>

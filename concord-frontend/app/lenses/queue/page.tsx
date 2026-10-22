@@ -16,8 +16,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { JobDetailDrawer } from '@/components/queue/JobDetailDrawer';
 import { QueueRepos } from '@/components/queue/QueueRepos';
 import { OverviewPanel } from '@/components/queue/OverviewPanel';
@@ -27,20 +25,18 @@ import {
 } from '@/components/queue/QueueTabPanels';
 import { useQueueActions, useQueueData } from '@/components/queue/useQueueData';
 
-const VIEWS: { id: QueueTab; label: string; keys: string; title: string; icon: typeof Inbox }[] = [
-  { id: 'overview', label: 'Overview', keys: 'o', title: 'Your queues at a glance', icon: LayoutDashboard },
-  { id: 'jobs', label: 'Jobs', keys: 'j', title: 'Every job in flight', icon: Inbox },
-  { id: 'scheduled', label: 'Scheduled', keys: 's', title: 'What runs later', icon: CalendarClock },
-  { id: 'dead', label: 'Dead-letter', keys: 'd', title: 'What gave up', icon: ShieldAlert },
-  { id: 'workers', label: 'Workers', keys: 'w', title: 'Who is doing the work', icon: Server },
-  { id: 'analytics', label: 'Analytics', keys: 'a', title: 'How the queue performs', icon: Activity },
-  { id: 'repos', label: 'Repos', keys: 'g', title: 'Queue tooling to learn from', icon: Github },
+const VIEWS: { id: QueueTab; label: string; keys: string; icon: typeof Inbox }[] = [
+  { id: 'overview', label: 'Overview', keys: 'o', icon: LayoutDashboard },
+  { id: 'jobs', label: 'Jobs', keys: 'j', icon: Inbox },
+  { id: 'scheduled', label: 'Scheduled', keys: 's', icon: CalendarClock },
+  { id: 'dead', label: 'Dead-letter', keys: 'd', icon: ShieldAlert },
+  { id: 'workers', label: 'Workers', keys: 'w', icon: Server },
+  { id: 'analytics', label: 'Analytics', keys: 'a', icon: Activity },
+  { id: 'repos', label: 'Repos', keys: 'g', icon: Github },
 ];
 
 export default function QueueLensPage() {
   useLensNav('queue');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<QueueTab>('overview');
   const actions = useQueueActions();
   const data = useQueueData(active, actions.queueFilter);
@@ -66,7 +62,6 @@ export default function QueueLensPage() {
   );
 
   const t = data.metrics?.totals;
-  const current = VIEWS.find((v) => v.id === active)!;
   const countFor = (id: QueueTab) =>
     id === 'jobs' ? t?.all
     : id === 'scheduled' ? t?.delayed
@@ -81,7 +76,6 @@ export default function QueueLensPage() {
       <NorthStarFrame
         lensId="queue"
         crumb="Queue"
-        title={`${current.title}${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Enqueue, process, retry, dead-letter and schedule jobs."
         tabs={VIEWS.map((v) => {
           const n = countFor(v.id);

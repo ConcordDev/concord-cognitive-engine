@@ -20,8 +20,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { InboxPanel } from '@/components/message/InboxPanel';
 import { WorkbenchPanel } from '@/components/message/WorkbenchPanel';
@@ -30,11 +28,11 @@ import { ConnectPanel } from '@/components/message/ConnectPanel';
 
 type MessageView = 'inbox' | 'workbench' | 'labels' | 'connect';
 
-const VIEWS: { id: MessageView; label: string; keys: string; title: string; hint: string; icon: typeof Inbox }[] = [
-  { id: 'inbox', label: 'Inbox', keys: '1', title: 'Who wrote', hint: 'Direct messages', icon: Inbox },
-  { id: 'workbench', label: 'Workbench', keys: '2', title: 'What you have kept', hint: 'Saved · search · voice', icon: Wrench },
-  { id: 'labels', label: 'Labels', keys: '3', title: 'How it is sorted', hint: 'Label manager', icon: Tags },
-  { id: 'connect', label: 'Connect', keys: '4', title: 'Where mail comes from', hint: 'Gmail · Slack · repos', icon: Plug },
+const VIEWS: { id: MessageView; label: string; keys: string; hint: string; icon: typeof Inbox }[] = [
+  { id: 'inbox', label: 'Inbox', keys: '1', hint: 'Direct messages', icon: Inbox },
+  { id: 'workbench', label: 'Workbench', keys: '2', hint: 'Saved · search · voice', icon: Wrench },
+  { id: 'labels', label: 'Labels', keys: '3', hint: 'Label manager', icon: Tags },
+  { id: 'connect', label: 'Connect', keys: '4', hint: 'Gmail · Slack · repos', icon: Plug },
 ];
 
 const PANELS: Record<MessageView, ComponentType> = {
@@ -48,8 +46,6 @@ export default function MessageLensPage() {
   useLensNav('message');
   useLensIdentity('message');
   const { isLive, lastUpdated } = useRealtimeLens('message');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<MessageView>('inbox');
 
@@ -69,7 +65,6 @@ export default function MessageLensPage() {
     { lensId: 'message' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   const Panel = PANELS[active];
   const motionProps = useMemo(
@@ -91,10 +86,7 @@ export default function MessageLensPage() {
       <div data-lens-theme="message" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Messages</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'inbox' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Messages</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

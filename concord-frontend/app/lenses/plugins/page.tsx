@@ -14,8 +14,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { PluginGalleryList } from '@/components/plugins/PluginGalleryList';
 import { Search } from 'lucide-react';
 
@@ -25,8 +23,6 @@ function focusGallerySearch() {
 }
 
 export default function PluginsPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   useLensCommand(
     [{ id: 'plugins-search', keys: '/', description: 'Search the gallery', category: 'navigation' as const, action: focusGallerySearch }],
     { lensId: 'plugins' },
@@ -39,7 +35,6 @@ export default function PluginsPage() {
       <NorthStarFrame
         lensId="plugins"
         crumb="Plugins"
-        title={who ? `Extend Concord, ${who}` : 'Extend Concord'}
         subtitle="Signed, browsable plugin packages with real capability disclosure before every install."
         cta={{ label: 'Search plugins', icon: Search, onClick: focusGallerySearch, title: 'Focus the gallery search' }}
       >

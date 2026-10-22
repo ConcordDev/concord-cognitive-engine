@@ -14,8 +14,6 @@ import {
   Store,
   X,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   BarChart3 as MobileTabAnal,
   Heart as MobileTabHeart,
@@ -48,13 +46,13 @@ import { AnalyticsPanel } from './AnalyticsPanel';
 import { useMarketplace } from './MarketplaceProvider';
 import type { CreatorInfo, MarketplaceItem, MarketplaceTabId } from './types';
 
-const TABS: { id: MarketplaceTabId; label: string; keys: string; title: string; icon: typeof Store }[] = [
-  { id: 'browse', keys: 'B', title: 'What is for sale', label: 'Browse', icon: Store },
-  { id: 'sell', keys: 'M', title: 'What you are selling', label: 'Sell', icon: LayoutDashboard },
-  { id: 'cart', keys: 'C', title: 'What is in your cart', label: 'Cart', icon: ShoppingCart },
-  { id: 'purchases', keys: 'P', title: 'What you have bought', label: 'Purchases', icon: Download },
-  { id: 'watchlist', keys: 'W', title: 'What you are watching', label: 'Watchlist', icon: Star },
-  { id: 'analytics', keys: 'A', title: 'How your shop is doing', label: 'Analytics', icon: BarChart2 },
+const TABS: { id: MarketplaceTabId; label: string; keys: string; icon: typeof Store }[] = [
+  { id: 'browse', keys: 'B', label: 'Browse', icon: Store },
+  { id: 'sell', keys: 'M', label: 'Sell', icon: LayoutDashboard },
+  { id: 'cart', keys: 'C', label: 'Cart', icon: ShoppingCart },
+  { id: 'purchases', keys: 'P', label: 'Purchases', icon: Download },
+  { id: 'watchlist', keys: 'W', label: 'Watchlist', icon: Star },
+  { id: 'analytics', keys: 'A', label: 'Analytics', icon: BarChart2 },
 ];
 
 const PANELS: Record<MarketplaceTabId, ComponentType> = {
@@ -113,9 +111,6 @@ export function MarketplaceApp() {
   );
 
   const Active = PANELS[m.tab];
-  const current = TABS.find((t) => t.id === m.tab) ?? TABS[0];
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   return (
     <>
@@ -124,10 +119,7 @@ export function MarketplaceApp() {
       <div className="lens-marketplace relative min-h-full space-y-5 px-8 pb-28 pt-6" data-lens-theme="marketplace">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Marketplace</p>
-            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{m.tab === 'browse' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Marketplace</h1>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

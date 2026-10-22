@@ -69,8 +69,6 @@ import { Fish, Sparkles, Compass, ArrowRight } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FishingMinigameOverlay } from '@/components/world-lens/FishingMinigameOverlay';
 import { StatTile, StatTileGrid, DensityToggle } from '@/components/ui';
 import { useDensity } from '@/lib/hooks/useDensity';
@@ -86,8 +84,6 @@ interface SpeciesResult { ok: boolean; fish?: FishSpecies[]; reason?: string }
 interface CatchesResult { ok: boolean; catches?: CatchRow[]; reason?: string }
 
 export default function FishingLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [worldId, setWorldId] = useState<string>('concordia-hub');
 
   const [catalog, setCatalog] = useState<FishSpecies[]>([]);
@@ -247,7 +243,6 @@ export default function FishingLensPage() {
       <NorthStarFrame
         lensId="fishing"
         crumb="Fishing"
-        title={who ? `Cast a line, ${who}` : 'Cast a line'}
         subtitle="Browse the local catalog, cast a line, review your catch log."
         actions={<DensityToggle variant="dropdown" />}
         cta={{ label: 'Cast line', icon: Sparkles, onClick: handleCast, disabled: minigameOpen, title: 'Open the cast / bite / reel minigame (C)' }}

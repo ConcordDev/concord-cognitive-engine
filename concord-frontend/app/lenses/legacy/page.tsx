@@ -16,8 +16,6 @@ import { PortfolioAssessment } from '@/components/legacy/PortfolioAssessment';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -30,8 +28,6 @@ export default function LegacyLensPage() {
   useLensNav('legacy');
   useLensIdentity('legacy');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('legacy');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('scan');
 
   const scan = useCallback(() => {
@@ -59,7 +55,6 @@ export default function LegacyLensPage() {
       <NorthStarFrame
         lensId="legacy"
         crumb="Legacy"
-        title={view === 'scan' ? `What you inherited${who ? `, ${who}` : ''}` : 'What the portfolio risks'}
         subtitle="Technical debt, dependency graphs, migration roadmaps and cloud-readiness for real, aging systems."
         actions={
           <>

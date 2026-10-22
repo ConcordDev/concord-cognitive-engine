@@ -12,8 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
@@ -37,8 +35,6 @@ const VIEWS: { id: KingdomView; label: string; keys: string }[] = [
 
 export default function KingdomsPage() {
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<KingdomView>('list');
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -60,7 +56,6 @@ export default function KingdomsPage() {
       <NorthStarFrame
         lensId="kingdoms"
         crumb="Kingdoms"
-        title={`Realms${who ? `, ${who}` : ''}`}
         subtitle="Browse realms, found a kingdom, issue decrees, and trace dynasties"
         tabs={VIEWS}
         activeTab={active}

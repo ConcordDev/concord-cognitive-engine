@@ -42,7 +42,7 @@ describe('maker bench', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<MakerPage />);
     expect(await view.findByText('Nothing on the bench.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The make' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Maker' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New make' })).toBeEnabled();
     expect(view.queryByText('Builder')).toBeNull();
     expect(view.queryByText('Quest Designer')).toBeNull();
@@ -104,11 +104,11 @@ describe('maker bench', () => {
     expect(view.queryByRole('heading', { name: 'Lost make' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<MakerPage />);
-    expect(await view.findByRole('heading', { name: 'The make, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Maker' })).toBeInTheDocument();
     expect(await view.findByText('Nothing on the bench.')).toBeInTheDocument();
   });
 

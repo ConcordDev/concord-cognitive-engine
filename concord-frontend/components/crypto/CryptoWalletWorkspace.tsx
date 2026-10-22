@@ -30,8 +30,6 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton, SkeletonTableRows } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -135,20 +133,6 @@ export type CryptoTab =
   | 'addressbook'
   | 'tools';
 
-const CRYPTO_TAB_TITLES: Record<CryptoTab, string> = {
-  portfolio: 'The wallet',
-  holdings: 'What you hold',
-  transactions: 'Where it moved',
-  wallets: 'Your wallets',
-  chart: 'How it is trading',
-  swap: 'Trade one for another',
-  alerts: 'Tell me when it moves',
-  approvals: 'Who can spend what',
-  route: 'The cheapest way across',
-  ticker: 'The market right now',
-  addressbook: 'People you pay',
-  tools: 'The workbench',
-};
 
 const CRYPTO_TABS: { key: CryptoTab; label: string; keys: string; icon: typeof Wallet }[] = [
   { key: 'portfolio', label: 'Portfolio', keys: 'p', icon: TrendingUp },
@@ -173,8 +157,6 @@ export function CryptoWalletWorkspace() {
   useTilePush({ lensId: 'crypto' });
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('crypto');
 
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<CryptoTab>('portfolio');
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
@@ -668,10 +650,7 @@ export function CryptoWalletWorkspace() {
     <div data-lens-theme="crypto" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[14px] text-zinc-500">Crypto</p>
-          <h1 className="font-vault mb-1 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-            {CRYPTO_TAB_TITLES[activeTab]}{activeTab === 'portfolio' && who ? `, ${who}` : ''}
-          </h1>
+          <h1 className="font-vault mb-1 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Crypto</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

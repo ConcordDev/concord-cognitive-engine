@@ -7,8 +7,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlatformRepos } from '@/components/platform/PlatformRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import {
@@ -286,8 +284,6 @@ function OverviewDashboard() {
 export default function PlatformPage() {
   useLensNav('platform');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('platform');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -308,16 +304,6 @@ export default function PlatformPage() {
 
   const current = TABS.find((t) => t.id === activeTab)!;
   const KEYS: Record<Tab, string> = { overview: 'o', console: 'c', pipeline: 'p', nerve: 'n', empirical: 'e', scope: 's', events: 'v', analysis: 'g' };
-  const TITLES: Record<Tab, string> = {
-    overview: `The platform at a glance${who ? `, ${who}` : ''}`,
-    console: 'Deploy, tune, audit',
-    pipeline: 'What the autogen pipeline is making',
-    nerve: 'Beacon, strategy and hypothesis',
-    empirical: 'Math, units and constants',
-    scope: 'Who can see what',
-    events: 'Everything happening right now',
-    analysis: 'Capacity, SLA and incidents',
-  };
 
   return (
     <LensShell lensId="platform" asMain={false}>
@@ -326,7 +312,6 @@ export default function PlatformPage() {
       <NorthStarFrame
         lensId="platform"
         crumb="Platform"
-        title={TITLES[activeTab]}
         subtitle={current.desc}
         actions={
           <>

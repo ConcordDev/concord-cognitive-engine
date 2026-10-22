@@ -13,7 +13,6 @@ import { Skeleton, SkeletonTableRows } from '@/components/ui/Skeleton';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRepairTelemetry } from '@/components/repair-telemetry/useRepairTelemetry';
 import { canViewRepairTelemetry, REPAIR_OPERATOR_ROLES } from '@/components/repair-telemetry/repair-access';
 import { StatsStrip } from '@/components/repair-telemetry/StatsStrip';
@@ -24,11 +23,11 @@ import type { FilterTab } from '@/components/repair-telemetry/types';
 
 type RepairView = 'overview' | 'escalations' | 'patterns' | 'ledger';
 
-const TABS: { id: RepairView; label: string; keys: string; title: string; icon: typeof Activity }[] = [
-  { id: 'overview', label: 'Overview', keys: 'o', title: 'What the world repaired', icon: Activity },
-  { id: 'escalations', label: 'Escalations', keys: 'e', title: 'What needs your decision', icon: Inbox },
-  { id: 'patterns', label: 'Patterns', keys: 'p', title: 'What keeps breaking', icon: ClipboardList },
-  { id: 'ledger', label: 'Ledger', keys: 'l', title: 'Every finding on record', icon: ScrollText },
+const TABS: { id: RepairView; label: string; keys: string; icon: typeof Activity }[] = [
+  { id: 'overview', label: 'Overview', keys: 'o', icon: Activity },
+  { id: 'escalations', label: 'Escalations', keys: 'e', icon: Inbox },
+  { id: 'patterns', label: 'Patterns', keys: 'p', icon: ClipboardList },
+  { id: 'ledger', label: 'Ledger', keys: 'l', icon: ScrollText },
 ];
 
 export default function RepairTelemetryPage() {
@@ -46,7 +45,6 @@ export default function RepairTelemetryPage() {
     refresh, resolve,
   } = useRepairTelemetry(canView);
 
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<RepairView>('overview');
   const [filter, setFilter] = useState<FilterTab>('all');
   const [selectedEscalationId, setSelectedEscalationId] = useState<string | null>(null);
@@ -130,14 +128,12 @@ export default function RepairTelemetryPage() {
   const isEmpty = state === 'ready' && log.length === 0 && escalations.length === 0
     && (!mem || (mem.totalPatterns === 0 && mem.totalRepairs === 0));
 
-  const current = TABS.find((t) => t.id === active)!;
 
   return (
     <LensShell lensId="repair-telemetry" asMain={false}>
       <NorthStarFrame
         lensId="repair-telemetry"
         crumb="Maintenance"
-        title={`${current.title}${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="What the world repaired, and what it refused to decide, while you were away."
         actions={
           <label className="hidden items-center gap-1.5 text-[12px] text-zinc-400 sm:flex">

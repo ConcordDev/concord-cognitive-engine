@@ -12,8 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Shield, ListChecks, Zap, Gauge, Play, FolderGit2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -45,8 +43,6 @@ export default function InvariantLensPage() {
   useLensIdentity('invariant');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('invariant');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<InvariantView>('overview');
 
   useLensCommand(
@@ -79,7 +75,6 @@ export default function InvariantLensPage() {
       <NorthStarFrame
         lensId="invariant"
         crumb="Invariant"
-        title={`What must always hold${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Rules, tester and workbench for system invariants"
         actions={
           <>

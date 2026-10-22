@@ -14,8 +14,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { FirehosePanel } from '@/components/event-timeline/FirehosePanel';
 import { MyOnThisDay } from '@/components/event-timeline/MyOnThisDay';
 import { OnThisDay } from '@/components/event-timeline/OnThisDay';
@@ -37,8 +35,6 @@ const PANELS: Record<TimelineView, ComponentType> = {
 export default function EventTimelineLens() {
   useLensNav('event-timeline');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<TimelineView>('firehose');
 
   useLensCommand(
@@ -61,7 +57,6 @@ export default function EventTimelineLens() {
       <NorthStarFrame
         lensId="event-timeline"
         crumb="Timeline"
-        title={`Everything that happened${who ? `, ${who}` : ''}`}
         subtitle="The full firehose of substrate events: combat, quests, NPCs, world-state, cross-world plots, cognition. Search, filter, drill into any event, and export the slice you care about."
         tabs={VIEWS}
         activeTab={active}

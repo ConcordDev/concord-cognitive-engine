@@ -14,8 +14,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { api } from '@/lib/api/client';
 import {
   pieceDesignBody,
@@ -25,8 +23,6 @@ import {
 } from '@/components/crafting/bench';
 
 export default function CraftingPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const nameId = useId();
   const [recipes, setRecipes] = useState<BenchRecipe[]>([]);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -126,15 +122,11 @@ export default function CraftingPage() {
     { lensId: 'crafting' },
   );
 
-  const greeting = who ? `The piece on the bench, ${who}` : 'The piece on the bench';
 
   return (
     <LensShell lensId="crafting" asMain={false}>
       <div data-lens-theme="crafting" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Crafting</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {greeting}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Crafting</h1>
 
         <section
           aria-label="Bench"

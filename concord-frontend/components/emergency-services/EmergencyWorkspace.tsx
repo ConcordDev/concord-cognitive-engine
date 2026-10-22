@@ -35,7 +35,7 @@ function isBoardTool(value: unknown): value is BoardTool {
   return typeof value === 'string' && TOOL_IDS.has(value as BoardTool);
 }
 
-export function EmergencyWorkspace({ who }: { who: string }) {
+export function EmergencyWorkspace() {
   useLensIdentity('emergency-services');
   const { restore, persist } = useLensStatePersistence('emergency-services');
   const [initialState] = useState(() => restore());
@@ -94,10 +94,7 @@ export function EmergencyWorkspace({ who }: { who: string }) {
   return (
     <div data-lens-theme="emergency-services" className="relative min-h-full bg-[#070707] px-4 pb-28 pt-6 sm:px-8">
       <header>
-        <p className="text-sm text-zinc-600">Emergency Services</p>
-        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">
-          The call{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Emergency Services</h1>
         {boardOpened && dashboard && (
           <p className="mt-2 text-sm text-zinc-500">
             {dashboard.openIncidents} open · {dashboard.availableUnits} available · {dashboard.units} rostered

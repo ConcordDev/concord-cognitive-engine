@@ -17,19 +17,15 @@ import { TournamentCreatePanel } from '@/components/tournaments/TournamentCreate
 import { EsportsFeedPanel } from '@/components/tournaments/EsportsFeedPanel';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { useTournamentDesk, type TourneyView } from '@/components/tournaments/useTournamentDesk';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
-const VIEWS: { id: TourneyView; label: string; keys: string; title: string; hint: string; icon: typeof Trophy }[] = [
-  { id: 'list', label: 'Browse', keys: 'l', title: 'Find a bracket', hint: 'Open, running and finished tournaments', icon: List },
-  { id: 'create', label: 'Create', keys: 'c', title: 'Run your own tournament', hint: 'Format, seeding, entrants', icon: Plus },
-  { id: 'esports', label: 'Esports', keys: 'e', title: 'What the esports scene is saying', hint: 'Live esports community feed', icon: Gamepad2 },
+const VIEWS: { id: TourneyView; label: string; keys: string; hint: string; icon: typeof Trophy }[] = [
+  { id: 'list', label: 'Browse', keys: 'l', hint: 'Open, running and finished tournaments', icon: List },
+  { id: 'create', label: 'Create', keys: 'c', hint: 'Format, seeding, entrants', icon: Plus },
+  { id: 'esports', label: 'Esports', keys: 'e', hint: 'Live esports community feed', icon: Gamepad2 },
 ];
 
 export default function TournamentsPage() {
   const desk = useTournamentDesk();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const navViews = omitCommunityRedditViews(VIEWS, ['esports']);
 
   useLensCommand(
@@ -44,9 +40,6 @@ export default function TournamentsPage() {
   );
 
   const activeTab = desk.active === 'detail' ? 'list' : desk.active;
-  const current = desk.active === 'detail' && desk.detail
-    ? { title: desk.detail.title || 'Tournament' }
-    : VIEWS.find((v) => v.id === desk.active) ?? VIEWS[0];
 
   return (
     <LensShell lensId="tournaments" asMain={false}>
@@ -55,7 +48,6 @@ export default function TournamentsPage() {
       <NorthStarFrame
         lensId="tournaments"
         crumb="Tournaments"
-        title={`${current.title}${desk.active === 'list' && who ? `, ${who}` : ''}`}
         subtitle="Single and double elimination brackets, entrants, seeding, standings and live results."
         tabs={navViews.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={activeTab}

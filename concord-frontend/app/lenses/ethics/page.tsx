@@ -15,12 +15,8 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { DecisionToolkit, TOOL_TABS, type ToolTab } from '@/components/ethics/DecisionToolkit';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 export default function EthicsLensPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<ToolTab>('multiframework');
 
   const analyze = useCallback(() => {
@@ -53,7 +49,6 @@ export default function EthicsLensPage() {
       <NorthStarFrame
         lensId="ethics"
         crumb="Ethics"
-        title={`What is the right call${who ? `, ${who}` : ''}?`}
         subtitle="Multi-framework decision analysis, stakeholder equity, bias auditing, and a personal case library."
         cta={{ label: 'Analyze a decision', icon: Scale, onClick: analyze, title: 'Analyze a decision (N)' }}
       >

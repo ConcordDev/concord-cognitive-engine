@@ -16,10 +16,10 @@ import { SpeciesCodexPanel } from '@/components/creatures/SpeciesCodexPanel';
 import { LineagePanel } from '@/components/creatures/LineagePanel';
 import type { CreaturesView } from '@/components/creatures/types';
 
-const VIEWS: { id: CreaturesView; label: string; keys: string; title: string; hint: string; icon: typeof Dna }[] = [
-  { id: 'populations', label: 'Populations', keys: '1', title: 'Who lives here', hint: 'Roster and crossbreeding pen', icon: PawPrint },
-  { id: 'codex', label: 'Species codex', keys: '2', title: 'Every kind of creature', hint: 'Species and taxonomy', icon: BookMarked },
-  { id: 'lineage', label: 'Lineage', keys: '3', title: 'Where they come from', hint: 'Lineage browser', icon: GitBranch },
+const VIEWS: { id: CreaturesView; label: string; keys: string; hint: string; icon: typeof Dna }[] = [
+  { id: 'populations', label: 'Populations', keys: '1', hint: 'Roster and crossbreeding pen', icon: PawPrint },
+  { id: 'codex', label: 'Species codex', keys: '2', hint: 'Species and taxonomy', icon: BookMarked },
+  { id: 'lineage', label: 'Lineage', keys: '3', hint: 'Lineage browser', icon: GitBranch },
 ];
 
 const DEFAULT_WORLD = 'concordia-hub';
@@ -62,14 +62,12 @@ export default function CreaturesLensPage() {
     { lensId: 'creatures' },
   );
 
-  const current = VIEWS.find((v) => v.id === active)!;
 
   return (
     <LensShell lensId="creatures" asMain={false}>
       <NorthStarFrame
         lensId="creatures"
         crumb={`Creatures · ${worldId}`}
-        title={current.title}
         subtitle="Populations, crossbreeding pen and lineage browser."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={active}

@@ -27,8 +27,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { SessionDetail } from '@/components/sessions/SessionDetail';
 import { StaleReminder } from '@/components/sessions/StaleReminder';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -71,12 +69,12 @@ const STATUS_META: Record<SessionStatus, { label: string; color: string; icon: t
   abandoned:  { label: 'Abandoned',  color: 'text-rose-300 border-rose-500/40 bg-rose-500/10',          icon: XCircle },
 };
 
-const FILTER_TABS: { id: SessionStatus | 'all'; label: string; keys: string; title: string; hint: string; icon: typeof Play }[] = [
-  { id: 'all', label: 'All', keys: '0', title: 'Where you left off', hint: 'Every session across every lens', icon: GitBranch },
-  { id: 'open', label: 'Open', keys: '1', title: 'Work in flight', hint: 'Sessions you are actively working in', icon: Play },
-  { id: 'paused', label: 'Paused', keys: '2', title: 'Waiting for you', hint: 'Paused sessions you can resume', icon: Pause },
-  { id: 'completed', label: 'Completed', keys: '3', title: 'What you finished', hint: 'Sessions closed as completed', icon: CheckCircle2 },
-  { id: 'abandoned', label: 'Abandoned', keys: '4', title: 'What you let go', hint: 'Sessions closed as abandoned', icon: XCircle },
+const FILTER_TABS: { id: SessionStatus | 'all'; label: string; keys: string; hint: string; icon: typeof Play }[] = [
+  { id: 'all', label: 'All', keys: '0', hint: 'Every session across every lens', icon: GitBranch },
+  { id: 'open', label: 'Open', keys: '1', hint: 'Sessions you are actively working in', icon: Play },
+  { id: 'paused', label: 'Paused', keys: '2', hint: 'Paused sessions you can resume', icon: Pause },
+  { id: 'completed', label: 'Completed', keys: '3', hint: 'Sessions closed as completed', icon: CheckCircle2 },
+  { id: 'abandoned', label: 'Abandoned', keys: '4', hint: 'Sessions closed as abandoned', icon: XCircle },
 ];
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
@@ -89,8 +87,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 export default function SessionsLensPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,7 +199,6 @@ export default function SessionsLensPage() {
     { lensId: 'sessions' },
   );
 
-  const currentFilter = FILTER_TABS.find(t => t.id === activeFilter)!;
 
   return (
     <LensShell lensId="sessions" asMain={false}>
@@ -213,7 +208,6 @@ export default function SessionsLensPage() {
       <NorthStarFrame
         lensId="sessions"
         crumb="Sessions"
-        title={`${currentFilter.title}${activeFilter === 'all' && who ? `, ${who}` : ''}`}
         subtitle="Multi-step work across every lens — real, persistent, resumable."
         actions={
           <button

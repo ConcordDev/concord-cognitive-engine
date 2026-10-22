@@ -17,8 +17,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { SearchPanel } from '@/components/literary/SearchPanel';
 import { CrystalsPanel } from '@/components/literary/CrystalsPanel';
@@ -27,11 +25,11 @@ import { LatticePanel } from '@/components/literary/LatticePanel';
 
 type LiteraryView = 'search' | 'crystals' | 'annotations' | 'lattice';
 
-const VIEWS: { id: LiteraryView; label: string; keys: string; title: string; hint: string; icon: typeof Search }[] = [
-  { id: 'search', label: 'Corpus', keys: '1', title: 'The passage', hint: 'Hybrid corpus search', icon: Search },
-  { id: 'crystals', label: 'Crystals', keys: '2', title: 'What stands out', hint: 'Salience candidates', icon: Gem },
-  { id: 'annotations', label: 'Annotations', keys: '3', title: 'What you noted', hint: 'Saved notes', icon: Library },
-  { id: 'lattice', label: 'Lattice', keys: '4', title: 'How the texts resonate', hint: 'Resonance graph', icon: Network },
+const VIEWS: { id: LiteraryView; label: string; keys: string; hint: string; icon: typeof Search }[] = [
+  { id: 'search', label: 'Corpus', keys: '1', hint: 'Hybrid corpus search', icon: Search },
+  { id: 'crystals', label: 'Crystals', keys: '2', hint: 'Salience candidates', icon: Gem },
+  { id: 'annotations', label: 'Annotations', keys: '3', hint: 'Saved notes', icon: Library },
+  { id: 'lattice', label: 'Lattice', keys: '4', hint: 'Resonance graph', icon: Network },
 ];
 
 const PANELS: Record<LiteraryView, ComponentType> = {
@@ -51,8 +49,6 @@ export default function LiteraryLensPage() {
   useLensNav('literary');
   useLensIdentity('literary');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<LiteraryView>('search');
 
   const openText = useCallback(() => {
@@ -75,7 +71,6 @@ export default function LiteraryLensPage() {
   );
 
   const Panel = PANELS[active];
-  const view = VIEWS.find((v) => v.id === active)!;
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -95,10 +90,7 @@ export default function LiteraryLensPage() {
       <div data-lens-theme="literary" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Literary</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {view.title}{active === 'search' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Literary</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <DTUExportButton domain="literary" data={{}} compact />

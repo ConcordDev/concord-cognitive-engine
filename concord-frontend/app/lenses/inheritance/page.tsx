@@ -29,8 +29,6 @@ import { TABS, type Tab } from '@/components/inheritance/inheritance-shared';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Users } from 'lucide-react';
 
 type View = Tab | 'discussion';
@@ -56,8 +54,6 @@ const PANELS: Record<View, ComponentType> = {
 function EstateShellInner({ active, setActive }: { active: View; setActive: (v: View) => void }) {
   const reduceMotion = useReducedMotion();
   const { status, loadAll, loading, loadError } = useEstate();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const viewTabs = omitCommunityRedditViews(VIEW_TABS, ['discussion']);
 
   useLensCommand(
@@ -86,7 +82,6 @@ function EstateShellInner({ active, setActive }: { active: View; setActive: (v: 
     <NorthStarFrame
       lensId="inheritance"
       crumb="Inheritance"
-      title={`Plan what you leave behind${active === 'overview' && who ? `, ${who}` : ''}`}
       subtitle="Estate planner and heir-slot market: wills, beneficiaries, assets, executors, probate and intestacy."
       actions={status ? <p className="font-mono text-xs text-amber-200/80">{status}</p> : undefined}
       tabs={viewTabs}

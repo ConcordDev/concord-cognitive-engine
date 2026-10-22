@@ -16,8 +16,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { HeartEventModal } from '@/components/courtship/HeartEventModal';
 import { ConfirmDissolveModal } from '@/components/courtship/ConfirmDissolveModal';
 import { useCourtshipDesk } from '@/components/courtship/useCourtshipDesk';
@@ -41,8 +39,6 @@ export default function CourtshipLensPage() {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<CourtshipView>('courtships');
   const desk = useCourtshipDesk();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -68,12 +64,6 @@ export default function CourtshipLensPage() {
   );
 
   const tabs = VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }));
-  const titles: Record<CourtshipView, string> = {
-    courtships: `Tend the spark${who ? `, ${who}` : ''}`,
-    marriages: 'Keep the vows',
-    family: 'Raise the next generation',
-    past: 'Remember what ended',
-  };
 
   return (
     <LensShell lensId="courtship" asMain={false}>
@@ -82,7 +72,6 @@ export default function CourtshipLensPage() {
       <NorthStarFrame
         lensId="courtship"
         crumb="Courtship"
-        title={titles[active]}
         subtitle="Track affinity, propose, wed, raise children."
         actions={(
           <>

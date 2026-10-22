@@ -22,8 +22,6 @@ import {
   Brain, TestTube, Beaker, Database, Trophy, Wand2, Rocket, Sparkles,
   BookOpen, SlidersHorizontal, GitBranch,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -35,18 +33,18 @@ type Tab =
   | 'hub' | 'playground' | 'experiments' | 'datasets'
   | 'compare' | 'automl' | 'deployments' | 'spaces' | 'bench' | 'arxiv' | 'repos';
 
-const TABS: { id: Tab; label: string; Icon: typeof Brain; key: string; title: string }[] = [
-  { id: 'hub', label: 'Model Hub', Icon: Brain, key: 'm', title: 'Your models' },
-  { id: 'playground', label: 'Playground', Icon: TestTube, key: 'l', title: 'Try a model' },
-  { id: 'experiments', label: 'Experiments', Icon: Beaker, key: 'e', title: 'Every run, tracked' },
-  { id: 'datasets', label: 'Datasets', Icon: Database, key: 'd', title: 'The data behind it' },
-  { id: 'compare', label: 'Compare', Icon: Trophy, key: 'c', title: 'Which model wins' },
-  { id: 'automl', label: 'AutoML', Icon: Wand2, key: 'a', title: 'Let it search for you' },
-  { id: 'deployments', label: 'Deployments', Icon: Rocket, key: 'p', title: 'What is serving now' },
-  { id: 'spaces', label: 'Spaces', Icon: Sparkles, key: 's', title: 'Demos you can share' },
-  { id: 'bench', label: 'Analysis bench', Icon: SlidersHorizontal, key: 'b', title: 'Evaluate, profile, tune' },
-  { id: 'arxiv', label: 'arXiv', Icon: BookOpen, key: 'x', title: 'New papers in cs.LG' },
-  { id: 'repos', label: 'Repos', Icon: GitBranch, key: 'g', title: 'ML repositories on GitHub' },
+const TABS: { id: Tab; label: string; Icon: typeof Brain; key: string; }[] = [
+  { id: 'hub', label: 'Model Hub', Icon: Brain, key: 'm' },
+  { id: 'playground', label: 'Playground', Icon: TestTube, key: 'l' },
+  { id: 'experiments', label: 'Experiments', Icon: Beaker, key: 'e' },
+  { id: 'datasets', label: 'Datasets', Icon: Database, key: 'd' },
+  { id: 'compare', label: 'Compare', Icon: Trophy, key: 'c' },
+  { id: 'automl', label: 'AutoML', Icon: Wand2, key: 'a' },
+  { id: 'deployments', label: 'Deployments', Icon: Rocket, key: 'p' },
+  { id: 'spaces', label: 'Spaces', Icon: Sparkles, key: 's' },
+  { id: 'bench', label: 'Analysis bench', Icon: SlidersHorizontal, key: 'b' },
+  { id: 'arxiv', label: 'arXiv', Icon: BookOpen, key: 'x' },
+  { id: 'repos', label: 'Repos', Icon: GitBranch, key: 'g' },
 ];
 
 export default function MLLensPage() {
@@ -55,8 +53,6 @@ export default function MLLensPage() {
 
   const [tab, setTab] = useState<Tab>('hub');
   const [playgroundModel, setPlaygroundModel] = useState('');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     [
@@ -68,7 +64,6 @@ export default function MLLensPage() {
     ],
     { lensId: 'ml' },
   );
-  const current = TABS.find((t) => t.id === tab)!;
 
   // Selecting a model anywhere routes it into the inference playground.
   const useInPlayground = (modelId: string) => {
@@ -84,10 +79,7 @@ export default function MLLensPage() {
       <div data-lens-theme="ml" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">ML</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{tab === 'hub' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">ML</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

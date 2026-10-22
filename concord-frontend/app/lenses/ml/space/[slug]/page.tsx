@@ -60,7 +60,6 @@ export default function MlSpacePage() {
       <NorthStarFrame
         lensId="ml"
         crumb="ML · Space"
-        title={space?.title || (loadError ? 'Space unavailable' : 'Opening space')}
         subtitle={space ? `${space.modelId} · ${space.task}` : undefined}
       >
         {!space && !loadError && (
@@ -69,6 +68,7 @@ export default function MlSpacePage() {
         {loadError && <p role="alert" className="text-sm text-rose-300">{loadError}</p>}
         {space && (
           <div className="max-w-3xl space-y-4 rounded-2xl border border-white/10 bg-zinc-950 p-5">
+            <h2 className="text-lg font-medium text-zinc-100">{space.title}</h2>
             {space.description && <p className="text-sm text-zinc-300">{space.description}</p>}
             <p className="flex items-center gap-3 text-xs text-zinc-500">
               <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {space.views} views</span>

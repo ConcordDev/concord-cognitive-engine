@@ -12,8 +12,6 @@ import { Boxes, Laptop, Loader2, Plus, Rocket } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -23,10 +21,10 @@ import { SyncRepos } from '@/components/sync/SyncRepos';
 
 type SyncView = 'devices' | 'releases' | 'tooling';
 
-const VIEWS: { id: SyncView; label: string; keys: string; title: string; hint: string; icon: typeof Laptop }[] = [
-  { id: 'devices', label: 'Devices', keys: '1', title: 'Your brain, everywhere', hint: 'Devices, conflicts, scopes, quota and activity', icon: Laptop },
-  { id: 'releases', label: 'Syncthing', keys: '2', title: 'What just shipped upstream', hint: 'Syncthing releases from GitHub', icon: Rocket },
-  { id: 'tooling', label: 'Tooling', keys: '3', title: 'Tools that sync', hint: 'Sync tooling repositories from GitHub', icon: Boxes },
+const VIEWS: { id: SyncView; label: string; keys: string; hint: string; icon: typeof Laptop }[] = [
+  { id: 'devices', label: 'Devices', keys: '1', hint: 'Devices, conflicts, scopes, quota and activity', icon: Laptop },
+  { id: 'releases', label: 'Syncthing', keys: '2', hint: 'Syncthing releases from GitHub', icon: Rocket },
+  { id: 'tooling', label: 'Tooling', keys: '3', hint: 'Sync tooling repositories from GitHub', icon: Boxes },
 ];
 
 function defaultDeviceLabel(): string {
@@ -36,8 +34,6 @@ function defaultDeviceLabel(): string {
 }
 
 export default function SyncPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<SyncView>('devices');
   const [registering, setRegistering] = useState(false);
   const [dashboardKey, setDashboardKey] = useState(0);
@@ -68,7 +64,6 @@ export default function SyncPage() {
     { lensId: 'sync' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="sync" asMain={false}>
@@ -77,7 +72,6 @@ export default function SyncPage() {
       <NorthStarFrame
         lensId="sync"
         crumb="Sync"
-        title={`${current.title}${view === 'devices' && who ? `, ${who}` : ''}`}
         subtitle="Your second brain follows you across devices, instances and peers. No subscription: pure peer-to-peer over Concord federation."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

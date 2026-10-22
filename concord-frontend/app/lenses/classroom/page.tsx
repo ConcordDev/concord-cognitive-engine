@@ -12,8 +12,6 @@ import { BookOpen, GraduationCap, Library, Plus } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
 import { LensShell } from '@/components/lens/LensShell';
@@ -73,10 +71,10 @@ async function macro(domain: string, name: string, input: Record<string, unknown
 
 type ClassView = 'cohorts' | 'workspace' | 'library';
 
-const VIEWS: { id: ClassView; label: string; keys: string; title: string; hint: string; icon: typeof GraduationCap }[] = [
-  { id: 'cohorts', label: 'Cohorts', keys: '1', title: 'The room', hint: 'Create, enrol, submit and open a cohort', icon: GraduationCap },
-  { id: 'workspace', label: 'Workspace', keys: '2', title: 'The work', hint: 'Stream, classwork, gradebook, quizzes, materials', icon: BookOpen },
-  { id: 'library', label: 'Library', keys: '3', title: 'The shelf', hint: 'Open Library book search', icon: Library },
+const VIEWS: { id: ClassView; label: string; keys: string; hint: string; icon: typeof GraduationCap }[] = [
+  { id: 'cohorts', label: 'Cohorts', keys: '1', hint: 'Create, enrol, submit and open a cohort', icon: GraduationCap },
+  { id: 'workspace', label: 'Workspace', keys: '2', hint: 'Stream, classwork, gradebook, quizzes, materials', icon: BookOpen },
+  { id: 'library', label: 'Library', keys: '3', hint: 'Open Library book search', icon: Library },
 ];
 
 const inputCls = 'w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-zinc-100 placeholder:text-zinc-600 focus:border-teal-400/50 focus:outline-none';
@@ -85,8 +83,6 @@ const submitCls = 'w-full rounded-full bg-white/10 py-2 text-[13px] text-zinc-10
 export default function ClassroomPage() {
   useLensNav('classroom');
   useLensIdentity('classroom');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<ClassView>('cohorts');
 
   const newCohort = useCallback(() => {
@@ -194,7 +190,6 @@ export default function ClassroomPage() {
     } else noteRefusal('list', r);
   };
 
-  const current = VIEWS.find((v) => v.id === view)!;
   const cardCls = 'rounded-2xl border border-white/10 bg-[#111] p-4';
   const refusal = (card: CohortCard) => cardRefusal?.card === card
     ? <p role="alert" className="text-[12px] leading-snug text-rose-300">{cardRefusal.text}</p>
@@ -229,10 +224,7 @@ export default function ClassroomPage() {
       <div data-lens-theme="classroom" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Classroom</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{view === 'cohorts' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Classroom</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <DTUExportButton domain="classroom" data={{}} compact />

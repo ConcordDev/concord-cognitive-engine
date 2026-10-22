@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WalletBadge } from '@/components/economy/WalletBadge';
 import { WalletWidget } from '@/components/wallet/WalletWidget';
@@ -51,8 +49,6 @@ const PANELS: Record<WalletView, ComponentType<WalletPanelProps>> = {
 function WalletPageInner() {
   useLensNav('wallet');
   useLensIdentity('wallet');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<WalletView>('home');
 
   useLensCommand(
@@ -72,21 +68,12 @@ function WalletPageInner() {
 
   const Panel = PANELS[active];
 
-  const current = TABS.find((t) => t.id === active)!;
-  const titles: Record<WalletView, string> = {
-    home: `Your wallet${who ? `, ${who}` : ''}`,
-    activity: 'Where your coin went',
-    pay: 'Pay someone',
-    cashout: 'Cash out your earnings',
-    tools: 'Wallet tools',
-  };
 
   return (
     <MotionConfig reducedMotion="user">
       <NorthStarFrame
         lensId="wallet"
         crumb="Wallet"
-        title={titles[current.id]}
         subtitle="Concord Coin balance, ledger, peer payments and cash-out"
         actions={
           <>
@@ -124,8 +111,7 @@ export default function WalletPage() {
       <Suspense
         fallback={
           <div className="px-8 pt-6">
-            <p className="text-[14px] text-zinc-500">Wallet</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Your wallet</h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Wallet</h1>
             <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-[#111]" />
           </div>
         }

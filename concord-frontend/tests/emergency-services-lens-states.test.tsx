@@ -62,7 +62,7 @@ describe('Emergency Services north-star workspace', () => {
     lensRun.mockReturnValue(response());
     const { getByText } = render(<EmergencyServicesLensPage />);
 
-    expect(getByText('The call, Ramaj')).toBeInTheDocument();
+    expect(getByText('Emergency Services')).toBeInTheDocument();
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('emergency-services', 'ems-dashboard', {}));
     expect(getByText('No call on the board.')).toBeInTheDocument();
     expect(getByText('Open the board')).toBeInTheDocument();

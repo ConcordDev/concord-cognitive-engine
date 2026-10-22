@@ -13,8 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Atom, FlaskConical, Calculator, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -50,8 +48,6 @@ export default function PhysicsLensPage() {
   useLensIdentity('physics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('physics');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PhysicsView>('lab');
 
   useLensCommand(
@@ -85,7 +81,6 @@ export default function PhysicsLensPage() {
       <NorthStarFrame
         lensId="physics"
         crumb="Physics"
-        title={`Run an experiment${active === 'lab' && who ? `, ${who}` : ''}`}
         subtitle="Scene lab, Verlet sandbox, equation solvers and a live arXiv notebook, with real engines."
         actions={
           <>

@@ -251,7 +251,7 @@ describe('reflection page community panel', () => {
     vi.stubEnv('NEXT_PUBLIC_COMMUNITY_REDDIT', '');
     renderReflectionPage();
     await waitFor(() => expect(screen.getByText('Journal notebook')).toBeInTheDocument());
-    expect(screen.getByRole('heading', { name: /Your reflections/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Reflection/ })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Community' })).toBeNull();
     expect(screen.queryByText('Community feed unavailable.')).toBeNull();
     expect(calls.filter((url) => url.includes('/api/community/reddit-listing') || url.includes('reddit.com'))).toEqual([]);

@@ -48,7 +48,7 @@ beforeEach(() => {
 describe('Electrical north-star workspace', () => {
   it('matches the concept with one empty job and one primary action', () => {
     const { getByText, queryByRole } = render(<ElectricalLensPage />);
-    expect(getByText('The job, Ramaj')).toBeInTheDocument();
+    expect(getByText('Electrical')).toBeInTheDocument();
     expect(getByText('No job open.')).toBeInTheDocument();
     expect(getByText('+ New job')).toBeInTheDocument();
     expect(queryByRole('navigation', { name: 'Electrical job tools' })).toBeNull();

@@ -18,8 +18,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -32,12 +30,6 @@ import { WorkbenchPanel } from '@/components/paper/WorkbenchPanel';
 import { DiscoverPanel } from '@/components/paper/DiscoverPanel';
 import { requestAddPaper } from '@/components/paper/PaperLibrary';
 
-const TITLES: Record<string, string> = {
-  library: 'The paper in front of you',
-  editor: 'The manuscript',
-  workbench: 'Read it closely',
-  discover: 'What to read next',
-};
 
 type PaperView = 'library' | 'editor' | 'workbench' | 'discover';
 
@@ -60,8 +52,6 @@ export default function PaperLensPage() {
   useLensIdentity('paper');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('paper');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<PaperView>('library');
   const addPaper = useCallback(() => {
     setActive('library');
@@ -102,10 +92,7 @@ export default function PaperLensPage() {
       <div data-lens-theme="paper" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Paper</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {TITLES[active]}{active === 'library' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Paper</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

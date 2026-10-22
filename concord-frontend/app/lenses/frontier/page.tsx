@@ -27,9 +27,7 @@
 import { useCallback, useMemo, useState, type ComponentType } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { FrontierEngineShell } from '@/components/frontier/FrontierEngineShell';
@@ -77,8 +75,6 @@ const PANEL_BY_ENGINE_ID: Partial<Record<string, EnginePanel>> = {
 const DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
 export default function FrontierPage() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const { isLive, lastUpdated } = useRealtimeLens('frontier');
   const [activeId, setActiveId] = useState<string>(DEFAULT_FRONTIER_ENGINE_ID);
 
@@ -115,9 +111,7 @@ export default function FrontierPage() {
         <div className="flex items-start justify-between gap-4 px-8">
           <div className="min-w-0">
             <p className="text-[14px] text-zinc-500">Frontier</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {activeEngine.name}{who && activeEngine.id === DEFAULT_FRONTIER_ENGINE_ID ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">{activeEngine.name}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

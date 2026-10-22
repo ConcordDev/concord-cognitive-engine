@@ -18,8 +18,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 const OPEN_KEY = 'concordia:narrative-walk:open';
 const WATCHED_KEY = 'concordia:narrative-walk:watched';
@@ -63,12 +61,10 @@ function writeJournal(openId: string, watched: string[]) {
 
 export default function NarrativeWalkLensPage() {
   useLensNav('narrative-walk');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [catalog, setCatalog] = useState<Step[]>([]);
   const [open, setOpen] = useState<Step | null>(null);
-  const [watched, setWatched] = useState<string[]>([]);
+  const [, setWatched] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
 
   const load = useCallback(() => {
@@ -144,10 +140,7 @@ export default function NarrativeWalkLensPage() {
   return (
     <LensShell lensId="narrative-walk" asMain={false}>
       <div data-lens-theme="narrative-walk" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Narrative trail</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The next step{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Narrative trail</h1>
 
         <section
           aria-label="Trail"

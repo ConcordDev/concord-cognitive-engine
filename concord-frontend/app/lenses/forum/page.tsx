@@ -18,8 +18,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ForumSection } from '@/components/forum/ForumSection';
 import { requestForumCompose } from '@/components/forum/FmTopicsPanel';
 
@@ -27,8 +25,6 @@ export default function ForumLensPage() {
   useLensNav('forum');
   useLensIdentity('forum');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('forum');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   const startDiscussion = () => {
     requestForumCompose();
@@ -47,10 +43,7 @@ export default function ForumLensPage() {
       <div data-lens-theme="forum" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Forum</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              What&apos;s worth reading{who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Forum</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {realtimeAlerts.length > 0 && (

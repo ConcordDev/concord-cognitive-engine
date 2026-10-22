@@ -71,7 +71,6 @@ export default function StrategicAddsPage() {
         lensId="strategic-adds"
         theme="command"
         crumb="Strategic adds"
-        title="Pick the next bet"
         subtitle="Productized hub for the eight next adds. Each tab is wired to real substrate already in the repo."
         tabs={TABS.map(({ id, label, icon }, i) => ({ id, label, icon, keys: String(i + 1) }))}
         activeTab={tab}

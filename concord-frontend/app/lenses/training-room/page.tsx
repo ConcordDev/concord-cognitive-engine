@@ -23,8 +23,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface FrameData {
   skillId: string;
@@ -48,9 +46,9 @@ interface PickerItem {
 type FrameStatus = 'idle' | 'loading' | 'error' | 'ready';
 type DojoView = 'study' | 'compare';
 
-const VIEWS: { id: DojoView; label: string; keys: string; title: string; hint: string; icon: typeof Target }[] = [
-  { id: 'study', label: 'Study', keys: '1', title: 'Learn the timing', hint: 'Frame data and a phase replay for one skill', icon: Target },
-  { id: 'compare', label: 'Compare', keys: '2', title: 'Weigh two skills', hint: 'Side-by-side frame data for two skills or weapons', icon: Scale },
+const VIEWS: { id: DojoView; label: string; keys: string; hint: string; icon: typeof Target }[] = [
+  { id: 'study', label: 'Study', keys: '1', hint: 'Frame data and a phase replay for one skill', icon: Target },
+  { id: 'compare', label: 'Compare', keys: '2', hint: 'Side-by-side frame data for two skills or weapons', icon: Scale },
 ];
 
 function totalMs(f: FrameData) {
@@ -141,8 +139,6 @@ export default function TrainingRoomPage() {
   const [frameKey, setFrameKey] = useState(0);
   const [frameResult, setFrameResult] = useState<{ id: string; data: FrameData | null } | null>(null);
   const [replayPhase, setReplayPhase] = useState<'idle' | 'startup' | 'active' | 'recovery'>('idle');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<DojoView>('study');
   const [rivalId, setRivalId] = useState<string | null>(null);
   const [rivalResult, setRivalResult] = useState<{ id: string; data: FrameData | null } | null>(null);
@@ -233,14 +229,12 @@ export default function TrainingRoomPage() {
     { lensId: 'training-room' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="training-room" asMain={false}>
       <NorthStarFrame
         lensId="training-room"
         crumb="Training Room"
-        title={`${current.title}${view === 'study' && who ? `, ${who}` : ''}`}
         subtitle="A controlled dojo: real frame data for every skill and weapon, a phase replay, and side-by-side comparison. Easy to pick up, hard to master."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}

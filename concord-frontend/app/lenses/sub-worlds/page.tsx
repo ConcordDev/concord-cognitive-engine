@@ -13,8 +13,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { GalleryPanel } from '@/components/sub-worlds/GalleryPanel';
 import { SpawnPanel } from '@/components/sub-worlds/SpawnPanel';
 import { MetaverseRepos } from '@/components/sub-worlds/MetaverseRepos';
@@ -32,8 +30,6 @@ const VIEWS: { id: SubWorldsView; label: string; keys: string; icon: typeof Comp
 export default function SubWorldsPage() {
   useLensNav('sub-worlds');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<SubWorldsView>('discover');
 
   useLensCommand(
@@ -54,7 +50,6 @@ export default function SubWorldsPage() {
       <NorthStarFrame
         lensId="sub-worlds"
         crumb="Sub-Worlds"
-        title={`Worlds to explore${who ? `, ${who}` : ''}`}
         subtitle="Spawn, host, and discover user-created worlds. Each one is reachable via the existing world-travel system: author it in place, set its privacy, and track visits."
         tabs={VIEWS}
         activeTab={active}

@@ -37,8 +37,6 @@ import { SpacesPanel } from '@/components/expert-mode/SpacesPanel';
 import { ConversationTurn, type Turn } from '@/components/expert-mode/ConversationTurn';
 import { PipingProvider } from '@/components/panel-polish';
 import { Globe2, Loader2, MessageSquarePlus, Search } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 interface TurnWithRelated extends Turn {
   related: string[];
@@ -53,8 +51,6 @@ interface SharedAnswer {
 }
 
 export default function ExpertModeLens() {
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const queryRef = useRef<HTMLInputElement>(null);
   const focusQuery = useCallback(() => {
     queryRef.current?.focus();
@@ -261,10 +257,7 @@ export default function ExpertModeLens() {
       <DepthBadge lensId="expert-mode" size="sm" className="ml-2" />
 
       <div data-lens-theme="expert-mode" className="relative min-h-full px-8 pb-28 pt-6 text-zinc-100">
-        <p className="text-[14px] text-zinc-500">Expert Mode</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {shared ? 'A shared answer' : turns.length > 0 ? 'The research thread' : `The expert desk${who ? `, ${who}` : ''}`}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Expert Mode</h1>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
           {/* ---- left rail: threads + spaces + uploads ---- */}
           <div className="space-y-4">

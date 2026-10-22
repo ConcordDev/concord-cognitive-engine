@@ -15,8 +15,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { lensRun } from '@/lib/api/client';
 
 interface Frame {
@@ -90,8 +88,6 @@ async function readRolls(): Promise<Roll[]> {
 
 export default function PhotographyPage() {
   useLensNav('photography');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [phase, setPhase] = useState<Phase>('loading');
   const [rolls, setRolls] = useState<Roll[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -185,10 +181,7 @@ export default function PhotographyPage() {
   return (
     <LensShell lensId="photography" asMain={false}>
       <div data-lens-theme="photography" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Photography</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          The roll{who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Photography</h1>
 
         <section
           aria-label="Roll"

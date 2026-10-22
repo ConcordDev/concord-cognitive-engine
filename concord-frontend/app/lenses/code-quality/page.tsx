@@ -2,8 +2,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { Activity, Bug, FileSearch, GitPullRequest, ListChecks, ScanSearch, ShieldCheck, TrendingDown } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -77,14 +75,14 @@ const SEVERITY_STYLE: Record<Severity, string> = {
 
 type Tab = 'analyze' | 'annotate' | 'gate' | 'debt' | 'issues' | 'pr' | 'detectors';
 
-const TABS: Array<{ id: Tab; label: string; keys: string; title: string; hint: string; icon: typeof Bug }> = [
-  { id: 'analyze', label: 'Analyze', keys: '1', title: 'What is wrong with this code', hint: 'Scan submitted source for issues, debt and duplication', icon: ScanSearch },
-  { id: 'annotate', label: 'Annotations', keys: '2', title: 'Line by line', hint: 'Per-line issue annotations on the scanned source', icon: FileSearch },
-  { id: 'gate', label: 'Quality Gate', keys: '3', title: 'Does it clear the bar', hint: 'Configurable pass/fail quality gates', icon: ShieldCheck },
-  { id: 'debt', label: 'Debt & Trend', keys: '4', title: 'Where the debt is piling up', hint: 'Technical-debt estimate and trend', icon: TrendingDown },
-  { id: 'issues', label: 'Issues', keys: '5', title: 'Track what you will fix', hint: 'Issue workflow for tracked findings', icon: ListChecks },
-  { id: 'pr', label: 'PR Decoration', keys: '6', title: 'Review a pull request diff', hint: 'Decorate pull-request diffs with findings', icon: GitPullRequest },
-  { id: 'detectors', label: 'Detector Suite', keys: '7', title: "The platform's own detectors", hint: 'Internal detector suite sweep and findings', icon: Activity },
+const TABS: Array<{ id: Tab; label: string; keys: string; hint: string; icon: typeof Bug }> = [
+  { id: 'analyze', label: 'Analyze', keys: '1', hint: 'Scan submitted source for issues, debt and duplication', icon: ScanSearch },
+  { id: 'annotate', label: 'Annotations', keys: '2', hint: 'Per-line issue annotations on the scanned source', icon: FileSearch },
+  { id: 'gate', label: 'Quality Gate', keys: '3', hint: 'Configurable pass/fail quality gates', icon: ShieldCheck },
+  { id: 'debt', label: 'Debt & Trend', keys: '4', hint: 'Technical-debt estimate and trend', icon: TrendingDown },
+  { id: 'issues', label: 'Issues', keys: '5', hint: 'Issue workflow for tracked findings', icon: ListChecks },
+  { id: 'pr', label: 'PR Decoration', keys: '6', hint: 'Decorate pull-request diffs with findings', icon: GitPullRequest },
+  { id: 'detectors', label: 'Detector Suite', keys: '7', hint: 'Internal detector suite sweep and findings', icon: Activity },
 ];
 
 async function postLensRun<T>(domain: string, name: string, input: object): Promise<T> {
@@ -94,8 +92,6 @@ async function postLensRun<T>(domain: string, name: string, input: object): Prom
 
 export default function CodeQualityLensPage() {
   useLensNav('code-quality');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   const [tab, setTab] = useState<Tab>('analyze');
   const [scan, setScan] = useState<CQScan | null>(null);
@@ -199,7 +195,6 @@ export default function CodeQualityLensPage() {
     { lensId: 'code-quality' },
   );
 
-  const current = TABS.find((t) => t.id === tab)!;
 
   return (
     <LensShell lensId="code-quality" asMain={false}>
@@ -208,7 +203,6 @@ export default function CodeQualityLensPage() {
       <NorthStarFrame
         lensId="code-quality"
         crumb="Code quality"
-        title={`${current.title}${tab === 'analyze' && who ? `, ${who}` : ''}`}
         subtitle="Per-line issue annotation, technical-debt estimation, duplication hotspots, quality gates, an issue workflow and pull-request diff decoration — plus the platform's internal detector suite."
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
         activeTab={tab}

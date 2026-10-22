@@ -22,8 +22,6 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -31,19 +29,11 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type View = 'eeg' | 'bench' | 'train' | 'research';
 
-const TITLES: Record<View, string> = {
-  eeg: 'What the signal says',
-  bench: 'Try it on a signal',
-  train: 'Teach a small network',
-  research: 'What the field is reading',
-};
 
 export default function NeuroLensPage() {
   useLensNav('neuro');
   useLensIdentity('neuro');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('neuro');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('eeg');
 
   const importRecording = useCallback(() => {
@@ -71,7 +61,6 @@ export default function NeuroLensPage() {
       <NorthStarFrame
         lensId="neuro"
         crumb="Neuro"
-        title={`${TITLES[view]}${view === 'eeg' && who ? `, ${who}` : ''}`}
         subtitle="EEG/MEG analysis workbench and a real, toy-scale network trainer. Every panel traces to a neuro-domain macro run on an imported recording or an explicitly disclosed synthetic signal."
         actions={
           <>

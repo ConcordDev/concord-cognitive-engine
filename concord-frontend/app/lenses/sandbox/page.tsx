@@ -40,8 +40,6 @@ import { TelemetryOverlay } from '@/components/sandbox/TelemetryOverlay';
 import { ReplayPanel, type ReplayController, type ReplayFrame } from '@/components/sandbox/ReplayPanel';
 import { SandboxArena3D } from '@/components/sandbox/SandboxArena3D';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, GitBranch } from 'lucide-react';
@@ -103,8 +101,6 @@ const VIEWS: { id: SandboxView; label: string; keys: string; hint: string; icon:
 
 function CombatSandboxInner() {
   const params = useSearchParams();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<SandboxView>('arena');
   const initial = Math.max(1, Math.min(MAX_DUMMIES, Number(params?.get('dummies')) || DEFAULT_DUMMIES));
 
@@ -318,7 +314,6 @@ function CombatSandboxInner() {
     <NorthStarFrame
       lensId="sandbox"
       crumb="Sandbox"
-      title={view === 'arena' ? `Feel the hit, ${who || 'tester'}` : 'Playground repos'}
       subtitle="A private arena of real training dummies resolving through the live combat pipeline — tune loadouts, slow time, record and replay."
       tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
       activeTab={view}

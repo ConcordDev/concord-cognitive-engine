@@ -97,8 +97,7 @@ import { LessonQA } from '@/components/education/LessonQA';
 import { StudySessionTimer } from '@/components/education/EducationStudyChrome';
 import StreakDashboard from '@/components/education/StreakDashboard';
 import { NorthStarFrame, type NorthStarTab } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
+
 import { StudyModePanel } from '@/components/education/StudyModePanel';
 import {
   GenomePanel,
@@ -413,9 +412,6 @@ export function EducationSection() {
   /* ---------- core state ---------- */
   const [surface, setSurface] = useState<'learning' | 'teaching'>('learning');
   const [learnView, setLearnView] = useState<LearningView>('dashboard');
-  const { user } = useAuth();
-  const eduWho = titleCaseDisplayName(user?.username);
-  const eduTitle = surface === 'teaching' ? 'Your classroom' : `The lesson${eduWho ? `, ${eduWho}` : ''}`;
   const eduTabs: NorthStarTab[] = [
     ...LEARNING_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: 'teaching', label: 'Teaching', icon: GraduationCap, hint: 'Classroom: students, courses, assignments, grades' },
@@ -1228,7 +1224,6 @@ export function EducationSection() {
       lensId="education"
       theme="education"
       crumb="Education"
-      title={eduTitle}
       subtitle={surface === 'teaching'
         ? 'Your classroom: students, courses, assignments, grades, lesson plans and study tools.'
         : 'Learn your way: catalog, courses, a lesson player, skills, certificates, assignments, notes and discussion.'}

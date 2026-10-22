@@ -22,18 +22,16 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 import { FleetPanel } from '@/components/agents/FleetPanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
 import { ForkPreviewPanel } from '@/components/agents/ForkPreviewPanel';
 import type { AgentsView } from '@/components/agents/agents-model';
 
-const VIEWS: { id: AgentsView; label: string; keys: string; title: string; hint: string; icon: typeof Bot }[] = [
-  { id: 'fleet', title: 'Who is working for you', label: 'Fleet', keys: 'f', hint: 'Control center + runtime', icon: Bot },
-  { id: 'roster', title: 'The research roster', label: 'Roster', keys: 'r', hint: '/api/agents research roster', icon: Users },
-  { id: 'fork', title: 'Your forked self', label: 'Forked self', keys: 'k', hint: 'Lattice fork preview', icon: GitFork },
+const VIEWS: { id: AgentsView; label: string; keys: string; hint: string; icon: typeof Bot }[] = [
+  { id: 'fleet', label: 'Fleet', keys: 'f', hint: 'Control center + runtime', icon: Bot },
+  { id: 'roster', label: 'Roster', keys: 'r', hint: '/api/agents research roster', icon: Users },
+  { id: 'fork', label: 'Forked self', keys: 'k', hint: 'Lattice fork preview', icon: GitFork },
 ];
 
 const PANELS: Record<AgentsView, ComponentType> = {
@@ -47,8 +45,6 @@ export default function AgentsLensPage() {
   useLensIdentity('agents');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<'fleet' | 'roster' | 'fork'>('fleet');
 
   useLensCommand(
@@ -63,7 +59,6 @@ export default function AgentsLensPage() {
   );
 
   const Panel = PANELS[active];
-  const current = VIEWS.find((v) => v.id === active)!;
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -83,10 +78,7 @@ export default function AgentsLensPage() {
       <div data-lens-theme="agents" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[14px] text-zinc-500">Agents</p>
-            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-              {current.title}{active === 'fleet' && who ? `, ${who}` : ''}
-            </h1>
+            <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Agents</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

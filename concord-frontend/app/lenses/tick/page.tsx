@@ -14,8 +14,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -60,8 +58,6 @@ function TickLensInner() {
   const { isLive, setIsLive, lastTickTime } = useTickStream();
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<TickViewTab>('stream');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -87,14 +83,6 @@ function TickLensInner() {
     [reduceMotion],
   );
 
-  const titles: Record<TickViewTab, string> = {
-    stream: `Feel the pulse${who ? `, ${who}` : ''}`,
-    stats: 'Read the signal',
-    timeline: 'Replay what happened',
-    health: 'Check the vital signs',
-    monitor: 'Watch every module',
-    rate: 'Measure the rhythm',
-  };
 
   return (
     <LensShell lensId="tick" asMain={false}>
@@ -103,7 +91,6 @@ function TickLensInner() {
       <NorthStarFrame
         lensId="tick"
         crumb="Tick"
-        title={titles[active]}
         subtitle="Real-time kernel tick stream and system health monitoring"
         actions={(
           <>

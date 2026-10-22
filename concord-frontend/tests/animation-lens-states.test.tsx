@@ -42,7 +42,7 @@ describe('animation shot', () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<AnimationPage />);
     expect(await view.findByText('No shot open.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The shot' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Animation' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New shot' })).toBeEnabled();
     expect(view.queryByText('Studio')).toBeNull();
     expect(view.queryByText('Motion Toolkit')).toBeNull();
@@ -105,11 +105,11 @@ describe('animation shot', () => {
     expect(view.queryByRole('heading', { name: 'Lost shot' })).toBeNull();
   });
 
-  it('GREETING: title-cases the signed-in name', async () => {
+  it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<AnimationPage />);
-    expect(await view.findByRole('heading', { name: 'The shot, Ramaj' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Animation' })).toBeInTheDocument();
     expect(await view.findByText('No shot open.')).toBeInTheDocument();
   });
 

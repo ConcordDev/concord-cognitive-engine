@@ -13,8 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Upload, Activity, Database, FolderGit2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { IngestionRepos } from '@/components/ingest/IngestionRepos';
@@ -55,8 +53,6 @@ export default function IngestLensPage() {
   useLensNav('ingest');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ingest');
   const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [active, setActive] = useState<IngestView>('workbench');
 
   useLensCommand(
@@ -79,7 +75,6 @@ export default function IngestLensPage() {
       <NorthStarFrame
         lensId="ingest"
         crumb="Ingest"
-        title={`Bring something in${active === 'workbench' && who ? `, ${who}` : ''}`}
         subtitle="ELT pipelines and document intake, one workbench"
         actions={
           <>

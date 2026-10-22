@@ -36,8 +36,6 @@ import { MeshChannels } from '@/components/mesh/MeshChannels';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import {
   Radio, Loader2, Network, Send, MessageSquare, SignalHigh, Hash, PackagePlus,
   type LucideIcon,
@@ -58,8 +56,6 @@ interface MeshOverview {
 
 export default function MeshLensPage() {
   useLensNav('mesh');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   useLensCommand(
@@ -93,16 +89,15 @@ export default function MeshLensPage() {
     !!ov && (ov.nodes ?? 0) === 0 && (ov.messages ?? 0) === 0 &&
     (ov.channels ?? 0) === 0 && (ov.queueDepth ?? 0) === 0;
 
-  const tabs: { key: TabKey; label: string; icon: LucideIcon; keys: string; title: string; hint: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview', icon: Network, keys: 'o', title: 'Your mesh at a glance', hint: 'Nodes, messages, channels and queue depth' },
-    { key: 'transmit', label: 'Send DTU', icon: PackagePlus, keys: 't', title: 'Send a DTU over the mesh', hint: 'Transmit a real DTU through the routing substrate' },
-    { key: 'topology', label: 'Topology', icon: Radio, keys: 'g', title: 'Who is on the mesh', hint: 'Node graph: add, remove and ping', count: overview.data?.nodes },
-    { key: 'messages', label: 'Messages', icon: MessageSquare, keys: 'm', title: 'Direct and group messages', hint: 'Delivery and read state', count: overview.data?.unread || undefined },
-    { key: 'signal', label: 'Signal', icon: SignalHigh, keys: 's', title: 'How strong the links are', hint: 'RSSI, hops, latency and range estimate' },
-    { key: 'queue', label: 'Queue', icon: Send, keys: 'q', title: 'What is waiting to forward', hint: 'Store-and-forward frames', count: overview.data?.queueDepth || undefined },
-    { key: 'channels', label: 'Channels', icon: Hash, keys: 'c', title: 'Encrypted group channels', hint: 'Broadcast and PSK-encrypted channels', count: overview.data?.channels },
+ const tabs: {key: TabKey; label: string; icon: LucideIcon; keys: string; hint: string; count?: number }[] = [
+    { key: 'overview', label: 'Overview', icon: Network, keys: 'o', hint: 'Nodes, messages, channels and queue depth' },
+    { key: 'transmit', label: 'Send DTU', icon: PackagePlus, keys: 't', hint: 'Transmit a real DTU through the routing substrate' },
+    { key: 'topology', label: 'Topology', icon: Radio, keys: 'g', hint: 'Node graph: add, remove and ping', count: overview.data?.nodes },
+    { key: 'messages', label: 'Messages', icon: MessageSquare, keys: 'm', hint: 'Delivery and read state', count: overview.data?.unread || undefined },
+    { key: 'signal', label: 'Signal', icon: SignalHigh, keys: 's', hint: 'RSSI, hops, latency and range estimate' },
+    { key: 'queue', label: 'Queue', icon: Send, keys: 'q', hint: 'Store-and-forward frames', count: overview.data?.queueDepth || undefined },
+    { key: 'channels', label: 'Channels', icon: Hash, keys: 'c', hint: 'Broadcast and PSK-encrypted channels', count: overview.data?.channels },
   ];
-  const current = tabs.find((t) => t.key === activeTab)!;
 
   return (
     <LensShell lensId="mesh" asMain={false}>
@@ -111,7 +106,6 @@ export default function MeshLensPage() {
       <NorthStarFrame
         lensId="mesh"
         crumb="Mesh"
-        title={`${current.title}${activeTab === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="7-transport DTU routing, off-grid comms, built to survive infrastructure collapse."
         tabs={tabs.map((t) => ({
           id: t.key,

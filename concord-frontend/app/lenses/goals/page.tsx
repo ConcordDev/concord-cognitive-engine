@@ -22,8 +22,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { GoalsListPanel, GOALS_NEW_EVENT } from '@/components/goals/GoalsListPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { ChallengesPanel } from '@/components/goals/ChallengesPanel';
 import { MilestonesPanel } from '@/components/goals/MilestonesPanel';
 import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
@@ -73,8 +71,6 @@ export default function GoalsLensPage() {
   );
 
   const Panel = PANELS[active];
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const chip = 'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[14px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100';
   const motionProps = useMemo(
     () => (reduceMotion
@@ -92,11 +88,9 @@ export default function GoalsLensPage() {
     <LensShell lensId="goals" asMain={false}>
       <DepthBadge lensId="goals" size="sm" className="ml-2" />
       <div data-lens-theme="goals" className="px-8 pt-4 pb-6">
-        {/* North star (docs/lens-northstar/07-goals): serif greeting, two
+        {/* North star (docs/lens-northstar/07-goals): name header, two
             starter chips, quiet view links; the list follows. */}
-        <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">
-          {who ? `What matters this quarter, ${who}` : 'What matters this quarter'}
-        </h1>
+        <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Goals</h1>
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => setActive('okr')} className={chip}>
             <Sparkles className="h-4 w-4 text-violet-400" /> Review OKRs

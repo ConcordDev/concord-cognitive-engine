@@ -17,8 +17,6 @@ import { SharedShoppingLists } from '@/components/household/SharedShoppingLists'
 import { RecurringTemplates } from '@/components/household/RecurringTemplates';
 import { ExpenseSplitter } from '@/components/household/ExpenseSplitter';
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -118,18 +116,6 @@ const MODE_KEYS: Record<ModeTab, string> = {
   Dashboard: 'd', Meals: 'm', Chores: 'c', Home: 'h', Calendar: 'a', Budget: 'b', Emergency: 'e', Family: 'f', Pets: 'p',
 };
 
-const MODE_TITLES: Record<ModeTab, string> = {
-  Dashboard: 'Your household',
-  Meals: 'What is for dinner',
-  Chores: 'Who does what',
-  Home: 'Keeping the house up',
-  Calendar: 'What is coming up',
-  Budget: 'Where the money goes',
-  Emergency: 'When something goes wrong',
-  Family: 'The people you live with',
-  Pets: 'The ones with paws',
-};
-
 const MODE_CTA: Record<ModeTab, string> = {
   Dashboard: 'Add family member', Meals: 'Plan a meal', Chores: 'Add a chore', Home: 'Add maintenance item',
   Calendar: 'Add an event', Budget: 'Add budget entry', Emergency: 'Add a contact', Family: 'Add family member', Pets: 'Add a pet',
@@ -203,9 +189,6 @@ export function HouseholdHome() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('household');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
-
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
 
@@ -1733,7 +1716,6 @@ export function HouseholdHome() {
     <NorthStarFrame
       lensId="household"
       crumb="Household"
-      title={`${MODE_TITLES[mode]}${mode === 'Dashboard' && who ? `, ${who}` : ''}`}
       subtitle="Chores, meals, calendar, budget, maintenance and the people and pets under your roof."
       actions={
         <>

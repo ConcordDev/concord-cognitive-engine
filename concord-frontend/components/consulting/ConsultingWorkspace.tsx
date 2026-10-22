@@ -135,7 +135,7 @@ function isConsultingTool(value: unknown): value is ConsultingTool {
   return typeof value === 'string' && TOOL_IDS.has(value as ConsultingTool);
 }
 
-export function ConsultingWorkspace({ who }: { who: string }) {
+export function ConsultingWorkspace() {
   useLensIdentity('consulting');
   useLensNav('consulting');
   const { restore, persist } = useLensStatePersistence('consulting');
@@ -236,7 +236,6 @@ export function ConsultingWorkspace({ who }: { who: string }) {
     <NorthStarFrame
       lensId="consulting"
       crumb="Consulting"
-      title={`The engagement${who ? `, ${who}` : ''}`}
       subtitle={active.description}
       actions={(
         <>

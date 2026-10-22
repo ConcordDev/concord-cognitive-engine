@@ -32,18 +32,17 @@ import { AuditPanel } from '@/components/admin/AuditPanel';
 import { OpsConsole } from '@/components/admin/OpsConsole';
 import { useAuth } from '@/hooks/useAuth';
 import { canViewAdminLens } from '@/components/admin/admin-access';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 
 type AdminView = 'overview' | 'ops' | 'infra' | 'access' | 'treasury' | 'platform' | 'audit';
 
 const TABS = [
-  { id: 'overview', label: 'Overview', keys: '1', icon: Activity, title: 'How the platform is running', hint: 'Live platform overview' },
-  { id: 'ops', label: 'Observability', keys: 'g', icon: Gauge, title: 'What the system is doing', hint: 'Heartbeats, workers, brains and telemetry' },
-  { id: 'infra', label: 'Infra', keys: 'i', icon: HardDrive, title: 'What it is running on', hint: 'Infrastructure and capacity' },
-  { id: 'access', label: 'Access', keys: 'k', icon: Key, title: 'Who can do what', hint: 'Users, orgs, roles and keys' },
-  { id: 'treasury', label: 'Treasury', keys: 't', icon: DollarSign, title: 'Where the coin sits', hint: 'Treasury, ledger and reconciliation' },
-  { id: 'platform', label: 'Platform', keys: 'p', icon: Box, title: 'Every macro and domain', hint: 'Macro registry and quality' },
-  { id: 'audit', label: 'Audit', keys: 'l', icon: FileText, title: 'What happened, and when', hint: 'Audit log and health scoring' },
+  { id: 'overview', label: 'Overview', keys: '1', icon: Activity, hint: 'Live platform overview' },
+  { id: 'ops', label: 'Observability', keys: 'g', icon: Gauge, hint: 'Heartbeats, workers, brains and telemetry' },
+  { id: 'infra', label: 'Infra', keys: 'i', icon: HardDrive, hint: 'Infrastructure and capacity' },
+  { id: 'access', label: 'Access', keys: 'k', icon: Key, hint: 'Users, orgs, roles and keys' },
+  { id: 'treasury', label: 'Treasury', keys: 't', icon: DollarSign, hint: 'Treasury, ledger and reconciliation' },
+  { id: 'platform', label: 'Platform', keys: 'p', icon: Box, hint: 'Macro registry and quality' },
+  { id: 'audit', label: 'Audit', keys: 'l', icon: FileText, hint: 'Audit log and health scoring' },
 ] as const;
 
 const PANELS: Record<AdminView, ComponentType> = {
@@ -65,7 +64,6 @@ export default function AdminLensPage() {
   // matches requireAdminRole. Overview and audit stay unmounted until
   // then — they issue the same reads as soon as they render.
   const canView = !authLoading && canViewAdminLens(user);
-  const who = titleCaseDisplayName(user?.username);
   const {
     latestData: realtimeData,
     alerts: realtimeAlerts,
@@ -186,7 +184,6 @@ export default function AdminLensPage() {
     );
   }
 
-  const current = TABS.find((t) => t.id === active)!;
   const alertCount = realtimeAlerts.length;
 
   return (
@@ -197,7 +194,6 @@ export default function AdminLensPage() {
         lensId="admin"
         theme="admin"
         crumb="Ops"
-        title={`${current.title}${active === 'overview' && who ? `, ${who}` : ''}`}
         subtitle="Operator console. Live macros, no fabricated stats."
         actions={
           <>

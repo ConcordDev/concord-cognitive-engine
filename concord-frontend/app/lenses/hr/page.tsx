@@ -19,8 +19,6 @@ import { BlsWageForecast } from '@/components/hr/BlsWageForecast';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -28,17 +26,15 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type View = 'people' | 'calc' | 'bls';
 
-const VIEWS: { id: View; label: string; keys: string; title: string; hint: string; icon: typeof Users }[] = [
-  { id: 'people', label: 'People hub', keys: 'g p', title: 'Your people', hint: 'Records, org chart, time off, payroll, benefits, recruiting, learning', icon: Users },
-  { id: 'calc', label: 'Calculators', keys: 'g c', title: 'Run the numbers', hint: 'Comp benchmark, turnover, interview scorecard, PTO', icon: Calculator },
-  { id: 'bls', label: 'Labor data', keys: 'g w', title: 'What the market pays', hint: 'US Bureau of Labor Statistics series and wage forecast', icon: LineChart },
+const VIEWS: { id: View; label: string; keys: string; hint: string; icon: typeof Users }[] = [
+  { id: 'people', label: 'People hub', keys: 'g p', hint: 'Records, org chart, time off, payroll, benefits, recruiting, learning', icon: Users },
+  { id: 'calc', label: 'Calculators', keys: 'g c', hint: 'Comp benchmark, turnover, interview scorecard, PTO', icon: Calculator },
+  { id: 'bls', label: 'Labor data', keys: 'g w', hint: 'US Bureau of Labor Statistics series and wage forecast', icon: LineChart },
 ];
 
 export default function HRLensPage() {
   useLensNav('hr');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('hr');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [view, setView] = useState<View>('people');
 
   const addPerson = useCallback(() => {
@@ -64,7 +60,6 @@ export default function HRLensPage() {
     { lensId: 'hr' },
   );
 
-  const current = VIEWS.find((v) => v.id === view)!;
 
   return (
     <LensShell lensId="hr" asMain={false}>
@@ -73,7 +68,6 @@ export default function HRLensPage() {
       <NorthStarFrame
         lensId="hr"
         crumb="Human Resources"
-        title={`${current.title}${view === 'people' && who ? `, ${who}` : ''}`}
         subtitle="People, time off, payroll, benefits, recruiting, learning and compliance."
         actions={
           <>

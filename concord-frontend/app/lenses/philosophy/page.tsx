@@ -47,23 +47,19 @@ import { PhiloFeed } from '@/components/philosophy/PhiloFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { cn } from '@/lib/utils';
 
 type Destination = 'overview' | 'dilemma' | 'curation' | 'pulse';
 
-const DESTINATIONS: { id: Destination; label: string; title: string; keys: string; icon: typeof LayoutDashboard; desc: string }[] = [
-  { id: 'overview', title: 'The question on the table', keys: 'g o', label: 'Overview', icon: LayoutDashboard, desc: 'Live curation KPIs & recent debates' },
-  { id: 'dilemma', title: 'Work the problem', keys: 'g d', label: 'Dilemma Workbench', icon: ScrollText, desc: 'Argument map · thought experiment · dialectic · ethics' },
-  { id: 'curation', title: 'Collect the ideas', keys: 'g c', label: 'Curation Studio', icon: Network, desc: 'Channels · image grid · discovery · reference pages · debates' },
-  { id: 'pulse', title: 'What others are asking', keys: 'g p', label: 'Community Pulse', icon: Newspaper, desc: 'Real philosophy.stackexchange.com Q&A' },
+const DESTINATIONS: { id: Destination; label: string; keys: string; icon: typeof LayoutDashboard; desc: string }[] = [
+  { id: 'overview', keys: 'g o', label: 'Overview', icon: LayoutDashboard, desc: 'Live curation KPIs & recent debates' },
+  { id: 'dilemma', keys: 'g d', label: 'Dilemma Workbench', icon: ScrollText, desc: 'Argument map · thought experiment · dialectic · ethics' },
+  { id: 'curation', keys: 'g c', label: 'Curation Studio', icon: Network, desc: 'Channels · image grid · discovery · reference pages · debates' },
+  { id: 'pulse', keys: 'g p', label: 'Community Pulse', icon: Newspaper, desc: 'Real philosophy.stackexchange.com Q&A' },
 ];
 
 export default function PhilosophyLensPage() {
   useLensNav('philosophy');
-  const { user } = useAuth();
-  const who = titleCaseDisplayName(user?.username);
   const [dest, setDest] = useState<Destination>('overview');
 
   const begin = useCallback(() => {
@@ -98,10 +94,7 @@ export default function PhilosophyLensPage() {
 
       <DepthBadge lensId="philosophy" size="sm" className="ml-2" />
       <div data-lens-theme="philosophy" className="relative min-h-full px-8 pb-28 pt-6">
-        <p className="text-[14px] text-zinc-500">Philosophy</p>
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">
-          {DESTINATIONS.find((d) => d.id === dest)!.title}{dest === 'overview' && who ? `, ${who}` : ''}
-        </h1>
+        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Philosophy</h1>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Philosophy destinations">
           {DESTINATIONS.map((d) => {
