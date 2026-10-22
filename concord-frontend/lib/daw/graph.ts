@@ -15,6 +15,9 @@ import { DeviceChain } from './dsp/devices';
 import { playSynthNote, playDrum, playClick, type Voice } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import { dbToGain } from './dsp/rng';
+import { PITCH_RANGES, pitchLatencySec } from './dsp/pitch/core';
+import { pitchNodeBound, pushPitchSettings } from './dsp/pitch/runtime';
+import { settingsFromEffect } from './dsp/pitch/settings';
 
 export interface ChannelNodes {
   input: GainNode;
@@ -36,6 +39,40 @@ export interface GraphOptions {
   bypassMastering?: boolean;
   /** Render only these tracks (stems). */
   onlyTrackIds?: string[] | null;
+  /**
+   * Live playback only. Start audio clips early by the Pitch Correct delay
+   * when that worklet node is actually in the chain. Offline export bakes
+   * the correction and must leave this off.
+   */
+  pitchCompensate?: boolean;
+}
+
+/**
+ * Move a buffer start earlier by `leadSec` so a processor delay lands on
+ * `time`. Time before `earliest` (context now, or 0) is cut from the buffer
+ * instead of being scheduled in the past. Returns null when nothing remains.
+ */
+export function compensateProcessorDelay(
+  time: number,
+  offsetSec: number,
+  durationSec: number,
+  bufferDuration: number,
+  leadSec: number,
+  earliest: number,
+): { when: number; offsetSec: number; durationSec: number } | null {
+  let when = time - Math.max(0, leadSec);
+  let offset = offsetSec;
+  let dur = durationSec;
+  const floor = Number.isFinite(earliest) ? Math.max(0, earliest) : 0;
+  if (when < floor) {
+    const cut = floor - when;
+    offset += cut;
+    dur -= cut;
+    when = floor;
+  }
+  dur = Math.min(dur, Math.max(0, bufferDuration - offset));
+  if (!(dur > 0) || !(offset < bufferDuration) || offset < 0) return null;
+  return { when, offsetSec: offset, durationSec: dur };
 }
 
 export function masteringEffects(project: DAWProject): EffectInstance[] {
@@ -121,6 +158,10 @@ export class ProjectGraph {
       }
       ch.input.gain.value = dbToGain(Math.max(-48, Math.min(36, t.trimDb || 0)));
       ch.chain.set(t.effectChain);
+      for (const fx of t.effectChain || []) {
+        if (fx.type !== 'pitchCorrect' || fx.enabled === false || !pitchNodeBound(fx.id)) continue;
+        pushPitchSettings(fx.id, settingsFromEffect(fx, project, this.ctx.sampleRate));
+      }
       ch.fader.gain.value = Number.isFinite(t.volume) ? dbToGain(Math.min(12, t.volume)) : 0;
       ch.pan.pan.value = Math.max(-1, Math.min(1, t.pan || 0));
       ch.mute.gain.value = isTrackAudible(t, project.tracks, this.opts.onlyTrackIds) ? 1 : 0;
@@ -207,17 +248,34 @@ export class ProjectGraph {
       const rawDur = ev.durationSec ?? ev.lengthBeats * spbFade;
       const dur = Math.max(0, Math.min(rawDur, buf.duration - ev.offsetSec));
       if (dur <= 0) return;
-      const fadeIn = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeIn || 0) * spbFade)));
-      const fadeOut = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeOut || 0) * spbFade)));
-      g.gain.setValueAtTime(0, time);
-      g.gain.linearRampToValueAtTime(level, time + fadeIn);
-      g.gain.setValueAtTime(level, time + dur - fadeOut);
-      g.gain.linearRampToValueAtTime(0, time + dur);
+      const placed = compensateProcessorDelay(time, ev.offsetSec, dur, buf.duration, this.pitchLeadSec(track), this.ctx.currentTime || 0);
+      if (!placed) return;
+      const when = placed.when;
+      const playDur = placed.durationSec;
+      const fadeIn = Math.min(playDur / 2, Math.max(0.002, ((clip?.fadeIn || 0) * spbFade)));
+      const fadeOut = Math.min(playDur / 2, Math.max(0.002, ((clip?.fadeOut || 0) * spbFade)));
+      g.gain.setValueAtTime(0, when);
+      g.gain.linearRampToValueAtTime(level, when + fadeIn);
+      g.gain.setValueAtTime(level, when + playDur - fadeOut);
+      g.gain.linearRampToValueAtTime(0, when + playDur);
       src.connect(g).connect(ch.input);
-      src.start(time, ev.offsetSec, dur);
+      src.start(when, placed.offsetSec, playDur);
       const v: Voice = { stop: (at?: number) => { try { src.stop(Math.max(at ?? 0, (this.ctx as AudioContext).currentTime || 0)); } catch { /* noop */ } } };
-      this.voices.add({ v, end: time + dur + 0.1 });
+      this.voices.add({ v, end: when + playDur + 0.1 });
     }
+  }
+
+  /** Sum of bound Pitch Correct delays on this track. Zero unless live compensation is on. */
+  private pitchLeadSec(track: DAWTrack): number {
+    if (!this.opts.pitchCompensate) return 0;
+    let lead = 0;
+    for (const fx of track.effectChain || []) {
+      if (fx.type !== 'pitchCorrect' || fx.enabled === false || !pitchNodeBound(fx.id)) continue;
+      const idx = Math.max(0, Math.min(PITCH_RANGES.length - 1, Math.round(Number(fx.params.range) || 1)));
+      const mode = Number(fx.params.quality) ? 'quality' as const : 'low' as const;
+      lead += pitchLatencySec(this.ctx.sampleRate || 48000, PITCH_RANGES[idx].minHz, mode);
+    }
+    return lead;
   }
 
   private applyDucking(source: DAWTrack, pitch: number, time: number): void {

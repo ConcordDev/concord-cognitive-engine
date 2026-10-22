@@ -47,7 +47,7 @@ export class StudioEngine {
 
   constructor(ctx: AudioContext = getAudioContext()) {
     this.ctx = ctx;
-    this.graph = new ProjectGraph(ctx, { destination: ctx.destination, clickDestination: ctx.destination, analysers: true });
+    this.graph = new ProjectGraph(ctx, { destination: ctx.destination, clickDestination: ctx.destination, analysers: true, pitchCompensate: true });
     this.scheduler = new LookaheadScheduler({
       getSource: () => this.source(),
       onEvent: (ev, time, spb) => {

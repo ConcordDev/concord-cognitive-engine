@@ -15,6 +15,7 @@ import { measureLoudness, type LoudnessReport } from './dsp/loudness';
 import { masterToTarget, preventClipping } from './dsp/limiter';
 import { encodeMp3OffThread, mp3Blob, type Mp3Bitrate, type Mp3Tags } from './mp3-encode';
 import { bpmAt, isConstantTempo, projectTempoPoints, renderClickTrack, secondsBetween } from './tempo-map';
+import { preparePitchExport } from './dsp/pitch/settings';
 
 export interface PcmAudio {
   channels: Float32Array[];
@@ -54,10 +55,15 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 export async function renderProject(project: DAWProject, audio: Map<string, PcmAudio>, opts: RenderOptions = {}): Promise<PcmAudio> {
   throwIfAborted(opts.signal);
-  const sampleRate = opts.sampleRate || project.sampleRate || 48000;
+  // Bake Pitch Correct into clip buffers and drop those devices. The offline
+  // graph must not also host the worklet (pitchCompensate stays off).
+  const prepared = preparePitchExport(project, audio);
+  const song = prepared.project;
+  const clips = prepared.audio;
+  const sampleRate = opts.sampleRate || song.sampleRate || 48000;
   const start = Math.max(0, opts.startBeat ?? 0);
-  const end = Math.max(start + 1, opts.endBeat ?? Math.max(4, projectEndBeat(project)));
-  const map = projectTempoPoints(project);
+  const end = Math.max(start + 1, opts.endBeat ?? Math.max(4, projectEndBeat(song)));
+  const map = projectTempoPoints(song);
   const constant = isConstantTempo(map);
   const spb = 60 / map[0].bpm;
   const tail = opts.tailSec ?? 2.5;
@@ -65,15 +71,15 @@ export async function renderProject(project: DAWProject, audio: Map<string, PcmA
   const frames = Math.ceil((span + tail) * sampleRate);
   const ctx = (opts.createContext || defaultContext)(2, frames, sampleRate);
   const graph = new ProjectGraph(ctx, { destination: ctx.destination, onlyTrackIds: opts.onlyTrackIds, bypassMastering: opts.bypassMastering });
-  for (const [id, a] of audio) {
+  for (const [id, a] of clips) {
     const buf = ctx.createBuffer(a.channels.length, a.channels[0].length, a.sampleRate);
     a.channels.forEach((ch, i) => buf.copyToChannel(ch as Float32Array<ArrayBuffer>, i));
     graph.setBuffer(id, buf);
   }
-  graph.sync(project);
-  const bpb = project.timeSignature?.[0] || 4;
+  graph.sync(song);
+  const bpb = song.timeSignature?.[0] || 4;
   const events = collectEvents(start, end, {
-    tracks: project.tracks,
+    tracks: song.tracks,
     beatsPerBar: bpb,
     bpm: map[0].bpm,
     tempo: map,

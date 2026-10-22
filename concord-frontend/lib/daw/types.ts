@@ -305,7 +305,8 @@ export type EffectType =
   | 'chorus' | 'phaser' | 'flanger' | 'tremolo' | 'vibrato'
   | 'filter' | 'autoFilter' | 'autoWah'
   | 'stereoWidener' | 'pan'
-  | 'pitchShift' | 'frequencyShifter';
+  | 'pitchShift' | 'frequencyShifter'
+  | 'pitchCorrect';
 
 export interface EffectInstance {
   id: string;

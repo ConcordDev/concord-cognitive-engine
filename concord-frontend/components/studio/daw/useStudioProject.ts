@@ -12,6 +12,7 @@ import { createHistory, pushHistory, undo as undoH, redo as redoH, replacePresen
 import { Autosaver, type SaveStatus } from '@/lib/daw/persistence';
 import { studioTransport, browserLocalStore } from '@/lib/daw/studio-api';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
+import { ensurePitchWorklet } from '@/lib/daw/worklets/load-pitch-worklet';
 
 type Action =
   | { type: 'edit'; fn: (p: DAWProject) => DAWProject; key?: string }
@@ -78,9 +79,19 @@ export function useStudioProject(initial: DAWProject, initialRev: number) {
   }, []);
 
   // Engine + autosave follow every state change (cheap: graph.sync diff-updates).
+  // Pitch Correct appears in the chain only after its worklet module loads.
   useEffect(() => {
-    getStudioEngine().setProject(project);
+    const eng = getStudioEngine();
+    eng.setProject(project);
     saverRef.current?.update(project);
+    const needsPitch = project.tracks.some((t) => (t.effectChain || []).some((e) => e.type === 'pitchCorrect' && e.enabled !== false));
+    if (!needsPitch) return;
+    let cancel = false;
+    void ensurePitchWorklet(eng.ctx).then((ok) => {
+      if (cancel || !ok) return;
+      eng.setProject(project);
+    });
+    return () => { cancel = true; };
   }, [project]);
 
   const edit = useCallback((fn: (p: DAWProject) => DAWProject, key?: string) => dispatch({ type: 'edit', fn, key }), []);
