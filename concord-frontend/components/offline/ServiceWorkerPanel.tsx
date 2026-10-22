@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, ShieldCheck, ShieldX, RefreshCw, Loader2, Trash2, Layers } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { PWA_SERVICE_WORKER_SCOPE, PWA_SERVICE_WORKER_URL } from '@/lib/pwa/registration';
 
 interface SWState {
   supported: boolean;
@@ -67,7 +68,7 @@ export function ServiceWorkerPanel() {
       setSw({ supported: false, registered: false, active: false, scope: null, controlling: false });
       return;
     }
-    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    const reg = await navigator.serviceWorker.getRegistration(PWA_SERVICE_WORKER_URL);
     setSw({
       supported: true,
       registered: !!reg,
@@ -116,7 +117,9 @@ export function ServiceWorkerPanel() {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
     setBusy('register');
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const reg = await navigator.serviceWorker.register(PWA_SERVICE_WORKER_URL, {
+        scope: PWA_SERVICE_WORKER_SCOPE,
+      });
       await reg.update();
       await refreshState();
     } catch (e) {
@@ -128,7 +131,7 @@ export function ServiceWorkerPanel() {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
     setBusy('unregister');
     try {
-      const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+      const reg = await navigator.serviceWorker.getRegistration(PWA_SERVICE_WORKER_URL);
       if (reg) await reg.unregister();
       await refreshState();
       setCacheStats(null);

@@ -2,8 +2,8 @@
 
 /**
  * useWebPush — request notification permission, register the service
- * worker, subscribe via VAPID, POST the subscription to
- * /api/push/register.  Phase 11 (Item 13).
+ * worker (/sw.js, shared with the offline shell), subscribe via VAPID,
+ * POST the subscription to /api/push/register.  Phase 11 (Item 13).
  *
  * Strictly opt-in: the hook does nothing until the user calls
  * `enable()`.  Returns the current state so a Settings page can show
@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api/client';
+import { PWA_SERVICE_WORKER_SCOPE, PWA_SERVICE_WORKER_URL } from '@/lib/pwa/registration';
 
 export type WebPushStatus =
   | 'unsupported'
@@ -62,7 +63,7 @@ export function useWebPush(): UseWebPushReturn {
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.getRegistration('/service-worker.js');
+      const reg = await navigator.serviceWorker.getRegistration(PWA_SERVICE_WORKER_URL);
       if (!reg) { setStatus('not_subscribed'); return; }
       const sub = await reg.pushManager.getSubscription();
       setStatus(sub ? 'subscribed' : 'not_subscribed');
@@ -96,7 +97,9 @@ export function useWebPush(): UseWebPushReturn {
         return;
       }
       // 3. Service worker
-      const reg = await navigator.serviceWorker.register('/service-worker.js');
+      const reg = await navigator.serviceWorker.register(PWA_SERVICE_WORKER_URL, {
+        scope: PWA_SERVICE_WORKER_SCOPE,
+      });
       await navigator.serviceWorker.ready;
       // 4. Subscribe
       const sub = await reg.pushManager.subscribe({
@@ -119,7 +122,7 @@ export function useWebPush(): UseWebPushReturn {
   const disable = useCallback(async () => {
     setError(null);
     try {
-      const reg = await navigator.serviceWorker.getRegistration('/service-worker.js');
+      const reg = await navigator.serviceWorker.getRegistration(PWA_SERVICE_WORKER_URL);
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
         await api.post('/api/push/unregister', { token: JSON.stringify(sub.toJSON()) });

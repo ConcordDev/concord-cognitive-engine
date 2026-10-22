@@ -279,7 +279,12 @@ const PUBLIC_PREFIXES = [
   // script is fetched via a 307→/login redirect and the browser refuses to register
   // it ("The script resource is behind a redirect, which is disallowed").
   '/sw.js',
+  '/sw-policy.js',
   '/service-worker.js',
+  // Precached navigation fallback. Own entry so it stays public even if the
+  // `/offline` lens prefix later gains a trailing slash (`/offline.html`
+  // would stop matching `/offline/`).
+  '/offline.html',
   '/offline',
   '/workbox-',
 ];

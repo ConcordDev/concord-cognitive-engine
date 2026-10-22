@@ -15,7 +15,7 @@ interface BeforeInstallPromptEvent extends Event {
  *
  * Shows when the browser fires the `beforeinstallprompt` event,
  * indicating the app is installable. Dismissed if user declines
- * or has already installed.
+ * or has already installed. Dismissal is stored in localStorage.
  *
  * Hidden on `/lenses/studio` — the toast sits over the mixer and device
  * rack (same music-only hide as Topbar's health chip).
@@ -48,6 +48,7 @@ export function InstallPrompt() {
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
     }
+    localStorage.setItem('concord_pwa_dismissed', '1');
     setDismissed(true);
   };
 
@@ -70,7 +71,7 @@ export function InstallPrompt() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">Install Concord</p>
-        <p className="text-xs text-gray-400 truncate">Use Concord offline as a desktop app</p>
+        <p className="text-xs text-gray-400 truncate">Install Concord as an app</p>
       </div>
       <button
         onClick={handleInstall}
