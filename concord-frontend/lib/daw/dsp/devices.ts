@@ -87,7 +87,7 @@ export function reverbImpulse(ctx: BaseAudioContext, decaySec: number, preDelay:
 export const GATE_CURVE_SIZE = 65537;
 
 /** WaveShaper curve over input [-1, 1]: envelope amplitude → gate gain. */
-export function gateCurve(thresholdDb: number, rangeDb: number, n = GATE_CURVE_SIZE): Float32Array {
+export function gateCurve(thresholdDb: number, rangeDb: number, n = GATE_CURVE_SIZE): Float32Array<ArrayBuffer> {
   const thr = dbToGain(Math.max(-100, Math.min(0, thresholdDb)));
   const floor = dbToGain(Math.max(-100, Math.min(0, rangeDb)));
   const knee = thr / dbToGain(6);
