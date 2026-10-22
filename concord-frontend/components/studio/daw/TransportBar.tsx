@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import {
-  Play, Square, Circle, Repeat, Undo2, Redo2, Timer, Upload, Sparkles, Wand2, ChevronLeft, Check, CloudOff, Loader2, AlertTriangle, History,
+  Play, Square, Circle, Repeat, Undo2, Redo2, Timer, Upload, Sparkles, Wand2, ChevronLeft, Check, CloudOff, Loader2, AlertTriangle, History, Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject } from '@/lib/daw/types';
@@ -35,6 +35,7 @@ export interface TransportBarProps {
   onVersions: () => void;
   onAutoMix: () => void;
   onExport: () => void;
+  onPublish: () => void;
   onAskProducer: () => void;
 }
 
@@ -132,6 +133,9 @@ export function TransportBar(p: TransportBarProps) {
       </button>
       <button onClick={p.onExport} className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 text-xs text-emerald-200 hover:bg-emerald-500/25" title="Render WAV, FLAC, or MP3, with stems, or save the mix to your Concord library" data-testid="studio-export">
         <Upload className="h-3.5 w-3.5" /> Export
+      </button>
+      <button onClick={p.onPublish} className="flex h-8 items-center gap-1.5 rounded-md bg-violet-500/15 px-2.5 text-xs text-violet-200 hover:bg-violet-500/25" title="Publish this song on the Concord marketplace" data-testid="studio-publish">
+        <Store className="h-3.5 w-3.5" /> Publish
       </button>
     </div>
   );

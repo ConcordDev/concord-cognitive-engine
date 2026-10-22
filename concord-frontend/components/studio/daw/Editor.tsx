@@ -33,12 +33,13 @@ import { Inspector, MasterPanel } from './Inspector';
 import { BrowserPanel, type BrowserPayload } from './BrowserPanel';
 import { WaveThumb } from './ClipShapes';
 import { ExportDialog, AutoMixDialog, VersionsDialog, AskProducerDialog } from './Dialogs';
+import { PublishDialog } from './PublishDialog';
 import * as ops from './ops';
 
 export const LAST_PROJECT_KEY = 'concord-studio-last-project';
 
 type BottomTab = 'editor' | 'devices' | 'mixer';
-type DialogKind = null | 'export' | 'automix' | 'versions' | 'producer';
+type DialogKind = null | 'export' | 'automix' | 'versions' | 'producer' | 'publish';
 
 interface RecordingState { trackIds: string[]; beat0Time: number; startBeat: number }
 
@@ -367,6 +368,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onVersions={() => setDialog('versions')}
         onAutoMix={() => setDialog('automix')}
         onExport={() => setDialog('export')}
+        onPublish={() => setDialog('publish')}
         onAskProducer={() => setDialog('producer')}
       />
       <div className="flex min-h-0 flex-1">
@@ -505,6 +507,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         />
       </div>
       {dialog === 'export' && <ExportDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}
+      {dialog === 'publish' && <PublishDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}
       {dialog === 'automix' && (
         <AutoMixDialog project={project} getAudio={() => engine.audioMap()} onApply={(p) => edit(() => p)} onRevert={api.undo} onClose={() => setDialog(null)} />
       )}
