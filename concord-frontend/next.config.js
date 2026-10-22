@@ -67,11 +67,12 @@ const nextConfig = {
           {
             // Explicitly allow same-origin WebXR (immersive-ar/vr) on the document —
             // navigator.xr is gated by the xr-spatial-tracking policy (Chromium rejects
-            // with SecurityError where disallowed). Only this feature is listed so
-            // camera/microphone/geolocation keep their default `self` allowlist (other
-            // lenses use mic for karaoke, geolocation for routes, etc.).
+            // with SecurityError where disallowed). Microphone is listed explicitly as
+            // (self) so Studio recording keeps working even if an upstream layer (CDN,
+            // reverse proxy) injects a stricter default. Camera/geolocation keep their
+            // default `self` allowlist (other lenses use them).
             key: 'Permissions-Policy',
-            value: 'xr-spatial-tracking=(self)',
+            value: 'microphone=(self), xr-spatial-tracking=(self)',
           },
         ],
       },

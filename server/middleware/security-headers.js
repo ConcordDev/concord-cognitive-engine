@@ -49,11 +49,15 @@ export default function securityHeaders(req, res, next) {
   // `xr-spatial-tracking` policy gates navigator.xr — Chromium rejects
   // isSessionSupported/requestSession with a SecurityError where it's disallowed.
   // It defaults to `self`, but being explicit future-proofs the AR/VR lenses against a
-  // tightened policy. camera/mic/geolocation stay restricted (immersive-ar passthrough
+  // tightened policy. camera/geolocation stay restricted (immersive-ar passthrough
   // is handled by the XR compositor, not getUserMedia, so camera=() doesn't block it).
+  // microphone=(self): any document this server renders (or a proxy that copies
+  // these headers onto pages) must not block Studio / voice recording. It was
+  // microphone=(), which disables getUserMedia({audio}) outright with
+  // NotAllowedError, no prompt shown.
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), xr-spatial-tracking=(self)"
+    "camera=(), microphone=(self), geolocation=(), xr-spatial-tracking=(self)"
   );
 
   next();

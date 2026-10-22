@@ -11,6 +11,7 @@ import type {
   SynthPreset,
 } from './types';
 import { resumeAudioContext as resumeCtx } from '../audio/unlock';
+import { buildAudioConstraints } from './input-devices';
 
 // ============================================================================
 // Audio Context Singleton
@@ -20,7 +21,10 @@ let audioContext: AudioContext | null = null;
 
 export function getAudioContext(): AudioContext {
   if (!audioContext || audioContext.state === 'closed') {
-    audioContext = new AudioContext({ sampleRate: 44100 });
+    // Native device rate + interactive latency. Forcing 44.1 kHz broke mic
+    // input on 48 kHz interfaces (Firefox refuses to connect a MediaStream
+    // source to a context at a different rate; Chrome silently resamples).
+    audioContext = new AudioContext({ latencyHint: 'interactive' });
   }
   return audioContext;
 }
@@ -877,6 +881,16 @@ export class AudioRecorder {
   private onError: ((err: Error) => void) | null = null;
   private mimeType: string | null = null;
   private lastError: Error | null = null;
+  private deviceId: string | null = null;
+
+  /** Choose the input device for the next requestAccess(). */
+  setDevice(deviceId: string | null): void {
+    if (deviceId !== this.deviceId) {
+      this.deviceId = deviceId;
+      this.mediaStream?.getTracks().forEach(t => t.stop());
+      this.mediaStream = null;
+    }
+  }
 
   /** True once the user has granted mic permission and we have a live stream. */
   get hasAccess(): boolean {
@@ -901,12 +915,10 @@ export class AudioRecorder {
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('getUserMedia unavailable in this context');
       }
+      // Music-grade capture: voice processing (echo cancel / noise suppress /
+      // AGC) was ON here, which ducked sustained notes and pumped levels.
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: buildAudioConstraints({ deviceId: this.deviceId, sampleRate: getAudioContext().sampleRate }),
       });
       return true;
     } catch (err) {
