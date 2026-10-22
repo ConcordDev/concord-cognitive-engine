@@ -164,22 +164,25 @@ export function arpeggiate(notes: MIDINote[], arp: ArpSettings | undefined, seed
 export interface ControlVoice {
   bend?(semitones: number, at?: number): void;
   modulate?(amount01: number, at?: number): void;
+  level?(amount01: number, at?: number): void;
 }
 
 export type ControlEvent =
   | { kind: 'cc'; cc: number; value: number }
   | { kind: 'pitchBend'; value: number };
 
-/** CC 1 opens the filter. Pitch bend is ±2 semitones across -1..1. */
+/** CC 1 opens the filter. CC 11 scales the voice level. Pitch bend is ±2 semitones across -1..1. */
 export function dispatchControl(voices: ControlVoice[], ev: ControlEvent, time?: number): void {
   if (ev.kind === 'pitchBend') {
     const semis = Math.max(-1, Math.min(1, Number(ev.value) || 0)) * 2;
     for (const voice of voices) voice.bend?.(semis, time);
     return;
   }
+  const amount = Math.max(0, Math.min(1, (Number(ev.value) || 0) / 127));
   if (ev.cc === 1) {
-    const amount = Math.max(0, Math.min(1, (Number(ev.value) || 0) / 127));
     for (const voice of voices) voice.modulate?.(amount, time);
+  } else if (ev.cc === 11) {
+    for (const voice of voices) voice.level?.(amount, time);
   }
 }
 

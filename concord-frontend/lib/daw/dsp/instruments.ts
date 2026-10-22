@@ -13,6 +13,8 @@ export interface Voice {
   bend?(semitones: number, at?: number): void;
   /** 0–1. Opens the filter from its base cutoff. CC 1 uses this. */
   modulate?(amount01: number, at?: number): void;
+  /** 0–1. Scales the voice amp. CC 11 uses this. */
+  level?(amount01: number, at?: number): void;
 }
 
 const noiseCache = new WeakMap<BaseAudioContext, AudioBuffer>();
@@ -154,6 +156,15 @@ export function playSynthNote(
       try {
         filter.frequency.cancelScheduledValues(t);
         filter.frequency.setTargetAtTime(opened, t, 0.03);
+      } catch { /* voice already stopped */ }
+    },
+    level(amount01: number, at?: number) {
+      const amt = Math.max(0, Math.min(1, amount01));
+      const t = Math.max(0, at ?? (ctx as AudioContext).currentTime ?? 0);
+      try {
+        amp.gain.cancelScheduledValues(t);
+        amp.gain.setValueAtTime(Math.max(0.0001, amp.gain.value), t);
+        amp.gain.linearRampToValueAtTime(Math.max(0.0001, peak * amt), t + 0.02);
       } catch { /* voice already stopped */ }
     },
   };

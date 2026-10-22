@@ -100,15 +100,18 @@ describe('synth control dispatch', () => {
   it('bends by semitones and opens the filter from the mod wheel', () => {
     const bends: number[] = [];
     const mods: number[] = [];
+    const levels: number[] = [];
     const voice = {
       bend: (semitones: number) => { bends.push(semitones); },
       modulate: (amount: number) => { mods.push(amount); },
+      level: (amount: number) => { levels.push(amount); },
     };
     dispatchControl([voice], { kind: 'pitchBend', value: 0.5 }, 1.25);
     dispatchControl([voice], { kind: 'cc', cc: 1, value: 127 }, 1.5);
-    dispatchControl([voice], { kind: 'cc', cc: 11, value: 10 }, 1.6);
+    dispatchControl([voice], { kind: 'cc', cc: 11, value: 64 }, 1.6);
     expect(bends).toEqual([1]);
     expect(mods).toEqual([1]);
+    expect(levels[0]).toBeCloseTo(64 / 127);
   });
 });
 
