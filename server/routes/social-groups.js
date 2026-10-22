@@ -481,13 +481,31 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       }
       const pattern = `%${q.slice(0, 50)}%`;
       const rows = db.prepare(
-        "SELECT id, username, email FROM users WHERE is_active = 1 AND (username LIKE ? OR email LIKE ?) LIMIT 20"
-      ).all(pattern, pattern);
+        "SELECT id, username FROM users WHERE is_active = 1 AND username LIKE ? LIMIT 20"
+      ).all(pattern);
       const users = rows.map((r) => ({
         id: r.id,
         username: r.username,
         displayName: r.username,
       }));
+      // users has no display_name column. Public social profiles are the
+      // display-name index; email is never a search key.
+      const profiles = globalThis._concordSTATE?._social?.profiles;
+      if (profiles && typeof profiles.values === "function") {
+        const needle = q.toLowerCase();
+        const seen = new Set(users.map((u) => u.id));
+        for (const profile of profiles.values()) {
+          const name = typeof profile?.displayName === "string" ? profile.displayName : "";
+          if (!name || !name.toLowerCase().includes(needle)) continue;
+          const existing = users.find((u) => u.id === profile.userId);
+          if (existing) { existing.displayName = name; continue; }
+          if (users.length >= 20 || seen.has(profile.userId)) continue;
+          const row = db.prepare("SELECT id, username FROM users WHERE id = ? AND is_active = 1").get(profile.userId);
+          if (!row) continue;
+          seen.add(row.id);
+          users.push({ id: row.id, username: row.username, displayName: name });
+        }
+      }
       res.json({ ok: true, users, total: users.length });
     } catch (err) {
       console.error("[social-groups] GET /users/search error:", err);

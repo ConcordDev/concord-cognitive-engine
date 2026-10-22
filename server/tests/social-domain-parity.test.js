@@ -149,6 +149,13 @@ describe("social — media attachments", () => {
   it("rejects a bad url or kind", () => {
     assert.equal(call("registerMedia", ctxA, { kind: "audio", url: "https://x" }).ok, false);
     assert.equal(call("registerMedia", ctxA, { kind: "image", url: "ftp://x" }).ok, false);
+    assert.equal(call("registerMedia", ctxA, { kind: "image", url: "data:image/png;base64,aaaa" }).ok, false);
+  });
+  it("accepts an artifact stream path", () => {
+    const r = call("registerMedia", ctxA, { kind: "image", url: "/api/artifact/dtu_1/stream", alt: "cover" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.attachment.url, "/api/artifact/dtu_1/stream");
+    assert.equal(r.result.attachment.alt, "cover");
   });
   it("attaches media to a post", () => {
     const post = newPost(ctxA, { media: [{ kind: "image", url: "https://x.test/a.png" }] });

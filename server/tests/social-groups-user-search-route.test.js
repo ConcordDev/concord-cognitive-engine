@@ -62,7 +62,7 @@ describe("GET /api/social/users/search — real DB-backed user lookup", () => {
     assert.equal(body.ok, true);
     const ids = body.users.map((u) => u.id);
     assert.ok(ids.includes("user_zara"), "username-substring match must be present");
-    assert.ok(ids.includes("user_matches_by_email"), "email-substring match must be present");
+    assert.ok(!ids.includes("user_matches_by_email"), "email substring must not identify an account");
     assert.ok(!ids.includes("user_zane"), "non-matching user must not be returned");
     for (const u of body.users) {
       assert.equal(typeof u.id, "string");

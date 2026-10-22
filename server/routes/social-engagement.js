@@ -19,6 +19,8 @@
 
 import { Router } from "express";
 import crypto from "crypto";
+import createSocialCoreRoutes from "./social-core.js";
+import { postAuthorId, userOwnsListing } from "../emergent/social-layer.js";
 
 function uid() {
   return crypto.randomUUID();
@@ -26,6 +28,8 @@ function uid() {
 
 export default function createSocialEngagementRoutes({ db, requireAuth }) {
   const router = Router();
+  // Registered first so these paths win over the inline server.js handlers.
+  router.use(createSocialCoreRoutes({ db, requireAuth }));
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────
 
@@ -290,6 +294,13 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       }
       if (!listingId || typeof listingId !== "string") {
         return res.status(400).json({ ok: false, error: "listingId is required" });
+      }
+      const STATE = globalThis._concordSTATE;
+      const authorId = postAuthorId(STATE, postId, db);
+      if (!authorId) return res.status(404).json({ ok: false, error: "Post not found" });
+      if (authorId !== userId) return res.status(403).json({ ok: false, error: "Only the post author can tag a listing" });
+      if (!userOwnsListing(db, userId, listingId)) {
+        return res.status(403).json({ ok: false, error: "You do not own this listing" });
       }
       const id = uid();
       db.prepare(
