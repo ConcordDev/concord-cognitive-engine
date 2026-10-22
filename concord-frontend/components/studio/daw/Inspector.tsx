@@ -2,6 +2,7 @@
 
 import type { DAWClip, DAWProject, DAWTrack, EffectInstance, TrackRole, MasteringChain, TransportConfig } from '@/lib/daw/types';
 import { TRACK_COLORS, trackKind } from '@/lib/daw/project';
+import { crossfadeOverlaps, followTempoStretch } from '@/lib/daw/clip-edit';
 import { cn } from '@/lib/utils';
 import { DeviceCard } from './DevicePanel';
 import { RecordPanel } from './RecordPanel';
@@ -29,9 +30,10 @@ export interface InspectorProps {
   onDeleteTrack: () => void;
   onDuplicateTrack: () => void;
   onTransport: (patch: Partial<TransportConfig>) => void;
+  onProject?: (project: DAWProject) => void;
 }
 
-export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack, onTransport }: InspectorProps) {
+export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack, onTransport, onProject }: InspectorProps) {
   const sec = 'space-y-2 border-b border-white/5 p-3';
   return (
     <div className="h-full w-64 flex-shrink-0 overflow-y-auto border-l border-white/5 bg-[#111117]" data-testid="studio-inspector">
@@ -82,7 +84,21 @@ export function Inspector({ project, track, clip, recorder, onTrack, onClip, onD
             <>
               <Num label="Fade in" value={clip.fadeIn || 0} min={0} max={8} step={0.05} unit=" b" onChange={(v) => onClip({ fadeIn: v }, `cfi-${clip.id}`)} />
               <Num label="Fade out" value={clip.fadeOut || 0} min={0} max={8} step={0.05} unit=" b" onChange={(v) => onClip({ fadeOut: v }, `cfo-${clip.id}`)} />
+              <label className="flex items-center gap-2 text-[10px] text-zinc-400">Fade
+                <select aria-label="Fade shape" value={clip.fadeShape === 'equalPower' ? 'equalPower' : 'linear'} onChange={(e) => onClip({ fadeShape: e.target.value === 'equalPower' ? 'equalPower' : 'linear' })} className="rounded bg-black/40 px-1 py-0.5 text-zinc-100">
+                  <option value="linear">Linear</option>
+                  <option value="equalPower">Equal power</option>
+                </select>
+              </label>
+              <Num label="Pitch" value={clip.pitch || 0} min={-12} max={12} step={1} unit=" st" onChange={(v) => onClip({ pitch: v }, `cpitch-${clip.id}`)} />
+              <Num label="Stretch" value={clip.timeStretch || 1} min={0.25} max={4} step={0.01} onChange={(v) => onClip({ timeStretch: v }, `cstretch-${clip.id}`)} />
+              <label className="flex items-center gap-2 text-[10px] text-zinc-400"><input type="checkbox" checked={!!clip.reversed} onChange={(e) => onClip({ reversed: e.target.checked })} aria-label="Reverse clip" />Reverse</label>
               <Num label="Offset" value={clip.offset || 0} min={0} max={Math.max(1, project.audioAssets?.[clip.audioBufferId || '']?.duration || 10)} step={0.01} unit=" s" onChange={(v) => onClip({ offset: v }, `coff-${clip.id}`)} />
+              <button type="button" className="w-full rounded bg-white/5 py-1 text-[10px] text-zinc-200" onClick={() => {
+                const dur = project.audioAssets?.[clip.audioBufferId || '']?.duration || 0;
+                if (dur > 0) onClip({ timeStretch: followTempoStretch(dur, clip.lengthBeats, project.bpm || 120) }, `cfollow-${clip.id}`);
+              }}>Follow tempo</button>
+              {onProject && <button type="button" className="w-full rounded bg-white/5 py-1 text-[10px] text-zinc-200" onClick={() => onProject(crossfadeOverlaps(project, clip.trackId))}>Crossfade overlaps</button>}
             </>
           )}
         </div>

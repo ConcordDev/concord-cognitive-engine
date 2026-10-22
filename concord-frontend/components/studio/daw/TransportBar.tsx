@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { DAWProject } from '@/lib/daw/types';
 import type { SaveInfo } from './useStudioProject';
 import { useBeatFrame, formatPosition } from './engine-hooks';
-import { projectTempoPoints, secondsFromBeat, TEMPO_MAX, TEMPO_MIN } from '@/lib/daw/tempo-map';
+import { beatsPerBar, projectTempoPoints, secondsFromBeat, TEMPO_MAX, TEMPO_MIN } from '@/lib/daw/tempo-map';
 import type { TransportState } from '@/lib/daw/playback-engine';
 import type { ClipKeyResult } from '@/lib/daw/dsp/pitch/key-detect';
 import { KeyScaleControl } from './KeyScaleControl';
@@ -30,6 +30,7 @@ export interface TransportBarProps {
   onToggleMetronome: () => void;
   onCountIn: (bars: number) => void;
   onBpm: (bpm: number) => void;
+  onTimeSignature: (beats: number, unit: number) => void;
   onKeyScale: (key: string, scale: string, scaleMask: number | undefined) => void;
   onDetectKey: () => Promise<ClipKeyResult>;
   onRename: (title: string) => void;
@@ -72,7 +73,9 @@ function formatClock(sec: number): string {
 export function TransportBar(p: TransportBarProps) {
   const posRef = useRef<HTMLSpanElement>(null);
   const timeRef = useRef<HTMLSpanElement>(null);
-  const bpb = p.project.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(p.project.timeSignature);
+  const sigBeats = Math.max(1, Math.min(16, Math.round(p.project.timeSignature?.[0] || 4)));
+  const sigUnit = [1, 2, 4, 8, 16].includes(p.project.timeSignature?.[1]) ? p.project.timeSignature[1] : 4;
   useBeatFrame((beat) => {
     if (posRef.current) posRef.current.textContent = formatPosition(beat, bpb);
     if (timeRef.current) timeRef.current.textContent = formatClock(secondsFromBeat(projectTempoPoints(p.project), beat));
@@ -124,6 +127,13 @@ export function TransportBar(p: TransportBarProps) {
             aria-label="Tempo (BPM)"
           />
           BPM
+        </label>
+        <label className="flex items-center gap-0.5 text-[11px] text-zinc-500">
+          <input aria-label="Beats per bar" type="number" min={1} max={16} value={sigBeats} onChange={(e) => p.onTimeSignature(Number(e.target.value), sigUnit)} className="w-8 rounded bg-white/5 px-0.5 py-0.5 text-right text-sm text-zinc-100 outline-none" />
+          /
+          <select aria-label="Beat unit" value={sigUnit} onChange={(e) => p.onTimeSignature(sigBeats, Number(e.target.value))} className="rounded bg-white/5 px-0.5 py-0.5 text-sm text-zinc-100 outline-none">
+            {[2, 4, 8, 16].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
         </label>
         <KeyScaleControl project={p.project} onChange={p.onKeyScale} onDetect={p.onDetectKey} />
       </div>

@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { assetMeta, newId, trackKind, createTrack, createBus, createVca, effect, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
-import { beatAfter, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
+import { beatAfter, beatsPerBar, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
+import { editClipFromKey, rippleDelete } from '@/lib/daw/clip-edit';
 import { planRecording, recordingStartBeat } from '@/lib/daw/record-plan';
 import { addTake } from '@/lib/daw/takes';
 import type { AudioTake } from '@/lib/daw/take-types';
@@ -36,7 +37,7 @@ import { MixerPanel, MASTER_ID } from './MixerPanel';
 import { Inspector, MasterPanel } from './Inspector';
 import { BrowserPanel, type BrowserPayload } from './BrowserPanel';
 import { ExportDialog, AutoMixDialog, VersionsDialog, AskProducerDialog } from './Dialogs';
-import { PitchEditor } from './PitchEditor';
+import { AudioClipPane } from './AudioClipPane';
 import { PublishDialog } from './PublishDialog';
 import * as ops from './ops';
 import { useTakeLane } from './useTakeLane';
@@ -83,7 +84,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   // eslint-disable-next-line react-hooks/refs
   recordingRef.current = recording;
   const countIn = rec.state.prefs.countInBars;
-  const bpb = project.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(project.timeSignature);
 
   useEffect(() => { engine.setMetronome(metronome); }, [engine, metronome]);
   useEffect(() => { engine.setMode(view); }, [engine, view]);
@@ -260,7 +261,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     }
     if (view === 'session') setView('arrange');
     p = projectRef.current;
-    const planned = recordingStartBeat(Math.max(0, engine.getBeat()), p.transport, p.timeSignature?.[0] || 4);
+    const planned = recordingStartBeat(Math.max(0, engine.getBeat()), p.transport, beatsPerBar(p.timeSignature));
     if (planned.error) { showToast('error', planned.error); return; }
     const startBeat = planned.startBeat;
     engine.stop();
@@ -351,7 +352,11 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         return;
       }
       if (mod) return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selClip) { e.preventDefault(); edit((p) => ops.deleteClip(p, selClip)); setSelClip(null); return; }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selClip) { e.preventDefault(); edit((p) => (e.shiftKey ? rippleDelete(p, selClip) : ops.deleteClip(p, selClip))); setSelClip(null); return; }
+      if (selClip) {
+        const next = editClipFromKey(projectRef.current, selClip, e.key, e.altKey, e.shiftKey, Math.max(0, engine.getBeat()), 60 / (projectRef.current.bpm || 120));
+        if (next && next !== projectRef.current) { e.preventDefault(); edit(() => next); return; }
+      }
       const k = e.key.toLowerCase();
       if (k === 'r') { e.preventDefault(); onRecord(); }
       else if (k === 'l') { e.preventDefault(); toggleLoop(); }
@@ -395,6 +400,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onToggleMetronome={() => setMetronome((m) => !m)}
         onCountIn={(bars) => void rec.setPrefs({ countInBars: bars })}
         onBpm={(bpm) => edit((p) => setTransportBpm(p, bpm), 'bpm')}
+        onTimeSignature={(beats, unit) => edit((p) => ({ ...p, timeSignature: [Math.max(1, Math.min(16, Math.round(beats) || 4)), [2, 4, 8, 16].includes(unit) ? unit : 4] }))}
         onKeyScale={(key, scale, scaleMask) => edit((p) => ({ ...p, key, scale, scaleMask }), 'key')}
         onDetectKey={() => detectClipKey(project, selClip, engine.audioMap())}
         onRename={(title) => edit((p) => ({ ...p, title }), 'title')}
@@ -438,6 +444,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                 onCreateClip={(tid, beat) => { const r = ops.addMidiClip(projectRef.current, tid, beat, bpb); if (r.clip) { edit(() => r.project); setSelClip(r.clip.id); setSelTrack(tid); setBottom('editor'); } }}
                 onMoveClip={(cid, tid, beat) => edit((p) => ops.moveClip(p, cid, tid, beat))}
                 onResizeClip={(cid, len) => edit((p) => ops.resizeClip(p, cid, len))}
+                onPatchClip={(cid, patch) => edit((p) => ops.mapClip(p, cid, (c) => ({ ...c, ...patch })))}
                 onSeek={(b) => engine.seek(b)}
                 onSetLoop={(s, e) => edit((p) => ({ ...p, transport: { ...p.transport, loopEnabled: true, loopStart: s, loopEnd: e } }))}
                 onTrackChange={onTrack}
@@ -497,11 +504,13 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                     onAudition={(pitch, vel) => engine.previewNote(found.track.id, pitch, vel)}
                   />
                 ) : clip && clip.type === 'audio' ? (
-                  <PitchEditor
+                  <AudioClipPane
                     clip={clip}
                     project={project}
                     pcm={clip.audioBufferId ? engine.audioMap().get(clip.audioBufferId) || null : null}
                     onEdits={(doc, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, pitchEdits: doc || undefined })), key)}
+                    onClip={(patch, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, ...patch })), key)}
+                    onProject={(next) => edit(() => next)}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-xs text-zinc-600">
@@ -561,6 +570,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
           onDeleteTrack={() => { if (!track) return; edit((p) => ops.removeTrack(p, track.id)); setSelTrack(null); setSelClip(null); }}
           onDuplicateTrack={() => track && edit((p) => ops.duplicateTrack(p, track.id))}
           onTransport={(patch) => edit((p) => ({ ...p, transport: { ...p.transport, ...patch } }))}
+          onProject={(next) => edit(() => next)}
         />
       </div>
       {dialog === 'export' && <ExportDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}

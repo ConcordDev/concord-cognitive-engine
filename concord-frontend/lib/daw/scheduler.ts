@@ -147,6 +147,7 @@ function collectClip(
           durationSec: variable ? fullSec : undefined,
           rateSecPerBeat: variable ? 60 / rateBpm : undefined,
           gainDb: clip.gain || 0,
+          fadeShape: clip.fadeShape === 'equalPower' ? 'equalPower' : undefined,
         });
       } else if (opts.catchUp && playStart < from && iterEnd > from) {
         const elapsed = variable && tempo ? secondsBetween(tempo, base, from) : (from - playStart) * secPerBeat;
@@ -157,6 +158,7 @@ function collectClip(
           durationSec: variable ? Math.max(0, fullSec - elapsed) : undefined,
           rateSecPerBeat: variable ? 60 / rateBpm : undefined,
           gainDb: clip.gain || 0,
+          fadeShape: clip.fadeShape === 'equalPower' ? 'equalPower' : undefined,
         });
       }
       continue;

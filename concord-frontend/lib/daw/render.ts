@@ -14,9 +14,10 @@ import { encodeFlac } from './flac';
 import { measureLoudness, type LoudnessReport } from './dsp/loudness';
 import { masterToTarget, preventClipping } from './dsp/limiter';
 import { encodeMp3OffThread, mp3Blob, type Mp3Bitrate, type Mp3Tags } from './mp3-encode';
-import { bpmAt, isConstantTempo, projectTempoPoints, renderClickTrack, secondsBetween } from './tempo-map';
+import { beatsPerBar, bpmAt, isConstantTempo, projectTempoPoints, renderClickTrack, secondsBetween } from './tempo-map';
 import { preparePitchExport } from './dsp/pitch/settings';
 import { applyBufferOverrides, bakePitchEdits } from './dsp/pitch/editor';
+import { bakeClipPlayback } from './clip-edit';
 
 export interface PcmAudio {
   channels: Float32Array[];
@@ -61,7 +62,9 @@ export async function renderProject(project: DAWProject, audio: Map<string, PcmA
   const edited = bakePitchEdits(project, audio);
   const editedAudio = new Map(audio);
   for (const [id, pcm] of edited.produced) editedAudio.set(id, pcm);
-  const prepared = preparePitchExport(applyBufferOverrides(project, edited.overrides), editedAudio);
+  const played = bakeClipPlayback(project, editedAudio, edited.overrides);
+  for (const [id, pcm] of played.produced) editedAudio.set(id, pcm);
+  const prepared = preparePitchExport(applyBufferOverrides(project, played.overrides), editedAudio);
   const song = prepared.project;
   const clips = prepared.audio;
   const sampleRate = opts.sampleRate || song.sampleRate || 48000;
@@ -81,7 +84,7 @@ export async function renderProject(project: DAWProject, audio: Map<string, PcmA
     graph.setBuffer(id, buf);
   }
   graph.sync(song);
-  const bpb = song.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(song.timeSignature);
   graph.applyAutomation(song, start, end, (beat) => (constant ? (beat - start) * spb : secondsBetween(map, start, beat)));
   const events = collectEvents(start, end, {
     tracks: song.tracks,
