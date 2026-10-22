@@ -80,6 +80,8 @@ export interface DAWClip {
   midiNotes?: MIDINote[];
   audioBufferId?: string;
   patternId?: string;
+  /** Session-view scene slot. Clips with a slot live in the Session grid, not the Arrangement. */
+  slot?: number;
 }
 
 // ============================================================================

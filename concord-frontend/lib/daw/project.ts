@@ -139,7 +139,7 @@ export function effect(type: EffectInstance['type'], name: string, params: Effec
 /** End of the last clip, in beats. */
 export function projectEndBeat(p: DAWProject): number {
   let end = 0;
-  for (const t of p.tracks) for (const c of t.clips) end = Math.max(end, c.startBeat + c.lengthBeats);
+  for (const t of p.tracks) for (const c of t.clips) if (c.slot === undefined || c.slot === null) end = Math.max(end, c.startBeat + c.lengthBeats);
   return end;
 }
 
