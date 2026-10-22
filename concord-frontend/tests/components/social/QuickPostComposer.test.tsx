@@ -3,8 +3,12 @@ import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const addToast = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   api: { get: vi.fn().mockResolvedValue({ data: { ok: true, results: [] } }), post: vi.fn() },
+}));
+vi.mock('@/store/ui', () => ({
+  useUIStore: Object.assign(() => ({ addToast }), { getState: () => ({ addToast }) }),
 }));
 
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
@@ -59,6 +63,85 @@ describe('QuickPostComposer', () => {
     const form = container.querySelector('form')!;
     fireEvent.submit(form);
     await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/social/post', expect.objectContaining({ content: 'hello world' })));
+  });
+
+  it('clicking Post and Ctrl+Enter both call the API, and success clears the text', async () => {
+    const onPosted = vi.fn();
+    const { container, unmount } = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me', onPosted }),
+      qc,
+    ));
+    const textarea = container.querySelector('textarea')!;
+    fireEvent.change(textarea, { target: { value: 'zuko r5 check' } });
+    fireEvent.click(container.querySelector('button[type="submit"]')!);
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/social/post',
+      expect.objectContaining({ content: 'zuko r5 check' }),
+    ));
+    await waitFor(() => expect(textarea.value).toBe(''));
+    expect(onPosted).toHaveBeenCalledWith('post_x');
+    unmount();
+
+    mockedApi.post.mockClear();
+    onPosted.mockClear();
+    mockedApi.post.mockResolvedValue({ data: { ok: true, post: { id: 'post_y' } } });
+    const again = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me', onPosted }),
+      qc,
+    ));
+    const box = again.container.querySelector('textarea')!;
+    fireEvent.change(box, { target: { value: 'from the keyboard' } });
+    fireEvent.keyDown(box, { key: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith(
+      '/api/social/post',
+      expect.objectContaining({ content: 'from the keyboard' }),
+    ));
+    await waitFor(() => expect(box.value).toBe(''));
+  });
+
+  it('ok:false, 4xx, and network error each toast and keep the text', async () => {
+    mockedApi.post.mockResolvedValueOnce({ data: { ok: false, error: 'duplicate post' } });
+    const { container, unmount } = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const textarea = container.querySelector('textarea')!;
+    fireEvent.change(textarea, { target: { value: 'keep me' } });
+    fireEvent.submit(container.querySelector('form')!);
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'duplicate post' }),
+    ));
+    expect(textarea.value).toBe('keep me');
+    unmount();
+
+    addToast.mockClear();
+    mockedApi.post.mockRejectedValueOnce({ response: { status: 400, data: { ok: false, error: 'bad request' } } });
+    const four = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const fourBox = four.container.querySelector('textarea')!;
+    fireEvent.change(fourBox, { target: { value: 'keep 4xx' } });
+    fireEvent.submit(four.container.querySelector('form')!);
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'bad request' }),
+    ));
+    expect(fourBox.value).toBe('keep 4xx');
+    four.unmount();
+
+    addToast.mockClear();
+    mockedApi.post.mockRejectedValueOnce(new Error('Network Error'));
+    const net = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const netBox = net.container.querySelector('textarea')!;
+    fireEvent.change(netBox, { target: { value: 'keep net' } });
+    fireEvent.submit(net.container.querySelector('form')!);
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'Network Error' }),
+    ));
+    expect(netBox.value).toBe('keep net');
   });
 
   it('story mode sends isStory=true + expiresAt', async () => {
