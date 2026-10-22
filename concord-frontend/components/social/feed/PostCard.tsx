@@ -13,7 +13,7 @@ import {
   Heart, Repeat2, MessageSquare, Share2, MoreHorizontal, Quote,
   Link2, Flag, VolumeX, Ban, Check, BarChart3, Trash2,
 } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { SocialPost, PollOption } from './types';
 import { authorLabel } from './authorLabel';
@@ -153,6 +153,26 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
   const totalVotes = poll ? poll.options.reduce((n, o) => n + o.votes, 0) : 0;
   const author = authorLabel(post.userId, post.username, post.displayName);
   const mine = !!currentUserId && post.userId === currentUserId;
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(post.body || '');
+
+  const saveEdit = useCallback(async () => {
+    const content = editText.trim();
+    if (!content) return;
+    const res = await api.post(`/api/social/posts/${encodeURIComponent(post.id)}/edit`, { content });
+    if (res.data?.ok === false) {
+      setNotice(res.data.error || 'Could not edit this post.');
+      return;
+    }
+    setEditing(false);
+    onChanged();
+  }, [editText, onChanged, post.id]);
+
+  const pin = useCallback(async () => {
+    setShowMenu(false);
+    const res = await api.post(`/api/social/posts/${encodeURIComponent(post.id)}/pin`, {});
+    setNotice(res.data?.ok === false ? (res.data.error || 'Could not pin this post.') : 'Pinned.');
+  }, [post.id]);
 
   const removePost = useCallback(async () => {
     setShowMenu(false);
@@ -183,6 +203,16 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
           </button>
           {showMenu && (
             <div className="absolute right-0 top-7 z-20 w-44 rounded-lg border border-zinc-800 bg-zinc-950 py-1 text-xs shadow-xl">
+              {mine && (
+                <button type="button" onClick={() => { setShowMenu(false); setEditing(true); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
+                  Edit post
+                </button>
+              )}
+              {mine && (
+                <button type="button" onClick={() => void pin()} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
+                  Pin post
+                </button>
+              )}
               {mine && (
                 <button type="button" onClick={() => void removePost()} className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-300 hover:bg-zinc-900">
                   <Trash2 className="w-3.5 h-3.5" /> Delete post
@@ -216,7 +246,13 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
       </div>
 
-      {post.body && (
+      {post.editedAt && <p className="text-[10px] text-zinc-500">edited</p>}
+      {editing ? (
+        <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); void saveEdit(); }}>
+          <textarea aria-label="Edit post" value={editText} onChange={(e) => setEditText(e.target.value)} className="flex-1 rounded bg-zinc-900 p-2 text-sm text-zinc-100" rows={3} />
+          <button type="submit" className="rounded bg-indigo-600 px-2 text-xs text-white">Save</button>
+        </form>
+      ) : post.body && (
         <p className="mt-1 text-sm text-zinc-200 leading-snug whitespace-pre-wrap">{post.body}</p>
       )}
 

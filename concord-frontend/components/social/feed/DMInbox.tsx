@@ -39,6 +39,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
   const [searching, setSearching] = useState(false);
   const [composing, setComposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requests, setRequests] = useState<Array<{ id: string; fromUserId: string }>>([]);
   const endRef = useRef<HTMLDivElement>(null);
 
   const loadInbox = useCallback(async () => {
@@ -46,6 +47,12 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     const r = await lensRun<{ threads: DMThreadSummary[] }>('social', 'inbox', {});
     setLoadingInbox(false);
     if (r.data?.ok && r.data.result) setThreads(r.data.result.threads || []);
+    try {
+      const req = await api.get<{ requests?: Array<{ id: string; fromUserId: string }> }>('/api/social/dm/requests');
+      setRequests(req.data?.requests || []);
+    } catch {
+      setRequests([]);
+    }
   }, []);
 
   const openThread = useCallback(async (key: string | null, withUser: string) => {
@@ -107,6 +114,23 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
               <MessageCirclePlus className="w-4 h-4" />
             </button>
           </div>
+          {requests.length > 0 && (
+            <ul className="border-b border-zinc-800">
+              {requests.map((req) => (
+                <li key={req.id} className="flex items-center gap-1 px-3 py-2 text-[11px] text-zinc-300">
+                  <span className="truncate">Request from {req.fromUserId}</span>
+                  <button type="button" className="ml-auto text-teal-300" onClick={async () => {
+                    await api.post('/api/social/dm/requests/accept', { fromUserId: req.fromUserId });
+                    void loadInbox();
+                  }}>Accept</button>
+                  <button type="button" className="text-rose-300" onClick={async () => {
+                    await api.post('/api/social/dm/requests/decline', { fromUserId: req.fromUserId });
+                    void loadInbox();
+                  }}>Decline</button>
+                </li>
+              ))}
+            </ul>
+          )}
           {loadingInbox ? (
             <div className="flex items-center gap-2 p-4 text-xs text-zinc-400">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading inbox…
@@ -222,10 +246,24 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                           'max-w-[75%] rounded-lg px-2.5 py-1.5 text-xs',
                           mine ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-200',
                         )}>
-                          <p className="whitespace-pre-wrap">{m.body}</p>
+                          <p className="whitespace-pre-wrap">{m.recalled ? 'Message taken back' : m.body}</p>
                           <p className={cn('mt-0.5 text-[9px]', mine ? 'text-indigo-200' : 'text-zinc-400')}>
                             {relTime(m.createdAt)}
+                            {mine && activeWith && m.readBy?.includes(activeWith) ? ' · Seen' : ''}
                           </p>
+                          <span className="mt-1 flex gap-2">
+                            {mine && !m.recalled && (
+                              <button type="button" className="underline" onClick={async () => {
+                                const res = await api.post('/api/social/dm/recall', { messageId: m.id });
+                                if (res.data?.ok === false) setError(res.data.error || 'Could not take this back.');
+                                else if (activeWith) void openThread(activeKey, activeWith);
+                              }}>Take back</button>
+                            )}
+                            <button type="button" className="underline" onClick={async () => {
+                              await api.post('/api/social/dm/hide', { messageId: m.id });
+                              if (activeWith) void openThread(activeKey, activeWith);
+                            }}>Remove for me</button>
+                          </span>
                         </div>
                       </div>
                     );

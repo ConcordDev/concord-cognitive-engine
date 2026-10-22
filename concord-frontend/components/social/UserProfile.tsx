@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -273,6 +273,9 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
   const [linkCopied, setLinkCopied] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [actionNote, setActionNote] = useState<string | null>(null);
 
   const isOwnProfile = currentUserId === userId;
   const gradient = pickGradient(userId);
@@ -336,26 +339,61 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
     },
   });
 
-  const isFollowing = useMemo(() => {
-    // In production, the API would return this flag
-    return false;
-  }, []);
+  const myFollowing = useQuery({
+    queryKey: ['my-following', currentUserId],
+    queryFn: async () => {
+      const res = await api.get(`/api/social/following/${currentUserId}`);
+      const rows = res.data?.following;
+      return Array.isArray(rows) ? rows as Array<{ userId: string }> : [];
+    },
+    enabled: !!currentUserId && !isOwnProfile,
+  });
+  const isFollowing = (myFollowing.data || []).some((row) => row.userId === userId);
 
   const handleFollowToggle = useCallback(() => {
     if (!currentUserId) return;
     followMutation.mutate(isFollowing ? 'unfollow' : 'follow');
   }, [currentUserId, isFollowing, followMutation]);
 
+  const act = useCallback(async (kind: 'mute' | 'block' | 'report') => {
+    setActionNote(null);
+    try {
+      const res = await api.post(`/api/social/people/${encodeURIComponent(userId)}/${kind}`, kind === 'report' ? { reason: 'spam' } : {});
+      setActionNote(res.data?.ok === false ? (res.data.error || 'That action failed.') : `${kind} saved`);
+    } catch {
+      setActionNote('That action failed.');
+    }
+  }, [userId]);
+
+  const sendMessage = useCallback(async () => {
+    const content = messageText.trim();
+    if (!content) return;
+    setActionNote(null);
+    try {
+      const res = await api.post('/api/social/dm', { toUserId: userId, content });
+      if (res.data?.ok === false) {
+        setActionNote(res.data.error || 'Message was not sent.');
+        return;
+      }
+      setMessageText('');
+      setMessageOpen(false);
+      setActionNote('Message sent.');
+    } catch {
+      setActionNote('Message was not sent.');
+    }
+  }, [messageText, userId]);
+
+  const shareHandle = profileQuery.data?.username || userId;
   const handleCopyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/profile/${userId}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/lenses/social/u/${encodeURIComponent(shareHandle)}`);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch (e) {
       console.error('[UserProfile] Failed to copy link:', e);
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to copy profile link' });
     }
-  }, [userId]);
+  }, [shareHandle]);
 
   // ── Content tabs ─────────────────────────────────────────────────────
 
@@ -518,6 +556,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
 
           {/* Follow button */}
           {!isOwnProfile && currentUserId && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               onClick={handleFollowToggle}
               disabled={followMutation.isPending}
@@ -542,6 +581,11 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                 </>
               )}
             </button>
+            <button type="button" onClick={() => setMessageOpen((open) => !open)} className="rounded-full border border-white/15 px-3 py-2 text-sm text-zinc-200">Message</button>
+            <button type="button" onClick={() => void act('mute')} className="rounded-full border border-white/15 px-3 py-2 text-sm text-zinc-200">Mute</button>
+            <button type="button" onClick={() => void act('block')} className="rounded-full border border-white/15 px-3 py-2 text-sm text-zinc-200">Block</button>
+            <button type="button" onClick={() => void act('report')} className="rounded-full border border-white/15 px-3 py-2 text-sm text-rose-300">Report</button>
+            </div>
           )}
         </div>
 
@@ -555,6 +599,21 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
 
         {/* Bio */}
         {profile.bio && <p className="text-gray-300 text-sm leading-relaxed mb-3">{profile.bio}</p>}
+        {actionNote && <p className="mb-2 text-xs text-zinc-400">{actionNote}</p>}
+        {messageOpen && !isOwnProfile && (
+          <form
+            className="mb-3 flex gap-2"
+            onSubmit={(e) => { e.preventDefault(); void sendMessage(); }}
+          >
+            <input
+              aria-label="Message"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              className="flex-1 rounded bg-zinc-900 px-2 py-1 text-sm text-zinc-100"
+            />
+            <button type="submit" className="rounded bg-teal-400 px-3 py-1 text-sm text-black">Send</button>
+          </form>
+        )}
 
         {/* Meta info */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-4">

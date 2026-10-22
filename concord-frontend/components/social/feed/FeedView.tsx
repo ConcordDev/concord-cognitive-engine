@@ -66,11 +66,23 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     }
   }, []);
 
+  const [incoming, setIncoming] = useState<SocialPost[] | null>(null);
+
   useEffect(() => {
     let cancel = false;
     queueMicrotask(() => { if (!cancel) void loadFeed(); });
     return () => { cancel = true; };
   }, [loadFeed]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      void (async () => {
+        const feedR = await lensRun<{ posts: SocialPost[] }>('social', 'feed', { limit: 50 });
+        if (feedR.data?.ok && feedR.data.result) setIncoming(feedR.data.result.posts || []);
+      })();
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const openHashtag = useCallback((tag: string) => setView({ kind: 'hashtag', tag }), []);
   const openDetail = useCallback((postId: string) => setView({ kind: 'detail', postId }), []);
@@ -191,6 +203,19 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
             </div>
           ) : posts.length > 0 ? (
             <div className="space-y-2">
+              {(() => {
+                const count = (incoming || []).filter((p) => !posts.some((old) => old.id === p.id)).length;
+                if (!count) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => { setPosts(incoming || []); setIncoming(null); }}
+                    className="w-full rounded-lg border border-teal-400/40 bg-teal-400/10 px-3 py-2 text-sm text-teal-200"
+                  >
+                    Show {count} new {count === 1 ? 'post' : 'posts'}
+                  </button>
+                );
+              })()}
               {posts.map((p) => (
                 <PostCard
                   key={p.id}

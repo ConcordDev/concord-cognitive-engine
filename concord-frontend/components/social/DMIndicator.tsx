@@ -56,7 +56,7 @@ function DMIndicator({ userId, className }: DMIndicatorProps) {
       // Listen for generic notification events that may include DM notifications
       const unsub = subscribe('queue:notifications:new' as SocketEvent, (data: unknown) => {
         const payload = data as { type?: string };
-        if (payload?.type === 'dm' || payload?.type === 'message') {
+        if (payload?.type === 'dm' || payload?.type === 'message' || payload?.type === 'message_request') {
           queryClient.invalidateQueries({ queryKey: ['dm-conversations-count', userId] });
           queryClient.invalidateQueries({ queryKey: ['dm-conversations', userId] });
         }
