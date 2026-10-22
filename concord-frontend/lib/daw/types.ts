@@ -48,7 +48,17 @@ export interface DAWTrack {
   automationLanes: AutomationLane[];
   inputSource: string | null; // for audio recording
   outputTarget: string; // 'master' or bus id
+  /** Pre-insert trim in dB (gain staging). */
+  trimDb?: number;
+  /** Mix role (drives Auto Mix cleanup choices). */
+  role?: TrackRole;
+  /** Sidechain-style ducking: dip this track whenever `sourceTrackId` plays a note (e.g. bass under kick). */
+  duck?: { sourceTrackId: string; depthDb: number; releaseMs: number; pitches?: number[] };
+  /** Recording input settings for this track. */
+  recordInput?: { channelMode: 'stereo' | 'mono1' | 'mono2'; latencyMs?: number };
 }
+
+export type TrackRole = 'vocal' | 'drums' | 'kick' | 'bass' | 'keys' | 'guitar' | 'synth' | 'pad' | 'fx' | 'other';
 
 export interface DAWClip {
   id: string;
@@ -131,6 +141,18 @@ export interface MixerSend {
   level: number; // dB
   preFader: boolean;
   enabled: boolean;
+}
+
+export interface AudioAssetMeta {
+  id: string;
+  name: string;
+  sampleRate: number;
+  duration: number;
+  channels: number;
+  waveformPeaks: number[];
+  /** Set once the file is stored server-side. */
+  uploaded?: boolean;
+  bytes?: number;
 }
 
 export interface MasterBus {
@@ -472,6 +494,10 @@ export interface DAWProject {
   arrangement: ArrangementState;
   transport: TransportConfig;
   audioBuffers: Record<string, AudioBuffer>;
+  /** JSON-safe metadata for recorded/imported audio (peaks etc.); samples live in IndexedDB + server files. */
+  audioAssets?: Record<string, AudioAssetMeta>;
+  /** Project sample rate (exports default to it). */
+  sampleRate?: number;
   synthPresets: Record<string, SynthPreset>;
   drumPatterns: Record<string, DrumPattern>;
   createdAt: number;
