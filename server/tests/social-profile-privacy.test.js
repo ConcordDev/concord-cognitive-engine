@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 
 import createSocialCoreRoutes from "../routes/social-core.js";
 import { getProfile, listProfiles, profileForViewer, upsertProfile, canonicalSocial } from "../emergent/social-layer.js";
+import { setSocialPreferences } from "../lib/social-loop.js";
 
 const PUBLIC_KEYS = new Set([
   "userId", "displayName", "username", "bio", "avatar", "isPublic",
@@ -166,5 +167,30 @@ describe("social profile privacy", { concurrency: 1 }, () => {
       for (const key of PRIVATE_KEYS) assert.equal(person[key], undefined, key);
     }
     assert.deepEqual(found.json.recent, ["alice"]);
+  });
+
+  it("keeps keyword mutes and sensitive-media preference off a stranger's view", async () => {
+    const STATE = globalThis._concordSTATE;
+    const saved = setSocialPreferences(STATE, "bob", {
+      keywordMutes: ["Spoilers"],
+      showSensitive: true,
+      dmPolicy: "followers",
+    });
+    assert.equal(saved.ok, true);
+    assert.deepEqual(saved.keywordMutes, ["spoilers"]);
+    assert.equal(saved.showSensitive, true);
+
+    const asBob = getProfile(STATE, "bob", "bob");
+    assert.deepEqual(asBob.profile.keywordMutes, ["spoilers"]);
+    assert.equal(asBob.profile.showSensitive, true);
+    assert.equal(asBob.profile.dmPolicy, "followers");
+
+    const asAlice = await hit("/api/social/profile/bob", "alice");
+    assert.equal(asAlice.status, 200);
+    assert.equal(asAlice.json.profile.displayName, "Bob");
+    assert.equal(asAlice.json.profile.keywordMutes, undefined);
+    assert.equal(asAlice.json.profile.showSensitive, undefined);
+    assert.equal(asAlice.json.profile.dmPolicy, undefined);
+    assert.equal(JSON.stringify(asAlice.json).includes("spoilers"), false);
   });
 });
