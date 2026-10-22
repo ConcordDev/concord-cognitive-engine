@@ -21,6 +21,7 @@ import {
   getConversations,
   getMessages,
   markMessagesRead,
+  createNotification,
 } from "../emergent/social-layer.js";
 import { scheduleSocialFlush } from "../lib/social-persist.js";
 import { submitReport } from "../lib/content-moderation.js";
@@ -427,7 +428,16 @@ export default function registerSocialActions(registerLensAction) {
     const set = s.reposts.get(postId);
     let viewerReposted;
     if (set.has(userId)) { set.delete(userId); viewerReposted = false; }
-    else { set.add(userId); viewerReposted = true; }
+    else {
+      set.add(userId);
+      viewerReposted = true;
+      const post = s.posts.get(postId);
+      if (post && post.userId !== userId) {
+        createNotification(globalThis._concordSTATE, {
+          userId: post.userId, type: "repost", fromUserId: userId, postId, content: `${userId} reposted your post`,
+        });
+      }
+    }
     save();
     return { ok: true, result: { postId, viewerReposted, repostCount: set.size } };
   });
@@ -517,6 +527,7 @@ export default function registerSocialActions(registerLensAction) {
     let withName = other;
     let msgs = [...(loaded.messages || [])].reverse().map((m) => ({
       id: m.id, from: m.fromUserId, body: m.content, createdAt: m.createdAt,
+      recalled: !!m.recalled, readBy: Array.isArray(m.readBy) ? m.readBy : [],
     }));
     try {
       const display = resolveUserDisplay(ctx?.db, [...new Set([me, other, ...msgs.map((m) => m.from)])]);

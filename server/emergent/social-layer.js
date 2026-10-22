@@ -73,6 +73,7 @@ function getSocialState(STATE) {
   if (!s.postListings) s.postListings = new Map();
   if (!s.postClicks) s.postClicks = new Map();
   if (!s.postEarnings) s.postEarnings = new Map();
+  if (!s.drafts) s.drafts = new Map();
   ensureSocialHydrated(STATE);
   return STATE._social;
 }
@@ -137,6 +138,7 @@ export function upsertProfile(STATE, userId, profileData) {
 
   const existing = social.profiles.get(userId);
   const profile = {
+    ...(existing || {}),
     userId,
     displayName: profileData.displayName || existing?.displayName || userId,
     bio: profileData.bio || existing?.bio || "",
@@ -655,7 +657,7 @@ function requireVisiblePost(social, postId, viewerId) {
   return post;
 }
 
-export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility, privacy, visibility }) {
+export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility, privacy, visibility, replyAudience }) {
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
@@ -696,6 +698,7 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     threadPosition: 0,
     groupId: null,
     privacy: audience,
+    replyAudience: ["everyone", "followers", "mentioned"].includes(replyAudience) ? replyAudience : "everyone",
     federationVisibility: fedVisibility,
     apActivityId: fedVisibility !== 'local' ? `concord:post:${id}` : null,
   };
@@ -867,7 +870,7 @@ export function getReactions(STATE, postId, currentUserId) {
 
 // ── Comments ─────────────────────────────────────────────────────────────
 
-export function addComment(STATE, { userId, postId, content, parentCommentId, mentionedUsers }) {
+export function addComment(STATE, { userId, postId, content, parentCommentId, mentionedUsers, audience }) {
   const social = getSocialState(STATE);
   if (!content) return { ok: false, error: "content required" };
   const post = requireVisiblePost(social, postId, userId);
@@ -880,6 +883,9 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
     content,
     parentCommentId: parentCommentId || null,
     mentionedUsers: Array.isArray(mentionedUsers) ? mentionedUsers.filter(Boolean) : [],
+    audience: ["everyone", "followers", "mentioned"].includes(audience)
+      ? audience
+      : (["everyone", "followers", "mentioned"].includes(post.replyAudience) ? post.replyAudience : "everyone"),
     createdAt: new Date().toISOString(),
     replies: [],
   };
@@ -904,7 +910,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
   }
 
   scheduleSocialFlush(STATE);
-  return { ok: true, comment: { id: comment.id, userId: comment.userId, content: comment.content, parentCommentId: comment.parentCommentId, mentionedUsers: comment.mentionedUsers, createdAt: comment.createdAt } };
+  return { ok: true, comment: { id: comment.id, userId: comment.userId, content: comment.content, parentCommentId: comment.parentCommentId, mentionedUsers: comment.mentionedUsers, audience: comment.audience, createdAt: comment.createdAt } };
 }
 
 export function deleteComment(STATE, { userId, postId, commentId }) {
@@ -933,10 +939,18 @@ export function getComments(STATE, postId, { limit = 50, viewerId = null } = {})
   const post = requireVisiblePost(social, postId, viewerId);
   if (!post) return { ok: false, error: "Post not found" };
 
-  function serializeComment(c) {
-    return { id: c.id, userId: c.userId, content: c.content, parentCommentId: c.parentCommentId, createdAt: c.createdAt, replies: (c.replies || []).map(serializeComment) };
+  function visible(c) {
+    const audience = c.audience || "everyone";
+    if (viewerId && (viewerId === c.userId || viewerId === post.userId)) return true;
+    if (audience === "followers") return followsAuthor(social, viewerId, c.userId);
+    if (audience === "mentioned") return !!viewerId && (c.mentionedUsers || []).includes(viewerId);
+    return audience === "everyone";
   }
-  return { ok: true, comments: post.comments.slice(0, limit).map(serializeComment), total: post.comments.length };
+  function serializeComment(c) {
+    return { id: c.id, userId: c.userId, content: c.content, parentCommentId: c.parentCommentId, audience: c.audience || "everyone", createdAt: c.createdAt, replies: (c.replies || []).filter(visible).map(serializeComment) };
+  }
+  const comments = post.comments.filter(visible);
+  return { ok: true, comments: comments.slice(0, limit).map(serializeComment), total: comments.length };
 }
 
 // ── Shares ───────────────────────────────────────────────────────────────
@@ -1095,6 +1109,14 @@ export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) 
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
   if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
 
+  const recipient = social.profiles.get(toUserId);
+  const policy = recipient?.dmPolicy || "everyone";
+  if (policy === "nobody") return { ok: false, status: 403, error: "recipient does not accept messages" };
+  const followedByRecipient = social.follows.get(toUserId);
+  const requestStatus = policy === "followers" && !(followedByRecipient && followedByRecipient.has(fromUserId))
+    ? "pending"
+    : null;
+
   const convId = getConversationId(fromUserId, toUserId);
   if (!social.messages.has(convId)) social.messages.set(convId, []);
 
@@ -1107,10 +1129,18 @@ export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) 
     mediaUrl: mediaUrl || null,
     createdAt: new Date().toISOString(),
     readBy: new Set([fromUserId]),
+    seenBy: new Set([fromUserId]),
+    hiddenFor: new Set(),
+    requestStatus,
   };
 
   social.messages.get(convId).push(msg);
-  createNotification(STATE, { userId: toUserId, type: "dm", fromUserId, content: `New message from ${fromUserId}` });
+  createNotification(STATE, {
+    userId: toUserId,
+    type: requestStatus === "pending" ? "message_request" : "dm",
+    fromUserId,
+    content: requestStatus === "pending" ? `Message request from ${fromUserId}` : `New message from ${fromUserId}`,
+  });
   scheduleSocialFlush(STATE);
 
   return { ok: true, message: { id: msg.id, conversationId: msg.conversationId, fromUserId: msg.fromUserId, toUserId: msg.toUserId, content: msg.content, mediaUrl: msg.mediaUrl, createdAt: msg.createdAt } };
@@ -1122,10 +1152,13 @@ export function getConversations(STATE, userId) {
   if (!userId || userId === "anon") return { ok: true, conversations: [] };
   for (const [convId, msgs] of social.messages) {
     if (!isDmParticipant(convId, userId)) continue;
-    const lastMsg = msgs[msgs.length - 1];
+    const visible = msgs.filter((m) => m.requestStatus !== "pending" || m.toUserId !== userId);
+    if (visible.length === 0) continue;
+    const lastMsg = visible[visible.length - 1];
     let unreadCount = 0;
-    for (const m of msgs) {
-      if (!m.readBy.has(userId)) unreadCount++;
+    for (const m of visible) {
+      const seen = m.seenBy instanceof Set ? m.seenBy : m.readBy;
+      if (!seen.has(userId)) unreadCount++;
     }
     const otherUser = convId.split(":").find(id => id !== userId) || userId;
     convos.push({
@@ -1133,7 +1166,7 @@ export function getConversations(STATE, userId) {
       otherUserId: otherUser,
       lastMessage: { content: lastMsg.content, fromUserId: lastMsg.fromUserId, createdAt: lastMsg.createdAt },
       unreadCount,
-      messageCount: msgs.length,
+      messageCount: visible.length,
     });
   }
   convos.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime());
@@ -1146,14 +1179,20 @@ export function getMessages(STATE, conversationId, { limit = 50, offset = 0, use
   const msgs = social.messages.get(conversationId);
   if (!msgs) return { ok: true, messages: [], total: 0 };
 
-  const sorted = [...msgs].reverse(); // newest first
+  const visible = msgs.filter((m) => {
+    if (m.hiddenFor instanceof Set && userId && m.hiddenFor.has(userId)) return false;
+    if ((m.requestStatus === "pending" || m.requestStatus === "declined") && m.toUserId === userId) return false;
+    return true;
+  });
+  const sorted = [...visible].reverse(); // newest first
   return {
     ok: true,
     messages: sorted.slice(offset, offset + limit).map(m => ({
       id: m.id, conversationId: m.conversationId, fromUserId: m.fromUserId, toUserId: m.toUserId,
-      content: m.content, mediaUrl: m.mediaUrl, createdAt: m.createdAt,
+      content: m.content, mediaUrl: m.mediaUrl, createdAt: m.createdAt, recalled: !!m.recalled,
+      readBy: m.readBy instanceof Set ? [...m.readBy] : [],
     })),
-    total: msgs.length,
+    total: visible.length,
   };
 }
 
@@ -1162,11 +1201,16 @@ export function markMessagesRead(STATE, { userId, conversationId }) {
   const social = getSocialState(STATE);
   const msgs = social.messages.get(conversationId);
   if (!msgs) return dmDenied();
+  const profile = social.profiles.get(userId);
+  const receipts = profile ? profile.readReceipts !== false : true;
   let marked = 0;
   for (const m of msgs) {
-    if (!m.readBy.has(userId)) { m.readBy.add(userId); marked++; }
+    if (!(m.seenBy instanceof Set)) m.seenBy = new Set(m.readBy instanceof Set ? m.readBy : []);
+    if (!m.seenBy.has(userId)) { m.seenBy.add(userId); marked++; }
+    if (receipts && m.readBy instanceof Set && !m.readBy.has(userId)) m.readBy.add(userId);
   }
-  return { ok: true, conversationId, markedRead: marked };
+  scheduleSocialFlush(STATE);
+  return { ok: true, conversationId, markedRead: marked, receipts };
 }
 
 // Recall (delete) a DM the caller sent, within a short window. Used by
@@ -1224,6 +1268,10 @@ export function createNotification(STATE, { userId, type, fromUserId, postId, co
 export function getNotifications(STATE, userId, { limit = 30, offset = 0, unreadOnly = false } = {}) {
   const social = getSocialState(STATE);
   let notifs = social.notifications.get(userId) || [];
+  const typePrefs = social.profiles.get(userId)?.notificationTypes;
+  if (typePrefs && typeof typePrefs === "object") {
+    notifs = notifs.filter((n) => typePrefs[n.type] !== false);
+  }
   if (unreadOnly) notifs = notifs.filter(n => !n.read);
   return { ok: true, notifications: notifs.slice(offset, offset + limit), total: notifs.length };
 }
@@ -1668,6 +1716,7 @@ export function pinPost(STATE, { userId, postId }) {
   if (pinnedCount >= 3 && !post.isPinned) return { ok: false, error: "Maximum 3 pinned posts" };
 
   post.isPinned = true;
+  scheduleSocialFlush(STATE);
   return { ok: true, postId };
 }
 
@@ -1677,6 +1726,7 @@ export function unpinPost(STATE, { userId, postId }) {
   if (!post) return { ok: false, error: "Post not found" };
   if (post.userId !== userId) return { ok: false, error: "Only owner can unpin" };
   post.isPinned = false;
+  scheduleSocialFlush(STATE);
   return { ok: true, postId };
 }
 

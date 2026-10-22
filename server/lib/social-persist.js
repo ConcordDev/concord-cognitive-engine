@@ -82,6 +82,9 @@ function postPayload(post) {
     displayName: post.displayName || null,
     viewCount: post.viewCount || 0,
     watchTimeMs: post.watchTimeMs || 0,
+    editHistory: Array.isArray(post.editHistory) ? post.editHistory : [],
+    editedAt: post.editedAt || null,
+    replyAudience: post.replyAudience || "everyone",
     threadParentId: post.threadParentId || null,
     groupId: post.groupId || null,
   };
@@ -195,7 +198,12 @@ export function flushSocialStore(STATE) {
           m.toUserId || null,
           m.content || "",
           m.createdAt || null,
-          JSON.stringify(m.readBy instanceof Set ? [...m.readBy] : []),
+          JSON.stringify({
+            readBy: m.readBy instanceof Set ? [...m.readBy] : [],
+            seenBy: m.seenBy instanceof Set ? [...m.seenBy] : [],
+            hiddenFor: m.hiddenFor instanceof Set ? [...m.hiddenFor] : [],
+            requestStatus: m.requestStatus || null,
+          }),
           m.recalled ? 1 : 0,
         );
       }
@@ -239,6 +247,16 @@ export function flushSocialStore(STATE) {
         reportStmt.run(report.id, report.userId || null, report.targetType || "post", report.postId || report.targetId || null, report.reason || "", JSON.stringify(report), report.createdAt || null);
       }
     }
+
+    const draftTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='social_drafts'").get();
+    if (draftTable && social.drafts instanceof Map) {
+      db.prepare("DELETE FROM social_drafts").run();
+      const draftStmt = db.prepare("INSERT INTO social_drafts (id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)");
+      for (const draft of social.drafts.values()) {
+        if (!draft?.id) continue;
+        draftStmt.run(draft.id, draft.userId, draft.content || "", draft.createdAt || null, draft.updatedAt || null);
+      }
+    }
   });
   tx();
   return true;
@@ -275,7 +293,18 @@ export function ensureSocialHydrated(STATE) {
     for (const row of db.prepare("SELECT * FROM social_dm_messages ORDER BY created_at ASC").all()) {
       if (!byThread.has(row.thread_id)) byThread.set(row.thread_id, []);
       let readBy = [];
-      try { readBy = JSON.parse(row.read_by_json || "[]"); } catch { readBy = []; }
+      let seenBy = [];
+      let hiddenFor = [];
+      try {
+        const parsed = JSON.parse(row.read_by_json || "[]");
+        if (Array.isArray(parsed)) { readBy = parsed; seenBy = parsed; }
+        else {
+          readBy = parsed.readBy || [];
+          seenBy = parsed.seenBy || readBy;
+          hiddenFor = parsed.hiddenFor || [];
+          row._requestStatus = parsed.requestStatus || null;
+        }
+      } catch { readBy = []; seenBy = []; hiddenFor = []; }
       byThread.get(row.thread_id).push({
         id: row.id,
         conversationId: row.thread_id,
@@ -285,6 +314,9 @@ export function ensureSocialHydrated(STATE) {
         mediaUrl: null,
         createdAt: row.created_at,
         readBy: new Set(readBy),
+        seenBy: new Set(seenBy),
+        hiddenFor: new Set(hiddenFor),
+        requestStatus: row._requestStatus || null,
         recalled: !!row.recalled,
       });
     }
@@ -302,6 +334,20 @@ export function ensureSocialHydrated(STATE) {
         read: !!row.read,
         createdAt: row.created_at,
       });
+    }
+
+    const draftTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='social_drafts'").get();
+    if (draftTable) {
+      if (!(social.drafts instanceof Map)) social.drafts = new Map();
+      for (const row of db.prepare("SELECT * FROM social_drafts").all()) {
+        social.drafts.set(row.id, {
+          id: row.id,
+          userId: row.user_id,
+          content: row.content || "",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        });
+      }
     }
 
     if (!STATE.socialLens) STATE.socialLens = {};
