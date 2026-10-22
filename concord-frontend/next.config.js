@@ -154,12 +154,25 @@ const nextConfig = {
         ],
       },
       {
-        // Allow service worker to control the entire scope
+        // Allow the worker to control scope "/". The policy script and the
+        // legacy shim must not be cached, or an old worker keeps winning
+        // the update check.
         source: '/sw.js',
         headers: [
           { key: 'Service-Worker-Allowed', value: '/' },
           { key: 'Cache-Control', value: 'no-cache' },
         ],
+      },
+      {
+        source: '/service-worker.js',
+        headers: [
+          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: 'Cache-Control', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/sw-policy.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache' }],
       },
       {
         // Clickjacking: DENY everywhere except the Unity WebGL player paths,

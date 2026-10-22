@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <title>Concord — offline</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0f;
+        --card: #12141c;
+        --text: #e8eef8;
+        --muted: #9aa3b5;
+        --line: rgba(6, 182, 212, 0.35);
+        --accent: #06b6d4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      main {
+        width: min(34rem, 100%);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 28px 24px;
+      }
+      .mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #0a0e1a;
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        margin-bottom: 16px;
+      }
+      .mark span {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid var(--accent);
+      }
+      h1 {
+        font-size: 1.5rem;
+        line-height: 1.2;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      h2 {
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 20px 0 8px;
+      }
+      ul {
+        margin: 0;
+        padding-left: 1.1rem;
+        color: var(--text);
+      }
+      li {
+        margin: 0 0 8px;
+        line-height: 1.45;
+      }
+      button {
+        margin-top: 20px;
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 16px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: rgba(6, 182, 212, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true"><span></span></div>
+      <h1>You're offline</h1>
+      <p>
+        Concord couldn't load this page. A connection is required to open your account and to create
+        and build — music Studio, engineering, art, and games.
+      </p>
+      <h2>What still works</h2>
+      <ul>
+        <li>This page, so an installed Concord still opens and tells you the truth.</li>
+        <li>
+          Actions you already queued in an open Concord tab stay in this browser and send when you
+          reconnect.
+        </li>
+        <li>
+          Nothing from your account is kept in the app cache. Studio, engineering, art, and games
+          load again when you're back online.
+        </li>
+      </ul>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

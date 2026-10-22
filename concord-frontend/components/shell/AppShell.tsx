@@ -16,6 +16,7 @@ import { OperatorErrorBanner } from '@/components/common/OperatorErrorBanner';
 import { SystemStatus } from '@/components/common/SystemStatus';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { PWA_SERVICE_WORKER_SCOPE, PWA_SERVICE_WORKER_URL } from '@/lib/pwa/registration';
 import { CookieConsent } from '@/components/common/CookieConsent';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
@@ -202,9 +203,11 @@ export function AppShell({ children }: AppShellProps) {
 
     // Register service worker for PWA support
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // SW registration failed — offline caching won't work
-      });
+      navigator.serviceWorker
+        .register(PWA_SERVICE_WORKER_URL, { scope: PWA_SERVICE_WORKER_SCOPE })
+        .catch(() => {
+          // SW registration failed — offline caching won't work
+        });
     }
 
     // Start auto-flush for offline queue

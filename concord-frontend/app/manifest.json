@@ -1,22 +1,31 @@
 {
-  "name": "Concord — AI that shows its receipts",
-  "short_name": "Concordos",
-  "description": "AI that shows its receipts: every answer comes with the formula, the inputs, the check, and a record you can re-run.",
+  "id": "/",
+  "name": "Concord",
+  "short_name": "Concord",
+  "description": "A platform to create and build: music Studio, engineering, art, and games.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#00d4ff",
-  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon-192x192.svg",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.svg",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["productivity", "utilities", "education"]

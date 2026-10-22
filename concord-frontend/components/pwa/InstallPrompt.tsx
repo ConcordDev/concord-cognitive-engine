@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { Z_INDEX } from '@/lib/ui/z-index';
 
@@ -14,27 +15,31 @@ interface BeforeInstallPromptEvent extends Event {
  *
  * Shows when the browser fires the `beforeinstallprompt` event,
  * indicating the app is installable. Dismissed if user declines
- * or has already installed.
+ * or has already installed. Dismissal is stored in localStorage.
+ *
+ * Hidden on `/lenses/studio` — the toast sits over the mixer and device
+ * rack (same music-only hide as Topbar's health chip).
  */
 export function InstallPrompt() {
+  const pathname = usePathname();
+  const studioWorkspace = !!pathname && /^\/lenses\/studio(\/|$)/.test(pathname);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Don't show if user already dismissed
-    if (localStorage.getItem('concord_pwa_dismissed')) {
-      setDismissed(true);
-      return;
-    }
+    // Don't capture the one-shot beforeinstallprompt on Studio: preventDefault
+    // would swallow it, then navigating away would never show the toast.
+    if (studioWorkspace) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
+      if (localStorage.getItem('concord_pwa_dismissed')) return;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [studioWorkspace]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -43,6 +48,7 @@ export function InstallPrompt() {
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
     }
+    localStorage.setItem('concord_pwa_dismissed', '1');
     setDismissed(true);
   };
 
@@ -52,7 +58,7 @@ export function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  if (!deferredPrompt || dismissed) return null;
+  if (studioWorkspace || !deferredPrompt || dismissed) return null;
 
   return (
     <div
@@ -65,7 +71,7 @@ export function InstallPrompt() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">Install Concord</p>
-        <p className="text-xs text-gray-400 truncate">Use Concord offline as a desktop app</p>
+        <p className="text-xs text-gray-400 truncate">Install Concord as an app</p>
       </div>
       <button
         onClick={handleInstall}
