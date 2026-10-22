@@ -93,6 +93,8 @@ export async function renderProject(project: DAWProject, audio: Map<string, PcmA
     tempo: map,
     metronome: false,
     mode: 'arrange',
+    swing: song.transport.swing || 0,
+    drumPatterns: song.drumPatterns,
   }, { catchUp: true });
   for (const ev of events) {
     if (ev.kind === 'click') continue;

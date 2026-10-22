@@ -5,7 +5,6 @@
  * pane (piano roll · devices · mixer) and the inspector. All edits go through
  * useStudioProject (undo + autosave); the audio clock never re-renders React.
  */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutList, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +18,7 @@ import { addTake } from '@/lib/daw/takes';
 import type { AudioTake } from '@/lib/daw/take-types';
 import { detectClipKey } from '@/lib/daw/dsp/pitch/key-detect';
 import { isDrumInstrument } from '@/lib/daw/presets';
+import { trackSampleChannel } from '@/lib/daw/sampler';
 import { classifyMusicItem } from '@/lib/daw/music-filter';
 import { parseMidiFile } from '@/lib/daw/midi-file';
 import { putAudio } from '@/lib/daw/audio-store';
@@ -31,7 +31,7 @@ import { useTransportState } from './engine-hooks';
 import { TransportBar } from './TransportBar';
 import { ArrangeView } from './ArrangeView';
 import { SessionGrid } from './SessionGrid';
-import { PianoRoll } from './PianoRoll';
+import { MidiClipPane } from './MidiClipPane';
 import { DevicePanel } from './DevicePanel';
 import { MixerPanel, MASTER_ID } from './MixerPanel';
 import { Inspector, MasterPanel } from './Inspector';
@@ -401,6 +401,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onCountIn={(bars) => void rec.setPrefs({ countInBars: bars })}
         onBpm={(bpm) => edit((p) => setTransportBpm(p, bpm), 'bpm')}
         onTimeSignature={(beats, unit) => edit((p) => ({ ...p, timeSignature: [Math.max(1, Math.min(16, Math.round(beats) || 4)), [2, 4, 8, 16].includes(unit) ? unit : 4] }))}
+        onSwing={(swing) => edit((p) => ({ ...p, transport: { ...p.transport, swing } }))}
         onKeyScale={(key, scale, scaleMask) => edit((p) => ({ ...p, key, scale, scaleMask }), 'key')}
         onDetectKey={() => detectClipKey(project, selClip, engine.audioMap())}
         onRename={(title) => edit((p) => ({ ...p, title }), 'title')}
@@ -495,12 +496,13 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
             <div className="min-h-0 flex-1">
               {bottom === 'editor' && (
                 clip && found && clip.type !== 'audio' ? (
-                  <PianoRoll
-                    key={clip.id}
+                  <MidiClipPane
+                    project={project}
                     track={found.track}
                     clip={clip}
-                    onChange={(notes, key) => edit((p) => ops.setNotes(p, clip.id, notes), key)}
-                    onClipChange={(patch) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, ...patch })))}
+                    playing={transport !== 'stopped'}
+                    getBeat={() => engine.getBeat()}
+                    onEdit={(fn, key) => edit(fn, key)}
                     onAudition={(pitch, vel) => engine.previewNote(found.track.id, pitch, vel)}
                   />
                 ) : clip && clip.type === 'audio' ? (
@@ -529,6 +531,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                   <DevicePanel
                     project={project}
                     track={track}
+                    sample={trackSampleChannel(track, engine.audioMap())}
                     onTrack={(patch, key) => track && onTrack(track.id, patch, key)}
                     onEffects={(fx, key) => track && edit((p) => ops.setEffects(p, track.id, fx), key)}
                     onPreset={(pr, key) => edit((p) => ({ ...p, synthPresets: { ...p.synthPresets, [pr.id]: pr } }), key)}

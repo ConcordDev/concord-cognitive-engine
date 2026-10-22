@@ -69,8 +69,8 @@ export interface DAWTrack {
   trimDb?: number; // pre-insert trim, dB
   /** Mix role (drives Auto Mix cleanup choices). */
   role?: TrackRole;
-  /** Sidechain-style ducking: dip this track whenever `sourceTrackId` plays a note (e.g. bass under kick). */
   duck?: { sourceTrackId: string; depthDb: number; releaseMs: number; pitches?: number[] };
+  slices?: Array<{ start: number; end: number; pitch: number; reverse: boolean; attack: number; decay: number; sustain: number; release: number }>;
   /** Recording input settings for this track. */
   recordInput?: { channelMode: 'stereo' | 'mono1' | 'mono2'; latencyMs?: number };
   /** Recorded passes. Audio assets are immutable; deleting a take does not delete the asset. */

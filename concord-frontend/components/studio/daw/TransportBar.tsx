@@ -31,6 +31,7 @@ export interface TransportBarProps {
   onCountIn: (bars: number) => void;
   onBpm: (bpm: number) => void;
   onTimeSignature: (beats: number, unit: number) => void;
+  onSwing: (swing: number) => void;
   onKeyScale: (key: string, scale: string, scaleMask: number | undefined) => void;
   onDetectKey: () => Promise<ClipKeyResult>;
   onRename: (title: string) => void;
@@ -134,6 +135,19 @@ export function TransportBar(p: TransportBarProps) {
           <select aria-label="Beat unit" value={sigUnit} onChange={(e) => p.onTimeSignature(sigBeats, Number(e.target.value))} className="rounded bg-white/5 px-0.5 py-0.5 text-sm text-zinc-100 outline-none">
             {[2, 4, 8, 16].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
+        </label>
+        <label className="flex items-center gap-1 text-[11px] text-zinc-500">
+          <input
+            aria-label="Swing"
+            type="number"
+            min={0}
+            max={100}
+            value={Math.max(0, Math.min(100, Math.round(p.project.transport.swing || 0)))}
+            onChange={(e) => p.onSwing(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+            className="w-12 rounded bg-white/5 px-1 py-0.5 text-right text-sm text-zinc-100 outline-none"
+            title="0 is straight. 100 delays off-eighths by a triplet eighth."
+          />
+          Swing
         </label>
         <KeyScaleControl project={p.project} onChange={p.onKeyScale} onDetect={p.onDetectKey} />
       </div>

@@ -88,3 +88,38 @@ export function parseMidiFile(buf: ArrayBuffer): ParsedMidi {
   }
   return { bpm, tracks };
 }
+
+/** Format 0 MIDI file. Notes are in beats at `bpm`. */
+export function encodeMidiFile(notes: Array<{ pitch: number; velocity: number; startBeat: number; lengthBeats: number; channel?: number }>, bpm = 120, tpq = 480): Uint8Array {
+  const events: Array<{ tick: number; data: number[] }> = [];
+  const us = Math.max(1, Math.round(60000000 / Math.max(1, bpm)));
+  events.push({ tick: 0, data: [0xff, 0x51, 0x03, (us >> 16) & 0xff, (us >> 8) & 0xff, us & 0xff] });
+  for (const note of notes) {
+    const on = Math.max(0, Math.round(note.startBeat * tpq));
+    const off = Math.max(on + 1, Math.round((note.startBeat + Math.max(1 / 64, note.lengthBeats)) * tpq));
+    const ch = (note.channel || 0) & 0x0f;
+    events.push({ tick: on, data: [0x90 | ch, note.pitch & 0x7f, Math.max(1, Math.min(127, note.velocity || 100))] });
+    events.push({ tick: off, data: [0x80 | ch, note.pitch & 0x7f, 0] });
+  }
+  events.sort((a, b) => a.tick - b.tick || a.data[0] - b.data[0]);
+  const body: number[] = [];
+  let last = 0;
+  const vlq = (n: number) => {
+    let value = Math.max(0, n);
+    const bytes = [value & 0x7f];
+    value >>= 7;
+    while (value > 0) {
+      bytes.unshift((value & 0x7f) | 0x80);
+      value >>= 7;
+    }
+    return bytes;
+  };
+  for (const ev of events) {
+    body.push(...vlq(ev.tick - last), ...ev.data);
+    last = ev.tick;
+  }
+  body.push(...vlq(0), 0xff, 0x2f, 0x00);
+  const header = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (tpq >> 8) & 0xff, tpq & 0xff];
+  const track = [0x4d, 0x54, 0x72, 0x6b, (body.length >> 24) & 0xff, (body.length >> 16) & 0xff, (body.length >> 8) & 0xff, body.length & 0xff, ...body];
+  return Uint8Array.from([...header, ...track]);
+}

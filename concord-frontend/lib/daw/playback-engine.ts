@@ -11,8 +11,7 @@ import { getAudioContext } from './engine';
 import { ProjectGraph } from './graph';
 import { LookaheadScheduler, nextBarBeat, type CollectSource, type LaunchedClip } from './scheduler';
 import { beatsPerBar, projectTempoPoints, secondsBetween } from './tempo-map';
-import { playSynthNote, playDrum } from './dsp/instruments';
-import { isDrumInstrument, resolveTrackPreset } from './presets';
+
 import type { PcmAudio } from './render';
 import { bakePitchEdits } from './dsp/pitch/editor';
 import { bakeClipPlayback } from './clip-edit';
@@ -85,6 +84,8 @@ export class StudioEngine {
       launched: this.launched,
       audition: this.audition,
       bufferOverrides: this.clipBuffers,
+      swing: p?.transport.swing || 0,
+      drumPatterns: p?.drumPatterns,
     };
   }
 
@@ -248,8 +249,10 @@ export class StudioEngine {
     if (!p || !t || !ch) return;
     void this.resume();
     const now = this.ctx.currentTime + 0.005;
-    if (isDrumInstrument(t.instrumentId)) playDrum(this.ctx, ch.input, t.instrumentId as string, pitch, velocity, now);
-    else playSynthNote(this.ctx, ch.input, resolveTrackPreset(t.instrumentId, p.synthPresets), pitch, velocity, now, durSec);
+    this.graph.schedule({
+      kind: 'note', trackId, clipId: 'preview', beat: 0, pitch, velocity,
+      lengthBeats: Math.max(0.05, durSec), durationSec: durSec,
+    }, now, 60 / (p.bpm || 120));
   }
 
   // ── Meters ──

@@ -12,7 +12,7 @@
 import type { DAWProject, DAWTrack, EffectInstance } from './types';
 import type { TimelineEvent } from './scheduler';
 import { DeviceChain } from './dsp/devices';
-import { playSynthNote, playDrum, playClick, type Voice } from './dsp/instruments';
+import { playSynthNote, playDrum, playClick, midiToHz, type Voice } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import { dbToGain } from './dsp/rng';
 import { PITCH_RANGES, pitchLatencySec } from './dsp/pitch/core';
@@ -22,6 +22,7 @@ import { equalPowerGain } from './dsp/fades';
 import { audibleIds, buildRoutePlan, type RouteTrack } from './routing';
 import { gainPoints, valueAtBeat, type AutoPoint } from './automation';
 import { LiveLoudness } from './dsp/live-loudness';
+import { playSlice, sliceForNote } from './sampler';
 
 export interface ChannelNodes {
   input: GainNode;
@@ -145,6 +146,8 @@ export class ProjectGraph {
   private opts: GraphOptions;
   private buffers = new Map<string, AudioBuffer>();
   private voices = new Set<{ v: Voice; end: number }>();
+  /** Previous synth pitch, so glide can start from a note that is still sounding. */
+  private heldNote = new Map<string, { hz: number; until: number }>();
   private project: DAWProject | null = null;
   private topology = '';
   readonly loudness = new LiveLoudness();
@@ -441,10 +444,8 @@ export class ProjectGraph {
         g.connect(ch.input);
         dest = g;
       }
-      const v = isDrumInstrument(track.instrumentId)
-        ? playDrum(this.ctx, dest, track.instrumentId as string, ev.pitch, ev.velocity, time)
-        : playSynthNote(this.ctx, dest, resolveTrackPreset(track.instrumentId, project.synthPresets), ev.pitch, ev.velocity, time, dur);
-      this.voices.add({ v, end: time + dur + 3 });
+      const v = this.startNote(track, dest, ev.pitch, ev.velocity, time, dur, project);
+      if (v) this.voices.add({ v, end: time + dur + 3 });
       this.applyDucking(track, ev.pitch, time);
       return;
     }
@@ -505,10 +506,38 @@ export class ProjectGraph {
     }
   }
 
+  /** Sampler uses the first audio clip on the track. Kits and synths ignore it. */
+  private sampleBuffer(track: DAWTrack): AudioBuffer | null {
+    for (const clip of track.clips) {
+      const buf = clip.audioBufferId ? this.buffers.get(clip.audioBufferId) : undefined;
+      if (buf) return buf;
+    }
+    return null;
+  }
+
+  /**
+   * Retriggered portamento: a new synth voice still runs its own envelope, and
+   * bends from the previous pitch only while that note is still sounding.
+   * The 808 kit's kick drop stays inside playDrum. Sampler slices do not glide.
+   */
+  private startNote(track: DAWTrack, dest: AudioNode, pitch: number, velocity: number, time: number, dur: number, project: DAWProject): Voice | null {
+    if (track.instrumentId === 'drums:sampler') {
+      const slice = sliceForNote(track.slices, pitch);
+      const buf = this.sampleBuffer(track);
+      return slice && buf ? playSlice(this.ctx, dest, buf, slice, velocity, time) : null;
+    }
+    if (isDrumInstrument(track.instrumentId)) return playDrum(this.ctx, dest, track.instrumentId as string, pitch, velocity, time);
+    const prev = this.heldNote.get(track.id);
+    const from = prev && time <= prev.until + 0.02 ? prev.hz : undefined;
+    this.heldNote.set(track.id, { hz: midiToHz(pitch), until: time + dur });
+    return playSynthNote(this.ctx, dest, resolveTrackPreset(track.instrumentId, project.synthPresets), pitch, velocity, time, dur, from);
+  }
+
   /** Stop every scheduled voice (transport stop / seek). */
   stopAll(at?: number): void {
     for (const x of this.voices) x.v.stop(at);
     this.voices.clear();
+    this.heldNote.clear();
     for (const ch of this.channels.values()) {
       ch.duck.gain.cancelScheduledValues(0);
       ch.duck.gain.value = 1;
