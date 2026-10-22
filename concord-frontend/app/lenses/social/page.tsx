@@ -27,7 +27,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, BarChart3,
   Sparkles, Activity, Loader2, Bookmark, Play, Radio,
@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
+import { OwnPostDelete } from '@/components/social/OwnPostDelete';
 import { Discovery } from '@/components/social/Discovery';
 import { NotificationBell } from '@/components/social/NotificationBell';
 import { NotificationCenter } from '@/components/social/NotificationCenter';
@@ -419,6 +420,8 @@ export default function SocialHubPage() {
  * (no fake data — empty state when the user follows nobody yet).
  * ───────────────────────────────────────────────────────────────────── */
 function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: string; onFindPeople?: () => void }) {
+  const queryClient = useQueryClient();
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [seenHead, setSeenHead] = useState<string | null>(() => {
     if (typeof window === 'undefined' || !currentUserId || currentUserId === 'current-user') return null;
     try { return localStorage.getItem(`social-following-cursor:${currentUserId}`); } catch { return null; }
@@ -461,7 +464,7 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
       newer += 1;
     }
   }
-  const visible = newer > 0 ? items.slice(newer) : items;
+  const visible = (newer > 0 ? items.slice(newer) : items).filter((item) => !removed.has(item.id));
 
   if (error) {
     return (
@@ -515,6 +518,15 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
             <span className="text-[10px] text-zinc-400 ml-auto">
               {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
             </span>
+            {item.kind === 'post' && item.userId === currentUserId && (
+              <OwnPostDelete
+                postId={item.id}
+                onDeleted={() => {
+                  setRemoved((prev) => new Set(prev).add(item.id));
+                  void queryClient.invalidateQueries({ queryKey: ['social-following-activity', currentUserId] });
+                }}
+              />
+            )}
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
           {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}

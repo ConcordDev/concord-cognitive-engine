@@ -116,6 +116,11 @@ describe("social post create override", { concurrency: 1 }, () => {
     assert.equal(publicPost.json.ok, true);
     assert.equal(publicPost.json.post.privacy, "public");
     assert.equal(publicPost.json.post.content, "public chorus");
+    assert.ok(Array.isArray(publicPost.json.post.media));
+    assert.ok(Array.isArray(publicPost.json.post.hashtags));
+    assert.ok(Array.isArray(publicPost.json.post.comments));
+    assert.ok(Array.isArray(publicPost.json.post.tags));
+    assert.ok(Array.isArray(publicPost.json.post.mentionedUsers));
 
     const followers = await post("/api/social/post", "alice", {
       content: "followers only circle",
@@ -161,6 +166,18 @@ describe("social post create override", { concurrency: 1 }, () => {
     const strangerTexts = texts(strangerFeed.json.posts);
     assert.equal(strangerTexts.includes("private diary"), false);
     assert.equal(strangerTexts.includes("followers only circle"), false);
+
+    const strangerForYou = await get("/api/social/feed/for-you", "cara");
+    assert.equal(texts(strangerForYou.json.posts).includes("private diary"), false);
+    assert.equal(texts(strangerForYou.json.posts).includes("followers only circle"), false);
+
+    const authorForYou = await get("/api/social/feed/for-you", "alice");
+    assert.ok(texts(authorForYou.json.posts).includes("private diary"));
+    assert.ok(texts(authorForYou.json.posts).includes("followers only circle"));
+
+    const followerForYou = await get("/api/social/feed/for-you", "bob");
+    assert.ok(texts(followerForYou.json.posts).includes("followers only circle"));
+    assert.equal(texts(followerForYou.json.posts).includes("private diary"), false);
 
     const strangerProfile = await get("/api/social/posts/user/alice", "cara");
     const strangerProfileTexts = texts(strangerProfile.json.posts);

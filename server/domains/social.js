@@ -18,6 +18,7 @@ import {
   recipientResolvable,
   canonicalSocial,
   canViewPost,
+  deletePost as deleteLayerPost,
   sendMessage as layerSendMessage,
   getConversations,
   getMessages,
@@ -113,9 +114,16 @@ export default function registerSocialActions(registerLensAction) {
       if (!post.content && post.body) post.content = post.body;
       if (!post.body && post.content) post.body = post.content;
       if (!Array.isArray(post.hashtags)) post.hashtags = [];
+      if (!Array.isArray(post.tags)) post.tags = [];
+      if (!Array.isArray(post.mentionedUsers)) post.mentionedUsers = [];
       if (!Array.isArray(post.comments)) post.comments = [];
       if (!Array.isArray(post.shares)) post.shares = [];
-      if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set();
+      if (!Array.isArray(post.media)) {
+        const url = typeof post.mediaUrl === "string" ? post.mediaUrl : "";
+        const kind = post.mediaType === "video" || post.mediaType === "audio" || post.mediaType === "image" ? post.mediaType : "image";
+        post.media = url ? [{ kind, url, alt: "", caption: "" }] : [];
+      }
+      if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set(Array.isArray(post.bookmarks) ? post.bookmarks : []);
       if (!(post.reactions instanceof Map)) post.reactions = new Map();
       if (!post.privacy) post.privacy = "public";
       // A shared Map is serialized twice. A cycle collapses the second copy
@@ -219,7 +227,12 @@ export default function registerSocialActions(registerLensAction) {
     const hideMedia = post.sensitive === true && viewerId !== post.userId && viewer?.showSensitive !== true;
     return {
       ...post,
-      media: hideMedia ? [] : post.media,
+      media: hideMedia ? [] : (Array.isArray(post.media) ? post.media : []),
+      hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],
+      tags: Array.isArray(post.tags) ? post.tags : [],
+      mentionedUsers: Array.isArray(post.mentionedUsers) ? post.mentionedUsers : [],
+      mentions: Array.isArray(post.mentionedUsers) ? post.mentionedUsers : [],
+      comments: Array.isArray(post.comments) ? post.comments : [],
       mediaUrl: hideMedia ? null : post.mediaUrl,
       sensitiveHidden: hideMedia,
       username: who.username,
@@ -348,16 +361,8 @@ export default function registerSocialActions(registerLensAction) {
     const post = s.posts.get(postId);
     if (!post) return { ok: false, error: "post not found" };
     if (post.userId !== userId) return { ok: false, error: "only the author can delete this post" };
-    s.posts.delete(postId);
-    s.replies.delete(postId);
-    s.reactions.delete(postId);
-    s.reposts.delete(postId);
-    const db = ctx?.db || globalThis._concordSTATE?.db;
-    if (db && typeof db.prepare === "function") {
-      try {
-        db.prepare("DELETE FROM social_posts WHERE id = ? AND (user_id = ? OR author_id = ?)").run(postId, userId, userId);
-      } catch { /* table may be absent */ }
-    }
+    const removed = deleteLayerPost(globalThis._concordSTATE, { userId, postId });
+    if (!removed.ok) return { ok: false, error: removed.status === 403 ? "only the author can delete this post" : "post not found" };
     save();
     return { ok: true, result: { id: postId, deleted: true } };
   });

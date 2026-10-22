@@ -82,7 +82,25 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
   const [storySeen, setStorySeen] = useState(storyRequest);
   const [showSuccess, setShowSuccess] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
-  const [privacy, setPrivacy] = useState<'public' | 'followers' | 'private'>('public');
+  const privacyKey = `concord.social.composerPrivacy.${currentUserId}`;
+  const readPrivacy = useCallback((): 'public' | 'followers' | 'private' => {
+    if (typeof window === 'undefined' || !currentUserId) return 'public';
+    try {
+      const stored = localStorage.getItem(privacyKey);
+      if (stored === 'public' || stored === 'followers' || stored === 'private') return stored;
+    } catch { /* private mode */ }
+    return 'public';
+  }, [currentUserId, privacyKey]);
+  const [privacyScope, setPrivacyScope] = useState(currentUserId);
+  const [privacy, setPrivacy] = useState<'public' | 'followers' | 'private'>(readPrivacy);
+  if (privacyScope !== currentUserId) {
+    setPrivacyScope(currentUserId);
+    setPrivacy(readPrivacy());
+  }
+  const choosePrivacy = useCallback((value: 'public' | 'followers' | 'private') => {
+    setPrivacy(value);
+    try { localStorage.setItem(privacyKey, value); } catch { /* private mode */ }
+  }, [privacyKey]);
   const [replyAudience, setReplyAudience] = useState<'everyone' | 'followers' | 'mentioned'>('everyone');
   const [draftNote, setDraftNote] = useState<string | null>(null);
   // Federation visibility — defaults to 'local' so users opt in to
@@ -126,6 +144,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       setMentionedUsers([]);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 1500);
+      useUIStore.getState().addToast({ type: 'success', message: 'Posted.' });
       queryClient.invalidateQueries({ queryKey: ['social-following-activity'] });
       queryClient.invalidateQueries({ queryKey: ['feed-for-you'] });
       queryClient.invalidateQueries({ queryKey: ['stories'] });
@@ -274,7 +293,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         <select
           aria-label="Who can see this"
           value={privacy}
-          onChange={(e) => setPrivacy(e.target.value as 'public' | 'followers' | 'private')}
+          onChange={(e) => choosePrivacy(e.target.value as 'public' | 'followers' | 'private')}
           className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
         >
           <option value="public">Public</option>

@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { OwnPostDelete } from './OwnPostDelete';
 
 interface RankedPost {
   id: string;
@@ -13,6 +15,7 @@ interface RankedPost {
 
 export function RankedFeed({ currentUserId }: { currentUserId: string }) {
   const queryClient = useQueryClient();
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const query = useQuery({
     queryKey: ['social-for-you', currentUserId],
     queryFn: async () => {
@@ -31,7 +34,7 @@ export function RankedFeed({ currentUserId }: { currentUserId: string }) {
 
   if (query.isLoading) return <p className="text-sm text-zinc-400">Loading For You…</p>;
   if (query.isError) return <p className="text-sm text-rose-300">Couldn’t load For You.</p>;
-  const posts = query.data || [];
+  const posts = (query.data || []).filter((post) => !removed.has(post.id));
   if (posts.length === 0) return <p className="text-sm text-zinc-400">No ranked posts yet.</p>;
 
   return (
@@ -45,6 +48,15 @@ export function RankedFeed({ currentUserId }: { currentUserId: string }) {
           <div className="mt-2 flex gap-2">
             <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => void feedback(post.id, 'less')}>Show less like this</button>
             <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => void feedback(post.id, 'not-interested')}>Not interested</button>
+            {post.userId === currentUserId && (
+              <OwnPostDelete
+                postId={post.id}
+                onDeleted={() => {
+                  setRemoved((prev) => new Set(prev).add(post.id));
+                  void queryClient.invalidateQueries({ queryKey: ['social-for-you', currentUserId] });
+                }}
+              />
+            )}
           </div>
         </li>
       ))}
