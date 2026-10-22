@@ -75,7 +75,7 @@ export function Inspector({ project, track, clip, recorder, onTrack, onClip, onD
           <div className="text-[11px] font-medium text-zinc-200">Clip</div>
           <input value={clip.name} onChange={(e) => onClip({ name: e.target.value }, `cname-${clip.id}`)} className="w-full rounded bg-black/40 px-2 py-1 text-xs" />
           <Num label="Gain" value={clip.gain || 0} min={-24} max={12} step={0.5} unit=" dB" onChange={(v) => onClip({ gain: v }, `cgain-${clip.id}`)} />
-          <Num label="Start" value={clip.startBeat} min={0} max={Math.max(64, clip.startBeat + 16)} step={0.25} unit=" b" onChange={(v) => onClip({ startBeat: v }, `cstart-${clip.id}`)} />
+          {(clip.slot === undefined || clip.slot === null) && <Num label="Start" value={clip.startBeat} min={0} max={Math.max(64, clip.startBeat + 16)} step={0.25} unit=" b" onChange={(v) => onClip({ startBeat: v }, `cstart-${clip.id}`)} />}
           <Num label="Length" value={clip.lengthBeats} min={0.25} max={Math.max(64, clip.lengthBeats * 2)} step={0.25} unit=" b" onChange={(v) => onClip({ lengthBeats: v }, `clen-${clip.id}`)} />
           {clip.type === 'audio' && (
             <>

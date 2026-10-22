@@ -5,9 +5,8 @@ import { Piano, Drum, Music2, FolderOpen, Search, Upload, Loader2 } from 'lucide
 import { cn } from '@/lib/utils';
 import type { DAWProject } from '@/lib/daw/types';
 import { instrumentOptions } from '@/lib/daw/presets';
-import { MUSIC_FILE_ACCEPT, classifyMusicItem } from '@/lib/daw/music-filter';
+import { MUSIC_FILE_ACCEPT } from '@/lib/daw/music-filter';
 import { browseMusicLibrary, type LibraryItem } from '@/lib/daw/studio-api';
-import { lensRun } from '@/lib/api/client';
 
 type Tab = 'instruments' | 'sounds' | 'files';
 
@@ -25,17 +24,12 @@ export interface BrowserPanelProps {
   importing: boolean;
 }
 
-async function communityLoops(kind: 'loops' | 'stems'): Promise<LibraryItem[]> {
-  try {
-    const res = await lensRun({ domain: 'music', name: 'browse', input: { kind, limit: 50 } });
-    const r = (res?.data?.result || {}) as { items?: Array<Record<string, unknown>> };
-    return (r.items || []).map((i) => ({
-      id: String(i.id), title: String(i.title || '(untitled)'), kind: kind === 'loops' ? 'loop' : 'stem',
-      bpm: typeof i.bpm === 'number' ? i.bpm : null, key: typeof i.key === 'string' ? i.key : null, url: typeof i.url === 'string' ? i.url : null,
-    }));
-  } catch {
-    return [];
-  }
+/** Kinds the Sounds list can actually place on the timeline (audio decode or MIDI import). */
+const PLACEABLE: ReadonlySet<string> = new Set(['audio', 'loop', 'stem', 'sample', 'midi']);
+
+/** Only items that carry a file and land on the timeline when clicked or dragged. */
+export function placeableItems(items: LibraryItem[]): LibraryItem[] {
+  return items.filter((i) => !!i.url && PLACEABLE.has(i.kind));
 }
 
 export function BrowserPanel({ project, onAddInstrument, onPlaceItem, onImportFiles, importing }: BrowserPanelProps) {
@@ -45,16 +39,17 @@ export function BrowserPanel({ project, onAddInstrument, onPlaceItem, onImportFi
   const fileRef = useRef<HTMLInputElement>(null);
   const opts = useMemo(() => instrumentOptions(project.synthPresets), [project.synthPresets]);
 
+  // Reload every time Sounds opens, so a mix just saved from Export shows up.
   useEffect(() => {
-    if (tab !== 'sounds' || items) return;
+    if (tab !== 'sounds') return;
     let alive = true;
-    void Promise.all([browseMusicLibrary(), communityLoops('loops'), communityLoops('stems')]).then(([mine, loops, stems]) => {
+    void browseMusicLibrary().then((mine) => {
       if (!alive) return;
-      // Server already filters; double-check client-side so nothing non-musical slips in.
-      setItems([...mine, ...loops, ...stems].filter((i) => classifyMusicItem({ title: i.title, kind: i.kind }) !== null || ['loop', 'stem', 'sample', 'audio', 'midi', 'preset', 'music-dtu'].includes(i.kind)));
+      // Server already filters to music; keep only files that can be placed.
+      setItems(placeableItems(mine));
     });
     return () => { alive = false; };
-  }, [tab, items]);
+  }, [tab]);
 
   const filtered = (items || []).filter((i) => !q || i.title.toLowerCase().includes(q.toLowerCase()));
   const tabs: Array<[Tab, string, typeof Piano]> = [['instruments', 'Instruments', Piano], ['sounds', 'Sounds', Music2], ['files', 'Import', FolderOpen]];
@@ -103,6 +98,8 @@ export function BrowserPanel({ project, onAddInstrument, onPlaceItem, onImportFi
               draggable
               onDragStart={(e) => e.dataTransfer.setData('application/x-concord-music', JSON.stringify({ type: 'library', item: i } satisfies BrowserPayload))}
               onClick={() => onPlaceItem(i)}
+              title="Click to place at the playhead, or drag onto a track"
+              data-testid="studio-browser-sound"
               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-white/5"
             >
               <Music2 className="h-3.5 w-3.5 text-cyan-300" />
@@ -111,7 +108,7 @@ export function BrowserPanel({ project, onAddInstrument, onPlaceItem, onImportFi
             </button>
           )) : (
             <div className="p-2 text-[11px] leading-relaxed text-zinc-500">
-              Your audio, MIDI, stems, loops, samples and presets appear here. Only music shows up in this list. Import files to start your library.
+              Your audio and MIDI files appear here: imports, saved mixes and stems from your Concord library. Click or drag one onto the timeline.
             </div>
           )
         )}

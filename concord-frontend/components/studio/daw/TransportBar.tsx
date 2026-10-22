@@ -119,11 +119,11 @@ export function TransportBar(p: TransportBarProps) {
       <button onClick={p.onAutoMix} className="flex h-8 items-center gap-1.5 rounded-md bg-violet-500/15 px-2.5 text-xs text-violet-200 hover:bg-violet-500/25" title="One-click mix + master" data-testid="studio-automix">
         <Wand2 className="h-3.5 w-3.5" /> Auto Mix
       </button>
-      <button onClick={p.onAskProducer} className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-300 hover:bg-white/5" title="Ask producer">
+      <button onClick={p.onAskProducer} className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-300 hover:bg-white/5" title="Ask producer: write a starting idea as new tracks" data-testid="studio-ask-producer">
         <Sparkles className="h-3.5 w-3.5" /> Ask producer
       </button>
-      <button onClick={p.onExport} className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 text-xs text-emerald-200 hover:bg-emerald-500/25" data-testid="studio-export">
-        <Upload className="h-3.5 w-3.5" /> Export / Publish
+      <button onClick={p.onExport} className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 text-xs text-emerald-200 hover:bg-emerald-500/25" title="Render WAV/FLAC, stems, or save the mix to your Concord library" data-testid="studio-export">
+        <Upload className="h-3.5 w-3.5" /> Export
       </button>
     </div>
   );

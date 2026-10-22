@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -23,6 +24,10 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const { isOnline } = useOnlineStatus();
   const { powerMode, togglePowerMode } = usePowerMode();
+  // Studio is a music-only workspace: the platform health chip ("Brains
+  // offline", heartbeat, DTU count) is not about the song and stays out of it.
+  const pathname = usePathname();
+  const musicOnly = !!pathname && /^\/lenses\/studio(\/|$)/.test(pathname);
 
   // Background resonance fetch — exists ONLY to prime the react-query cache
   // for HeartbeatBar's own `resonance-quick` query (same queryKey, same
@@ -114,7 +119,7 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
         </button>
 
         {/* Sovereign health ribbon — metabolic status for everyone */}
-        <SovereignHealthRibbon />
+        {!musicOnly && <SovereignHealthRibbon />}
 
         {/* Affect mood indicator (Power Mode only) */}
         {powerMode && affectLabel && (

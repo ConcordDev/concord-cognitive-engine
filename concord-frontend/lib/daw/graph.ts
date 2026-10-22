@@ -148,9 +148,17 @@ export class ProjectGraph {
     if (!track || !ch) return;
     if (ev.kind === 'note') {
       const dur = ev.lengthBeats * secPerBeat;
+      // Clip gain: route the voice through its own gain stage.
+      let dest: AudioNode = ch.input;
+      if (ev.gainDb) {
+        const g = this.ctx.createGain();
+        g.gain.value = dbToGain(Math.max(-60, Math.min(24, ev.gainDb)));
+        g.connect(ch.input);
+        dest = g;
+      }
       const v = isDrumInstrument(track.instrumentId)
-        ? playDrum(this.ctx, ch.input, track.instrumentId as string, ev.pitch, ev.velocity, time)
-        : playSynthNote(this.ctx, ch.input, resolveTrackPreset(track.instrumentId, project.synthPresets), ev.pitch, ev.velocity, time, dur);
+        ? playDrum(this.ctx, dest, track.instrumentId as string, ev.pitch, ev.velocity, time)
+        : playSynthNote(this.ctx, dest, resolveTrackPreset(track.instrumentId, project.synthPresets), ev.pitch, ev.velocity, time, dur);
       this.voices.add({ v, end: time + dur + 3 });
       this.applyDucking(track, ev.pitch, time);
       return;

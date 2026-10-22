@@ -24,6 +24,8 @@ export interface NoteEvent {
   pitch: number;
   velocity: number;
   lengthBeats: number;
+  /** Clip gain in dB (applied per voice). */
+  gainDb?: number;
 }
 
 export interface AudioEvent {
@@ -132,6 +134,7 @@ function collectClip(
         kind: 'note', trackId: track.id, clipId: clip.id, beat, pitch: n.pitch,
         velocity: Math.max(1, Math.min(127, n.velocity || 100)),
         lengthBeats: Math.max(0.01, Math.min(n.lengthBeats, iterEnd - beat)),
+        gainDb: clip.gain || 0,
       });
     }
   }

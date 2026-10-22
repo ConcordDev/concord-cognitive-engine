@@ -13,9 +13,7 @@ import { studioTransport } from '@/lib/daw/studio-api';
 import { fromServerRecord, type VersionMeta } from '@/lib/daw/persistence';
 import { newId } from '@/lib/daw/project';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
-import { lensRun } from '@/lib/api/client';
-import { useLensDTUs } from '@/hooks/useLensDTUs';
-import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { api, lensRun } from '@/lib/api/client';
 import { showToast } from '@/components/common/Toasts';
 
 export function Modal({ title, icon, onClose, children, wide }: { title: string; icon?: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
@@ -81,7 +79,7 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
   const forced16 = target?.bitDepth === 16;
   const effDepth: 16 | 24 | 32 = forced16 ? 16 : format === 'flac' && bitDepth === 32 ? 24 : bitDepth;
 
-  const run = async () => {
+  const run = async (): Promise<ExportResult | null> => {
     setErr(null); setRes(null);
     setBusy({ label: 'Rendering', f: 0 });
     try {
@@ -91,16 +89,20 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
         onProgress: (label, f) => setBusy({ label, f }),
       });
       setRes(r);
+      return r;
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+      return null;
     } finally {
       setBusy(null);
     }
   };
+  // The mix the library save uploads: the one already rendered here, else render it now.
+  const ensureMix = async () => (res ? res.mix : (await run())?.mix || null);
 
   const sel = 'w-full rounded bg-black/40 px-2 py-1 text-xs text-zinc-100';
   return (
-    <Modal title="Export / Publish" icon={<Download className="h-4 w-4" />} onClose={onClose} wide>
+    <Modal title="Export" icon={<Download className="h-4 w-4" />} onClose={onClose} wide>
       <div className="grid grid-cols-2 gap-3 text-xs">
         <label>Format
           <select className={sel} value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)} data-testid="studio-export-format">
@@ -150,56 +152,71 @@ export function ExportDialog({ project, getAudio, onClose }: { project: DAWProje
           )}
         </div>
       )}
-      <PublishSection project={project} />
+      <SaveToLibrarySection project={project} busy={!!busy} ensureMix={ensureMix} />
     </Modal>
   );
 }
 
-function PublishSection({ project }: { project: DAWProject }) {
-  const { createDTU, publishToMarketplace } = useLensDTUs({ lens: 'studio' });
-  const [open, setOpen] = useState(false);
+/** Upload limit we stay under (the edge proxy rejects request bodies above ~100 MB). */
+export const LIBRARY_UPLOAD_MAX_BYTES = 95 * 1024 * 1024;
+
+/**
+ * Store a rendered mix in the user's Concord library: a real audio DTU with
+ * the file attached (POST /api/artifact/upload), owned by the caller. It then
+ * shows up in Studio's Sounds browser and can be dropped into any song.
+ */
+export async function uploadMixToLibrary(file: { name: string; blob: Blob }, title: string, project: DAWProject): Promise<string> {
+  if (file.blob.size > LIBRARY_UPLOAD_MAX_BYTES) {
+    throw new Error(`This mix is ${(file.blob.size / 1048576).toFixed(0)} MB, over the 95 MB upload limit. Choose FLAC or 16-bit and render again.`);
+  }
+  const type = file.blob.type || (file.name.toLowerCase().endsWith('.flac') ? 'audio/flac' : 'audio/wav');
+  const r = await api.post('/api/artifact/upload', file.blob, {
+    headers: { 'Content-Type': type, 'X-Filename': encodeURIComponent(file.name), 'X-Title': encodeURIComponent(title), 'X-Domain': 'music' },
+    timeout: 300000,
+  });
+  const body = (r?.data || {}) as { ok?: boolean; dtuId?: string; error?: string };
+  if (!body.ok || !body.dtuId) throw new Error(body.error || 'Upload failed');
+  // Tag it as a Studio mix (best effort: the audio is already stored either way).
+  try {
+    await api.patch(`/api/dtus/${encodeURIComponent(body.dtuId)}`, {
+      tags: ['music', 'studio', 'mix', `${project.bpm}bpm`, project.key && `${project.key} ${project.scale}`].filter(Boolean),
+    });
+  } catch { /* tags are optional */ }
+  return body.dtuId;
+}
+
+function SaveToLibrarySection({ project, busy, ensureMix }: { project: DAWProject; busy: boolean; ensureMix: () => Promise<{ name: string; blob: Blob } | null> }) {
   const [title, setTitle] = useState(project.title);
-  const [price, setPrice] = useState('0');
-  const [license, setLicense] = useState<'basic' | 'premium' | 'exclusive'>('basic');
-  const [busy, setBusy] = useState(false);
-  const publish = async () => {
-    setBusy(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<{ id: string; title: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const save = async () => {
+    setSaving(true); setErr(null); setSaved(null);
     try {
-      const dtuRes = (await createDTU(withContentLicense({
-        title: title || project.title,
-        content: `Studio song: ${project.title} | ${project.bpm} BPM | Key: ${project.key} ${project.scale} | ${project.tracks.length} tracks`,
-        tags: ['studio', 'audio', 'music', project.key, `${project.bpm}bpm`].filter(Boolean),
-        source: 'studio',
-        meta: { type: 'audio', projectId: project.id, bpm: project.bpm, key: project.key, genre: project.genre, trackCount: project.tracks.length },
-      }, 'media', ['private', 'public_view', 'social_post', 'public_listen', 'marketplace_sale']))) as unknown as Record<string, unknown>;
-      const dtuId = ((dtuRes?.dtu as Record<string, unknown>)?.id as string) || (dtuRes?.id as string);
-      if (!dtuId) throw new Error('Could not create the song DTU');
-      await publishToMarketplace({ dtuId, price: parseFloat(price) || 0, description: `${project.title} — ${project.bpm} BPM, ${project.key}`, license });
-      showToast('success', `"${title || project.title}" is live on the marketplace`);
-      setOpen(false);
+      const mix = await ensureMix();
+      if (!mix) throw new Error('Render failed, so there is nothing to save yet.');
+      const t = (title || project.title || 'Untitled Song').trim();
+      const id = await uploadMixToLibrary(mix, t, project);
+      setSaved({ id, title: t });
+      showToast('success', `"${t}" saved to your Concord library`);
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Publish failed');
+      setErr(e instanceof Error ? e.message : 'Save failed');
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
   return (
-    <div className="mt-4 border-t border-white/10 pt-3">
-      {!open ? (
-        <button onClick={() => setOpen(true)} className="text-xs text-violet-300 hover:text-violet-200">Publish to Concord marketplace…</button>
-      ) : (
-        <div className="space-y-2 text-xs">
-          <div className="text-[11px] font-medium">Publish</div>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded bg-black/40 px-2 py-1" placeholder="Title" />
-          <div className="flex gap-2">
-            <input value={price} onChange={(e) => setPrice(e.target.value)} className="w-24 rounded bg-black/40 px-2 py-1" placeholder="Price" inputMode="decimal" />
-            <select value={license} onChange={(e) => setLicense(e.target.value as typeof license)} className="flex-1 rounded bg-black/40 px-2 py-1">
-              <option value="basic">Basic license</option><option value="premium">Premium</option><option value="exclusive">Exclusive</option>
-            </select>
-          </div>
-          <button onClick={() => void publish()} disabled={busy} className="rounded bg-violet-600 px-3 py-1.5 text-white disabled:opacity-60">{busy ? 'Publishing…' : 'Publish'}</button>
-        </div>
-      )}
+    <div className="mt-4 space-y-2 border-t border-white/10 pt-3 text-xs" data-testid="studio-save-library">
+      <div className="text-[11px] font-medium">Save the mix to your Concord library</div>
+      <p className="text-[10px] leading-relaxed text-zinc-500">Uploads the rendered mix file (with the settings above) as a music item you own. It appears under Sounds in the Studio browser.</p>
+      <div className="flex gap-2">
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 rounded bg-black/40 px-2 py-1" placeholder="Title" aria-label="Library title" />
+        <button onClick={() => void save()} disabled={saving || busy} className="rounded bg-violet-600 px-3 py-1.5 text-white disabled:opacity-60" data-testid="studio-save-library-run">
+          {saving ? 'Saving…' : 'Save to library'}
+        </button>
+      </div>
+      {err && <div className="rounded bg-red-500/10 p-2 text-red-300">{err}</div>}
+      {saved && <div className="rounded bg-emerald-500/10 p-2 text-emerald-200" data-testid="studio-save-library-done">Saved “{saved.title}” with its audio file. Find it under Sounds.</div>}
     </div>
   );
 }

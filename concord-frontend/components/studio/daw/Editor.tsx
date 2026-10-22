@@ -203,7 +203,10 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
       if (!r.ok) throw new Error(String(r.status));
       const blob = await r.blob();
       const ext = item.kind === 'midi' ? '.mid' : '';
-      await importFiles([new File([blob], `${item.title}${ext}`, { type: blob.type })], trackId, beat);
+      // Library files are audio or MIDI by construction (see placeableItems); keep the
+      // type music-shaped even when the server answers application/octet-stream.
+      const type = item.kind === 'midi' ? 'audio/midi' : blob.type.startsWith('audio/') ? blob.type : 'audio/x-unknown';
+      await importFiles([new File([blob], `${item.title}${ext}`, { type })], trackId, beat);
     } catch {
       showToast('error', `Couldn't load "${item.title}"`);
     }

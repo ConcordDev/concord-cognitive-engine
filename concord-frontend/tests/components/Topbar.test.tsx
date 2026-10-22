@@ -124,6 +124,18 @@ describe('Topbar', () => {
     expect(screen.getByText('Custom')).toBeInTheDocument();
   });
 
+  it('shows the system health chip on platform lenses', () => {
+    render(<Topbar />, { wrapper: createWrapper() });
+    expect(screen.getByRole('status', { name: /System health/ })).toBeInTheDocument();
+  });
+
+  it('keeps the system health chip ("Brains offline") off the music-only Studio', () => {
+    nav.pathname = '/lenses/studio';
+    render(<Topbar />, { wrapper: createWrapper() });
+    expect(screen.queryByRole('status', { name: /System health/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Brains offline/)).not.toBeInTheDocument();
+  });
+
   it('shows "Dashboard" at the root', () => {
     nav.pathname = '/';
     render(<Topbar />, { wrapper: createWrapper() });
