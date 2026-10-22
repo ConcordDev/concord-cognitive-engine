@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, EffectInstance, EffectType, SynthPreset } from '@/lib/daw/types';
 import { effect } from '@/lib/daw/project';
 import { instrumentOptions, isDrumInstrument, resolveTrackPreset } from '@/lib/daw/presets';
+import { newPitchCorrect, PitchCorrectCard } from './PitchCorrectCard';
 
 interface ParamSpec { key: string; label: string; min: number; max: number; step: number; def: number; unit?: string }
 
@@ -202,7 +203,9 @@ export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: De
     <div className="flex h-full gap-2 overflow-x-auto p-2" data-testid="studio-devices">
       {track.type !== 'audio' && <InstrumentCard project={project} track={track} onTrack={onTrack} onPreset={onPreset} />}
       {fxs.map((fx, i) => (
-        <DeviceCard key={fx.id} fx={fx} onChange={(nfx, key) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key)} onRemove={() => onEffects(fxs.filter((x) => x.id !== fx.id))} onMove={(d) => move(i, d)} />
+        fx.type === 'pitchCorrect'
+          ? <PitchCorrectCard key={fx.id} fx={fx} project={project} onChange={(nfx, key) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key)} onRemove={() => onEffects(fxs.filter((x) => x.id !== fx.id))} onMove={(d) => move(i, d)} />
+          : <DeviceCard key={fx.id} fx={fx} onChange={(nfx, key) => onEffects(fxs.map((x) => (x.id === fx.id ? nfx : x)), key)} onRemove={() => onEffects(fxs.filter((x) => x.id !== fx.id))} onMove={(d) => move(i, d)} />
       ))}
       <div className="relative w-32 flex-shrink-0">
         <button onClick={() => setMenu((m) => !m)} className="flex h-full max-h-40 w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 text-xs text-zinc-400 hover:text-white" data-testid="studio-add-device">
@@ -213,6 +216,7 @@ export function DevicePanel({ project, track, onTrack, onEffects, onPreset }: De
             {DEVICE_SPECS.map((s) => (
               <button key={s.type} onClick={() => { onEffects([...fxs, newDevice(s.type)]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">{s.name}</button>
             ))}
+            <button type="button" onClick={() => { onEffects([...fxs, newPitchCorrect()]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">Pitch Correct</button>
           </div>
         )}
       </div>
