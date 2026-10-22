@@ -233,6 +233,12 @@ export default function registerSocialActions(registerLensAction) {
     };
   }
 
+  function visibleStored(s, postId, viewerId) {
+    const stored = s.posts.get(postId);
+    if (!stored || !canViewPost(viewerId, stored, globalThis._concordSTATE)) return null;
+    return stored;
+  }
+
   const REACTION_KINDS = ["like", "love", "celebrate", "insightful", "laugh", "sad"];
 
   // ── 0. createPost — feed substrate the engagement macros operate on ──
@@ -320,7 +326,7 @@ export default function registerSocialActions(registerLensAction) {
       const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
       const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
       const items = [...s.posts.values()]
-        .filter((p) => p && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
+        .filter((p) => p && !p.isStory && canViewPost(viewerId, p, globalThis._concordSTATE) && !mod.muted.has(p.userId))
         .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
         .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
         .slice(0, limit)
@@ -360,7 +366,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "addReply", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     const body = clip(params.body, 1000);
     if (!body) return { ok: false, error: "reply body required" };
     const parentId = params.parentId ? String(params.parentId) : null;
@@ -368,7 +375,6 @@ export default function registerSocialActions(registerLensAction) {
     if (parentId && !list.some((r) => r.id === parentId)) {
       return { ok: false, error: "parent reply not found" };
     }
-    const userId = actor(ctx);
     const replyLimit = assertSocialRate(canonicalSocial(globalThis._concordSTATE).profiles.get(userId), userId, "comment");
     if (!replyLimit.ok) return { ok: false, status: replyLimit.status, error: replyLimit.error };
     const who = authorIdentity(ctx, userId, params.username, params.displayName);
@@ -430,10 +436,10 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "react", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     const kind = String(params.reaction || "like").toLowerCase();
     if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "unknown reaction kind" };
-    const userId = actor(ctx);
     if (!s.reactions.has(postId)) s.reactions.set(postId, new Map());
     const map = s.reactions.get(postId);
     let viewerReaction;
@@ -451,8 +457,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "repost", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
     const userId = actor(ctx);
+    if (!visibleStored(s, postId, userId)) return { ok: false, error: "post not found" };
     if (!s.reposts.has(postId)) s.reposts.set(postId, new Set());
     const set = s.reposts.get(postId);
     let viewerReposted;
@@ -597,6 +603,7 @@ export default function registerSocialActions(registerLensAction) {
     const limit = Math.min(50, Math.max(1, parseInt(params.limit, 10) || 12));
     const counts = new Map();
     for (const p of s.posts.values()) {
+      if ((p.privacy || "public") !== "public") continue;
       if (!canViewPost(viewerId, p, globalThis._concordSTATE)) continue;
       const tags = Array.isArray(p?.hashtags) ? p.hashtags : [];
       for (const t of tags) {
@@ -651,10 +658,10 @@ export default function registerSocialActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
-  registerLensAction("social", "shareTargets", (_ctx, _a, params = {}) => {
+  registerLensAction("social", "shareTargets", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
-    if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
+    if (!visibleStored(s, postId, actor(ctx))) return { ok: false, error: "post not found" };
     const permalink = `/lenses/social/post/${postId}`;
     return {
       ok: true,
@@ -882,7 +889,8 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "votePoll", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const post = s.posts.get(String(params.postId || ""));
-    if (!post) return { ok: false, error: "post not found" };
+    const me = actor(ctx);
+    if (!post || !canViewPost(me, post, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
     if (!post.poll) return { ok: false, error: "post has no poll" };
     if (post.poll.closesAt && Date.parse(post.poll.closesAt) <= Date.now()) {
       return { ok: false, error: "poll is closed" };
@@ -890,7 +898,6 @@ export default function registerSocialActions(registerLensAction) {
     const optId = String(params.optionId || "");
     const opt = post.poll.options.find((o) => o.id === optId);
     if (!opt) return { ok: false, error: "unknown poll option" };
-    const me = actor(ctx);
     const prior = post.poll.voters[me];
     if (prior === optId) return { ok: false, error: "you already voted for that option" };
     if (prior) {
@@ -919,9 +926,9 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const post = s.posts.get(String(params.postId || ""));
-    if (!post) return { ok: false, error: "post not found" };
-    if (!post.poll) return { ok: false, error: "post has no poll" };
     const me = actor(ctx);
+    if (!post || !canViewPost(me, post, globalThis._concordSTATE)) return { ok: false, error: "post not found" };
+    if (!post.poll) return { ok: false, error: "post has no poll" };
     const totalVotes = post.poll.options.reduce((n, o) => n + o.votes, 0);
     const closed = !!post.poll.closesAt && Date.parse(post.poll.closesAt) <= Date.now();
     return {
