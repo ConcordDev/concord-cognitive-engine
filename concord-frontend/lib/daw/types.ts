@@ -104,6 +104,18 @@ export interface DAWClip {
   reversed: boolean;
   timeStretch: number; // 1 original, >1 longer
   midiNotes?: MIDINote[];
+  /** Controller lanes. CC 1 is the mod wheel and moves the synth filter. */
+  ccLanes?: Array<{ cc: number; points: Array<{ beat: number; value: number }> }>;
+  /** Pitch bend in clip-local beats. `value` is -1..1 (±2 semitones). */
+  pitchBend?: Array<{ beat: number; value: number }>;
+  /** When enabled, playback and MIDI export use the arpeggio instead of the held chord. */
+  arp?: {
+    enabled: boolean;
+    mode: 'up' | 'down' | 'up-down' | 'random';
+    rate: number;
+    octaves: number;
+    gate: number;
+  };
   audioBufferId?: string;
   pitchEdits?: PitchEditDoc; // offline Pitch Editor; derived audio is not stored
   patternId?: string;

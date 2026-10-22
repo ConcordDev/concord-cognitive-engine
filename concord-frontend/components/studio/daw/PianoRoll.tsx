@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { DAWClip, DAWTrack, MIDINote } from '@/lib/daw/types';
 import { newId } from '@/lib/daw/project';
 import { DRUM_LANES, isDrumInstrument } from '@/lib/daw/presets';
+import { pitchInScale, stampChord } from '@/lib/daw/beat-tools';
 import { quantizeNotes } from './ops';
 import { useBeatFrame } from './engine-hooks';
 
@@ -18,6 +19,9 @@ export interface PianoRollProps {
   onChange: (notes: MIDINote[], coalesceKey?: string) => void;
   onClipChange: (patch: Partial<DAWClip>) => void;
   onAudition: (pitch: number, velocity: number) => void;
+  songKey?: string;
+  songScale?: string;
+  scaleMask?: number;
 }
 
 interface NoteDrag {
@@ -31,11 +35,14 @@ interface NoteDrag {
   dLen: number;
 }
 
-export function PianoRoll({ track, clip, onChange, onClipChange, onAudition }: PianoRollProps) {
+export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, songKey = 'C', songScale = 'major', scaleMask }: PianoRollProps) {
   const drums = isDrumInstrument(track.instrumentId);
   const rows = useMemo(() => (drums ? DRUM_LANES.map((l) => l.pitch) : Array.from({ length: 85 }, (_, i) => 108 - i)), [drums]);
   const rowH = drums ? 22 : 14;
   const [grid, setGrid] = useState(0.25);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [degree, setDegree] = useState(1);
+  const [ccNumber, setCcNumber] = useState(1);
   const [bw, setBw] = useState(drums ? 56 : 48);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [drag, setDrag] = useState<NoteDrag | null>(null);
@@ -149,6 +156,26 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition }: P
     return () => window.removeEventListener('keydown', onKey, true);
   }, [sel, notes, onChange, grid, drums]);
 
+  const inScale = (pitch: number) => drums || pitchInScale(pitch, songKey, songScale, scaleMask);
+  const arp = clip.arp || { enabled: false, mode: 'up' as const, rate: 0.25, octaves: 1, gate: 0.8 };
+
+  const writeLane = (kind: 'cc' | 'bend', e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const beat = Math.max(0, Math.round(((e.clientX - r.left) / bw) / grid) * grid);
+    const y = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / Math.max(1, r.height)));
+    if (kind === 'bend') {
+      const value = Math.round((y * 2 - 1) * 100) / 100;
+      const points = [...(clip.pitchBend || []).filter((p) => Math.abs(p.beat - beat) > 1e-6), { beat, value }].sort((a, b) => a.beat - b.beat);
+      onClipChange({ pitchBend: points });
+      return;
+    }
+    const value = Math.round(y * 127);
+    const others = (clip.ccLanes || []).filter((lane) => lane.cc !== ccNumber);
+    const existing = (clip.ccLanes || []).find((lane) => lane.cc === ccNumber)?.points || [];
+    const points = [...existing.filter((p) => Math.abs(p.beat - beat) > 1e-6), { beat, value }].sort((a, b) => a.beat - b.beat);
+    onClipChange({ ccLanes: [...others, { cc: ccNumber, points }] });
+  };
+
   const setVelocityAt = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     const beat = (e.clientX - r.left) / bw;
@@ -168,6 +195,41 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition }: P
           </select>
         </label>
         <button onClick={() => onChange(sel.size ? notes.map((n) => (sel.has(n.id) ? quantizeNotes([n], grid)[0] : n)) : quantizeNotes(notes, grid))} className="rounded bg-white/5 px-2 py-0.5 hover:bg-white/10">Quantize</button>
+        {!drums && (
+          <>
+            <label className="flex items-center gap-1">Chord
+              <select aria-label="Chord degree" value={degree} onChange={(e) => setDegree(Number(e.target.value))} className="rounded bg-white/5 px-1 py-0.5 text-zinc-200">
+                {['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii'].map((label, i) => <option key={label} value={i + 1}>{label}</option>)}
+              </select>
+            </label>
+            <button type="button" data-testid="stamp-chord" className="rounded bg-white/5 px-2 py-0.5 hover:bg-white/10" onClick={() => onChange([...notes, ...stampChord(songKey, songScale, degree, 0, Math.min(1, len), 100, scaleMask)])}>Stamp chord</button>
+            <label className="flex items-center gap-1">
+              <input data-testid="arp-enabled" type="checkbox" checked={arp.enabled} onChange={(e) => onClipChange({ arp: { ...arp, enabled: e.target.checked } })} />
+              Arp
+            </label>
+            <select aria-label="Arpeggio direction" value={arp.mode} onChange={(e) => onClipChange({ arp: { ...arp, mode: e.target.value as typeof arp.mode } })} className="rounded bg-white/5 px-1 py-0.5 text-zinc-200">
+              <option value="up">Up</option>
+              <option value="down">Down</option>
+              <option value="up-down">Up-down</option>
+              <option value="random">Random</option>
+            </select>
+            <label className="flex items-center gap-1">Rate
+              <select aria-label="Arpeggio rate" value={String(arp.rate)} onChange={(e) => onClipChange({ arp: { ...arp, rate: Number(e.target.value) } })} className="rounded bg-white/5 px-1 py-0.5 text-zinc-200">
+                <option value={0.5}>1/8</option>
+                <option value={0.25}>1/16</option>
+                <option value={0.125}>1/32</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1">Oct
+              <select aria-label="Arpeggio octaves" value={String(arp.octaves)} onChange={(e) => onClipChange({ arp: { ...arp, octaves: Number(e.target.value) } })} className="rounded bg-white/5 px-1 py-0.5 text-zinc-200">
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-1">Gate
+              <input aria-label="Arpeggio gate" data-testid="arp-gate" type="number" min={0.05} max={1} step={0.05} value={arp.gate} onChange={(e) => onClipChange({ arp: { ...arp, gate: Number(e.target.value) } })} className="w-12 rounded bg-white/5 px-1 py-0.5 text-zinc-200" />
+            </label>
+          </>
+        )}
         <label className="flex items-center gap-1">Length
           <select value={clip.lengthBeats} onChange={(e) => { const v = Number(e.target.value); onClipChange({ lengthBeats: v, loopLength: clip.looped ? clip.loopLength : v }); }} className="rounded bg-white/5 px-1 py-0.5 text-zinc-200">
             {[1, 2, 4, 8, 16, 32, 64].map((b) => <option key={b} value={b}>{b / 4 >= 1 ? `${b / 4} bar${b > 4 ? 's' : ''}` : `${b} beat${b > 1 ? 's' : ''}`}</option>)}
@@ -176,14 +238,15 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition }: P
         <button onClick={() => setBw((w) => Math.max(16, w / 1.25))} className="rounded bg-white/5 px-1.5">−</button>
         <button onClick={() => setBw((w) => Math.min(160, w * 1.25))} className="rounded bg-white/5 px-1.5">+</button>
       </div>
-      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto" onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}>
         <div className="flex" style={{ width: width + 56 }}>
           <div className="sticky left-0 z-10 w-14 flex-shrink-0 bg-[#121218]">
             {rows.map((pitch) => (
               <button
                 key={pitch}
                 onPointerDown={() => onAudition(pitch, 100)}
-                className={cn('block w-full border-b border-black/40 pr-1 text-right text-[9px]', drums ? 'bg-[#1b1b23] text-zinc-300' : isBlack(pitch) ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-200 text-zinc-600')}
+                data-scale={inScale(pitch) ? 'in' : 'out'}
+                className={cn('block w-full border-b border-black/40 pr-1 text-right text-[9px]', drums ? 'bg-[#1b1b23] text-zinc-300' : isBlack(pitch) ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-200 text-zinc-600', !inScale(pitch) && 'opacity-35')}
                 style={{ height: rowH }}
               >
                 {drums ? DRUM_LANES.find((l) => l.pitch === pitch)?.name : pitch % 12 === 0 ? nameOf(pitch) : ''}
@@ -224,10 +287,37 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition }: P
           </div>
         </div>
       </div>
+      {!drums && (
+        <>
+          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[#101018]" data-testid="cc-lane">
+            <div className="absolute left-1 top-0.5 z-10 flex items-center gap-1 text-[9px] text-zinc-400">
+              <span>CC</span>
+              <select aria-label="Controller lane" value={ccNumber} onChange={(e) => setCcNumber(Number(e.target.value))} className="rounded bg-white/5 px-1 text-zinc-200">
+                <option value={1}>Mod</option>
+                <option value={11}>Expression</option>
+              </select>
+            </div>
+            <div className="absolute inset-0 cursor-crosshair" style={{ marginLeft: 56 }} onPointerDown={writeLane.bind(null, 'cc')}>
+              {((clip.ccLanes || []).find((lane) => lane.cc === ccNumber)?.points || []).map((point) => (
+                <div key={`${point.beat}-${point.value}`} data-testid="cc-point" className="pointer-events-none absolute bottom-0 w-1 rounded-t bg-cyan-300" style={{ left: point.beat * bw, height: `${(point.value / 127) * 100}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[#101018]" data-testid="pitch-bend-lane">
+            <span className="absolute left-1 top-0.5 text-[9px] text-zinc-400">Bend</span>
+            <div className="absolute inset-0 cursor-crosshair" style={{ marginLeft: 56 }} onPointerDown={(e) => writeLane('bend', e)}>
+              <div className="pointer-events-none absolute left-14 right-0 top-1/2 h-px bg-white/10" />
+              {(clip.pitchBend || []).map((point) => (
+                <div key={`${point.beat}-${point.value}`} data-testid="bend-point" className="pointer-events-none absolute h-1.5 w-1.5 rounded-full bg-amber-300" style={{ left: 56 + point.beat * bw, top: `${(1 - (point.value + 1) / 2) * 100}%` }} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
       <div className="relative h-12 flex-shrink-0 border-t border-white/5 bg-[#111117]" style={{ marginLeft: 56 }}>
         <div className="absolute inset-0 cursor-ns-resize" onPointerDown={setVelocityAt} onPointerMove={(e) => { if (e.buttons === 1) setVelocityAt(e); }} title="Velocity — drag to set">
           {notes.map((n) => (
-            <div key={n.id} className={cn('pointer-events-none absolute bottom-0 w-1 rounded-t', sel.has(n.id) ? 'bg-white' : 'bg-zinc-400')} style={{ left: n.startBeat * bw - (scrollRef.current?.scrollLeft || 0), height: `${(n.velocity / 127) * 100}%` }} />
+            <div key={n.id} className={cn('pointer-events-none absolute bottom-0 w-1 rounded-t', sel.has(n.id) ? 'bg-white' : 'bg-zinc-400')} style={{ left: n.startBeat * bw - scrollLeft, height: `${(n.velocity / 127) * 100}%` }} />
           ))}
         </div>
       </div>

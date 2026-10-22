@@ -23,6 +23,7 @@ import { audibleIds, buildRoutePlan, type RouteTrack } from './routing';
 import { gainPoints, valueAtBeat, type AutoPoint } from './automation';
 import { LiveLoudness } from './dsp/live-loudness';
 import { playSlice, sliceForNote } from './sampler';
+import { dispatchControl } from './beat-tools';
 
 export interface ChannelNodes {
   input: GainNode;
@@ -145,7 +146,8 @@ export class ProjectGraph {
   readonly channels = new Map<string, ChannelNodes>();
   private opts: GraphOptions;
   private buffers = new Map<string, AudioBuffer>();
-  private voices = new Set<{ v: Voice; end: number }>();
+  private voices = new Set<{ v: Voice; end: number; trackId?: string }>();
+  private liveVoices = new Map<string, Set<Voice>>();
   /** Previous synth pitch, so glide can start from a note that is still sounding. */
   private heldNote = new Map<string, { hz: number; until: number }>();
   private project: DAWProject | null = null;
@@ -434,6 +436,11 @@ export class ProjectGraph {
     const track = project.tracks.find((t) => t.id === ev.trackId);
     const ch = track ? this.channels.get(track.id) : undefined;
     if (!track || !ch) return;
+    if (ev.kind === 'cc' || ev.kind === 'pitchBend') {
+      const live = this.liveVoices.get(ev.trackId);
+      if (live && live.size) dispatchControl([...live], ev, time);
+      return;
+    }
     if (ev.kind === 'note') {
       const dur = ev.durationSec ?? ev.lengthBeats * secPerBeat;
       // Clip gain: route the voice through its own gain stage.
@@ -445,7 +452,15 @@ export class ProjectGraph {
         dest = g;
       }
       const v = this.startNote(track, dest, ev.pitch, ev.velocity, time, dur, project);
-      if (v) this.voices.add({ v, end: time + dur + 3 });
+      if (v) {
+        this.voices.add({ v, end: time + dur + 3, trackId: track.id });
+        let live = this.liveVoices.get(track.id);
+        if (!live) {
+          live = new Set();
+          this.liveVoices.set(track.id, live);
+        }
+        live.add(v);
+      }
       this.applyDucking(track, ev.pitch, time);
       return;
     }
@@ -537,6 +552,7 @@ export class ProjectGraph {
   stopAll(at?: number): void {
     for (const x of this.voices) x.v.stop(at);
     this.voices.clear();
+    this.liveVoices.clear();
     this.heldNote.clear();
     for (const ch of this.channels.values()) {
       ch.duck.gain.cancelScheduledValues(0);
@@ -546,7 +562,10 @@ export class ProjectGraph {
 
   /** Forget voices that have finished (keeps the set small during long sessions). */
   prune(now: number): void {
-    for (const x of this.voices) if (x.end < now) this.voices.delete(x);
+    for (const x of this.voices) if (x.end < now) {
+      this.voices.delete(x);
+      if (x.trackId) this.liveVoices.get(x.trackId)?.delete(x.v);
+    }
   }
 
   dispose(): void {

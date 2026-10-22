@@ -5,6 +5,7 @@ import type { DAWClip, DAWProject, DAWTrack, MIDINote } from '@/lib/daw/types';
 import { isDrumInstrument, DRUM_LANES } from '@/lib/daw/presets';
 import { patternToNotes } from '@/lib/daw/drum-steps';
 import { encodeMidiFile } from '@/lib/daw/midi-file';
+import { arpeggiate, midiExtrasFromClip } from '@/lib/daw/beat-tools';
 import { noteFromMidi, sustainFromMidi } from '@/lib/daw/midi-messages';
 import { newId } from '@/lib/daw/project';
 import { PianoRoll } from './PianoRoll';
@@ -131,8 +132,9 @@ export function MidiClipPane({ project, track, clip, playing, getBeat, onEdit, o
 
   const download = () => {
     const pattern = clip.patternId ? project.drumPatterns?.[clip.patternId] : undefined;
-    const notes = pattern ? patternToNotes(pattern, 0) : (clip.midiNotes || []);
-    const bytes = encodeMidiFile(notes, project.bpm || 120);
+    const drawn = pattern ? patternToNotes(pattern, 0) : (clip.midiNotes || []);
+    const notes = !pattern && clip.arp?.enabled ? arpeggiate(drawn, clip.arp, clip.id) : drawn;
+    const bytes = encodeMidiFile(notes, project.bpm || 120, 480, pattern ? undefined : midiExtrasFromClip(clip));
     const blob = new Blob([bytes], { type: 'audio/midi' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -170,6 +172,9 @@ export function MidiClipPane({ project, track, clip, playing, getBeat, onEdit, o
             key={clip.id}
             track={track}
             clip={clip}
+            songKey={project.key}
+            songScale={project.scale}
+            scaleMask={project.scaleMask}
             onChange={(notes, key) => onEdit((p) => ops.setNotes(p, clip.id, notes), key)}
             onClipChange={(patch) => onEdit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, ...patch })))}
             onAudition={onAudition}

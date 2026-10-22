@@ -3,6 +3,8 @@
 export interface ParsedMidiTrack {
   name: string;
   notes: Array<{ pitch: number; velocity: number; startBeat: number; lengthBeats: number; channel: number }>;
+  cc: Array<{ beat: number; cc: number; value: number; channel: number }>;
+  pitchBend: Array<{ beat: number; value: number; channel: number }>;
   isDrums: boolean;
 }
 
@@ -41,6 +43,8 @@ export function parseMidiFile(buf: ArrayBuffer): ParsedMidi {
     let name = `Track ${t + 1}`;
     const open = new Map<number, { tick: number; vel: number }>();
     const notes: ParsedMidiTrack['notes'] = [];
+    const cc: ParsedMidiTrack['cc'] = [];
+    const pitchBend: ParsedMidiTrack['pitchBend'] = [];
     let drumHits = 0;
     while (p < end) {
       tick += vlq(end);
@@ -80,20 +84,60 @@ export function parseMidiFile(buf: ArrayBuffer): ParsedMidi {
         continue;
       }
       if (type === 0xc0 || type === 0xd0) { p += 1; continue; }
-      p += 2; // 0xA0, 0xB0, 0xE0
+      if (type === 0xb0) {
+        const controller = v.getUint8(p++);
+        const value = v.getUint8(p++);
+        cc.push({ beat: tick / tpq, cc: controller, value, channel: ch });
+        continue;
+      }
+      if (type === 0xe0) {
+        const lsb = v.getUint8(p++);
+        const msb = v.getUint8(p++);
+        const raw = (msb << 7) | (lsb & 0x7f);
+        pitchBend.push({ beat: tick / tpq, value: Math.round((raw / 8192 - 1) * 10000) / 10000, channel: ch });
+        continue;
+      }
+      p += 2; // 0xA0 aftertouch
     }
     for (const [key, o] of open) notes.push({ pitch: key % 128, velocity: o.vel, startBeat: o.tick / tpq, lengthBeats: Math.max(0.25, (tick - o.tick) / tpq), channel: Math.floor(key / 128) });
     p = end;
-    if (notes.length) tracks.push({ name, notes: notes.sort((a, b) => a.startBeat - b.startBeat), isDrums: drumHits > notes.length / 2 });
+    if (notes.length || cc.length || pitchBend.length) {
+      tracks.push({
+        name,
+        notes: notes.sort((a, b) => a.startBeat - b.startBeat),
+        cc: cc.sort((a, b) => a.beat - b.beat),
+        pitchBend: pitchBend.sort((a, b) => a.beat - b.beat),
+        isDrums: notes.length > 0 && drumHits > notes.length / 2,
+      });
+    }
   }
   return { bpm, tracks };
 }
 
 /** Format 0 MIDI file. Notes are in beats at `bpm`. */
-export function encodeMidiFile(notes: Array<{ pitch: number; velocity: number; startBeat: number; lengthBeats: number; channel?: number }>, bpm = 120, tpq = 480): Uint8Array {
+export function encodeMidiFile(
+  notes: Array<{ pitch: number; velocity: number; startBeat: number; lengthBeats: number; channel?: number }>,
+  bpm = 120,
+  tpq = 480,
+  extras?: {
+    cc?: Array<{ beat: number; cc: number; value: number; channel?: number }>;
+    bend?: Array<{ beat: number; value: number; channel?: number }>;
+  },
+): Uint8Array {
   const events: Array<{ tick: number; data: number[] }> = [];
   const us = Math.max(1, Math.round(60000000 / Math.max(1, bpm)));
   events.push({ tick: 0, data: [0xff, 0x51, 0x03, (us >> 16) & 0xff, (us >> 8) & 0xff, us & 0xff] });
+  for (const point of extras?.cc || []) {
+    const tick = Math.max(0, Math.round(point.beat * tpq));
+    const ch = (point.channel || 0) & 0x0f;
+    events.push({ tick, data: [0xb0 | ch, Math.max(0, Math.min(127, Math.round(point.cc))), Math.max(0, Math.min(127, Math.round(point.value)))] });
+  }
+  for (const point of extras?.bend || []) {
+    const tick = Math.max(0, Math.round(point.beat * tpq));
+    const ch = (point.channel || 0) & 0x0f;
+    const raw = Math.max(0, Math.min(16383, Math.round(((Math.max(-1, Math.min(1, point.value)) + 1) / 2) * 16383)));
+    events.push({ tick, data: [0xe0 | ch, raw & 0x7f, (raw >> 7) & 0x7f] });
+  }
   for (const note of notes) {
     const on = Math.max(0, Math.round(note.startBeat * tpq));
     const off = Math.max(on + 1, Math.round((note.startBeat + Math.max(1 / 64, note.lengthBeats)) * tpq));
