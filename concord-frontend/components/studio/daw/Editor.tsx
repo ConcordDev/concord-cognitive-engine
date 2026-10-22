@@ -13,6 +13,7 @@ import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { assetMeta, newId, trackKind, createTrack, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
 import { beatAfter, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
+import { detectClipKey } from '@/lib/daw/dsp/pitch/key-detect';
 import { isDrumInstrument } from '@/lib/daw/presets';
 import { classifyMusicItem } from '@/lib/daw/music-filter';
 import { parseMidiFile } from '@/lib/daw/midi-file';
@@ -362,6 +363,8 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onToggleMetronome={() => setMetronome((m) => !m)}
         onCountIn={(bars) => void rec.setPrefs({ countInBars: bars })}
         onBpm={(bpm) => edit((p) => setTransportBpm(p, bpm), 'bpm')}
+        onKeyScale={(key, scale, scaleMask) => edit((p) => ({ ...p, key, scale, scaleMask }), 'key')}
+        onDetectKey={() => detectClipKey(project, selClip, engine.audioMap())}
         onRename={(title) => edit((p) => ({ ...p, title }), 'title')}
         onUndo={api.undo}
         onRedo={api.redo}

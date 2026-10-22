@@ -10,6 +10,8 @@ import type { SaveInfo } from './useStudioProject';
 import { useBeatFrame, formatPosition } from './engine-hooks';
 import { projectTempoPoints, secondsFromBeat, TEMPO_MAX, TEMPO_MIN } from '@/lib/daw/tempo-map';
 import type { TransportState } from '@/lib/daw/playback-engine';
+import type { ClipKeyResult } from '@/lib/daw/dsp/pitch/key-detect';
+import { KeyScaleControl } from './KeyScaleControl';
 
 export interface TransportBarProps {
   project: DAWProject;
@@ -28,6 +30,8 @@ export interface TransportBarProps {
   onToggleMetronome: () => void;
   onCountIn: (bars: number) => void;
   onBpm: (bpm: number) => void;
+  onKeyScale: (key: string, scale: string, scaleMask: number | undefined) => void;
+  onDetectKey: () => Promise<ClipKeyResult>;
   onRename: (title: string) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -121,7 +125,7 @@ export function TransportBar(p: TransportBarProps) {
           />
           BPM
         </label>
-        <span className="ml-1 text-[11px] text-zinc-500">{p.project.key} {p.project.scale}</span>
+        <KeyScaleControl project={p.project} onChange={p.onKeyScale} onDetect={p.onDetectKey} />
       </div>
 
       <button onClick={p.onVersions} className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 hover:bg-white/5" title="Version history"><History className="h-3.5 w-3.5" /></button>
