@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 
 const post = vi.fn();
 const patch = vi.fn();
@@ -14,7 +14,7 @@ import { collectEvents, type TimelineEvent } from '@/lib/daw/scheduler';
 import { createTrack, createMidiClip, createProject, note } from '@/lib/daw/project';
 import { placeableItems } from '@/components/studio/daw/BrowserPanel';
 import { uploadMixToLibrary, LIBRARY_UPLOAD_MAX_BYTES } from '@/components/studio/daw/Dialogs';
-import { DeviceCard } from '@/components/studio/daw/DevicePanel';
+import { DeviceCard, DEVICE_SPECS, newDevice } from '@/components/studio/daw/DevicePanel';
 
 describe('MIDI clip gain reaches the audio graph', () => {
   it('note events carry the clip gain', () => {
@@ -80,5 +80,32 @@ describe('legacy devices the engine skips', () => {
     expect(screen.queryByTitle('Bypass')).toBeNull();
     fireEvent.click(screen.getByTitle('Remove'));
     expect(onRemove).toHaveBeenCalled();
+  });
+});
+
+describe('device card param labels stay readable', () => {
+  it('shows Gate Threshold, Range, and Release in full (not truncated)', () => {
+    render(<DeviceCard fx={newDevice('gate')} onChange={vi.fn()} />);
+    for (const name of ['Threshold', 'Range', 'Release']) {
+      const label = screen.getByText(name);
+      expect(label).toHaveAttribute('title', name);
+      expect(label.className).toMatch(/shrink-0/);
+      expect(label.className).not.toMatch(/truncate/);
+    }
+  });
+
+  it('keeps every Add-device param label readable on the same-width card', () => {
+    for (const spec of DEVICE_SPECS) {
+      const { unmount } = render(<DeviceCard fx={newDevice(spec.type)} onChange={vi.fn()} />);
+      const card = screen.getByTestId('studio-device');
+      expect(card.className).toMatch(/\bw-48\b/);
+      for (const ps of spec.params) {
+        const label = within(card).getByTitle(ps.label);
+        expect(label.textContent).toBe(ps.label);
+        expect(label.className).toMatch(/shrink-0/);
+        expect(label.className).not.toMatch(/truncate/);
+      }
+      unmount();
+    }
   });
 });
