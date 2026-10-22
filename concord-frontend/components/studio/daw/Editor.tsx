@@ -58,7 +58,8 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const api = useStudioProject(initial, initialRev);
   const { project, edit } = api;
   const engine = getStudioEngine();
-  const rec = useInputRecorder();
+  const armedAudioId = project.tracks.find((t) => t.armed && trackKind(t) === 'audio')?.id ?? null;
+  const rec = useInputRecorder(armedAudioId);
   const { state: transport, launched } = useTransportState();
   const [view, setView] = useState<'arrange' | 'session'>('arrange');
   const [bottom, setBottom] = useState<BottomTab>('editor');

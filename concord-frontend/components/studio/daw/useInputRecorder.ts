@@ -7,6 +7,7 @@ import {
   loadInputPrefs, saveInputPrefs, classifyMicError,
   type AudioInputDevice, type InputPrefs, type MicErrorInfo,
 } from '@/lib/daw/input-devices';
+import { applyMonitorRouting, type MonitorPath } from '@/lib/daw/dsp/monitor-routing';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { requestPersistentStorage } from '@/lib/daw/audio-store';
 
@@ -19,17 +20,31 @@ export interface InputRecorderState {
   deviceChannels: number;
   activeLabel: string | null;
   error: MicErrorInfo | null;
+  /** Take-alignment shift from computeRecordOffsetSec. Not a loopback measurement. */
   latencyMs: number;
+  monitorPath: MonitorPath;
+  /** One sentence for the path, then the latency report lines. */
+  monitorLines: string[];
 }
 
-export function useInputRecorder() {
+export function useInputRecorder(armedAudioTrackId: string | null = null) {
   const recRef = useRef<InputRecorder | null>(null);
   const [st, setSt] = useState<InputRecorderState>(() => ({
     devices: [], needsPermission: true, prefs: loadInputPrefs(), open: false, opening: false,
     deviceChannels: 1, activeLabel: null, error: null, latencyMs: 0,
+    monitorPath: 'off', monitorLines: ['Software monitoring is off.'],
   }));
   const prefsRef = useRef(st.prefs);
-  prefsRef.current = st.prefs;
+
+  const routeMonitor = useCallback(() => {
+    const r = recRef.current;
+    const applied = applyMonitorRouting(prefsRef.current, armedAudioTrackId, r && r.isOpen ? r : null, getStudioEngine().graph);
+    const lines = [applied.reason, ...applied.report.lines];
+    setSt((s) => {
+      if (s.monitorPath === applied.path && s.monitorLines.join('\n') === lines.join('\n') && s.latencyMs === Math.round((r?.latencyOffsetSec() ?? 0) * 1000)) return s;
+      return { ...s, monitorPath: applied.path, monitorLines: lines, latencyMs: Math.round((r?.latencyOffsetSec() ?? 0) * 1000) };
+    });
+  }, [armedAudioTrackId]);
 
   const recorder = () => {
     if (!recRef.current) recRef.current = new InputRecorder(getStudioEngine().ctx);
@@ -68,23 +83,27 @@ export function useInputRecorder() {
     });
     void requestPersistentStorage();
     setSt((s) => ({ ...s, opening: false, open: true, prefs: nextPrefs, deviceChannels: res.deviceChannels || 1, activeLabel: res.label || null, error: null, latencyMs: Math.round(r.latencyOffsetSec() * 1000) }));
+    routeMonitor();
     return true;
-  }, [refresh]);
+  }, [refresh, routeMonitor]);
 
   const setPrefs = useCallback(async (patch: Partial<InputPrefs>) => {
-    const next = { ...prefsRef.current, ...patch };
+    let next = { ...prefsRef.current, ...patch };
+    if (patch.directMonitor) next = { ...next, directMonitor: true, monitor: false };
+    else if (patch.monitor) next = { ...next, monitor: true, directMonitor: false };
     prefsRef.current = next;
     saveInputPrefs(next);
     setSt((s) => ({ ...s, prefs: next }));
     const r = recRef.current;
+    const monitorPatch = 'monitor' in patch || 'monitorThroughFx' in patch || 'directMonitor' in patch;
+    if (monitorPatch) routeMonitor();
     if (!r?.isOpen) return;
     if ('gainDb' in patch) r.setGain(next.gainDb);
-    if ('monitor' in patch) r.setMonitor(next.monitor);
     if ('deviceId' in patch || 'channelMode' in patch || 'voiceCleanup' in patch) {
       if (r.isRecording) return; // never interrupt a take
       await openInput(next);
     }
-  }, [openInput]);
+  }, [openInput, routeMonitor]);
 
   const close = useCallback(() => {
     recRef.current?.close();
@@ -92,10 +111,14 @@ export function useInputRecorder() {
   }, []);
 
   useEffect(() => {
+    // Device list is an external system. The first read has to happen after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     const unsub = subscribeToDeviceChanges(() => { void refresh(); });
     return () => { unsub(); recRef.current?.close(); recRef.current = null; };
   }, [refresh]);
+
+  useEffect(() => { routeMonitor(); }, [armedAudioTrackId, st.open, st.prefs.monitor, st.prefs.monitorThroughFx, st.prefs.directMonitor, routeMonitor]);
 
   return {
     state: st,

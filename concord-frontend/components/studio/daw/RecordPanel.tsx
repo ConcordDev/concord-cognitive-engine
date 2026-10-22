@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react';
 import { Mic, RefreshCw, Headphones, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { InputRecorderApi } from './useInputRecorder';
 import { useBeatFrame } from './engine-hooks';
 import type { ChannelMode } from '@/lib/daw/input-devices';
@@ -98,16 +97,41 @@ export function RecordPanel({ api }: { api: InputRecorderApi }) {
       </label>
       {warnMonitor && !s.prefs.monitor && (
         <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-100">
-          Use headphones: with speakers, monitoring will feed back. Browser monitoring also adds a little delay.
+          Use headphones. With speakers, monitoring feeds back into the microphone. The delay shown below is what the browser reported, not a loopback measurement.
           <div className="mt-1 flex gap-1">
             <button onClick={() => { setWarnMonitor(false); void api.setPrefs({ monitor: true }); }} className="rounded bg-amber-500/30 px-2 py-0.5">I have headphones on</button>
             <button onClick={() => setWarnMonitor(false)} className="rounded bg-white/10 px-2 py-0.5">Cancel</button>
           </div>
         </div>
       )}
+      <label className="flex items-start gap-2 text-[11px] text-zinc-300">
+        <input
+          type="checkbox"
+          checked={s.prefs.monitorThroughFx}
+          onChange={(e) => void api.setPrefs({ monitorThroughFx: e.target.checked })}
+          className="mt-0.5"
+          data-testid="studio-monitor-fx"
+        />
+        <span>Monitor with track FX <span className="block text-[10px] text-zinc-500">When you hear yourself, the input runs through the armed track&apos;s inserts, fader, and master. The recorded take stays dry. On by default.</span></span>
+      </label>
+      <label className="flex items-start gap-2 text-[11px] text-zinc-300">
+        <input
+          type="checkbox"
+          checked={s.prefs.directMonitor}
+          onChange={(e) => void api.setPrefs({ directMonitor: e.target.checked })}
+          className="mt-0.5"
+          data-testid="studio-direct-monitor"
+        />
+        <span>Direct monitoring (interface) <span className="block text-[10px] text-zinc-500">Mutes software monitoring. Listen on the interface&apos;s hardware knob. That path is not measured here.</span></span>
+      </label>
+      <div className="space-y-1 text-[10px] text-zinc-500" data-testid="studio-monitor-latency">
+        {s.monitorLines.map((line, i) => <p key={i}>{line}</p>)}
+      </div>
       {s.open && (
-        <div className={cn('text-[10px]', 'text-zinc-500')}>
-          {s.activeLabel ? `Using ${s.activeLabel}. ` : ''}Latency compensation {s.latencyMs} ms · {s.deviceChannels === 2 ? 'stereo device' : 'mono device'}
+        <div className="text-[10px] text-zinc-500">
+          {s.activeLabel ? `Using ${s.activeLabel}. ` : ''}
+          Take alignment shift {s.latencyMs} ms (reported input plus output, clamped at 500 ms). Not a loopback measurement.
+          {' '}{s.deviceChannels === 2 ? 'Stereo device.' : 'Mono device.'}
         </div>
       )}
     </div>

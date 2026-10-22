@@ -62,6 +62,8 @@ export class ProjectGraph {
   private buffers = new Map<string, AudioBuffer>();
   private voices = new Set<{ v: Voice; end: number }>();
   private project: DAWProject | null = null;
+  /** Live input, pre-insert. Not used by the offline render. */
+  private monitor: { node: AudioNode; trackId: string } | null = null;
 
   constructor(ctx: BaseAudioContext, opts: GraphOptions) {
     this.ctx = ctx;
@@ -125,6 +127,7 @@ export class ProjectGraph {
     }
     for (const [id, ch] of this.channels) {
       if (live.has(id)) continue;
+      if (this.monitor?.trackId === id) this.detachMonitor();
       try { ch.mute.disconnect(); ch.input.disconnect(); } catch { /* noop */ }
       ch.chain.dispose();
       this.channels.delete(id);
@@ -133,6 +136,35 @@ export class ProjectGraph {
     this.masteringChain.set(this.opts.bypassMastering ? [] : masteringEffects(project));
     const mv = project.masterBus?.volume;
     this.masterFader.gain.value = Number.isFinite(mv) ? dbToGain(Math.min(12, mv as number)) : 1;
+  }
+
+  /**
+   * Connect a live input to one channel, before inserts. Pass null to detach.
+   * Returns false when that track has no channel. Does not change the dry
+   * recording tap. Offline renders never call this.
+   */
+  setMonitorSource(node: AudioNode | null, trackId: string | null): boolean {
+    this.detachMonitor();
+    if (!node || !trackId) return false;
+    const ch = this.channels.get(trackId);
+    if (!ch) return false;
+    try {
+      node.connect(ch.input);
+    } catch {
+      return false;
+    }
+    this.monitor = { node, trackId };
+    return true;
+  }
+
+  private detachMonitor(): void {
+    if (!this.monitor) return;
+    const ch = this.channels.get(this.monitor.trackId);
+    try {
+      if (ch) this.monitor.node.disconnect(ch.input);
+      else this.monitor.node.disconnect();
+    } catch { /* already disconnected */ }
+    this.monitor = null;
   }
 
   /** Queue one timeline event at context time `time`. */
@@ -220,6 +252,7 @@ export class ProjectGraph {
   }
 
   dispose(): void {
+    this.detachMonitor();
     this.stopAll();
     for (const ch of this.channels.values()) {
       try { ch.mute.disconnect(); } catch { /* noop */ }

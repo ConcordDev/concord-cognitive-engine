@@ -46,10 +46,36 @@ const TAB_LABEL_REDIRECT_MAP: Record<string, string> = Object.fromEntries(
  * report-only rollout history this flip closes out.
  */
 
-function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }): string {
+/**
+ * Studio document only. Chrome often lets a nonce-trusted script call
+ * audioWorklet.addModule on a same-origin URL under 'strict-dynamic'; Safari
+ * often does not, because 'strict-dynamic' ignores 'self' and the worklet
+ * fetch is not treated as a nonce-propagated load. This route drops only
+ * 'strict-dynamic'. The nonce and 'self' stay. No 'unsafe-inline', no
+ * 'blob:' in script-src, no host allowlist.
+ *
+ * Weakening: a same-origin classic script on /lenses/studio no longer needs
+ * the nonce. Every other document keeps 'strict-dynamic'. Non-production
+ * still adds 'unsafe-eval' (Next dev), including on this route; production
+ * does not.
+ */
+export function isStudioDocument(pathname: string): boolean {
+  return pathname === '/lenses/studio' || pathname.startsWith('/lenses/studio/');
+}
+
+export function scriptSrcForDocument(pathname: string, nonce: string, nodeEnv: string): string {
+  const parts = ["'self'", `'nonce-${nonce}'`];
+  if (!isStudioDocument(pathname)) parts.push("'strict-dynamic'");
+  parts.push("'wasm-unsafe-eval'");
+  if (nodeEnv !== 'production') parts.push("'unsafe-eval'");
+  return `script-src ${parts.join(' ')}`;
+}
+
+function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'"; pathname?: string }): string {
   // Default document policy is frame-ancestors 'none'. /unity-client/ and
   // /concordia-webgl/ are the same-origin iframe exceptions (world lens → Unity WebGL).
   const frameAncestors = opts?.frameAncestors ?? "'none'";
+  const pathname = opts?.pathname ?? '/';
   const directives = [
     `default-src 'self'`,
     // 'strict-dynamic' lets Next's own nonce'd bootstrap script load its
@@ -67,7 +93,8 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }
     // script that does not carry this response's nonce. Turn the snippet
     // off in the Cloudflare dashboard (Web Analytics → disable JS
     // injection). The app does not embed the beacon.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
+    // /lenses/studio omits 'strict-dynamic' — see scriptSrcForDocument.
+    scriptSrcForDocument(pathname, nonce, process.env.NODE_ENV || ''),
     // See header comment: nonces cannot cover the `style` HTML attribute,
     // and this app's React components use it pervasively. cdn.jsdelivr.net:
     // @monaco-editor/react loads Monaco from jsdelivr — its script is allowed
@@ -337,12 +364,12 @@ export function middleware(request: NextRequest) {
   // frame-ancestors 'none' (and X-Frame-Options DENY) would refuse even a
   // same-origin embed — pass frameAncestors into buildCsp (not only a later
   // string-replace) so the CSP is correct from the start.
-  const csp = buildCsp(
-    nonce,
-    pathname.startsWith('/unity-client/') || pathname.startsWith('/concordia-webgl/')
-      ? { frameAncestors: "'self'" }
-      : undefined,
-  );
+  const csp = buildCsp(nonce, {
+    pathname,
+    ...(pathname.startsWith('/unity-client/') || pathname.startsWith('/concordia-webgl/')
+      ? { frameAncestors: "'self'" as const }
+      : {}),
+  });
 
   // Propagate the nonce to Server Components via a request header (read
   // with `(await headers()).get('x-nonce')`), and set the CSP itself as a

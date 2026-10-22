@@ -27,6 +27,10 @@ export interface InputPrefs {
   voiceCleanup: boolean;
   gainDb: number;
   monitor: boolean;
+  /** When monitoring, route through the armed track's inserts. Default on. */
+  monitorThroughFx: boolean;
+  /** Mute software monitoring. The interface's own knob is the monitor. */
+  directMonitor: boolean;
   countInBars: number;
 }
 
@@ -37,6 +41,8 @@ export const DEFAULT_INPUT_PREFS: InputPrefs = {
   voiceCleanup: false,
   gainDb: 0,
   monitor: false,
+  monitorThroughFx: true,
+  directMonitor: false,
   countInBars: 1,
 };
 
@@ -171,7 +177,9 @@ export function loadInputPrefs(storage: Pick<Storage, 'getItem'> | null = safeSt
       channelMode: p.channelMode === 'stereo' || p.channelMode === 'mono2' ? p.channelMode : 'mono1',
       voiceCleanup: p.voiceCleanup === true,
       gainDb: Number.isFinite(p.gainDb) ? Math.max(-24, Math.min(24, Number(p.gainDb))) : 0,
-      monitor: p.monitor === true,
+      monitor: p.directMonitor === true ? false : p.monitor === true,
+      monitorThroughFx: p.monitorThroughFx !== false,
+      directMonitor: p.directMonitor === true,
       countInBars: Number.isFinite(p.countInBars) ? Math.max(0, Math.min(4, Math.round(Number(p.countInBars)))) : 1,
     };
   } catch {
