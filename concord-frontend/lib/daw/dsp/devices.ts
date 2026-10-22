@@ -9,6 +9,8 @@
 
 import type { EffectInstance } from '../types';
 import { mulberry32, hashString, dbToGain } from './rng';
+import { createPitchDevice } from './pitch/runtime';
+import { pitchWorkletReady } from '../worklets/load-pitch-worklet';
 
 export interface DeviceNode {
   input: AudioNode;
@@ -322,6 +324,8 @@ export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): Dev
     }
     case 'gate':
       return createGate(ctx, p);
+    case 'pitchCorrect':
+      return createPitchDevice(ctx, effect);
     default:
       return null;
   }
@@ -341,7 +345,9 @@ export class DeviceChain {
 
   set(effects: EffectInstance[] | undefined): void {
     const list = (effects || []).filter((e) => e && e.enabled !== false);
-    const key = JSON.stringify(list.map((e) => [e.id, e.type, e.wet, e.params]));
+    // Pitch params are pushed to the worklet without rebuilding the node.
+    // Readiness is part of the key so the node appears once addModule succeeds.
+    const key = JSON.stringify(list.map((e) => e.type === 'pitchCorrect' ? [e.id, e.type, e.enabled] : [e.id, e.type, e.wet, e.params])) + (pitchWorkletReady() ? '|pw' : '');
     if (key === this.key) return;
     this.key = key;
     try { this.input.disconnect(); } catch { /* noop */ }
