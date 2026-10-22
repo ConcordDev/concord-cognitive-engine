@@ -35,6 +35,8 @@ export default function registerMessageActions(registerLensAction) {
     // 2026 Slack-parity backlog backfills — append-only.
     if (!s.huddles)        s.huddles        = new Map(); // userId -> Map<huddleId, huddle>
     if (!s.files)          s.files          = new Map(); // userId -> Map<channelId, fileEntry[]>
+    if (!s.channelIndex)   s.channelIndex   = new Map(); // channelId -> channel (shared dm/group_dm)
+    if (!s.sharedMessages) s.sharedMessages = new Map(); // channelId -> messages for every participant
     if (!s.typing)         s.typing         = new Map(); // userId -> Map<channelId, { handle, expiresAt }[]>
     if (!s.commands)       s.commands       = new Map(); // userId -> slashCommand registry[]
     if (!s.appMessages)    s.appMessages    = new Map(); // userId -> Map<channelId, appMsg[]>
@@ -292,6 +294,16 @@ export default function registerMessageActions(registerLensAction) {
   }
   function listB(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
   function mapB(map, k) { if (!map.has(k)) map.set(k, new Map()); return map.get(k); }
+  function usesShared(ch) { return !!ch && (ch.kind === "dm" || ch.kind === "group_dm"); }
+  function isChannelMember(ch, userId) {
+    if (!ch || !userId) return false;
+    if (ch.createdBy === userId) return true;
+    return Array.isArray(ch.participants) && ch.participants.map(String).includes(String(userId));
+  }
+  function channelMessages(s, userId, channel) {
+    if (usesShared(channel)) return listB(s.sharedMessages, channel.id);
+    return listB(mapB(s.messages, userId), channel.id);
+  }
 
   // ── Channels ──────────────────────────────────────────────────
 
@@ -312,7 +324,7 @@ export default function registerMessageActions(registerLensAction) {
     // Compute unread count per channel
     const reads = mapB(s.readState, userId);
     const enriched = list.map(c => {
-      const msgs = listB(mapB(s.messages, userId), c.id);
+      const msgs = usesShared(c) ? (s.sharedMessages.get(c.id) || []) : listB(mapB(s.messages, userId), c.id);
       const lastRead = reads.get(c.id) || 0;
       const unread = msgs.filter(m => new Date(m.ts).getTime() > lastRead && m.senderId !== userId).length;
       const lastMsg = msgs[msgs.length - 1] || null;
@@ -331,6 +343,7 @@ export default function registerMessageActions(registerLensAction) {
     const list = listB(s.channels, userId);
     if (list.some(c => c.name === name && c.kind === kind)) return { ok: false, error: "channel name already exists" };
     const seq = ensureSeqM(s, userId);
+    const participants = [...new Set([userId, ...(Array.isArray(params.participants) ? params.participants.map(String) : [])])];
     const ch = {
       id: nextMsgId('ch'),
       number: `C-${String(seq.ch).padStart(4, '0')}`,
@@ -338,11 +351,21 @@ export default function registerMessageActions(registerLensAction) {
       kind,
       isPrivate: Boolean(params.isPrivate),
       topic: String(params.topic || ""),
-      participants: Array.isArray(params.participants) ? params.participants.map(String) : [],
+      participants: usesShared({ kind }) ? participants : (Array.isArray(params.participants) ? params.participants.map(String) : []),
+      createdBy: userId,
       createdAt: nowIsoMsg(),
     };
+    if (usesShared(ch) && ch.participants.length > 50) return { ok: false, error: "group chats are limited to 50 people" };
     seq.ch++;
     list.push(ch);
+    if (usesShared(ch)) {
+      s.channelIndex.set(ch.id, ch);
+      for (const member of ch.participants) {
+        if (member === userId) continue;
+        const memberList = listB(s.channels, member);
+        if (!memberList.some((row) => row.id === ch.id)) memberList.push(ch);
+      }
+    }
     saveMessageState();
     return { ok: true, result: { channel: ch } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -369,7 +392,13 @@ export default function registerMessageActions(registerLensAction) {
     if (!channelId) return { ok: false, error: "channelId required" };
     const limit = Math.max(1, Math.min(500, Number(params.limit) || 100));
     const before = params.before ? String(params.before) : null;
-    const all = listB(mapB(s.messages, userId), channelId);
+    const shared = s.channelIndex.get(channelId);
+    if (shared && usesShared(shared) && !isChannelMember(shared, userId)) {
+      return { ok: false, error: "not a participant" };
+    }
+    const all = shared && usesShared(shared)
+      ? (s.sharedMessages.get(channelId) || [])
+      : listB(mapB(s.messages, userId), channelId);
     let scoped = all;
     if (before) scoped = scoped.filter(m => m.ts < before);
     const slice = scoped.slice(-limit);
@@ -383,8 +412,9 @@ export default function registerMessageActions(registerLensAction) {
     const channelId = String(params.channelId || "");
     const body = String(params.body || "").trim();
     if (!channelId || !body) return { ok: false, error: "channelId + body required" };
-    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    const channel = s.channelIndex.get(channelId) || listB(s.channels, userId).find(c => c.id === channelId);
     if (!channel) return { ok: false, error: "channel not found" };
+    if (usesShared(channel) && !isChannelMember(channel, userId)) return { ok: false, error: "not a participant" };
     const seq = ensureSeqM(s, userId);
     const msg = {
       id: nextMsgId('msg'),
@@ -408,7 +438,7 @@ export default function registerMessageActions(registerLensAction) {
         mentionList.push({ messageId: msg.id, channelId, senderId: userId, body, ts: msg.ts });
       }
     }
-    const msgs = listB(mapB(s.messages, userId), channelId);
+    const msgs = channelMessages(s, userId, channel);
     msgs.push(msg);
     // Author auto-reads their own message
     mapB(s.readState, userId).set(channelId, new Date(msg.ts).getTime());

@@ -13,7 +13,16 @@ import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import logger from "../logger.js";
 import { topicLabel } from "../lib/trending-topics.js";
-import { isBlocked, recipientResolvable } from "../emergent/social-layer.js";
+import {
+  isBlocked,
+  recipientResolvable,
+  canonicalSocial,
+  sendMessage as layerSendMessage,
+  getConversations,
+  getMessages,
+  markMessagesRead,
+} from "../emergent/social-layer.js";
+import { scheduleSocialFlush } from "../lib/social-persist.js";
 import { submitReport } from "../lib/content-moderation.js";
 
 export default function registerSocialActions(registerLensAction) {
@@ -79,12 +88,49 @@ export default function registerSocialActions(registerLensAction) {
       bucket.muted = asSet(bucket.muted);
       bucket.blocked = asSet(bucket.blocked);
     }
+    // One post map. Lens posts created before this alias are copied once,
+    // ids preserved. Replies, reactions and reposts live on the post so the
+    // SQLite snapshot and the Feed tab see the same object.
+    const layer = canonicalSocial(STATE);
+    if (!s.__postsAliased) {
+      for (const [id, post] of [...s.posts.entries()]) {
+        if (post && !layer.posts.has(id)) layer.posts.set(id, post);
+      }
+      s.__postsAliased = true;
+    }
+    s.posts = layer.posts;
+    for (const post of s.posts.values()) {
+      if (!post || typeof post !== "object") continue;
+      if (!post.content && post.body) post.content = post.body;
+      if (!post.body && post.content) post.body = post.content;
+      if (!Array.isArray(post.hashtags)) post.hashtags = [];
+      if (!Array.isArray(post.comments)) post.comments = [];
+      if (!Array.isArray(post.shares)) post.shares = [];
+      if (!(post.bookmarks instanceof Set)) post.bookmarks = new Set();
+      if (!(post.reactions instanceof Map)) post.reactions = new Map();
+      if (!post.privacy) post.privacy = "public";
+      if (!(post.lensReactions instanceof Map)) {
+        const prior = s.reactions.get(post.id);
+        post.lensReactions = prior instanceof Map ? prior : new Map();
+      }
+      s.reactions.set(post.id, post.lensReactions);
+      if (!(post.lensReposts instanceof Set)) {
+        post.lensReposts = asSet(s.reposts.get(post.id));
+      }
+      s.reposts.set(post.id, post.lensReposts);
+      if (!Array.isArray(post.lensReplies)) {
+        const prior = s.replies.get(post.id);
+        post.lensReplies = Array.isArray(prior) ? prior : [];
+      }
+      s.replies.set(post.id, post.lensReplies);
+    }
     return s;
   }
   function save() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
+    scheduleSocialFlush(globalThis._concordSTATE);
   }
   const sid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const now = () => new Date().toISOString();
@@ -99,9 +145,6 @@ export default function registerSocialActions(registerLensAction) {
     while ((m = re.exec(String(text || ""))) !== null) out.add(m[1].toLowerCase());
     return [...out];
   }
-  // Stable thread key for a DM pair (order-independent).
-  const dmKey = (a, b) => [String(a), String(b)].sort().join("::");
-
   function modBucket(s, userId) {
     if (!(s.moderation instanceof Map)) s.moderation = asMap(s.moderation);
     if (!s.moderation.has(userId)) {
@@ -228,6 +271,15 @@ export default function registerSocialActions(registerLensAction) {
       poll,
       quoteOf,
       hashtags: extractHashtags(body),
+      content: body,
+      comments: [],
+      shares: [],
+      bookmarks: new Set(),
+      reactions: new Map(),
+      privacy: "public",
+      lensReplies: [],
+      lensReactions: new Map(),
+      lensReposts: new Set(),
       createdAt: now(),
     };
     s.posts.set(post.id, post);
@@ -305,6 +357,19 @@ export default function registerSocialActions(registerLensAction) {
     };
     list.push(reply);
     s.replies.set(postId, list);
+    const host = s.posts.get(postId);
+    if (host) {
+      if (!Array.isArray(host.comments)) host.comments = [];
+      host.comments.push({
+        id: reply.id,
+        userId,
+        content: body,
+        parentCommentId: parentId,
+        mentionedUsers: [],
+        createdAt: reply.createdAt,
+        replies: [],
+      });
+    }
     save();
     return { ok: true, result: { reply } };
   });
@@ -386,21 +451,16 @@ export default function registerSocialActions(registerLensAction) {
     if (!ctx?.internal && !recipientResolvable(STATE, to, ctx?.db || STATE?.db)) {
       return { ok: false, error: "recipient not found" };
     }
-    const key = dmKey(from, to);
-    if (!s.dms.has(key)) {
-      s.dms.set(key, { key, participants: [from, to].sort(), messages: [], readBy: {} });
-    }
-    const thread = s.dms.get(key);
+    const sent = layerSendMessage(STATE, { fromUserId: from, toUserId: to, content: body });
+    if (!sent.ok) return { ok: false, error: sent.error || "blocked", status: sent.status };
     const message = {
-      id: sid("dm"),
-      from,
-      body,
-      createdAt: now(),
+      id: sent.message.id,
+      from: sent.message.fromUserId,
+      body: sent.message.content,
+      createdAt: sent.message.createdAt,
     };
-    thread.messages.push(message);
-    thread.readBy[from] = thread.messages.length; // sender has read all
     save();
-    return { ok: true, result: { threadKey: key, message } };
+    return { ok: true, result: { threadKey: sent.message.conversationId, message } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -408,20 +468,17 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
-    const threads = [];
-    for (const t of s.dms.values()) {
-      if (!t.participants.includes(me)) continue;
-      const other = t.participants.find((p) => p !== me) || me;
-      const last = t.messages[t.messages.length - 1] || null;
-      const readIdx = t.readBy[me] || 0;
-      threads.push({
-        threadKey: t.key,
-        with: other,
-        lastMessage: last,
-        messageCount: t.messages.length,
-        unread: Math.max(0, t.messages.length - readIdx),
-      });
-    }
+    const STATE = globalThis._concordSTATE;
+    const listed = getConversations(STATE, me);
+    const threads = (listed.conversations || []).map((c) => ({
+      threadKey: c.conversationId,
+      with: c.otherUserId,
+      lastMessage: c.lastMessage
+        ? { from: c.lastMessage.fromUserId, body: c.lastMessage.content, createdAt: c.lastMessage.createdAt }
+        : null,
+      messageCount: c.messageCount || 0,
+      unread: c.unreadCount || 0,
+    }));
     threads.sort((a, b) => {
       const at = a.lastMessage?.createdAt || "";
       const bt = b.lastMessage?.createdAt || "";
@@ -441,25 +498,32 @@ export default function registerSocialActions(registerLensAction) {
   registerLensAction("social", "conversation", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
+    const STATE = globalThis._concordSTATE;
     let key = params.threadKey ? String(params.threadKey) : null;
-    if (!key && params.with) key = dmKey(me, String(params.with));
+    if (key && key.includes("::")) {
+      const [a, b] = key.split("::");
+      key = [a, b].sort().join(":");
+    }
+    if (!key && params.with) key = [me, String(params.with)].sort().join(":");
     if (!key) return { ok: false, error: "threadKey or with required" };
-    const thread = s.dms.get(key);
-    if (!thread) return { ok: true, result: { threadKey: key, messages: [], with: params.with || null } };
-    if (!thread.participants.includes(me)) return { ok: false, error: "not a participant" };
-    // mark as read for the viewer
-    thread.readBy[me] = thread.messages.length;
-    save();
-    const other = thread.participants.find((p) => p !== me) || me;
-    // Resolve display names for the header + per message (additive fields).
-    // resolveUserDisplay is synchronous — keep this handler sync.
+    const parts = key.split(":");
+    if (parts.length !== 2 || !parts.includes(me)) return { ok: false, error: "not a participant" };
+    const read = markMessagesRead(STATE, { userId: me, conversationId: key });
+    if (!read.ok && read.error === "not a participant") return { ok: false, error: "not a participant" };
+    if (!read.ok) return { ok: true, result: { threadKey: key, messages: [], with: params.with || null } };
+    const loaded = getMessages(STATE, key, { userId: me, limit: 200 });
+    if (!loaded.ok) return { ok: false, error: loaded.error || "not a participant" };
+    const other = key.split(":").find((id) => id !== me) || params.with || me;
     let withName = other;
-    let msgs = thread.messages;
+    let msgs = [...(loaded.messages || [])].reverse().map((m) => ({
+      id: m.id, from: m.fromUserId, body: m.content, createdAt: m.createdAt,
+    }));
     try {
-      const display = resolveUserDisplay(ctx?.db, [...new Set([me, other, ...thread.messages.map((m) => m.from)])]);
+      const display = resolveUserDisplay(ctx?.db, [...new Set([me, other, ...msgs.map((m) => m.from)])]);
       withName = display[other]?.displayName || other;
-      msgs = thread.messages.map((m) => ({ ...m, fromName: display[m.from]?.displayName || m.from }));
+      msgs = msgs.map((m) => ({ ...m, fromName: display[m.from]?.displayName || m.from }));
     } catch { /* names are best-effort */ }
+    save();
     return {
       ok: true,
       result: { threadKey: key, with: other, withName, messages: msgs, count: msgs.length },
@@ -476,7 +540,7 @@ export default function registerSocialActions(registerLensAction) {
     const mod = modBucket(s, viewerId);
     const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
     const posts = [...s.posts.values()]
-      .filter((p) => p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+      .filter((p) => Array.isArray(p?.hashtags) && p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
       .map((p) => hydratePost(s, p.id, viewerId, ctx));
