@@ -1,10 +1,11 @@
 /// <reference lib="webworker" />
 /**
  * MP3 encode off the main thread. The UI posts float PCM and may cancel.
- * The encoder itself lives in mp3-encode.ts so tests can call it directly.
+ * The encoder itself lives in mp3-encode-core.ts (never import mp3-encode.ts
+ * here: it creates this worker, and that cycle hangs the Turbopack build).
  */
 
-import { encodeMp3, type Mp3Bitrate, type Mp3Tags } from './mp3-encode';
+import { encodeMp3, type Mp3Bitrate, type Mp3Tags } from './mp3-encode-core';
 
 const scope: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
 const controllers = new Map<number, AbortController>();
