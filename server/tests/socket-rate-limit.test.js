@@ -14,7 +14,7 @@ import { makeSocketRateLimiter, SOCKET_RATE_DEFAULTS } from "../lib/socket-rate-
 
 describe("makeSocketRateLimiter", () => {
   it("allows up to the burst cap then rejects", () => {
-    let t = 0;
+    const t = 0;
     const rl = makeSocketRateLimiter({ ratePerSec: 10, burst: 5, now: () => t });
     // 5 tokens in the bucket at t=0 (no time passes between calls).
     for (let i = 0; i < 5; i++) {
@@ -50,7 +50,7 @@ describe("makeSocketRateLimiter", () => {
   });
 
   it("keeps independent buckets per key", () => {
-    let t = 0;
+    const t = 0;
     const rl = makeSocketRateLimiter({ ratePerSec: 10, burst: 2, now: () => t });
     assert.equal(rl.tryConsume("alice", 1, t), true);
     assert.equal(rl.tryConsume("alice", 1, t), true);
@@ -61,7 +61,7 @@ describe("makeSocketRateLimiter", () => {
   });
 
   it("supports a multi-token cost", () => {
-    let t = 0;
+    const t = 0;
     const rl = makeSocketRateLimiter({ ratePerSec: 10, burst: 5, now: () => t });
     assert.equal(rl.tryConsume("u", 3, t), true); // 2 left
     assert.equal(rl.tryConsume("u", 3, t), false); // not enough

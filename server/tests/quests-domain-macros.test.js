@@ -166,7 +166,7 @@ describe("quests domain — full lifecycle round-trip", () => {
   it("quest auto-completes only when every objective is done", async () => {
     await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 3 });
     // one objective done — quest still active
-    let chk = await macros.get("quests.checkCompletion")(makeCtx(db), { questId: QUEST });
+    const chk = await macros.get("quests.checkCompletion")(makeCtx(db), { questId: QUEST });
     assert.equal(chk.completed, false);
     let active = await macros.get("quests.active")(makeCtx(db), {});
     assert.equal(active.quests.length, 1, "still active with one objective left");
