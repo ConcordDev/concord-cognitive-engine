@@ -18,9 +18,10 @@ import { auditionSpec, clipGaps, compPlaybackSpecs } from './takes';
 import { audibleIds } from './routing';
 import { swingBeat } from './swing';
 import { patternToNotes } from './drum-steps';
+import { arpeggiate } from './beat-tools';
 import type { DrumPattern } from './types';
 
-export type EventKind = 'note' | 'audio' | 'click';
+export type EventKind = 'note' | 'audio' | 'click' | 'cc' | 'pitchBend';
 
 export interface NoteEvent {
   kind: 'note';
@@ -66,7 +67,26 @@ export interface ClickEvent {
   accent: boolean;
 }
 
-export type TimelineEvent = NoteEvent | AudioEvent | ClickEvent;
+export interface CcTimelineEvent {
+  kind: 'cc';
+  trackId: string;
+  clipId: string;
+  beat: number;
+  cc: number;
+  /** 0–127. */
+  value: number;
+}
+
+export interface PitchBendTimelineEvent {
+  kind: 'pitchBend';
+  trackId: string;
+  clipId: string;
+  beat: number;
+  /** -1..1, ±2 semitones on the synth. */
+  value: number;
+}
+
+export type TimelineEvent = NoteEvent | AudioEvent | ClickEvent | CcTimelineEvent | PitchBendTimelineEvent;
 
 /** A clip launched from the Session grid: loops from `launchBeat` until stopped. */
 export interface LaunchedClip {
@@ -173,7 +193,8 @@ function collectClip(
     // straight beat; swing moves only the time the note is heard.
     const pattern = clip.patternId ? src.drumPatterns?.[clip.patternId] : undefined;
     const pass = Math.max(0, Math.round((base - clipStart) / Math.max(loopLen, EPS)));
-    const notes = pattern ? patternToNotes(pattern, pass) : (clip.midiNotes || []);
+    const drawn = pattern ? patternToNotes(pattern, pass) : (clip.midiNotes || []);
+    const notes = !pattern && clip.arp?.enabled ? arpeggiate(drawn, clip.arp, `${clip.id}:${pass}`) : drawn;
     for (const n of notes) {
       if (n.startBeat < 0 || n.startBeat >= loopLen - EPS) continue;
       const beat = base + n.startBeat;
@@ -187,6 +208,26 @@ function collectClip(
         durationSec: variable && tempo ? Math.max(0.01, secondsBetween(tempo, beat, beat + lengthBeats)) : undefined,
         gainDb: clip.gain || 0,
       });
+    }
+    if (pattern) continue;
+    for (const lane of clip.ccLanes || []) {
+      for (const point of lane.points || []) {
+        if (point.beat < 0 || point.beat >= loopLen - EPS) continue;
+        const beat = base + point.beat;
+        if (beat >= iterEnd - EPS || beat < from - EPS || beat >= to) continue;
+        out.push({
+          kind: 'cc', trackId: track.id, clipId: clip.id, beat,
+          cc: Math.max(0, Math.min(127, Math.round(lane.cc))),
+          value: Math.max(0, Math.min(127, Math.round(point.value))),
+        });
+      }
+    }
+    for (const point of clip.pitchBend || []) {
+      if (point.beat < 0 || point.beat >= loopLen - EPS) continue;
+      const beat = base + point.beat;
+      if (beat >= iterEnd - EPS || beat < from - EPS || beat >= to) continue;
+      const value = Math.max(-1, Math.min(1, Number(point.value) || 0));
+      out.push({ kind: 'pitchBend', trackId: track.id, clipId: clip.id, beat, value });
     }
   }
 }

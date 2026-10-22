@@ -9,6 +9,12 @@ import { mulberry32 } from './rng';
 
 export interface Voice {
   stop(at?: number): void;
+  /** Semitones, applied as oscillator detune. ±2 is the lane range. */
+  bend?(semitones: number, at?: number): void;
+  /** 0–1. Opens the filter from its base cutoff. CC 1 uses this. */
+  modulate?(amount01: number, at?: number): void;
+  /** 0–1. Scales the voice amp. CC 11 uses this. */
+  level?(amount01: number, at?: number): void;
 }
 
 const noiseCache = new WeakMap<BaseAudioContext, AudioBuffer>();
@@ -82,6 +88,7 @@ export function playSynthNote(
 
   const stopAt = end + r * 1.5 + 0.05;
   const oscs: OscillatorNode[] = [];
+  const baseDetune: number[] = [];
   const srcs: AudioScheduledSourceNode[] = [];
   const unison = Math.max(1, Math.min(4, preset.unison || 1));
   for (const o of preset.oscillators) {
@@ -110,7 +117,9 @@ export function playSynthNote(
         osc.frequency.value = target;
       }
       const spread = unison > 1 ? ((u / (unison - 1)) * 2 - 1) * (preset.unisonDetune || 0) : 0;
-      osc.detune.value = (o.detune || 0) + spread;
+      const detune = (o.detune || 0) + spread;
+      osc.detune.value = detune;
+      baseDetune.push(detune);
       const g = ctx.createGain();
       g.gain.value = (o.level || 0) / unison;
       osc.connect(g).connect(filter);
@@ -128,6 +137,35 @@ export function playSynthNote(
         amp.gain.setTargetAtTime(0, t, 0.01);
         srcs.forEach((x) => { try { x.stop(t + 0.06); } catch { /* already stopped */ } });
       } catch { /* noop */ }
+    },
+    bend(semitones: number, at?: number) {
+      const cents = Math.max(-200, Math.min(200, semitones * 100));
+      const t = Math.max(0, at ?? (ctx as AudioContext).currentTime ?? 0);
+      oscs.forEach((osc, i) => {
+        try {
+          osc.detune.cancelScheduledValues(t);
+          osc.detune.setValueAtTime(osc.detune.value, t);
+          osc.detune.linearRampToValueAtTime(baseDetune[i] + cents, t + 0.01);
+        } catch { /* voice already stopped */ }
+      });
+    },
+    modulate(amount01: number, at?: number) {
+      const amt = Math.max(0, Math.min(1, amount01));
+      const opened = Math.min(20000, baseF * (1 + amt * 6));
+      const t = Math.max(0, at ?? (ctx as AudioContext).currentTime ?? 0);
+      try {
+        filter.frequency.cancelScheduledValues(t);
+        filter.frequency.setTargetAtTime(opened, t, 0.03);
+      } catch { /* voice already stopped */ }
+    },
+    level(amount01: number, at?: number) {
+      const amt = Math.max(0, Math.min(1, amount01));
+      const t = Math.max(0, at ?? (ctx as AudioContext).currentTime ?? 0);
+      try {
+        amp.gain.cancelScheduledValues(t);
+        amp.gain.setValueAtTime(Math.max(0.0001, amp.gain.value), t);
+        amp.gain.linearRampToValueAtTime(Math.max(0.0001, peak * amt), t + 0.02);
+      } catch { /* voice already stopped */ }
     },
   };
 }
