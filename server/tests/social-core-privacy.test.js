@@ -23,6 +23,7 @@ import {
   getTrendingCreators,
   getTrendingDomains,
   upsertProfile,
+  canonicalSocial,
   purgeUserSocialRecords,
   getNotifications,
 } from "../emergent/social-layer.js";
@@ -135,6 +136,10 @@ describe("social core privacy", { concurrency: 1 }, () => {
     const STATE = globalThis._concordSTATE;
     upsertProfile(STATE, "alice", { displayName: "Alice", isPublic: true });
     upsertProfile(STATE, "bob", { displayName: "Bob", isPublic: true });
+    // This suite posts more than a brand-new account is allowed to.
+    // The accounts under test are established.
+    canonicalSocial(STATE).profiles.get("alice").createdAt = "2020-01-01T00:00:00.000Z";
+    canonicalSocial(STATE).profiles.get("bob").createdAt = "2020-01-01T00:00:00.000Z";
     const pub = createPost(STATE, { userId: "alice", content: "public hello", privacy: "public", tags: ["music"] });
     createPost(STATE, { userId: "alice", content: "followers only secret", privacy: "followers", tags: ["secret"] });
     createPost(STATE, { userId: "alice", content: "private diary", privacy: "private", tags: ["diary"] });

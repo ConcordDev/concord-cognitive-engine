@@ -25,6 +25,7 @@ import {
 } from "../emergent/social-layer.js";
 import { scheduleSocialFlush } from "../lib/social-persist.js";
 import { submitReport } from "../lib/content-moderation.js";
+import { assertSocialRate, duplicatePost, linkHeavyNewAccount, textHitsKeywordMute } from "../lib/social-safety.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
@@ -204,8 +205,13 @@ export default function registerSocialActions(registerLensAction) {
     const replyRaw = s.replies.get(postId);
     const replyList = Array.isArray(replyRaw) ? replyRaw : [];
     const who = authorIdentity(ctx, post.userId, post.username, post.displayName);
+    const viewer = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
+    const hideMedia = post.sensitive === true && viewerId !== post.userId && viewer?.showSensitive !== true;
     return {
       ...post,
+      media: hideMedia ? [] : post.media,
+      mediaUrl: hideMedia ? null : post.mediaUrl,
+      sensitiveHidden: hideMedia,
       username: who.username,
       displayName: who.displayName,
       replyCount: replyList.length,
@@ -233,6 +239,11 @@ export default function registerSocialActions(registerLensAction) {
       const screen = screenLocalSync(body, { targetScope: "published" });
       if (!screen.allowed) return { ok: false, error: "post_blocked", reason: screen.reason, flags: screen.flags };
     }
+    const profile = canonicalSocial(globalThis._concordSTATE).profiles.get(userId);
+    const postLimit = assertSocialRate(profile, userId, "post");
+    if (!postLimit.ok) return { ok: false, status: postLimit.status, error: postLimit.error };
+    if (duplicatePost(s.posts, userId, body)) return { ok: false, status: 409, error: "duplicate post" };
+    if (linkHeavyNewAccount(profile, body)) return { ok: false, status: 403, error: "new accounts cannot post that many links" };
     const poll = params.poll && Array.isArray(params.poll.options)
       ? {
           question: clip(params.poll.question, 200),
@@ -252,9 +263,9 @@ export default function registerSocialActions(registerLensAction) {
     }
     const media = Array.isArray(params.media)
       ? params.media
-          .filter((m) => m && (m.kind === "image" || m.kind === "video") && m.url)
+          .filter((m) => m && (m.kind === "image" || m.kind === "video" || m.kind === "audio") && m.url)
           .slice(0, 4)
-          .map((m) => ({ kind: m.kind, url: clip(m.url, 1000), alt: clip(m.alt, 200) }))
+          .map((m) => ({ kind: m.kind, url: clip(m.url, 1000), alt: clip(m.alt, 200), caption: clip(m.caption, 200) }))
       : [];
     const quoteOf = params.quoteOf && s.posts.has(String(params.quoteOf))
       ? String(params.quoteOf) : null;
@@ -278,6 +289,7 @@ export default function registerSocialActions(registerLensAction) {
       bookmarks: new Set(),
       reactions: new Map(),
       privacy: "public",
+      sensitive: params.sensitive === true,
       lensReplies: [],
       lensReactions: new Map(),
       lensReposts: new Set(),
@@ -296,8 +308,10 @@ export default function registerSocialActions(registerLensAction) {
       const viewerId = actor(ctx);
       const mod = modBucket(s, viewerId);
       const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
+      const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
       const items = [...s.posts.values()]
         .filter((p) => p && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+        .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
         .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
         .slice(0, limit)
         .map((p) => hydratePost(s, p.id, viewerId, ctx))
@@ -345,6 +359,8 @@ export default function registerSocialActions(registerLensAction) {
       return { ok: false, error: "parent reply not found" };
     }
     const userId = actor(ctx);
+    const replyLimit = assertSocialRate(canonicalSocial(globalThis._concordSTATE).profiles.get(userId), userId, "comment");
+    if (!replyLimit.ok) return { ok: false, status: replyLimit.status, error: replyLimit.error };
     const who = authorIdentity(ctx, userId, params.username, params.displayName);
     const reply = {
       id: sid("reply"),
@@ -550,8 +566,10 @@ export default function registerSocialActions(registerLensAction) {
     const viewerId = actor(ctx);
     const mod = modBucket(s, viewerId);
     const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 40));
+    const viewerProfile = canonicalSocial(globalThis._concordSTATE).profiles.get(viewerId);
     const posts = [...s.posts.values()]
       .filter((p) => Array.isArray(p?.hashtags) && p.hashtags.includes(tag) && !mod.blocked.has(p.userId) && !mod.muted.has(p.userId))
+      .filter((p) => p.userId === viewerId || !textHitsKeywordMute(viewerProfile, `${p.content || ""} ${p.body || ""} ${(p.hashtags || []).join(" ")}`))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
       .map((p) => hydratePost(s, p.id, viewerId, ctx));
@@ -638,8 +656,8 @@ export default function registerSocialActions(registerLensAction) {
   // and returns the canonical attachment object the composer attaches.
   registerLensAction("social", "registerMedia", (_ctx, _a, params = {}) => {
     const kind = String(params.kind || "");
-    if (kind !== "image" && kind !== "video") {
-      return { ok: false, error: "kind must be 'image' or 'video'" };
+    if (kind !== "image" && kind !== "video" && kind !== "audio") {
+      return { ok: false, error: "kind must be 'image', 'video', or 'audio'" };
     }
     if (typeof params.url === "string" && /^data:/i.test(params.url)) {
       return { ok: false, error: "data URIs are not accepted; upload the file first" };
@@ -656,7 +674,8 @@ export default function registerSocialActions(registerLensAction) {
           kind,
           url,
           alt: clip(params.alt, 200),
-          mime: clip(params.mime, 80) || (kind === "image" ? "image/*" : "video/*"),
+          caption: clip(params.caption, 200),
+          mime: clip(params.mime, 80) || (kind === "image" ? "image/*" : kind === "audio" ? "audio/*" : "video/*"),
         },
       },
     };

@@ -87,6 +87,8 @@ function postPayload(post) {
     replyAudience: post.replyAudience || "everyone",
     threadParentId: post.threadParentId || null,
     groupId: post.groupId || null,
+    sensitive: post.sensitive === true,
+    listing: post.listing && typeof post.listing === "object" ? post.listing : null,
   };
 }
 

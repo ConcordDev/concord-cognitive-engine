@@ -7,6 +7,7 @@
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { ensureSocialHydrated, scheduleSocialFlush } from "../lib/social-persist.js";
+import { assertSocialRate, duplicatePost, linkHeavyNewAccount } from "../lib/social-safety.js";
 
 
 // ── Realtime emit hookup (Phase 11, Item 4) ─────────────────────────────
@@ -244,6 +245,8 @@ export function followUser(STATE, followerId, followedId) {
   const social = getSocialState(STATE);
   if (followerId === followedId) return { ok: false, error: "Cannot follow yourself" };
   if (isBlocked(STATE, followerId, followedId)) return blockedResult();
+  const followLimit = assertSocialRate(social.profiles.get(followerId), followerId, "follow");
+  if (!followLimit.ok) return followLimit;
 
   // Check followed user exists
   if (!social.profiles.has(followedId)) {
@@ -657,10 +660,18 @@ function requireVisiblePost(social, postId, viewerId) {
   return post;
 }
 
-export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility, privacy, visibility, replyAudience }) {
+export function createPost(STATE, { userId, content, title, mediaType, mediaUrl, tags, mentionedUsers, pollOptions, isStory, expiresAt, taggedProducts, linkedDTUs, federationVisibility, privacy, visibility, replyAudience, sensitive }) {
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
+  const postLimit = assertSocialRate(social.profiles.get(userId), userId, "post");
+  if (!postLimit.ok) return postLimit;
+  if (duplicatePost(social.posts, userId, content)) {
+    return { ok: false, status: 409, error: "duplicate post" };
+  }
+  if (linkHeavyNewAccount(social.profiles.get(userId), content)) {
+    return { ok: false, status: 403, error: "new accounts cannot post that many links" };
+  }
   if (typeof mediaUrl === "string" && /^data:/i.test(mediaUrl)) {
     return { ok: false, error: "data URIs are not accepted; upload the file first" };
   }
@@ -698,6 +709,7 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
     threadPosition: 0,
     groupId: null,
     privacy: audience,
+    sensitive: sensitive === true,
     replyAudience: ["everyone", "followers", "mentioned"].includes(replyAudience) ? replyAudience : "everyone",
     federationVisibility: fedVisibility,
     apActivityId: fedVisibility !== 'local' ? `concord:post:${id}` : null,
@@ -799,6 +811,8 @@ function serializePost(post) {
     threadPosition: post.threadPosition,
     groupId: post.groupId,
     privacy: post.privacy || "public",
+    sensitive: post.sensitive === true,
+    listing: post.listing || null,
     federationVisibility: post.federationVisibility || 'local',
     apActivityId: post.apActivityId || null,
   };
@@ -876,6 +890,8 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
   const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
   if (isBlocked(STATE, userId, post.userId)) return blockedResult();
+  const commentLimit = assertSocialRate(social.profiles.get(userId), userId, "comment");
+  if (!commentLimit.ok) return commentLimit;
 
   const comment = {
     id: nextId("cmt"),
@@ -1108,6 +1124,8 @@ export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) 
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
   if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
+  const dmLimit = assertSocialRate(social.profiles.get(fromUserId), fromUserId, "dm");
+  if (!dmLimit.ok) return dmLimit;
 
   const recipient = social.profiles.get(toUserId);
   const policy = recipient?.dmPolicy || "everyone";
