@@ -64,12 +64,16 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
     CREATE INDEX IF NOT EXISTS idx_sgp_group ON social_group_posts (group_id, created_at DESC);
   `);
 
+  try {
+    db.exec("ALTER TABLE social_groups ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
+  } catch { /* column already present */ }
+
   // ── Prepared statements ─────────────────────────────────────────────────────
 
   const stmts = {
     insertGroup: db.prepare(
-      `INSERT INTO social_groups (group_id, name, description, rules, tags, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO social_groups (group_id, name, description, rules, tags, created_by, visibility, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ),
     insertMember: db.prepare(
       `INSERT OR IGNORE INTO social_group_members (group_id, user_id, role, joined_at)
@@ -79,7 +83,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       `DELETE FROM social_group_members WHERE group_id = ? AND user_id = ?`
     ),
     getGroup: db.prepare(
-      `SELECT group_id, name, description, rules, tags, created_by, created_at FROM social_groups WHERE group_id = ?`
+      `SELECT group_id, name, description, rules, tags, created_by, created_at, visibility FROM social_groups WHERE group_id = ?`
     ),
     memberCount: db.prepare(
       `SELECT COUNT(*) AS cnt FROM social_group_members WHERE group_id = ?`
@@ -88,12 +92,18 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       `SELECT 1 FROM social_group_members WHERE group_id = ? AND user_id = ?`
     ),
     listGroups: db.prepare(
-      `SELECT group_id, name, description, tags, created_at FROM social_groups ORDER BY created_at DESC LIMIT ?`
+      `SELECT group_id, name, description, tags, created_at, visibility FROM social_groups ORDER BY created_at DESC LIMIT ?`
     ),
     searchGroups: db.prepare(
-      `SELECT group_id, name, description, tags, created_at FROM social_groups
+      `SELECT group_id, name, description, tags, created_at, visibility FROM social_groups
        WHERE name LIKE ? OR description LIKE ? OR tags LIKE ?
        ORDER BY created_at DESC LIMIT ?`
+    ),
+    memberRole: db.prepare(
+      `SELECT role FROM social_group_members WHERE group_id = ? AND user_id = ?`
+    ),
+    setRole: db.prepare(
+      `UPDATE social_group_members SET role = ? WHERE group_id = ? AND user_id = ?`
     ),
     listMembers: db.prepare(
       `SELECT user_id, role, joined_at FROM social_group_members WHERE group_id = ? ORDER BY joined_at ASC LIMIT ?`
@@ -133,8 +143,14 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       memberCount: memberCountRow?.cnt || 0,
       tags,
       isMember: !!memberCheck,
+      visibility: row.visibility === "private" ? "private" : "public",
       createdAt: row.created_at,
     };
+  }
+
+  function canSeeGroup(row, userId) {
+    if (!row || row.visibility !== "private") return true;
+    return !!stmts.isMember.get(row.group_id, userId);
   }
 
   // ── GET /groups — list or search ────────────────────────────────────────────
@@ -153,7 +169,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
         rows = stmts.listGroups.all(limit);
       }
 
-      const groups = rows.map((row) => enrichGroup(row, userId));
+      const groups = rows.filter((row) => canSeeGroup(row, userId)).map((row) => enrichGroup(row, userId));
       res.json({ ok: true, groups });
     } catch (err) {
       console.error("[social-groups] GET /groups error:", err);
@@ -167,6 +183,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
     try {
       const userId = resolveUserId(req);
       const { name, description, rules, tags } = req.body || {};
+      const visibility = req.body?.visibility === "private" ? "private" : "public";
 
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ ok: false, error: "Group name is required" });
@@ -186,7 +203,8 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
         (description || "").slice(0, 500),
         (rules || "").slice(0, 2000),
         JSON.stringify(safeTags),
-        userId
+        userId,
+        visibility
       );
 
       // Creator auto-joins as admin
@@ -205,7 +223,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
     try {
       const userId = resolveUserId(req);
       const row = stmts.getGroup.get(req.params.groupId);
-      if (!row) {
+      if (!row || !canSeeGroup(row, userId)) {
         return res.status(404).json({ ok: false, error: "Group not found" });
       }
       res.json(enrichGroup(row, userId));
@@ -255,8 +273,9 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
 
   router.get("/group/:groupId/members", (req, res) => {
     try {
+      const userId = resolveUserId(req);
       const row = stmts.getGroup.get(req.params.groupId);
-      if (!row) {
+      if (!row || !canSeeGroup(row, userId)) {
         return res.status(404).json({ ok: false, error: "Group not found" });
       }
 
@@ -282,8 +301,9 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
 
   router.get("/group/:groupId/feed", (req, res) => {
     try {
+      const userId = resolveUserId(req);
       const row = stmts.getGroup.get(req.params.groupId);
-      if (!row) {
+      if (!row || !canSeeGroup(row, userId)) {
         return res.status(404).json({ ok: false, error: "Group not found" });
       }
 
@@ -342,6 +362,31 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
     } catch (err) {
       console.error("[social-groups] POST /group/:groupId/post error:", err);
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+    }
+  });
+
+  router.post("/group/:groupId/role", requireAuth(), (req, res) => {
+    try {
+      const userId = resolveUserId(req);
+      const row = stmts.getGroup.get(req.params.groupId);
+      if (!row) return res.status(404).json({ ok: false, error: "Group not found" });
+      const caller = stmts.memberRole.get(req.params.groupId, userId);
+      if (!caller || caller.role !== "admin") {
+        return res.status(403).json({ ok: false, error: "Only the group owner can change roles" });
+      }
+      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier
+      const targetId = String(req.body?.userId || "");
+      const role = String(req.body?.role || "");
+      if (!targetId || !["member", "mod", "admin"].includes(role)) {
+        return res.status(400).json({ ok: false, error: "userId and role (member, mod, admin) are required" });
+      }
+      const target = stmts.memberRole.get(req.params.groupId, targetId);
+      if (!target) return res.status(404).json({ ok: false, error: "Member not found" });
+      stmts.setRole.run(role, req.params.groupId, targetId);
+      res.json({ ok: true, userId: targetId, role });
+    } catch (err) {
+      console.error("[social-groups] POST /group/:groupId/role error:", err);
+      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
     }
   });
 

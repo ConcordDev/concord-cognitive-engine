@@ -60,6 +60,7 @@ import {
   hashtagPosts,
   searchSocial,
 } from "../lib/social-feeds.js";
+import { shareListing, shareStudioAsset } from "../lib/social-share.js";
 
 function stateOf() {
   return globalThis._concordSTATE || null;
@@ -297,6 +298,8 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
       readReceipts: req.body?.readReceipts,
       interests: req.body?.interests,
       notificationTypes: req.body?.notificationTypes,
+      keywordMutes: req.body?.keywordMutes,
+      showSensitive: req.body?.showSensitive,
     }));
   });
 
@@ -500,6 +503,27 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     const STATE = stateOf();
     if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
     res.json(searchSocial(STATE, userId, req.query.q));
+  });
+
+  router.post("/listings/:listingId/share", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, shareListing(STATE, { userId, listingId: req.params.listingId, content: req.body?.content }));
+  });
+
+  router.post("/studio/share", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, shareStudioAsset(STATE, {
+      userId,
+      projectId: req.body?.projectId,
+      assetId: req.body?.assetId,
+      content: req.body?.content,
+    }));
   });
 
   router.get("/pinned/:userId", auth, (req, res) => {

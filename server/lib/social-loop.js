@@ -89,6 +89,10 @@ export function setSocialPreferences(STATE, userId, prefs = {}) {
   if (Array.isArray(interests)) {
     profile.interests = [...new Set(interests.map((t) => String(t).replace(/^#/, "").trim().toLowerCase()).filter(Boolean))].slice(0, 20);
   }
+  if (Array.isArray(prefs.keywordMutes)) {
+    profile.keywordMutes = [...new Set(prefs.keywordMutes.map((word) => String(word).trim().toLowerCase()).filter(Boolean))].slice(0, 50);
+  }
+  if (typeof prefs.showSensitive === "boolean") profile.showSensitive = prefs.showSensitive;
   scheduleSocialFlush(STATE);
   return {
     ok: true,
@@ -96,6 +100,8 @@ export function setSocialPreferences(STATE, userId, prefs = {}) {
     readReceipts: profile.readReceipts !== false,
     interests: profile.interests || [],
     notificationTypes: profile.notificationTypes || {},
+    keywordMutes: profile.keywordMutes || [],
+    showSensitive: profile.showSensitive === true,
   };
 }
 

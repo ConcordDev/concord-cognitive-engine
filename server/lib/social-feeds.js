@@ -5,6 +5,7 @@
  */
 import { canonicalSocial, getFollowingFeed, getForYouFeed, followUser, createNotification, isBlocked } from "../emergent/social-layer.js";
 import { scheduleSocialFlush } from "./social-persist.js";
+import { textHitsKeywordMute } from "./social-safety.js";
 
 function profileOf(STATE, userId) {
   const social = canonicalSocial(STATE);
@@ -20,6 +21,24 @@ function isMuted(STATE, viewerId, authorId) {
   const muted = bucket?.muted;
   if (muted instanceof Set) return muted.has(authorId);
   return Array.isArray(muted) && muted.includes(authorId);
+}
+
+function shapeForViewer(STATE, viewerId, row) {
+  if (!row) return null;
+  const social = canonicalSocial(STATE);
+  const stored = social.posts.get(row.id) || row;
+  const profile = social.profiles.get(viewerId);
+  const text = `${stored.content || ""} ${stored.body || ""} ${(stored.hashtags || []).join(" ")} ${(stored.tags || []).join(" ")}`;
+  if (stored.userId !== viewerId && textHitsKeywordMute(profile, text)) return null;
+  const out = { ...row };
+  if (stored.listing) out.listing = stored.listing;
+  const hide = stored.sensitive === true && stored.userId !== viewerId && profile?.showSensitive !== true;
+  if (hide) {
+    out.mediaUrl = null;
+    out.media = [];
+    out.sensitiveHidden = true;
+  }
+  return out;
 }
 
 function visiblePost(STATE, post, viewerId) {
@@ -46,7 +65,10 @@ function whyFor(STATE, userId, post) {
 
 export function followingFeed(STATE, userId, { limit = 30, offset = 0 } = {}) {
   const result = getFollowingFeed(STATE, userId, { limit, offset });
-  const posts = (result.posts || []).filter((post) => !isMuted(STATE, userId, post.userId) && !isBlocked(STATE, userId, post.userId));
+  const posts = (result.posts || [])
+    .filter((post) => !isMuted(STATE, userId, post.userId) && !isBlocked(STATE, userId, post.userId))
+    .map((post) => shapeForViewer(STATE, userId, post))
+    .filter(Boolean);
   return { ok: true, posts, total: posts.length };
 }
 
@@ -60,8 +82,10 @@ export function forYouFeed(STATE, userId, { limit = 30, offset = 0 } = {}) {
   for (const row of result.posts || []) {
     if (hidden.has(row.id) || less.has(row.userId)) continue;
     if (isMuted(STATE, userId, row.userId) || isBlocked(STATE, userId, row.userId)) continue;
+    const shaped = shapeForViewer(STATE, userId, row);
+    if (!shaped) continue;
     const stored = social.posts.get(row.id);
-    posts.push({ ...row, why: whyFor(STATE, userId, stored || row) });
+    posts.push({ ...shaped, why: whyFor(STATE, userId, stored || row) });
   }
   return { ok: true, posts: posts.slice(offset, offset + limit), total: posts.length };
 }
@@ -205,7 +229,15 @@ export function hashtagPosts(STATE, userId, tag) {
   });
   posts.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const following = !!(profileOf(STATE, userId)?.followedHashtags || []).includes(clean);
-  return { ok: true, tag: clean, following, posts: posts.map((post) => ({ id: post.id, userId: post.userId, content: post.content || post.body || "", createdAt: post.createdAt })) };
+  return {
+    ok: true,
+    tag: clean,
+    following,
+    posts: posts
+      .map((post) => shapeForViewer(STATE, userId, post))
+      .filter(Boolean)
+      .map((post) => ({ id: post.id, userId: post.userId, content: post.content || post.body || "", createdAt: post.createdAt, mediaUrl: post.mediaUrl || null, sensitiveHidden: !!post.sensitiveHidden, listing: post.listing || null })),
+  };
 }
 
 function rememberSearch(profile, query) {
@@ -263,7 +295,11 @@ export function searchSocial(STATE, userId, query) {
   return {
     ok: true,
     people: people.slice(0, 20),
-    posts: matched.slice(0, 30).map((post) => ({ id: post.id, userId: post.userId, content: post.content || post.body || "", createdAt: post.createdAt })),
+    posts: matched
+      .map((post) => shapeForViewer(STATE, userId, post))
+      .filter(Boolean)
+      .slice(0, 30)
+      .map((post) => ({ id: post.id, userId: post.userId, content: post.content || post.body || "", createdAt: post.createdAt, mediaUrl: post.mediaUrl || null, sensitiveHidden: !!post.sensitiveHidden })),
     hashtags: [...counts.entries()].map(([tag, count]) => ({ tag, count })),
     recent: profile?.recentSearches || [],
     engine,

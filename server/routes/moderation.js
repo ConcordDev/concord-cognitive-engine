@@ -117,9 +117,7 @@ export function createModerationRouter(deps) {
 
     if (!action) return res.status(400).json({ ok: false, error: "action is required" });
 
-    const result = resolveReport(STATE, {
-      reportId,
-      moderatorId: req.user.id,
+    const result = resolveReport(STATE, reportId, req.user.id, {
       action,
       reason: reason ? String(reason).slice(0, 2000) : undefined,
     });
