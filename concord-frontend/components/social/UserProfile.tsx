@@ -30,6 +30,7 @@ import {
 import { cn, formatRelativeTime, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { ProfileEditDialog } from './ProfileEditDialog';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -271,6 +272,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
   const [showFollowing, setShowFollowing] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const isOwnProfile = currentUserId === userId;
   const gradient = pickGradient(userId);
@@ -389,11 +391,20 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
             Add a name, bio, and specialties so others can find your work across the commons.
           </p>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId } }))}
+            onClick={() => setEditing(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-neon-cyan/15 px-4 py-2 text-sm text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/25 transition-colors"
           >
             <Settings className="w-4 h-4" /> Complete your profile
           </button>
+          {editing && (
+            <div className="mt-4 text-left">
+              <ProfileEditDialog
+                userId={userId}
+                initial={{ displayName: '', bio: '', avatar: '', website: '', isPublic: true }}
+                onClose={() => setEditing(false)}
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -410,6 +421,19 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
 
   return (
     <div className={cn('space-y-0', className)}>
+      {editing && (
+        <ProfileEditDialog
+          userId={profile.userId}
+          initial={{
+            displayName: profile.displayName || '',
+            bio: profile.bio || '',
+            avatar: profile.avatar || '',
+            website: profile.website || '',
+            isPublic: profile.isPublic !== false,
+          }}
+          onClose={() => setEditing(false)}
+        />
+      )}
       {/* Banner / Header */}
       <div className={cn('relative h-40 bg-gradient-to-br rounded-t-xl', gradient)}>
         <div className="absolute inset-0 bg-black/20" />
@@ -446,7 +470,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                   </button>
                   {isOwnProfile && (
                     <button
-                      onClick={() => { window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId: profile.userId } })); }}
+                      onClick={() => { setShowOptions(false); setEditing(true); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                     >
                       <Settings className="w-4 h-4" /> Edit Profile

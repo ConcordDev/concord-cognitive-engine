@@ -36,9 +36,7 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -56,7 +54,6 @@ import { NotificationCenter } from '@/components/social/NotificationCenter';
 import { UserProfile } from '@/components/social/UserProfile';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
 import { TrendingTopics } from '@/components/social/TrendingTopics';
-import { TrendingDomains } from '@/components/social/TrendingDomains';
 import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { DMIndicator } from '@/components/social/DMIndicator';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
@@ -91,11 +88,11 @@ export default function SocialHubPage() {
   useLensIdentity('social');
   const { isLive, lastUpdated } = useRealtimeLens('social');
   const [activeTab, setActiveTab] = useState<TabId>('feed');
-  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   // Phase 12 — Spaces stage modal target. RoomList sets this when the
   // user clicks Join; the modal mounts <RoomStage> which owns the
   // WebRTC mesh (mic, hand, leave).
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [storyRequest, setStoryRequest] = useState(0);
 
   const { data: me } = useQuery<MeResponse | null>({
     queryKey: ['me'],
@@ -107,11 +104,33 @@ export default function SocialHubPage() {
   });
 
   const currentUserId = me?.user?.id || 'current-user';
+  const railUserId = me?.user?.id || null;
 
-  // Default the right-rail profile preview to the current user.
   useEffect(() => {
-    if (me?.user?.id && !profileUserId) setProfileUserId(me.user.id);
-  }, [me?.user?.id, profileUserId]);
+    const open = () => setActiveTab('notifications');
+    window.addEventListener('notifications:open-all', open);
+    return () => window.removeEventListener('notifications:open-all', open);
+  }, []);
+
+  useEffect(() => {
+    const id = me?.user?.id;
+    if (!id) return;
+    let cancel = false;
+    (async () => {
+      try {
+        const existing = await api.get(`/api/social/profile/${encodeURIComponent(id)}`);
+        if (existing?.data?.ok && existing.data.profile) return;
+      } catch { /* no profile yet */ }
+      if (cancel) return;
+      try {
+        await api.post('/api/social/profile', {
+          displayName: me?.user?.displayName || me?.user?.username || id,
+          isPublic: true,
+        });
+      } catch { /* the edit dialog reports a failed save */ }
+    })();
+    return () => { cancel = true; };
+  }, [me?.user?.id, me?.user?.displayName, me?.user?.username]);
 
   // Shared unread-notification count — same query key `NotificationBell`
   // uses internally, so both the topbar bell's badge and the Notifications
@@ -191,9 +210,11 @@ export default function SocialHubPage() {
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <StreakIndicator userId={currentUserId} />
             <DMIndicator userId={currentUserId} />
-            <NotificationBell userId={currentUserId} />
+            <NotificationBell
+              userId={currentUserId}
+              onViewAll={() => setActiveTab('notifications')}
+            />
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="social" data={{}} compact />
           </div>
         </div>
 
@@ -228,17 +249,22 @@ export default function SocialHubPage() {
         </nav>
 
         <div className="mb-5 rounded-2xl border border-white/10 bg-[#111] px-4 py-2.5">
-          <StoriesBar currentUserId={currentUserId} />
+          <StoriesBar
+            currentUserId={currentUserId}
+            onCreateStory={() => {
+              setStoryRequest((n) => n + 1);
+              setActiveTab('feed');
+            }}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
           <main id="social-main" className="min-w-0 space-y-4">
-            {activeTab !== 'feed' && (
-              <QuickPostComposer
-                currentUserId={currentUserId}
-                username={me?.user?.username || me?.user?.displayName || null}
-              />
-            )}
+            <QuickPostComposer
+              currentUserId={currentUserId}
+              username={me?.user?.username || me?.user?.displayName || null}
+              storyRequest={storyRequest}
+            />
 
             {/* Tab content */}
             {activeTab === 'feed' && (
@@ -257,7 +283,11 @@ export default function SocialHubPage() {
             )}
 
             {activeTab === 'notifications' && (
-              <NotificationCenter userId={currentUserId} mode="panel" />
+              <NotificationCenter
+                userId={currentUserId}
+                mode="panel"
+                onViewAll={() => setActiveTab('notifications')}
+              />
             )}
 
             {activeTab === 'reels' && (
@@ -282,23 +312,17 @@ export default function SocialHubPage() {
             {activeTab === 'moderation' && (
               <ModerationPanel />
             )}
-
-            {/* Cross-lens narrative — DTUs surfaced INTO social from elsewhere */}
-            <CrossLensRecentsPanel lensId="social" sinceDays={14} limit={8} hideWhenEmpty />
           </main>
 
           {/* RIGHT RAIL */}
           <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-            {profileUserId && (
+            {railUserId && (
               <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-                <UserProfile userId={profileUserId} currentUserId={currentUserId} />
+                <UserProfile userId={railUserId} currentUserId={currentUserId} />
               </div>
             )}
             <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
-              <TrendingDomains />
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <SuggestedFollows currentUserId={currentUserId} />
@@ -355,14 +379,13 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
   const { data, isLoading, error } = useQuery<{ items?: FollowingActivityItem[] } | null>({
     queryKey: ['social-following-activity', currentUserId],
     queryFn: async () => {
-      try {
-        const r = await api.get<{ items?: FollowingActivityItem[] }>(
-          `/api/social/following-activity?userId=${encodeURIComponent(currentUserId)}&limit=40`,
-        );
-        return r?.data;
-      } catch {
-        return null;
+      const r = await api.get<{ items?: FollowingActivityItem[]; error?: string }>(
+        `/api/social/following-activity?limit=40`,
+      );
+      if (r?.data && (r.data as { ok?: boolean }).ok === false) {
+        throw new Error(r.data.error || 'Couldn’t load your timeline');
       }
+      return r?.data;
     },
     staleTime: 30 * 1000,
   });

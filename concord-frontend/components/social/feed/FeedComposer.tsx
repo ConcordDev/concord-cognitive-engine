@@ -44,19 +44,30 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
       const isVideo = file.type.startsWith('video/');
       if (!isImage && !isVideo) { setError('Only image or video files are supported.'); continue; }
       if (file.size > 8 * 1024 * 1024) { setError(`${file.name} exceeds the 8 MB limit.`); continue; }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(new Error('read failed'));
-        reader.readAsDataURL(file);
+      const uploaded = await fetch('/api/artifact/upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': file.type,
+          'X-Filename': file.name,
+          'X-Domain': 'social',
+          'X-Title': file.name,
+        },
+        body: file,
       });
+      const payload = await uploaded.json() as { ok?: boolean; dtuId?: string; error?: string };
+      if (!uploaded.ok || !payload.dtuId) {
+        setError(payload.error || 'Upload failed.');
+        continue;
+      }
+      const url = `/api/artifact/${payload.dtuId}/stream`;
       const r = await lensRun<{ attachment: MediaAttachment }>('social', 'registerMedia', {
         kind: isImage ? 'image' : 'video',
-        url: dataUrl,
-        alt: file.name,
+        url,
+        alt: '',
         mime: file.type,
       });
-      if (r.data?.ok && r.data.result?.attachment) next.push(r.data.result.attachment);
+      if (r.data?.ok && r.data.result?.attachment) next.push({ ...r.data.result.attachment, alt: '' });
       else setError(r.data?.error || 'Attachment rejected.');
     }
     if (next.length) setMedia((m) => [...m, ...next].slice(0, 4));
@@ -136,6 +147,16 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
               >
                 <X className="w-3 h-3" />
               </button>
+              <input
+                value={m.alt || ''}
+                onChange={(e) => {
+                  const alt = e.target.value.slice(0, 200);
+                  setMedia((arr) => arr.map((item, idx) => (idx === i ? { ...item, alt } : item)));
+                }}
+                placeholder="Alt text"
+                aria-label="Alt text"
+                className="w-full bg-zinc-900 px-1 py-0.5 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none"
+              />
             </div>
           ))}
         </div>

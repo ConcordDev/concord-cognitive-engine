@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, Loader2, Send, ArrowLeft, MessageCirclePlus } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { DMThreadSummary, DMMessage } from './types';
 
@@ -34,7 +34,9 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
   const [loadingThread, setLoadingThread] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [newRecipient, setNewRecipient] = useState('');
+  const [query, setQuery] = useState('');
+  const [matches, setMatches] = useState<Array<{ id: string; username: string; displayName: string }>>([]);
+  const [searching, setSearching] = useState(false);
   const [composing, setComposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -81,7 +83,11 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     }
   }, [draft, activeWith, loadInbox]);
 
-  useEffect(() => { void loadInbox(); }, [loadInbox]);
+  useEffect(() => {
+    let cancel = false;
+    queueMicrotask(() => { if (!cancel) void loadInbox(); });
+    return () => { cancel = true; };
+  }, [loadInbox]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   return (
@@ -145,21 +151,47 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
               Select a conversation.
             </div>
           ) : composing && !activeWith ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4">
-              <p className="text-xs text-zinc-400">Start a new conversation</p>
+            <div className="flex flex-1 flex-col gap-2 p-4">
+              <p className="text-xs text-zinc-400">Find someone to message</p>
               <input
-                value={newRecipient}
-                onChange={(e) => setNewRecipient(e.target.value)}
-                placeholder="Recipient user ID"
-                className="w-56 rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
+                value={query}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setQuery(value);
+                  if (value.trim().length < 2) { setMatches([]); return; }
+                  setSearching(true);
+                  try {
+                    const res = await api.get('/api/social/users/search', { params: { q: value.trim() } });
+                    setMatches((res.data?.users || []) as Array<{ id: string; username: string; displayName: string }>);
+                  } catch {
+                    setMatches([]);
+                    setError('People search failed.');
+                  } finally {
+                    setSearching(false);
+                  }
+                }}
+                placeholder="Search by name"
+                aria-label="Search people"
+                className="w-full rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
               />
-              <button
-                type="button"
-                onClick={() => { if (newRecipient.trim()) void openThread(null, newRecipient.trim()); }}
-                className="rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
-              >
-                Open conversation
-              </button>
+              {searching && <p className="text-[11px] text-zinc-500">Searching…</p>}
+              <ul className="space-y-1">
+                {matches.map((person) => (
+                  <li key={person.id}>
+                    <button
+                      type="button"
+                      onClick={() => void openThread(null, person.id)}
+                      className="w-full rounded px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-900"
+                    >
+                      {person.displayName || person.username}
+                      <span className="ml-1 text-zinc-500">@{person.username}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {query.trim().length >= 2 && !searching && matches.length === 0 && (
+                <p className="text-[11px] text-zinc-500">No matching people.</p>
+              )}
             </div>
           ) : (
             <>

@@ -17,7 +17,7 @@ import {
   Heart,
   Eye,
   Quote,
-  UserPlus,
+
   Star,
   Loader2,
   Radio,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn, formatNumber, formatRelativeTime, debounce } from '@/lib/utils';
 import { api, createSharedSession, activeSharedSessions } from '@/lib/api/client';
+import { FollowButton } from './FollowButton';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,12 +245,13 @@ function TopicTag({ topic, rank }: { topic: TrendingTopic; rank: number }) {
 
 function SuggestedUserCard({
   user,
+  currentUserId,
   onNavigate,
 }: {
   user: SuggestedUser;
+  currentUserId?: string;
   onNavigate?: (userId: string) => void;
 }) {
-  const [followed, setFollowed] = useState(false);
   const gradient = pickGradient(user.userId);
   const name = user.displayName && user.displayName !== user.userId ? user.displayName : 'Member';
 
@@ -279,24 +281,7 @@ function SuggestedUserCard({
             >
               {name}
             </button>
-            <button
-              onClick={() => setFollowed((prev) => !prev)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ml-2',
-                followed
-                  ? 'bg-lattice-surface text-gray-400 border border-lattice-border'
-                  : 'bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/25'
-              )}
-            >
-              {followed ? (
-                'Following'
-              ) : (
-                <>
-                  <UserPlus className="w-3 h-3" />
-                  Follow
-                </>
-              )}
-            </button>
+            <FollowButton targetUserId={user.userId} currentUserId={currentUserId} />
           </div>
 
           {user.username && user.username !== user.userId ? (
@@ -723,7 +708,7 @@ function Discovery({
               </div>
             ) : usersQuery.data && usersQuery.data.length > 0 ? (
               usersQuery.data.map((user) => (
-                <SuggestedUserCard key={user.userId} user={user} onNavigate={onNavigateToUser} />
+                <SuggestedUserCard key={user.userId} user={user} currentUserId={currentUserId} onNavigate={onNavigateToUser} />
               ))
             ) : (
               <EmptyState

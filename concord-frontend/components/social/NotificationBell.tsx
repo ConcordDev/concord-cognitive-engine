@@ -14,9 +14,10 @@ interface NotificationBellProps {
   userId?: string;
   placement?: 'below' | 'side';
   className?: string;
+  onViewAll?: () => void;
 }
 
-export function NotificationBell({ userId, className, placement = 'below' }: NotificationBellProps) {
+export function NotificationBell({ userId, className, placement = 'below', onViewAll }: NotificationBellProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
@@ -143,6 +144,7 @@ export function NotificationBell({ userId, className, placement = 'below' }: Not
           onNavigateToContent={handleNavigateToContent}
           mode="dropdown"
           placement={placement}
+          onViewAll={() => { setIsOpen(false); onViewAll?.(); }}
         />
       )}
     </div>

@@ -66,7 +66,11 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     }
   }, []);
 
-  useEffect(() => { void loadFeed(); }, [loadFeed]);
+  useEffect(() => {
+    let cancel = false;
+    queueMicrotask(() => { if (!cancel) void loadFeed(); });
+    return () => { cancel = true; };
+  }, [loadFeed]);
 
   const openHashtag = useCallback((tag: string) => setView({ kind: 'hashtag', tag }), []);
   const openDetail = useCallback((postId: string) => setView({ kind: 'detail', postId }), []);
@@ -77,10 +81,11 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Live is hidden until viewers can actually receive the host's video.
+  // Spaces (RoomStage) is the real WebRTC surface.
   const navTabs = useMemo(() => ([
     { id: 'feed' as const, label: 'Feed', icon: Sparkles },
     { id: 'dms' as const, label: 'Messages', icon: Hash },
-    { id: 'live' as const, label: 'Live', icon: TrendingUp },
   ]), []);
 
   return (
