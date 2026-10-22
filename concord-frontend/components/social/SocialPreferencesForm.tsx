@@ -107,6 +107,22 @@ export function SocialPreferencesForm() {
           </label>
         ))}
       </fieldset>
+      <label className="mb-2 block text-xs text-zinc-400">
+        Default feed
+        <select
+          aria-label="Default feed"
+          className="mt-1 block w-full rounded bg-zinc-900 px-2 py-1 text-zinc-100"
+          defaultValue="following"
+          onChange={(e) => {
+            void api.post('/api/social/feed/preference', { feedDefault: e.target.value }).then((res) => {
+              setMessage(res.data?.ok === false ? (res.data.error || 'Could not save the default feed.') : 'Default feed saved.');
+            }).catch(() => setMessage('Could not save the default feed.'));
+          }}
+        >
+          <option value="following">Following</option>
+          <option value="forYou">For You</option>
+        </select>
+      </label>
       <button type="button" onClick={() => void save()} className="rounded bg-teal-400 px-3 py-1 text-xs font-medium text-black">
         Save settings
       </button>

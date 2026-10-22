@@ -59,7 +59,7 @@ vi.mock('@/lib/api/client', () => ({
       if (url === '/api/auth/me') return { data: { ok: true, user: { id: 'u1', username: 'ana' } } };
       if (url === '/api/social/notifications/count') return { data: { count: 0 } };
       if (String(url).includes('/api/social/profile/')) return { data: { ok: false } };
-      if (String(url).includes('/api/social/following-activity')) {
+      if (String(url).includes('/api/social/feed/following') || String(url).includes('/api/social/following-activity')) {
         const err = new Error('missing') as Error & { response?: { status: number } };
         err.response = { status: 404 };
         throw err;
