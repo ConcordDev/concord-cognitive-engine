@@ -530,7 +530,10 @@ export interface ArrangementMarker {
 }
 
 export interface TempoAutomation {
+  /** Bar number (fractional when the point is off a bar line). */
   bar: number;
+  /** Beat position. Wins over `bar` when set. */
+  beat?: number;
   bpm: number;
   curve: AutomationCurve;
 }

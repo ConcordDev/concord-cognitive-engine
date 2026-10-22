@@ -11,7 +11,8 @@ import { LayoutList, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
-import { assetMeta, newId, trackKind, createTrack, createMidiClip, note as mkNote, type NewTrackKind } from '@/lib/daw/project';
+import { assetMeta, newId, trackKind, createTrack, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
+import { beatAfter, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
 import { isDrumInstrument } from '@/lib/daw/presets';
 import { classifyMusicItem } from '@/lib/daw/music-filter';
 import { parseMidiFile } from '@/lib/daw/midi-file';
@@ -68,8 +69,11 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [importing, setImporting] = useState(false);
   const projectRef = useRef(project);
+  // Handlers read the latest project without subscribing the audio clock to React.
+  // eslint-disable-next-line react-hooks/refs
   projectRef.current = project;
   const recordingRef = useRef<RecordingState | null>(null);
+  // eslint-disable-next-line react-hooks/refs
   recordingRef.current = recording;
   const countIn = rec.state.prefs.countInBars;
   const bpb = project.timeSignature?.[0] || 4;
@@ -130,7 +134,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   }, [engine]);
 
   const placeAudio = useCallback((trackId: string | null, beat: number, id: string, meta: ReturnType<typeof assetMeta>, name: string) => {
-    const lengthBeats = (meta.duration * projectRef.current.bpm) / 60;
+    const lengthBeats = (meta.duration * bpmAt(projectTempoPoints(projectRef.current), Math.max(0, beat))) / 60;
     let target = trackId ? projectRef.current.tracks.find((t) => t.id === trackId && trackKind(t) === 'audio') : undefined;
     let newTrack: DAWTrack | null = null;
     if (!target) { newTrack = createTrack('audio', projectRef.current.tracks.length, { name: name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) }); target = newTrack; }
@@ -263,18 +267,18 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     engine.stop();
     engine.seek(r.startBeat);
     if (!take) { showToast('warning', 'Nothing was captured. Check the input meter.'); return; }
-    const bpm = projectRef.current.bpm;
+    const map = projectTempoPoints(projectRef.current);
     const sr = take.sampleRate;
     const skip = Math.round((r.beat0Time - take.startTime) * sr);
     let startBeat = r.startBeat;
     let channels = take.channels;
     if (skip > 0) channels = channels.map((c) => c.slice(Math.min(skip, c.length)));
-    else if (skip < 0) startBeat += ((-skip / sr) * bpm) / 60;
+    else if (skip < 0) startBeat = beatAfter(map, r.startBeat, -skip / sr);
     if (channels[0].length < sr * 0.1) { showToast('info', 'Take too short — stopped during the count-in.'); return; }
     const n = Object.keys(projectRef.current.audioAssets || {}).length + 1;
     const name = `Take ${n}`;
     const { id, meta } = await storeAudio(name, channels, sr);
-    const lengthBeats = (meta.duration * bpm) / 60;
+    const lengthBeats = (meta.duration * bpmAt(map, startBeat)) / 60;
     edit((p) => {
       let q: DAWProject = { ...p, audioAssets: { ...(p.audioAssets || {}), [id]: meta }, sampleRate: p.sampleRate || sr };
       for (const tid of r.trackIds) q = ops.addAudioClip(q, tid, startBeat, lengthBeats, id, name).project;
@@ -355,7 +359,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onToggleLoop={toggleLoop}
         onToggleMetronome={() => setMetronome((m) => !m)}
         onCountIn={(bars) => void rec.setPrefs({ countInBars: bars })}
-        onBpm={(bpm) => edit((p) => ({ ...p, bpm }), 'bpm')}
+        onBpm={(bpm) => edit((p) => setTransportBpm(p, bpm), 'bpm')}
         onRename={(title) => edit((p) => ({ ...p, title }), 'title')}
         onUndo={api.undo}
         onRedo={api.redo}
@@ -402,6 +406,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                 onDropFiles={(tid, beat, files) => void importFiles(files, tid, beat)}
                 onDropItem={onDropItem}
                 onZoom={setBw}
+                onTempo={(points) => edit((p) => writeTempoPoints(p, points), 'tempo')}
               />
             ) : (
               <SessionGrid
@@ -449,7 +454,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                   <div className="h-full p-3">
                     <div className="mb-1 text-[11px] text-zinc-400">{clip.name} · {(project.audioAssets?.[clip.audioBufferId || '']?.duration || 0).toFixed(2)} s</div>
                     <div className="h-[calc(100%-1.5rem)] rounded bg-black/30">
-                      <WaveThumb asset={project.audioAssets?.[clip.audioBufferId || '']} clip={clip} width={1200} height={160} bpm={project.bpm} />
+                      <WaveThumb asset={project.audioAssets?.[clip.audioBufferId || '']} clip={clip} width={1200} height={160} bpm={bpmAt(projectTempoPoints(project), clip.startBeat)} />
                     </div>
                   </div>
                 ) : (

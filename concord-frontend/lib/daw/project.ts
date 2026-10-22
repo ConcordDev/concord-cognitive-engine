@@ -4,8 +4,9 @@
  * round-trips identically).
  */
 
-import type { DAWProject, DAWTrack, DAWClip, MIDINote, EffectInstance, TrackRole, AudioAssetMeta } from './types';
+import type { DAWProject, DAWTrack, DAWClip, MIDINote, EffectInstance, TrackRole, AudioAssetMeta, TempoAutomation } from './types';
 import { isDrumInstrument } from './presets';
+import { clampTempo, type TempoPoint } from './tempo-map';
 
 export const TRACK_COLORS = ['#7c3aed', '#ec4899', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#a855f7', '#14b8a6', '#f97316'];
 
@@ -173,12 +174,58 @@ export function assetMeta(id: string, name: string, channels: Float32Array[], sa
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 
+/** Drop broken points. Exponential/log curves are stored as linear — those shapes are not integrated. */
+export function sanitizeTempo(raw: unknown): TempoAutomation[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TempoAutomation[] = [];
+  for (const p of raw) {
+    if (!p || typeof p !== 'object') continue;
+    const o = p as TempoAutomation;
+    if (typeof o.bpm !== 'number' || !Number.isFinite(o.bpm)) continue;
+    const beat = typeof o.beat === 'number' && Number.isFinite(o.beat) ? Math.max(0, o.beat) : undefined;
+    const bar = typeof o.bar === 'number' && Number.isFinite(o.bar) ? Math.max(0, o.bar) : (beat ?? 0) / 4;
+    out.push({ bar, beat, bpm: clampTempo(o.bpm), curve: o.curve === 'step' ? 'step' : 'linear' });
+  }
+  out.sort((a, b) => (a.beat ?? a.bar * 4) - (b.beat ?? b.bar * 4));
+  return out;
+}
+
+/** Transport tempo. With a map, this is the tempo at beat 0. */
+export function setTransportBpm(p: DAWProject, bpm: number): DAWProject {
+  const b = clampTempo(bpm);
+  const tempo = sanitizeTempo(p.arrangement?.tempo);
+  if (!tempo.length) {
+    return { ...p, bpm: b, transport: { ...p.transport, bpm: b } };
+  }
+  const bpb = p.timeSignature?.[0] || 4;
+  const next = tempo.map((t) => ({ ...t }));
+  const at0 = next.findIndex((t) => (t.beat ?? t.bar * bpb) <= 1e-6);
+  if (at0 >= 0) next[at0] = { ...next[at0], bar: 0, beat: 0, bpm: b };
+  else next.unshift({ bar: 0, beat: 0, bpm: b, curve: 'step' });
+  return { ...p, bpm: b, transport: { ...p.transport, bpm: b }, arrangement: { ...p.arrangement, tempo: next } };
+}
+
+/** Replace the tempo lane. An empty list is a constant map at `project.bpm`. */
+export function writeTempoPoints(p: DAWProject, points: TempoPoint[]): DAWProject {
+  const bpb = p.timeSignature?.[0] || 4;
+  const sorted = [...points].sort((a, b) => a.beat - b.beat);
+  const tempo: TempoAutomation[] = sorted.map((pt) => ({
+    bar: pt.beat / bpb,
+    beat: pt.beat,
+    bpm: clampTempo(pt.bpm),
+    curve: pt.curve === 'step' ? 'step' : 'linear',
+  }));
+  const head = tempo.find((t) => (t.beat ?? 0) <= 1e-6);
+  const bpm = head ? head.bpm : p.bpm;
+  return { ...p, bpm, transport: { ...p.transport, bpm }, arrangement: { ...p.arrangement, tempo } };
+}
+
 /** Make any saved or legacy snapshot safe to open (fills missing fields, never throws). */
 export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'): DAWProject {
   const base = createProject(fallbackTitle);
   if (!raw || typeof raw !== 'object') return base;
   const r = raw as Partial<DAWProject>;
-  const bpm = Math.max(30, Math.min(300, num(r.bpm ?? r.transport?.bpm, 120)));
+  const bpm = clampTempo(num(r.bpm ?? r.transport?.bpm, 120));
   const tracks = (Array.isArray(r.tracks) ? r.tracks : []).filter((t) => t && typeof t === 'object' && t.type !== 'master').map((t, i) => {
     const d = createTrack(t.type === 'audio' ? 'audio' : isDrumInstrument(t.instrumentId) ? 'drums' : 'instrument', i);
     const id = typeof t.id === 'string' && t.id ? t.id : d.id;
@@ -212,7 +259,7 @@ export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'):
     timeSignature: Array.isArray(r.timeSignature) && r.timeSignature.length === 2 ? r.timeSignature : [4, 4],
     masterBus: r.masterBus && typeof r.masterBus === 'object' ? { ...base.masterBus, ...r.masterBus, inserts: Array.isArray(r.masterBus.inserts) ? r.masterBus.inserts : [] } : base.masterBus,
     masteringChain: r.masteringChain && typeof r.masteringChain === 'object' ? { ...base.masteringChain, ...r.masteringChain } : base.masteringChain,
-    arrangement: { ...base.arrangement, ...(r.arrangement || {}) },
+    arrangement: { ...base.arrangement, ...(r.arrangement || {}), tempo: sanitizeTempo(r.arrangement?.tempo) },
     transport: { ...base.transport, ...(r.transport || {}), bpm },
     audioBuffers: {},
     audioAssets: r.audioAssets && typeof r.audioAssets === 'object' ? r.audioAssets : {},

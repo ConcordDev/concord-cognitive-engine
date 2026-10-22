@@ -147,7 +147,7 @@ export class ProjectGraph {
     const ch = track ? this.channels.get(track.id) : undefined;
     if (!track || !ch) return;
     if (ev.kind === 'note') {
-      const dur = ev.lengthBeats * secPerBeat;
+      const dur = ev.durationSec ?? ev.lengthBeats * secPerBeat;
       // Clip gain: route the voice through its own gain stage.
       let dest: AudioNode = ch.input;
       if (ev.gainDb) {
@@ -171,10 +171,12 @@ export class ProjectGraph {
       src.buffer = buf;
       const g = this.ctx.createGain();
       const level = dbToGain(ev.gainDb || 0);
-      const dur = Math.max(0, Math.min(ev.lengthBeats * secPerBeat, buf.duration - ev.offsetSec));
+      const spbFade = ev.rateSecPerBeat ?? secPerBeat;
+      const rawDur = ev.durationSec ?? ev.lengthBeats * spbFade;
+      const dur = Math.max(0, Math.min(rawDur, buf.duration - ev.offsetSec));
       if (dur <= 0) return;
-      const fadeIn = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeIn || 0) * secPerBeat)));
-      const fadeOut = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeOut || 0) * secPerBeat)));
+      const fadeIn = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeIn || 0) * spbFade)));
+      const fadeOut = Math.min(dur / 2, Math.max(0.002, ((clip?.fadeOut || 0) * spbFade)));
       g.gain.setValueAtTime(0, time);
       g.gain.linearRampToValueAtTime(level, time + fadeIn);
       g.gain.setValueAtTime(level, time + dur - fadeOut);
