@@ -8,8 +8,9 @@
  */
 
 const DB_NAME = 'concord-studio-audio';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'buffers';
+const JOURNAL = 'journal';
 
 export interface StoredAudio {
   id: string;
@@ -40,6 +41,7 @@ function open(factory?: IDBFactory): Promise<IDBDatabase> {
         const os = db.createObjectStore(STORE, { keyPath: 'id' });
         os.createIndex('projectId', 'projectId', { unique: false });
       }
+      if (!db.objectStoreNames.contains(JOURNAL)) db.createObjectStore(JOURNAL, { keyPath: 'key' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
@@ -48,12 +50,12 @@ function open(factory?: IDBFactory): Promise<IDBDatabase> {
   return p;
 }
 
-function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>, factory?: IDBFactory): Promise<T> {
+function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>, factory?: IDBFactory, store: string = STORE): Promise<T> {
   return open(factory).then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const t = db.transaction(STORE, mode);
-        const req = fn(t.objectStore(STORE));
+        const t = db.transaction(store, mode);
+        const req = fn(t.objectStore(store));
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error ?? new Error('IndexedDB request failed'));
       }),
@@ -78,4 +80,27 @@ export async function requestPersistentStorage(): Promise<boolean> {
     if (typeof navigator !== 'undefined' && navigator.storage?.persist) return await navigator.storage.persist();
   } catch { /* unsupported */ }
   return false;
+}
+
+/** Crash-recovery journal: the latest project snapshot per key, written on every edit. */
+export interface JournalEntry {
+  key: string;
+  projectId: string;
+  savedAt: number;
+  hash: string;
+  /** Last server revision this snapshot was based on. */
+  baseRev: number;
+  project: unknown;
+}
+
+export function putJournal(e: JournalEntry, factory?: IDBFactory): Promise<IDBValidKey> {
+  return tx('readwrite', (s) => s.put(e), factory, JOURNAL);
+}
+
+export function getJournal(key: string, factory?: IDBFactory): Promise<JournalEntry | undefined> {
+  return tx<JournalEntry | undefined>('readonly', (s) => s.get(key) as IDBRequest<JournalEntry | undefined>, factory, JOURNAL);
+}
+
+export function deleteJournal(key: string, factory?: IDBFactory): Promise<undefined> {
+  return tx('readwrite', (s) => s.delete(key) as IDBRequest<undefined>, factory, JOURNAL);
 }

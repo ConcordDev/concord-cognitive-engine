@@ -3,14 +3,15 @@
  *
  * Produces a real PCM WAV (format 1, 16/24-bit) or IEEE float WAV
  * (format 3, 32-bit). Channels are interleaved; samples are clamped to
- * [-1, 1] before integer conversion with optional TPDF dither on 16-bit.
+ * [-1, 1] before integer conversion with optional TPDF dither (±1 LSB
+ * triangular) when reducing to 16- or 24-bit.
  */
 
 export type WavBitDepth = 16 | 24 | 32;
 
 export interface WavOptions {
   bitDepth?: WavBitDepth;
-  /** Triangular dither when reducing to 16-bit. */
+  /** TPDF (triangular) dither when reducing to 16- or 24-bit integer PCM. */
   dither?: boolean;
 }
 
@@ -46,7 +47,8 @@ export function encodeWav(channels: Float32Array[], sampleRate: number, opts: Wa
   view.setUint32(40, dataBytes, true);
 
   let offset = 44;
-  const dither = !!opts.dither && bitDepth === 16;
+  const dither = !!opts.dither && !isFloat;
+  const lsb = bitDepth === 16 ? 1 / 32768 : 1 / 8388608;
   for (let i = 0; i < length; i++) {
     for (let ch = 0; ch < numChannels; ch++) {
       const src = channels[ch];
@@ -55,10 +57,11 @@ export function encodeWav(channels: Float32Array[], sampleRate: number, opts: Wa
       if (isFloat) {
         view.setFloat32(offset, s, true);
       } else if (bitDepth === 16) {
-        if (dither) s += (Math.random() - Math.random()) / 32768;
+        if (dither) s += (Math.random() - Math.random()) * lsb;
         const v = Math.max(-1, Math.min(1, s));
         view.setInt16(offset, v < 0 ? Math.round(v * 0x8000) : Math.round(v * 0x7fff), true);
       } else {
+        if (dither) s += (Math.random() - Math.random()) * lsb;
         const v = Math.max(-1, Math.min(1, s));
         const int = v < 0 ? Math.round(v * 0x800000) : Math.round(v * 0x7fffff);
         view.setUint8(offset, int & 0xff);
@@ -95,4 +98,49 @@ export function readWavHeader(buf: ArrayBuffer): WavHeader {
   const bitDepth = v.getUint16(34, true);
   const dataBytes = v.getUint32(40, true);
   return { format, channels, sampleRate, bitDepth, dataBytes, frames: dataBytes / (channels * (bitDepth / 8)) };
+}
+
+/** Decode a PCM (8/16/24/32-bit int) or IEEE-float (32/64) WAV into float channels. */
+export function decodeWav(buf: ArrayBuffer): { channels: Float32Array[]; sampleRate: number } {
+  const v = new DataView(buf);
+  const str = (o: number, n: number) => String.fromCharCode(...new Uint8Array(buf, o, n));
+  if (buf.byteLength < 12 || str(0, 4) !== 'RIFF' || str(8, 4) !== 'WAVE') throw new Error('not a WAV file');
+  let off = 12;
+  let fmt = 0, chs = 0, sr = 0, bits = 0;
+  let dataOff = -1, dataLen = 0;
+  while (off + 8 <= buf.byteLength) {
+    const id = str(off, 4);
+    const size = v.getUint32(off + 4, true);
+    const body = off + 8;
+    if (id === 'fmt ') {
+      fmt = v.getUint16(body, true);
+      chs = v.getUint16(body + 2, true);
+      sr = v.getUint32(body + 4, true);
+      bits = v.getUint16(body + 14, true);
+      if (fmt === 0xfffe && size >= 26) fmt = v.getUint16(body + 24, true); // WAVE_FORMAT_EXTENSIBLE subformat
+    } else if (id === 'data') {
+      dataOff = body;
+      dataLen = Math.min(size, buf.byteLength - body);
+      break;
+    }
+    off = body + size + (size & 1);
+  }
+  if (dataOff < 0 || !chs || !sr || !bits) throw new Error('WAV missing fmt/data');
+  const bps = bits / 8;
+  const frames = Math.floor(dataLen / (bps * chs));
+  const channels = Array.from({ length: chs }, () => new Float32Array(frames));
+  let p = dataOff;
+  for (let i = 0; i < frames; i++) {
+    for (let c = 0; c < chs; c++) {
+      let x = 0;
+      if (fmt === 3) x = bits === 64 ? v.getFloat64(p, true) : v.getFloat32(p, true);
+      else if (bits === 16) x = v.getInt16(p, true) / 32768;
+      else if (bits === 24) { const b = v.getUint8(p) | (v.getUint8(p + 1) << 8) | (v.getInt8(p + 2) << 16); x = b / 8388608; }
+      else if (bits === 32) x = v.getInt32(p, true) / 2147483648;
+      else if (bits === 8) x = (v.getUint8(p) - 128) / 128;
+      channels[c][i] = x;
+      p += bps;
+    }
+  }
+  return { channels, sampleRate: sr };
 }

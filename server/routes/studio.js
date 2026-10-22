@@ -19,10 +19,14 @@
  *   POST   /:projectId/render             — trigger a render job
  *   GET    /renders                       — list render jobs
  *   GET    /renders/:renderId             — get render job status
+ *   PUT    /audio/:projectId/:assetId     — upload a recorded/imported take (chunked, raw WAV bytes)
+ *   GET    /audio/:projectId/:assetId     — download it (owner / joined collaborator only)
  */
 
-import { Router } from "express";
+import express, { Router } from "express";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 function uid() {
   return crypto.randomUUID();
@@ -395,6 +399,115 @@ export default function createStudioRouter({ db, requireAuth }) {
     } catch (err) {
       console.error("[studio] GET /renders/:renderId error:", err);
       res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+    }
+  });
+
+  // ── Audio files for DAW projects (recorded takes, imports) ──────────────────
+  //
+  // Takes live in the browser's IndexedDB for instant playback AND on the
+  // server so the project opens with its audio on any device. Uploads are
+  // chunked (≤ 8 MB per request) to stay under proxy body limits:
+  //   PUT ?offset=0&total=N  (truncates), then offset=k*chunk ... until offset+len == total.
+  // Files: <DATA_DIR>/studio-audio/<sha256(user)>/<projectId>/<assetId>.wav
+  // Access: the project must be in the caller's studio project roster (or a
+  // collab session they joined).
+
+  const AUDIO_ROOT = path.join(
+    process.env.DATA_DIR || (fs.existsSync("/workspace") ? "/workspace/concord-data" : path.join(process.cwd(), "data")),
+    "studio-audio",
+  );
+  const SAFE_ID = /^[A-Za-z0-9_-]{1,96}$/;
+  const AUDIO_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB per take
+  const AUDIO_USER_QUOTA = 20 * 1024 * 1024 * 1024; // 20 GB per user
+
+  function studioProjectOwner(userId, projectId) {
+    const st = globalThis._concordSTATE?.studioLens;
+    if (!st || !userId) return null;
+    if (st.projects?.get(userId)?.has(projectId)) return userId;
+    const session = st.collab?.get?.(projectId);
+    if (session && Array.isArray(session.collaborators) && session.collaborators.some((c) => c.userId === userId)) {
+      if (st.projects?.get(session.hostUserId)?.has(projectId)) return session.hostUserId;
+    }
+    return null;
+  }
+  function audioDir(ownerId, projectId) {
+    const u = crypto.createHash("sha256").update(String(ownerId)).digest("hex").slice(0, 32);
+    return path.join(AUDIO_ROOT, u, projectId);
+  }
+  function dirBytes(dir) {
+    let total = 0;
+    try {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, ent.name);
+        if (ent.isDirectory()) total += dirBytes(p);
+        else { try { total += fs.statSync(p).size; } catch { /* gone */ } }
+      }
+    } catch { /* missing */ }
+    return total;
+  }
+
+  router.put(
+    "/audio/:projectId/:assetId",
+    requireAuth(),
+    express.raw({ type: () => true, limit: "8mb" }),
+    (req, res) => {
+      try {
+        const { projectId, assetId } = req.params;
+        if (!SAFE_ID.test(projectId) || !SAFE_ID.test(assetId)) return res.status(400).json({ ok: false, error: "bad id" });
+        const userId = req.user?.id;
+        const owner = studioProjectOwner(userId, projectId);
+        if (!owner) return res.status(404).json({ ok: false, error: "project not found" });
+        const offset = Number(req.query.offset || 0);
+        const total = Number(req.query.total || 0);
+        const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+        if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(total) || total <= 0 || total > AUDIO_MAX_BYTES) {
+          return res.status(400).json({ ok: false, error: "bad offset/total" });
+        }
+        if (offset + body.length > total) return res.status(400).json({ ok: false, error: "chunk past total" });
+        const dir = audioDir(owner, projectId);
+        fs.mkdirSync(dir, { recursive: true });
+        const part = path.join(dir, `${assetId}.wav.part`);
+        const final = path.join(dir, `${assetId}.wav`);
+        if (offset === 0) {
+          const used = dirBytes(path.dirname(dir));
+          if (used + total > AUDIO_USER_QUOTA) return res.status(413).json({ ok: false, error: "audio storage quota reached" });
+          if (body.length < 12 || body.toString("ascii", 0, 4) !== "RIFF" || body.toString("ascii", 8, 12) !== "WAVE") {
+            return res.status(415).json({ ok: false, error: "expected a WAV file" });
+          }
+          fs.writeFileSync(part, body);
+        } else {
+          let size = 0;
+          try { size = fs.statSync(part).size; } catch { return res.status(409).json({ ok: false, error: "upload not started", expectedOffset: 0 }); }
+          if (size !== offset) return res.status(409).json({ ok: false, error: "offset mismatch", expectedOffset: size });
+          fs.appendFileSync(part, body);
+        }
+        const size = fs.statSync(part).size;
+        if (size === total) {
+          fs.renameSync(part, final);
+          return res.json({ ok: true, complete: true, bytes: total });
+        }
+        return res.json({ ok: true, complete: false, received: size });
+      } catch (err) {
+        console.error("[studio] PUT /audio error:", err?.message || err);
+        res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+      }
+    },
+  );
+
+  router.get("/audio/:projectId/:assetId", requireAuth(), (req, res) => {
+    try {
+      const { projectId, assetId } = req.params;
+      if (!SAFE_ID.test(projectId) || !SAFE_ID.test(assetId)) return res.status(400).json({ ok: false, error: "bad id" });
+      const owner = studioProjectOwner(req.user?.id, projectId);
+      if (!owner) return res.status(404).json({ ok: false, error: "not found" });
+      const file = path.join(audioDir(owner, projectId), `${assetId}.wav`);
+      if (!fs.existsSync(file)) return res.status(404).json({ ok: false, error: "not found" });
+      res.setHeader("Content-Type", "audio/wav");
+      res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+      fs.createReadStream(file).pipe(res);
+    } catch (err) {
+      console.error("[studio] GET /audio error:", err?.message || err);
+      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
     }
   });
 

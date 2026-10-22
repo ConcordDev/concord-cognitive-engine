@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DEFAULT_SYNTH_PRESETS } from '@/lib/daw/engine';
+import { allSynthPresets } from '@/lib/daw/presets';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import type { SynthPreset, OscillatorShape, FilterType, EnvelopeParams, OscillatorParams } from '@/lib/daw/types';
 
@@ -106,7 +106,9 @@ export function SynthPanel({
   onAddToTrack,
 }: SynthPanelProps) {
   const [showBrowser, setShowBrowser] = useState(!activePreset);
-  const allPresets = [...DEFAULT_SYNTH_PRESETS, ...presets];
+  // Factory + project presets, de-duplicated by id (callers often pass the
+  // factory list itself, which used to render every preset twice).
+  const allPresets = allSynthPresets(presets);
 
   const updateOsc = useCallback((index: number, data: Partial<OscillatorParams>) => {
     if (!activePreset) return;

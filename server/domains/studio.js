@@ -239,7 +239,7 @@ export default function registerStudioActions(registerLensAction) {
     try {
       const clone = JSON.parse(JSON.stringify(daw, (_k, v) => {
         if (typeof v === "function") return undefined;
-        if (typeof AudioBuffer !== "undefined" && v instanceof AudioBuffer) return undefined;
+        if (typeof globalThis.AudioBuffer !== "undefined" && v instanceof globalThis.AudioBuffer) return undefined;
         return v;
       }));
       if (clone && typeof clone === "object") clone.audioBuffers = {};
@@ -247,6 +247,34 @@ export default function registerStudioActions(registerLensAction) {
     } catch {
       return null;
     }
+  }
+
+  // ── Versions (snapshots) ──
+  // Each project keeps up to STUDIO_MAX_VERSIONS snapshots of its DAW state:
+  // automatic ones (at most every STUDIO_AUTO_VERSION_MS while saving), one
+  // whenever a save from another device overwrites newer work (rev conflict),
+  // manual ones, and one before every restore. Restore never loses data.
+  const STUDIO_MAX_VERSIONS = 20;
+  const STUDIO_AUTO_VERSION_MS = 10 * 60 * 1000;
+  function pushStudioVersion(project, label) {
+    if (!project.daw) return null;
+    if (!Array.isArray(project.versions)) project.versions = [];
+    const v = {
+      id: nextStudioId("ver"),
+      at: nowIsoStudio(),
+      label: String(label || "Auto-save").slice(0, 80),
+      rev: Number(project.rev) || 0,
+      daw: project.daw,
+    };
+    project.versions.push(v);
+    if (project.versions.length > STUDIO_MAX_VERSIONS) project.versions.splice(0, project.versions.length - STUDIO_MAX_VERSIONS);
+    return v;
+  }
+  function studioVersionMeta(v) { return { id: v.id, at: v.at, label: v.label, rev: v.rev }; }
+  /** Public shape of a project: never ship the version blobs. */
+  function publicStudioProject(project, { includeDaw = true } = {}) {
+    const { versions, daw, ...meta } = project;
+    return { ...meta, rev: Number(project.rev) || 0, versionCount: Array.isArray(versions) ? versions.length : 0, ...(includeDaw ? { daw } : {}) };
   }
 
   registerLensAction("studio", "project-list", (ctx, _artifact, _params = {}) => {
@@ -257,10 +285,12 @@ export default function registerStudioActions(registerLensAction) {
     if (!map) return { ok: true, result: { projects: [] } };
     const projects = Array.from(map.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .map(({ tracks, daw, ...meta }) => ({
+      .map(({ tracks, daw, versions, ...meta }) => ({
         ...meta,
-        trackCount: Array.isArray(tracks) ? tracks.length : 0,
+        rev: Number(meta.rev) || 0,
+        trackCount: Array.isArray(daw?.tracks) ? daw.tracks.length : Array.isArray(tracks) ? tracks.length : 0,
         hasDaw: !!daw,
+        versionCount: Array.isArray(versions) ? versions.length : 0,
       }));
     return { ok: true, result: { projects } };
   });
@@ -290,13 +320,15 @@ export default function registerStudioActions(registerLensAction) {
       masterVolume: 0.8,
       tracks: [],
       daw,
+      rev: 1,
+      versions: [],
       createdAt: now,
       updatedAt: now,
     };
     if (!s.projects.has(userId)) s.projects.set(userId, new Map());
     s.projects.get(userId).set(project.id, project);
     saveStudioState();
-    return { ok: true, result: { project } };
+    return { ok: true, result: { project: publicStudioProject(project) } };
   });
 
   // ── AI Composition (deterministic, no LLM) ──
@@ -694,14 +726,125 @@ export default function registerStudioActions(registerLensAction) {
         : null;
     }
     if (params.timeSignature != null) project.timeSignature = normalizeStudioTimeSig(params.timeSignature);
+    let conflict = false;
     if (params.daw !== undefined) {
       const daw = sanitizeDawSnapshot(params.daw);
       if (params.daw != null && !daw) return { ok: false, error: "daw snapshot not serializable" };
+      const currentRev = Number(project.rev) || 0;
+      const baseRev = params.baseRev != null ? Number(params.baseRev) : currentRev;
+      // Another device saved since this client loaded: keep that work as a version.
+      if (project.daw && Number.isFinite(baseRev) && baseRev < currentRev) {
+        conflict = true;
+        pushStudioVersion(project, "Saved from another device (kept before overwrite)");
+      } else if (project.daw) {
+        const last = Array.isArray(project.versions) && project.versions.length ? project.versions[project.versions.length - 1] : null;
+        if (!last || Date.now() - new Date(last.at).getTime() > STUDIO_AUTO_VERSION_MS) pushStudioVersion(project, "Auto-save");
+      }
       project.daw = daw;
+      project.rev = currentRev + 1;
     }
     project.updatedAt = nowIsoStudio();
     saveStudioState();
-    return { ok: true, result: { project } };
+    return { ok: true, result: { project: publicStudioProject(project, { includeDaw: false }), conflict } };
+  });
+
+  // ── Music-only library for the Studio browser ──
+  // Returns the caller's OWN DTUs that are music (audio, MIDI, stems, loops,
+  // samples, presets, music DTUs). Non-music DTUs (documents, code, chats,
+  // images) never reach the Studio import picker. Public community loops and
+  // stems keep coming from music.browse.
+  const STUDIO_AUDIO_EXT = /\.(wav|wave|aif|aiff|flac|mp3|m4a|aac|ogg|oga|opus|webm|caf)$/i;
+  const STUDIO_MIDI_EXT = /\.(mid|midi|smf)$/i;
+  const STUDIO_MUSIC_KINDS = new Set(["music_dtu", "audio_dtu", "music", "audio", "stem", "loop", "sample", "preset", "synth_preset", "drum_kit", "midi", "beat", "song", "studio_project", "adaptive_stem", "music_loop"]);
+  const STUDIO_MUSIC_WORDS = /\b(music|audio|song|beat|loop|stem|sample|drum|kit|preset|synth|vocal|melody|chord|midi|bass|instrument|mix|master|bpm)s?\b/i;
+  function classifyStudioMusicItem(d) {
+    if (!d || typeof d !== "object") return null;
+    const title = String(d.title || d.name || "");
+    const kind = String(d.machine?.kind || d.kind || d.type || d.body?.type || d.data?.type || "").toLowerCase();
+    const mime = String(d.mimeType || d.meta?.mimeType || d.artifact?.mimeType || d.data?.mimeType || "").toLowerCase();
+    const fileName = String(d.artifact?.name || d.meta?.fileName || d.data?.fileName || title);
+    const tags = (Array.isArray(d.tags) ? d.tags : []).map((t) => String(t).toLowerCase());
+    const domain = String(d.domain || d.lens || d.meta?.lens || "").toLowerCase();
+    const has = (w) => tags.some((t) => t.includes(w)) || kind.includes(w);
+    if (STUDIO_MIDI_EXT.test(fileName) || mime.includes("midi") || kind === "midi") return "midi";
+    if (STUDIO_AUDIO_EXT.test(fileName) || mime.startsWith("audio/")) {
+      if (has("stem")) return "stem";
+      if (has("loop")) return "loop";
+      if (has("sample")) return "sample";
+      return "audio";
+    }
+    if (kind === "preset" || kind === "synth_preset" || kind === "drum_kit") return "preset";
+    if (kind === "studio_project") return "project";
+    if (STUDIO_MUSIC_KINDS.has(kind)) return kind.includes("stem") ? "stem" : kind.includes("loop") ? "loop" : kind === "sample" ? "sample" : "music-dtu";
+    if (tags.some((t) => STUDIO_MUSIC_KINDS.has(t))) return "music-dtu";
+    if (["studio", "music", "audio"].includes(domain) && (STUDIO_MUSIC_WORDS.test(title) || tags.some((t) => STUDIO_MUSIC_WORDS.test(t)))) return "music-dtu";
+    return null;
+  }
+  registerLensAction("studio", "library-browse", (ctx, _artifact, params = {}) => {
+    const STATE = globalThis._concordSTATE;
+    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+    if (!STATE || !userId) return { ok: true, result: { items: [], count: 0 } };
+    const want = params.kind ? String(params.kind) : null;
+    const q = String(params.q || "").toLowerCase().trim();
+    const limit = Math.max(1, Math.min(200, Number(params.limit) || 60));
+    const items = [];
+    const dtus = typeof STATE.dtus?.values === "function" ? STATE.dtus.values() : [];
+    for (const d of dtus) {
+      if (!d || d.tier === "shadow" || d.visibility === "internal") continue;
+      const owner = d.author || d.ownerId || d.userId || d.createdBy;
+      if (owner !== userId) continue;
+      const k = classifyStudioMusicItem(d);
+      if (!k || (want && k !== want)) continue;
+      const title = String(d.title || d.name || "(untitled)");
+      if (q && !title.toLowerCase().includes(q) && !(d.tags || []).some((t) => String(t).toLowerCase().includes(q))) continue;
+      items.push({
+        id: d.id,
+        title,
+        kind: k,
+        bpm: typeof d.data?.bpm === "number" ? d.data.bpm : typeof d.body?.bpm === "number" ? d.body.bpm : null,
+        key: typeof d.data?.key === "string" ? d.data.key : null,
+        url: typeof d.artifact?.url === "string" ? d.artifact.url : typeof d.data?.audioUrl === "string" ? d.data.audioUrl : null,
+        createdAt: d.createdAt || null,
+      });
+    }
+    items.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    return { ok: true, result: { items: items.slice(0, limit), count: items.length } };
+  });
+
+  registerLensAction("studio", "project-versions", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const resolved = resolveStudioProject(s, ctx, String(params.id || ""));
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    const versions = (resolved.project.versions || []).map(studioVersionMeta).reverse();
+    return { ok: true, result: { versions } };
+  });
+
+  registerLensAction("studio", "project-snapshot", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const resolved = resolveStudioProject(s, ctx, String(params.id || ""));
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    const v = pushStudioVersion(resolved.project, String(params.label || "Snapshot").trim() || "Snapshot");
+    if (!v) return { ok: false, error: "nothing to snapshot yet" };
+    saveStudioState();
+    return { ok: true, result: { version: studioVersionMeta(v) } };
+  });
+
+  registerLensAction("studio", "project-version-restore", (ctx, _artifact, params = {}) => {
+    const s = getStudioState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const resolved = resolveStudioProject(s, ctx, String(params.id || ""));
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    const project = resolved.project;
+    const v = (project.versions || []).find((x) => x.id === String(params.versionId || ""));
+    if (!v) return { ok: false, error: "version not found" };
+    pushStudioVersion(project, `Before restoring "${v.label}"`);
+    project.daw = v.daw;
+    project.rev = (Number(project.rev) || 0) + 1;
+    project.updatedAt = nowIsoStudio();
+    saveStudioState();
+    return { ok: true, result: { project: publicStudioProject(project) } };
   });
 
   registerLensAction("studio", "project-get", (ctx, _artifact, params = {}) => {
@@ -710,7 +853,7 @@ export default function registerStudioActions(registerLensAction) {
     const id = String(params.id || "");
     const resolved = resolveStudioProject(s, ctx, id);
     if (!resolved.ok) return { ok: false, error: "not found" };
-    return { ok: true, result: { project: resolved.project } };
+    return { ok: true, result: { project: publicStudioProject(resolved.project) } };
   });
 
   registerLensAction("studio", "project-delete", (ctx, _artifact, params = {}) => {
