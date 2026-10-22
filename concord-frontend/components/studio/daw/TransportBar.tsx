@@ -2,12 +2,13 @@
 
 import { useRef } from 'react';
 import {
-  Play, Square, Circle, Repeat, Undo2, Redo2, Timer, Upload, Sparkles, Wand2, ChevronLeft, Check, CloudOff, Loader2, AlertTriangle, History,
+  Play, Square, Circle, Repeat, Undo2, Redo2, Timer, Upload, Sparkles, Wand2, ChevronLeft, Check, CloudOff, Loader2, AlertTriangle, History, Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject } from '@/lib/daw/types';
 import type { SaveInfo } from './useStudioProject';
-import { useBeatFrame, formatPosition, formatTime } from './engine-hooks';
+import { useBeatFrame, formatPosition } from './engine-hooks';
+import { projectTempoPoints, secondsFromBeat, TEMPO_MAX, TEMPO_MIN } from '@/lib/daw/tempo-map';
 import type { TransportState } from '@/lib/daw/playback-engine';
 
 export interface TransportBarProps {
@@ -34,6 +35,7 @@ export interface TransportBarProps {
   onVersions: () => void;
   onAutoMix: () => void;
   onExport: () => void;
+  onPublish: () => void;
   onAskProducer: () => void;
 }
 
@@ -56,13 +58,20 @@ function SaveBadge({ save, onClick }: { save: SaveInfo; onClick: () => void }) {
   );
 }
 
+function formatClock(sec: number): string {
+  const sign = sec < 0 ? '-' : '';
+  const a = Math.abs(sec);
+  const m = Math.floor(a / 60);
+  return `${sign}${m}:${(a % 60).toFixed(1).padStart(4, '0')}`;
+}
+
 export function TransportBar(p: TransportBarProps) {
   const posRef = useRef<HTMLSpanElement>(null);
   const timeRef = useRef<HTMLSpanElement>(null);
   const bpb = p.project.timeSignature?.[0] || 4;
   useBeatFrame((beat) => {
     if (posRef.current) posRef.current.textContent = formatPosition(beat, bpb);
-    if (timeRef.current) timeRef.current.textContent = formatTime(beat, p.project.bpm);
+    if (timeRef.current) timeRef.current.textContent = formatClock(secondsFromBeat(projectTempoPoints(p.project), beat));
   });
   const playing = p.transport !== 'stopped';
   const btn = 'h-8 w-8 flex items-center justify-center rounded-md transition-colors';
@@ -103,10 +112,10 @@ export function TransportBar(p: TransportBarProps) {
         <label className="ml-2 flex items-center gap-1 text-[11px] text-zinc-500">
           <input
             type="number"
-            min={30}
-            max={300}
+            min={TEMPO_MIN}
+            max={TEMPO_MAX}
             value={p.project.bpm}
-            onChange={(e) => { const v = Number(e.target.value); if (v >= 30 && v <= 300) p.onBpm(v); }}
+            onChange={(e) => { const v = Number(e.target.value); if (v >= TEMPO_MIN && v <= TEMPO_MAX) p.onBpm(v); }}
             className="w-14 rounded bg-white/5 px-1 py-0.5 text-right text-sm text-zinc-100 outline-none"
             aria-label="Tempo (BPM)"
           />
@@ -122,8 +131,11 @@ export function TransportBar(p: TransportBarProps) {
       <button onClick={p.onAskProducer} className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-300 hover:bg-white/5" title="Ask producer: write a starting idea as new tracks" data-testid="studio-ask-producer">
         <Sparkles className="h-3.5 w-3.5" /> Ask producer
       </button>
-      <button onClick={p.onExport} className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 text-xs text-emerald-200 hover:bg-emerald-500/25" title="Render WAV/FLAC, stems, or save the mix to your Concord library" data-testid="studio-export">
+      <button onClick={p.onExport} className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2.5 text-xs text-emerald-200 hover:bg-emerald-500/25" title="Render WAV, FLAC, or MP3, with stems, or save the mix to your Concord library" data-testid="studio-export">
         <Upload className="h-3.5 w-3.5" /> Export
+      </button>
+      <button onClick={p.onPublish} className="flex h-8 items-center gap-1.5 rounded-md bg-violet-500/15 px-2.5 text-xs text-violet-200 hover:bg-violet-500/25" title="Publish this song on the Concord marketplace" data-testid="studio-publish">
+        <Store className="h-3.5 w-3.5" /> Publish
       </button>
     </div>
   );

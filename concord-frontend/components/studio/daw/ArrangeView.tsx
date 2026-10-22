@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip } from '@/lib/daw/types';
 import type { NewTrackKind } from '@/lib/daw/project';
 import { trackKind } from '@/lib/daw/project';
+import { bpmAt, clampTempo, projectTempoPoints, TEMPO_MAX, TEMPO_MIN, type TempoPoint } from '@/lib/daw/tempo-map';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { useBeatFrame } from './engine-hooks';
 import { MidiThumb, WaveThumb } from './ClipShapes';
@@ -13,6 +14,7 @@ import { MidiThumb, WaveThumb } from './ClipShapes';
 export const HEADER_W = 208;
 export const RULER_H = 26;
 export const TRACK_H = 64;
+export const TEMPO_H = 52;
 
 export interface ArrangeViewProps {
   project: DAWProject;
@@ -32,6 +34,7 @@ export interface ArrangeViewProps {
   onDropFiles: (trackId: string | null, beat: number, files: File[]) => void;
   onDropItem: (trackId: string | null, beat: number, payload: string) => void;
   onZoom: (beatWidth: number) => void;
+  onTempo: (points: TempoPoint[]) => void;
 }
 
 const snapTo = (b: number, grid: number) => Math.round(b / grid) * grid;
@@ -237,6 +240,8 @@ export function ArrangeView(p: ArrangeViewProps) {
           </div>
         </div>
 
+        <TempoLane project={project} beatWidth={bw} beatsPerBar={bpb} endBeat={endBeat} beatFromClientX={beatFromClientX} onTempo={p.onTempo} />
+
         {/* Tracks */}
         {tracks.map((t, ti) => (
           <div key={t.id} className="flex">
@@ -279,7 +284,7 @@ export function ArrangeView(p: ArrangeViewProps) {
                     data-testid="studio-clip"
                   >
                     {c.type === 'audio'
-                      ? <WaveThumb asset={project.audioAssets?.[c.audioBufferId || '']} clip={{ ...c, lengthBeats: len }} width={w} height={TRACK_H - 8} bpm={project.bpm} />
+                      ? <WaveThumb asset={project.audioAssets?.[c.audioBufferId || '']} clip={{ ...c, lengthBeats: len }} width={w} height={TRACK_H - 8} bpm={bpmAt(projectTempoPoints(project), start)} />
                       : <MidiThumb clip={{ ...c, lengthBeats: len }} width={w} height={TRACK_H - 8} />}
                     <div className="relative truncate px-1.5 pt-0.5 font-medium text-white drop-shadow">{c.name}</div>
                     <div onPointerDown={(e) => startDrag(e, c, ti, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/30" />
@@ -327,4 +332,147 @@ export function ArrangeView(p: ArrangeViewProps) {
       )}
     </div>
   );
+}
+
+function TempoLane({
+  project, beatWidth, beatsPerBar, endBeat, beatFromClientX, onTempo,
+}: {
+  project: DAWProject;
+  beatWidth: number;
+  beatsPerBar: number;
+  endBeat: number;
+  beatFromClientX: (clientX: number) => number;
+  onTempo: (points: TempoPoint[]) => void;
+}) {
+  const stored = projectTempoPoints(project);
+  const [selBeat, setSelBeat] = useState(0);
+  const [drag, setDrag] = useState<{ fromBeat: number; beat: number; bpm: number } | null>(null);
+  const points = stored.map((pt) => (drag && Math.abs(pt.beat - drag.fromBeat) < 1e-6 ? { ...pt, beat: drag.beat, bpm: drag.bpm } : pt));
+  const sel = points.reduce((best, pt) => (Math.abs(pt.beat - selBeat) < Math.abs(best.beat - selBeat) ? pt : best), points[0]);
+  const width = Math.max(endBeat, ...points.map((pt) => pt.beat + beatsPerBar)) * beatWidth;
+  const yFor = (bpm: number) => {
+    const t = (clampTempo(bpm) - TEMPO_MIN) / (TEMPO_MAX - TEMPO_MIN);
+    return (1 - t) * (TEMPO_H - 10) + 5;
+  };
+  const bpmFromY = (y: number) => clampTempo(Math.round(TEMPO_MIN + (1 - (y - 5) / (TEMPO_H - 10)) * (TEMPO_MAX - TEMPO_MIN)));
+  const snap = (beat: number, fine: boolean) => {
+    const grid = fine ? 0.25 : 1;
+    return Math.max(0, Math.round(beat / grid) * grid);
+  };
+  const commit = (next: TempoPoint[]) => {
+    const sorted = [...next].sort((a, b) => a.beat - b.beat);
+    onTempo(sorted);
+  };
+  const poly = tempoPolyline(points, beatWidth, yFor);
+  return (
+    <div className="flex border-b border-white/5" style={{ height: TEMPO_H }} data-testid="studio-tempo-lane">
+      <div className="sticky left-0 z-30 flex flex-col justify-center gap-1 border-r border-white/5 bg-[#101016] px-2" style={{ width: HEADER_W }}>
+        <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <span>Tempo</span>
+          <span className="font-mono text-zinc-300">{Math.round(bpmAt(points, sel.beat))} BPM</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={TEMPO_MIN}
+            max={TEMPO_MAX}
+            value={Math.round(sel.bpm)}
+            aria-label="Tempo point BPM"
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (v >= TEMPO_MIN && v <= TEMPO_MAX) commit(stored.map((pt) => (Math.abs(pt.beat - sel.beat) < 1e-6 ? { ...pt, bpm: clampTempo(v) } : pt)));
+            }}
+            className="w-14 rounded bg-black/40 px-1 py-0.5 text-right text-[11px] text-zinc-100 outline-none"
+          />
+          <button
+            type="button"
+            className={cn('rounded px-1.5 py-0.5 text-[10px]', sel.curve === 'step' ? 'bg-amber-500/25 text-amber-200' : 'bg-white/5 text-zinc-400')}
+            title="Hold this tempo until the next point"
+            onClick={() => commit(stored.map((pt) => (Math.abs(pt.beat - sel.beat) < 1e-6 ? { ...pt, curve: 'step' } : pt)))}
+          >Step</button>
+          <button
+            type="button"
+            className={cn('rounded px-1.5 py-0.5 text-[10px]', sel.curve === 'linear' ? 'bg-sky-500/25 text-sky-200' : 'bg-white/5 text-zinc-400')}
+            title="Ramp linearly to the next point"
+            onClick={() => commit(stored.map((pt) => (Math.abs(pt.beat - sel.beat) < 1e-6 ? { ...pt, curve: 'linear' } : pt)))}
+          >Ramp</button>
+          <button
+            type="button"
+            disabled={stored.length < 2 || sel.beat <= 1e-6}
+            className="rounded px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/10 disabled:opacity-30"
+            title="Remove this breakpoint. The point at beat 0 stays."
+            onClick={() => commit(stored.filter((pt) => Math.abs(pt.beat - sel.beat) > 1e-6))}
+          >Delete</button>
+        </div>
+      </div>
+      <div
+        className="relative cursor-crosshair bg-[#0c0c12]"
+        style={{ width }}
+        title="Double-click to add a tempo point (20–999 BPM). Drag a point to move it. Alt snaps to quarter beats."
+        onDoubleClick={(e) => {
+          const beat = snap(beatFromClientX(e.clientX), e.altKey);
+          const bpm = bpmFromY(e.nativeEvent.offsetY);
+          const without = stored.filter((pt) => Math.abs(pt.beat - beat) > 0.05);
+          const next = [...without, { beat, bpm, curve: 'step' as const }].sort((a, b) => a.beat - b.beat);
+          onTempo(next);
+          setSelBeat(beat);
+        }}
+      >
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+          <polyline fill="none" stroke="#f59e0b" strokeWidth="1.5" points={poly} />
+        </svg>
+        {points.map((pt) => (
+          <button
+            key={`${drag ? 'd' : 's'}-${pt.beat}`}
+            type="button"
+            data-testid="studio-tempo-point"
+            title={`${pt.curve === 'linear' ? 'Ramp' : 'Step'} · ${Math.round(pt.bpm)} BPM at beat ${pt.beat}`}
+            className={cn('absolute z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200', Math.abs(pt.beat - sel.beat) < 1e-6 ? 'bg-amber-300' : 'bg-amber-600')}
+            style={{ left: pt.beat * beatWidth, top: yFor(pt.bpm) }}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.stopPropagation();
+              e.preventDefault();
+              const fromBeat = stored.find((s) => Math.abs(s.beat - pt.beat) < 1e-6)?.beat ?? pt.beat;
+              setSelBeat(fromBeat);
+              const origin = { x: e.clientX, y: e.clientY, beat: fromBeat, bpm: pt.bpm };
+              let latest = { fromBeat, beat: fromBeat, bpm: pt.bpm };
+              const move = (ev: PointerEvent) => {
+                const beat = fromBeat <= 1e-6 ? 0 : Math.max(0, snap(origin.beat + (ev.clientX - origin.x) / beatWidth, ev.altKey));
+                const bpm = clampTempo(Math.round(origin.bpm - ((ev.clientY - origin.y) / (TEMPO_H - 10)) * (TEMPO_MAX - TEMPO_MIN)));
+                latest = { fromBeat, beat, bpm };
+                setDrag(latest);
+              };
+              const up = () => {
+                window.removeEventListener('pointermove', move);
+                setDrag(null);
+                const next = stored.map((p) => (Math.abs(p.beat - fromBeat) < 1e-6 ? { ...p, beat: latest.beat, bpm: latest.bpm } : p));
+                const keys = next.map((p) => p.beat.toFixed(4));
+                if (new Set(keys).size !== keys.length) return;
+                onTempo([...next].sort((a, b) => a.beat - b.beat));
+                setSelBeat(latest.beat);
+              };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', up, { once: true });
+            }}
+            onClick={(e) => { e.stopPropagation(); setSelBeat(pt.beat); }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Step holds, then jumps. Linear is a straight line in BPM between points. */
+function tempoPolyline(points: TempoPoint[], beatWidth: number, yFor: (bpm: number) => number): string {
+  const cmds: string[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    cmds.push(`${a.beat * beatWidth},${yFor(a.bpm)}`);
+    if (!b) break;
+    if (a.curve === 'step') cmds.push(`${b.beat * beatWidth},${yFor(a.bpm)}`);
+    cmds.push(`${b.beat * beatWidth},${yFor(b.bpm)}`);
+  }
+  return cmds.join(' ');
 }

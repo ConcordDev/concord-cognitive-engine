@@ -10,6 +10,7 @@ import type { DAWProject } from './types';
 import { getAudioContext } from './engine';
 import { ProjectGraph } from './graph';
 import { LookaheadScheduler, nextBarBeat, type CollectSource, type LaunchedClip } from './scheduler';
+import { projectTempoPoints, secondsBetween } from './tempo-map';
 import { playSynthNote, playDrum } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import type { PcmAudio } from './render';
@@ -71,6 +72,7 @@ export class StudioEngine {
       tracks: p?.tracks || [],
       beatsPerBar: p?.timeSignature?.[0] || 4,
       bpm: p?.bpm || 120,
+      tempo: p ? projectTempoPoints(p) : undefined,
       metronome: this.metronome,
       mode: this.mode,
       launched: this.launched,
@@ -130,7 +132,9 @@ export class StudioEngine {
     if (!this.pruneTimer) this.pruneTimer = setInterval(() => this.graph.prune(this.ctx.currentTime), 2000);
     this.emit();
     // Context time at which `fromBeat` is heard (recording alignment).
-    return startTime + (this.countInBeats * 60) / (this.project?.bpm || 120);
+    // Count-in uses the tempo at the downbeat, including a ramp that starts there.
+    const map = projectTempoPoints(this.project || { bpm: 120 });
+    return startTime + secondsBetween(map, fromBeat - this.countInBeats, fromBeat);
   }
 
   stop(): void {

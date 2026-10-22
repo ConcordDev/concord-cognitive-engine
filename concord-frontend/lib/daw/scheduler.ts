@@ -13,6 +13,7 @@
  */
 
 import type { DAWTrack, DAWClip } from './types';
+import { beatAfter, bpmAt, isConstantTempo, resolveTempo, secondsBetween, type TempoPoint } from './tempo-map';
 
 export type EventKind = 'note' | 'audio' | 'click';
 
@@ -24,6 +25,8 @@ export interface NoteEvent {
   pitch: number;
   velocity: number;
   lengthBeats: number;
+  /** Wall-clock length when the tempo map is not constant. */
+  durationSec?: number;
   /** Clip gain in dB (applied per voice). */
   gainDb?: number;
 }
@@ -38,6 +41,13 @@ export interface AudioEvent {
   offsetSec: number;
   /** How long to play, in beats (clip may be trimmed by the window start). */
   lengthBeats: number;
+  /**
+   * Wall-clock length. Set when a tempo ramp is active so the file plays at
+   * a constant rate (no warp) instead of tracking the ramp.
+   */
+  durationSec?: number;
+  /** Seconds per beat used for fades: the tempo at the clip start, not the ramp. */
+  rateSecPerBeat?: number;
   gainDb: number;
 }
 
@@ -59,6 +69,8 @@ export interface CollectSource {
   tracks: DAWTrack[];
   beatsPerBar: number;
   bpm: number;
+  /** Breakpoints. Omit for a constant `bpm`. */
+  tempo?: TempoPoint[];
   metronome: boolean;
   /** 'arrange' plays the timeline; 'session' plays only launched clips. */
   mode: 'arrange' | 'session';
@@ -103,24 +115,36 @@ function collectClip(
   from: number,
   to: number,
   bpm: number,
+  tempo: TempoPoint[] | null,
   opts: CollectOptions,
   out: TimelineEvent[],
 ): void {
   if (clipEnd <= from || clipStart >= to) return;
+  const variable = !!tempo && !isConstantTempo(tempo);
   const secPerBeat = 60 / bpm;
   for (const base of clipIterations(clipStart, clipEnd, loopLen, from, to)) {
     const iterEnd = Math.min(base + loopLen, clipEnd);
     if (clip.type === 'audio' && clip.audioBufferId) {
       const playStart = base;
+      const rateBpm = variable && tempo ? bpmAt(tempo, base) : bpm;
+      const fullSec = (iterEnd - base) * (60 / rateBpm);
       if (playStart >= from - EPS && playStart < to) {
         out.push({
           kind: 'audio', trackId: track.id, clipId: clip.id, beat: playStart, bufferId: clip.audioBufferId,
-          offsetSec: Math.max(0, clip.offset || 0), lengthBeats: iterEnd - playStart, gainDb: clip.gain || 0,
+          offsetSec: Math.max(0, clip.offset || 0), lengthBeats: iterEnd - playStart,
+          durationSec: variable ? fullSec : undefined,
+          rateSecPerBeat: variable ? 60 / rateBpm : undefined,
+          gainDb: clip.gain || 0,
         });
       } else if (opts.catchUp && playStart < from && iterEnd > from) {
+        const elapsed = variable && tempo ? secondsBetween(tempo, base, from) : (from - playStart) * secPerBeat;
+        if (variable && elapsed >= fullSec - 1e-4) continue;
         out.push({
           kind: 'audio', trackId: track.id, clipId: clip.id, beat: from, bufferId: clip.audioBufferId,
-          offsetSec: Math.max(0, clip.offset || 0) + (from - playStart) * secPerBeat, lengthBeats: iterEnd - from, gainDb: clip.gain || 0,
+          offsetSec: Math.max(0, clip.offset || 0) + elapsed, lengthBeats: iterEnd - from,
+          durationSec: variable ? Math.max(0, fullSec - elapsed) : undefined,
+          rateSecPerBeat: variable ? 60 / rateBpm : undefined,
+          gainDb: clip.gain || 0,
         });
       }
       continue;
@@ -130,10 +154,12 @@ function collectClip(
       const beat = base + n.startBeat;
       if (beat >= iterEnd - EPS) continue;
       if (beat < from - EPS || beat >= to) continue;
+      const lengthBeats = Math.max(0.01, Math.min(n.lengthBeats, iterEnd - beat));
       out.push({
         kind: 'note', trackId: track.id, clipId: clip.id, beat, pitch: n.pitch,
         velocity: Math.max(1, Math.min(127, n.velocity || 100)),
-        lengthBeats: Math.max(0.01, Math.min(n.lengthBeats, iterEnd - beat)),
+        lengthBeats,
+        durationSec: variable && tempo ? Math.max(0.01, secondsBetween(tempo, beat, beat + lengthBeats)) : undefined,
         gainDb: clip.gain || 0,
       });
     }
@@ -154,6 +180,7 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
   }
 
   const f = Math.max(0, from);
+  const tempo = src.tempo && src.tempo.length && !isConstantTempo(src.tempo) ? src.tempo : null;
   if (to > f) {
     for (const track of audibleTracks(src.tracks)) {
       if (src.mode === 'session') {
@@ -161,12 +188,12 @@ export function collectEvents(from: number, to: number, src: CollectSource, opts
         if (!l) continue;
         const clip = track.clips.find((c) => c.id === l.clipId);
         if (!clip) continue;
-        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, opts, out);
+        collectClip(track, clip, l.launchBeat, Number.POSITIVE_INFINITY, Math.max(0.25, clip.lengthBeats), f, to, src.bpm, tempo, opts, out);
       } else {
         for (const clip of track.clips) {
           if (clip.slot !== undefined && clip.slot !== null) continue; // Session-only clip
           const loopLen = clip.looped && clip.loopLength > 0 ? clip.loopLength : clip.lengthBeats;
-          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, opts, out);
+          collectClip(track, clip, clip.startBeat, clip.startBeat + clip.lengthBeats, loopLen, f, to, src.bpm, tempo, opts, out);
         }
       }
     }
@@ -245,41 +272,49 @@ export class LookaheadScheduler {
 
   /** Beat position heard at context time `t` (playhead). */
   beatAt(t: number = this.cfg.clock.now()): number {
-    const bpm = this.cfg.getSource().bpm;
+    const map = resolveTempo(this.cfg.getSource());
     let seg = this.segments[0];
     if (!seg) return 0;
     for (const s of this.segments) {
       if (s.time <= t + EPS) seg = s;
       else break;
     }
-    return seg.beat + ((t - seg.time) * bpm) / 60;
+    if (isConstantTempo(map)) return seg.beat + ((t - seg.time) * map[0].bpm) / 60;
+    return beatAfter(map, seg.beat, t - seg.time);
   }
 
   /** Context time at which `beat` plays (valid inside the current segment). */
   timeAtBeat(beat: number): number {
-    const bpm = this.cfg.getSource().bpm;
+    const map = resolveTempo(this.cfg.getSource());
     const seg = this.segments[this.segments.length - 1] ?? { time: this.cfg.clock.now(), beat: 0 };
-    return seg.time + ((beat - seg.beat) * 60) / bpm;
+    if (isConstantTempo(map)) return seg.time + ((beat - seg.beat) * 60) / map[0].bpm;
+    return seg.time + secondsBetween(map, seg.beat, beat);
   }
 
   tick(): void {
     if (!this.running) return;
     const src = this.cfg.getSource();
-    const spb = 60 / Math.max(1, src.bpm);
+    const map = resolveTempo(src);
+    const constant = isConstantTempo(map);
+    const spb = 60 / Math.max(1, map[0].bpm);
     const horizon = this.cfg.clock.now() + (this.cfg.lookaheadSec ?? 0.12);
     let guard = 0;
     while (this.nextTime < horizon && guard++ < 64) {
-      let windowEnd = this.nextBeat + (horizon - this.nextTime) / spb;
+      const remain = horizon - this.nextTime;
+      let windowEnd = constant ? this.nextBeat + remain / spb : beatAfter(map, this.nextBeat, remain);
       const loop = this.cfg.loop?.();
-      const wraps = !!loop && loop.enabled && loop.end > loop.start && this.nextBeat >= 0 && this.nextBeat < loop.end && windowEnd >= loop.end;
+      const wraps = !!loop && loop.enabled && loop.end > loop.start && this.nextBeat >= 0 && this.nextBeat < loop.end && windowEnd >= loop.end - 1e-9;
       if (wraps && loop) windowEnd = loop.end;
       const segTime = this.nextTime;
       const segBeat = this.nextBeat;
       for (const ev of collectEvents(segBeat, windowEnd, src, { catchUp: this.firstWindow })) {
-        this.cfg.onEvent(ev, segTime + (ev.beat - segBeat) * spb, spb);
+        const dt = constant ? (ev.beat - segBeat) * spb : secondsBetween(map, segBeat, ev.beat);
+        const evSpb = constant ? spb : 60 / bpmAt(map, ev.beat);
+        this.cfg.onEvent(ev, segTime + dt, evSpb);
       }
       this.firstWindow = false;
-      this.nextTime = segTime + (windowEnd - segBeat) * spb;
+      const advanced = constant ? (windowEnd - segBeat) * spb : secondsBetween(map, segBeat, windowEnd);
+      this.nextTime = segTime + advanced;
       this.nextBeat = windowEnd;
       if (wraps && loop) {
         this.nextBeat = loop.start;

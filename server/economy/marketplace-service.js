@@ -46,14 +46,16 @@ const PREVIEW_STRATEGIES = {
  * @param {string} opts.contentType — type of content
  * @param {string} opts.title
  * @param {string} [opts.description]
- * @param {number} opts.price — in Concord Coins
+ * @param {number} opts.price — in Concord Coins. 0 is a free listing.
  * @param {string} opts.contentData — raw content for hashing
  * @param {string} [opts.licenseType='standard']
  * @param {Array} [opts.royaltyChain=[]] — citation chain for royalty tracking
+ * @param {object|string|null} [opts.previewData] — stored in preview_data when that column exists
  */
 export function createListing(db, {
   sellerId, contentId, contentType, title, description,
   price, contentData, licenseType = "standard", royaltyChain = [],
+  previewData = null,
 }) {
   if (!sellerId) return { ok: false, error: "missing_seller_id" };
   if (!contentId) return { ok: false, error: "missing_content_id" };
@@ -61,7 +63,10 @@ export function createListing(db, {
     return { ok: false, error: "invalid_content_type", validTypes: Object.keys(PREVIEW_STRATEGIES) };
   }
   if (!title) return { ok: false, error: "missing_title" };
-  if (!price || price <= 0) return { ok: false, error: "invalid_price" };
+  const priceNum = Number(price);
+  if (!Number.isFinite(priceNum) || priceNum < 0) return { ok: false, error: "invalid_price" };
+  const roundedPrice = Math.round(priceNum * 100) / 100;
+  if (priceNum > 0 && roundedPrice === 0) return { ok: false, error: "invalid_price" };
   if (!contentData) return { ok: false, error: "missing_content_data" };
 
   // ── License Compliance Gate ──
@@ -102,17 +107,33 @@ export function createListing(db, {
   const now = nowISO();
 
   try {
-    db.prepare(`
-      INSERT INTO marketplace_economy_listings
-        (id, seller_id, content_id, content_type, title, description, price,
-         content_hash, status, preview_type, license_type, royalty_chain_json,
-         created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
-    `).run(
-      id, sellerId, contentId, contentType, title,
-      description || null, price, contentHash, previewType,
-      licenseType, JSON.stringify(royaltyChain), now, now,
-    );
+    const columns = listingColumns(db);
+    const previewJson = previewData == null ? null : (typeof previewData === "string" ? previewData : JSON.stringify(previewData));
+    if (columns.has("preview_data")) {
+      db.prepare(`
+        INSERT INTO marketplace_economy_listings
+          (id, seller_id, content_id, content_type, title, description, price,
+           content_hash, status, preview_type, preview_data, license_type, royalty_chain_json,
+           created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+      `).run(
+        id, sellerId, contentId, contentType, title,
+        description || null, roundedPrice, contentHash, previewType, previewJson,
+        licenseType, JSON.stringify(royaltyChain), now, now,
+      );
+    } else {
+      db.prepare(`
+        INSERT INTO marketplace_economy_listings
+          (id, seller_id, content_id, content_type, title, description, price,
+           content_hash, status, preview_type, license_type, royalty_chain_json,
+           created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      `).run(
+        id, sellerId, contentId, contentType, title,
+        description || null, roundedPrice, contentHash, previewType,
+        licenseType, JSON.stringify(royaltyChain), now, now,
+      );
+    }
 
     return {
       ok: true,
@@ -122,7 +143,7 @@ export function createListing(db, {
         contentId,
         contentType,
         title,
-        price,
+        price: roundedPrice,
         contentHash,
         previewType,
         licenseType,
@@ -163,8 +184,15 @@ export function purchaseListing(db, { buyerId, listingId, refId, requestId, ip }
   const purchaseId = uid("pur");
   const purchaseRefId = refId || `marketplace:${purchaseId}`;
 
+  // Free listings never touch the ledger. economy_ledger rejects amount/net <= 0,
+  // and a zero-price sale has nothing to debit. The purchase row still moves
+  // CREATED → PAID → SETTLED → FULFILLED so the buyer has a real entitlement.
+  if (Number(listing.price) === 0) {
+    return fulfillFreeListing(db, { buyerId, listing, purchaseId, requestId, ip });
+  }
+
   // 1. Create purchase record
-  const purchaseRecord = createPurchase(db, {
+  createPurchase(db, {
     purchaseId,
     buyerId,
     sellerId: listing.seller_id,
@@ -246,6 +274,9 @@ export function purchaseListing(db, { buyerId, listingId, refId, requestId, ip }
         updated_at = ?
     WHERE id = ?
   `).run(listing.price, now, listingId);
+  if (listing.license_type === "exclusive") {
+    db.prepare(`UPDATE marketplace_economy_listings SET status = 'sold', updated_at = ? WHERE id = ?`).run(now, listingId);
+  }
 
   economyAudit(db, {
     action: "marketplace_purchase_complete",
@@ -490,6 +521,7 @@ function formatListing(row) {
     previewType: row.preview_type,
     licenseType: row.license_type,
     royaltyChain: safeJsonParse(row.royalty_chain_json),
+    preview: parsePreview(row.preview_data),
     purchaseCount: row.purchase_count,
     totalRevenue: row.total_revenue,
     createdAt: row.created_at,
@@ -499,6 +531,90 @@ function formatListing(row) {
 
 function safeJsonParse(str) {
   try { return JSON.parse(str); } catch (err) { console.debug('[marketplace-service] JSON parse failed', err?.message); return []; }
+}
+
+function parsePreview(str) {
+  if (str == null || str === "") return null;
+  try {
+    const value = JSON.parse(str);
+    return value && typeof value === "object" ? value : null;
+  } catch (err) {
+    console.debug("[marketplace-service] preview JSON parse failed", err?.message);
+    return null;
+  }
+}
+
+function listingColumns(db) {
+  try {
+    return new Set(db.prepare("PRAGMA table_info(marketplace_economy_listings)").all().map((c) => c.name));
+  } catch {
+    return new Set();
+  }
+}
+
+function fulfillFreeListing(db, { buyerId, listing, purchaseId, requestId, ip }) {
+  createPurchase(db, {
+    purchaseId,
+    buyerId,
+    sellerId: listing.seller_id,
+    listingId: listing.id,
+    listingType: listing.content_type,
+    licenseType: listing.license_type,
+    amount: 0,
+    source: "marketplace",
+  });
+  const paid = transitionPurchase(db, purchaseId, "PAID", {
+    reason: "Free listing — no Concord balance debit",
+    actor: "marketplace_service",
+  });
+  if (!paid.ok) return paid;
+  recordSettlement(db, purchaseId, {
+    settlementBatchId: null,
+    marketplaceFee: 0,
+    sellerNet: 0,
+    totalRoyalties: 0,
+    royaltyDetails: [],
+  });
+  const settled = transitionPurchase(db, purchaseId, "SETTLED", {
+    reason: "Free listing settled",
+    actor: "marketplace_service",
+  });
+  if (!settled.ok) return settled;
+  const fulfilled = transitionPurchase(db, purchaseId, "FULFILLED", {
+    reason: "Free listing fulfilled",
+    actor: "marketplace_service",
+  });
+  if (!fulfilled.ok) return fulfilled;
+  const now = nowISO();
+  db.prepare(`
+    UPDATE marketplace_economy_listings
+    SET purchase_count = purchase_count + 1, updated_at = ?
+    WHERE id = ?
+  `).run(now, listing.id);
+  if (listing.license_type === "exclusive") {
+    db.prepare(`UPDATE marketplace_economy_listings SET status = 'sold', updated_at = ? WHERE id = ?`).run(now, listing.id);
+  }
+  economyAudit(db, {
+    action: "marketplace_purchase_complete",
+    userId: buyerId,
+    amount: 0,
+    details: { purchaseId, listingId: listing.id, sellerId: listing.seller_id, fee: 0, sellerNet: 0, free: true },
+    requestId,
+    ip,
+  });
+  return {
+    ok: true,
+    purchaseId,
+    listingId: listing.id,
+    buyerId,
+    sellerId: listing.seller_id,
+    amount: 0,
+    fee: 0,
+    sellerNet: 0,
+    royalties: { total: 0, payouts: [] },
+    batchId: null,
+    free: true,
+  };
 }
 
 export { PREVIEW_STRATEGIES };
