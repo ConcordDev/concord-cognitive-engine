@@ -69,6 +69,84 @@ export function reverbImpulse(ctx: BaseAudioContext, decaySec: number, preDelay:
   return buf;
 }
 
+// ─── Noise gate ────────────────────────────────────────────────────────────
+//
+// A real downward gate built from native nodes (no worklet), so the live
+// graph and the OfflineAudioContext export construct it identically:
+//
+//   in ─┬──────────────────────────────────────────────── VCA ── out
+//       └─ |x| → envelope LP (release) → threshold curve → de-click LP ─┘ (drives VCA gain)
+//
+// The rectified signal is low-passed into an amplitude envelope whose time
+// constant is the release; a WaveShaper maps envelope → gain (unity at or
+// above the threshold, `range` dB of attenuation below it, 6 dB soft knee);
+// a short low-pass removes zipper clicks. No look-ahead, so the track gets
+// no extra latency. Loud hits open the gate within a few milliseconds
+// (the envelope crosses the threshold early in its rise).
+
+export const GATE_CURVE_SIZE = 65537;
+
+/** WaveShaper curve over input [-1, 1]: envelope amplitude → gate gain. */
+export function gateCurve(thresholdDb: number, rangeDb: number, n = GATE_CURVE_SIZE): Float32Array {
+  const thr = dbToGain(Math.max(-100, Math.min(0, thresholdDb)));
+  const floor = dbToGain(Math.max(-100, Math.min(0, rangeDb)));
+  const knee = thr / dbToGain(6);
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = Math.abs((i * 2) / (n - 1) - 1);
+    if (x >= thr) curve[i] = 1;
+    else if (x <= knee) curve[i] = floor;
+    else curve[i] = floor + (1 - floor) * ((x - knee) / (thr - knee));
+  }
+  return curve;
+}
+
+/** Steady-state gate gain for a sustained input at `levelDb` peak (what the curve settles to). */
+export function gateGainFor(levelDb: number, thresholdDb: number, rangeDb: number, n = 8193): number {
+  const c = gateCurve(thresholdDb, rangeDb, n);
+  const x = Math.min(1, dbToGain(levelDb));
+  return c[Math.round(((x + 1) / 2) * (n - 1))];
+}
+
+/** Low-pass cutoff (Hz) whose time constant is `sec`. */
+export function cutoffForTime(sec: number): number {
+  return 1 / (2 * Math.PI * Math.max(0.0005, sec));
+}
+
+export const GATE_DEFAULTS = { threshold: -45, range: -60, release: 0.12 } as const;
+
+function createGate(ctx: BaseAudioContext, p: Record<string, unknown>): DeviceNode {
+  const threshold = num(p.threshold, GATE_DEFAULTS.threshold);
+  const range = num(p.range, GATE_DEFAULTS.range);
+  const release = Math.max(0.01, Math.min(2, num(p.release, GATE_DEFAULTS.release)));
+  const input = ctx.createGain();
+  const output = ctx.createGain();
+  const vca = ctx.createGain();
+  vca.gain.value = 0; // set entirely by the control signal below
+  input.connect(vca).connect(output);
+
+  const rect = ctx.createWaveShaper();
+  const rc = new Float32Array(1025);
+  for (let i = 0; i < rc.length; i++) rc[i] = Math.abs((i * 2) / (rc.length - 1) - 1);
+  rect.curve = rc;
+  const env = ctx.createBiquadFilter();
+  env.type = 'lowpass';
+  env.frequency.value = cutoffForTime(release);
+  env.Q.value = 0;
+  // Mean of a full-wave-rectified sine is 2/π of its peak: scale back to peak.
+  const envGain = ctx.createGain();
+  envGain.gain.value = Math.PI / 2;
+  const shaper = ctx.createWaveShaper();
+  shaper.curve = gateCurve(threshold, range);
+  const declick = ctx.createBiquadFilter();
+  declick.type = 'lowpass';
+  declick.frequency.value = cutoffForTime(0.002);
+  declick.Q.value = 0;
+  input.connect(rect).connect(env).connect(envGain).connect(shaper).connect(declick).connect(vca.gain);
+  const nodes: AudioNode[] = [input, output, vca, rect, env, envGain, shaper, declick];
+  return { input, output, dispose: () => nodes.forEach((n) => { try { n.disconnect(); } catch { /* noop */ } }) };
+}
+
 export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): DeviceNode | null {
   const p = effect.params || {};
   switch (effect.type) {
@@ -242,11 +320,8 @@ export function createDevice(ctx: BaseAudioContext, effect: EffectInstance): Dev
       makeup.connect(output);
       return { input, output, dispose: () => { try { input.disconnect(); output.disconnect(); makeup.disconnect(); } catch { /* noop */ } } };
     }
-    case 'gate': {
-      // Not implemented as a true gate in Web Audio without a worklet; pass-through.
-      const g = ctx.createGain();
-      return chain([g]);
-    }
+    case 'gate':
+      return createGate(ctx, p);
     default:
       return null;
   }

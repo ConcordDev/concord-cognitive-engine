@@ -26,6 +26,11 @@ export const DEVICE_SPECS: Array<{ type: EffectType; name: string; wet?: number;
     { key: 'release', label: 'Release', min: 0.02, max: 1, step: 0.01, def: 0.2, unit: 's' },
     { key: 'makeup', label: 'Makeup', min: 0, max: 18, step: 0.5, def: 0, unit: 'dB' },
   ] },
+  { type: 'gate', name: 'Gate', params: [
+    { key: 'threshold', label: 'Threshold', min: -80, max: 0, step: 0.5, def: -45, unit: 'dB' },
+    { key: 'range', label: 'Range', min: -80, max: 0, step: 1, def: -60, unit: 'dB' },
+    { key: 'release', label: 'Release', min: 0.01, max: 1, step: 0.01, def: 0.12, unit: 's' },
+  ] },
   { type: 'reverb', name: 'Reverb', wet: 0.25, params: [
     { key: 'decay', label: 'Decay', min: 0.2, max: 8, step: 0.1, def: 2, unit: 's' },
     { key: 'preDelay', label: 'Pre-delay', min: 0, max: 0.2, step: 0.005, def: 0.01, unit: 's' },
@@ -59,7 +64,14 @@ export const DEVICE_SPECS: Array<{ type: EffectType; name: string; wet?: number;
   ] },
 ];
 
-const specOf = (t: EffectType) => DEVICE_SPECS.find((s) => s.type === t || (t === 'eq8' && s.type === 'eq3') || (t === 'parametricEQ' && s.type === 'eq3'));
+/** Device types this Studio both processes and exposes controls for (aliases share a spec). */
+const ALIASES: Partial<Record<EffectType, EffectType>> = {
+  eq8: 'eq3', parametricEQ: 'eq3', autoFilter: 'filter', pingPongDelay: 'delay', overdrive: 'distortion', flanger: 'chorus',
+};
+const specOf = (t: EffectType) => DEVICE_SPECS.find((s) => s.type === t || s.type === ALIASES[t]);
+
+/** False for device types from older projects that the audio engine skips (no fake card). */
+export const isSupportedDevice = (t: EffectType): boolean => !!specOf(t);
 
 export function newDevice(type: EffectType): EffectInstance {
   const s = specOf(type)!;
@@ -74,18 +86,30 @@ function fmt(v: number, unit?: string) {
 
 export function DeviceCard({ fx, onChange, onRemove, onMove }: { fx: EffectInstance; onChange: (fx: EffectInstance, key?: string) => void; onRemove?: () => void; onMove?: (d: -1 | 1) => void }) {
   const s = specOf(fx.type);
+  if (!s) {
+    // Saved by an older Studio version; the engine does not process this type.
+    return (
+      <div className="flex w-48 flex-shrink-0 flex-col rounded-lg border border-amber-500/20 bg-[#17171f] p-2 opacity-70" data-testid="studio-device-unsupported">
+        <div className="mb-1 flex items-center gap-1">
+          <span className="flex-1 truncate text-[11px] font-medium text-zinc-300">{fx.name}</span>
+          {onRemove && <button onClick={onRemove} className="text-zinc-500 hover:text-red-400" title="Remove"><X className="h-3 w-3" /></button>}
+        </div>
+        <p className="text-[10px] leading-relaxed text-amber-200/80">Not available in this Studio. It is skipped (no effect on the sound). Remove it or replace it with a device from Add device.</p>
+      </div>
+    );
+  }
   const hasWet = ['reverb', 'delay', 'pingPongDelay', 'chorus', 'flanger', 'distortion', 'overdrive'].includes(fx.type);
   return (
     <div className={cn('flex w-48 flex-shrink-0 flex-col rounded-lg border bg-[#17171f] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-50')} data-testid="studio-device">
       <div className="mb-1 flex items-center gap-1">
         <button onClick={() => onChange({ ...fx, enabled: !fx.enabled })} className={cn('rounded p-0.5', fx.enabled ? 'text-emerald-400' : 'text-zinc-600')} title="Bypass"><Power className="h-3 w-3" /></button>
         <span className="flex-1 truncate text-[11px] font-medium text-zinc-200">{fx.name}</span>
-        {onMove && <button onClick={() => onMove(-1)} className="text-zinc-500 hover:text-white"><ChevronLeft className="h-3 w-3" /></button>}
-        {onMove && <button onClick={() => onMove(1)} className="text-zinc-500 hover:text-white"><ChevronRight className="h-3 w-3" /></button>}
+        {onMove && <button onClick={() => onMove(-1)} className="text-zinc-500 hover:text-white" title="Move earlier in the chain"><ChevronLeft className="h-3 w-3" /></button>}
+        {onMove && <button onClick={() => onMove(1)} className="text-zinc-500 hover:text-white" title="Move later in the chain"><ChevronRight className="h-3 w-3" /></button>}
         {onRemove && <button onClick={onRemove} className="text-zinc-500 hover:text-red-400" title="Remove"><X className="h-3 w-3" /></button>}
       </div>
       <div className="space-y-1 overflow-y-auto">
-        {(s?.params || []).map((ps) => {
+        {s.params.map((ps) => {
           const v = Number(fx.params[ps.key] ?? ps.def);
           return (
             <label key={ps.key} className="flex items-center gap-1 text-[10px] text-zinc-400">

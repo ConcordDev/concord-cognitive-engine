@@ -761,8 +761,8 @@ export default function registerStudioActions(registerLensAction) {
     if (!d || typeof d !== "object") return null;
     const title = String(d.title || d.name || "");
     const kind = String(d.machine?.kind || d.kind || d.type || d.body?.type || d.data?.type || "").toLowerCase();
-    const mime = String(d.mimeType || d.meta?.mimeType || d.artifact?.mimeType || d.data?.mimeType || "").toLowerCase();
-    const fileName = String(d.artifact?.name || d.meta?.fileName || d.data?.fileName || title);
+    const mime = String(d.mimeType || d.meta?.mimeType || d.artifact?.mimeType || d.artifact?.type || d.data?.mimeType || "").toLowerCase();
+    const fileName = String(d.artifact?.name || d.artifact?.filename || d.meta?.fileName || d.data?.fileName || title);
     const tags = (Array.isArray(d.tags) ? d.tags : []).map((t) => String(t).toLowerCase());
     const domain = String(d.domain || d.lens || d.meta?.lens || "").toLowerCase();
     const has = (w) => tags.some((t) => t.includes(w)) || kind.includes(w);
@@ -778,6 +778,17 @@ export default function registerStudioActions(registerLensAction) {
     if (STUDIO_MUSIC_KINDS.has(kind)) return kind.includes("stem") ? "stem" : kind.includes("loop") ? "loop" : kind === "sample" ? "sample" : "music-dtu";
     if (tags.some((t) => STUDIO_MUSIC_KINDS.has(t))) return "music-dtu";
     if (["studio", "music", "audio"].includes(domain) && (STUDIO_MUSIC_WORDS.test(title) || tags.some((t) => STUDIO_MUSIC_WORDS.test(t)))) return "music-dtu";
+    return null;
+  }
+  // A placeable file URL for a library item: an explicit URL, else the stored
+  // artifact's owner download route (the Studio browser fetches it with the
+  // caller's session and drops it on the timeline).
+  function studioLibraryItemUrl(d) {
+    if (typeof d.artifact?.url === "string") return d.artifact.url;
+    if (typeof d.data?.audioUrl === "string") return d.data.audioUrl;
+    if (d.artifact && typeof d.artifact === "object" && (d.artifact.hash || d.artifact.diskPath || d.artifact.filename)) {
+      return `/api/artifact/${encodeURIComponent(d.id)}/download`;
+    }
     return null;
   }
   registerLensAction("studio", "library-browse", (ctx, _artifact, params = {}) => {
@@ -803,7 +814,7 @@ export default function registerStudioActions(registerLensAction) {
         kind: k,
         bpm: typeof d.data?.bpm === "number" ? d.data.bpm : typeof d.body?.bpm === "number" ? d.body.bpm : null,
         key: typeof d.data?.key === "string" ? d.data.key : null,
-        url: typeof d.artifact?.url === "string" ? d.artifact.url : typeof d.data?.audioUrl === "string" ? d.data.audioUrl : null,
+        url: studioLibraryItemUrl(d),
         createdAt: d.createdAt || null,
       });
     }
