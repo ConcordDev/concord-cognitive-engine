@@ -13,6 +13,9 @@ import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { assetMeta, newId, trackKind, createTrack, createMidiClip, note as mkNote, setTransportBpm, writeTempoPoints, type NewTrackKind } from '@/lib/daw/project';
 import { beatAfter, bpmAt, projectTempoPoints } from '@/lib/daw/tempo-map';
+import { planRecording, recordingStartBeat } from '@/lib/daw/record-plan';
+import { addTake } from '@/lib/daw/takes';
+import type { AudioTake } from '@/lib/daw/take-types';
 import { detectClipKey } from '@/lib/daw/dsp/pitch/key-detect';
 import { isDrumInstrument } from '@/lib/daw/presets';
 import { classifyMusicItem } from '@/lib/daw/music-filter';
@@ -36,6 +39,7 @@ import { WaveThumb } from './ClipShapes';
 import { ExportDialog, AutoMixDialog, VersionsDialog, AskProducerDialog } from './Dialogs';
 import { PublishDialog } from './PublishDialog';
 import * as ops from './ops';
+import { useTakeLane } from './useTakeLane';
 
 export const LAST_PROJECT_KEY = 'concord-studio-last-project';
 
@@ -135,6 +139,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     engine.setAudio(id, { channels, sampleRate });
     return { id, meta: assetMeta(id, name, channels, sampleRate) };
   }, [engine]);
+  const takes = useTakeLane(projectRef, edit, storeAudio);
 
   const placeAudio = useCallback((trackId: string | null, beat: number, id: string, meta: ReturnType<typeof assetMeta>, name: string) => {
     const lengthBeats = (meta.duration * bpmAt(projectTempoPoints(projectRef.current), Math.max(0, beat))) / 60;
@@ -255,10 +260,12 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     }
     if (view === 'session') setView('arrange');
     p = projectRef.current;
-    const startBeat = Math.max(0, engine.getBeat());
+    const planned = recordingStartBeat(Math.max(0, engine.getBeat()), p.transport, p.timeSignature?.[0] || 4);
+    if (planned.error) { showToast('error', planned.error); return; }
+    const startBeat = planned.startBeat;
     engine.stop();
     if (!rec.start()) { showToast('error', 'Input is not ready yet. Try again.'); return; }
-    const beat0Time = await engine.play(startBeat, { countInBars: countIn, noLoop: true });
+    const beat0Time = await engine.play(startBeat, { countInBars: countIn, noLoop: planned.noLoop });
     setRecording({ trackIds: targets, beat0Time, startBeat });
   }, [countIn, edit, engine, rec, selTrack, view]);
 
@@ -278,16 +285,41 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     if (skip > 0) channels = channels.map((c) => c.slice(Math.min(skip, c.length)));
     else if (skip < 0) startBeat = beatAfter(map, r.startBeat, -skip / sr);
     if (channels[0].length < sr * 0.1) { showToast('info', 'Take too short — stopped during the count-in.'); return; }
-    const n = Object.keys(projectRef.current.audioAssets || {}).length + 1;
-    const name = `Take ${n}`;
-    const { id, meta } = await storeAudio(name, channels, sr);
-    const lengthBeats = (meta.duration * bpmAt(map, startBeat)) / 60;
+    const planned = planRecording({ channels, sampleRate: sr, startBeat, transport: projectRef.current.transport, points: map });
+    if (!planned.pieces.length) { showToast('warning', planned.error || 'Nothing was captured.'); return; }
+    const baseN = Object.keys(projectRef.current.audioAssets || {}).length;
+    const stored: Array<{ id: string; meta: ReturnType<typeof assetMeta>; piece: typeof planned.pieces[number]; name: string }> = [];
+    for (let i = 0; i < planned.pieces.length; i++) {
+      const piece = planned.pieces[i];
+      const name = piece.nameSuffix ? `Take ${baseN + i + 1} ${piece.nameSuffix}` : `Take ${baseN + 1}`;
+      const saved = await storeAudio(name, piece.channels, sr);
+      stored.push({ ...saved, piece, name });
+    }
     edit((p) => {
-      let q: DAWProject = { ...p, audioAssets: { ...(p.audioAssets || {}), [id]: meta }, sampleRate: p.sampleRate || sr };
-      for (const tid of r.trackIds) q = ops.addAudioClip(q, tid, startBeat, lengthBeats, id, name).project;
+      let q: DAWProject = { ...p, audioAssets: { ...(p.audioAssets || {}) }, sampleRate: p.sampleRate || sr };
+      for (const item of stored) q = { ...q, audioAssets: { ...(q.audioAssets || {}), [item.id]: item.meta } };
+      for (const tid of r.trackIds) {
+        for (const item of stored) {
+          if (item.piece.asTake) {
+            const take: AudioTake = {
+              id: newId('take'),
+              audioBufferId: item.id,
+              startBeat: item.piece.startBeat,
+              lengthBeats: item.piece.lengthBeats,
+              offsetSec: 0,
+              name: item.name,
+              createdAt: Date.now(),
+            };
+            q = ops.mapTrack(q, tid, (t) => addTake(t, take, true));
+          } else {
+            q = ops.addAudioClip(q, tid, item.piece.startBeat, item.piece.lengthBeats, item.id, item.name).project;
+          }
+        }
+      }
       return q;
     });
-    showToast('success', `${name} saved (${meta.duration.toFixed(1)} s)`);
+    const label = stored.length === 1 ? stored[0].name : `${stored.length} takes`;
+    showToast('success', `${label} saved`);
   }, [edit, engine, rec, storeAudio]);
 
   // ── transport ──
@@ -413,6 +445,14 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
                 onDropItem={onDropItem}
                 onZoom={setBw}
                 onTempo={(points) => edit((p) => writeTempoPoints(p, points), 'tempo')}
+                audition={takes.audition}
+                onAuditionTake={takes.onAudition}
+                onSwipeTake={takes.onSwipe}
+                onRenameTake={takes.onRename}
+                onDeleteTake={takes.onDelete}
+                onStarTake={takes.onStar}
+                onCycleTake={takes.onCycle}
+                onFlattenComp={(id) => void takes.onFlatten(id)}
               />
             ) : (
               <SessionGrid
@@ -508,6 +548,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
           onClip={onClip}
           onDeleteTrack={() => { if (!track) return; edit((p) => ops.removeTrack(p, track.id)); setSelTrack(null); setSelClip(null); }}
           onDuplicateTrack={() => track && edit((p) => ops.duplicateTrack(p, track.id))}
+          onTransport={(patch) => edit((p) => ({ ...p, transport: { ...p.transport, ...patch } }))}
         />
       </div>
       {dialog === 'export' && <ExportDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}

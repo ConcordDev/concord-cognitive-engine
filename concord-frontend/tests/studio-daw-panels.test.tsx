@@ -29,6 +29,7 @@ function fakeRecorder(over: Partial<InputRecorderApi['state']> = {}): InputRecor
     stop: () => null,
     isRecording: () => false,
     isOpen: () => false,
+    calibrate: vi.fn(async () => ({ ok: false, message: 'not measured' })),
   };
 }
 

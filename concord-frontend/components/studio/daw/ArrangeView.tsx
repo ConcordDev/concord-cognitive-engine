@@ -10,6 +10,7 @@ import { bpmAt, clampTempo, projectTempoPoints, TEMPO_MAX, TEMPO_MIN, type Tempo
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { useBeatFrame } from './engine-hooks';
 import { MidiThumb, WaveThumb } from './ClipShapes';
+import { TakesLanes } from './TakesLanes';
 
 export const HEADER_W = 208;
 export const RULER_H = 26;
@@ -35,6 +36,14 @@ export interface ArrangeViewProps {
   onDropItem: (trackId: string | null, beat: number, payload: string) => void;
   onZoom: (beatWidth: number) => void;
   onTempo: (points: TempoPoint[]) => void;
+  audition: { trackId: string; takeId: string } | null;
+  onAuditionTake: (trackId: string, takeId: string) => void;
+  onSwipeTake: (trackId: string, takeId: string, startBeat: number, endBeat: number) => void;
+  onRenameTake: (trackId: string, takeId: string, name: string) => void;
+  onDeleteTake: (trackId: string, takeId: string) => void;
+  onStarTake: (trackId: string, takeId: string) => void;
+  onCycleTake: (trackId: string, beat: number, dir: 1 | -1) => void;
+  onFlattenComp: (trackId: string) => void;
 }
 
 const snapTo = (b: number, grid: number) => Math.round(b / grid) * grid;
@@ -58,7 +67,7 @@ const TrackMeter = memo(function TrackMeter({ trackId }: { trackId: string }) {
   return <div className="relative h-10 w-1.5 overflow-hidden rounded-sm bg-black/50"><div ref={ref} className="absolute bottom-0 w-full" /></div>;
 });
 
-function TrackHeader({ t, selected, recording, onSelect, onChange }: { t: DAWTrack; selected: boolean; recording: boolean; onSelect: () => void; onChange: (patch: Partial<DAWTrack>, key?: string) => void }) {
+function TrackHeader({ t, selected, recording, takesOpen, onToggleTakes, onSelect, onChange }: { t: DAWTrack; selected: boolean; recording: boolean; takesOpen: boolean; onToggleTakes: () => void; onSelect: () => void; onChange: (patch: Partial<DAWTrack>, key?: string) => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <div
@@ -89,6 +98,11 @@ function TrackHeader({ t, selected, recording, onSelect, onChange }: { t: DAWTra
           {t.type === 'audio' && (
             <button onClick={(e) => { e.stopPropagation(); onChange({ armed: !t.armed }); }} className={cn('flex h-5 w-5 items-center justify-center rounded', t.armed ? 'bg-red-500 text-white' : 'bg-white/5 text-red-400', recording && 'animate-pulse')} title="Arm for recording" data-testid="studio-arm">
               <span className="h-2 w-2 rounded-full bg-current" />
+            </button>
+          )}
+          {t.type === 'audio' && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleTakes(); }} className={cn('h-5 rounded px-1 text-[10px]', takesOpen ? 'bg-white/20 text-white' : 'bg-white/5 text-zinc-400')} aria-pressed={takesOpen} title="Show take lanes">
+              Takes
             </button>
           )}
           <input
@@ -125,6 +139,7 @@ export function ArrangeView(p: ArrangeViewProps) {
   const playheadRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [takesOpen, setTakesOpen] = useState<Record<string, boolean>>({});
   const bpb = project.timeSignature?.[0] || 4;
   const tracks = project.tracks.filter((t) => t.type !== 'master');
   const endBeat = Math.max(project.arrangement.lengthBars * bpb, ...tracks.flatMap((t) => t.clips.filter((c) => c.slot === undefined).map((c) => c.startBeat + c.lengthBeats + bpb * 4)));
@@ -244,12 +259,15 @@ export function ArrangeView(p: ArrangeViewProps) {
 
         {/* Tracks */}
         {tracks.map((t, ti) => (
-          <div key={t.id} className="flex">
+          <div key={t.id}>
+          <div className="flex">
             <div className="sticky left-0 z-10 border-r border-white/5" style={{ width: HEADER_W }}>
               <TrackHeader
                 t={t}
                 selected={p.selectedTrackId === t.id}
                 recording={p.recordingTrackIds.includes(t.id)}
+                takesOpen={!!takesOpen[t.id]}
+                onToggleTakes={() => setTakesOpen((s) => ({ ...s, [t.id]: !s[t.id] }))}
                 onSelect={() => p.onSelectTrack(t.id)}
                 onChange={(patch, key) => p.onTrackChange(t.id, patch, key)}
               />
@@ -291,7 +309,28 @@ export function ArrangeView(p: ArrangeViewProps) {
                   </div>
                 );
               })}
+              {(t.comp || []).map((r, i) => (
+                <div key={`${r.takeId}-${i}`} className="pointer-events-none absolute top-0 h-1 bg-white/80" style={{ left: r.startBeat * bw, width: Math.max(2, (r.endBeat - r.startBeat) * bw) }} title="Comp" />
+              ))}
             </div>
+          </div>
+          {t.type === 'audio' && takesOpen[t.id] && (
+            <TakesLanes
+              headerWidth={HEADER_W}
+              width={width}
+              beatWidth={bw}
+              track={t}
+              assets={project.audioAssets}
+              auditionTakeId={p.audition?.trackId === t.id ? p.audition.takeId : null}
+              onSwipe={(takeId, a, b) => p.onSwipeTake(t.id, takeId, a, b)}
+              onAudition={(takeId) => p.onAuditionTake(t.id, takeId)}
+              onRename={(takeId, name) => p.onRenameTake(t.id, takeId, name)}
+              onDelete={(takeId) => p.onDeleteTake(t.id, takeId)}
+              onStar={(takeId) => p.onStarTake(t.id, takeId)}
+              onCycle={(beat, dir) => p.onCycleTake(t.id, beat, dir)}
+              onFlatten={() => p.onFlattenComp(t.id)}
+            />
+          )}
           </div>
         ))}
 

@@ -8,6 +8,7 @@ import {
   type AudioInputDevice, type InputPrefs, type MicErrorInfo,
 } from '@/lib/daw/input-devices';
 import { applyMonitorRouting, type MonitorPath } from '@/lib/daw/dsp/monitor-routing';
+import { CAL_CHIRPS, CAL_GAP_SEC, chirpArrivalDelays, judgeDelays, makeChirp } from '@/lib/daw/dsp/calibration';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { requestPersistentStorage } from '@/lib/daw/audio-store';
 
@@ -35,6 +36,14 @@ export function useInputRecorder(armedAudioTrackId: string | null = null) {
     monitorPath: 'off', monitorLines: ['Software monitoring is off.'],
   }));
   const prefsRef = useRef(st.prefs);
+
+  const applyMeasured = useCallback(() => {
+    const r = recRef.current;
+    if (!r) return;
+    const id = prefsRef.current.deviceId || 'default';
+    const measured = prefsRef.current.latencyByDevice?.[id];
+    r.setMeasuredOffset(typeof measured === 'number' ? measured : null);
+  }, []);
 
   const routeMonitor = useCallback(() => {
     const r = recRef.current;
@@ -82,10 +91,12 @@ export function useInputRecorder(armedAudioTrackId: string | null = null) {
       void refresh();
     });
     void requestPersistentStorage();
+    prefsRef.current = nextPrefs;
+    applyMeasured();
     setSt((s) => ({ ...s, opening: false, open: true, prefs: nextPrefs, deviceChannels: res.deviceChannels || 1, activeLabel: res.label || null, error: null, latencyMs: Math.round(r.latencyOffsetSec() * 1000) }));
     routeMonitor();
     return true;
-  }, [refresh, routeMonitor]);
+  }, [applyMeasured, refresh, routeMonitor]);
 
   const setPrefs = useCallback(async (patch: Partial<InputPrefs>) => {
     let next = { ...prefsRef.current, ...patch };
@@ -93,7 +104,8 @@ export function useInputRecorder(armedAudioTrackId: string | null = null) {
     else if (patch.monitor) next = { ...next, monitor: true, directMonitor: false };
     prefsRef.current = next;
     saveInputPrefs(next);
-    setSt((s) => ({ ...s, prefs: next }));
+    applyMeasured();
+    setSt((s) => ({ ...s, prefs: next, latencyMs: Math.round((recRef.current?.latencyOffsetSec() ?? 0) * 1000) }));
     const r = recRef.current;
     const monitorPatch = 'monitor' in patch || 'monitorThroughFx' in patch || 'directMonitor' in patch;
     if (monitorPatch) routeMonitor();
@@ -103,7 +115,72 @@ export function useInputRecorder(armedAudioTrackId: string | null = null) {
       if (r.isRecording) return; // never interrupt a take
       await openInput(next);
     }
-  }, [openInput, routeMonitor]);
+  }, [applyMeasured, openInput, routeMonitor]);
+
+  const calibrate = useCallback(async (): Promise<{ ok: boolean; message: string }> => {
+    const r = recorder();
+    if (!r.isOpen) {
+      const opened = await openInput();
+      if (!opened) return { ok: false, message: 'Turn on the input, then calibrate again.' };
+    }
+    const prefs = prefsRef.current;
+    const restoreCleanup = prefs.voiceCleanup;
+    if (restoreCleanup) {
+      const re = await r.open({
+        deviceId: prefs.deviceId,
+        voiceCleanup: false,
+        channelMode: prefs.channelMode,
+        gainDb: prefs.gainDb,
+        monitor: prefs.monitor,
+      });
+      if (!re.ok) return { ok: false, message: re.error?.message || 'Could not turn off voice cleanup for calibration.' };
+      routeMonitor();
+    }
+    const ctx = getStudioEngine().ctx;
+    await ctx.resume();
+    const chirp = makeChirp(ctx.sampleRate);
+    const buf = ctx.createBuffer(1, chirp.length, ctx.sampleRate);
+    buf.copyToChannel(chirp as Float32Array<ArrayBuffer>, 0);
+    const t0 = ctx.currentTime + 0.2;
+    const playTimes: number[] = [];
+    if (!r.start()) {
+      if (restoreCleanup) {
+        await r.open({ deviceId: prefs.deviceId, voiceCleanup: true, channelMode: prefs.channelMode, gainDb: prefs.gainDb, monitor: prefs.monitor });
+        routeMonitor();
+      }
+      return { ok: false, message: 'The capture tap did not start.' };
+    }
+    for (let i = 0; i < CAL_CHIRPS; i++) {
+      const when = t0 + i * CAL_GAP_SEC;
+      playTimes.push(when);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(when);
+    }
+    const waitSec = playTimes[playTimes.length - 1] - ctx.currentTime + 0.55;
+    await new Promise((resolve) => setTimeout(resolve, Math.max(200, waitSec * 1000)));
+    const take = r.stop({ compensate: false });
+    if (restoreCleanup) {
+      await r.open({
+        deviceId: prefs.deviceId,
+        voiceCleanup: true,
+        channelMode: prefs.channelMode,
+        gainDb: prefs.gainDb,
+        monitor: prefs.monitor,
+      });
+      routeMonitor();
+    }
+    if (!take) return { ok: false, message: 'Nothing was captured.' };
+    const delays = chirpArrivalDelays(take.channels[0], chirp, take.sampleRate, playTimes, take.startTime);
+    const judged = judgeDelays(delays);
+    if (!judged.ok) return { ok: false, message: judged.reason };
+    const id = prefs.deviceId || 'default';
+    const latencyByDevice = { ...prefs.latencyByDevice, [id]: judged.offsetSec };
+    await setPrefs({ latencyByDevice });
+    const ms = Math.round(judged.offsetSec * 1000);
+    return { ok: true, message: `Stored ${ms} ms for this input (${judged.agree} of ${judged.found} chirps within 2 ms).` };
+  }, [openInput, routeMonitor, setPrefs]);
 
   const close = useCallback(() => {
     recRef.current?.close();
@@ -125,6 +202,7 @@ export function useInputRecorder(armedAudioTrackId: string | null = null) {
     refresh,
     openInput,
     setPrefs,
+    calibrate,
     close,
     getLevel: () => recRef.current?.getLevel() ?? { peakDb: -120, rmsDb: -120, clipped: false },
     resetClip: () => recRef.current?.resetClip(),

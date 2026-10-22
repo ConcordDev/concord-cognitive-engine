@@ -1,6 +1,6 @@
 'use client';
 
-import type { DAWClip, DAWProject, DAWTrack, EffectInstance, TrackRole, MasteringChain } from '@/lib/daw/types';
+import type { DAWClip, DAWProject, DAWTrack, EffectInstance, TrackRole, MasteringChain, TransportConfig } from '@/lib/daw/types';
 import { TRACK_COLORS, trackKind } from '@/lib/daw/project';
 import { cn } from '@/lib/utils';
 import { DeviceCard } from './DevicePanel';
@@ -28,13 +28,14 @@ export interface InspectorProps {
   onClip: (patch: Partial<DAWClip>, key?: string) => void;
   onDeleteTrack: () => void;
   onDuplicateTrack: () => void;
+  onTransport: (patch: Partial<TransportConfig>) => void;
 }
 
-export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack }: InspectorProps) {
+export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack, onTransport }: InspectorProps) {
   const sec = 'space-y-2 border-b border-white/5 p-3';
   return (
     <div className="h-full w-64 flex-shrink-0 overflow-y-auto border-l border-white/5 bg-[#111117]" data-testid="studio-inspector">
-      {track && trackKind(track) === 'audio' && <div className={sec}><RecordPanel api={recorder} /></div>}
+      {track && trackKind(track) === 'audio' && <div className={sec}><RecordPanel api={recorder} transport={project.transport} onTransport={onTransport} /></div>}
       {track ? (
         <div className={sec}>
           <div className="text-[11px] font-medium text-zinc-200">Track</div>

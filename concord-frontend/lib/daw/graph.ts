@@ -18,6 +18,7 @@ import { dbToGain } from './dsp/rng';
 import { PITCH_RANGES, pitchLatencySec } from './dsp/pitch/core';
 import { pitchNodeBound, pushPitchSettings } from './dsp/pitch/runtime';
 import { settingsFromEffect } from './dsp/pitch/settings';
+import { equalPowerGain } from './dsp/fades';
 
 export interface ChannelNodes {
   input: GainNode;
@@ -79,6 +80,42 @@ export function masteringEffects(project: DAWProject): EffectInstance[] {
   const m = project.masteringChain;
   if (!m || !m.enabled) return [];
   return [m.eq, m.multibandCompressor, m.stereoWidener, m.limiter].filter((e): e is EffectInstance => !!e && e.enabled !== false);
+}
+
+function scheduleSpanGain(
+  param: AudioParam,
+  when: number,
+  playDur: number,
+  level: number,
+  fadeIn: number,
+  fadeOut: number,
+  shape: 'linear' | 'equalPower',
+): void {
+  const ramp = (from: number, to: number, t0: number, t1: number, edge: 'in' | 'out') => {
+    if (!(t1 > t0 + 1e-5)) {
+      param.setValueAtTime(to, t0);
+      return;
+    }
+    const steps = shape === 'equalPower' ? 8 : 1;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      let v: number;
+      if (shape === 'equalPower' && edge === 'out') v = to + (from - to) * equalPowerGain('out', u);
+      else if (shape === 'equalPower') v = from + (to - from) * equalPowerGain('in', u);
+      else v = from + (to - from) * u;
+      const t = t0 + (t1 - t0) * u;
+      if (i === 0) param.setValueAtTime(v, t);
+      else param.linearRampToValueAtTime(v, t);
+    }
+  };
+  if (fadeIn <= 1e-4 && fadeOut <= 1e-4) {
+    param.setValueAtTime(level, when);
+    return;
+  }
+  ramp(0, level, when, when + Math.max(fadeIn, 1e-4), 'in');
+  const hold = when + playDur - Math.max(fadeOut, 0);
+  if (hold > when + fadeIn + 1e-4) param.setValueAtTime(level, hold);
+  if (fadeOut > 1e-4) ramp(level, 0, when + playDur - fadeOut, when + playDur, 'out');
 }
 
 export function isTrackAudible(track: DAWTrack, tracks: DAWTrack[], only?: string[] | null): boolean {
@@ -252,12 +289,11 @@ export class ProjectGraph {
       if (!placed) return;
       const when = placed.when;
       const playDur = placed.durationSec;
-      const fadeIn = Math.min(playDur / 2, Math.max(0.002, ((clip?.fadeIn || 0) * spbFade)));
-      const fadeOut = Math.min(playDur / 2, Math.max(0.002, ((clip?.fadeOut || 0) * spbFade)));
-      g.gain.setValueAtTime(0, when);
-      g.gain.linearRampToValueAtTime(level, when + fadeIn);
-      g.gain.setValueAtTime(level, when + playDur - fadeOut);
-      g.gain.linearRampToValueAtTime(0, when + playDur);
+      const explicit = ev.fadeInSec != null || ev.fadeOutSec != null;
+      const fadeIn = Math.min(playDur / 2, explicit ? Math.max(0, ev.fadeInSec || 0) : Math.max(0.002, (clip?.fadeIn || 0) * spbFade));
+      const fadeOut = Math.min(playDur / 2, explicit ? Math.max(0, ev.fadeOutSec || 0) : Math.max(0.002, (clip?.fadeOut || 0) * spbFade));
+      const shape = ev.fadeShape === 'equalPower' ? 'equalPower' : 'linear';
+      scheduleSpanGain(g.gain, when, playDur, level, fadeIn, fadeOut, shape);
       src.connect(g).connect(ch.input);
       src.start(when, placed.offsetSec, playDur);
       const v: Voice = { stop: (at?: number) => { try { src.stop(Math.max(at ?? 0, (this.ctx as AudioContext).currentTime || 0)); } catch { /* noop */ } } };

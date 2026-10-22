@@ -5,6 +5,7 @@ import { Mic, RefreshCw, Headphones, AlertTriangle, ShieldCheck } from 'lucide-r
 import type { InputRecorderApi } from './useInputRecorder';
 import { useBeatFrame } from './engine-hooks';
 import type { ChannelMode } from '@/lib/daw/input-devices';
+import type { TransportConfig } from '@/lib/daw/types';
 
 export function InputMeter({ api }: { api: InputRecorderApi }) {
   const bar = useRef<HTMLDivElement>(null);
@@ -32,9 +33,12 @@ export function InputMeter({ api }: { api: InputRecorderApi }) {
   );
 }
 
-export function RecordPanel({ api }: { api: InputRecorderApi }) {
+export function RecordPanel({ api, transport, onTransport }: { api: InputRecorderApi; transport?: TransportConfig; onTransport?: (patch: Partial<TransportConfig>) => void }) {
   const s = api.state;
   const [warnMonitor, setWarnMonitor] = useState(false);
+  const [calMsg, setCalMsg] = useState<string | null>(null);
+  const [calibrating, setCalibrating] = useState(false);
+  const measured = s.prefs.latencyByDevice?.[s.prefs.deviceId || 'default'];
   const chOpts: Array<[ChannelMode, string]> = [['mono1', 'Input 1 (mono)'], ['mono2', 'Input 2 (mono)'], ['stereo', 'Inputs 1+2 (stereo)']];
   return (
     <div className="space-y-2 text-xs" data-testid="studio-record-panel">
@@ -130,8 +134,74 @@ export function RecordPanel({ api }: { api: InputRecorderApi }) {
       {s.open && (
         <div className="text-[10px] text-zinc-500">
           {s.activeLabel ? `Using ${s.activeLabel}. ` : ''}
-          Take alignment shift {s.latencyMs} ms (reported input plus output, clamped at 500 ms). Not a loopback measurement.
+          {typeof measured === 'number'
+            ? `Take alignment uses a loopback measurement of ${Math.round(measured * 1000)} ms for this input.`
+            : `Take alignment shift ${s.latencyMs} ms (reported input plus output, clamped at 500 ms). Not a loopback measurement.`}
           {' '}{s.deviceChannels === 2 ? 'Stereo device.' : 'Mono device.'}
+        </div>
+      )}
+      <button
+        type="button"
+        disabled={calibrating}
+        data-testid="studio-calibrate"
+        className="w-full rounded bg-white/10 px-2 py-1.5 text-[11px] text-zinc-100 hover:bg-white/15 disabled:opacity-50"
+        onClick={() => {
+          setCalibrating(true);
+          setCalMsg(null);
+          void api.calibrate().then((r) => setCalMsg(r.message)).finally(() => setCalibrating(false));
+        }}
+      >
+        {calibrating ? 'Playing chirps…' : 'Calibrate latency'}
+      </button>
+      <p className="text-[10px] text-zinc-500">
+        Turn the speakers up, or plug a loopback cable from the output to the input. Echo cancellation, noise suppression, and auto gain are off while this runs. Calibration is not possible with headphones, because the microphone never hears the chirps.
+      </p>
+      {calMsg && <p className="text-[10px] text-zinc-300" role="status">{calMsg}</p>}
+      {transport && onTransport && (
+        <div className="space-y-1.5 border-t border-white/5 pt-2">
+          <label className="flex items-start gap-2 text-[11px] text-zinc-300">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={!!transport.loopRecord}
+              data-testid="studio-loop-record"
+              onChange={(e) => {
+                const on = e.target.checked;
+                if (on && !(transport.loopEnd > transport.loopStart)) onTransport({ loopRecord: true, loopEnabled: true, loopStart: transport.loopStart || 0, loopEnd: (transport.loopStart || 0) + 16 });
+                else onTransport({ loopRecord: on, loopEnabled: on ? true : transport.loopEnabled });
+              }}
+            />
+            <span>Loop record <span className="block text-[10px] text-zinc-500">One take per pass while the loop is on. The latest pass replaces the comp in the range it covers.</span></span>
+          </label>
+          <label className="flex items-start gap-2 text-[11px] text-zinc-300">
+            <input type="checkbox" className="mt-0.5" checked={!!transport.punchEnabled} data-testid="studio-punch" onChange={(e) => onTransport({ punchEnabled: e.target.checked })} />
+            <span>Punch in/out <span className="block text-[10px] text-zinc-500">Keeps only the punch range and makes that take the comp there. The range is the loop, or the beats below.</span></span>
+          </label>
+          {transport.punchEnabled && (
+            <div className="space-y-1 pl-5">
+              <label className="flex items-center gap-2 text-[10px] text-zinc-400">
+                Pre-roll
+                <select
+                  aria-label="Punch pre-roll"
+                  value={transport.punchPreRollBars ?? 1}
+                  onChange={(e) => onTransport({ punchPreRollBars: Number(e.target.value) })}
+                  className="rounded bg-black/40 px-1 py-0.5 text-zinc-100"
+                >
+                  {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} bar{n === 1 ? '' : 's'}</option>)}
+                </select>
+              </label>
+              {!transport.loopEnabled && (
+                <div className="flex gap-2">
+                  <label className="text-[10px] text-zinc-400">In
+                    <input aria-label="Punch in beat" type="number" min={0} step={1} value={transport.punchIn ?? 0} onChange={(e) => onTransport({ punchIn: Math.max(0, Number(e.target.value) || 0) })} className="ml-1 w-14 rounded bg-black/40 px-1 text-zinc-100" />
+                  </label>
+                  <label className="text-[10px] text-zinc-400">Out
+                    <input aria-label="Punch out beat" type="number" min={0} step={1} value={transport.punchOut ?? 16} onChange={(e) => onTransport({ punchOut: Math.max(0, Number(e.target.value) || 0) })} className="ml-1 w-14 rounded bg-black/40 px-1 text-zinc-100" />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
