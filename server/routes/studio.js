@@ -27,6 +27,7 @@ import express, { Router } from "express";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import expressRateLimit from "express-rate-limit";
 
 function uid() {
   return crypto.randomUUID();
@@ -430,10 +431,28 @@ export default function createStudioRouter({ db, requireAuth }) {
     }
     return null;
   }
+  const AUDIO_ROOT_RESOLVED = path.resolve(AUDIO_ROOT);
+  /** Resolve a path under AUDIO_ROOT; throws if it would escape it. */
+  function underAudioRoot(...parts) {
+    const p = path.resolve(AUDIO_ROOT_RESOLVED, ...parts);
+    if (!p.startsWith(AUDIO_ROOT_RESOLVED + path.sep)) throw new Error("path outside audio root");
+    return p;
+  }
   function audioDir(ownerId, projectId) {
     const u = crypto.createHash("sha256").update(String(ownerId)).digest("hex").slice(0, 32);
-    return path.join(AUDIO_ROOT, u, projectId);
+    return underAudioRoot(u, projectId);
   }
+  // Uploads arrive in 4 MB chunks: 600/min per user covers ~40 MB/s.
+  const audioWriteLimit = expressRateLimit({
+    windowMs: 60_000, max: 600, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req) => `studio-audio-w:${req.user?.id || "anon"}`,
+    message: { ok: false, error: "Too many upload requests" },
+  });
+  const audioReadLimit = expressRateLimit({
+    windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req) => `studio-audio-r:${req.user?.id || "anon"}`,
+    message: { ok: false, error: "Too many requests" },
+  });
   function dirBytes(dir) {
     let total = 0;
     try {
@@ -449,6 +468,7 @@ export default function createStudioRouter({ db, requireAuth }) {
   router.put(
     "/audio/:projectId/:assetId",
     requireAuth(),
+    audioWriteLimit,
     express.raw({ type: () => true, limit: "8mb" }),
     (req, res) => {
       try {
@@ -466,10 +486,10 @@ export default function createStudioRouter({ db, requireAuth }) {
         if (offset + body.length > total) return res.status(400).json({ ok: false, error: "chunk past total" });
         const dir = audioDir(owner, projectId);
         fs.mkdirSync(dir, { recursive: true });
-        const part = path.join(dir, `${assetId}.wav.part`);
-        const final = path.join(dir, `${assetId}.wav`);
+        const part = underAudioRoot(dir, `${assetId}.wav.part`);
+        const final = underAudioRoot(dir, `${assetId}.wav`);
         if (offset === 0) {
-          const used = dirBytes(path.dirname(dir));
+          const used = dirBytes(underAudioRoot(path.dirname(dir)));
           if (used + total > AUDIO_USER_QUOTA) return res.status(413).json({ ok: false, error: "audio storage quota reached" });
           if (body.length < 12 || body.toString("ascii", 0, 4) !== "RIFF" || body.toString("ascii", 8, 12) !== "WAVE") {
             return res.status(415).json({ ok: false, error: "expected a WAV file" });
@@ -494,13 +514,13 @@ export default function createStudioRouter({ db, requireAuth }) {
     },
   );
 
-  router.get("/audio/:projectId/:assetId", requireAuth(), (req, res) => {
+  router.get("/audio/:projectId/:assetId", requireAuth(), audioReadLimit, (req, res) => {
     try {
       const { projectId, assetId } = req.params;
       if (!SAFE_ID.test(projectId) || !SAFE_ID.test(assetId)) return res.status(400).json({ ok: false, error: "bad id" });
       const owner = studioProjectOwner(req.user?.id, projectId);
       if (!owner) return res.status(404).json({ ok: false, error: "not found" });
-      const file = path.join(audioDir(owner, projectId), `${assetId}.wav`);
+      const file = underAudioRoot(audioDir(owner, projectId), `${assetId}.wav`);
       if (!fs.existsSync(file)) return res.status(404).json({ ok: false, error: "not found" });
       res.setHeader("Content-Type", "audio/wav");
       res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
