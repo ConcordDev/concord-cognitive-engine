@@ -96,7 +96,7 @@ function run() {
 }
 
 function stripAnsi(s) {
-  // eslint-disable-next-line no-control-regex
+   
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
 

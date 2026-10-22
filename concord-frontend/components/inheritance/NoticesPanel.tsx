@@ -1,6 +1,6 @@
 'use client';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { TimelineView, ChartKit } from '@/components/viz';
 import { useEstate } from './EstateContext';
