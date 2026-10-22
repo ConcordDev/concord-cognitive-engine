@@ -44,7 +44,6 @@ vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/sub-worlds/MetaverseRepos', () => ({ MetaverseRepos: () => null }));
 vi.mock('@/components/sub-worlds/WorldSettingsPanel', () => ({ WorldSettingsPanel: () => null }));

@@ -10,7 +10,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -117,7 +116,7 @@ export default function FederationPage() {
 
   return (
     <LensShell lensId="federation" asMain={false}>
-      <FirstRunTour lensId="federation" />
+
       <DepthBadge lensId="federation" size="sm" className="ml-2" />
       <div data-lens-theme="federation">
         <NorthStarFrame

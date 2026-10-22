@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
@@ -74,7 +73,7 @@ export default function SettingsPage() {
 
   return (
     <LensShell lensId="settings" asMain={false}>
-      <FirstRunTour lensId="settings" />
+
       <DepthBadge lensId="settings" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="settings"

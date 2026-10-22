@@ -10,7 +10,6 @@ import { useState } from 'react';
 import { Compass, Heart, CreditCard, Inbox, Sparkles, GitBranch } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { SponsorRepos } from '@/components/sponsorship/SponsorRepos';
@@ -58,7 +57,7 @@ export default function SponsorshipPage() {
 
   return (
     <LensShell lensId="sponsorship" asMain={false}>
-      <FirstRunTour lensId="sponsorship" />
+
       <DepthBadge lensId="sponsorship" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="sponsorship"

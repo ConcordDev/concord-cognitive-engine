@@ -15,7 +15,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -82,7 +81,7 @@ export default function ConstructionLensPage() {
 
   return (
     <LensShell lensId="construction" asMain={false}>
-      <FirstRunTour lensId="construction" />
+
       <DepthBadge lensId="construction" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="construction"

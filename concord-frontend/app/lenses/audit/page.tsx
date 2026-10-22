@@ -4,7 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -149,7 +148,7 @@ export default function AuditLensPage() {
 
   return (
     <LensShell lensId="audit" asMain={false}>
-      <FirstRunTour lensId="audit" />
+
       <DepthBadge lensId="audit" size="sm" className="ml-2" />
       <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>
       <NorthStarFrame

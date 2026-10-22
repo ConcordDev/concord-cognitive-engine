@@ -17,7 +17,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -55,7 +54,7 @@ export default function CarpentryLensPage() {
 
   return (
     <LensShell lensId="carpentry" asMain={false}>
-      <FirstRunTour lensId="carpentry" />
+
       <DepthBadge lensId="carpentry" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="carpentry"

@@ -1,7 +1,6 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ElectricalWorkspace } from '@/components/electrical/ElectricalWorkspace';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,7 +12,7 @@ export default function ElectricalLensPage() {
 
   return (
     <LensShell lensId="electrical" asMain={false}>
-      <FirstRunTour lensId="electrical" />
+
       <DepthBadge lensId="electrical" size="sm" className="ml-2" />
       <ElectricalWorkspace who={who} />
     </LensShell>

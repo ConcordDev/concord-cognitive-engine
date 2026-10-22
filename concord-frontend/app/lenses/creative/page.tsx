@@ -31,7 +31,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreativeDashboardStrip } from '@/components/creative/CreativeDashboardStrip';
 import { CreativeBoardsSection } from '@/components/creative/CreativeBoardsSection';
@@ -105,7 +104,7 @@ export default function CreativeLensPage() {
 
   return (
     <LensShell lensId="creative" asMain={false}>
-      <FirstRunTour lensId="creative" />
+
       <DepthBadge lensId="creative" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="creative"

@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { Layers, Shield, Brain, GraduationCap, AlertTriangle, Briefcase, BadgeCheck, Users, Rocket } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensErrorBoundary } from '@/components/lens/LensErrorBoundary';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -65,7 +64,7 @@ export default function StrategicAddsPage() {
 
   return (
     <LensShell lensId="strategic-adds" asMain={false}>
-      <FirstRunTour lensId="strategic-adds" />
+
       <DepthBadge lensId="strategic-adds" size="sm" className="ml-2" />
 
       <NorthStarFrame

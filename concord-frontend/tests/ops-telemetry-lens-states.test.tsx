@@ -52,7 +52,6 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 // The overview view's Simulation-overview + Federation-mesh cards go through
 // lensRun (POST /api/lens/run), not one of the mocked /api/admin/* fetch
 // routes — without this mock the real client's real axios instance runs

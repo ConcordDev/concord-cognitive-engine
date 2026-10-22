@@ -32,7 +32,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SandboxRepos } from '@/components/sandbox/SandboxRepos';
 import { LoadoutPicker, type ActiveLoadout } from '@/components/sandbox/LoadoutPicker';
@@ -454,7 +453,7 @@ function CombatSandboxInner() {
 export default function CombatSandboxPage() {
   return (
     <LensShell lensId="sandbox" asMain={false}>
-      <FirstRunTour lensId="sandbox" />
+
       <DepthBadge lensId="sandbox" size="sm" className="ml-2" />
       <Suspense fallback={<div className="h-64 w-full rounded-2xl bg-slate-900" />}>
         <CombatSandboxInner />

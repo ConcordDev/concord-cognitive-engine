@@ -10,7 +10,6 @@ import { Trophy, Plus, X, List, Gamepad2 } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TournamentListPanel } from '@/components/tournaments/TournamentListPanel';
 import { TournamentDetailPanel } from '@/components/tournaments/TournamentDetailPanel';
@@ -51,7 +50,7 @@ export default function TournamentsPage() {
 
   return (
     <LensShell lensId="tournaments" asMain={false}>
-      <FirstRunTour lensId="tournaments" />
+
       <DepthBadge lensId="tournaments" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="tournaments"

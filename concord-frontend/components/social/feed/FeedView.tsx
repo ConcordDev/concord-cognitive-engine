@@ -13,6 +13,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Sparkles, Hash, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
+import { getLensManifest } from '@/lib/lenses/manifest';
 import type { SocialPost, TrendingHashtag } from './types';
 import { FeedComposer } from './FeedComposer';
 import { PostCard } from './PostCard';
@@ -194,13 +196,17 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
               <Loader2 className="w-4 h-4 animate-spin" /> Loading feed…
             </div>
           ) : posts.length === 0 && !feedError ? (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
-              <Sparkles className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
-              <h3 className="text-sm font-medium text-zinc-300">No posts yet</h3>
-              <p className="mt-1 text-xs text-zinc-400">
-                Write the first post — add media, a poll, or quote an existing post.
-              </p>
-            </div>
+            <EmptyStateCTA
+              lensId="social"
+              headline="No posts yet"
+              caption={getLensManifest('social')?.emptyState?.caption || 'Write something you made.'}
+              buttonLabel="Write your first post"
+              onAction={() => {
+                const box = document.querySelector<HTMLElement>('#social-main textarea, #social-quick-post textarea');
+                box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                box?.focus();
+              }}
+            />
           ) : posts.length > 0 ? (
             <div className="space-y-2">
               {(() => {

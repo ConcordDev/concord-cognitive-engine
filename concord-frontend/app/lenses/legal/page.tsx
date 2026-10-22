@@ -41,7 +41,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import LensAgentFab from '@/components/lens/LensAgentFab';
@@ -102,7 +101,7 @@ export default function LegalLensPage() {
 
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
-      <FirstRunTour lensId="legal" />
+
       <div data-lens-theme="legal" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

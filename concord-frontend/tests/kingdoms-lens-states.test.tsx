@@ -29,7 +29,6 @@ vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => nul
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/SessionRail', () => ({ SessionRail: () => null }));
 vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));

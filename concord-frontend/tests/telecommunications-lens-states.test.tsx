@@ -50,7 +50,6 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { username: 'tester'
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/components/panel-polish', () => ({

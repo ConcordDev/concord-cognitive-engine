@@ -8,7 +8,6 @@
  */
 
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -20,7 +19,7 @@ export default function EducationLensPage() {
 
   return (
     <LensShell lensId="education" asMain={false}>
-      <FirstRunTour lensId="education" />
+
       <DepthBadge lensId="education" size="sm" className="ml-2" />
       <EducationSection />
     </LensShell>

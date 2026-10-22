@@ -12,7 +12,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Eye, MessagesSquare, Plus, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -82,7 +81,7 @@ export default function AnswersLensPage() {
 
   return (
     <LensShell lensId="answers" asMain={false}>
-      <FirstRunTour lensId="answers" />
+
       <DepthBadge lensId="answers" size="sm" className="ml-2" />
       <div data-lens-theme="answers" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">The Answers</p>

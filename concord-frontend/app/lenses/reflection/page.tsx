@@ -3,7 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -134,7 +133,7 @@ export default function ReflectionLensPage() {
 
   return (
     <LensShell lensId="reflection" asMain={false}>
-      <FirstRunTour lensId="reflection" />
+
       <div data-lens-theme="reflection" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
         <div>
           <div className="flex items-start justify-between gap-4">

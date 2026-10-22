@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
 import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -750,7 +749,7 @@ export default function FitnessApp() {
 
   return (
     <LensShell lensId="fitness" asMain={false}>
-      <FirstRunTour lensId="fitness" />
+
       <DepthBadge lensId="fitness" size="sm" className="ml-2" />
     <NorthStarFrame
       lensId="fitness"

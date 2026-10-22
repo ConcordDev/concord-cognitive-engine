@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react';
 import { Compass, GitBranch, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingRepos } from '@/components/repos/TrendingRepos';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -56,7 +55,7 @@ export default function ReposLensPage() {
 
   return (
     <LensShell lensId="repos" asMain={false}>
-      <FirstRunTour lensId="repos" />
+
       <DepthBadge lensId="repos" size="sm" className="ml-2" />
       <div data-lens-theme="repos" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

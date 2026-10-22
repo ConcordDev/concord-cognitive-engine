@@ -35,7 +35,6 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {} }) }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/world-creator/WorldBuilderInspo', () => ({ WorldBuilderInspo: () => null }));
 // DraftEditor only mounts after a draft is opened; inert here.

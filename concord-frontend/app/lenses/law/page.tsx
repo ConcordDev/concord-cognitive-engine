@@ -75,7 +75,6 @@ import { useCallback, useRef, useState } from 'react';
 import { BookOpen, FileText, Briefcase, BarChart3, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -240,7 +239,7 @@ export default function LawLensPage() {
 
   return (
     <LensShell lensId="law" asMain={false}>
-      <FirstRunTour lensId="law" />
+
       <DepthBadge lensId="law" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="law"

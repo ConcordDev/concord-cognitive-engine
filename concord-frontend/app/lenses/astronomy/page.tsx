@@ -33,7 +33,6 @@
 import { useRef, useState } from 'react';
 import { Orbit, Plus, Sparkles, CalendarClock, Radio, Bot } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -144,7 +143,7 @@ export default function AstronomyLensPage() {
 
   return (
     <LensShell lensId="astronomy" asMain={false}>
-      <FirstRunTour lensId="astronomy" />
+
       <NorthStarFrame
         lensId="astronomy"
         crumb="Astronomy"

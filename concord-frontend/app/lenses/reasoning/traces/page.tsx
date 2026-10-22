@@ -8,7 +8,6 @@
 import { useCallback } from 'react';
 import { FileSearch } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { HlrTracesPanel } from '@/components/reasoning/HlrTracesPanel';
@@ -37,7 +36,7 @@ export default function ReasoningTracesPage() {
 
   return (
     <LensShell lensId="reasoning" asMain={false}>
-      <FirstRunTour lensId="reasoning" />
+
       <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
       <div data-lens-theme="reasoning" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">HLR Traces</p>

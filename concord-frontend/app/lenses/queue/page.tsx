@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -77,7 +76,7 @@ export default function QueueLensPage() {
 
   return (
     <LensShell lensId="queue" asMain={false}>
-      <FirstRunTour lensId="queue" />
+
       <DepthBadge lensId="queue" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="queue"

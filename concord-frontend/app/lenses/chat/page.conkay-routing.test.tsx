@@ -60,7 +60,6 @@ vi.mock('next/dynamic', () => ({
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/chat/HackerNewsReference', () => ({ HackerNewsReference: () => null }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));

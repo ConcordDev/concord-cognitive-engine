@@ -4,7 +4,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
 import { PortfolioBalanceHero } from '@/components/crypto/PortfolioBalanceHero';
@@ -661,7 +660,7 @@ export function CryptoWalletWorkspace() {
 
   return (
     <LensShell lensId="crypto" asMain={false}>
-      <FirstRunTour lensId="crypto" />      <DepthBadge lensId="crypto" size="sm" className="ml-2" />
+<DepthBadge lensId="crypto" size="sm" className="ml-2" />
       <ShellPreview lensId="crypto" defaultOpen={true} />
       <div className="px-4 mt-3">
         <ExchangeSection />

@@ -6,7 +6,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrisisPanel } from '@/components/mental-health/CrisisPanel';
 import { MentalHealthSection } from '@/components/mental-health/MentalHealthSection';
@@ -116,7 +115,7 @@ export default function MentalHealthLensPage() {
 
   return (
     <LensShell lensId="mental-health" asMain={false}>
-      <FirstRunTour lensId="mental-health" />
+
       <DepthBadge lensId="mental-health" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="mental-health"

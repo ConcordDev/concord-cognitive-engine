@@ -46,7 +46,6 @@ vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 // heavy supplychain children (their own backend macros are covered by the
 // supplychain server test) → inert here; the Overview destination (default

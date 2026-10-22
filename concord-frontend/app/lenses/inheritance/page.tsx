@@ -12,7 +12,6 @@ import { useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EstateProvider, useEstate } from '@/components/inheritance/EstateContext';
 import { OverviewPanel } from '@/components/inheritance/OverviewPanel';
@@ -143,7 +142,7 @@ export default function InheritancePage() {
 
   return (
     <LensShell lensId="inheritance" asMain={false}>
-      <FirstRunTour lensId="inheritance" />
+
       <DepthBadge lensId="inheritance" size="sm" className="ml-2" />
       <EstateShell />
     </LensShell>

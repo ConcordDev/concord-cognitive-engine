@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Shirt } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -65,7 +64,7 @@ export default function FashionLensPage() {
 
   return (
     <LensShell lensId="fashion" asMain={false}>
-      <FirstRunTour lensId="fashion" />
+
       <DepthBadge lensId="fashion" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="fashion"

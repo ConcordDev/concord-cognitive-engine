@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
@@ -163,7 +162,7 @@ export default function GlobalLensPage() {
 
   return (
     <LensShell lensId="global" asMain={false}>
-      <FirstRunTour lensId="global" />
+
       <DepthBadge lensId="global" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="global"

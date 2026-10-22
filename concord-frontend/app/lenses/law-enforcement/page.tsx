@@ -10,7 +10,6 @@
 import { useState } from 'react';
 import { LayoutDashboard, Radio, Sparkles, Newspaper, FolderOpen, FolderPlus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
@@ -59,7 +58,7 @@ export default function LawEnforcementLensPage() {
 
   return (
     <LensShell lensId="law-enforcement" asMain={false}>
-      <FirstRunTour lensId="law-enforcement" />
+
       <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="law-enforcement"

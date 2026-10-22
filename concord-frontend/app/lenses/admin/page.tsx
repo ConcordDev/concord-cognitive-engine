@@ -5,7 +5,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers, isForbidden } from '@/lib/api/client';
@@ -192,7 +191,7 @@ export default function AdminLensPage() {
 
   return (
     <LensShell lensId="admin" asMain={false}>
-      <FirstRunTour lensId="admin" />
+
       <DepthBadge lensId="admin" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="admin"

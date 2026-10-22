@@ -25,7 +25,6 @@ import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { lensRun } from '@/lib/api/client';
 import { InsuranceChatter } from '@/components/death-insurance/InsuranceChatter';
@@ -149,7 +148,7 @@ export default function DeathInsurancePage() {
 
   return (
     <LensShell lensId="death-insurance" asMain={false}>
-      <FirstRunTour lensId="death-insurance" />
+
       <DepthBadge lensId="death-insurance" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="death-insurance"

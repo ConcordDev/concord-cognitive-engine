@@ -18,7 +18,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users2, LineChart, Swords, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
@@ -103,7 +102,7 @@ export default function AllianceLensPage() {
 
   return (
     <LensShell lensId="alliance" asMain={false}>
-      <FirstRunTour lensId="alliance" />
+
       <NorthStarFrame
         lensId="alliance"
         crumb="Alliance"

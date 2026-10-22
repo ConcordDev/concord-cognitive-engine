@@ -14,7 +14,6 @@ import { BookMarked, FileText, Highlighter, Plus, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -98,7 +97,7 @@ export default function PaperLensPage() {
 
   return (
     <LensShell lensId="paper" asMain={false}>
-      <FirstRunTour lensId="paper" />
+
       <DepthBadge lensId="paper" size="sm" className="ml-2" />
       <div data-lens-theme="paper" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

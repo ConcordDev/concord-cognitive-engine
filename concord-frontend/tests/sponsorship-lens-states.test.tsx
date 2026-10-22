@@ -32,7 +32,6 @@ vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 // SponsorRepos hits the GitHub API via react-query; keep it inert.
 vi.mock('@/components/sponsorship/SponsorRepos', () => ({ SponsorRepos: () => null }));

@@ -82,7 +82,6 @@ vi.mock('@/components/lens/NorthStarFrame', () => ({
   ),
 }));
 
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));

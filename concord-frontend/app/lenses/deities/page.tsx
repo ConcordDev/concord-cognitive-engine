@@ -15,7 +15,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 import { DeityDetailPanel } from '@/components/deities/DeityDetailPanel';
@@ -151,7 +150,7 @@ export default function DeitiesPage() {
 
   return (
     <LensShell lensId="deities" asMain={false}>
-      <FirstRunTour lensId="deities" />
+
       <DepthBadge lensId="deities" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="deities"

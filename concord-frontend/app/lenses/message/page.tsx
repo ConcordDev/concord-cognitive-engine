@@ -13,7 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Inbox, Wrench, Tags, Plug, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -87,7 +86,7 @@ export default function MessageLensPage() {
 
   return (
     <LensShell lensId="message" asMain={false}>
-      <FirstRunTour lensId="message" />
+
       <DepthBadge lensId="message" size="sm" className="ml-2" />
       <div data-lens-theme="message" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

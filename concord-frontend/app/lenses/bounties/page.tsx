@@ -17,7 +17,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy, Target, Wrench, ShieldAlert, Plus } from 'lucide-react';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -183,7 +182,7 @@ export default function BountiesPage() {
 
   return (
     <LensShell lensId="bounties" asMain={false}>
-      <FirstRunTour lensId="bounties" />
+
       <DepthBadge lensId="bounties" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="bounties"

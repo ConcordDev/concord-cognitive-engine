@@ -14,7 +14,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { PublicGistGallery } from '@/components/custom/PublicGistGallery';
@@ -73,7 +72,7 @@ export default function CustomLensPage() {
 
   return (
     <LensShell lensId="custom" asMain={false}>
-      <FirstRunTour lensId="custom" />
+
       <DepthBadge lensId="custom" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="custom"

@@ -11,7 +11,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
 import { WorkflowsPanel } from '@/components/integrations/WorkflowsPanel';
@@ -110,7 +109,7 @@ export default function IntegrationsLensPage() {
 
   return (
     <LensShell lensId="integrations" asMain={false}>
-      <FirstRunTour lensId="integrations" />
+
       <DepthBadge lensId="integrations" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="integrations"

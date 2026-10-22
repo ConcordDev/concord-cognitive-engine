@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
 import { isCommunityRedditEnabled, omitCommunityRedditViews } from '@/lib/community/reddit-flag';
@@ -90,7 +89,7 @@ export default function PlumbingLensPage() {
 
   return (
     <LensShell lensId="plumbing" asMain={false}>
-      <FirstRunTour lensId="plumbing" />      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
+<DepthBadge lensId="plumbing" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="plumbing"
         crumb="Plumbing"

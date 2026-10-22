@@ -17,7 +17,6 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -101,7 +100,7 @@ export default function DebateLensPage() {
 
   return (
     <LensShell lensId="debate" asMain={false}>
-      <FirstRunTour lensId="debate" />
+
       <DepthBadge lensId="debate" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="debate"

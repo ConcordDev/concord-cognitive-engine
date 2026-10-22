@@ -29,7 +29,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PawPrint, RefreshCw, ShieldAlert } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
@@ -93,7 +92,7 @@ export default function PetsLensPage() {
 
   return (
     <LensShell lensId="pets" asMain={false}>
-      <FirstRunTour lensId="pets" />
+
       <DepthBadge lensId="pets" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="pets"

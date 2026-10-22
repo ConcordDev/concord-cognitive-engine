@@ -6,7 +6,6 @@ import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeBoxSection } from '@/components/cooking/RecipeBoxSection';
 import { RecipeKitchen } from '@/components/cooking/RecipeKitchen';
@@ -200,7 +199,7 @@ export default function CookingLensPage() {
 
   return (
     <LensShell lensId="cooking" asMain={false}>
-      <FirstRunTour lensId="cooking" />
+
       <DepthBadge lensId="cooking" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="cooking"

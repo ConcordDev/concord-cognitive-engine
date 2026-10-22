@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -96,7 +95,7 @@ export default function MetacognitionLensPage() {
 
   return (
     <LensShell lensId="metacognition" asMain={false}>
-      <FirstRunTour lensId="metacognition" />
+
       <DepthBadge lensId="metacognition" size="sm" className="ml-2" />
       <div data-lens-theme="metacognition" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">

@@ -53,7 +53,6 @@ vi.mock('@/store/ui', () => ({ useUIStore: { getState: () => ({ addToast: vi.fn(
 vi.mock('@/components/crypto/TokenSearch', () => ({ TokenSearch: () => <div>TokenSearch</div>, loadWatchlist: () => [], saveWatchlist: vi.fn() }));
 vi.mock('next/dynamic', () => ({ default: () => () => <div>CandleChart</div> }));
 vi.mock('@/components/lens/LensShell', () => ({ LensShell: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ShellPreview', () => ({ ShellPreview: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));

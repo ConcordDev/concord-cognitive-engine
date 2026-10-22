@@ -16,7 +16,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CharacterStudio } from '@/components/personas/CharacterStudio';
 import { PersonaEditor, type PersonaDetail } from '@/components/personas/PersonaEditor';
@@ -164,7 +163,7 @@ export default function PersonasPage() {
 
   return (
     <LensShell lensId="personas" asMain={false}>
-      <FirstRunTour lensId="personas" />
+
       <DepthBadge lensId="personas" size="sm" className="ml-2" />
       <div data-lens-theme="personas" className="relative min-h-full px-8 pb-28 pt-6">
         <p className="text-[14px] text-zinc-500">Personas</p>

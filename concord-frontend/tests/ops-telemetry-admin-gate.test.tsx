@@ -59,7 +59,6 @@ vi.mock('@/components/lens/NorthStarFrame', () => ({
     React.createElement('div', { 'data-testid': 'ops-telemetry-frame' }, title, children),
 }));
 
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 
 import OpsTelemetryPage from '@/app/lenses/ops-telemetry/page';

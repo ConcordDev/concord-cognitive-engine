@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NasaEarthEvents } from '@/components/events/NasaEarthEvents';
 import { EventPlanner } from '@/components/events/EventPlanner';
@@ -79,7 +78,7 @@ export default function EventsLensPage() {
 
   return (
     <LensShell lensId="events" asMain={false}>
-      <FirstRunTour lensId="events" />
+
       <DepthBadge lensId="events" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="events"

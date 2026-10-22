@@ -43,7 +43,6 @@ import Link from 'next/link';
 import { Car, Plus, RefreshCw, MapPinned, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
@@ -261,7 +260,7 @@ export default function GarageLensPage() {
 
   return (
     <LensShell lensId="garage" asMain={false}>
-      <FirstRunTour lensId="garage" />
+
       <DepthBadge lensId="garage" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="garage"

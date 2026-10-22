@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AtlasSection } from '@/components/atlas/AtlasSection';
 import { useQuery } from '@tanstack/react-query';
@@ -71,7 +70,7 @@ export default function AtlasLensPage() {
 
   return (
     <LensShell lensId="atlas" asMain={false}>
-      <FirstRunTour lensId="atlas" />
+
       <DepthBadge lensId="atlas" size="sm" className="ml-2" />
       {/* Two distinct backends live under this one lens: a real Google-Maps-parity
           places/trips/directions tool (server/domains/atlas.js) and a signal-tomography

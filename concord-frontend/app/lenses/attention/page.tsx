@@ -12,7 +12,6 @@ import { useState, type ComponentType } from 'react';
 import { Focus, Layers, Brain, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -72,7 +71,7 @@ export default function AttentionLensPage() {
 
   return (
     <LensShell lensId="attention" asMain={false}>
-      <FirstRunTour lensId="attention" />
+
       <DepthBadge lensId="attention" size="sm" className="ml-2" />
       <div data-lens-theme="attention" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#attention-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">

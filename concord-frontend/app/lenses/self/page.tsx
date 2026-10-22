@@ -10,7 +10,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SelfFeed } from '@/components/self/SelfFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
@@ -86,7 +85,7 @@ export default function UnifiedSelfLensPage() {
 
   return (
     <LensShell lensId="self" asMain={false}>
-      <FirstRunTour lensId="self" />
+
       <DepthBadge lensId="self" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="self"

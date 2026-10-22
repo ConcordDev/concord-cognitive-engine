@@ -33,7 +33,6 @@ import {
   Boxes, BellRing, UserCircle, Calculator, RefreshCw, DollarSign, Plus,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -114,7 +113,7 @@ export default function VeterinaryLensPage() {
 
   return (
     <LensShell lensId="veterinary" asMain={false}>
-      <FirstRunTour lensId="veterinary" />
+
       <NorthStarFrame
         lensId="veterinary"
         crumb="Veterinary"

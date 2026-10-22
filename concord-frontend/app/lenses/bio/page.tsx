@@ -5,7 +5,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
@@ -121,7 +120,7 @@ export default function BioLensPage() {
 
   return (
     <LensShell lensId="bio" asMain={false}>
-      <FirstRunTour lensId="bio" />
+
       <DepthBadge lensId="bio" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="bio"

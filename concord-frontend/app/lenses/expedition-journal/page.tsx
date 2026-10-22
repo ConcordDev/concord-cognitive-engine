@@ -12,7 +12,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { StageCard, type StageView } from '@/components/expedition-journal/StageCard';
@@ -130,7 +129,7 @@ export default function ExpeditionJournalPage() {
 
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
-      <FirstRunTour lensId="expedition-journal" />
+
       <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="expedition-journal"

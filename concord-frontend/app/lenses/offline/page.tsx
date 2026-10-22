@@ -7,7 +7,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
 import { StorageQuotaPanel } from '@/components/offline/StorageQuotaPanel';
@@ -89,7 +88,7 @@ export default function OfflineLensPage() {
 
   return (
     <LensShell lensId="offline" asMain={false}>
-      <FirstRunTour lensId="offline" />      <DepthBadge lensId="offline" size="sm" className="ml-2" />
+<DepthBadge lensId="offline" size="sm" className="ml-2" />
 
       <NorthStarFrame
         lensId="offline"

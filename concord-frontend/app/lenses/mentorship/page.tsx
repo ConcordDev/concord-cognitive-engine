@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -114,7 +113,7 @@ export default function MentorshipLensPage() {
 
   return (
     <LensShell lensId="mentorship" asMain={false}>
-      <FirstRunTour lensId="mentorship" />
+
       <DepthBadge lensId="mentorship" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="mentorship"

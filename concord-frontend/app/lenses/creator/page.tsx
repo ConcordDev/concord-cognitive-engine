@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
@@ -41,7 +40,7 @@ function CreatorChrome() {
 
   return (
     <>
-      <FirstRunTour lensId="creator" />
+
       <div data-lens-theme="creator" className="relative min-h-full px-8 pb-28 pt-6">
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">

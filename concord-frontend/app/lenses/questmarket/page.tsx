@@ -16,7 +16,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -110,7 +109,7 @@ export default function QuestmarketLensPage() {
 
   return (
     <LensShell lensId="questmarket" asMain={false}>
-      <FirstRunTour lensId="questmarket" />
+
       <DepthBadge lensId="questmarket" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="questmarket"

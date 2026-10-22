@@ -35,7 +35,6 @@ import {
   Rss,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -191,7 +190,7 @@ export default function TradesLensPage() {
 
   return (
     <LensShell lensId="trades" asMain={false}>
-      <FirstRunTour lensId="trades" />
+
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
       <div data-lens-theme="trades" className="lens-trades relative min-h-full px-8 pb-28 pt-6">
         <a href="#trades-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-teal-500">

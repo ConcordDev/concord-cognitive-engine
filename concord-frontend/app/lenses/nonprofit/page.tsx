@@ -14,7 +14,6 @@ import { SessionRail } from '@/components/lens/SessionRail';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PropublicaSearch } from '@/components/nonprofit/PropublicaSearch';
 import { NonprofitActionPanel } from '@/components/nonprofit/NonprofitActionPanel';
@@ -74,7 +73,7 @@ export default function NonprofitLensPage() {
 
   return (
     <LensShell lensId="nonprofit" asMain={false}>
-      <FirstRunTour lensId="nonprofit" />      <DepthBadge lensId="nonprofit" size="sm" className="ml-2" />
+<DepthBadge lensId="nonprofit" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="nonprofit"
         crumb="Nonprofit"

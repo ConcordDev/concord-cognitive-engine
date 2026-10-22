@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InsuranceWalletSection } from '@/components/insurance/InsuranceWalletSection';
 import { InsurancePolicyTalk } from '@/components/insurance/InsurancePolicyTalk';
@@ -85,7 +84,7 @@ export default function InsuranceLensPage() {
 
   return (
     <LensShell lensId="insurance" asMain={false}>
-      <FirstRunTour lensId="insurance" />
+
       <DepthBadge lensId="insurance" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="insurance"

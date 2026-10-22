@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { BarcodeLookup } from '@/components/household/BarcodeLookup';
 import { HouseholdActionPanel } from '@/components/household/HouseholdActionPanel';
@@ -1729,7 +1728,7 @@ export function HouseholdHome() {
 
   return (
     <>
-      <FirstRunTour lensId="household" />
+
       <DepthBadge lensId="household" size="sm" className="ml-2" />
     <NorthStarFrame
       lensId="household"

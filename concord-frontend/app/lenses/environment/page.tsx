@@ -28,7 +28,6 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -114,7 +113,7 @@ export default function EnvironmentLensPage() {
 
   return (
     <LensShell lensId="environment" asMain={false}>
-      <FirstRunTour lensId="environment" />
+
       <DepthBadge lensId="environment" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="environment"

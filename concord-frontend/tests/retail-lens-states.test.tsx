@@ -48,7 +48,6 @@ vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null 
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));

@@ -13,7 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { BarChart3, Activity, RefreshCw, Siren } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -92,7 +91,7 @@ export default function CRILensPage() {
 
   return (
     <LensShell lensId="cri" asMain={false}>
-      <FirstRunTour lensId="cri" />
+
       <DepthBadge lensId="cri" size="sm" className="ml-2" />
       <div data-lens-theme="cri" className="relative min-h-full px-8 pb-28 pt-6">
         <a href="#cri-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">

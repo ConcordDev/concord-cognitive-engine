@@ -23,7 +23,6 @@ import { AdminRequiredState } from '@/components/common/EmptyState';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PsyopsReference } from '@/components/psyops/PsyopsReference';
 import { DetectionRules } from '@/components/psyops/DetectionRules';
@@ -173,7 +172,7 @@ export default function PsyopsPage() {
 
   return (
     <LensShell lensId="psyops" asMain={false}>
-      <FirstRunTour lensId="psyops" />
+
       <DepthBadge lensId="psyops" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="psyops"

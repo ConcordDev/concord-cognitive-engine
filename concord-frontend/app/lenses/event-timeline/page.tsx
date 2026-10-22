@@ -11,7 +11,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, CalendarDays, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -57,7 +56,7 @@ export default function EventTimelineLens() {
 
   return (
     <LensShell lensId="event-timeline" asMain={false}>
-      <FirstRunTour lensId="event-timeline" />
+
       <DepthBadge lensId="event-timeline" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="event-timeline"

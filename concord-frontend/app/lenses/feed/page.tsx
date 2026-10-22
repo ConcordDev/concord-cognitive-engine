@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react';
 import { Home, Newspaper, Plus, Rss, Search, User, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
 import { FeedTimelinePanel, requestFeedCompose } from '@/components/feed/FeedTimelinePanel';
@@ -75,7 +74,7 @@ export default function FeedLensPage() {
 
   return (
     <LensShell lensId="feed" asMain={false}>
-      <FirstRunTour lensId="feed" />
+
       <DepthBadge lensId="feed" size="sm" className="ml-2" />
       <div className="lens-feed relative min-h-full px-8 pb-28 pt-6" data-lens-theme="feed">
         <p className="text-[14px] text-zinc-500">Feed</p>

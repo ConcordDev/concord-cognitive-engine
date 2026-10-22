@@ -17,7 +17,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
@@ -120,7 +119,7 @@ export default function MarketsPage() {
 
   return (
     <LensShell lensId="markets" asMain={false}>
-      <FirstRunTour lensId="markets" />
+
       <DepthBadge lensId="markets" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="markets"

@@ -20,7 +20,6 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { RefreshCw, ShoppingBag, Store, Repeat } from 'lucide-react';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { api } from '@/lib/api/client';
 import axios from 'axios';
@@ -194,7 +193,7 @@ export default function BlackMarketPage() {
 
   return (
     <LensShell lensId="black-market" asMain={false}>
-      <FirstRunTour lensId="black-market" />
+
       <DepthBadge lensId="black-market" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="black-market"

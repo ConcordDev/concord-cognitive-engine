@@ -40,7 +40,6 @@ import { useSearchParams } from 'next/navigation';
 import { Trophy, AlertTriangle, RefreshCw, Search, Medal, BarChart3 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -281,7 +280,7 @@ function AchievementsLensInner() {
 
   return (
     <LensShell lensId="achievements" asMain={false}>
-      <FirstRunTour lensId="achievements" />
+
       <DepthBadge lensId="achievements" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="achievements"

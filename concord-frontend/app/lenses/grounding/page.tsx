@@ -37,7 +37,6 @@
 import { useState } from 'react';
 import { ShieldCheck, Antenna, Radio } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,7 +79,7 @@ export default function GroundingLensPage() {
 
   return (
     <LensShell lensId="grounding" asMain={false}>
-      <FirstRunTour lensId="grounding" />
+
       <NorthStarFrame
         lensId="grounding"
         crumb="Grounding"

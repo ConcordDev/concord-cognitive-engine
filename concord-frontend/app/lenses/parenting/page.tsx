@@ -10,7 +10,6 @@
 import { useState } from 'react';
 import { ListChecks, Wand2, Users2, CalendarRange, Plus } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -58,7 +57,7 @@ export default function ParentingLensPage() {
 
   return (
     <LensShell lensId="parenting" asMain={false}>
-      <FirstRunTour lensId="parenting" />
+
       <DepthBadge lensId="parenting" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="parenting"

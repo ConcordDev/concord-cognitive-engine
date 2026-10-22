@@ -5,7 +5,6 @@ import { Wheat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -114,7 +113,7 @@ function AgricultureFarmDesk() {
 
   return (
     <LensShell lensId="agriculture" asMain={false}>
-      <FirstRunTour lensId="agriculture" />
+
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="agriculture"

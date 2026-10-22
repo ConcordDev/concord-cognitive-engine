@@ -15,7 +15,6 @@ import {
   MessageSquare, Receipt, Thermometer, Users, Wind, Wrench,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
@@ -100,7 +99,7 @@ export default function HVACLensPage() {
 
   return (
     <LensShell lensId="hvac" asMain={false}>
-      <FirstRunTour lensId="hvac" />
+
       <DepthBadge lensId="hvac" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="hvac"

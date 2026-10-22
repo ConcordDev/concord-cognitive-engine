@@ -6,7 +6,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -221,7 +220,7 @@ export default function ForkLensPage() {
 
   return (
     <LensShell lensId="fork" asMain={false}>
-      <FirstRunTour lensId="fork" />
+
       <DepthBadge lensId="fork" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="fork"

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
@@ -72,7 +71,7 @@ export default function DesertLensPage() {
 
   return (
     <LensShell lensId="desert" asMain={false}>
-      <FirstRunTour lensId="desert" />
+
       <DepthBadge lensId="desert" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="desert"
