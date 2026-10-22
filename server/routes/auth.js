@@ -172,13 +172,22 @@ export default function createAuthRouter({
     // Frontend must NOT fill this field; bots auto-fill hidden inputs.
     if (req.body.website || req.body.url || req.body.phone_number) {
       // Silently reject — looks like success to the bot
+      try { console.warn("[auth] register_silent_reject reason=honeypot ip=" + (req.ip || "unknown")); } catch (_) { /* noop */ }
       return res.status(201).json({ ok: true, user: { id: "ok", username } });
     }
 
     // ── Bot prevention: timing check ────────────────────────────────
     // Legitimate users take ≥2 seconds to fill a 4-field form.
+    // `_t` is the CLIENT's clock, compared against the SERVER's clock. A real
+    // user whose device clock runs ahead of ours produces a NEGATIVE elapsed
+    // time, which the old `< 2000` check silently rejected as a bot (real
+    // signups failed with "Registration could not be completed"). Only a
+    // non-negative elapsed under 2 s is treated as a too-fast bot submit;
+    // skewed clocks fall through to the other defenses (honeypot, IP cap).
     const formLoadedAt = Number(req.body._t) || 0;
-    if (formLoadedAt > 0 && (Date.now() - formLoadedAt) < 2000) {
+    const _fillElapsedMs = formLoadedAt > 0 ? Date.now() - formLoadedAt : null;
+    if (_fillElapsedMs !== null && _fillElapsedMs >= 0 && _fillElapsedMs < 2000) {
+      try { console.warn("[auth] register_silent_reject reason=too_fast elapsedMs=" + _fillElapsedMs + " ip=" + (req.ip || "unknown")); } catch (_) { /* noop */ }
       return res.status(201).json({ ok: true, user: { id: "ok", username } });
     }
 
