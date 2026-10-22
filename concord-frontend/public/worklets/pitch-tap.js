@@ -333,6 +333,23 @@ function removeLatency(signal, latency) {
     return out;
 }
 /**
+ * Time-varying pitch ratio through the same delay reader as Pitch Correct.
+ * `ratioAt(i)` is the read speed at input sample i (1 leaves the pitch alone).
+ * The latency is the delay to remove so the clip stays on the timeline.
+ */
+function shiftSignalByRatio(input, ratioAt, sampleRate) {
+    const latency = pitchLatencySamples(sampleRate, 70, 'low');
+    const shift = makeShift(latency);
+    const output = new Float32Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+        let ratio = ratioAt(i);
+        if (!Number.isFinite(ratio))
+            ratio = 1;
+        output[i] = shiftSample(shift, input[i], Math.max(0.25, Math.min(4, ratio))).wet;
+    }
+    return { output, latency };
+}
+/**
  * Pitch Correct worklet host. scripts/build-worklets.mjs inlines
  * lib/daw/dsp/pitch/core.ts into public/worklets/pitch-tap.js.
  * The processor sums to mono, runs processPitchBlock, and posts a meter

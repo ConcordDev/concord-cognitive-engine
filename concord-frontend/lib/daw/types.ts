@@ -4,8 +4,9 @@
  */
 
 import type { AudioTake, CompRegion } from './take-types';
+import type { PitchEditDoc } from './pitch-edit-types';
 
-export type { AudioTake, CompRegion };
+export type { AudioTake, CompRegion, PitchEditDoc };
 
 // ============================================================================
 // Transport & Timeline
@@ -99,6 +100,8 @@ export interface DAWClip {
   timeStretch: number; // ratio
   midiNotes?: MIDINote[];
   audioBufferId?: string;
+  /** Offline Pitch Editor. Absent on old projects. Derived audio is not stored here. */
+  pitchEdits?: PitchEditDoc;
   patternId?: string;
   /** Session-view scene slot. Clips with a slot live in the Session grid, not the Arrangement. */
   slot?: number;

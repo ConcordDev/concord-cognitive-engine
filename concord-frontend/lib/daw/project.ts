@@ -8,6 +8,7 @@ import type { DAWProject, DAWTrack, DAWClip, MIDINote, EffectInstance, TrackRole
 import { isDrumInstrument } from './presets';
 import { clampTempo, type TempoPoint } from './tempo-map';
 import { sanitizeComp, sanitizeTakes } from './takes';
+import { sanitizePitchEdits } from './dsp/pitch/editor';
 
 export const TRACK_COLORS = ['#7c3aed', '#ec4899', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#a855f7', '#14b8a6', '#f97316'];
 
@@ -253,6 +254,7 @@ export function normalizeProject(raw: unknown, fallbackTitle = 'Untitled Song'):
         lengthBeats: Math.max(0.25, num(c.lengthBeats, 4)),
         loopLength: Math.max(0.25, num(c.loopLength, num(c.lengthBeats, 4))),
         midiNotes: c.type === 'audio' ? c.midiNotes : Array.isArray(c.midiNotes) ? c.midiNotes : [],
+        pitchEdits: sanitizePitchEdits(c.pitchEdits),
       })),
       takes: sanitizeTakes(t.takes),
       comp: sanitizeComp(t.comp, sanitizeTakes(t.takes)),

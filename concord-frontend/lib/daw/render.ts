@@ -16,6 +16,7 @@ import { masterToTarget, preventClipping } from './dsp/limiter';
 import { encodeMp3OffThread, mp3Blob, type Mp3Bitrate, type Mp3Tags } from './mp3-encode';
 import { bpmAt, isConstantTempo, projectTempoPoints, renderClickTrack, secondsBetween } from './tempo-map';
 import { preparePitchExport } from './dsp/pitch/settings';
+import { applyBufferOverrides, bakePitchEdits } from './dsp/pitch/editor';
 
 export interface PcmAudio {
   channels: Float32Array[];
@@ -55,9 +56,12 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 export async function renderProject(project: DAWProject, audio: Map<string, PcmAudio>, opts: RenderOptions = {}): Promise<PcmAudio> {
   throwIfAborted(opts.signal);
-  // Bake Pitch Correct into clip buffers and drop those devices. The offline
-  // graph must not also host the worklet (pitchCompensate stays off).
-  const prepared = preparePitchExport(project, audio);
+  // Pitch Editor first (derived dry-source replacement), then Pitch Correct,
+  // so export matches live playback of the derived buffer through the device.
+  const edited = bakePitchEdits(project, audio);
+  const editedAudio = new Map(audio);
+  for (const [id, pcm] of edited.produced) editedAudio.set(id, pcm);
+  const prepared = preparePitchExport(applyBufferOverrides(project, edited.overrides), editedAudio);
   const song = prepared.project;
   const clips = prepared.audio;
   const sampleRate = opts.sampleRate || song.sampleRate || 48000;
