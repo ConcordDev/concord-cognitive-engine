@@ -54,18 +54,26 @@ export interface QuickPostComposerProps {
   /** Called after a successful post — useful for invalidating downstream queries. */
   onPosted?: (postId: string | null) => void;
   className?: string;
+  /** Increment to open the composer in 24h story mode. */
+  storyRequest?: number;
 }
 
-export function QuickPostComposer({ currentUserId, username, onPosted, className }: QuickPostComposerProps) {
+export function QuickPostComposer({ currentUserId, username, onPosted, className, storyRequest = 0 }: QuickPostComposerProps) {
   const [content, setContent] = useState('');
   const [tagsRaw, setTagsRaw] = useState('');
   const [mode, setMode] = useState<'post' | 'story'>('post');
+  const [storySeen, setStorySeen] = useState(storyRequest);
   const [showSuccess, setShowSuccess] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
   // Federation visibility — defaults to 'local' so users opt in to
   // federation explicitly. No surprise outbound fanout.
   const [federationVisibility, setFederationVisibility] = useState<FederationVisibility>('local');
   const queryClient = useQueryClient();
+
+  if (storyRequest !== storySeen) {
+    setStorySeen(storyRequest);
+    if (storyRequest > 0) setMode('story');
+  }
 
   const mutation = useMutation({
     mutationFn: async (input: PostMutationInput) => {

@@ -75,6 +75,49 @@ function getSocialState(STATE) {
   return STATE._social;
 }
 
+function blockedSet(bucket) {
+  if (!bucket || typeof bucket !== "object") return null;
+  const blocked = bucket.blocked;
+  if (blocked instanceof Set) return blocked;
+  if (Array.isArray(blocked)) return new Set(blocked);
+  if (blocked && typeof blocked === "object" && Array.isArray(blocked.values)) return new Set(blocked.values);
+  return null;
+}
+
+// Either direction. The only block list that exists today is the lens
+// moderation bucket (domains/social.js social.block). REST and lens
+// macros both consult this helper.
+export function isBlocked(STATE, a, b) {
+  if (!STATE || !a || !b || a === b) return false;
+  const mod = STATE.socialLens?.moderation;
+  if (!mod) return false;
+  const bucket = (id) => (mod instanceof Map ? mod.get(id) : mod[id]);
+  const left = blockedSet(bucket(a));
+  const right = blockedSet(bucket(b));
+  return !!((left && left.has(b)) || (right && right.has(a)));
+}
+
+function blockedResult() {
+  return { ok: false, status: 403, error: "blocked" };
+}
+
+// A recipient is real when they have a public social profile or an active
+// users row. With no database to check, callers that predate this guard
+// (in-memory unit tests) are left alone.
+export function recipientResolvable(STATE, userId, db) {
+  if (!userId || userId === "anon") return false;
+  const social = getSocialState(STATE || {});
+  if (social.profiles.has(userId)) return true;
+  const database = db || STATE?.db;
+  if (!database || typeof database.prepare !== "function") return true;
+  try {
+    const row = database.prepare("SELECT id FROM users WHERE id = ? AND is_active = 1").get(userId);
+    return !!row;
+  } catch {
+    return true;
+  }
+}
+
 let _postIdCounter = 0;
 function nextId(prefix) { return `${prefix}_${Date.now()}_${++_postIdCounter}`; }
 
@@ -191,6 +234,7 @@ export function listProfiles(STATE, options = {}) {
 export function followUser(STATE, followerId, followedId) {
   const social = getSocialState(STATE);
   if (followerId === followedId) return { ok: false, error: "Cannot follow yourself" };
+  if (isBlocked(STATE, followerId, followedId)) return blockedResult();
 
   // Check followed user exists
   if (!social.profiles.has(followedId)) {
@@ -308,6 +352,15 @@ function isDtuOwner(dtu, userId) {
 /**
  * Record that dtuB cites dtuA. Updates cited-by counters.
  */
+export function citeAsOwner(STATE, { userId, citedDtuId, citingDtuId }) {
+  if (!userId) return { ok: false, status: 401, error: "auth required" };
+  if (!citingDtuId || !citedDtuId) return { ok: false, status: 400, error: "citedDtuId and citingDtuId required" };
+  const citing = STATE.dtus?.get(citingDtuId);
+  if (!citing) return { ok: false, status: 404, error: "citing DTU not found" };
+  if (!isDtuOwner(citing, userId)) return { ok: false, status: 403, error: "you can only cite from a DTU you own" };
+  return recordCitation(STATE, citedDtuId, citingDtuId);
+}
+
 export function recordCitation(STATE, citedDtuId, citingDtuId) {
   const social = getSocialState(STATE);
   if (citedDtuId === citingDtuId) return { ok: false, error: "Self-citation" };
@@ -597,6 +650,9 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
   const social = getSocialState(STATE);
   if (!userId) return { ok: false, error: "userId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
+  if (typeof mediaUrl === "string" && /^data:/i.test(mediaUrl)) {
+    return { ok: false, error: "data URIs are not accepted; upload the file first" };
+  }
 
   const id = nextId("post");
   const now = new Date().toISOString();
@@ -641,6 +697,8 @@ export function createPost(STATE, { userId, content, title, mediaType, mediaUrl,
   // Create mention notifications
   if (post.mentionedUsers.length) {
     for (const mentioned of post.mentionedUsers) {
+      if (!mentioned || mentioned === userId) continue;
+      if (isBlocked(STATE, userId, mentioned)) continue;
       createNotification(STATE, { userId: mentioned, type: "mention", fromUserId: userId, postId: id, content: `${userId} mentioned you in a post` });
     }
   }
@@ -802,6 +860,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
   if (!content) return { ok: false, error: "content required" };
   const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
+  if (isBlocked(STATE, userId, post.userId)) return blockedResult();
 
   const comment = {
     id: nextId("cmt"),
@@ -828,6 +887,7 @@ export function addComment(STATE, { userId, postId, content, parentCommentId, me
   // Phase 11 (Item 3) — mention notifications on comment.
   for (const mentioned of comment.mentionedUsers) {
     if (mentioned === userId || mentioned === post.userId) continue;
+    if (isBlocked(STATE, userId, mentioned)) continue;
     createNotification(STATE, { userId: mentioned, type: "mention", fromUserId: userId, postId, content: `${userId} mentioned you in a comment` });
   }
 
@@ -872,6 +932,7 @@ export function sharePost(STATE, { userId, postId, commentary }) {
   const social = getSocialState(STATE);
   const post = requireVisiblePost(social, postId, userId);
   if (!post) return { ok: false, error: "Post not found" };
+  if (isBlocked(STATE, userId, post.userId)) return blockedResult();
 
   const share = { userId, commentary: commentary || "", timestamp: new Date().toISOString() };
   post.shares.push(share);
@@ -1011,14 +1072,15 @@ function isDmParticipant(conversationId, userId) {
   return parts[0] === userId || parts[1] === userId;
 }
 
-function dmDenied() {
-  return { ok: false, status: 404, error: "not found" };
+function dmDenied(error = "not found") {
+  return { ok: false, status: 404, error };
 }
 
 export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) {
   const social = getSocialState(STATE);
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
+  if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
 
   const convId = getConversationId(fromUserId, toUserId);
   if (!social.messages.has(convId)) social.messages.set(convId, []);
@@ -1065,7 +1127,7 @@ export function getConversations(STATE, userId) {
 }
 
 export function getMessages(STATE, conversationId, { limit = 50, offset = 0, userId } = {}) {
-  if (!isDmParticipant(conversationId, userId)) return dmDenied();
+  if (!isDmParticipant(conversationId, userId)) return dmDenied("not a participant");
   const social = getSocialState(STATE);
   const msgs = social.messages.get(conversationId);
   if (!msgs) return { ok: true, messages: [], total: 0 };
@@ -1510,10 +1572,51 @@ export function getStreak(STATE, userId) {
 
 // ── Social Commerce ──────────────────────────────────────────────────────
 
-export function tagListing(STATE, { postId, listingId }) {
+export function postAuthorId(STATE, postId, db) {
+  if (!postId) return null;
+  const social = getSocialState(STATE || {});
+  const post = social.posts.get(postId);
+  if (post?.userId) return post.userId;
+  const database = db || STATE?.db;
+  if (!database || typeof database.prepare !== "function") return null;
+  const queries = [
+    "SELECT COALESCE(user_id, author_id) AS uid FROM social_posts WHERE id = ?",
+    "SELECT author_id AS uid FROM social_group_posts WHERE post_id = ?",
+  ];
+  for (const sql of queries) {
+    try {
+      const row = database.prepare(sql).get(postId);
+      if (row?.uid) return row.uid;
+    } catch { /* table may not exist in this process */ }
+  }
+  return null;
+}
+
+export function userOwnsListing(db, userId, listingId) {
+  if (!db || typeof db.prepare !== "function" || !userId || !listingId) return false;
+  const queries = [
+    "SELECT owner_user_id AS owner FROM marketplace_listings WHERE id = ?",
+    "SELECT seller_id AS owner FROM marketplace_economy_listings WHERE id = ?",
+  ];
+  for (const sql of queries) {
+    try {
+      const row = db.prepare(sql).get(listingId);
+      if (row && row.owner === userId) return true;
+    } catch { /* table may not exist */ }
+  }
+  return false;
+}
+
+export function tagListing(STATE, { postId, listingId, userId, db } = {}) {
   const social = getSocialState(STATE);
   const post = social.posts.get(postId);
-  if (!post) return { ok: false, error: "Post not found" };
+  const authorId = post?.userId || postAuthorId(STATE, postId, db);
+  if (!authorId) return { ok: false, status: 404, error: "Post not found" };
+  if (!userId || authorId !== userId) return { ok: false, status: 403, error: "Only the post author can tag a listing" };
+  const database = db || STATE?.db;
+  if (!userOwnsListing(database, userId, listingId)) {
+    return { ok: false, status: 403, error: "You do not own this listing" };
+  }
   if (!social.postListings.has(postId)) social.postListings.set(postId, new Set());
   social.postListings.get(postId).add(listingId);
   return { ok: true, postId, listingId };
@@ -1651,6 +1754,7 @@ export function getTrendingContent(STATE, { limit = 20, hours = 24 } = {}) {
   for (const post of social.posts.values()) {
     if (new Date(post.createdAt).getTime() < cutoff) continue;
     if (post.expiresAt && new Date(post.expiresAt).getTime() < Date.now()) continue;
+    if (postAudience(post) !== "public") continue;
     scored.push({ post: serializePost(post), score: getTrendingScore(post) });
   }
 
@@ -1665,6 +1769,7 @@ export function getTrendingCreators(STATE, { limit = 20, days = 7 } = {}) {
 
   for (const post of social.posts.values()) {
     if (new Date(post.createdAt).getTime() < cutoff) continue;
+    if (postAudience(post) !== "public") continue;
     const uid = post.userId;
     if (!creatorStats.has(uid)) {
       creatorStats.set(uid, { userId: uid, engagementTotal: 0, postCount: 0, followerGrowth: 0 });
@@ -1703,6 +1808,7 @@ export function getTrendingDomains(STATE, { limit = 10 } = {}) {
 
   for (const post of social.posts.values()) {
     if (new Date(post.createdAt).getTime() < cutoff) continue;
+    if (postAudience(post) !== "public") continue;
     const score = getTrendingScore(post);
     for (const tag of (post.tags || [])) {
       domainScores.set(tag, (domainScores.get(tag) || 0) + score);
@@ -1719,6 +1825,7 @@ export function getTrendingDomains(STATE, { limit = 10 } = {}) {
     const domainPosts = [];
     for (const post of social.posts.values()) {
       if (new Date(post.createdAt).getTime() < cutoff) continue;
+      if (postAudience(post) !== "public") continue;
       if ((post.tags || []).includes(d.domain)) {
         domainPosts.push({ post: serializePost(post), score: getTrendingScore(post) });
       }
@@ -1728,4 +1835,204 @@ export function getTrendingDomains(STATE, { limit = 10 } = {}) {
   });
 
   return { ok: true, domains: result };
+}
+
+// Posts, replies, and shares by people the caller follows. Cursor is the
+// id of the last item already seen. Private and followers-only posts stay
+// hidden unless the caller may see them.
+export function getFollowingActivity(STATE, userId, { limit = 40, cursor = null } = {}) {
+  if (!userId) return { ok: false, status: 401, error: "auth required" };
+  const social = getSocialState(STATE);
+  const followSet = social.follows.get(userId) || new Set();
+  const items = [];
+  const nameOf = (id) => {
+    const profile = social.profiles.get(id);
+    const who = publicIdentity(id, profile);
+    return who.username || who.displayName || id;
+  };
+  for (const post of social.posts.values()) {
+    if (post.expiresAt && new Date(post.expiresAt).getTime() < Date.now()) continue;
+    if (followSet.has(post.userId) && postVisibleTo(social, post, userId)) {
+      items.push({
+        id: post.id,
+        userId: post.userId,
+        username: nameOf(post.userId),
+        kind: "post",
+        content: post.content || "",
+        createdAt: post.createdAt,
+      });
+    }
+    for (const comment of post.comments || []) {
+      if (!followSet.has(comment.userId)) continue;
+      if (!postVisibleTo(social, post, userId)) continue;
+      items.push({
+        id: comment.id,
+        userId: comment.userId,
+        username: nameOf(comment.userId),
+        kind: "comment",
+        content: comment.content || "",
+        createdAt: comment.createdAt,
+      });
+    }
+    for (const share of post.shares || []) {
+      if (!followSet.has(share.userId)) continue;
+      if (!postVisibleTo(social, post, userId)) continue;
+      items.push({
+        id: `share_${post.id}_${share.userId}_${share.timestamp}`,
+        userId: share.userId,
+        username: nameOf(share.userId),
+        kind: "share",
+        content: share.commentary || "",
+        createdAt: share.timestamp,
+      });
+    }
+  }
+  items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)) || String(b.id).localeCompare(String(a.id)));
+  let start = 0;
+  if (cursor) {
+    const idx = items.findIndex((item) => item.id === cursor);
+    start = idx >= 0 ? idx + 1 : items.length;
+  }
+  const pageLimit = Math.min(Math.max(Number(limit) || 40, 1), 100);
+  const page = items.slice(start, start + pageLimit);
+  const nextCursor = start + pageLimit < items.length && page.length ? page[page.length - 1].id : null;
+  return { ok: true, items: page, nextCursor };
+}
+
+// Shape CreatorAnalytics.tsx can render. Sections with no stored source
+// (per-day series, earnings, followers lost) are omitted, not zero-filled.
+export function getCreatorAnalyticsView(STATE, userId) {
+  const raw = getCreatorAnalytics(STATE, userId, userId);
+  const social = getSocialState(STATE);
+  const topPosts = (raw.topPosts || []).map((entry) => {
+    const post = social.posts.get(entry.postId);
+    let reactions = 0;
+    if (post?.reactions) {
+      for (const users of post.reactions.values()) reactions += users.size;
+    }
+    return {
+      postId: entry.postId,
+      title: entry.title || (post?.content || "").slice(0, 80) || "Post",
+      engagementScore: entry.engagement,
+      reactions,
+      comments: post?.comments?.length || 0,
+      shares: post?.shares?.length || 0,
+      createdAt: post?.createdAt || null,
+    };
+  });
+  const bestPostingHours = (raw.bestPostingHours || [])
+    .filter((hour) => hour.count > 0)
+    .map((hour) => ({ hour: hour.hour, score: hour.count }));
+  const contentBreakdown = Object.entries(raw.contentBreakdown || {})
+    .filter(([, count]) => count > 0)
+    .map(([mediaType, count]) => ({ mediaType, count }));
+  const gained = raw.followerGrowth || 0;
+  return {
+    ok: true,
+    overview: {
+      engagementRate: raw.engagementRate,
+      totalReach: raw.totalReach,
+      followerCount: raw.totalFollowers,
+      followerTrend: gained > 0 ? "up" : "stable",
+    },
+    topPosts,
+    bestPostingHours,
+    contentBreakdown,
+    followerGrowth: { gained, net: gained, period: "30d" },
+    totalPosts: raw.totalPosts,
+  };
+}
+
+// Account erasure. Posts and the profile are removed. DM rows are
+// tombstoned the same way direct_messages is anonymized, so the other
+// person keeps the thread without a live user id attached.
+export function purgeUserSocialRecords(STATE, userId, { tombstone } = {}) {
+  if (!STATE || !userId) return { ok: false, error: "userId required" };
+  const tomb = tombstone || `deleted_${userId}`;
+  const social = getSocialState(STATE);
+  let deleted = 0;
+  let anonymized = 0;
+
+  if (social.profiles.delete(userId)) deleted++;
+  const following = social.follows.get(userId);
+  if (following) {
+    for (const other of following) social.followers.get(other)?.delete(userId);
+    social.follows.delete(userId);
+    deleted++;
+  }
+  for (const set of social.follows.values()) set.delete(userId);
+  social.followers.delete(userId);
+
+  for (const [id, post] of [...social.posts]) {
+    if (post.userId === userId) {
+      social.posts.delete(id);
+      social.postListings.delete(id);
+      deleted++;
+      continue;
+    }
+    if (Array.isArray(post.comments)) {
+      const before = post.comments.length;
+      post.comments = post.comments.filter((comment) => comment.userId !== userId);
+      deleted += before - post.comments.length;
+    }
+    if (post.reactions) {
+      for (const users of post.reactions.values()) users.delete(userId);
+    }
+    post.bookmarks?.delete?.(userId);
+  }
+  if (social.notifications.delete(userId)) deleted++;
+  for (const list of social.notifications.values()) {
+    for (const note of list) {
+      if (note.fromUserId === userId) note.fromUserId = tomb;
+    }
+  }
+  for (const msgs of social.messages.values()) {
+    for (const msg of msgs) {
+      if (msg.fromUserId === userId) { msg.fromUserId = tomb; anonymized++; }
+      if (msg.toUserId === userId) { msg.toUserId = tomb; anonymized++; }
+    }
+  }
+
+  const lens = STATE.socialLens;
+  if (lens && typeof lens === "object") {
+    if (lens.posts instanceof Map) {
+      for (const [id, post] of [...lens.posts]) {
+        if (post?.userId === userId) { lens.posts.delete(id); deleted++; }
+      }
+    }
+    if (lens.replies instanceof Map) {
+      for (const [postId, list] of lens.replies) {
+        if (!Array.isArray(list)) continue;
+        const next = list.filter((reply) => reply?.userId !== userId);
+        deleted += list.length - next.length;
+        lens.replies.set(postId, next);
+      }
+    }
+    if (lens.reactions instanceof Map) {
+      for (const map of lens.reactions.values()) {
+        if (map instanceof Map && map.delete(userId)) deleted++;
+      }
+    }
+    if (lens.reposts instanceof Map) {
+      for (const set of lens.reposts.values()) {
+        if (set instanceof Set) set.delete(userId);
+      }
+    }
+    if (lens.dms instanceof Map) {
+      for (const thread of lens.dms.values()) {
+        if (!thread?.participants?.includes(userId)) continue;
+        thread.participants = thread.participants.map((id) => (id === userId ? tomb : id));
+        for (const msg of thread.messages || []) {
+          if (msg.from === userId) { msg.from = tomb; anonymized++; }
+        }
+      }
+    }
+    if (lens.moderation instanceof Map) lens.moderation.delete(userId);
+    if (lens.reports instanceof Map) {
+      for (const [id, report] of [...lens.reports]) {
+        if (report?.reporterId === userId) lens.reports.delete(id);
+      }
+    }
+  }
+  return { ok: true, deleted, anonymized, tombstone: tomb };
 }

@@ -13,6 +13,7 @@ import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
 import { economyAudit } from "../economy/audit.js";
 import { privacyExportForUser } from "../domains/privacy.js";
 import { settingsExportForUser } from "../domains/settings.js";
+import { purgeUserSocialRecords } from "../emergent/social-layer.js";
 
 function uid(prefix = "al") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -301,6 +302,20 @@ export function executeAccountDeletion(db, userId) {
       const rRecipient = db.prepare("UPDATE direct_messages SET recipient_id = ? WHERE recipient_id = ?").run(tombstone, userId);
       stats.anonymized += rSender.changes + rRecipient.changes;
     } catch (err) { console.warn('[account-lifecycle] failed to anonymize direct_messages', { userId, err: err.message }); errors.push({ step: 'anonymize_direct_messages', err }); }
+
+    // 5b. In-memory social stores are not the SQL tables above. Tombstone
+    // DMs and delete the user's posts, profile, follows, and notifications
+    // in STATE._social and STATE.socialLens.
+    try {
+      const state = globalThis._concordSTATE;
+      if (state) {
+        const purged = purgeUserSocialRecords(state, userId, { tombstone });
+        if (purged?.ok) {
+          stats.deleted += purged.deleted || 0;
+          stats.anonymized += purged.anonymized || 0;
+        }
+      }
+    } catch (err) { console.warn('[account-lifecycle] failed to purge in-memory social records', { userId, err: err.message }); errors.push({ step: 'purge_memory_social', err }); }
 
     // 6. HARD-DELETE sign-in identity links (Google/Apple OAuth, `oauth_connections`).
     // Single-user-scoped, zero cross-user dependency (Finding 5 — previously not touched at all;

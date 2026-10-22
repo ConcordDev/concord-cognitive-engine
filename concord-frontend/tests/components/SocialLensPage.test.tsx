@@ -20,13 +20,17 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const apiGet = vi.fn();
+const apiPost = vi.fn(async () => ({ data: { ok: true } }));
 // The north-star frame wires these into the page; stub them for a headless render.
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useRealtimeLens', () => ({
   useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
 }));
 vi.mock('@/lib/api/client', () => ({
-  api: { get: (...a: unknown[]) => apiGet(...a) },
+  api: {
+    get: (...a: unknown[]) => apiGet(...a),
+    post: (...a: unknown[]) => apiPost(...a),
+  },
 }));
 
 vi.mock('next/navigation', () => ({

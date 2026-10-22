@@ -13,6 +13,8 @@ import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import logger from "../logger.js";
 import { topicLabel } from "../lib/trending-topics.js";
+import { isBlocked, recipientResolvable } from "../emergent/social-layer.js";
+import { submitReport } from "../lib/content-moderation.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
@@ -201,6 +203,9 @@ export default function registerSocialActions(registerLensAction) {
       : null;
     if (poll && poll.options.length < 2) return { ok: false, error: "poll needs at least 2 options" };
     // media attachments — list of { kind:'image'|'video', url, alt }
+    if (Array.isArray(params.media) && params.media.some((m) => typeof m?.url === "string" && /^data:/i.test(m.url))) {
+      return { ok: false, error: "data URIs are not accepted; upload the file first" };
+    }
     const media = Array.isArray(params.media)
       ? params.media
           .filter((m) => m && (m.kind === "image" || m.kind === "video") && m.url)
@@ -376,9 +381,11 @@ export default function registerSocialActions(registerLensAction) {
     if (to === from) return { ok: false, error: "cannot message yourself" };
     const body = clip(params.body, 2000);
     if (!body) return { ok: false, error: "message body required" };
-    // recipient's block list gates delivery
-    const recipMod = modBucket(s, to);
-    if (recipMod.blocked.has(from)) return { ok: false, error: "you are blocked by this user" };
+    const STATE = globalThis._concordSTATE;
+    if (isBlocked(STATE, from, to)) return { ok: false, error: "you are blocked by this user" };
+    if (!ctx?.internal && !recipientResolvable(STATE, to, ctx?.db || STATE?.db)) {
+      return { ok: false, error: "recipient not found" };
+    }
     const key = dmKey(from, to);
     if (!s.dms.has(key)) {
       s.dms.set(key, { key, participants: [from, to].sort(), messages: [], readBy: {} });
@@ -559,11 +566,14 @@ export default function registerSocialActions(registerLensAction) {
     if (kind !== "image" && kind !== "video") {
       return { ok: false, error: "kind must be 'image' or 'video'" };
     }
+    if (typeof params.url === "string" && /^data:/i.test(params.url)) {
+      return { ok: false, error: "data URIs are not accepted; upload the file first" };
+    }
     const url = clip(params.url, 1000);
     if (!url) return { ok: false, error: "url required" };
     const isHttp = /^https?:\/\//i.test(url);
-    const isData = /^data:(image|video)\//i.test(url);
-    if (!isHttp && !isData) return { ok: false, error: "url must be http(s) or a data URI" };
+    const isArtifact = url.startsWith("/api/artifact/");
+    if (!isHttp && !isArtifact) return { ok: false, error: "url must be an http(s) or /api/artifact/ URL" };
     return {
       ok: true,
       result: {
@@ -624,7 +634,23 @@ export default function registerSocialActions(registerLensAction) {
     };
     s.reports.set(report.id, report);
     save();
-    return { ok: true, result: { report } };
+    const category = reason === "hate" ? "hate_speech" : reason;
+    let moderation = null;
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (STATE) {
+        moderation = submitReport(STATE, {
+          reporterId: me,
+          contentId: targetId,
+          contentType: targetKind === "post" ? "post" : "profile",
+          category,
+          reason: clip(params.detail, 500) || `social report: ${reason}`,
+        });
+      }
+    } catch (err) {
+      moderation = { ok: false, error: String(err?.message || err) };
+    }
+    return { ok: true, result: { report, moderation } };
   });
 
   registerLensAction("social", "moderationStatus", (ctx, _a, _params = {}) => {

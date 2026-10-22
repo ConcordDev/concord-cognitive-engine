@@ -150,9 +150,13 @@ export default function createSocialExtendedRouter({ STATE, requireAuth }) {
 
   // ─── Listing tagging ───────────────────────────────────────────────────────
   router.post("/tag-listing", auth, (req, res) => {
+    const userId = req.user?.id;
     const { postId, listingId } = req.body || {};
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
     if (!postId || !listingId) return res.status(400).json({ ok: false, error: "postId+listingId required" });
-    res.json({ ok: true, ...tagListing(STATE, { postId, listingId }) });
+    const result = tagListing(STATE, { postId, listingId, userId, db: STATE?.db });
+    if (!result.ok) return res.status(result.status || 400).json(result);
+    res.json({ ok: true, ...result });
   });
 
   return router;

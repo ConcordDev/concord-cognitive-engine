@@ -66,7 +66,7 @@ interface CreatorAnalyticsData {
   contentBreakdown: ContentBreakdown[];
   followerGrowth: {
     gained: number;
-    lost: number;
+    lost?: number;
     net: number;
     period: string;
   };
@@ -190,14 +190,24 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
     );
   }
 
+  const days = data.engagementByDay ?? [];
+  const hours = data.bestPostingHours ?? [];
+  const breakdown = data.contentBreakdown ?? [];
+  const posts = data.topPosts ?? [];
+  const showDays = Array.isArray(data.engagementByDay) && days.length > 0;
+  const showHours = hours.length > 0;
+  const showBreakdown = breakdown.length > 0;
+  const showGrowth = !!data.followerGrowth;
+  const showEarnings = !!data.earnings;
+
   const maxDayEngagement = Math.max(
-    ...data.engagementByDay.map((d) => d.reactions + d.comments + d.shares),
+    ...days.map((d) => d.reactions + d.comments + d.shares),
     1
   );
 
-  const maxHourScore = Math.max(...data.bestPostingHours.map((h) => h.score), 1);
+  const maxHourScore = Math.max(...hours.map((h) => h.score), 1);
 
-  const maxContentCount = Math.max(...data.contentBreakdown.map((c) => c.count), 1);
+  const maxContentCount = Math.max(...breakdown.map((c) => c.count), 1);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -226,10 +236,9 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
         />
       </div>
 
-      {/* ── Engagement Chart (7 days) ────────────────────────────────── */}
-      <Section title="Engagement (Last 7 Days)" icon={BarChart3}>
+      {showDays && <Section title="Engagement (Last 7 Days)" icon={BarChart3}>
         <div className="flex items-end gap-2 h-40">
-          {data.engagementByDay.slice(-7).map((day) => {
+          {days.slice(-7).map((day) => {
             const total = day.reactions + day.comments + day.shares;
             const heightPct = (total / maxDayEngagement) * 100;
             const reactPct = total > 0 ? (day.reactions / total) * heightPct : 0;
@@ -286,12 +295,11 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
             <span className="w-2.5 h-2.5 rounded-sm bg-neon-green/60" /> Shares
           </span>
         </div>
-      </Section>
+      </Section>}
 
-      {/* ── Top Posts ────────────────────────────────────────────────── */}
-      <Section title="Top Posts" icon={Flame}>
+      {posts.length > 0 && <Section title="Top Posts" icon={Flame}>
         <div className="space-y-2">
-          {data.topPosts.slice(0, 5).map((post, idx) => (
+          {posts.slice(0, 5).map((post, idx) => (
             <div
               key={post.postId}
               className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface border border-lattice-border"
@@ -325,12 +333,11 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
             </div>
           ))}
         </div>
-      </Section>
+      </Section>}
 
-      {/* ── Best Posting Hours ───────────────────────────────────────── */}
-      <Section title="Best Posting Hours" icon={Clock}>
+      {showHours && <Section title="Best Posting Hours" icon={Clock}>
         <div className="flex items-end gap-px h-28">
-          {data.bestPostingHours.map((hour) => {
+          {hours.map((hour) => {
             const heightPct = (hour.score / maxHourScore) * 100;
             const isTop = hour.score === maxHourScore;
 
@@ -359,13 +366,13 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
           })}
         </div>
         <div className="text-[10px] text-gray-400 text-center mt-2">Hour of day (UTC)</div>
-      </Section>
+      </Section>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {(showBreakdown || showGrowth || showEarnings) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* ── Content Breakdown ──────────────────────────────────────── */}
-        <Section title="Content Breakdown" icon={FileText}>
+        {showBreakdown && <Section title="Content Breakdown" icon={FileText}>
           <div className="space-y-3">
-            {data.contentBreakdown.map((item) => {
+            {breakdown.map((item) => {
               const Icon = MEDIA_ICONS[item.mediaType] || FileText;
               const colorClass = MEDIA_COLORS[item.mediaType] || MEDIA_COLORS.document;
               const widthPct = (item.count / maxContentCount) * 100;
@@ -404,12 +411,10 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
               );
             })}
           </div>
-        </Section>
+        </Section>}
 
-        {/* ── Follower Growth + Earnings ─────────────────────────────── */}
-        <div className="space-y-4">
-          {/* Follower Growth */}
-          <Section title="Follower Growth (30d)" icon={Users}>
+        {(showGrowth || showEarnings) && <div className="space-y-4">
+          {showGrowth && data.followerGrowth && <Section title="Follower Growth (30d)" icon={Users}>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="text-lg font-bold text-green-400">
@@ -417,12 +422,14 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 </div>
                 <div className="text-[10px] text-gray-400">Gained</div>
               </div>
+              {typeof data.followerGrowth.lost === 'number' && (
               <div className="text-center">
                 <div className="text-lg font-bold text-red-400">
                   -{formatNumber(data.followerGrowth.lost)}
                 </div>
                 <div className="text-[10px] text-gray-400">Lost</div>
               </div>
+              )}
               <div className="text-center">
                 <div
                   className={cn(
@@ -436,10 +443,9 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 <div className="text-[10px] text-gray-400">Net</div>
               </div>
             </div>
-          </Section>
+          </Section>}
 
-          {/* Earnings */}
-          <Section title="Earnings" icon={Coins}>
+          {showEarnings && data.earnings && <Section title="Earnings" icon={Coins}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">Total Earned</span>
@@ -461,9 +467,9 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 </span>
               </div>
             </div>
-          </Section>
-        </div>
-      </div>
+          </Section>}
+        </div>}
+      </div>}
     </div>
   );
 }
