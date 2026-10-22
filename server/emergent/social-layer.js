@@ -1142,7 +1142,8 @@ export function getFollowingFeed(STATE, userId, { limit = 30, offset = 0 } = {})
   const now = Date.now();
   const posts = [];
   for (const post of social.posts.values()) {
-    if (!followSet.has(post.userId)) continue;
+    const own = post.userId === userId;
+    if (!own && !followSet.has(post.userId)) continue;
     if (post.expiresAt && new Date(post.expiresAt).getTime() < now) continue;
     if (!canViewPost(userId, post, STATE)) continue;
     posts.push(post);

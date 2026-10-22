@@ -29,7 +29,22 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/store/ui';
 import { MentionAutocomplete } from './MentionAutocomplete';
+
+function failureMessage(err: unknown, data?: { ok?: boolean; error?: string; message?: string } | null): string {
+  if (data && data.ok === false) {
+    return data.error || data.message || 'Post failed';
+  }
+  if (err && typeof err === 'object' && 'response' in err) {
+    const resp = (err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response;
+    if (resp?.data?.error) return String(resp.data.error);
+    if (resp?.data?.message) return String(resp.data.message);
+    if (resp?.status) return `Post failed (${resp.status})`;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return 'Network error';
+}
 
 const MAX_LEN = 500;
 
@@ -94,22 +109,33 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         body.isStory = true;
         body.expiresAt = input.expiresAt || new Date(Date.now() + 86400000).toISOString();
       }
-      const r = await api.post('/api/social/post', body);
-      return r?.data as { ok: boolean; post?: { id: string }; error?: string };
+      try {
+        const r = await api.post('/api/social/post', body);
+        const data = r?.data as { ok?: boolean; post?: { id: string }; error?: string; message?: string } | undefined;
+        if (!data?.ok) {
+          throw new Error(failureMessage(null, data || { ok: false, error: 'Post failed' }));
+        }
+        return data as { ok: boolean; post?: { id: string }; error?: string };
+      } catch (err) {
+        throw new Error(failureMessage(err));
+      }
     },
     onSuccess: (data) => {
-      if (data?.ok) {
-        setContent('');
-        setTagsRaw('');
-        setMentionedUsers([]);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 1500);
-        // Invalidate the relevant feeds.
-        queryClient.invalidateQueries({ queryKey: ['social-following-activity'] });
-        queryClient.invalidateQueries({ queryKey: ['feed-for-you'] });
-        queryClient.invalidateQueries({ queryKey: ['stories'] });
-        onPosted?.(data.post?.id || null);
-      }
+      setContent('');
+      setTagsRaw('');
+      setMentionedUsers([]);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1500);
+      queryClient.invalidateQueries({ queryKey: ['social-following-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-for-you'] });
+      queryClient.invalidateQueries({ queryKey: ['stories'] });
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['social-following'] });
+      onPosted?.(data.post?.id || null);
+    },
+    onError: (err) => {
+      const message = failureMessage(err);
+      useUIStore.getState().addToast({ type: 'error', message });
     },
   });
 
@@ -126,10 +152,9 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
     return tokens.size === 0 ? [] : ids;
   }, []);
 
-  const onSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
+  const publish = useCallback(() => {
     const text = content.trim();
-    if (!text || text.length > MAX_LEN) return;
+    if (!text || text.length > MAX_LEN || mutation.isPending) return;
     const tags = tagsRaw
       .split(',')
       .map(t => t.trim())
@@ -144,6 +169,11 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       replyAudience,
     });
   }, [content, tagsRaw, mode, mutation, mentionedUsers, liveMentionedUsers, federationVisibility, privacy, replyAudience]);
+
+  const onSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    publish();
+  }, [publish]);
 
   const saveDraft = useCallback(async () => {
     const text = content.trim();
@@ -166,6 +196,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
 
   return (
     <form
+      id="social-quick-post"
       onSubmit={onSubmit}
       className={cn(
         'rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden',
@@ -175,6 +206,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       <header className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-zinc-800/60">
         <button
           type="button"
+          aria-label="Compose a regular post"
           onClick={() => setMode('post')}
           className={cn(
             'text-[10px] uppercase tracking-wider font-mono px-2 py-0.5 rounded border transition-colors',
@@ -212,8 +244,17 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
             {...props}
             ref={props.ref as React.Ref<HTMLTextAreaElement>}
             rows={3}
+            aria-label="Post text"
             placeholder={mode === 'story' ? "What's happening right now? (24h)" : "What's on your mind? Type @ to mention someone"}
             className="w-full px-3 py-2 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none"
+            onKeyDown={(e) => {
+              props.onKeyDown?.(e);
+              if (e.defaultPrevented) return;
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                publish();
+              }
+            }}
           />
         )}
       />
@@ -273,9 +314,10 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         </span>
         <button
           type="submit"
+          aria-label={mode === 'story' ? 'Post 24h story' : 'Post'}
           disabled={mutation.isPending || !content.trim() || overLimit}
           className={cn(
-            'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border font-medium transition-colors',
+            'inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-xs px-2.5 py-1 rounded border font-medium transition-colors',
             mode === 'story'
               ? 'bg-rose-700/40 hover:bg-rose-700/60 text-rose-100 border-rose-600/60'
               : 'bg-indigo-700/40 hover:bg-indigo-700/60 text-indigo-100 border-indigo-600/60',

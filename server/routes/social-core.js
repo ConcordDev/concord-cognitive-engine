@@ -30,6 +30,8 @@ import {
   getPinnedPosts,
   getProfile,
   recallMessage,
+  createPost,
+  getUserPosts,
 } from "../emergent/social-layer.js";
 import {
   editPost,
@@ -96,6 +98,49 @@ function sendLayer(res, result, okStatus = 200) {
 export default function createSocialCoreRoutes({ db, requireAuth }) {
   const router = Router();
   const auth = asAuth(requireAuth);
+
+  // Override POST /api/social/post (server.js always 200s {ok:false} and
+  // may stamp userId "anon"). Posting never consults brains or an LLM.
+  router.post("/post", auth, (req, res) => {
+    const userId = req.user?.id || req.actor?.userId || null;
+    if (!userId || userId === "anon") {
+      return res.status(401).json({ ok: false, error: "auth required" });
+    }
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const result = createPost(STATE, {
+      userId,
+      content: body.content ?? body.body,
+      title: body.title,
+      mediaType: body.mediaType,
+      mediaUrl: body.mediaUrl,
+      tags: body.tags,
+      mentionedUsers: body.mentionedUsers,
+      pollOptions: body.pollOptions,
+      isStory: body.isStory,
+      expiresAt: body.expiresAt,
+      taggedProducts: body.taggedProducts,
+      linkedDTUs: body.linkedDTUs,
+      federationVisibility: body.federationVisibility,
+      privacy: body.privacy,
+      visibility: body.visibility,
+      replyAudience: body.replyAudience,
+      sensitive: body.sensitive,
+    });
+    return sendLayer(res, result);
+  });
+
+  router.get("/posts/user/:userId", (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(getUserPosts(STATE, req.params.userId, {
+      limit: Number(req.query.limit || 30),
+      offset: Number(req.query.offset || 0),
+      viewerId,
+    }));
+  });
 
   router.get("/notifications", auth, (req, res) => {
     const userId = req.user?.id;
