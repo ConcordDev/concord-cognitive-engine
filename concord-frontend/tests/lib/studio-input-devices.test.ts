@@ -123,7 +123,9 @@ describe('device preferences', () => {
     const mem = new Map<string, string>();
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
     saveInputPrefs({ ...DEFAULT_INPUT_PREFS, deviceId: 'usb', deviceLabel: 'Scarlett', channelMode: 'stereo', gainDb: 6 }, storage);
-    expect(loadInputPrefs(storage)).toMatchObject({ deviceId: 'usb', channelMode: 'stereo', gainDb: 6, monitor: false, voiceCleanup: false });
+    expect(loadInputPrefs(storage)).toMatchObject({ deviceId: 'usb', channelMode: 'stereo', gainDb: 6, monitor: false, voiceCleanup: false, monitorThroughFx: true, directMonitor: false });
+    mem.set('concord_studio_input_v1', JSON.stringify({ monitor: true, directMonitor: true, monitorThroughFx: false }));
+    expect(loadInputPrefs(storage)).toMatchObject({ monitor: false, directMonitor: true, monitorThroughFx: false });
     mem.set('concord_studio_input_v1', JSON.stringify({ gainDb: 999, channelMode: 'weird', countInBars: 99 }));
     expect(loadInputPrefs(storage)).toMatchObject({ gainDb: 24, channelMode: 'mono1', countInBars: 4 });
     mem.set('concord_studio_input_v1', '{not json');

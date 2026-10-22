@@ -1,15 +1,16 @@
 /**
- * InputRecorder: lossless multitrack-grade capture for Concord Studio.
+ * InputRecorder: lossless capture for Concord Studio.
  *
- * getUserMedia (music constraints) -> MediaStreamSource -> channel select
- * (input 1, input 2 or stereo) -> input gain -> { level meter, monitor,
- * PCM tap }. The PCM tap records raw Float32 frames (no lossy codec) and
- * stamps the AudioContext time of the first captured frame so the take can
- * be placed on the timeline exactly, with latency compensation.
+ * getUserMedia (music constraints) -> channel select -> input gain ->
+ * { level meter, software-monitor branch, PCM tap }.
  *
- * ScriptProcessorNode is used for the tap on purpose: AudioWorklet modules
- * are blocked by the site's strict-dynamic CSP and ScriptProcessor works on
- * every browser including iOS Safari.
+ * The tap prefers an AudioWorklet (render-quantum blocks, transferred
+ * copies). If addModule fails, it falls back to a ScriptProcessorNode of
+ * 4096 frames and says so. The fallback must not host live worklet devices.
+ *
+ * The recorded take is the dry tap, before inserts. Software monitoring is
+ * a separate branch: the record panel routes it either into the armed
+ * track or straight to the destination.
  */
 
 import {
@@ -19,6 +20,19 @@ import {
   type ChannelMode,
   type MicErrorInfo,
 } from './input-devices';
+import {
+  CAPTURE_WORKLET_NAME,
+  SCRIPT_TAP_FRAMES,
+  armCapture,
+  concatChannels,
+  createCaptureAccumulator,
+  disarmCapture,
+  pushCaptureBlock,
+  scriptProcessorBlockStart,
+  type CaptureAccumulator,
+} from './dsp/capture-blocks';
+import { ensureCaptureWorklet } from './worklets/load-capture-worklet';
+import type { CaptureKind, MonitorRoute } from './dsp/monitor-routing';
 
 export interface OpenOptions {
   deviceId?: string | null;
@@ -52,7 +66,6 @@ export interface InputLevel {
   clipped: boolean;
 }
 
-const TAP_SIZE = 4096;
 const toDb = (x: number) => (x > 1e-6 ? 20 * Math.log10(x) : -120);
 
 export class InputRecorder {
@@ -65,15 +78,15 @@ export class InputRecorder {
   private analyser: AnalyserNode | null = null;
   private monitorGain: GainNode | null = null;
   private tap: ScriptProcessorNode | null = null;
+  private worklet: AudioWorkletNode | null = null;
   private sink: GainNode | null = null;
   private meterBuf: Float32Array = new Float32Array(2048);
   private clipUntil = 0;
-  private recording = false;
-  private chunks: Float32Array[][] = [];
-  private firstFrameTime: number | null = null;
+  private acc: CaptureAccumulator = createCaptureAccumulator();
   private captureChannels = 1;
   private deviceLostCb: (() => void) | null = null;
   private trackLatency = 0;
+  private mode: CaptureKind = 'closed';
 
   constructor(ctx: AudioContext) {
     this.ctx = ctx;
@@ -84,11 +97,37 @@ export class InputRecorder {
   }
 
   get isRecording(): boolean {
-    return this.recording;
+    return this.acc.open;
+  }
+
+  get captureMode(): CaptureKind {
+    return this.mode;
   }
 
   onDeviceLost(cb: (() => void) | null): void {
     this.deviceLostCb = cb;
+  }
+
+  /** The software-monitor gain. The record panel connects it; the tap does not. */
+  monitorNode(): GainNode | null {
+    return this.monitorGain;
+  }
+
+  /**
+   * 'destination' is the dry speaker path. 'graph' leaves the node
+   * unconnected here so the caller can connect it to a track. 'off' mutes.
+   */
+  setMonitorRoute(route: MonitorRoute): void {
+    if (!this.monitorGain) return;
+    try { this.monitorGain.disconnect(this.ctx.destination); } catch { /* not on the destination */ }
+    if (route === 'destination') this.monitorGain.connect(this.ctx.destination);
+    const on = route !== 'off';
+    this.monitorGain.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.01);
+  }
+
+  latencyParts(): { baseLatency?: number; outputLatency?: number; trackLatency?: number } {
+    const c = this.ctx as AudioContext & { outputLatency?: number };
+    return { baseLatency: c.baseLatency, outputLatency: c.outputLatency, trackLatency: this.trackLatency };
   }
 
   async open(opts: OpenOptions = {}): Promise<OpenResult> {
@@ -136,18 +175,17 @@ export class InputRecorder {
     });
 
     try {
-      this.buildGraph(opts.channelMode ?? 'mono1', deviceChannels);
+      await this.buildGraph(opts.channelMode ?? 'mono1', deviceChannels);
     } catch (err) {
       // Firefox: "Connecting AudioNodes from AudioContexts with different sample-rate".
       this.close();
       return { ok: false, error: classifyMicError(err, env) };
     }
     this.setGain(opts.gainDb ?? 0);
-    this.setMonitor(!!opts.monitor);
     return { ok: true, deviceChannels, settings, label: track?.label };
   }
 
-  private buildGraph(mode: ChannelMode, deviceChannels: number): void {
+  private async buildGraph(mode: ChannelMode, deviceChannels: number): Promise<void> {
     if (!this.stream) return;
     const ctx = this.ctx;
     this.source = ctx.createMediaStreamSource(this.stream);
@@ -177,35 +215,63 @@ export class InputRecorder {
 
     this.monitorGain = ctx.createGain();
     this.monitorGain.gain.value = 0;
-    this.inputGain.connect(this.monitorGain).connect(ctx.destination);
 
-    this.tap = ctx.createScriptProcessor(TAP_SIZE, this.captureChannels, this.captureChannels);
     this.sink = ctx.createGain();
-    this.sink.gain.value = 0; // keeps the tap pulled without making sound
+    this.sink.gain.value = 0;
+    const workletOk = await this.attachWorkletTap();
+    if (!workletOk) this.attachScriptTap();
+  }
+
+  private async attachWorkletTap(): Promise<boolean> {
+    if (!this.inputGain || !this.sink) return false;
+    if (typeof AudioWorkletNode !== 'function') return false;
+    const ok = await ensureCaptureWorklet(this.ctx);
+    if (!ok) return false;
+    try {
+      this.worklet = new AudioWorkletNode(this.ctx, CAPTURE_WORKLET_NAME, {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [this.captureChannels],
+        channelCount: this.captureChannels,
+        channelCountMode: 'explicit',
+      });
+      this.worklet.port.onmessage = (e) => this.onWorkletMessage(e);
+      this.inputGain.connect(this.worklet);
+      this.worklet.connect(this.sink).connect(this.ctx.destination);
+      this.mode = 'worklet';
+      return true;
+    } catch {
+      try { this.worklet?.disconnect(); } catch { /* noop */ }
+      this.worklet = null;
+      return false;
+    }
+  }
+
+  private onWorkletMessage(e: MessageEvent): void {
+    const data = e.data as { type?: string; gen?: number; time?: number; channels?: Float32Array[] } | null;
+    if (!data || data.type !== 'block' || typeof data.gen !== 'number' || typeof data.time !== 'number' || !data.channels) return;
+    pushCaptureBlock(this.acc, { gen: data.gen, time: data.time, channels: data.channels });
+  }
+
+  private attachScriptTap(): void {
+    if (!this.inputGain || !this.sink) return;
+    this.tap = this.ctx.createScriptProcessor(SCRIPT_TAP_FRAMES, this.captureChannels, this.captureChannels);
     this.inputGain.connect(this.tap);
-    this.tap.connect(this.sink).connect(ctx.destination);
+    this.tap.connect(this.sink).connect(this.ctx.destination);
+    this.mode = 'script';
     this.tap.onaudioprocess = (e: AudioProcessingEvent) => {
-      if (!this.recording) return;
+      if (!this.acc.open) return;
       const block: Float32Array[] = [];
       for (let c = 0; c < this.captureChannels; c++) {
         block.push(new Float32Array(e.inputBuffer.getChannelData(Math.min(c, e.inputBuffer.numberOfChannels - 1))));
       }
-      if (this.firstFrameTime === null) {
-        // playbackTime is when this block's *output* plays; its input frames
-        // were captured one block earlier.
-        const pt = Number.isFinite(e.playbackTime) && e.playbackTime > 0 ? e.playbackTime : this.ctx.currentTime;
-        this.firstFrameTime = pt - TAP_SIZE / this.ctx.sampleRate;
-      }
-      this.chunks.push(block);
+      const time = scriptProcessorBlockStart(e.playbackTime, SCRIPT_TAP_FRAMES, this.ctx.sampleRate, this.ctx.currentTime);
+      pushCaptureBlock(this.acc, { gen: this.acc.gen, time, channels: block });
     };
   }
 
   setGain(db: number): void {
     if (this.inputGain) this.inputGain.gain.value = Math.pow(10, Math.max(-60, Math.min(24, db)) / 20);
-  }
-
-  setMonitor(on: boolean): void {
-    if (this.monitorGain) this.monitorGain.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.01);
   }
 
   getLevel(): InputLevel {
@@ -234,46 +300,40 @@ export class InputRecorder {
   }
 
   start(): boolean {
-    if (!this.tap || !this.isOpen) return false;
-    this.chunks = [];
-    this.firstFrameTime = null;
-    this.recording = true;
+    if ((!this.worklet && !this.tap) || !this.isOpen) return false;
+    const gen = armCapture(this.acc);
+    this.worklet?.port.postMessage({ type: 'arm', on: true, gen });
     return true;
   }
 
   stop(): CapturedTake | null {
-    if (!this.recording) return null;
-    this.recording = false;
-    const frames = this.chunks.reduce((n, b) => n + b[0].length, 0);
-    if (frames === 0 || this.firstFrameTime === null) return null;
-    const channels: Float32Array[] = [];
-    for (let c = 0; c < this.captureChannels; c++) {
-      const out = new Float32Array(frames);
-      let o = 0;
-      for (const block of this.chunks) {
-        out.set(block[c], o);
-        o += block[c].length;
-      }
-      channels.push(out);
-    }
-    this.chunks = [];
+    if (!this.acc.open) return null;
+    const gen = this.acc.gen;
+    const first = this.acc.firstTime;
+    const channels = concatChannels(this.acc.chunks);
+    disarmCapture(this.acc);
+    this.worklet?.port.postMessage({ type: 'arm', on: false, gen });
+    if (!channels.length || channels[0].length === 0 || first === null) return null;
     return {
       channels,
       sampleRate: this.ctx.sampleRate,
-      startTime: this.firstFrameTime - this.latencyOffsetSec(),
-      durationSec: frames / this.ctx.sampleRate,
+      startTime: first - this.latencyOffsetSec(),
+      durationSec: channels[0].length / this.ctx.sampleRate,
     };
   }
 
   close(): void {
-    this.recording = false;
+    disarmCapture(this.acc);
+    try { this.worklet?.port.postMessage({ type: 'arm', on: false, gen: this.acc.gen }); } catch { /* noop */ }
     try { if (this.tap) this.tap.onaudioprocess = null; } catch { /* noop */ }
-    for (const n of [this.source, this.splitter, this.selector, this.inputGain, this.analyser, this.monitorGain, this.tap, this.sink]) {
+    for (const n of [this.source, this.splitter, this.selector, this.inputGain, this.analyser, this.monitorGain, this.tap, this.worklet, this.sink]) {
       try { n?.disconnect(); } catch { /* already disconnected */ }
     }
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.source = this.splitter = this.selector = this.inputGain = this.analyser = this.monitorGain = this.sink = null;
     this.tap = null;
+    this.worklet = null;
+    this.mode = 'closed';
   }
 }

@@ -293,6 +293,34 @@ describe('Auth Middleware', () => {
       expect(n1).not.toBe(n2);
     });
 
+    it('drops strict-dynamic on the studio document and keeps it everywhere else', async () => {
+      const { scriptSrcForDocument } = await import('@/middleware');
+      const studio = middleware(makeRequest('/lenses/studio', { concord_auth: 'tok' })) as { headers: { get: (k: string) => string | undefined } };
+      const other = middleware(makeRequest('/lenses/chat', { concord_auth: 'tok' })) as { headers: { get: (k: string) => string | undefined } };
+      const studioScript = (studio.headers.get('Content-Security-Policy') || '').split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src')) || '';
+      const otherScript = (other.headers.get('Content-Security-Policy') || '').split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src')) || '';
+      expect(studioScript).toContain("'self'");
+      expect(studioScript).toContain("'nonce-");
+      expect(studioScript).toContain("'wasm-unsafe-eval'");
+      expect(studioScript).not.toContain('strict-dynamic');
+      expect(studioScript).not.toContain('unsafe-inline');
+      expect(studioScript).not.toContain('blob:');
+      expect(otherScript).toContain('strict-dynamic');
+      expect(otherScript).toContain("'nonce-");
+      const tokens = (script: string) => script.replace(/^script-src\s*/, '').split(/\s+/);
+      const prodStudio = tokens(scriptSrcForDocument('/lenses/studio', 'abc', 'production'));
+      const prodOther = tokens(scriptSrcForDocument('/lenses/chat', 'abc', 'production'));
+      expect(prodStudio).not.toContain("'unsafe-eval'");
+      expect(prodStudio).not.toContain("'strict-dynamic'");
+      expect(prodStudio).not.toContain("'unsafe-inline'");
+      expect(prodStudio).not.toContain('blob:');
+      expect(prodStudio).toContain("'wasm-unsafe-eval'");
+      expect(prodStudio).toContain("'self'");
+      expect(prodOther).toContain("'strict-dynamic'");
+      expect(prodOther).not.toContain("'unsafe-eval'");
+      expect(tokens(scriptSrcForDocument('/lenses/studiox', 'abc', 'production'))).toContain("'strict-dynamic'");
+    });
+
     it('sets the CSP on a redirect response too (protected route, no session)', () => {
       const response = middleware(makeRequest('/hub')) as { headers: { get: (k: string) => string | undefined } };
       expect(response.headers.get('Content-Security-Policy')).toBeTruthy();

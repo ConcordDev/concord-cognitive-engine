@@ -18,7 +18,7 @@ import { DEFAULT_INPUT_PREFS, classifyMicError } from '@/lib/daw/input-devices';
 
 function fakeRecorder(over: Partial<InputRecorderApi['state']> = {}): InputRecorderApi {
   return {
-    state: { devices: [], needsPermission: true, prefs: { ...DEFAULT_INPUT_PREFS }, open: false, opening: false, deviceChannels: 1, activeLabel: null, error: null, latencyMs: 0, ...over },
+    state: { devices: [], needsPermission: true, prefs: { ...DEFAULT_INPUT_PREFS }, open: false, opening: false, deviceChannels: 1, activeLabel: null, error: null, latencyMs: 0, monitorPath: 'off', monitorLines: ['Software monitoring is off.'], ...over },
     refresh: vi.fn(async () => []),
     openInput: vi.fn(async () => true),
     setPrefs: vi.fn(async () => {}),
