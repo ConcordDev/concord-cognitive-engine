@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { deleteOwnPost } from '../deleteOwnPost';
 import type { SocialPost, PollOption } from './types';
 import { authorLabel } from './authorLabel';
 import { ReplyTree } from './ReplyTree';
@@ -63,7 +64,11 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
   const [poll, setPoll] = useState(post.poll);
   const [pollChoice, setPollChoice] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [reactionIds, setReactionIds] = useState<string[]>(reactionKindsCache || FALLBACK_REACTION_IDS);
+  const hashtags = Array.isArray(post?.hashtags) ? post.hashtags : [];
+  const media = Array.isArray(post?.media) ? post.media : [];
 
   const permalink = `/lenses/social/post/${post.id}`;
 
@@ -150,7 +155,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
     if (r.data?.ok) setNotice('Report submitted to moderators.');
   }, [post.id]);
 
-  const totalVotes = poll ? poll.options.reduce((n, o) => n + o.votes, 0) : 0;
+  const pollOptions = Array.isArray(poll?.options) ? poll.options : [];
+  const totalVotes = pollOptions.reduce((n, o) => n + (typeof o.votes === 'number' ? o.votes : 0), 0);
   const author = authorLabel(post.userId, post.username, post.displayName);
   const mine = !!currentUserId && post.userId === currentUserId;
   const [editing, setEditing] = useState(false);
@@ -175,12 +181,13 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
   }, [post.id]);
 
   const removePost = useCallback(async () => {
+    setDeleting(true);
+    const result = await deleteOwnPost(post.id);
+    setDeleting(false);
+    setConfirmDelete(false);
     setShowMenu(false);
-    const r = await lensRun<{ id: string; deleted: boolean }>('social', 'deletePost', { postId: post.id });
-    const denied = r.data?.ok === false || (r.data?.result as { ok?: boolean } | undefined)?.ok === false;
-    if (denied) {
-      const err = r.data?.error || (r.data?.result as { error?: string } | undefined)?.error;
-      setNotice(err || 'Could not delete this post.');
+    if (!result.ok) {
+      setNotice(result.error || 'Could not delete this post.');
       return;
     }
     onChanged();
@@ -214,8 +221,16 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
                 </button>
               )}
               {mine && (
-                <button type="button" onClick={() => void removePost()} className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-300 hover:bg-zinc-900">
-                  <Trash2 className="w-3.5 h-3.5" /> Delete post
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => {
+                    if (!confirmDelete) { setConfirmDelete(true); return; }
+                    void removePost();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-rose-300 hover:bg-zinc-900 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> {confirmDelete ? 'Confirm delete' : 'Delete post'}
                 </button>
               )}
               <button type="button" onClick={() => void moderate('mute')} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
@@ -256,9 +271,9 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         <p className="mt-1 text-sm text-zinc-200 leading-snug whitespace-pre-wrap">{post.body}</p>
       )}
 
-      {post.hashtags.length > 0 && (
+      {hashtags.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1.5">
-          {post.hashtags.map((tag) => (
+          {hashtags.map((tag) => (
             <button
               key={tag}
               type="button"
@@ -275,9 +290,9 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         <p className="mt-2 text-xs text-zinc-400">Sensitive media hidden</p>
       )}
 
-      {post.media.length > 0 && (
-        <div className={cn('mt-2 grid gap-1.5', post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
-          {post.media.map((m, i) => (
+      {media.length > 0 && (
+        <div className={cn('mt-2 grid gap-1.5', media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
+          {media.map((m, i) => (
             <div key={`${m.url.slice(0, 24)}-${i}`} className="overflow-hidden rounded border border-zinc-800">
               {m.kind === 'image' ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -296,7 +311,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
       {poll && (
         <div className="mt-2 space-y-1.5 rounded border border-zinc-800 bg-zinc-900/40 p-2">
           {poll.question && <p className="text-xs font-medium text-zinc-300">{poll.question}</p>}
-          {poll.options.map((o) => {
+          {pollOptions.map((o) => {
             const pct = totalVotes > 0 ? Math.round((o.votes / totalVotes) * 100) : 0;
             const chosen = pollChoice === o.id;
             return (

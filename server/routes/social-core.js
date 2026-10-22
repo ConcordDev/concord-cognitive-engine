@@ -31,6 +31,7 @@ import {
   getProfile,
   recallMessage,
   createPost,
+  deletePost,
   getUserPosts,
 } from "../emergent/social-layer.js";
 import {
@@ -129,6 +130,18 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
       sensitive: body.sensitive,
     });
     return sendLayer(res, result);
+  });
+
+  // Owner delete. Mounted ahead of any inline handler so a missing route
+  // cannot report success without removing the post.
+  router.delete("/post/:id", auth, (req, res) => {
+    const userId = req.user?.id || req.actor?.userId || null;
+    if (!userId || userId === "anon") {
+      return res.status(401).json({ ok: false, error: "auth required" });
+    }
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    return sendLayer(res, deletePost(STATE, { userId, postId: req.params.id }));
   });
 
   router.get("/posts/user/:userId", (req, res) => {

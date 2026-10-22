@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Hash, Loader2, ArrowLeft, Users } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import type { SocialPost } from './types';
+import { normalizePosts } from './normalizePost';
 import { PostCard } from './PostCard';
 
 interface HashtagPageProps {
@@ -34,7 +35,7 @@ export function HashtagPage({ tag, username, currentUserId, onBack, onOpenHashta
     const r = await lensRun<{ posts: SocialPost[]; contributors: number }>('social', 'hashtagFeed', { tag });
     setLoading(false);
     if (r.data?.ok && r.data.result) {
-      setPosts(r.data.result.posts || []);
+      setPosts(normalizePosts(r.data.result.posts));
       setContributors(r.data.result.contributors || 0);
     }
   }, [tag]);

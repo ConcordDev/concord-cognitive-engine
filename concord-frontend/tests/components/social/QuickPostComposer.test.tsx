@@ -27,6 +27,7 @@ describe('QuickPostComposer', () => {
   let qc: QueryClient;
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     mockedApi.post.mockResolvedValue({ data: { ok: true, post: { id: 'post_x' } } });
   });
@@ -142,6 +143,30 @@ describe('QuickPostComposer', () => {
       expect.objectContaining({ type: 'error', message: 'Network Error' }),
     ));
     expect(netBox.value).toBe('keep net');
+  });
+
+  it('keeps the visibility choice after remount and toasts only after the server accepts the post', async () => {
+    const { container, unmount } = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const select = container.querySelector('select[aria-label="Who can see this"]') as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'private' } });
+    expect(localStorage.getItem('concord.social.composerPrivacy.me')).toBe('private');
+    unmount();
+
+    const again = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const restored = again.container.querySelector('select[aria-label="Who can see this"]') as HTMLSelectElement;
+    expect(restored.value).toBe('private');
+    fireEvent.change(again.container.querySelector('textarea')!, { target: { value: 'kept private' } });
+    fireEvent.submit(again.container.querySelector('form')!);
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', message: 'Posted.' }),
+    ));
+    expect(mockedApi.post).toHaveBeenCalledWith('/api/social/post', expect.objectContaining({ privacy: 'private' }));
   });
 
   it('story mode sends isStory=true + expiresAt', async () => {

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, Link2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import type { SocialPost, SocialReply } from './types';
+import { normalizePost } from './normalizePost';
 import { PostCard } from './PostCard';
 import { ReplyTree } from './ReplyTree';
 
@@ -31,22 +32,17 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  const load = useCallback(async () => {
+  const [loadedId, setLoadedId] = useState(postId);
+  const [reloadKey, setReloadKey] = useState(0);
+  if (loadedId !== postId) {
+    setLoadedId(postId);
     setLoading(true);
-    const r = await lensRun<{ post: SocialPost; quoted: SocialPost | null; replyTree: SocialReply[]; permalink: string }>(
-      'social', 'postDetail', { postId },
-    );
-    setLoading(false);
-    if (r.data?.ok && r.data.result) {
-      setPost(r.data.result.post);
-      setQuoted(r.data.result.quoted);
-      setPermalink(r.data.result.permalink);
-      setError(null);
-    } else {
-      setError(r.data?.error || 'Post not found.');
-    }
-  }, [postId]);
+    setError(null);
+  }
+  const reload = useCallback(() => {
+    setLoading(true);
+    setReloadKey((n) => n + 1);
+  }, []);
 
   const copyLink = useCallback(async () => {
     const r = await lensRun<{ permalink: string }>('social', 'shareTargets', { postId });
@@ -58,7 +54,27 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
     } catch { /* clipboard unavailable */ }
   }, [postId, permalink]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ post: SocialPost; quoted: SocialPost | null; replyTree: SocialReply[]; permalink: string }>(
+        'social', 'postDetail', { postId },
+      );
+      if (cancelled) return;
+      if (r.data?.ok && r.data.result) {
+        setPost(normalizePost(r.data.result.post));
+        setQuoted(r.data.result.quoted ? normalizePost(r.data.result.quoted) : null);
+        setPermalink(r.data.result.permalink);
+        setError(null);
+      } else {
+        setPost(null);
+        setQuoted(null);
+        setError(r.data?.error || 'Post not found.');
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [postId, reloadKey]);
 
   return (
     <div className="space-y-3">
@@ -99,7 +115,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
                 post={quoted}
                 username={username}
                 currentUserId={currentUserId}
-                onChanged={load}
+                onChanged={reload}
                 onQuote={onQuote}
                 onOpenHashtag={onOpenHashtag}
                 onOpenDetail={onOpenDetail}
@@ -110,7 +126,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, onOpenHash
             post={post}
             username={username}
             currentUserId={currentUserId}
-            onChanged={load}
+            onChanged={reload}
             onQuote={onQuote}
             onOpenHashtag={onOpenHashtag}
             onOpenDetail={onOpenDetail}

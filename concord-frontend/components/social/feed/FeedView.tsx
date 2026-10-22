@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 import { getLensManifest } from '@/lib/lenses/manifest';
 import type { SocialPost, TrendingHashtag } from './types';
+import { normalizePosts } from './normalizePost';
 import { FeedComposer } from './FeedComposer';
 import { PostCard } from './PostCard';
 import { HashtagPage } from './HashtagPage';
@@ -51,7 +52,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     ]);
     setLoading(false);
     if (feedR.data?.ok && feedR.data.result) {
-      setPosts(feedR.data.result.posts || []);
+      setPosts(normalizePosts(feedR.data.result.posts));
       setFeedError(null);
     } else {
       // A failed feed is not an empty feed. Leave any posts already shown
@@ -80,7 +81,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
     const timer = setInterval(() => {
       void (async () => {
         const feedR = await lensRun<{ posts: SocialPost[] }>('social', 'feed', { limit: 50 });
-        if (feedR.data?.ok && feedR.data.result) setIncoming(feedR.data.result.posts || []);
+        if (feedR.data?.ok && feedR.data.result) setIncoming(normalizePosts(feedR.data.result.posts));
       })();
     }, 30_000);
     return () => clearInterval(timer);
@@ -215,7 +216,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
                 return (
                   <button
                     type="button"
-                    onClick={() => { setPosts(incoming || []); setIncoming(null); }}
+                    onClick={() => { setPosts(normalizePosts(incoming || [])); setIncoming(null); }}
                     className="w-full rounded-lg border border-teal-400/40 bg-teal-400/10 px-3 py-2 text-sm text-teal-200"
                   >
                     Show {count} new {count === 1 ? 'post' : 'posts'}
