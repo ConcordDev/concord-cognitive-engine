@@ -6,7 +6,7 @@
 
 import type { DAWProject, DAWTrack, DAWClip, MIDINote, EffectInstance, TrackRole, AudioAssetMeta, TempoAutomation } from './types';
 import { isDrumInstrument } from './presets';
-import { clampTempo, type TempoPoint } from './tempo-map';
+import { beatsPerBar, clampTempo, type TempoPoint } from './tempo-map';
 import { sanitizeComp, sanitizeTakes } from './takes';
 import { sanitizePitchEdits } from './dsp/pitch/editor';
 
@@ -210,7 +210,7 @@ export function setTransportBpm(p: DAWProject, bpm: number): DAWProject {
   if (!tempo.length) {
     return { ...p, bpm: b, transport: { ...p.transport, bpm: b } };
   }
-  const bpb = p.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(p.timeSignature);
   const next = tempo.map((t) => ({ ...t }));
   const at0 = next.findIndex((t) => (t.beat ?? t.bar * bpb) <= 1e-6);
   if (at0 >= 0) next[at0] = { ...next[at0], bar: 0, beat: 0, bpm: b };
@@ -220,7 +220,7 @@ export function setTransportBpm(p: DAWProject, bpm: number): DAWProject {
 
 /** Replace the tempo lane. An empty list is a constant map at `project.bpm`. */
 export function writeTempoPoints(p: DAWProject, points: TempoPoint[]): DAWProject {
-  const bpb = p.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(p.timeSignature);
   const sorted = [...points].sort((a, b) => a.beat - b.beat);
   const tempo: TempoAutomation[] = sorted.map((pt) => ({
     bar: pt.beat / bpb,

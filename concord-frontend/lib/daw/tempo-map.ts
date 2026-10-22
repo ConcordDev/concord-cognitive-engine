@@ -33,8 +33,16 @@ export function clampTempo(bpm: number): number {
   return Math.min(TEMPO_MAX, Math.max(TEMPO_MIN, bpm));
 }
 
+/** Bar length in quarter-beats. 4/4 is 4. 6/8 is 3. The timeline beat stays the BPM beat. */
+export function beatsPerBar(sig: ArrayLike<number> | undefined): number {
+  const num = Math.max(1, Math.min(16, Math.round(Number(sig?.[0]) || 4)));
+  const denRaw = Math.round(Number(sig?.[1]) || 4);
+  const den = denRaw === 1 || denRaw === 2 || denRaw === 4 || denRaw === 8 || denRaw === 16 ? denRaw : 4;
+  return (num * 4) / den;
+}
+
 export function projectTempoPoints(project: TempoSource): TempoPoint[] {
-  const bpb = Math.max(1, Number(project.timeSignature?.[0]) || 4);
+  const bpb = beatsPerBar(project.timeSignature);
   const raw = project.arrangement?.tempo || [];
   const pts: TempoPoint[] = [];
   for (const p of raw) {

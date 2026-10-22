@@ -10,11 +10,12 @@ import type { DAWProject } from './types';
 import { getAudioContext } from './engine';
 import { ProjectGraph } from './graph';
 import { LookaheadScheduler, nextBarBeat, type CollectSource, type LaunchedClip } from './scheduler';
-import { projectTempoPoints, secondsBetween } from './tempo-map';
+import { beatsPerBar, projectTempoPoints, secondsBetween } from './tempo-map';
 import { playSynthNote, playDrum } from './dsp/instruments';
 import { isDrumInstrument, resolveTrackPreset } from './presets';
 import type { PcmAudio } from './render';
 import { bakePitchEdits } from './dsp/pitch/editor';
+import { bakeClipPlayback } from './clip-edit';
 import { correlation } from './dsp/live-loudness';
 
 export type TransportState = 'stopped' | 'playing' | 'counting-in';
@@ -76,7 +77,7 @@ export class StudioEngine {
     const p = this.project;
     return {
       tracks: p?.tracks || [],
-      beatsPerBar: p?.timeSignature?.[0] || 4,
+      beatsPerBar: beatsPerBar(p?.timeSignature),
       bpm: p?.bpm || 120,
       tempo: p ? projectTempoPoints(p) : undefined,
       metronome: this.metronome,
@@ -135,14 +136,18 @@ export class StudioEngine {
     const project = this.project;
     if (!project || this.bakingPitch) return;
     const baked = bakePitchEdits(project, this.loaded);
+    const withEdits = new Map(this.loaded);
+    for (const [id, pcm] of baked.produced) withEdits.set(id, pcm);
+    const played = bakeClipPlayback(project, withEdits, baked.overrides);
     const prev = JSON.stringify(this.clipBuffers);
     this.bakingPitch = true;
     try {
       for (const [id, pcm] of baked.produced) this.setAudio(id, pcm);
+      for (const [id, pcm] of played.produced) this.setAudio(id, pcm);
     } finally {
       this.bakingPitch = false;
     }
-    this.clipBuffers = baked.overrides;
+    this.clipBuffers = played.overrides;
     if (JSON.stringify(this.clipBuffers) !== prev && this.state !== 'stopped') this.seek(this.getBeat());
   }
   hasAudio(id: string): boolean { return this.loaded.has(id); }
@@ -159,7 +164,7 @@ export class StudioEngine {
     await this.resume();
     this.noLoop = !!opts.noLoop;
     this.stopVoices();
-    const bpb = this.project?.timeSignature?.[0] || 4;
+    const bpb = beatsPerBar(this.project?.timeSignature);
     this.countInBeats = Math.max(0, Math.round((opts.countInBars || 0) * bpb));
     this.startBeat = fromBeat;
     this.state = this.countInBeats > 0 ? 'counting-in' : 'playing';
@@ -207,7 +212,7 @@ export class StudioEngine {
   // ── Session ──
   async launchClip(trackId: string, clipId: string): Promise<void> {
     if (this.mode !== 'session') this.mode = 'session';
-    const bpb = this.project?.timeSignature?.[0] || 4;
+    const bpb = beatsPerBar(this.project?.timeSignature);
     if (this.state === 'stopped') {
       this.launched = { [trackId]: { clipId, launchBeat: 0 } };
       await this.play(0);
@@ -218,7 +223,7 @@ export class StudioEngine {
   }
 
   async launchScene(clipsByTrack: Record<string, string>): Promise<void> {
-    const bpb = this.project?.timeSignature?.[0] || 4;
+    const bpb = beatsPerBar(this.project?.timeSignature);
     const at = this.state === 'stopped' ? 0 : nextBarBeat(this.getBeat(), bpb);
     const next: Record<string, LaunchedClip | undefined> = {};
     for (const [t, c] of Object.entries(clipsByTrack)) next[t] = { clipId: c, launchBeat: at };

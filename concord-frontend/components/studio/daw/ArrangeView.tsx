@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip } from '@/lib/daw/types';
 import type { NewTrackKind } from '@/lib/daw/project';
 import { trackKind } from '@/lib/daw/project';
-import { bpmAt, clampTempo, projectTempoPoints, TEMPO_MAX, TEMPO_MIN, type TempoPoint } from '@/lib/daw/tempo-map';
+import { beatsPerBar, bpmAt, clampTempo, projectTempoPoints, TEMPO_MAX, TEMPO_MIN, type TempoPoint } from '@/lib/daw/tempo-map';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { useBeatFrame } from './engine-hooks';
 import { MidiThumb, WaveThumb } from './ClipShapes';
@@ -29,6 +29,7 @@ export interface ArrangeViewProps {
   onCreateClip: (trackId: string, startBeat: number) => void;
   onMoveClip: (clipId: string, trackId: string, startBeat: number) => void;
   onResizeClip: (clipId: string, lengthBeats: number) => void;
+  onPatchClip: (clipId: string, patch: Partial<DAWClip>) => void;
   onSeek: (beat: number) => void;
   onSetLoop: (start: number, end: number) => void;
   onTrackChange: (id: string, patch: Partial<DAWTrack>, coalesceKey?: string) => void;
@@ -122,14 +123,16 @@ function TrackHeader({ t, selected, recording, takesOpen, onToggleTakes, onSelec
 
 interface DragState {
   clipId: string;
-  mode: 'move' | 'resize';
+  mode: 'move' | 'resize' | 'trim' | 'slip';
   startX: number;
   startY: number;
   origStart: number;
   origLen: number;
+  origOffset: number;
   origTrackIndex: number;
   beat: number;
   len: number;
+  offset: number;
   trackIndex: number;
 }
 
@@ -140,7 +143,8 @@ export function ArrangeView(p: ArrangeViewProps) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [takesOpen, setTakesOpen] = useState<Record<string, boolean>>({});
-  const bpb = project.timeSignature?.[0] || 4;
+  const bpb = beatsPerBar(project.timeSignature);
+  const [grid, setGrid] = useState(0.25);
   const tracks = project.tracks.filter((t) => t.type !== 'master');
   const endBeat = Math.max(project.arrangement.lengthBars * bpb, ...tracks.flatMap((t) => t.clips.filter((c) => c.slot === undefined).map((c) => c.startBeat + c.lengthBeats + bpb * 4)));
   const width = endBeat * bw;
@@ -169,13 +173,21 @@ export function ArrangeView(p: ArrangeViewProps) {
     if (!drag) return;
     const onMove = (e: PointerEvent) => {
       const dxBeats = (e.clientX - drag.startX) / bw;
-      const grid = e.altKey ? 1 / 64 : 0.25;
+      const step = e.altKey && drag.mode !== 'slip' ? 1 / 64 : grid;
+      const spb = 60 / (project.bpm || 120);
+      const dx = snapTo(dxBeats, step);
       if (drag.mode === 'move') {
-        const beat = Math.max(0, snapTo(drag.origStart + dxBeats, grid));
+        const beat = Math.max(0, drag.origStart + dx);
         const ti = Math.max(0, Math.min(tracks.length - 1, drag.origTrackIndex + Math.round((e.clientY - drag.startY) / TRACK_H)));
         setDrag((d) => (d ? { ...d, beat, trackIndex: ti } : d));
+      } else if (drag.mode === 'trim') {
+        const beat = Math.max(0, Math.min(drag.origStart + drag.origLen - 0.25, drag.origStart + dx));
+        const delta = beat - drag.origStart;
+        setDrag((d) => (d ? { ...d, beat, len: drag.origLen - delta, offset: Math.max(0, drag.origOffset + delta * spb) } : d));
+      } else if (drag.mode === 'slip') {
+        setDrag((d) => (d ? { ...d, offset: Math.max(0, drag.origOffset + dx * spb) } : d));
       } else {
-        const len = Math.max(0.25, snapTo(drag.origLen + dxBeats, grid));
+        const len = Math.max(0.25, drag.origLen + dx);
         setDrag((d) => (d ? { ...d, len } : d));
       }
     };
@@ -184,18 +196,25 @@ export function ArrangeView(p: ArrangeViewProps) {
       setDrag(null);
       if (d.mode === 'move' && (d.beat !== d.origStart || d.trackIndex !== d.origTrackIndex)) p.onMoveClip(d.clipId, tracks[d.trackIndex].id, d.beat);
       if (d.mode === 'resize' && d.len !== d.origLen) p.onResizeClip(d.clipId, d.len);
+      if (d.mode === 'trim') p.onPatchClip(d.clipId, { startBeat: d.beat, lengthBeats: d.len, offset: d.offset });
+      if (d.mode === 'slip' && d.offset !== d.origOffset) p.onPatchClip(d.clipId, { offset: d.offset });
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp, { once: true });
     return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
-  }, [drag, bw, tracks, p]);
+  }, [drag, bw, grid, tracks, project.bpm, p]);
 
-  const startDrag = (e: React.PointerEvent, clip: DAWClip, trackIndex: number, mode: 'move' | 'resize') => {
+  const startDrag = (e: React.PointerEvent, clip: DAWClip, trackIndex: number, mode: 'move' | 'resize' | 'trim' | 'slip') => {
     if (e.button !== 0) return;
     e.stopPropagation();
     p.onSelectClip(clip.id);
     p.onSelectTrack(clip.trackId);
-    setDrag({ clipId: clip.id, mode, startX: e.clientX, startY: e.clientY, origStart: clip.startBeat, origLen: clip.lengthBeats, origTrackIndex: trackIndex, beat: clip.startBeat, len: clip.lengthBeats, trackIndex });
+    const picked = mode === 'move' && e.altKey ? 'slip' : mode;
+    setDrag({
+      clipId: clip.id, mode: picked, startX: e.clientX, startY: e.clientY,
+      origStart: clip.startBeat, origLen: clip.lengthBeats, origOffset: clip.offset || 0, origTrackIndex: trackIndex,
+      beat: clip.startBeat, len: clip.lengthBeats, offset: clip.offset || 0, trackIndex,
+    });
   };
 
   // Ruler: click to seek, shift-drag to set the loop.
@@ -242,7 +261,12 @@ export function ArrangeView(p: ArrangeViewProps) {
         {/* Ruler */}
         <div className="sticky top-0 z-20 flex" style={{ height: RULER_H }}>
           <div className="sticky left-0 z-30 flex items-center gap-1 border-b border-r border-white/5 bg-[#101016] px-2 text-[10px] text-zinc-500" style={{ width: HEADER_W }}>
-            Shift-drag ruler to loop
+            <select aria-label="Snap" value={grid} onChange={(e) => setGrid(Number(e.target.value))} className="rounded bg-white/5 px-1 py-0.5 text-[10px] text-zinc-300" title="Alt-drag a clip to slip the audio. Shift-drag the ruler to loop.">
+              <option value={bpb}>Bar</option>
+              <option value={1}>Beat</option>
+              <option value={0.5}>1/8</option>
+              <option value={0.25}>1/16</option>
+            </select>
           </div>
           <div className="relative cursor-pointer border-b border-white/5 bg-[#101016]" style={{ width }} onPointerDown={onRulerDown}>
             {Array.from({ length: bars }, (_, i) => (
@@ -286,8 +310,8 @@ export function ArrangeView(p: ArrangeViewProps) {
             >
               {t.clips.filter((c) => c.slot === undefined).map((c) => {
                 const isDrag = drag?.clipId === c.id;
-                const start = isDrag && drag.mode === 'move' ? drag.beat : c.startBeat;
-                const len = isDrag && drag.mode === 'resize' ? drag.len : c.lengthBeats;
+                const start = isDrag && (drag.mode === 'move' || drag.mode === 'trim') ? drag.beat : c.startBeat;
+                const len = isDrag && (drag.mode === 'resize' || drag.mode === 'trim') ? drag.len : c.lengthBeats;
                 const dy = isDrag && drag.mode === 'move' ? (drag.trackIndex - ti) * TRACK_H : 0;
                 const w = Math.max(6, len * bw);
                 const sel = p.selectedClipId === c.id;
@@ -305,7 +329,8 @@ export function ArrangeView(p: ArrangeViewProps) {
                       ? <WaveThumb asset={project.audioAssets?.[c.audioBufferId || '']} clip={{ ...c, lengthBeats: len }} width={w} height={TRACK_H - 8} bpm={bpmAt(projectTempoPoints(project), start)} />
                       : <MidiThumb clip={{ ...c, lengthBeats: len }} width={w} height={TRACK_H - 8} />}
                     <div className="relative truncate px-1.5 pt-0.5 font-medium text-white drop-shadow">{c.name}</div>
-                    <div onPointerDown={(e) => startDrag(e, c, ti, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/30" />
+                    <div onPointerDown={(e) => startDrag(e, c, ti, 'trim')} className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize hover:bg-white/40" title="Trim start" />
+                    <div onPointerDown={(e) => startDrag(e, c, ti, 'resize')} className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize hover:bg-white/40" title="Trim end" />
                   </div>
                 );
               })}

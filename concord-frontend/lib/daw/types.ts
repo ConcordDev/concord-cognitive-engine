@@ -13,7 +13,7 @@ export type { AudioTake, CompRegion, PitchEditDoc };
 // ============================================================================
 
 export type TransportState = 'stopped' | 'playing' | 'recording' | 'paused';
-export type TimeSignature = [number, number]; // [beats, subdivision]
+export type TimeSignature = [number, number];
 export type SnapMode = 'off' | '1/1' | '1/2' | '1/4' | '1/8' | '1/16' | '1/32';
 
 export interface TransportConfig {
@@ -91,23 +91,23 @@ export interface DAWClip {
   trackId: string;
   startBeat: number;
   lengthBeats: number;
-  offset: number; // internal offset within clip
+  offset: number; // seconds into the source
   color: string;
   looped: boolean;
   loopLength: number;
   fadeIn: number;
   fadeOut: number;
+  fadeShape?: 'linear' | 'equalPower';
+  regionEdits?: Array<{ start: number; end: number; gainDb: number; reverse: boolean }>;
   gain: number; // dB
-  pitch: number; // semitones
+  pitch: number; // semitones, length kept by stretch
   reversed: boolean;
-  timeStretch: number; // ratio
+  timeStretch: number; // 1 original, >1 longer
   midiNotes?: MIDINote[];
   audioBufferId?: string;
-  /** Offline Pitch Editor. Absent on old projects. Derived audio is not stored here. */
-  pitchEdits?: PitchEditDoc;
+  pitchEdits?: PitchEditDoc; // offline Pitch Editor; derived audio is not stored
   patternId?: string;
-  /** Session-view scene slot. Clips with a slot live in the Session grid, not the Arrangement. */
-  slot?: number;
+  slot?: number; // session slot; arrangement clips omit this
 }
 
 // ============================================================================
