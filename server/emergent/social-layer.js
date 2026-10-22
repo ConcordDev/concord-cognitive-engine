@@ -1500,6 +1500,35 @@ export function getTrendingTopics(STATE, { limit = 20, viewerId = null } = {}) {
   return { ok: true, topics: sorted.map(([topic, count]) => ({ topic, count })) };
 }
 
+// Ranked Social posts and hashtags for GET /api/social/trending.
+// Scores come from reactions, comments, saves, and shares on posts the
+// viewer is allowed to see. The wider DTU catalog is not consulted.
+export function listSocialTrending(STATE, { limit = 20, viewerId = null, hours = 168 } = {}) {
+  const cap = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  const content = getTrendingContent(STATE, { limit: cap, hours, viewerId });
+  const posts = content.content || [];
+  const tagScore = new Map();
+  const tagCount = new Map();
+  for (const post of posts) {
+    const weight = (Number(post.trendScore) || 0) + 1;
+    for (const tag of post.tags || []) {
+      if (typeof tag !== "string" || !tag) continue;
+      tagScore.set(tag, (tagScore.get(tag) || 0) + weight);
+      tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+    }
+  }
+  const hashtags = [...tagScore.entries()]
+    .map(([tag, score]) => ({
+      tag,
+      topic: tag,
+      count: tagCount.get(tag) || 0,
+      score: Math.round(score * 100) / 100,
+    }))
+    .sort((a, b) => b.score - a.score || b.count - a.count)
+    .slice(0, cap);
+  return { ok: true, source: "social-trending", posts, hashtags, trending: posts };
+}
+
 export function getPostsByTopic(STATE, topic, { limit = 30, offset = 0, viewerId = null } = {}) {
   const social = getSocialState(STATE);
   const now = Date.now();
