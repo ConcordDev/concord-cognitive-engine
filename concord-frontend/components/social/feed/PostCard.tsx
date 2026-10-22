@@ -271,6 +271,10 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
       )}
 
+      {post.sensitiveHidden && (
+        <p className="mt-2 text-xs text-zinc-400">Sensitive media hidden</p>
+      )}
+
       {post.media.length > 0 && (
         <div className={cn('mt-2 grid gap-1.5', post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
           {post.media.map((m, i) => (
@@ -278,9 +282,12 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
               {m.kind === 'image' ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.url} alt={m.alt || 'attachment'} className="w-full max-h-72 object-cover" />
+              ) : m.kind === 'audio' ? (
+                <audio controls src={m.url} className="w-full" />
               ) : (
-                <video src={m.url} controls className="w-full max-h-72" />
+                <video src={m.url} controls className="w-full max-h-72 motion-reduce:transition-none" />
               )}
+              {m.caption && <p className="px-1 py-0.5 text-[11px] text-zinc-400">{m.caption}</p>}
             </div>
           ))}
         </div>

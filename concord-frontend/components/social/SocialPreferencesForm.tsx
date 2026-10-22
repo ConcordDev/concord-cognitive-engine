@@ -15,6 +15,9 @@ export function SocialPreferencesForm() {
     comment: true, mention: true, share: true, repost: true, dm: true, message_request: true,
   });
   const [message, setMessage] = useState<string | null>(null);
+  const [keywordMutes, setKeywordMutes] = useState<string[]>([]);
+  const [muteDraft, setMuteDraft] = useState('');
+  const [showSensitive, setShowSensitive] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -42,6 +45,8 @@ export function SocialPreferencesForm() {
         dmPolicy,
         readReceipts,
         notificationTypes: notes,
+        keywordMutes,
+        showSensitive,
       });
       if (res.data?.ok === false) {
         setMessage(res.data.error || 'Could not save settings.');
@@ -122,6 +127,52 @@ export function SocialPreferencesForm() {
           <option value="following">Following</option>
           <option value="forYou">For You</option>
         </select>
+      </label>
+      <label className="mb-2 block text-xs text-zinc-400">
+        Mute a word or hashtag
+        <span className="mt-1 flex gap-1">
+          <input
+            aria-label="Mute a word or hashtag"
+            value={muteDraft}
+            onChange={(e) => setMuteDraft(e.target.value.slice(0, 40))}
+            className="flex-1 rounded bg-zinc-900 px-2 py-1 text-zinc-100"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const word = muteDraft.trim().toLowerCase();
+              if (!word) return;
+              setKeywordMutes((current) => current.includes(word) ? current : [...current, word]);
+              setMuteDraft('');
+            }}
+            className="rounded bg-white/10 px-2 py-1 text-zinc-100"
+          >
+            Mute
+          </button>
+        </span>
+      </label>
+      {keywordMutes.length > 0 && (
+        <ul className="mb-2 flex flex-wrap gap-1">
+          {keywordMutes.map((word) => (
+            <li key={word}>
+              <button
+                type="button"
+                onClick={() => setKeywordMutes((current) => current.filter((item) => item !== word))}
+                className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300"
+              >
+                {word} ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label className="mb-2 flex items-center gap-2 text-xs text-zinc-300">
+        <input
+          type="checkbox"
+          checked={showSensitive}
+          onChange={(e) => setShowSensitive(e.target.checked)}
+        />
+        Show sensitive media
       </label>
       <button type="button" onClick={() => void save()} className="rounded bg-teal-400 px-3 py-1 text-xs font-medium text-black">
         Save settings

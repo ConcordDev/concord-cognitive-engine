@@ -70,6 +70,10 @@ import RoomStage from '@/components/audio-rooms/RoomStage';
 import { FeedView } from '@/components/social/feed/FeedView';
 import { RankedFeed } from '@/components/social/RankedFeed';
 import { SocialLists } from '@/components/social/SocialLists';
+import { SocialGroups } from '@/components/social/SocialGroups';
+import { ShareToSocial } from '@/components/social/ShareToSocial';
+import { TipForm } from '@/components/social/TipForm';
+import { AdminModerationQueue } from '@/components/social/AdminModerationQueue';
 
 type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved' | 'moderation';
 
@@ -86,6 +90,18 @@ interface FollowingActivityItem {
   content: string;
   createdAt: string;
   dtuId?: string;
+  mediaType?: string;
+  mediaUrl?: string | null;
+  sensitiveHidden?: boolean;
+  listing?: {
+    id: string;
+    title?: string | null;
+    price?: number;
+    priceCents?: number;
+    currency?: string;
+    transferRate?: number;
+    marketplaceRate?: number;
+  } | null;
 }
 
 export default function SocialHubPage() {
@@ -322,7 +338,10 @@ export default function SocialHubPage() {
             )}
 
             {activeTab === 'moderation' && (
-              <ModerationPanel />
+              <>
+                <AdminModerationQueue />
+                <ModerationPanel />
+              </>
             )}
           </main>
 
@@ -335,6 +354,9 @@ export default function SocialHubPage() {
             )}
             <FindPeople />
             <SocialLists />
+            <SocialGroups currentUserId={currentUserId} />
+            <ShareToSocial />
+            <TipForm />
             <SocialPreferencesForm />
             <div className="rounded-2xl border border-white/10 bg-[#111] overflow-hidden">
               <TrendingTopics onTopicClick={() => setActiveTab('discover')} />
@@ -484,6 +506,20 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
             </span>
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
+          {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+          {item.mediaType === 'audio' && item.mediaUrl && (
+            <audio controls src={item.mediaUrl} className="mt-2 w-full" />
+          )}
+          {item.listing && (
+            <p className="mt-1 text-xs text-zinc-400">
+              Listing {item.listing.id}
+              {typeof item.listing.price === 'number' ? ` · ${item.listing.price}` : ''}
+              {typeof item.listing.priceCents === 'number' ? ` · ${item.listing.priceCents} cents` : ''}
+              {item.listing.currency ? ` ${item.listing.currency}` : ''}
+              {typeof item.listing.transferRate === 'number' ? ` · transfer ${item.listing.transferRate}` : ''}
+              {typeof item.listing.marketplaceRate === 'number' ? ` · marketplace ${item.listing.marketplaceRate}` : ''}
+            </p>
+          )}
         </li>
       ))}
     </ul>

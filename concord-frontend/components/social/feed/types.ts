@@ -18,9 +18,10 @@ export interface SocialPoll {
 }
 
 export interface MediaAttachment {
-  kind: 'image' | 'video';
+  kind: 'image' | 'video' | 'audio';
   url: string;
   alt?: string;
+  caption?: string;
   mime?: string;
 }
 
@@ -35,6 +36,7 @@ export interface SocialPost {
   quoteOf: string | null;
   hashtags: string[];
   createdAt: string;
+  sensitiveHidden?: boolean;
   replyCount: number;
   reactionCounts: Record<string, number>;
   reactionTotal: number;

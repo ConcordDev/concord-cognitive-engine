@@ -33,6 +33,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ackMissingText, setAckMissingText] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFiles = useCallback(async (files: FileList | null) => {
@@ -42,7 +43,8 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
     for (const file of Array.from(files).slice(0, 4 - media.length)) {
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
-      if (!isImage && !isVideo) { setError('Only image or video files are supported.'); continue; }
+      const isAudio = file.type.startsWith('audio/');
+      if (!isImage && !isVideo && !isAudio) { setError('Only image, video, or audio files are supported.'); continue; }
       if (file.size > 8 * 1024 * 1024) { setError(`${file.name} exceeds the 8 MB limit.`); continue; }
       const uploaded = await fetch('/api/artifact/upload', {
         method: 'POST',
@@ -62,9 +64,10 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
       }
       const url = `/api/artifact/${payload.dtuId}/stream`;
       const r = await lensRun<{ attachment: MediaAttachment }>('social', 'registerMedia', {
-        kind: isImage ? 'image' : 'video',
+        kind: isImage ? 'image' : isAudio ? 'audio' : 'video',
         url,
         alt: '',
+        caption: '',
         mime: file.type,
       });
       if (r.data?.ok && r.data.result?.attachment) next.push({ ...r.data.result.attachment, alt: '' });
@@ -85,6 +88,13 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
       setError('Write something, attach media, add a poll, or quote a post.');
       return;
     }
+    const needsText = media.some((item) => (
+      (item.kind === 'image' && !item.alt?.trim()) || (item.kind === 'video' && !item.caption?.trim())
+    ));
+    if (needsText && !ackMissingText) {
+      setError('Add alt text on images and captions on videos, or confirm you are publishing without them.');
+      return;
+    }
     setBusy(true);
     const r = await lensRun<{ post: SocialPost }>('social', 'createPost', {
       body: trimmed,
@@ -97,14 +107,14 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
     });
     setBusy(false);
     if (r.data?.ok) {
-      setBody(''); setMedia([]); setPollMode(false);
+      setBody(''); setMedia([]); setAckMissingText(false); setPollMode(false);
       setPollQuestion(''); setPollOptions(['', '']);
       onClearQuote?.();
       onPosted();
     } else {
       setError(r.data?.error || 'Failed to publish post.');
     }
-  }, [body, media, pollMode, pollOptions, pollQuestion, quotePost, username, onClearQuote, onPosted]);
+  }, [body, media, ackMissingText, pollMode, pollOptions, pollQuestion, quotePost, username, onClearQuote, onPosted]);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
@@ -136,8 +146,10 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
               {m.kind === 'image' ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.url} alt={m.alt || 'attachment'} className="h-16 w-full object-cover" />
+              ) : m.kind === 'audio' ? (
+                <audio controls src={m.url} className="h-16 w-full" />
               ) : (
-                <video src={m.url} className="h-16 w-full object-cover" muted />
+                <video src={m.url} className="h-16 w-full object-cover motion-reduce:transition-none" muted />
               )}
               <button
                 type="button"
@@ -147,16 +159,30 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
               >
                 <X className="w-3 h-3" />
               </button>
-              <input
-                value={m.alt || ''}
-                onChange={(e) => {
-                  const alt = e.target.value.slice(0, 200);
-                  setMedia((arr) => arr.map((item, idx) => (idx === i ? { ...item, alt } : item)));
-                }}
-                placeholder="Alt text"
-                aria-label="Alt text"
-                className="w-full bg-zinc-900 px-1 py-0.5 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none"
-              />
+              {m.kind === 'image' && (
+                <input
+                  value={m.alt || ''}
+                  onChange={(e) => {
+                    const alt = e.target.value.slice(0, 200);
+                    setMedia((arr) => arr.map((item, idx) => (idx === i ? { ...item, alt } : item)));
+                  }}
+                  placeholder="Alt text"
+                  aria-label="Alt text"
+                  className="w-full bg-zinc-900 px-1 py-0.5 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none"
+                />
+              )}
+              {m.kind === 'video' && (
+                <input
+                  value={m.caption || ''}
+                  onChange={(e) => {
+                    const caption = e.target.value.slice(0, 200);
+                    setMedia((arr) => arr.map((item, idx) => (idx === i ? { ...item, caption } : item)));
+                  }}
+                  placeholder="Caption"
+                  aria-label="Video caption"
+                  className="w-full bg-zinc-900 px-1 py-0.5 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -202,6 +228,17 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
         </div>
       )}
 
+      {media.some((item) => (item.kind === 'image' && !item.alt?.trim()) || (item.kind === 'video' && !item.caption?.trim())) && (
+        <label className="flex items-center gap-2 text-xs text-zinc-300">
+          <input
+            type="checkbox"
+            checked={ackMissingText}
+            onChange={(e) => setAckMissingText(e.target.checked)}
+          />
+          Publish without alt text or captions
+        </label>
+      )}
+
       {error && (
         <div className="flex items-center gap-1.5 text-xs text-rose-400">
           <AlertTriangle className="w-3.5 h-3.5" /> {error}
@@ -212,7 +249,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*,video/*,audio/*"
           multiple
           className="hidden"
           onChange={(e) => { void onFiles(e.target.files); e.target.value = ''; }}
@@ -244,7 +281,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
           disabled={busy}
           className="ml-1 flex items-center gap-1.5 rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
         >
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" /> : <Send className="w-3.5 h-3.5" />}
           Post
         </button>
       </div>
