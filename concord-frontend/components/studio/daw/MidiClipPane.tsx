@@ -119,14 +119,14 @@ export function MidiClipPane({ project, track, clip, playing, getBeat, onEdit, o
     const id = list[0]?.id || '';
     setInputId(id);
     access.inputs.forEach((input) => {
-      input.onmidimessage = input.id === id ? (ev) => onDataRef.current(ev.data) : null;
+      input.onmidimessage = input.id === id ? (ev) => { if (ev.data) onDataRef.current(ev.data); } : null;
     });
   };
 
   const choose = (id: string) => {
     setInputId(id);
     accessRef.current?.inputs.forEach((input) => {
-      input.onmidimessage = input.id === id ? (ev) => onDataRef.current(ev.data) : null;
+      input.onmidimessage = input.id === id ? (ev) => { if (ev.data) onDataRef.current(ev.data); } : null;
     });
   };
 
