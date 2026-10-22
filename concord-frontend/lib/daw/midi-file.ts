@@ -123,7 +123,7 @@ export function encodeMidiFile(
     cc?: Array<{ beat: number; cc: number; value: number; channel?: number }>;
     bend?: Array<{ beat: number; value: number; channel?: number }>;
   },
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const events: Array<{ tick: number; data: number[] }> = [];
   const us = Math.max(1, Math.round(60000000 / Math.max(1, bpm)));
   events.push({ tick: 0, data: [0xff, 0x51, 0x03, (us >> 16) & 0xff, (us >> 8) & 0xff, us & 0xff] });

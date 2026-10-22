@@ -107,6 +107,16 @@ const gradients = [
   'from-teal-400 to-cyan-600',
 ];
 
+/** Axios payloads are untyped. Keep the array unknown so callbacks are not implicit any. */
+function jsonArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asTrendingInput(row: unknown): Parameters<typeof asTrendingCard>[0] {
+  if (row === null || typeof row !== 'object') return {};
+  return row as Parameters<typeof asTrendingCard>[0];
+}
+
 function asTrendingCard(raw: {
   id?: string;
   dtuId?: string;
@@ -384,31 +394,38 @@ function Discovery({
 
   const trendingQuery = useQuery({
     queryKey: ['trending-dtus', categoryFilter],
-    queryFn: async () => {
-      const res = await api.get('/api/social/trending', { params: { limit: 20 } });
-      const rows = Array.isArray(res.data.posts) ? res.data.posts : (res.data.trending || []);
-      return rows.map(asTrendingCard);
+    queryFn: async (): Promise<TrendingDTU[]> => {
+      const res = await api.get<{ posts?: unknown; trending?: unknown }>('/api/social/trending', { params: { limit: 20 } });
+      const posts = res.data?.posts;
+      const rows = Array.isArray(posts) ? jsonArray(posts) : jsonArray(res.data?.trending);
+      return rows.map((row) => asTrendingCard(asTrendingInput(row)));
     },
     enabled: activeTab === 'trending',
   });
 
   const topicsQuery = useQuery({
     queryKey: ['trending-topics'],
-    queryFn: async () => {
-      const res = await api.get('/api/social/trending', { params: { limit: 50 } });
-      const ranked = Array.isArray(res.data.hashtags) ? res.data.hashtags : null;
-      if (ranked) {
-        return ranked.slice(0, 20).map((row: { tag?: string; topic?: string; count?: number }) => {
-          const count = Number(row.count) || 0;
+    queryFn: async (): Promise<TrendingTopic[]> => {
+      const res = await api.get<{ hashtags?: unknown; posts?: unknown; trending?: unknown }>('/api/social/trending', { params: { limit: 50 } });
+      const hashtags = res.data?.hashtags;
+      if (Array.isArray(hashtags)) {
+        return jsonArray(hashtags).slice(0, 20).map((row) => {
+          const rec = row !== null && typeof row === 'object'
+            ? row as { tag?: unknown; topic?: unknown; count?: unknown }
+            : {};
+          const count = Number(rec.count) || 0;
+          const tag = typeof rec.tag === 'string' || typeof rec.tag === 'number' ? String(rec.tag) : '';
+          const topic = typeof rec.topic === 'string' || typeof rec.topic === 'number' ? String(rec.topic) : '';
           return {
-            tag: String(row.tag || row.topic || ''),
+            tag: tag || topic,
             count,
             category: 'general',
             change: count > 2 ? ('up' as const) : ('stable' as const),
           };
         }).filter((row) => row.tag);
       }
-      const trending = (Array.isArray(res.data.posts) ? res.data.posts : (res.data.trending || [])).map(asTrendingCard);
+      const posts = res.data?.posts;
+      const trending = (Array.isArray(posts) ? jsonArray(posts) : jsonArray(res.data?.trending)).map((row) => asTrendingCard(asTrendingInput(row)));
       const tagCounts = new Map<string, number>();
       for (const item of trending) {
         for (const tag of item.tags || []) {

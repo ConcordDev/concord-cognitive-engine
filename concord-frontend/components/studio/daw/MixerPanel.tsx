@@ -207,7 +207,7 @@ function MixRoute({ project, track, buses, vcas, onTrack, onAddReturn, onAutomat
                 onTrack(track.id, { automationLanes: track.automationLanes.map((l) => (l.id === lane!.id ? { ...l, points } : l)) }, `vol-pt-${pt.id}`);
               }} className="w-12 rounded bg-black/40 px-0.5 text-zinc-100" />
               <select aria-label={`Curve at beat ${pt.beat}`} value={pt.curve === 'step' ? 'step' : 'linear'} onChange={(e) => {
-                const curve = e.target.value === 'step' ? 'step' : 'linear';
+                const curve: AutomationCurve = e.target.value === 'step' ? 'step' : 'linear';
                 const points = lane!.points.map((x) => (x.id === pt.id ? { ...x, curve } : x));
                 onTrack(track.id, { automationLanes: track.automationLanes.map((l) => (l.id === lane!.id ? { ...l, points } : l)) }, `vol-curve-${pt.id}`);
               }} className="rounded bg-black/40 text-zinc-100">
