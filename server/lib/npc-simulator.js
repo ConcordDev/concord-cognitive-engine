@@ -1157,7 +1157,7 @@ export class NPCAgent {
     // Map action → DB activity string for loot generator
     const activityMap = {
       gather_resource: 'gathering', build_structure: 'crafting', practice_skill: 'crafting',
-      trade: 'trading', rest: 'resting', socialize: 'resting', travel: 'patrolling',
+      trade: 'trading', rest: 'resting', socialize: 'resting', travel: 'patrolling', eat: 'resting',
       create: 'crafting', default: 'idle',
     };
     const dbActivity = activityMap[action] || 'idle';
@@ -1166,11 +1166,18 @@ export class NPCAgent {
     } catch { /* column may not exist yet pre-migration */ }
 
     switch (action) {
+      case "eat":
+        this.needs.hunger = Math.min(1, (this.needs.hunger ?? 0) + 0.5);
+        break;
       case "rest":
         this.needs.rest = Math.min(1, this.needs.rest + 0.3);
+        // Home and sleep are where an NPC feels safe.
+        this.needs.safety = Math.min(1, (this.needs.safety ?? 0) + 0.1);
         break;
       case "gather_resource": {
         this.needs.purpose = Math.min(1, this.needs.purpose + 0.15);
+        // For animals, gathering is foraging: it is how they eat.
+        if (!isPeopleArchetype(this.archetype)) this.needs.hunger = Math.min(1, (this.needs.hunger ?? 0) + 0.3);
         // Attempt to gather from a real nearby resource node first
         try {
           const npcRow  = _prep(this._db, 'SELECT activity_resources, level FROM world_npcs WHERE id = ?').get(this.id);
@@ -1197,6 +1204,7 @@ export class NPCAgent {
       }
       case "socialize":
         this.needs.social = Math.min(1, this.needs.social + 0.25);
+        this.needs.safety = Math.min(1, (this.needs.safety ?? 0) + 0.05);
         break;
       case "build_structure":
         await buildStructure(this, target || "shelter", this.location, this._db);
@@ -1211,6 +1219,8 @@ export class NPCAgent {
         break;
       }
       case "travel": {
+        // Moving on (patrol, or getting away from trouble) restores safety.
+        this.needs.safety = Math.min(1, (this.needs.safety ?? 0) + 0.15);
         // NavGrid A* pathfinding — pick a destination 30-80m away, walk there
         const angle   = Math.random() * Math.PI * 2;
         const dist    = 30 + Math.random() * 50;
@@ -1858,7 +1868,7 @@ export function chooseRoutineAction({ archetype = "generic", needs = {}, segment
     const [need] = open;
     if (need === "rest") return { action: "rest" };
     if (need === "social") return { action: "socialize" };
-    if (need === "hunger") return { action: "gather_resource" };
+    if (need === "hunger") return { action: "eat" };
     if (need === "safety") return { action: "travel" };
     if (need === "purpose") return { action: work };
   }
@@ -1870,7 +1880,11 @@ export function chooseRoutineAction({ archetype = "generic", needs = {}, segment
 }
 
 function _needToAction(need) {
-  const map = { hunger: "gather_resource", rest: "rest", social: "socialize", purpose: "create", safety: "travel" };
+  // Every need has an action that restores it (see _executeAction). Hunger
+  // used to map to gather_resource, which restored nothing for hunger, so
+  // once hunger hit 0 every NPC gathered forever (live 2026-10-23: 5,314 of
+  // 5,366 NPCs stuck on gather_resource, social and safety pinned at 0).
+  const map = { hunger: "eat", rest: "rest", social: "socialize", purpose: "create", safety: "travel" };
   return { action: map[need] || "rest" };
 }
 

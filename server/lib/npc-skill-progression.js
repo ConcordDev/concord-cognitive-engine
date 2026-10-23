@@ -32,20 +32,33 @@ export function levelFor(xp) {
   return lvl;
 }
 
+// Statements cached per db handle: the NPC flush awards skill XP for
+// thousands of NPCs in one transaction, and recompiling these three
+// statements per call showed up in the live CPU profile (2026-10-23).
+const _stmts = new WeakMap();
+function stmts(db) {
+  let s = _stmts.get(db);
+  if (!s) {
+    s = {
+      get: db.prepare(`SELECT xp, level FROM npc_skills WHERE npc_id = ? AND skill_id = ?`),
+      update: db.prepare(`UPDATE npc_skills SET xp = ?, level = ?, last_used_at = unixepoch() WHERE npc_id = ? AND skill_id = ?`),
+      insert: db.prepare(`INSERT INTO npc_skills (npc_id, skill_id, xp, level, last_used_at) VALUES (?, ?, ?, ?, unixepoch())`),
+    };
+    _stmts.set(db, s);
+  }
+  return s;
+}
+
 export function awardNpcXp(db, npcId, skillId, xp) {
   if (!db || !npcId || !skillId || xp <= 0) return null;
-  const row = db.prepare(`SELECT xp, level FROM npc_skills WHERE npc_id = ? AND skill_id = ?`).get(npcId, skillId);
+  const st = stmts(db);
+  const row = st.get.get(npcId, skillId);
   const prevXp    = row?.xp ?? 0;
   const prevLevel = row?.level ?? 1;
   const newXp     = prevXp + xp;
   const newLevel  = levelFor(newXp);
-  if (row) {
-    db.prepare(`UPDATE npc_skills SET xp = ?, level = ?, last_used_at = unixepoch() WHERE npc_id = ? AND skill_id = ?`)
-      .run(newXp, newLevel, npcId, skillId);
-  } else {
-    db.prepare(`INSERT INTO npc_skills (npc_id, skill_id, xp, level, last_used_at) VALUES (?, ?, ?, ?, unixepoch())`)
-      .run(npcId, skillId, newXp, newLevel);
-  }
+  if (row) st.update.run(newXp, newLevel, npcId, skillId);
+  else st.insert.run(npcId, skillId, newXp, newLevel);
   // Emit a level-up event the runtime can react to (e.g. evolve recipes).
   if (newLevel > prevLevel) {
     try {
