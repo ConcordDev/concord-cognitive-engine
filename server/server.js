@@ -144,6 +144,7 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
+import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
@@ -3404,9 +3405,9 @@ async function gracefulShutdown(signal) {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, new Date().toISOString());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      const seq = _stateMutationSeq;
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(seq);
     }
     structuredLog("info", "shutdown_state_saved", {});
   } catch (e) {
@@ -9781,6 +9782,10 @@ if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
 // uses. Declared here (before the periodic saver below and before
 // saveStateDebounced's first call) so neither consumer hits the TDZ.
 let _stateMutationSeq = 0;
+// Which mutation seq is on disk. Lets an async save that finishes AFTER a
+// newer sync save discard itself instead of renaming an older snapshot over
+// the newer one. See lib/state-file-write.js.
+const _stateSnapshotOrder = createSnapshotOrdering();
 let _lastPeriodicSaveHash = "";
 let _lastPeriodicSaveSeq = -1;
 trackedSetInterval(() => {
@@ -9807,9 +9812,8 @@ trackedSetInterval(() => {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, new Date().toISOString());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(_lastPeriodicSaveSeq);
     }
     structuredLog("debug", "periodic_state_save", { sizeKb: Math.round(data.length / 1024) });
   } catch (e) {
@@ -13160,6 +13164,7 @@ function saveStateDebounced() {
     if (_saveTimer) return;
     _saveTimer = setTimeout(async () => {
       _saveTimer = null;
+      let tmpPath = null;
       try {
         // Always use compact JSON (no pretty-print) to halve string memory
         let savedSeq = _stateMutationSeq;
@@ -13190,10 +13195,20 @@ function saveStateDebounced() {
         // the event loop for 4165 ms (see lib/chunked-write.js). JSON + rename
         // is crash-safe and keeps maxGap ~1 ms; loadStateFromDisk prefers the
         // newer of JSON vs SQLite by savedAt.
+        // Unique tmp per write: this path yields mid-write, and a sync save
+        // landing in that gap used to rename the shared `.tmp` out from under
+        // it (ENOENT `state_save_failed`). If a newer snapshot reached disk
+        // while this one was writing, drop this one rather than regress it.
         if (typeof STATE_PATH === "string") {
-          const tmpPath = STATE_PATH + ".tmp";
+          tmpPath = uniqueTmpPath(STATE_PATH);
           await writeFileChunkedYielding(tmpPath, data);
-          await fs.promises.rename(tmpPath, STATE_PATH);
+          if (_stateSnapshotOrder.isCurrent(savedSeq)) {
+            await fs.promises.rename(tmpPath, STATE_PATH);
+            _stateSnapshotOrder.committed(savedSeq);
+          } else {
+            await fs.promises.unlink(tmpPath).catch(() => {});
+          }
+          tmpPath = null;
         }
         // Optional sync SQLite upsert (off by default on the debounced path).
         // sync/critical/shutdown still write SQLite unconditionally.
@@ -13215,7 +13230,7 @@ function saveStateDebounced() {
         if (typeof realtimeEmit === "function") {
           realtimeEmit("health:pulse", { component: "state_save", status: "critical", score: 0, metrics: { failures: STATE._saveFailures, error: String(e?.message || e) }, timestamp: Date.now() });
         }
-        try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        if (tmpPath) { try { fs.unlinkSync(tmpPath); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }
       }
     }, STATE_SAVE_COALESCE_MS);
   } catch (e) {
@@ -13241,9 +13256,8 @@ function saveStateSync() {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, nowISO());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(savedSeq);
     }
     // Keep the 5-min periodic safety net's bookkeeping honest: this state
     // is on disk now, so an unchanged seq must not trigger a re-serialize.
@@ -13311,6 +13325,17 @@ process.on("beforeExit", () => {
     console.error("[beforeExit] State save failed:", e.message);
   }
 });
+
+// Clear tmp snapshots a crash left mid-write (each write uses its own tmp
+// name now, so without this sweep they would accumulate at ~30 MB apiece).
+// Only the writer sweeps — a read replica sharing DATA_DIR must not delete
+// the writer's in-flight tmp.
+if (!READ_REPLICA) {
+  try {
+    const removed = sweepStaleStateTmps(STATE_PATH);
+    if (removed) structuredLog("info", "state_tmp_swept", { removed });
+  } catch (_e) { /* best effort */ }
+}
 
 const STATE_DISK = loadStateFromDisk();
 
@@ -75973,6 +75998,40 @@ try {
   }, 5_000).unref();
 } catch (e) {
   structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Stall attribution (2026-10-22). The monitors above measure how long the
+// loop stalled; nearly every live spike still logged "unattributed" because
+// only a few subsystems stamp recordLagWork(). Two runtime sources close that:
+//  - GC pauses (always on, kill-switch CONCORD_GC_PAUSE_LOG=0): each long
+//    pause is logged and stamped into the attribution ring as `gc:<kind>`,
+//    so a spike caused by GC (heap near ceiling, or heap paged to swap) names
+//    itself instead of blaming nothing.
+//  - Sampling CPU profiler (opt-in, CONCORD_LAG_PROFILER=1): names the exact
+//    function/line in our source that held the loop. See lib/lag-profiler.js.
+try {
+  const lagProf = await import("./lib/lag-profiler.js");
+  if (process.env.CONCORD_GC_PAUSE_LOG !== "0") {
+    await lagProf.startGcPauseLogger({
+      minMs: Number(process.env.CONCORD_GC_PAUSE_LOG_MS) || 250,
+      onPause: (p) => {
+        try { presenceIdle.recordLagWork(`gc:${p.kind}`, p.ms); } catch (_e) { /* informational */ }
+        structuredLog("warn", "gc_pause", p);
+      },
+    });
+  }
+  if (process.env.CONCORD_LAG_PROFILER === "1") {
+    lagProf.startLagProfiler({
+      windowMs: Number(process.env.CONCORD_LAG_PROFILER_WINDOW_MS) || 30_000,
+      samplingIntervalUs: Number(process.env.CONCORD_LAG_PROFILER_INTERVAL_US) || 10_000,
+      minStallMs: Number(process.env.CONCORD_LAG_PROFILER_STALL_MS) || 500,
+      appRoot: new URL("./", import.meta.url).href,
+      onStall: (f) => structuredLog("warn", "event_loop_stall_profile", f),
+      onEvent: (event, data) => structuredLog("info", event, data),
+    });
+  }
+} catch (e) {
+  structuredLog("info", "lag_attribution_unavailable", { error: String(e?.message || e) });
 }
 
 // Track C (event-loop unblocking audit) — the log-only monitor above turns
