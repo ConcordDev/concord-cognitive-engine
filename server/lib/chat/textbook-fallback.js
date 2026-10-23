@@ -12,7 +12,7 @@ const STOP = new Set([
 ]);
 
 export function keyTerms(query) {
-  return [...new Set(String(query || "").toLowerCase().replace(/['’]s\b/g, "").split(/[^a-z0-9.\-]+/)
+  return [...new Set(String(query || "").toLowerCase().replace(/['’]s\b/g, "").split(/[^a-z0-9.-]+/)
     .filter((w) => w.length >= 3 && !STOP.has(w)))];
 }
 

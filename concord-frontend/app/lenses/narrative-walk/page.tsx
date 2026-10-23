@@ -64,7 +64,7 @@ export default function NarrativeWalkLensPage() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [catalog, setCatalog] = useState<Step[]>([]);
   const [open, setOpen] = useState<Step | null>(null);
-  const [, setWatched] = useState<string[]>([]);
+  const [watched, setWatched] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
 
   const load = useCallback(() => {
@@ -129,7 +129,10 @@ export default function NarrativeWalkLensPage() {
     if (next) void show(next);
   }, [catalog, open, show]);
 
-  const atEnd = !!open && catalog.findIndex((step) => step.id === open.id) === catalog.length - 1;
+  const openIndex = open ? catalog.findIndex((step) => step.id === open.id) : -1;
+  const atEnd = !!open && openIndex === catalog.length - 1;
+  // Count only journal ids still in the catalog (a renamed sequence drops out).
+  const watchedCount = catalog.filter((step) => watched.includes(step.id)).length;
   const cta = open && !atEnd ? 'The next step' : 'Begin the walk';
 
   useLensCommand(
@@ -172,6 +175,9 @@ export default function NarrativeWalkLensPage() {
               {open.comment ? (
                 <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">{open.comment}</p>
               ) : null}
+              <p data-testid="narrative-progress" className="mt-6 text-[13px] tabular-nums text-zinc-500">
+                Step {openIndex + 1} of {catalog.length} · {watchedCount} watched
+              </p>
             </div>
           )}
           {actionError ? (

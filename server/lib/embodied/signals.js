@@ -141,21 +141,28 @@ export function signalsForWorld(db, worldId, location = null) {
   try {
     if (location && Number.isFinite(location.x) && Number.isFinite(location.z)) {
       const { cell_x, cell_z } = cellOf(location.x, location.z);
+      // Two disjoint halves (cell_x set / cell_x NULL) as a UNION ALL so each
+      // uses an index. The single OR form could only use world_id, so every
+      // per-location call read all of a world's rows (~25k live). The fold
+      // below is an order-independent weighted sum. |x - X| <= R is written
+      // as a BETWEEN so idx_emb_loc can range-scan it.
+      const lx = Number(location.x), lz = Number(location.z), r = CELL_SIZE * 1.5;
       rows = db.prepare(`
         SELECT channel, value, source, recorded_at, observed_at
           FROM embodied_signal_log
          WHERE world_id = ?
+           AND cell_x BETWEEN ? AND ? AND cell_z BETWEEN ? AND ?
            AND (decay_at IS NULL OR decay_at >= ?)
-           AND (
-             (cell_x BETWEEN ? AND ? AND cell_z BETWEEN ? AND ?)
-             OR (cell_x IS NULL AND location_x IS NOT NULL
-                 AND ABS(location_x - ?) <= ? AND ABS(location_z - ?) <= ?)
-           )
+        UNION ALL
+        SELECT channel, value, source, recorded_at, observed_at
+          FROM embodied_signal_log
+         WHERE world_id = ?
+           AND cell_x IS NULL AND location_x BETWEEN ? AND ?
+           AND ABS(location_z - ?) <= ?
+           AND (decay_at IS NULL OR decay_at >= ?)
       `).all(
-        worldId, now,
-        cell_x - 1, cell_x + 1, cell_z - 1, cell_z + 1,
-        Number(location.x), CELL_SIZE * 1.5,
-        Number(location.z), CELL_SIZE * 1.5,
+        worldId, cell_x - 1, cell_x + 1, cell_z - 1, cell_z + 1, now,
+        worldId, lx - r, lx + r, lz, r, now,
       );
     } else {
       rows = db.prepare(`

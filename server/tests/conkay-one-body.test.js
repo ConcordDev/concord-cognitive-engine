@@ -91,10 +91,10 @@ describe("Studio draws the analysed solid", () => {
   // cad.body's clearance rows as the kernel names them: components by id, occupants as SEAT_n:KEY:part, seats as
   // SEAT_n:cushion@KEY / back@KEY (here each a passing 50 mm, the shape of a real run, not its values)
   const clearances = Object.fromEntries(["RADIATOR", "ENGINE", "TRANSMISSION", "DIFFERENTIAL", "FUEL_CELL", "STEERING_WHEEL"].map((id) => [id, 0.05]));
-  for (const seat of ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"]) for (const key of ["F5", "F95", "M95"]) {
+  for (const seat of ["SEAT_1", "SEAT_2", "SEAT_3", "SEAT_4"]) {for (const key of ["F5", "F95", "M95"]) {
     for (const part of ["head", "torso", "pelvis"]) clearances[`${seat}:${key}:${part}`] = 0.05;
     clearances[`${seat}:cushion@${key}`] = 0.05; clearances[`${seat}:back@${key}`] = 0.05;
-  }
+  }}
   const cadSkin = { mesh, solid: cadSkinSolid(tris), sha256: "test", clearances, skinOffset: 0.04 };
   const doc = assemblyFromIr(b.ir, { bodyBBox: bbox, cadSkin, verifiedInside: new Set(tubIds) });
 

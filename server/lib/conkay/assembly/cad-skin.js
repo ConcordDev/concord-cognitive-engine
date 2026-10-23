@@ -122,9 +122,9 @@ export function boxInSolid(solid, placement, half) {
   // local x along the yaw/pitch heading, z up-ish (same convention as packaging obb: yaw about z, then pitch)
   const ax = [cy * cp, sy * cp, -sp], ay = [-sy, cy, 0], az = [cy * sp, sy * sp, cp];
   const pts = [[placement.x, placement.y, placement.z]];
-  for (const sx of [-1, 1]) for (const s2 of [-1, 1]) for (const sz of [-1, 1]) {
+  for (const sx of [-1, 1]) {for (const s2 of [-1, 1]) {for (const sz of [-1, 1]) {
     pts.push([0, 1, 2].map((k) => [placement.x, placement.y, placement.z][k] + sx * half[0] * ax[k] + s2 * half[1] * ay[k] + sz * half[2] * az[k]));
-  }
+  }}}
   return pts.every((p) => pointInSolid(solid, p));
 }
 

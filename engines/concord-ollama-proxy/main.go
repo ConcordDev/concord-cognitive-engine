@@ -16,6 +16,14 @@
 //	LISTEN     127.0.0.1:11480         ($CONCORD_OLLAMA_PROXY_ADDR)
 //	UPSTREAM   http://127.0.0.1:11434  ($OLLAMA_UPSTREAM)
 //	GET /v1/proxy-health               breaker state + queue depths + upstream probe
+//
+// Thinking control ($CONCORD_OLLAMA_PROXY_NO_THINK_MODELS, comma list or "*"):
+// for /api/chat and /api/generate requests to a listed model that carry no
+// "think" field, the proxy sets "think": false. Thinking-family models (the
+// qwen3.5-based 2Bs on the Mac) otherwise spend minutes in hidden reasoning
+// before answering — measured 2026-10-23: >120 s vs 8 s for one NPC quest
+// prompt. ~29 call sites in the backend talk to Ollama directly; this is the
+// one place all of them pass through. An explicit "think" from a caller wins.
 package main
 
 import (
@@ -31,6 +39,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -46,7 +55,49 @@ var (
 	breakCooldown = time.Duration(envInt("CONCORD_OLLAMA_PROXY_BREAK_COOLDOWN_MS", 15000)) * time.Millisecond
 	served        int64
 	fastFailed    int64
+	thinkForced   int64
+	noThinkModels = parseModelList(os.Getenv("CONCORD_OLLAMA_PROXY_NO_THINK_MODELS"))
 )
+
+// parseModelList splits a comma list into a set. "*" matches every model.
+func parseModelList(v string) map[string]bool {
+	out := map[string]bool{}
+	for _, part := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out[p] = true
+		}
+	}
+	return out
+}
+
+// applyNoThink returns body with "think": false added when the path is a
+// native generation endpoint, the model is listed, and the caller did not set
+// "think" itself. Any other case (or unparseable JSON) returns body unchanged.
+func applyNoThink(path string, body []byte, models map[string]bool) ([]byte, bool) {
+	if len(models) == 0 || (path != "/api/chat" && path != "/api/generate") {
+		return body, false
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(body, &m); err != nil {
+		return body, false
+	}
+	if _, has := m["think"]; has {
+		return body, false
+	}
+	var model string
+	if raw, ok := m["model"]; ok {
+		_ = json.Unmarshal(raw, &model)
+	}
+	if !models["*"] && !models[model] {
+		return body, false
+	}
+	m["think"] = json.RawMessage("false")
+	out, err := json.Marshal(m)
+	if err != nil {
+		return body, false
+	}
+	return out, true
+}
 
 // ── circuit breaker ────────────────────────────────────────────────────────
 type breaker struct {
@@ -217,10 +268,12 @@ func main() {
 			"upstream": up, "upstreamReachable": reachable, "upstreamProbeMs": probeMs,
 			"breaker": cb.snapshot(), "queueDepths": depths(),
 			"served": atomic.LoadInt64(&served), "fastFailed": atomic.LoadInt64(&fastFailed),
+			"thinkForcedOff": atomic.LoadInt64(&thinkForced),
 			"config": map[string]any{
 				"connectTimeoutMs": connectTOms, "genTimeoutMs": genTOms,
 				"maxQueuePerModel": maxQueuePer, "breakThreshold": breakThresh,
 				"breakCooldownMs": breakCooldown.Milliseconds(),
+				"noThinkModels":   os.Getenv("CONCORD_OLLAMA_PROXY_NO_THINK_MODELS"),
 			},
 		})
 	})
@@ -242,6 +295,10 @@ func main() {
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 64<<20))
 		_ = r.Body.Close()
 		model := modelOf(body)
+		if nb, forced := applyNoThink(r.URL.Path, body, noThinkModels); forced {
+			body = nb
+			atomic.AddInt64(&thinkForced, 1)
+		}
 
 		if !admit(model) {
 			atomic.AddInt64(&fastFailed, 1)

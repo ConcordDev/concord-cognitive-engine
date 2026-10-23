@@ -453,7 +453,7 @@ export function stitch(prev, next) {
   // A continuing table: the next rows go straight under the previous row.
   if (isTableRow(a.split(/\r?\n/).pop()) && isTableRow(b)) return a + "\n" + b;
   const structuralStart = /^#{1,6}\s|^[-*•]\s|^\d+[.)]\s|^\|/;
-  const sentenceEnd = /[.!?…]["'"\")\]]*$/;
+  const sentenceEnd = /[.!?…]["'")\]]*$/;
   const aEndsSentence = sentenceEnd.test(a.trim()) || a.trim().endsWith("```") || a.trim().endsWith("`");
   const bStartsUpper = /^[A-Z]/.test(b);
   const joined = joinContinuation(a, b);
@@ -518,7 +518,7 @@ export function joinExact(prev, next) {
   const lastLine = a.slice(a.lastIndexOf("\n") + 1);
   if (/^\|/.test(b) && isTableRow(lastLine) && /\|\s*$/.test(lastLine)) return a + "\n" + b;
   if (/^(?:#{1,6}\s|```|[-*•]\s|\d+[.)]\s)/.test(b)) return a + "\n\n" + b;
-  if (/[.!?:;)\]"”’*]$/.test(a) && /^[A-Z"“(*\[]/.test(b)) return a + " " + b;
+  if (/[.!?:;)\]"”’*]$/.test(a) && /^[A-Z"“(*[]/.test(b)) return a + " " + b;
   return a + b;
 }
 
@@ -619,7 +619,7 @@ export async function runSelfContinuation({
     if (onRound) {
       try {
         onRound({ round: rounds, added: text.length - before, checkpoint: q.checkpoint });
-      } catch {}
+      } catch { /* a failing progress observer must not stop the continuation */ }
     }
     const stillNeeds = needsContinuation({ checkpoint: q.checkpoint, doneReason: r.doneReason });
     if (stillNeeds && text.length - before < 20) {

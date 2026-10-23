@@ -87,7 +87,8 @@ export function runNpcKnowledgeBridge({ state, db }) {
         if (!summary.trim()) { lastSeenAt = row.created_at; continue; }
 
         const worldId = body.worldId ?? "concordia-hub";
-        const domain = tags.find((t) => t.startsWith("domain:"))?.slice(7) ?? null;
+        // Rows written before tag cleaning can hold null tags; skip them.
+        const domain = tags.find((t) => typeof t === "string" && t.startsWith("domain:"))?.slice(7) ?? null;
 
         for (const role of roles) {
           const id = `nk_${role}_${row.id}`;

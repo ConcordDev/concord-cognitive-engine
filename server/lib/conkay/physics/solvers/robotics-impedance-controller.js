@@ -100,9 +100,9 @@ function matVec(m, v) {
 }
 function matMul(a, b) {
   const out = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (let i = 0; i < 3; i += 1) for (let j = 0; j < 3; j += 1) {
+  for (let i = 0; i < 3; i += 1) {for (let j = 0; j < 3; j += 1) {
     out[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
-  }
+  }}
   return out;
 }
 function rotationAbout(axis, angle) {
@@ -219,11 +219,11 @@ export function impedanceController({
     // exist; use the Moore–Penrose pseudo-inverse so the projection is still
     // the minimal-norm one that removes every reachable task component.
     const JJt = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    for (let a = 0; a < 3; a += 1) for (let b = 0; b < 3; b += 1) {
+    for (let a = 0; a < 3; a += 1) {for (let b = 0; b < 3; b += 1) {
       let s = 0;
       for (let i = 0; i < n; i += 1) s += Jt[i][a] * Jt[i][b];
       JJt[a][b] = s;
-    }
+    }}
     const pinv = pseudoInverse3x3(JJt);
     if (pinv) {
       const JtauPosture = [0, 1, 2].map((r) => tauPosture.reduce((acc, _, i) => acc + Jt[i][r] * tauPosture[i], 0));
@@ -300,7 +300,7 @@ function pseudoInverse3x3(m, tol = 1e-10) {
     let off = 0;
     for (let i = 0; i < 3; i += 1) for (let j = i + 1; j < 3; j += 1) off += a[i][j] * a[i][j];
     if (Math.sqrt(off) < 1e-14) break;
-    for (let p = 0; p < 2; p += 1) for (let q = p + 1; q < 3; q += 1) {
+    for (let p = 0; p < 2; p += 1) {for (let q = p + 1; q < 3; q += 1) {
       if (Math.abs(a[p][q]) < 1e-18) continue;
       const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
       const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
@@ -324,7 +324,7 @@ function pseudoInverse3x3(m, tol = 1e-10) {
         V[k][p] = c * vkp - s * vkq;
         V[k][q] = s * vkp + c * vkq;
       }
-    }
+    }}
   }
   const lambda = [a[0][0], a[1][1], a[2][2]];
   const maxAbs = Math.max(...lambda.map(Math.abs));
@@ -333,11 +333,11 @@ function pseudoInverse3x3(m, tol = 1e-10) {
   const inv = lambda.map((l) => (Math.abs(l) > cut ? 1 / l : 0));
   // pinv = V · diag(inv) · Vᵀ
   const out = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  for (let i = 0; i < 3; i += 1) for (let j = 0; j < 3; j += 1) {
+  for (let i = 0; i < 3; i += 1) {for (let j = 0; j < 3; j += 1) {
     let s = 0;
     for (let k = 0; k < 3; k += 1) s += V[i][k] * inv[k] * V[j][k];
     out[i][j] = s;
-  }
+  }}
   return out;
 }
 

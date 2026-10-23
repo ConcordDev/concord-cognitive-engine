@@ -630,7 +630,12 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
   // The governor gates the POD's background brain. The local CPU embedder
   // runs in its own worker thread and is not behind that breaker.
   if (embeddingState.backend !== "ollama") governed = false;
-  if (!governed && !presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
+  // The idle / low-memory gate exists for LLM embedding calls. The local CPU
+  // embedder runs in its own worker thread: a full backfill is a minute or
+  // two of that one thread and a few MB of vectors. Gating it (a 16 GB Mac is
+  // always "low memory") left live semantic search at 51 of 1,693 DTUs.
+  const localWorker = embeddingState.backend === "local";
+  if (!governed && !localWorker && !presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
   if (!embeddingState.available) {
     return { embedded: 0, skipped: 0, errors: 0, reason: "embeddings_unavailable" };
   }

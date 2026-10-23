@@ -51,6 +51,9 @@ is_deploy_snap_name() {
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-deploy) return 0 ;;
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy) return 0 ;;
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]-deploy-*) return 0 ;;
+    # <date>-<label>-deploy (e.g. 20261022-r6-deploy) — written by the
+    # round deploys; unmatched, these 4.5 GB clones were never pruned.
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-*-deploy) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -85,8 +88,23 @@ if [ -n "$OFFSITE_LOG" ] && [ -f "$OFFSITE_LOG" ]; then
     ' "$OFFSITE_LOG" 2>/dev/null || echo 0)
   fi
   if [ "${recent_fails:-0}" -ge 2 ]; then
-    log "SKIP: offsite backup has $recent_fails failures in last 8h; preserving local deploy snapshots"
-    exit 0
+    # The pod offsite is one of two remote copies. A verified S3 upload in the
+    # last 30 h (S3_OK lines, written only after the remote size matched) is
+    # an equally good remote copy. Without this, a dead pod blocked pruning
+    # forever, the disk filled, and the nightly S3 backup then skipped for
+    # low disk (2026-10-23) — leaving NO fresh remote copy at all.
+    S3_LOG="${S3_LOG-/Users/dutch/.zuko/s3-backup.log}"
+    s3_since="$(date -v-30H '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -d '30 hours ago' '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+    s3_ok=0
+    if [ -n "$S3_LOG" ] && [ -f "$S3_LOG" ] && [ -n "$s3_since" ]; then
+      s3_ok=$(awk -v since="$s3_since" '/ S3_OK s3:\/\// { if (($1 " " $2) >= since) c++ } END { print c+0 }' "$S3_LOG" 2>/dev/null || echo 0)
+    fi
+    if [ "${s3_ok:-0}" -ge 1 ]; then
+      log "offsite backup has $recent_fails failures in last 8h, but S3 has a verified copy in the last 30h; pruning"
+    else
+      log "SKIP: offsite backup has $recent_fails failures in last 8h and no verified S3 copy in 30h; preserving local deploy snapshots"
+      exit 0
+    fi
   fi
 fi
 

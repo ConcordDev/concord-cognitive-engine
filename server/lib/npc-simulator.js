@@ -7,6 +7,13 @@
 //     serve as world Jarls/Bosses/Governors, generate main quests
 
 import crypto from "crypto";
+import { getDayPhase } from "./world-clock.js";
+import { isPeopleArchetype } from "./npc-kind.js";
+import { actionXp, levelAfterXp, tradeSkillFor, loadActiveNpcQuests, npcTakeOpenQuests, progressNpcQuest } from "./npc-life.js";
+import { awardNpcXp } from "./npc-skill-progression.js";
+import { composeExchange, pairOnCooldown, recordConversation, backstorySentence } from "./npc-conversation.js";
+import { activeNpcQuest } from "./npc-life.js";
+export { isPeopleArchetype };
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
@@ -389,9 +396,14 @@ export function _combatStateFor(npcId) {
  *   change within one synchronous tick, so re-querying it per NPC is pure
  *   redundant DB work. Real production finding, 2026-08-23.
  */
-export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
+export function updateNPCCombatAI(npc, worldId, db, cachedPlayers, temperamentOn) {
   // Graceful skip if NPC has no position
   if (!npc || !npc.location) return;
+  // Read the kill-switch once. Every process.env read is a native call; this
+  // function read it up to 4x per NPC per tick, which a live CPU profile
+  // (2026-10-23) put at ~275 ms of each NPC tick. NPCSimulator#_tickWorld
+  // passes one value for the whole world-tick; direct callers fall back.
+  const tempOn = typeof temperamentOn === "boolean" ? temperamentOn : temperamentEnabled();
 
   const archetype = npc.archetype || 'default';
   let   profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
@@ -428,7 +440,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // state toward the nearest player, and grant a pacifist the capacity to engage
   // when emotion carries it into hostility. Off by default (CONCORD_TEMPERAMENT);
   // when off, effectiveAggro + profile stay exactly the archetype values above.
-  if (temperamentEnabled() && nearestPlayer) {
+  if (tempOn && nearestPlayer) {
     try {
       const r = resolveAggro(
         db, npc, { kind: 'player', id: nearestPlayer.userId },
@@ -474,7 +486,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // default (CONCORD_TEMPERAMENT); when off, cs.rung is untouched and the attack
   // path below behaves exactly as before. The climb forces a THREATENING (final
   // warning) tick before HOSTILE, so an NPC always warns before it strikes.
-  if (temperamentEnabled()) {
+  if (tempOn) {
     const tgt = targetRung({
       effectiveAggro,
       nearestDist,
@@ -572,7 +584,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
       // Temperament: hold fire until the NPC has climbed to HOSTILE — the
       // THREATENING final-warning tick must pass first. Off => attack now.
       if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS
-          && (!temperamentEnabled() || isEngaged(cs.rung))) {
+          && (!tempOn || isEngaged(cs.rung))) {
         cs._lastAttack = now;
         _performNPCAttack(npc, nearestPlayer, worldId, db, archetype);
       }
@@ -597,7 +609,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
 
   // Temperament: announce the break when the NPC first retreats (HP collapse) —
   // the FLEEING rung of the ladder. One bark on the transition into retreating.
-  if (temperamentEnabled() && cs.state === 'retreating' && prevState !== 'retreating') {
+  if (tempOn && cs.state === 'retreating' && prevState !== 'retreating') {
     _emitBark(npc, worldId, 'fleeing', barkFor('fleeing', archetype));
   }
 }
@@ -632,6 +644,25 @@ function _emitBark(npc, worldId, rung, text, arrest = null) {
  * herb/soil — same table `world-gathering.js`'s TOOL_COMPAT already
  * encodes for the player-facing yield-estimate path).
  */
+const _npcXpColumn = new WeakMap();
+function _hasNpcXpColumn(db) {
+  if (!_npcXpColumn.has(db)) {
+    let has = false;
+    try { has = db.prepare("SELECT 1 FROM pragma_table_info('world_npcs') WHERE name = 'xp'").get() != null; } catch { /* no table */ }
+    _npcXpColumn.set(db, has);
+  }
+  return _npcXpColumn.get(db);
+}
+
+/** Room broadcast + Unity/Godot gateway mirror for NPC life events. */
+function _emitNpcEvent(worldId, event, payload) {
+  try {
+    const body = { worldId, ...payload };
+    globalThis._concordREALTIME?.io?.to(`world:${worldId}`).emit(event, body);
+    mirrorToGateways(event, body, { worldId });
+  } catch { /* non-fatal */ }
+}
+
 function _emitGather(npc, worldId, gathered) {
   if (!gathered) return;
   try {
@@ -950,6 +981,13 @@ export class NPCAgent {
     // tick()-site comment near wealthIncomeFor for why this is queued
     // rather than written immediately.
     this._pendingWealthIncome = 0;
+    // XP from work and finished quests; folded into the same batched flush.
+    this.xp = Number(row.xp) || 0;
+    this.backstory = backstorySentence(row.narrative_context);
+    this._lastAction = null;
+    this._pendingXp = 0;
+    this._pendingSkillXp = 0;
+    this._questDone = null;
     // Last state/location JSON successfully written (null until the first
     // write after load, so the first tick always persists the full row).
     this._persistedStateJson = null;
@@ -999,62 +1037,18 @@ export class NPCAgent {
     } catch { /* non-fatal */ }
   }
 
-  /** NPC speaks to another NPC or conscious emergent */
-  async _speakTo(partner) {
-    const myName      = this.state.name || this.archetype;
-    const partnerName = partner.state?.name || partner.archetype || 'stranger';
-    const topic       = this.state.factionTactic?.tactic || this.goals[0]?.directive || 'the world around us';
-
-    try {
-      const { handle } = await this._selectBrain("subconscious", {
-        brainOverride: "subconscious", callerId: "world:npc:conversation",
-      });
-      const raw = await handle.generate(
-        TASK_PROMPTS.npcSimulatorPartnerDialogue({
-          myName,
-          archetype: this.archetype,
-          faction: this.faction,
-          partnerName,
-          partnerArch: partner.archetype,
-          topic,
-          worldId: this.worldId,
-        })
-      );
-
-      if (!raw) return;
-
-      // Partner hears and may update their goals based on what was said
-      if (partner.goals !== undefined) {
-        partner.goals = partner.goals || [];
-        partner.goals.push({ heardFrom: myName, said: raw.slice(0, 200), at: Date.now() });
-        if (partner.goals.length > 10) partner.goals = partner.goals.slice(-10);
-        partner._persistState?.();
-      }
-
-      // Log the conversation as a world event (mig-315 world_events schema:
-      // event_type/kind/title/description — the actor + payload ride in description).
-      _prep(this._db,
-        "INSERT OR IGNORE INTO world_events (id, world_id, event_type, kind, title, description, created_at) VALUES (?,?,?,?,?,?,unixepoch())"
-      ).run(
-        crypto.randomUUID(), this.worldId, 'npc_conversation', 'conversation',
-        `${myName} → ${partnerName}`,
-        JSON.stringify({ actorId: this.id, speaker: myName, listener: partnerName, line: raw.slice(0, 200) })
-      );
-    } catch { /* non-fatal */ }
-  }
-
   // cachedPlayers: optional, pre-fetched _getPlayerPositions(db, worldId)
   // result for this whole world-tick — see NPCSimulator#tick's doc comment.
   // Left undefined, updateNPCCombatAI falls back to fetching it itself
   // (matches every pre-existing direct caller, e.g. tests/npc-combat-los.test.js).
-  async tick(dtMs = 3000, cachedPlayers = undefined) {
+  async tick(dtMs = 3000, cachedPlayers = undefined, temperamentOn = undefined) {
     this._updateNeeds();
     // Advance along active path first (position update each tick)
     this._tickPath(dtMs / 1000);
 
     // ── Combat AI (runs before action selection so combat can override movement) ──
     if (!this.isConscious && !this.isImmortal) {
-      try { updateNPCCombatAI(this, this.worldId, this._db, cachedPlayers); } catch { /* non-fatal */ }
+      try { updateNPCCombatAI(this, this.worldId, this._db, cachedPlayers, temperamentOn); } catch { /* non-fatal */ }
     }
 
     // Only choose a new action if not currently walking AND not in active combat
@@ -1063,6 +1057,18 @@ export class NPCAgent {
     if (!inCombat && (!this.state.currentPath || this.state.pathIndex >= (this.state.currentPath?.length ?? 0))) {
       const action = await this._chooseAction();
       await this._executeAction(action);
+      this._lastAction = action?.action || null;
+      // Work earns XP and trade-skill XP; it may also move a quest forward.
+      const gain = actionXp(action?.action);
+      this._pendingXp += gain;
+      this._pendingSkillXp += gain;
+      try {
+        const qp = progressNpcQuest(this._db, this.id, action?.action);
+        if (qp?.completed) {
+          this._pendingXp += qp.xp;
+          this._questDone = qp;
+        }
+      } catch { /* non-fatal */ }
     }
     await this._maybeEvaluateCreations();
 
@@ -1130,30 +1136,19 @@ export class NPCAgent {
       return _needToAction(urgentNeed[0]);
     }
 
-    // Otherwise use subconscious brain for richer decision
-    try {
-      const { handle } = await this._selectBrain("subconscious", {
-        brainOverride: "subconscious",
-        callerId: "world:npc:decision",
-      });
-
-      const prompt = `NPC type: ${this.npcType}
-World: ${this.worldId}
-Needs: ${JSON.stringify(this.needs)}
-Goals: ${JSON.stringify(this.goals)}
-Location: ${JSON.stringify(this.location)}
-
-Choose one action for this NPC. Return JSON only:
-{ "action": "<gather_resource|build_structure|practice_skill|socialize|travel|trade|rest|create>", "target": "<optional string>" }`;
-
-      const raw   = await handle.generate(prompt);
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-    } catch (_e) {
-      // fallback
-    }
-
-    return { action: "rest" };
+    // Otherwise follow the day: the NPC's job by day, people at dusk, sleep
+    // at night, with the lowest open need taking priority. This used to ask
+    // the LLM for EVERY non-urgent NPC on EVERY tick (~16k NPCs); the queue
+    // could never drain, so almost every call failed into "rest", social
+    // needs never recovered, and NPCs posted an endless stream of "Help X
+    // with social" quests (live 2026-10-23: 53,962 open, none taken).
+    this._decisionTick = (this._decisionTick || 0) + 1;
+    return chooseRoutineAction({
+      archetype: this.archetype,
+      needs: this.needs,
+      segment: getDayPhase(),
+      roll: _stableRoll(this.id, this._decisionTick),
+    });
   }
 
   async _executeAction({ action, target }) {
@@ -1323,6 +1318,14 @@ export function resetNpcQuestTickCounter() { NPC_QUEST_TICK_CALLS = 0; }
 // gets the loop back every few dozen agents instead of after the whole
 // world. A live CPU profile (2026-10-08, ~8,200 NPCs over 15+ worlds) showed
 // whole-world ticks holding the loop for 1-3s at a stretch.
+// One LLM tactic per (world, faction) per this window; see _tickFactionCoordination.
+const FACTION_TACTIC_REFRESH_MS = Math.max(60_000, Number(process.env.CONCORD_FACTION_TACTIC_REFRESH_MS) || 15 * 60_000);
+const _factionTacticAt = new Map();
+// How often each world lets NPCs take quests that no player picked up.
+const NPC_QUEST_TAKE_EVERY_MS = Math.max(60_000, Number(process.env.CONCORD_NPC_QUEST_TAKE_EVERY_MS) || 5 * 60_000);
+// NPC conversations: at most this many per world-tick, within this distance.
+const NPC_CONVERSATIONS_PER_TICK = Math.max(1, Number(process.env.CONCORD_NPC_CONVERSATIONS_PER_TICK) || 6);
+const NPC_TALK_RADIUS_M = Math.max(5, Number(process.env.CONCORD_NPC_TALK_RADIUS_M) || 60);
 export const NPC_TICK_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_TICK_BATCH) || 25);
 export const NPC_FLUSH_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_FLUSH_BATCH) || 200);
 
@@ -1353,6 +1356,7 @@ export class NPCSimulator {
     ).all(this.worldId);
 
     this._agents = rows.map(r => new NPCAgent(r, this.worldId, this._db, this._selectBrain));
+    loadActiveNpcQuests(this._db, this.worldId);
 
     // Seed NPCs from world archetypes if empty
     if (this._agents.length === 0) {
@@ -1457,9 +1461,12 @@ export class NPCSimulator {
     // Threaded through as an argument rather than cached on `this` so a
     // stale value can never survive past the tick that fetched it.
     const cachedPlayers = _getPlayerPositions(this._db, this.worldId);
+    // Same reasoning for the temperament kill-switch (an env read per call).
+    const temperamentOn = temperamentEnabled();
 
     // Autonomous NPCs: needs-based tick + faction coordination
-    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers));
+    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers, temperamentOn));
+    this._settleNpcQuests(autonomousAgents);
     await settleInBatches(autonomousAgents, (a) => a._maybeGenerateQuests());
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement
@@ -1468,10 +1475,8 @@ export class NPCSimulator {
     // Conscious emergents: emergent-AI tick (lighter — just goal updates)
     await settleInBatches(consciousAgents, (a) => a.tickConscious());
 
-    // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
-    if (Math.random() < 0.05) {
-      await this._tickNPCConversations(autonomousAgents, consciousAgents);
-    }
+    // NPCs who chose to socialize this tick talk to someone nearby.
+    await this._tickNPCConversations(autonomousAgents, consciousAgents);
 
     // Grief decay — slow healing over time
     try { decayGrief(this._db, this.id); } catch { /* non-fatal */ }
@@ -1593,38 +1598,87 @@ export class NPCSimulator {
   //
   // maxRows caps one call to a slice of the queue; the return value is how
   // many writes are still queued after it (0 when the queue is empty).
+  /**
+   * After a world-tick: credit givers whose quests NPCs finished (their need
+   * is met), then let NPCs take quests no player has picked up, at most once
+   * every few minutes per world.
+   */
+  _settleNpcQuests(agents) {
+    const done = agents.filter((a) => a._questDone);
+    if (done.length) {
+      const byId = new Map(this._agents.map((a) => [a.id, a]));
+      for (const a of done) {
+        const qp = a._questDone;
+        a._questDone = null;
+        const giver = byId.get(qp.giverId);
+        if (giver && qp.need && giver.needs?.[qp.need] != null) giver.needs[qp.need] = Math.min(1, giver.needs[qp.need] + 0.5);
+        _emitNpcEvent(this.worldId, "npc:quest-completed", { npcId: a.id, questId: qp.questId, giverId: qp.giverId, xp: qp.xp });
+      }
+    }
+    const now = Date.now();
+    if (now - (this._lastQuestTakeAt || 0) < NPC_QUEST_TAKE_EVERY_MS) return;
+    this._lastQuestTakeAt = now;
+    try {
+      for (const t of npcTakeOpenQuests(this._db, this.worldId, agents, { now })) {
+        _emitNpcEvent(this.worldId, "npc:quest-accepted", t);
+      }
+    } catch { /* non-fatal */ }
+  }
+
   _flushPendingPersists(maxRows = Infinity) {
     const queued = this._agents.filter((a) => a._pendingPersist);
     if (queued.length === 0) return 0;
     const pending = queued.length > maxRows ? queued.slice(0, maxRows) : queued;
     try {
-      const stmt = _prep(this._db,
-        "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
-      );
-      const wealthOnly = _prep(this._db,
-        "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
-      );
+      // xp arrived with migration 486; a DB without it keeps the old writes.
+      const hasXp = _hasNpcXpColumn(this._db);
+      const stmt = hasXp
+        ? _prep(this._db, "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, xp = xp + ?, level = ?, last_tick_at = unixepoch() WHERE id = ?")
+        : _prep(this._db, "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?");
+      const wealthOnly = hasXp
+        ? _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, xp = xp + ?, level = ?, last_tick_at = unixepoch() WHERE id = ?")
+        : _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?");
       const written = [];
+      const grown = [];
       const flush = this._db.transaction((agents) => {
         for (const a of agents) {
           const p = a._pendingPersist;
+          const xpGain = a._pendingXp || 0;
+          const level = levelAfterXp(a.level, a.xp + xpGain);
           if (p.stateJson === null) {
-            wealthOnly.run(a._pendingWealthIncome || 0, a.id);
+            if (hasXp) wealthOnly.run(a._pendingWealthIncome || 0, xpGain, level, a.id);
+            else wealthOnly.run(a._pendingWealthIncome || 0, a.id);
           } else {
-            stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, a.id);
+            if (hasXp) stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, xpGain, level, a.id);
+            else stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, a.id);
             written.push([a, p]);
           }
+          // Trade skill: written in chunks, not every tick.
+          if (a._pendingSkillXp >= 5) {
+            awardNpcXp(this._db, a.id, tradeSkillFor(a.archetype), a._pendingSkillXp);
+            a._pendingSkillXp = 0;
+          }
+          grown.push([a, xpGain, level]);
           a._pendingPersist = null;
           a._pendingWealthIncome = 0;
+          a._pendingXp = 0;
         }
       });
       flush(pending);
       // Baselines move only after the transaction committed.
       for (const [a, p] of written) { a._persistedStateJson = p.stateJson; a._persistedLocationJson = p.locationJson; }
+      for (const [a, xpGain, level] of grown) {
+        a.xp += xpGain;
+        if (level > a.level) {
+          const from = a.level;
+          a.level = level;
+          _emitNpcEvent(this.worldId, "npc:level-up", { npcId: a.id, name: a.state?.name || a.archetype, from, level, xp: a.xp });
+        }
+      }
     } catch (_e) {
       // non-fatal — matches this file's existing try/catch convention. Drop
       // the failed slice so a persistent error can't spin the caller's loop.
-      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; }
+      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; a._pendingXp = 0; }
     }
     return queued.length - pending.length;
   }
@@ -1661,7 +1715,15 @@ export class NPCSimulator {
       // Leader = highest level in faction
       const leader = members.sort((a, b) => (b.level || 1) - (a.level || 1))[0];
       try {
-        await leader._coordinateFaction(members);
+        // A tactic is a standing order (it feeds dialogue topics and the NPC
+        // inspector), not a per-tick decision. Asking the LLM for one per
+        // faction per world-tick kept Ollama's single queue saturated.
+        const key = `${this.worldId}:${faction}`;
+        const now = Date.now();
+        if (!(now - (_factionTacticAt.get(key) || 0) < FACTION_TACTIC_REFRESH_MS)) {
+          _factionTacticAt.set(key, now);
+          await leader._coordinateFaction(members);
+        }
         // Leader ensures undergeared members receive wealth transfers
         const memberIds = members.filter(m => m.id !== leader.id).map(m => m.id);
         leaderEnsuresFactionGear(this._db, leader.id, memberIds);
@@ -1670,22 +1732,55 @@ export class NPCSimulator {
   }
 
   /** NPC ↔ NPC and NPC ↔ Emergent conversations */
-  async _tickNPCConversations(autonomousAgents, consciousAgents) {
-    if (!autonomousAgents.length) return;
-
-    const speaker = autonomousAgents[Math.floor(Math.random() * autonomousAgents.length)];
-    // Pick a conversation partner: another NPC or a conscious emergent
-    const partners = [...autonomousAgents.filter(a => a.id !== speaker.id), ...consciousAgents];
-    if (!partners.length) return;
-
-    const partner = partners[Math.floor(Math.random() * partners.length)];
-    await speaker._speakTo(partner).catch(() => {});
-
-    // Update mutual opinion from conversation (slight warmth from interaction)
-    try {
-      const { recordNPCToNPCInteraction } = await import('./npc-relations.js');
-      recordNPCToNPCInteraction(this._db, speaker.id, partner.id, 0.01, 'conversation');
-    } catch { /* non-fatal */ }
+  /**
+   * NPCs who chose to socialize this tick turn to the nearest named person
+   * within reach and talk (lib/npc-conversation.js). Capped per tick; a pair
+   * talks at most once per cooldown. Replaces a 5%-per-tick random pairing
+   * across the whole world (creatures included) that needed the LLM.
+   */
+  async _tickNPCConversations(autonomousAgents, _consciousAgents) {
+    const people = autonomousAgents.filter((a) => isPeopleArchetype(a.archetype) && a.state?.name && a.state.name !== a.archetype && a.location);
+    const speakers = people.filter((a) => a._lastAction === "socialize").slice(0, NPC_CONVERSATIONS_PER_TICK);
+    if (speakers.length === 0) return;
+    const segment = getDayPhase();
+    const questTitle = _prep(this._db, "SELECT title FROM world_quests WHERE giver_npc_id = ? AND status = 'available' LIMIT 1");
+    const talked = new Set();
+    for (const speaker of speakers) {
+      if (talked.has(speaker.id)) continue;
+      let best = null; let bestD = NPC_TALK_RADIUS_M * NPC_TALK_RADIUS_M;
+      for (const other of people) {
+        if (other.id === speaker.id || talked.has(other.id)) continue;
+        const dx = (other.location.x || 0) - (speaker.location.x || 0);
+        const dz = (other.location.z || 0) - (speaker.location.z || 0);
+        const d = dx * dx + dz * dz;
+        if (d <= bestD) { best = other; bestD = d; }
+      }
+      if (!best || pairOnCooldown(this._db, this.worldId, speaker.id, best.id)) continue;
+      let quest = null;
+      try {
+        quest = questTitle.get(speaker.id)?.title || null;
+        if (!quest && activeNpcQuest(speaker.id)) quest = "a job I took on";
+      } catch { /* optional */ }
+      const a = { id: speaker.id, name: speaker.state.name, work: speaker.npcType || speaker.archetype, faction: speaker.faction, activity: speaker.currentActivity, quest, backstory: speaker.backstory };
+      const b = { id: best.id, name: best.state.name, work: best.npcType || best.archetype, faction: best.faction };
+      const messages = composeExchange(a, b, { segment, seed: new Date().toISOString().slice(0, 13) });
+      const rec = recordConversation(this._db, this.worldId, a.id, b.id, messages, { segment, sameFaction: a.faction === b.faction, quest: !!quest });
+      if (!rec) continue;
+      talked.add(speaker.id); talked.add(best.id);
+      // Talking meets both NPCs' social need; the listener remembers it.
+      best.needs.social = Math.min(1, (best.needs.social ?? 0) + 0.15);
+      best.goals = (best.goals || []).concat({ heardFrom: a.name, said: messages[1]?.text?.slice(0, 200) || messages[0].text, at: Date.now() }).slice(-10);
+      best._persistState?.();
+      _emitNpcEvent(this.worldId, "npc:conversation-bid", {
+        id: rec.id, npcA: a.id, npcB: b.id, nameA: a.name, nameB: b.name,
+        opener: messages[0].text, lines: messages.map((m) => ({ from: m.from === a.id ? a.name : b.name, text: m.text })),
+        expiresAt: rec.expiresAt,
+      });
+      try {
+        const { recordNPCToNPCInteraction } = await import("./npc-relations.js");
+        recordNPCToNPCInteraction(this._db, speaker.id, best.id, 0.01, "conversation");
+      } catch { /* non-fatal */ }
+    }
   }
 
   start() {
@@ -1720,6 +1815,58 @@ export class NPCSimulator {
 
 function _defaultNeeds() {
   return { hunger: 1, rest: 1, social: 1, purpose: 1, safety: 1 };
+}
+
+// What each archetype does on shift. Anything unlisted works as a laborer.
+const ARCHETYPE_WORK = {
+  farmer: "gather_resource", miller: "gather_resource", logger: "gather_resource",
+  miner: "gather_resource", fisher: "gather_resource", hunter: "gather_resource",
+  laborer: "gather_resource", builder: "build_structure", blacksmith: "build_structure",
+  engineer: "build_structure", trader: "trade", merchant: "trade", cook: "trade",
+  innkeeper: "trade", bard: "socialize", scholar: "practice_skill", healer: "practice_skill",
+  medic: "practice_skill", mystic: "practice_skill", mage: "practice_skill", cyber: "practice_skill",
+  elder: "practice_skill", scientist: "practice_skill", warrior: "practice_skill",
+  guard: "travel", soldier: "travel", wanderer: "travel", citizen: "trade",
+};
+
+/** Deterministic 0..1 from an id and a counter (no Math.random in the plan). */
+function _stableRoll(id, n) {
+  let h = 2166136261;
+  const str = `${id}:${n}`;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * One NPC's next action from its needs, its archetype's work and the time of
+ * day. Pure: same inputs, same action. Urgent needs (< 0.3) are handled by the
+ * caller before this runs.
+ * @param {{archetype?:string, needs?:object, segment?:string, roll?:number}} p
+ */
+export function chooseRoutineAction({ archetype = "generic", needs = {}, segment = "morning", roll = 0 } = {}) {
+  const people = isPeopleArchetype(archetype);
+  if (!people) {
+    // Animals and monsters: forage by day, roam, rest at night.
+    if (segment === "night") return { action: "rest" };
+    if ((needs.hunger ?? 1) < 0.6) return { action: "gather_resource" };
+    return { action: roll < 0.5 ? "travel" : "gather_resource" };
+  }
+  const work = ARCHETYPE_WORK[archetype] || "gather_resource";
+  // The lowest need under 0.5 comes first.
+  const open = Object.entries(needs).filter(([, v]) => typeof v === "number" && v < 0.5).sort(([, a], [, b]) => a - b)[0];
+  if (open) {
+    const [need] = open;
+    if (need === "rest") return { action: "rest" };
+    if (need === "social") return { action: "socialize" };
+    if (need === "hunger") return { action: "gather_resource" };
+    if (need === "safety") return { action: "travel" };
+    if (need === "purpose") return { action: work };
+  }
+  if (segment === "night") return { action: work === "travel" && roll < 0.5 ? "travel" : "rest" };
+  if (segment === "dusk") return { action: roll < 0.6 ? "socialize" : "trade" };
+  // Working hours: mostly the job, sometimes a walk or a word with someone.
+  if (roll < 0.75) return { action: work };
+  return { action: roll < 0.88 ? "socialize" : "travel" };
 }
 
 function _needToAction(need) {

@@ -139,7 +139,7 @@ export async function platformProviderChat({ slot, messages, opts = {} }) {
   // INC-138: Gemini's "high demand" 503 (and 429) is usually momentary. One ~1 s retry on the
   // same model, then the lighter Gemini model, before reporting failure (and cooling down).
   if (!r.ok && PLATFORM_FALLBACK_MODELS[provider] && PLATFORM_RETRY_STATUS.test(String(r.error || ""))) {
-    await new Promise((res) => setTimeout(res, platformRetryDelayMs()));
+    await new Promise((res) => { setTimeout(res, platformRetryDelayMs()); });
     r = await providerChat({ provider, apiKey, slot, modelId: null, messages, opts });
     const primary = BYO_PROVIDERS.defaultModels[provider]?.[slot];
     for (const fb of PLATFORM_FALLBACK_MODELS[provider]) {

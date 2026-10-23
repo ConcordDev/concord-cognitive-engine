@@ -53,7 +53,8 @@ function ensureRouteArtifactsTableStudio(db) {
       created_by   TEXT NOT NULL,
       created_at   TEXT NOT NULL DEFAULT (datetime('now')),
       description  TEXT NOT NULL DEFAULT '',
-      tags         TEXT NOT NULL DEFAULT '[]'
+      tags         TEXT NOT NULL DEFAULT '[]',
+      visibility   TEXT NOT NULL DEFAULT 'private'
     );
     CREATE INDEX IF NOT EXISTS idx_route_artifacts_dtu ON route_artifacts (dtu_id);
     CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);

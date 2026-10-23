@@ -59,18 +59,21 @@ export function createPodJobsRouter({ queue = podJobs, token = process.env.CONCO
   router.use(auth);
   router.use(express.json({ limit: "512kb" }));
 
+  // AUTH: router-auth — router.use(auth) above: loopback only, proxied requests refused, constant-time bearer token.
   router.post("/claim", (req, res) => {
     const { workerId, kinds, max } = req.body || {};
     const jobs = queue.claim(workerId, Array.isArray(kinds) ? kinds : [], Number(max) || 4);
     res.json({ jobs });
   });
 
+  // AUTH: router-auth — router.use(auth) above: loopback only, proxied requests refused, constant-time bearer token.
   router.post("/complete", (req, res) => {
     const { id, workerId, ok, result, error } = req.body || {};
     const accepted = queue.complete(id, workerId, { ok, result, error });
     res.json({ accepted });
   });
 
+  // AUTH: router-auth — router.use(auth) above: loopback only, proxied requests refused, constant-time bearer token.
   router.post("/heartbeat", (req, res) => {
     const { workerId, info } = req.body || {};
     queue.heartbeat(workerId, info || {});

@@ -20,6 +20,8 @@
 //   sweepExpiredConversations(db)                  -> {ok, closed}
 
 import crypto from "node:crypto";
+import { isPeopleArchetype } from "../npc-kind.js";
+import { composeExchange } from "../npc-conversation.js";
 
 // Defaults — overridable via env. All durations in seconds.
 const COOLDOWN_S = Number(process.env.CONCORD_NPC_DIALOGUE_COOLDOWN_S || 30 * 60); // 30 min
@@ -39,13 +41,22 @@ export function findConversationCandidates(db, worldId, opts = {}) {
   const limit = Math.max(1, Number(opts.limit) || MAX_PER_PASS);
   const cooldownAgo = Math.floor(Date.now() / 1000) - COOLDOWN_S;
 
+  // Living, named people only — the old query took the first 200 rows by id
+  // (dead NPCs and creatures included) and the opener printed their ids.
   const npcs = db.prepare(`
-    SELECT id, npc_type, state
+    SELECT id, npc_type, archetype, faction, state
       FROM world_npcs
-     WHERE world_id = ?
-     ORDER BY id
+     WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
+       AND COALESCE(spawn_method, '') <> 'quest'
+     ORDER BY random()
      LIMIT 200
-  `).all(worldId);
+  `).all(worldId).filter((n) => {
+    if (!isPeopleArchetype(n.archetype)) return false;
+    let name = null;
+    try { name = JSON.parse(n.state || "{}").name || null; } catch { /* malformed */ }
+    n.name = name;
+    return !!name && name !== n.archetype;
+  });
   if (npcs.length < MIN_NPCS_FOR_CONVERSATION) return [];
 
   const candidates = [];
@@ -69,10 +80,14 @@ export function findConversationCandidates(db, worldId, opts = {}) {
       try { factionA = JSON.parse(a.state || "{}").factionId || null; } catch { /* tolerate malformed state */ }
       try { factionB = JSON.parse(b.state || "{}").factionId || null; } catch { /* tolerate malformed state */ }
 
+      factionA = factionA || a.faction || null;
+      factionB = factionB || b.faction || null;
       candidates.push({
         a: a.id, b: b.id,
+        nameA: a.name, nameB: b.name,
+        workA: a.npc_type || a.archetype, workB: b.npc_type || b.archetype,
         factionA, factionB,
-        sameFaction: factionA && factionA === factionB,
+        sameFaction: !!(factionA && factionA === factionB),
         worldId,
       });
     }
@@ -104,11 +119,13 @@ export function composeDeterministicOpener(a, b, ctx = {}) {
 }
 
 // ── Insert one conversation ───────────────────────────────────────────────
-function _insertConversation(db, { worldId, a, b, opener, composer, seedContext }) {
+function _insertConversation(db, { worldId, a, b, opener, messages: lines, composer, seedContext }) {
   const now = Math.floor(Date.now() / 1000);
   const id = `conv_${crypto.randomBytes(10).toString("hex")}`;
   const expiresAt = now + TTL_S;
-  const messages = [{ from: a, to: b, text: opener, at: now }];
+  const messages = Array.isArray(lines) && lines.length
+    ? lines.map((m) => ({ ...m, at: now }))
+    : [{ from: a, to: b, text: opener, at: now }];
   db.prepare(`
     INSERT INTO npc_conversations
       (id, world_id, npc_a, npc_b, opened_at, last_msg_at, expires_at, status, composer, seed_context_json, messages_json)
@@ -160,14 +177,22 @@ export async function tryInitiateConversation(db, worldId, opts = {}) {
   let opener = null;
   let composer = "deterministic";
   if (process.env.CONCORD_NPC_DIALOGUE_LLM === "true") {
-    opener = await _llmOpener(c.a, c.b, c);
+    opener = await _llmOpener(c.nameA || c.a, c.nameB || c.b, c);
     if (opener) composer = "llm";
   }
-  if (!opener) opener = composeDeterministicOpener(c.a, c.b, c);
+  let messages = null;
+  if (!opener) {
+    messages = composeExchange(
+      { id: c.a, name: c.nameA || c.a, work: c.workA || "", faction: c.factionA },
+      { id: c.b, name: c.nameB || c.b, work: c.workB || "", faction: c.factionB },
+      { segment: opts.segment, seed: String(Math.floor(Date.now() / (30 * 60 * 1000))) },
+    );
+    opener = messages[0].text;
+  }
 
   try {
     const inserted = _insertConversation(db, {
-      worldId, a: c.a, b: c.b, opener, composer,
+      worldId, a: c.a, b: c.b, opener, messages, composer,
       seedContext: { factionA: c.factionA, factionB: c.factionB, sameFaction: c.sameFaction },
     });
     return { ok: true, conversationId: inserted.id, opener, npcA: c.a, npcB: c.b, expiresAt: inserted.expiresAt };

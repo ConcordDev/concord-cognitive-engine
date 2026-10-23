@@ -133,7 +133,7 @@ export async function wrapShortcutAnswer({ text, prompt = "", route = "", voice 
     try {
       const raw = await Promise.race([
         Promise.resolve(writeLead(shortcutLeadSystem(voice), shortcutLeadUser(prompt))),
-        new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+        new Promise((resolve) => { setTimeout(() => resolve(null), timeoutMs); }),
       ]);
       lead = acceptableLead(raw);
       if (lead) source = "model";

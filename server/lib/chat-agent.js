@@ -1400,8 +1400,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(book ? { books: [book] } : {}),
           waitMs: 20_000,
         });
-        if (!r.ok) return { tool: call.tool, ok: false, query: String(call.params.query || ""), error: r.error || "textbook lookup failed",
-          retryHint: "Say the textbook lookup was unavailable; use web_search if the user still wants a source." };
+        if (!r.ok) {return { tool: call.tool, ok: false, query: String(call.params.query || ""), error: r.error || "textbook lookup failed",
+          retryHint: "Say the textbook lookup was unavailable; use web_search if the user still wants a source." };}
         return { tool: call.tool, ok: true, query: r.query, results: r.results.map((x) => ({
           book: x.book, section: x.section, url: x.url, passage: x.passage, attribution: x.attribution })),
           ...(r.note ? { note: r.note } : {}),

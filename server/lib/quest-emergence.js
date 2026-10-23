@@ -1,180 +1,269 @@
 // server/lib/quest-emergence.js
-// Detect NPC needs that can only be met by players and generate quests from them.
-// 20% of quests spawn a dedicated target NPC (e.g. "find the lost engineer" spawns an engineer).
+// NPC needs that a player can help with become quests.
+//
+// Rebuilt 2026-10-23. The old version posted a new LLM-written quest every
+// time an NPC's need dipped, with no limit; the LLM call always timed out, so
+// every quest was the template "Help <archetype> with social" (live: 53,962
+// open, ~180 distinct titles, none ever accepted), and 1 in 5 spawned a new
+// NPC named after the last word of the title (9,813 identical "social"
+// traders). A quest is now a plan built from real world state:
+//
+//   - only named people give quests (no creatures, monsters or clones), one
+//     open quest per giver, a cap per world, and only in worlds a player has
+//     been in recently;
+//   - every objective is one the game tracks (talk_to / gather / defeat), and
+//     every target exists: a real friend NPC, a resource with nodes in this
+//     world, a hostile archetype alive in this world;
+//   - the text comes from the giver's name, work and authored backstory;
+//   - unaccepted quests expire.
 
 import crypto from "crypto";
-import { spawnQuestNPC } from "./npc-spawning.js";
 import { addQuestObjectives, addQuestRewards } from "./quests/quest-engine.js";
+import { isPeopleArchetype, isHostileArchetype } from "./npc-kind.js";
 
 const URGENCY_THRESHOLD = 0.5;
 
-// Need types that can produce player quests (vs. self-satisfiable needs)
-const PLAYER_DEPENDENT_NEEDS = ["purpose", "social"];
+// Needs a player can genuinely help with, in the order they are considered.
+const PLAYER_DEPENDENT_NEEDS = ["safety", "purpose", "social"];
 
-/**
- * Scan an NPC's needs for urgent gaps that only players can fill.
- * Creates world_quests rows for each detected opportunity.
- *
- * @param {object} npc  NPCAgent-like object with { id, worldId, npcType, needs }
- * @param {import('better-sqlite3').Database} db
- * @param {Function} selectBrain
- * @returns {Promise<object[]>}  created quest rows
- */
-export async function detectQuestOpportunities(npc, db, selectBrain) {
-  const urgentNeeds = PLAYER_DEPENDENT_NEEDS.filter(
-    n => (npc.needs?.[n] ?? 1) < URGENCY_THRESHOLD
-  );
+const num = (k, d) => { const v = Number(process.env[k]); return Number.isFinite(v) && v > 0 ? v : d; };
+export const QUEST_LIMITS = {
+  openPerWorld: num("CONCORD_QUEST_OPEN_PER_WORLD", 40),
+  playerWindowHours: num("CONCORD_QUEST_PLAYER_WINDOW_H", 72),
+  ttlHours: num("CONCORD_QUEST_TTL_H", 72),
+};
 
-  const quests = [];
-  for (const need of urgentNeeds) {
-    const quest = await createQuestFromNeed(npc, need, db, selectBrain);
-    if (quest) quests.push(quest);
+// Resources each kind of worker asks for, most wanted first. The first one
+// that actually has nodes in the giver's world is used.
+const ARCHETYPE_RESOURCES = {
+  blacksmith: ["iron-ore", "copper-ore", "coal", "titanium-ore", "scrap-metal"],
+  builder: ["stone", "wood", "pine-wood", "clay", "rubble", "dead-wood"],
+  laborer: ["stone", "wood", "clay", "rubble"],
+  miner: ["iron-ore", "copper-ore", "coal", "titanium-ore"],
+  logger: ["wood", "pine-wood", "enchanted-wood", "dead-wood"],
+  farmer: ["herbs", "clay", "wood", "mutant-herb"],
+  miller: ["herbs", "wood", "stone"],
+  healer: ["herbs", "rare-herb", "moonbloom", "mutant-herb", "bioenhancer"],
+  cook: ["herbs", "wood", "coal"],
+  scholar: ["runestone", "ley-essence", "rare-herb", "plasma-cell"],
+  mystic: ["ley-essence", "moonbloom", "runestone", "rare-herb"],
+  cyber: ["plasma-cell", "titanium-scrap", "scrap-metal", "fuel-canister"],
+  trader: ["iron-ore", "herbs", "wood", "scrap-metal"],
+};
+
+function parse(v, fallback) {
+  if (v == null || v === "") return fallback;
+  if (typeof v === "object") return v;
+  try { return JSON.parse(v); } catch { return fallback; }
+}
+
+function stableIndex(key, n) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return n > 0 ? (h >>> 0) % n : 0;
+}
+
+/** First sentence of an authored backstory, trimmed for a quest blurb. */
+function backstoryLine(narrative) {
+  const b = String(parse(narrative, {})?.backstory || "").trim();
+  if (!b) return "";
+  const first = b.split(/(?<=[.!?])\s+/)[0] || b;
+  return first.length > 180 ? `${first.slice(0, 177).trimEnd()}...` : first;
+}
+
+function realName(row) {
+  const name = String(parse(row?.state, {})?.name || "").trim();
+  if (!name || name === row.archetype || name === "social" || name === row.npc_type) return null;
+  return name;
+}
+
+function loadGiver(db, npcId) {
+  return db.prepare(`
+    SELECT id, world_id, archetype, npc_type, faction, level, state, narrative_context, spawn_method
+      FROM world_npcs WHERE id = ? AND COALESCE(is_dead, 0) = 0
+  `).get(npcId) || null;
+}
+
+function playerRecentlyIn(db, worldId) {
+  try {
+    return !!db.prepare(`
+      SELECT 1 FROM player_world_state
+       WHERE world_id = ? AND last_seen_at >= datetime('now', ?)
+       LIMIT 1
+    `).get(worldId, `-${QUEST_LIMITS.playerWindowHours} hours`);
+  } catch {
+    return false;
   }
-  return quests;
+}
+
+let _lastExpireAt = 0;
+/** Unaccepted quests past their TTL become 'expired'. Returns rows changed. */
+export function expireStaleQuests(db, { now = Date.now(), force = false } = {}) {
+  if (!force && now - _lastExpireAt < 10 * 60_000) return 0;
+  _lastExpireAt = now;
+  try {
+    const cutoff = Math.floor(now / 1000) - QUEST_LIMITS.ttlHours * 3600;
+    return db.prepare(`UPDATE world_quests SET status = 'expired' WHERE status = 'available' AND created_at < ?`).run(cutoff).changes;
+  } catch {
+    return 0;
+  }
 }
 
 /**
- * Generate a quest record from an NPC need using the subconscious brain.
- *
- * @param {object} npc
- * @param {string} need  e.g. 'purpose'
- * @param {import('better-sqlite3').Database} db
- * @param {Function} selectBrain
- * @returns {Promise<object|null>}
+ * Should this NPC post a quest now? Returns a reason string when not.
+ * @returns {null|string}
  */
-export async function createQuestFromNeed(npc, need, db, selectBrain) {
-  let questData;
+export function questGate(db, giver) {
+  if (!giver) return "no_giver";
+  if (!isPeopleArchetype(giver.archetype)) return "not_a_person";
+  if (giver.spawn_method === "quest") return "quest_spawned_npc";
+  if (!realName(giver)) return "unnamed";
+  const open = db.prepare(`
+    SELECT 1 FROM world_quests WHERE giver_npc_id = ? AND status IN ('available', 'active') LIMIT 1
+  `).get(giver.id);
+  if (open) return "already_has_open_quest";
+  if (!playerRecentlyIn(db, giver.world_id)) return "no_recent_player";
+  const { n } = db.prepare(`SELECT count(*) AS n FROM world_quests WHERE world_id = ? AND status = 'available'`).get(giver.world_id);
+  if (n >= QUEST_LIMITS.openPerWorld) return "world_quest_board_full";
+  return null;
+}
 
-  // Sprint 32 - hard 4s timeout on the LLM call. Pre-fix: selectBrain()
-  // could block for 90+ seconds when the subconscious Ollama was
-  // contended (event_loop_lag_spike maxMs=89993 trace back to here).
-  // One stuck NPC's quest generation could lock the heartbeat for the
-  // full duration, queueing every other NPC's quest behind it. With a
-  // 4s ceiling, a slow Ollama falls through to the minimal fallback
-  // quest below — same quest quality ("Help the NPC with X") the
-  // user sees anyway when the brain is unavailable, just with a hard
-  // cap. CONCORD_QUEST_BRAIN_TIMEOUT_MS override for tuning.
-  const BRAIN_TIMEOUT_MS = Number(process.env.CONCORD_QUEST_BRAIN_TIMEOUT_MS) || 4000;
+function pickFriend(db, giver) {
+  const rows = db.prepare(`
+    SELECT id, archetype, npc_type, faction, state FROM world_npcs
+     WHERE world_id = ? AND id <> ? AND COALESCE(is_dead, 0) = 0
+       AND spawn_method IN ('world_seed', 'recruited')
+     ORDER BY (faction = ?) DESC, id
+     LIMIT 60
+  `).all(giver.world_id, giver.id, giver.faction || "");
+  const people = rows.filter((r) => isPeopleArchetype(r.archetype) && realName(r));
+  if (people.length === 0) return null;
+  const sameFaction = people.filter((r) => r.faction && r.faction === giver.faction);
+  const pool = sameFaction.length ? sameFaction : people;
+  return pool[stableIndex(`${giver.id}:${new Date().toISOString().slice(0, 10)}`, pool.length)];
+}
 
-  try {
-    const brainCall = (async () => {
-      const { handle } = await selectBrain("subconscious", {
-        brainOverride: "subconscious",
-        callerId: "world:quest-emergence",
-      });
+function pickResource(db, giver) {
+  const have = db.prepare(`
+    SELECT resource_id, count(*) AS n FROM world_resource_nodes
+     WHERE world_id = ? AND is_depleted = 0
+     GROUP BY resource_id ORDER BY n DESC
+  `).all(giver.world_id);
+  if (have.length === 0) return null;
+  const present = new Set(have.map((r) => r.resource_id));
+  for (const r of ARCHETYPE_RESOURCES[giver.archetype] || []) if (present.has(r)) return r;
+  return have[0].resource_id;
+}
 
-      const prompt = `An NPC in a game world needs help from a player.
+function pickHostile(db, giver) {
+  const rows = db.prepare(`
+    SELECT archetype, count(*) AS n FROM world_npcs
+     WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
+     GROUP BY archetype ORDER BY n DESC
+  `).all(giver.world_id);
+  const hostile = rows.find((r) => isHostileArchetype(r.archetype));
+  return hostile ? hostile.archetype : null;
+}
 
-NPC profile:
-- Type: ${npc.npcType}
-- World: ${npc.worldId}
-- Urgent need: ${need} (current value: ${(npc.needs?.[need] ?? 0).toFixed(2)})
+const pretty = (s) => String(s || "").replace(/[_-]+/g, " ").trim();
 
-Generate a quest this NPC would give to a player. Return JSON only:
-{
-  "title": "<quest title>",
-  "description": "<2-3 sentences describing what the NPC needs and why>",
-  "objectives": [
-    { "id": "<uuid-like>", "description": "<action>", "completed": false }
-  ],
-  "reward": { "xp": <number 10-100>, "items": [], "narrative": "<reward flavour>" }
-}`;
+/**
+ * Build a quest for a need from real world state, or null when the world has
+ * nothing that would make the quest true (no friend, no resource, no foe).
+ * Pure with respect to the DB: reads only.
+ */
+export function planQuest(db, giver, need) {
+  const name = realName(giver);
+  if (!name) return null;
+  const work = pretty(giver.npc_type && giver.npc_type !== "generic" ? giver.npc_type : giver.archetype);
+  const story = backstoryLine(giver.narrative_context);
+  const level = Math.max(1, Number(giver.level) || 1);
+  const back = { type: "talk_to", target: giver.id, requiredCount: 1, description: `Return to ${name}` };
+  let plan = null;
 
-      const raw   = await handle.generate(prompt);
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) return null;
-      return JSON.parse(match[0]);
-    })();
-
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("quest_brain_timeout")), BRAIN_TIMEOUT_MS);
-    });
-
-    questData = await Promise.race([brainCall, timeout]);
-    if (!questData) return null;
-  } catch (_e) {
-    // brain unavailable OR timed out — create minimal fallback quest
-    questData = {
-      title:       `Help ${npc.npcType} with ${need}`,
-      description: `${npc.npcType} needs assistance with ${need} in ${npc.worldId}.`,
-      objectives:  [{ id: crypto.randomUUID(), description: `Assist the ${npc.npcType}`, completed: false }],
-      reward:      { xp: 20, items: [], narrative: "Gratitude and a small reward." },
+  if (need === "social") {
+    const friend = pickFriend(db, giver);
+    if (!friend) return null;
+    const fname = realName(friend);
+    const fwork = pretty(friend.archetype);
+    plan = {
+      kind: "carry_word",
+      title: `Word for ${fname}`,
+      description: `${name} the ${work} hasn't spoken with ${fname} the ${fwork} in too long and asks you to carry word, then come back with the answer.${story ? ` ${story}` : ""}`,
+      objectives: [
+        { type: "talk_to", target: friend.id, requiredCount: 1, description: `Speak with ${fname}` },
+        back,
+      ],
+    };
+  } else if (need === "purpose") {
+    const resource = pickResource(db, giver);
+    if (!resource) return null;
+    const n = 3 + (level % 4);
+    plan = {
+      kind: "supply_run",
+      title: `${pretty(resource).replace(/^./, (c) => c.toUpperCase())} for ${name}`,
+      description: `${name} the ${work} is short of ${pretty(resource)} for the work and needs ${n} brought in.${story ? ` ${story}` : ""}`,
+      objectives: [
+        { type: "gather", target: resource, requiredCount: n, description: `Gather ${n} ${pretty(resource)}` },
+        back,
+      ],
+    };
+  } else if (need === "safety") {
+    const foe = pickHostile(db, giver);
+    if (!foe) return null;
+    const n = 2 + (level % 3);
+    plan = {
+      kind: "clear_threat",
+      title: `Trouble near ${name}`,
+      description: `${name} the ${work} has seen ${pretty(foe)} too close for comfort. Drive off ${n} of them.${story ? ` ${story}` : ""}`,
+      objectives: [
+        { type: "defeat", target: foe, requiredCount: n, description: `Defeat ${n} ${pretty(foe)}` },
+        back,
+      ],
     };
   }
+  if (!plan) return null;
+  const xp = Math.min(150, 15 + 10 * plan.objectives.length + 3 * level + (plan.kind === "clear_threat" ? 20 : 0));
+  plan.reward = { xp, items: [], narrative: `${name}'s thanks.` };
+  return plan;
+}
+
+/**
+ * Scan one NPC's needs and post at most one quest. Returns the created rows.
+ * @param {object} npc  { id, worldId, needs, ... } — the DB row is the source of truth
+ * @param {import('better-sqlite3').Database} db
+ */
+export async function detectQuestOpportunities(npc, db, _selectBrain) {
+  if (!db || !npc?.id) return [];
+  expireStaleQuests(db);
+  const need = PLAYER_DEPENDENT_NEEDS.find((n) => (npc.needs?.[n] ?? 1) < URGENCY_THRESHOLD);
+  if (!need) return [];
+  const quest = await createQuestFromNeed(npc, need, db, _selectBrain);
+  return quest ? [quest] : [];
+}
+
+/**
+ * Post a quest for one need, if the gates pass and the world supports one.
+ * @returns {Promise<object|null>} the world_quests row
+ */
+export async function createQuestFromNeed(npc, need, db, _selectBrain) {
+  let giver;
+  try { giver = loadGiver(db, npc.id); } catch { return null; }
+  if (questGate(db, giver)) return null;
+  const plan = planQuest(db, giver, need);
+  if (!plan) return null;
 
   const id = crypto.randomUUID();
+  const objectivesJson = plan.objectives.map((o) => ({ id: crypto.randomUUID(), description: o.description, completed: false, type: o.type, target: o.target, requiredCount: o.requiredCount }));
   db.prepare(`
     INSERT INTO world_quests (id, world_id, giver_npc_id, title, description, objectives_json, reward_json)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    npc.worldId,
-    npc.id,
-    questData.title,
-    questData.description,
-    JSON.stringify(questData.objectives),
-    JSON.stringify(questData.reward),
-  );
-
-
-  const questRow = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
-
-  // Bridge into System B's typed tables (quest_objectives / quest_rewards) —
-  // see docs/QUESTS_ENGINE_INVESTIGATION.md Finding 3, which found this was
-  // the ONLY class of quest that already reached `world_quests` yet still
-  // had zero rows in either table (its objectives lived only as free-form
-  // objectives_json the completion/progress machinery never reads). The
-  // LLM's objectives[] here are freeform per-step text with no type/target
-  // the recordObjectiveProgress hooks can match against, so rather than
-  // guess a parse of arbitrary prose, we seed the ONE objective every
-  // NPC-need quest genuinely shares: talking to the NPC that raised the
-  // need. That is a real, always-live hook — routes/worlds.js's
-  // `/dialogue/respond` calls `recordObjectiveProgress(db, userId, worldId,
-  // null, 'talk_to', npcId, 1)` on every response to any NPC — not a
-  // fabricated mechanic. LOSSY MAPPING: the LLM's multi-step objective text
-  // (e.g. "gather 3 herbs") is not parsed into matching gather/deliver
-  // objectives; only the single talk_to beat is tracked in System B.
+  `).run(id, giver.world_id, giver.id, plan.title, plan.description, JSON.stringify(objectivesJson), JSON.stringify(plan.reward));
   try {
-    addQuestObjectives(db, id, [{
-      type: "talk_to",
-      target: npc.id,
-      requiredCount: 1,
-      description: `Speak with ${npc.npcType || "the NPC"} about their need`,
-    }]);
-    const xp = questData.reward?.xp;
-    if (typeof xp === "number" && xp > 0) {
-      addQuestRewards(db, id, [{ rewardType: "xp", amount: Math.round(xp) }]);
-    }
-  } catch { /* System B bridge is best-effort — the world_quests row above is still valid */ }
-
-  // 20% chance: spawn a dedicated target NPC for this quest
-  // (gives players something to find, rescue, or protect — not just an abstract objective)
-  if (Math.random() < 0.20) {
-    try {
-      const needArchetypeMap = {
-        purpose: 'engineer', social: 'trader', safety: 'guard',
-        hunger: 'farmer', rest: 'medic',
-      };
-      const targetArchetype = needArchetypeMap[need] || npc.archetype || 'traveler';
-      const targetNPCId = spawnQuestNPC(db, id, npc.worldId, {
-        archetype:    targetArchetype,
-        faction:      'neutral',
-        level:        Math.max(1, (npc.level || 1) - 1),
-        name:         questData.title?.split(' ').slice(-1)[0] || targetArchetype,
-        is_conscious: false,
-        is_immortal:  false,
-      });
-      // Patch the quest objectives to reference the target NPC
-      const objectives = JSON.parse(questData.objectives ? JSON.stringify(questData.objectives) : '[]');
-      if (objectives.length > 0) {
-        objectives[0].target_npc_id = targetNPCId;
-        db.prepare('UPDATE world_quests SET objectives_json = ? WHERE id = ?')
-          .run(JSON.stringify(objectives), id);
-      }
-    } catch { /* non-fatal — spawning is best-effort */ }
-  }
-
-  return questRow;
+    addQuestObjectives(db, id, plan.objectives);
+    addQuestRewards(db, id, [{ rewardType: "xp", amount: plan.reward.xp }]);
+  } catch { /* typed tables are best-effort; the world_quests row stands */ }
+  return db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
 }
 
 /**
