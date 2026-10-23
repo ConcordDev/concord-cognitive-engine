@@ -34,6 +34,21 @@ import { bountyTier, arrestOffer, wantedLevelFor } from "./authority-heat.js";
 import { LruMap, LruSet } from "./lru-map.js";
 import { mirrorToGateways } from "./gateway-fanout.js";
 
+
+// Prepared-statement cache, per db handle, keyed by SQL text. db.prepare()
+// compiles SQL every call; the NPC tick ran it per NPC per action, which
+// profiled (2026-10-22, live) at ~7 s of main-thread time per 10 min —
+// a large share of the multi-second event-loop stalls. better-sqlite3
+// statements are reusable and none here use stateful modifiers
+// (pluck/raw/expand/iterate), so a cached statement behaves identically.
+const _stmtCache = new WeakMap();
+function _prep(db, sql) {
+  let m = _stmtCache.get(db);
+  if (!m) { m = new Map(); _stmtCache.set(db, m); }
+  let st = m.get(sql);
+  if (!st) { st = db.prepare(sql); m.set(sql, st); }
+  return st;
+}
 // ──────────────────────────────────────────────────────────────────────────────
 // NPC Combat AI — state machine for alert/pursue/attack/retreat behavior
 // ──────────────────────────────────────────────────────────────────────────────
@@ -205,7 +220,7 @@ const NPC_ATTACK_COOLDOWN_MS = 1500;
 function _getPlayerPositions(db, worldId) {
   try {
     // world_visits stores last_position as JSON; fall back to player_world_state
-    const visits = db.prepare(`
+    const visits = _prep(db, `
       SELECT wv.user_id, wv.last_position, pws.x as sx, pws.z as sz
       FROM world_visits wv
       LEFT JOIN player_world_state pws ON pws.user_id = wv.user_id
@@ -311,7 +326,7 @@ function _getWorldBuildings(db, worldId) {
   if (cached && (now - cached.at) < _LOS_CACHE_TTL_MS) return cached.rows;
   let rows;
   try {
-    rows = db.prepare(`
+    rows = _prep(db, `
       SELECT id, x, z, width, depth
         FROM world_buildings
        WHERE world_id = ?
@@ -384,7 +399,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // Fetch NPC DB row for HP / is_wanted / criminal_rep
   let npcRow;
   try {
-    npcRow = db.prepare(
+    npcRow = _prep(db,
       'SELECT current_hp, max_hp, is_wanted, criminal_rep FROM world_npcs WHERE id = ?'
     ).get(npc.id);
   } catch { return; }
@@ -653,7 +668,7 @@ function _callForHelp(npc, worldId, db) {
     });
 
     // Alert nearby NPCs by setting their combat state to alerted
-    const nearbyNpcs = db.prepare(`
+    const nearbyNpcs = _prep(db, `
       SELECT id FROM world_npcs
       WHERE world_id = ? AND is_dead = 0 AND id != ?
       LIMIT 20
@@ -698,7 +713,7 @@ function _callForHelp(npc, worldId, db) {
  */
 function _parseNPCLocation(db, npcId) {
   try {
-    const row = db.prepare('SELECT current_location FROM world_npcs WHERE id = ?').get(npcId);
+    const row = _prep(db, 'SELECT current_location FROM world_npcs WHERE id = ?').get(npcId);
     return row ? _parseJSON(row.current_location, null) : null;
   } catch { return null; }
 }
@@ -1014,7 +1029,7 @@ export class NPCAgent {
 
       // Log the conversation as a world event (mig-315 world_events schema:
       // event_type/kind/title/description — the actor + payload ride in description).
-      this._db.prepare(
+      _prep(this._db,
         "INSERT OR IGNORE INTO world_events (id, world_id, event_type, kind, title, description, created_at) VALUES (?,?,?,?,?,?,unixepoch())"
       ).run(
         crypto.randomUUID(), this.worldId, 'npc_conversation', 'conversation',
@@ -1148,7 +1163,7 @@ Choose one action for this NPC. Return JSON only:
     };
     const dbActivity = activityMap[action] || 'idle';
     try {
-      this._db.prepare('UPDATE world_npcs SET current_activity = ? WHERE id = ?').run(dbActivity, this.id);
+      _prep(this._db, 'UPDATE world_npcs SET current_activity = ? WHERE id = ?').run(dbActivity, this.id);
     } catch { /* column may not exist yet pre-migration */ }
 
     switch (action) {
@@ -1159,7 +1174,7 @@ Choose one action for this NPC. Return JSON only:
         this.needs.purpose = Math.min(1, this.needs.purpose + 0.15);
         // Attempt to gather from a real nearby resource node first
         try {
-          const npcRow  = this._db.prepare('SELECT activity_resources, level FROM world_npcs WHERE id = ?').get(this.id);
+          const npcRow  = _prep(this._db, 'SELECT activity_resources, level FROM world_npcs WHERE id = ?').get(this.id);
           const posRow  = _parseJSON(this.location, {});
           const npcX    = posRow.x ?? 1000, npcZ = posRow.z ?? 1000;
           const npcLvl  = npcRow?.level || 1;
@@ -1171,7 +1186,7 @@ Choose one action for this NPC. Return JSON only:
 
           const resources = _parseJSON(npcRow?.activity_resources, {});
           resources[resourceId] = Math.min(50, (resources[resourceId] || 0) + amount);
-          this._db.prepare('UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
+          _prep(this._db, 'UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
             .run(JSON.stringify(resources), this.id);
 
           // Only a real node hit (not the always-succeeds abstract fallback
@@ -1189,7 +1204,7 @@ Choose one action for this NPC. Return JSON only:
         this.needs.purpose = Math.min(1, this.needs.purpose + 0.2);
         break;
       case "practice_skill": {
-        const skills = this._db.prepare(
+        const skills = _prep(this._db,
           "SELECT id FROM dtus WHERE creator_id = ? AND type = 'skill' LIMIT 1"
         ).get(this.id);
         if (skills) await practiceSkill(this, skills.id, this._db);
@@ -1225,7 +1240,7 @@ Choose one action for this NPC. Return JSON only:
 
   async _maybeEvaluateCreations() {
     if (Math.random() > 0.1) return; // 10% chance per tick
-    const nearby = this._db.prepare(`
+    const nearby = _prep(this._db, `
       SELECT * FROM dtus
       WHERE type = 'concordia_creation' AND world_id = ?
       LIMIT 5
@@ -1323,7 +1338,7 @@ export class NPCSimulator {
   }
 
   async initialize() {
-    const rows = this._db.prepare(
+    const rows = _prep(this._db,
       "SELECT * FROM world_npcs WHERE world_id = ? AND is_dead = 0"
     ).all(this.worldId);
 
@@ -1336,7 +1351,7 @@ export class NPCSimulator {
   }
 
   async _seedWorldNPCs() {
-    const world = this._db.prepare("SELECT * FROM worlds WHERE id = ?").get(this.worldId);
+    const world = _prep(this._db, "SELECT * FROM worlds WHERE id = ?").get(this.worldId);
     const universeType = world?.universe_type || 'generic';
     const config = getSpawnConfig(universeType);
 
@@ -1365,7 +1380,7 @@ export class NPCSimulator {
     const spawnZ = (Math.random() - 0.5) * 400;
     const spawnLoc = JSON.stringify({ x: spawnX, y: 0, z: spawnZ });
 
-    this._db.prepare(`
+    _prep(this._db, `
       INSERT INTO world_npcs
         (id, world_id, npc_type, archetype, body_type, universe_type, faction,
          is_conscious, is_immortal, quest_giver, level, spawn_location, current_location, state)
@@ -1387,7 +1402,7 @@ export class NPCSimulator {
     );
 
 
-    const row = this._db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(id);
+    const row = _prep(this._db, "SELECT * FROM world_npcs WHERE id = ?").get(id);
     if (row) {
       // Seed starter gear for this NPC
       try { seedStarterGear(this._db, id, opts.archetype || 'generic', opts.level || 1); } catch { /* non-fatal */ }
@@ -1397,7 +1412,7 @@ export class NPCSimulator {
 
   /** Spawn a new enemy at a target level — called when player enters an area */
   spawnEnemy(targetLevel = 1) {
-    const world = this._db.prepare("SELECT universe_type FROM worlds WHERE id = ?").get(this.worldId);
+    const world = _prep(this._db, "SELECT universe_type FROM worlds WHERE id = ?").get(this.worldId);
     const archetype = pickEnemyArchetype(world?.universe_type || 'generic', targetLevel);
     this._spawnNpc({ ...archetype, npc_type: archetype.archetype, level: targetLevel });
   }
@@ -1573,7 +1588,7 @@ export class NPCSimulator {
     if (queued.length === 0) return 0;
     const pending = queued.length > maxRows ? queued.slice(0, maxRows) : queued;
     try {
-      const stmt = this._db.prepare(
+      const stmt = _prep(this._db,
         "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
       );
       const flush = this._db.transaction((agents) => {
@@ -1593,7 +1608,7 @@ export class NPCSimulator {
   }
 
   _tickCrossbreeding() {
-    const spousePairs = this._db.prepare(`
+    const spousePairs = _prep(this._db, `
       SELECT r.npc_id, r.related_id FROM npc_relationships r
       WHERE r.rel_type = 'spouse'
         AND r.npc_id IN (SELECT id FROM world_npcs WHERE world_id = ? AND is_dead = 0)
@@ -1602,7 +1617,7 @@ export class NPCSimulator {
     for (const pair of spousePairs) {
       const offspring = attemptCrossbreed(this._db, pair.npc_id, pair.related_id, this.worldId);
       if (offspring) {
-        const row = this._db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(offspring.id);
+        const row = _prep(this._db, 'SELECT * FROM world_npcs WHERE id = ?').get(offspring.id);
         if (row) this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
         logger.info('npc-simulator', 'crossbreed_born', { id: offspring.id, species: offspring.species });
       }

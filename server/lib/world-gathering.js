@@ -103,14 +103,30 @@ export function updateSwimState(db, worldId, userId, pos) {
 
 // ── Node queries ──────────────────────────────────────────────────────────────
 
+// Prepared statements cached per db handle. better-sqlite3's db.prepare()
+// compiles SQL on every call; the NPC tick calls these thousands of times.
+const _stmtCache = new WeakMap();
+function _stmt(db, key, sql) {
+  let m = _stmtCache.get(db);
+  if (!m) { m = new Map(); _stmtCache.set(db, m); }
+  let st = m.get(key);
+  if (!st) { st = db.prepare(sql); m.set(key, st); }
+  return st;
+}
+
 /**
  * Return resource nodes within `radius` metres of (x, z).
  * Excludes fully depleted nodes (respawn pending).
  */
 export function getNearbyNodes(db, worldId, x, z, radius = GATHER_RANGE) {
-  const nodes = db.prepare(
-    'SELECT * FROM world_resource_nodes WHERE world_id = ? AND is_depleted = 0 AND depth = 0'
-  ).all(worldId);
+  // Bounding-box prefilter served by idx_rnodes_pos (world_id, x, z); the
+  // exact circle test below is unchanged, so results are identical. This was
+  // a full per-world scan on every call — profiled 2026-10-22 as the top
+  // event-loop blocker (npc-simulator tick → npcGatherFromNode → here:
+  // 19 s of main-thread time per 10 min, single stalls up to 10 s).
+  const nodes = _stmt(db, 'nearby',
+    'SELECT * FROM world_resource_nodes WHERE world_id = ? AND x BETWEEN ? AND ? AND z BETWEEN ? AND ? AND is_depleted = 0 AND depth = 0'
+  ).all(worldId, x - radius, x + radius, z - radius, z + radius);
   const r2 = radius * radius;
   return nodes
     .filter(n => {
@@ -129,10 +145,11 @@ export function getNearbyNodes(db, worldId, x, z, radius = GATHER_RANGE) {
  * Used for mining — player must be near a cave entrance or mine shaft.
  */
 export function getUndergroundNodes(db, worldId, x, z, depth = 0) {
-  const nodes = db.prepare(
-    'SELECT * FROM world_resource_nodes WHERE world_id = ? AND is_depleted = 0 AND depth > 0'
-  ).all(worldId);
   const radius = 25;
+  // Same bounding-box prefilter as getNearbyNodes; exact test unchanged.
+  const nodes = _stmt(db, 'underground',
+    'SELECT * FROM world_resource_nodes WHERE world_id = ? AND x BETWEEN ? AND ? AND z BETWEEN ? AND ? AND is_depleted = 0 AND depth > 0'
+  ).all(worldId, x - radius, x + radius, z - radius, z + radius);
   const r2 = radius * radius;
   return nodes
     .filter(n => {
@@ -346,7 +363,7 @@ export function npcGatherFromNode(db, worldId, npcX, npcZ, npcLevel = 1, preferr
   const depleted = newQty === 0;
   const now = Math.floor(Date.now() / 1000);
 
-  db.prepare(`
+  _stmt(db, 'npcGatherUpdate', `
     UPDATE world_resource_nodes
     SET quantity_remaining = ?,
         is_depleted = ?,
