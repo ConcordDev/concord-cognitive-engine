@@ -77220,7 +77220,10 @@ try {
       return result;
     },
   });
-  const _stopPresenceBroadcast = cityPresence.startPresenceBroadcast(realtimeEmit, 100);
+  // Interval controlled by CONCORD_PRESENCE_BROADCAST_MS env var;
+  // default 1000ms (1Hz). See lib/city-presence.js for why the original
+  // 100ms (10Hz) starved the event loop under realistic user counts.
+  const _stopPresenceBroadcast = cityPresence.startPresenceBroadcast(realtimeEmit);
   // NPC tick loop — 1Hz. Fires entity_spawns + advances patrols +
   // broadcasts city:npcs per occupied chunk.
   const _stopNpcLoop = cityPresence.startNpcLoop(realtimeEmit, 1000);
