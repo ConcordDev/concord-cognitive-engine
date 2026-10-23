@@ -111,6 +111,7 @@ export function backstorySentence(narrativeContext) {
   if (typeof n === "string") { try { n = JSON.parse(n); } catch { n = null; } }
   const b = String(n?.backstory || "").trim();
   if (!b) return "";
-  const first = b.split(/(?<=[.!?])\s+/)[0] || b;
+  // Authored backstories carry faction ids ("scholars_guild"); speak them as words.
+  const first = (b.split(/(?<=[.!?])\s+/)[0] || b).replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (m) => m.replace(/_/g, " "));
   return first.length > 160 ? `${first.slice(0, 157).trimEnd()}...` : first;
 }
