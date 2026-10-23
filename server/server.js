@@ -76035,8 +76035,8 @@ try {
 //    itself instead of blaming nothing.
 //  - Sampling CPU profiler (opt-in, CONCORD_LAG_PROFILER=1): one capture of
 //    CONCORD_LAG_PROFILER_DURATION_MS (default 10 min) after boot, then every
-//    stall >= CONCORD_LAG_PROFILER_STALL_MS is logged with the exact
-//    function/line in our source that held the loop. See lib/lag-profiler.js.
+//    busy run >= CONCORD_LAG_PROFILER_STALL_MS is logged (event_loop_busy_profile)
+//    with the exact function/line in our source that kept the loop busy. See lib/lag-profiler.js.
 try {
   const lagProf = await import("./lib/lag-profiler.js");
   if (process.env.CONCORD_GC_PAUSE_LOG !== "0") {
@@ -76054,7 +76054,8 @@ try {
       samplingIntervalUs: Number(process.env.CONCORD_LAG_PROFILER_INTERVAL_US) || 10_000,
       minStallMs: Number(process.env.CONCORD_LAG_PROFILER_STALL_MS) || 500,
       appRoot: new URL("./", import.meta.url).href,
-      onStall: (f) => structuredLog("warn", "event_loop_stall_profile", f),
+      // Busy runs, not single blocks — see findStalls() doc.
+      onStall: (f) => structuredLog("warn", "event_loop_busy_profile", f),
       onEvent: (event, data) => structuredLog("info", event, data),
     });
   }

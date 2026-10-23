@@ -42,6 +42,13 @@ function frameLabel(cf, appRoot) {
 /**
  * Pure analysis of a V8 CPU profile. Finds every contiguous run of busy
  * (non-idle) samples lasting at least `minStallMs` and attributes each one.
+ *
+ * A "busy run" is NOT necessarily one blocking task: work that yields via
+ * setImmediate between batches never goes idle, so consecutive batches show
+ * up as one run (live 2026-10-22: a 10.5 s NPC-tick run whose longest real
+ * block, per the perf_hooks lag monitor, was ~0.4 s). Read these as "what
+ * kept the loop busy", and use event_loop_lag_spike/burst_lag maxMs for how
+ * long it was actually blocked.
  * "(garbage collector)" and "(program)" samples count as busy — a GC pause
  * stalls the loop exactly like JS does, and is reported by that name.
  *
