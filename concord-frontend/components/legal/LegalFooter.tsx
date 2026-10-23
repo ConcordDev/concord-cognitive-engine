@@ -18,7 +18,9 @@ export function LegalFooter() {
           &copy; {new Date().getFullYear()} Concord OS. All rights reserved.
         </p>
 
-        <nav className="flex items-center gap-5">
+        {/* flex-wrap: at 375-414 px the three links + separators do not fit
+            one row next to nothing — they wrap instead of clipping. */}
+        <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
           <Link
             href="/legal/terms"
             className="text-xs text-gray-400 transition-colors hover:text-neon-cyan"

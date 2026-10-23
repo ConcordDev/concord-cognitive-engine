@@ -64,7 +64,7 @@ export function InstallPrompt() {
     <div
       role="banner"
       style={{ zIndex: Z_INDEX.INSTALL_PROMPT }}
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-lattice-surface border border-neon-cyan/30 rounded-xl p-4 shadow-lg shadow-neon-cyan/10 flex items-center gap-4 max-w-md w-[calc(100%-2rem)]"
+      className="fixed left-1/2 -translate-x-1/2 flex items-center gap-4 rounded-xl border border-neon-cyan/30 bg-lattice-surface p-4 shadow-lg shadow-neon-cyan/10 max-w-md w-[calc(100%-2rem)] bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] md:bottom-4"
     >
       <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
         <Download className="w-5 h-5 text-neon-cyan" />

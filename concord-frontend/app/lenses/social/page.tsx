@@ -37,7 +37,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -245,7 +244,7 @@ export default function SocialHubPage() {
     <LensShell lensId="social" asMain={false}>
       <DepthBadge lensId="social" size="sm" className="ml-2" />
 
-      <div data-lens-theme="social" className="relative min-h-full px-4 lg:px-8 pb-28 pt-6">
+      <div data-lens-theme="social" className="relative min-h-full px-4 overflow-x-clip lg:px-8 pb-28 pt-6">
         <div className="mx-auto flex max-w-[1120px] gap-5">
           <nav className="hidden lg:flex w-44 shrink-0 flex-col gap-1 sticky top-6 self-start" aria-label="Social places">
             {PLACES.map((t) => {
@@ -262,7 +261,7 @@ export default function SocialHubPage() {
                   className={cn(
                     'inline-flex min-h-[44px] items-center gap-3 rounded-full px-3 text-[15px] transition-colors',
                     t.id === 'create'
-                      ? 'bg-teal-400 text-black font-medium hover:bg-teal-300'
+                      ? 'border border-teal-400/40 font-medium text-teal-300 hover:bg-teal-400/10'
                       : on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-100',
                   )}
                 >
@@ -279,11 +278,50 @@ export default function SocialHubPage() {
           </nav>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-4">
+            {/* Phone nav for the five places. The old fixed-bottom bar sat
+                under the global bottom bar (both fixed bottom-0) — Explore/
+                Create/Inbox/You were unreachable on phones. This top bar
+                reuses the desktop nav's PLACES + onPlace, so it reads and
+                writes the same ?view= URL state. */}
+            <nav
+              data-testid="social-mobile-places"
+              aria-label="Social places"
+              className="mb-3 grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1 lg:hidden"
+            >
+              {PLACES.map((t) => {
+                const Icon = t.icon;
+                const on = t.id === 'create' ? false : view === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onPlace(t.id)}
+                    aria-label={t.label}
+                    aria-current={on ? 'page' : undefined}
+                    className={cn(
+                      'relative flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] transition-colors',
+                      t.id === 'create'
+                        ? 'border border-teal-400/40 font-medium text-teal-300'
+                        : on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-100',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {t.label}
+                    {!!t.badge && t.id !== 'create' && (
+                      <span className="absolute right-2 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                        {t.badge > 99 ? '99+' : t.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
               <div className="min-w-0">
-                <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Social</h1>
+                <h1 className="mb-3 mt-1 font-vault text-3xl leading-tight text-zinc-100 sm:mb-5 sm:text-5xl">Social</h1>
               </div>
-              <div className="flex shrink-0 items-center gap-3 pt-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
                 <PushEnableButton />
                 {currentUserId ? <StreakIndicator userId={currentUserId} /> : null}
                 {currentUserId ? <DMIndicator userId={currentUserId} /> : null}
@@ -428,18 +466,6 @@ export default function SocialHubPage() {
           </div>
         </div>
       </div>
-
-      <MobileTabBar
-        tabs={[
-          { id: 'home', label: 'Home', icon: Home },
-          { id: 'explore', label: 'Explore', icon: Compass },
-          { id: 'create', label: 'Create', icon: Plus, accent: true },
-          { id: 'inbox', label: 'Inbox', icon: Inbox, badgeCount: unreadCount },
-          { id: 'you', label: 'You', icon: User },
-        ]}
-        active={view}
-        onSelect={(id) => onPlace(id as PlaceId | 'create')}
-      />
 
       {/* Spaces — WebRTC room stage modal */}
       {activeRoomId && me?.user?.id && (
