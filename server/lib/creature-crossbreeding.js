@@ -40,6 +40,7 @@ import { deriveProfileFromBlueprint, blendMaterialProfile } from "./ecosystem/ma
 import { isTopologyRideable } from "./ecosystem/mount-eligibility.js";
 import { resolveVariant } from "./creature-breed-alchemy.js";
 import { announceCreatureBorn } from "./concordia-creatures.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 /**
  * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
@@ -232,7 +233,7 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
   if (!compat.ok) return { ok: false, reason: compat.reason, ...compat };
 
   const crossWorld = a.worldId !== b.worldId;
-  const childWorld = crossWorld ? "concordia" : a.worldId;
+  const childWorld = crossWorld ? HUB_WORLD_ID : a.worldId;
   const topology   = blendTopologies(a.topology, b.topology);
 
   // Mass: midpoint, biased toward the lighter parent so the body can support itself.

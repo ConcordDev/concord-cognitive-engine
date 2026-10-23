@@ -46,7 +46,7 @@ const PANEL =
   'shadow-[0_2px_6px_rgba(0,0,0,0.5)]';
 
 export default function BazaarLayer({
-  worldId = 'concordia',
+  worldId = 'concordia-hub',
   enabled = true,
   pollIntervalMs = 60_000,
   onStallClick,

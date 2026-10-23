@@ -144,6 +144,7 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
+import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
@@ -38400,6 +38401,21 @@ configureMiddleware(app, {
   NODE_ENV,
 });
 
+// One hub id (lib/world-ids.js). Older clients and saved state still send the
+// legacy "concordia"; route code looks worlds up by id, so the old id found
+// no world row (crafting ran without the hub's rules, the bazaar was empty).
+// Map it once here for every API request, body and query.
+app.use((req, _res, next) => {
+  try {
+    if (req.body && typeof req.body === "object" && req.body.worldId === "concordia") req.body.worldId = HUB_WORLD_ID;
+    // Express 5's req.query is a getter that re-parses; assigning to it is lost.
+    if (req.query && req.query.worldId === "concordia") {
+      Object.defineProperty(req, "query", { value: { ...req.query, worldId: HUB_WORLD_ID }, writable: true, configurable: true, enumerable: true });
+    }
+  } catch { /* best effort */ }
+  next();
+});
+
 // Read-only replica gate (default-deny). No-op on the writer (flag off); on a
 // replica it rejects anything outside the vetted pure-read GET allowlist so a
 // write-on-read handler can never fire against the readonly DB handle. Runs
@@ -42019,7 +42035,7 @@ import * as _gameplayBridge from "./lib/gameplay-asset-bridge.js";
 
 app.post("/api/creature/spawn", requireAuth, (req, res) => {
   try {
-    const { description, topology, massKg, heightM, traits = [], origin = "user", worldId = "concordia" } = req.body || {};
+    const { description, topology, massKg, heightM, traits = [], origin = "user", worldId = HUB_WORLD_ID } = req.body || {};
     if (!description) return res.status(400).json({ ok: false, error: "description_required" });
     const bp = generateCreature({ description, topology, massKg, heightM, traits, origin, worldId });
     bp.skillIds = attachSkills(bp);
@@ -43915,7 +43931,7 @@ async function governorTick(reason="heartbeat") {
         await runHeartbeatModule("world_event_scheduler_tick", async () => {
           const sched = await import("./lib/world-event-scheduler.js").catch(() => null);
           if (sched?.tick) {
-            const r = sched.tick({ worlds: ["concordia"] });
+            const r = sched.tick({ worlds: [HUB_WORLD_ID] });
             if (r?.created?.length) {
               structuredLog("info", "world_event_scheduler_tick", { created: r.created.length });
               for (const c of r.created) {
@@ -58952,10 +58968,12 @@ app.get("/api/council/theater", asyncHandler(async (_req, res) => {
 // listing summary so the frontend can place a 3D marker the player can
 // approach and inspect.
 app.get("/api/world/bazaar", (req, res) => {
-  const worldId = String(req.query.worldId || "concordia");
+  // Hub only. Clients send "concordia-hub"; this compared against the old bare
+  // "concordia" id, so the hub's bazaar always came back empty.
+  const worldId = canonicalWorldId(String(req.query.worldId || HUB_WORLD_ID));
   const limit   = Math.min(36, Math.max(1, Number(req.query.limit) || 24));
 
-  if (worldId !== "concordia") {
+  if (worldId !== HUB_WORLD_ID) {
     return res.json({ ok: true, worldId, stalls: [] });
   }
 

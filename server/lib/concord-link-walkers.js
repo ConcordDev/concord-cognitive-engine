@@ -26,6 +26,7 @@
  */
 
 import crypto from "crypto";
+import { HUB_WORLD_ID, canonicalWorldId, isHubWorld } from "./world-ids.js";
 
 const REPUTATION_FLOOR = 10;
 const REPUTATION_CEIL  = 100;
@@ -52,7 +53,7 @@ export function seedWalkersFromAuthored(db, authoredNPCs) {
 
   for (const npc of authoredNPCs) {
     if (!npc?.link_walker || !npc?.id) { skipped++; continue; }
-    const homeWorld = npc.world_id || npc.home_world || "concordia";
+    const homeWorld = canonicalWorldId(npc.world_id || npc.home_world) || HUB_WORLD_ID;
     const reputation = clamp(typeof npc.reputation === "number" ? npc.reputation : 50, REPUTATION_FLOOR, REPUTATION_CEIL);
     const id = `walker_${npc.id}`;
     try {
@@ -107,14 +108,14 @@ export function buildRoute(db, sourceWorld, destWorld) {
      WHERE world_id = ? ORDER BY stability DESC LIMIT 1
   `).get(destWorld);
 
-  // For cross-world routes insert a hub stop ('concordia') if neither side is
-  // already concordia. Concordia is the canonical relay world per CLAUDE.md.
+  // For cross-world routes insert a hub stop if neither side is already the
+  // hub. The hub is the canonical relay world per CLAUDE.md.
   const route = [];
   if (src?.id) route.push(src.id);
-  if (sourceWorld !== "concordia" && destWorld !== "concordia") {
+  if (!isHubWorld(sourceWorld) && !isHubWorld(destWorld)) {
     const hub = db.prepare(`
       SELECT id FROM concord_link_anchors
-       WHERE world_id = 'concordia' ORDER BY stability DESC LIMIT 1
+       WHERE world_id IN ('concordia-hub', 'concordia') ORDER BY stability DESC LIMIT 1
     `).get();
     if (hub?.id) route.push(hub.id);
   }

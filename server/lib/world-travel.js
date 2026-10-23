@@ -3,7 +3,7 @@
 // validates destination against the registered world set (cross-world-
 // effectiveness registry), and writes an audit row to user_world_travel_log.
 //
-// Travel is gated to known worlds. The hub ("concordia") is always allowed.
+// Travel is gated to known worlds. The hub (HUB_WORLD_ID) is always allowed.
 // All other worlds must have been registered by the content-seeder via a
 // meta.json file. Unknown destinations are rejected.
 //
@@ -13,14 +13,15 @@
 
 import crypto from "crypto";
 import { listKnownWorlds, getWorldMeta } from "./cross-world-effectiveness.js";
+import { HUB_WORLD_ID, canonicalWorldId } from "./world-ids.js";
 
-export const HUB_WORLD = "concordia";
+export const HUB_WORLD = HUB_WORLD_ID;
 
 export function getCurrentWorld(db, userId) {
   if (!userId) return HUB_WORLD;
   try {
     const row = db.prepare(`SELECT current_world FROM users WHERE id = ?`).get(userId);
-    return row?.current_world || HUB_WORLD;
+    return canonicalWorldId(row?.current_world) || HUB_WORLD;
   } catch {
     return HUB_WORLD;
   }
@@ -36,6 +37,7 @@ export function getCurrentWorld(db, userId) {
 export function travelTo(db, userId, toWorld, { anchorId = null } = {}) {
   if (!userId) return { ok: false, reason: "no_user" };
   if (!toWorld || typeof toWorld !== "string") return { ok: false, reason: "no_destination" };
+  toWorld = canonicalWorldId(toWorld); // an old client asking for "concordia" means the hub
 
   const known = new Set([HUB_WORLD, ...listKnownWorlds()]);
   if (!known.has(toWorld)) return { ok: false, reason: "unknown_world" };

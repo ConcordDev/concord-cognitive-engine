@@ -13,6 +13,7 @@
  */
 
 import logger from "../logger.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 const MAX_POLICY_HISTORY = 20;
 
@@ -89,7 +90,7 @@ export function bridgeSummitToWorld({ db, summit, cri, createEvent, factionIds =
       : [];
     if (decisions.length === 0) return { ok: true, eventId: null, factionsUpdated: 0 };
 
-    const cityId   = (cri?.domain && `cri:${cri.domain}`) || "concordia";
+    const cityId   = (cri?.domain && `cri:${cri.domain}`) || HUB_WORLD_ID;
     const summary  = decisions.slice(0, 3).join("; ");
     const fullList = decisions.join("\n• ");
 

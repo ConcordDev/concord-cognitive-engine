@@ -187,6 +187,7 @@ import {
   getCityRulesSchema,
 } from "../lib/city-manager.js";
 import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
+import { HUB_WORLD_ID } from "../lib/world-ids.js";
 
 /**
  * @param {object} [opts]
@@ -1584,7 +1585,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const world = simPlayerWorlds.get(destWorldId);
     if (!world) return res.status(404).json({ ok: false, error: 'World not found' });
     const transition = {
-      sourceWorld: 'concordia', destWorld: destWorldId,
+      sourceWorld: HUB_WORLD_ID, destWorld: destWorldId,
       transitionType: req.body.transitionType || 'terminal',
       arrived: true, timestamp: new Date().toISOString(),
     };

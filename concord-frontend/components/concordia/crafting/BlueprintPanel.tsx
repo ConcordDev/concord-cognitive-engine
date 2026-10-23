@@ -74,7 +74,7 @@ export function BlueprintPanel({ playerId: _playerId, toolTier, skillLevel, onCl
     try {
       const r = await api.post('/api/crafting/execute', {
         recipeId: selected.id,
-        worldId: 'concordia',
+        worldId: 'concordia-hub',
         qualityMultiplier: multiplier,
       });
       const data = r.data;

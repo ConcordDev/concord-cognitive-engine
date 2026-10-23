@@ -185,7 +185,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ raidId: activeRaid.raidId, worldId: 'concordia', amount: 5 }),
+      body: JSON.stringify({ raidId: activeRaid.raidId, worldId: 'concordia-hub', amount: 5 }),
     }).catch(() => { /* silent */ });
   }, [activeRaid]);
 
