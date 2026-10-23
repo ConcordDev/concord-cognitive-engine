@@ -42957,6 +42957,38 @@ async function runHeartbeatModule(name, fn) {
   }
 }
 
+// Shared heartbeat-registry dispatch for the normal, low-memory and idle
+// paths of governorTick, so they cannot drift (PR-5 remote orchestration).
+async function _dispatchHeartbeatRegistry(dispatchReason, extraCtx = {}) {
+  try {
+    if (shardingEnabled()) {
+      await tickAllRegistered({
+        state: STATE,
+        db,
+        tickCount: STATE.__bgTickCounter || 0,
+        reason: dispatchReason,
+        scope: "global",
+        ...extraCtx,
+      });
+      broadcastShardTick({
+        tickCount: STATE.__bgTickCounter || 0,
+        reason: dispatchReason,
+        settings: STATE.settings || {},
+      });
+    } else {
+      await tickAllRegistered({
+        state: STATE,
+        db,
+        tickCount: STATE.__bgTickCounter || 0,
+        reason: dispatchReason,
+        ...extraCtx,
+      });
+    }
+  } catch (e) {
+    observe(e, "governor_heartbeat_registry");
+  }
+}
+
 let _governorTickRunning = false;
 // PR-5 remote-orchestration skip accounting: surfaced by the background-governor
 // heartbeat status provider so operators can see why the registry did not run.
@@ -42997,7 +43029,31 @@ async function governorTick(reason="heartbeat") {
         finally { _governorTickRunning = false; }
       }
     } catch (e) { observe(e, "governor_consolidation_idle"); }
-    return { ok: true, skipped: "idle_no_users" };
+    // The world keeps living with nobody watching (docs/
+    // CONCORDIA_PERSISTENT_MEGAWORLD.md: one continuous universe). The idle
+    // gate exists to save the heavy cognitive work (autogen, dream,
+    // evolution, synth, jobs) — it used to skip the whole heartbeat registry
+    // too, so seasons, festivals, creature flocks, faction strategy, decay
+    // sweeps and NPC conversations all stopped whenever no one was online,
+    // and the tick counter they schedule on froze. Run the registry, minus
+    // CPU-class modules, under the same guards as the low-memory path.
+    let registry = "skipped_low_memory";
+    if (shouldPauseBackgroundOrchestration() === false) {
+      const g = getBgGovernorStatus();
+      if (g.mode === "killed" || g.breaker.state === "open") {
+        registry = g.mode === "killed" ? "governor_killed" : "governor_open";
+      } else {
+        STATE.__bgTickCounter = (STATE.__bgTickCounter || 0) + 1;
+        _governorTickRunning = true;
+        try {
+          await _dispatchHeartbeatRegistry("idle", { skipCosts: ["cpu"] });
+          registry = "ran";
+        } finally {
+          _governorTickRunning = false;
+        }
+      }
+    }
+    return { ok: true, skipped: "idle_no_users", registry };
   }
   _governorTickRunning = true;
   // Sprint 32 - reset per-tick NPC quest generation budget so the
@@ -43014,37 +43070,6 @@ async function governorTick(reason="heartbeat") {
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
     const ctx = _governorCtx();
-    // PR-5 remote orchestration: shared registry dispatch used by both the
-    // normal path and the low-memory path, so the two cannot drift.
-    async function _dispatchHeartbeatRegistry(dispatchReason, extraCtx = {}) {
-      try {
-        if (shardingEnabled()) {
-          await tickAllRegistered({
-            state: STATE,
-            db,
-            tickCount: STATE.__bgTickCounter || 0,
-            reason: dispatchReason,
-            scope: "global",
-            ...extraCtx,
-          });
-          broadcastShardTick({
-            tickCount: STATE.__bgTickCounter || 0,
-            reason: dispatchReason,
-            settings: STATE.settings || {},
-          });
-        } else {
-          await tickAllRegistered({
-            state: STATE,
-            db,
-            tickCount: STATE.__bgTickCounter || 0,
-            reason: dispatchReason,
-            ...extraCtx,
-          });
-        }
-      } catch (e) {
-        observe(e, "governor_heartbeat_registry");
-      }
-    }
     // Low-memory is a flag, not a return. The old return sat above jobs,
     // the queue, and consolidation, so a 16GB host never compressed and
     // user-awaited background jobs stalled. Autogen/dream/ingest still pause.
