@@ -49,6 +49,19 @@ async function ensureTraceDb() {
       const dbPath = getTraceDbPath();
       fs.mkdirSync(path.dirname(dbPath), { recursive: true });
       const db = new Database(dbPath);
+      // WAL + synchronous=NORMAL. This connection writes one row per MCP tool
+      // event on the main thread. In the default rollback-journal mode every
+      // INSERT was its own fsync'd transaction, and a concurrent reader
+      // (lib/incident-engine/gather.js opens this file read-only) blocked the
+      // commit, which better-sqlite3 waits out synchronously — profiled live
+      // 2026-10-22 as a single 1.4 s event-loop block in this file. WAL lets
+      // readers and the writer proceed independently and makes a commit an
+      // append. The mode is persistent in the file, so read-only openers get
+      // it too. busy_timeout is kept short: this is fire-and-forget telemetry,
+      // never worth holding the event loop for.
+      try { db.pragma("journal_mode = WAL"); } catch (_e) { /* keep default mode */ }
+      try { db.pragma("synchronous = NORMAL"); } catch (_e) { /* keep default */ }
+      try { db.pragma("busy_timeout = 50"); } catch (_e) { /* keep default */ }
       db.exec(`CREATE TABLE IF NOT EXISTS trace_correlation (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           trace_id TEXT NOT NULL,
@@ -113,6 +126,10 @@ export async function pruneOldTraceEvents(olderThanSeconds = TRACE_PRUNE_OLDER_T
   }
 }
 
+// Prepared once per trace-db handle (was re-compiled on every tool event).
+let _traceInsert = null;
+let _traceInsertDb = null;
+
 function writeTraceEvent(traceId, source, sourceEvent, toolName, durationMs, observedAt, payload, parentTraceId) {
   if (!traceId) return;
   // Fire-and-forget async write; sync-fire is fine since better-sqlite3 is sync
@@ -121,9 +138,13 @@ function writeTraceEvent(traceId, source, sourceEvent, toolName, durationMs, obs
     if (!db) return;
     try {
       const obs = observedAt || new Date().toISOString();
-      const info = db.prepare(`INSERT INTO trace_correlation
+      if (!_traceInsert || _traceInsertDb !== db) {
+        _traceInsert = db.prepare(`INSERT INTO trace_correlation
         (trace_id, parent_trace_id, source, source_event, tool_name, observed_at, duration_ms, payload_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(traceId, parentTraceId || null, source, sourceEvent, toolName || null, obs,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+        _traceInsertDb = db;
+      }
+      const info = _traceInsert.run(traceId, parentTraceId || null, source, sourceEvent, toolName || null, obs,
           durationMs != null ? durationMs : null, JSON.stringify(payload || {}));
       if (process.env.CONCORD_TRACE_DEBUG === "true") {
         console.error(`[trace-fabric] wrote event ${info.lastInsertRowid} trace=${traceId} ${sourceEvent}`);

@@ -59,6 +59,12 @@ const embeddingState = {
   model: null,
   dimension: EMBEDDING_DIMENSION,
   ollamaUrl: null,
+  /** "ollama" | "local" | null */
+  backend: null,
+  /** SQLite table holding this model's vectors (one table per model). */
+  table: "embedding_cache",
+  /** Why embeddings are unavailable, when they are. */
+  reason: null,
   stats: {
     totalEmbedded: 0,
     totalRequests: 0,
@@ -76,6 +82,119 @@ let _db = null;
 /** @type {Function|null} Reference to structuredLog from server.js */
 let _log = null;
 
+// ── Model-scoped storage + local fallback ──────────────────────────────────
+//
+// 2026-10-22: with the GPU pod down, no Ollama on the host served an
+// embedding model, so this layer declared itself unavailable at boot and
+// semantic search stayed OFF until the next restart — even though server.js
+// already runs a small CPU embedder (Xenova all-MiniLM-L6-v2, in a worker
+// thread). Now:
+//   - server.js registers that CPU embedder via setLocalEmbedder(); it is
+//     used when no Ollama embedding model is reachable.
+//   - Vectors are stored PER MODEL (rule 4: never mix models). The primary
+//     model keeps the historical `embedding_cache` table; any other model
+//     gets `embedding_cache__<model>`. (Previously the Ollama all-minilm
+//     fallback wrote 384-dim vectors into the 1024-dim table.)
+//   - reprobeEmbeddings() re-checks Ollama while on the fallback and switches
+//     back to the primary model (and its stored vectors) when it returns.
+const PRIMARY_TABLE = "embedding_cache";
+let _ollamaUrls = [];
+/** @type {{ model: string, dimension: number, embed: (text: string) => Promise<ArrayLike<number>> }|null} */
+let _local = null;
+let _reprobing = false;
+
+/** SQLite table name for a model's vectors. */
+export function tableForModel(model) {
+  if (!model || model === EMBEDDING_MODEL) return PRIMARY_TABLE;
+  const slug = String(model).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return `${PRIMARY_TABLE}__${slug}`;
+}
+
+function _ensureTable(name) {
+  if (!_db) return;
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS ${name} (
+      dtu_id TEXT PRIMARY KEY,
+      embedding BLOB NOT NULL,
+      hash TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+}
+
+/** Every per-model embedding table that exists (for deletes). */
+function _embeddingTables() {
+  if (!_db) return [];
+  try {
+    return _db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()
+      .map((r) => r.name)
+      .filter((n) => n === PRIMARY_TABLE || n.startsWith(`${PRIMARY_TABLE}__`));
+  } catch { return [PRIMARY_TABLE]; }
+}
+
+/** Switch the active model: state, table, and the in-memory cache. */
+function _activate({ backend, model, url = null, dimension }) {
+  embeddingState.available = true;
+  embeddingState.backend = backend;
+  embeddingState.model = model;
+  embeddingState.ollamaUrl = url;
+  embeddingState.dimension = dimension || embeddingState.dimension;
+  embeddingState.reason = null;
+  embeddingState.table = tableForModel(model);
+  embeddingState.stats.backfillComplete = false;
+  try { _ensureTable(embeddingState.table); } catch (e) {
+    if (_log) _log("warn", "embedding_table_create_failed", { table: embeddingState.table, error: String(e?.message || e) });
+  }
+  embeddingCache.clear();
+  if (_db) _loadEmbeddingsFromDb();
+}
+
+async function _probeOllama() {
+  for (const url of _ollamaUrls) {
+    try {
+      const probe = await _probeEmbeddingModel(url, EMBEDDING_MODEL);
+      if (probe.ok) return { model: EMBEDDING_MODEL, url, dimension: probe.dimension || EMBEDDING_DIMENSION, fallback: false };
+      const fb = await _probeEmbeddingModel(url, EMBEDDING_FALLBACK_MODEL);
+      if (fb.ok) return { model: EMBEDDING_FALLBACK_MODEL, url, dimension: fb.dimension || 384, fallback: true };
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+/**
+ * Register a local (in-process / worker) embedder used when no Ollama
+ * embedding model is reachable. Activates it immediately if embeddings are
+ * currently unavailable.
+ * @returns {boolean} true if it was activated now
+ */
+export function setLocalEmbedder(local) {
+  if (!local || typeof local.embed !== "function" || !local.model) return false;
+  _local = local;
+  if (embeddingState.available) return false;
+  _activate({ backend: "local", model: local.model, dimension: local.dimension });
+  if (_log) _log("info", "embeddings_ready_local", { model: local.model, dimension: local.dimension, table: embeddingState.table, cached: embeddingCache.size });
+  return true;
+}
+
+/**
+ * While not on Ollama, re-check whether an Ollama embedding model is back
+ * and switch to it (and its stored vectors).
+ * @returns {Promise<{ changed: boolean, model?: string }>}
+ */
+export async function reprobeEmbeddings() {
+  if (embeddingState.backend === "ollama" || _reprobing || _ollamaUrls.length === 0) return { changed: false };
+  _reprobing = true;
+  try {
+    const found = await _probeOllama();
+    if (!found) return { changed: false };
+    _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
+    if (_log) _log("info", found.fallback ? "embeddings_ready_fallback" : "embeddings_ready", { model: found.model, url: found.url, dimension: embeddingState.dimension, switchedFrom: "local_or_unavailable", cached: embeddingCache.size });
+    return { changed: true, model: found.model };
+  } finally {
+    _reprobing = false;
+  }
+}
+
 // ── Initialisation ─────────────────────────────────────────────────────────
 
 /**
@@ -86,6 +205,7 @@ let _log = null;
  */
 export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog = console.warn } = {}) {
   _db = db;
+  _ollamaUrls = [...new Set(ollamaUrls.filter(Boolean))];
 
   // Ensure dedicated embeddings table exists (separate from dtu_store)
   if (_db) {
@@ -118,40 +238,18 @@ export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog
     }
   }
 
-  // Probe Ollama instances for embedding model availability
-  for (const url of ollamaUrls) {
-    if (embeddingState.available) break;
-    try {
-      const probe = await _probeEmbeddingModel(url, EMBEDDING_MODEL);
-      if (probe.ok) {
-        embeddingState.available = true;
-        embeddingState.model = EMBEDDING_MODEL;
-        embeddingState.ollamaUrl = url;
-        embeddingState.dimension = probe.dimension || EMBEDDING_DIMENSION;
-        _log("info", "embeddings_ready", { model: EMBEDDING_MODEL, url, dimension: embeddingState.dimension });
-        continue;
-      }
-      // Try fallback model
-      const fallback = await _probeEmbeddingModel(url, EMBEDDING_FALLBACK_MODEL);
-      if (fallback.ok) {
-        embeddingState.available = true;
-        embeddingState.model = EMBEDDING_FALLBACK_MODEL;
-        embeddingState.ollamaUrl = url;
-        embeddingState.dimension = fallback.dimension || 384; // all-minilm is 384-dim
-        _log("info", "embeddings_ready_fallback", { model: EMBEDDING_FALLBACK_MODEL, url, dimension: embeddingState.dimension });
-      }
-    } catch {
-      // This Ollama instance didn't respond — try next
-    }
-  }
-
-  if (!embeddingState.available) {
-    _log("warn", "embeddings_unavailable", { tried: ollamaUrls, models: [EMBEDDING_MODEL, EMBEDDING_FALLBACK_MODEL] });
-  }
-
-  // Load cached embeddings from SQLite into memory
-  if (_db && embeddingState.available) {
-    _loadEmbeddingsFromDb();
+  // Probe Ollama instances for embedding model availability; fall back to the
+  // registered local embedder (if server.js has already registered it).
+  const found = await _probeOllama();
+  if (found) {
+    _activate({ backend: "ollama", model: found.model, url: found.url, dimension: found.dimension });
+    _log("info", found.fallback ? "embeddings_ready_fallback" : "embeddings_ready", { model: found.model, url: found.url, dimension: embeddingState.dimension, table: embeddingState.table });
+  } else if (_local) {
+    _activate({ backend: "local", model: _local.model, dimension: _local.dimension });
+    _log("info", "embeddings_ready_local", { model: _local.model, dimension: _local.dimension, table: embeddingState.table, cached: embeddingCache.size });
+  } else {
+    embeddingState.reason = "no_ollama_embedding_model";
+    _log("warn", "embeddings_unavailable", { tried: _ollamaUrls, models: [EMBEDDING_MODEL, EMBEDDING_FALLBACK_MODEL], localEmbedder: "not_registered_yet" });
   }
 
   return { available: embeddingState.available, model: embeddingState.model };
@@ -168,10 +266,13 @@ export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog
  * @returns {Promise<Float32Array|null>}
  */
 export async function embed(text, type = "passage", { timeoutMs = EMBED_TIMEOUT_MS } = {}) {
-  if (!embeddingState.available || !embeddingState.ollamaUrl) return null;
+  if (!embeddingState.available) return null;
 
   const trimmed = String(text || "").trim().slice(0, 8192); // Model context limit
   if (!trimmed) return null;
+
+  if (embeddingState.backend === "local") return _embedLocal(trimmed);
+  if (!embeddingState.ollamaUrl) return null;
 
   // E5 models require prefixes for optimal performance
   const prefix = type === "query" ? EMBEDDING_QUERY_PREFIX : EMBEDDING_PASSAGE_PREFIX;
@@ -246,6 +347,30 @@ export async function embed(text, type = "passage", { timeoutMs = EMBED_TIMEOUT_
   } catch (e) {
     embeddingState.stats.totalErrors++;
     if (_log) _log("warn", "embed_error", { error: String(e?.message || e) });
+    return null;
+  }
+}
+
+// Local (CPU worker) path. No E5 query/passage prefixes — MiniLM is not
+// trained with them.
+async function _embedLocal(text) {
+  if (!_local) return null;
+  embeddingState.stats.totalRequests++;
+  const start = Date.now();
+  try {
+    const out = await _local.embed(text);
+    if (!out || !out.length) { embeddingState.stats.totalErrors++; return null; }
+    const vec = out instanceof Float32Array ? out : Float32Array.from(out);
+    const elapsed = Date.now() - start;
+    embeddingState.stats.totalEmbedded++;
+    embeddingState.stats.avgEmbedMs = Math.round(
+      (embeddingState.stats.avgEmbedMs * (embeddingState.stats.totalEmbedded - 1) + elapsed) /
+      embeddingState.stats.totalEmbedded
+    );
+    return vec;
+  } catch (e) {
+    embeddingState.stats.totalErrors++;
+    if (_log) _log("warn", "embed_error", { backend: "local", error: String(e?.message || e) });
     return null;
   }
 }
@@ -381,8 +506,11 @@ export async function findCrossDomainConnections(dtuId, allDTUs, limit = 5) {
  * @param {string} dtuId
  * @param {Float32Array} vec
  */
-export function storeEmbedding(dtuId, vec) {
+export function storeEmbedding(dtuId, vec, model = embeddingState.model) {
   if (!dtuId || !vec) return;
+  // A vector computed by a model that is no longer active (switch happened
+  // mid-embed) must not land in the new model's table or cache.
+  if (model !== embeddingState.model) return;
 
   // In-memory cache (respect limit, evict oldest on overflow). Insertion
   // order = approximate LRU because Map preserves it; evicting the first
@@ -398,7 +526,7 @@ export function storeEmbedding(dtuId, vec) {
   if (_db) {
     try {
       const buf = Buffer.from(vec.buffer, vec.byteOffset, vec.byteLength);
-      _db.prepare("INSERT OR REPLACE INTO embedding_cache (dtu_id, embedding, created_at) VALUES (?, ?, ?)").run(dtuId, buf, new Date().toISOString());
+      _db.prepare(`INSERT OR REPLACE INTO ${embeddingState.table} (dtu_id, embedding, created_at) VALUES (?, ?, ?)`).run(dtuId, buf, new Date().toISOString());
     } catch {
       // Table may not exist yet — silent
     }
@@ -407,7 +535,8 @@ export function storeEmbedding(dtuId, vec) {
   // Qdrant ANN index (Item 1) — fire-and-forget, no-op unless VECTOR_DB=qdrant +
   // reachable. Never blocks the write; the in-process cache above stays the
   // source of truth + offline fallback.
-  if (_qdrant?.configured?.()) {
+  // The Qdrant collection is sized for the primary model only.
+  if (embeddingState.table === PRIMARY_TABLE && _qdrant?.configured?.()) {
     _qdrant.upsert(dtuId, vec).catch(() => { /* degrade-gracefully */ });
   }
 }
@@ -431,7 +560,7 @@ export function removeEmbedding(dtuId) {
   embeddingCache.delete(dtuId);
   if (_db) {
     try {
-      _db.prepare("DELETE FROM embedding_cache WHERE dtu_id = ?").run(dtuId);
+      for (const t of _embeddingTables()) _db.prepare(`DELETE FROM ${t} WHERE dtu_id = ?`).run(dtuId);
     } catch (_e) { logger.debug('embeddings', 'silent', { error: _e?.message }); }
   }
 }
@@ -467,9 +596,11 @@ export async function embedDTU(dtu) {
   if (!text.trim()) return "empty";
 
   try {
+    const model = embeddingState.model;
     const vec = await embed(text);
     if (vec) {
-      storeEmbedding(dtu.id, vec);
+      if (model !== embeddingState.model) return "model_switched";
+      storeEmbedding(dtu.id, vec, model);
       return "embedded";
     }
     return "embed_failed";
@@ -496,6 +627,9 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null, governed 
   // CONCORD_EMBED_GOVERNED=1): then the background governor throttles each
   // call and pauses the backfill whenever its breaker is open (chat strain,
   // host pressure, background brain/tunnel down).
+  // The governor gates the POD's background brain. The local CPU embedder
+  // runs in its own worker thread and is not behind that breaker.
+  if (embeddingState.backend !== "ollama") governed = false;
   if (!governed && !presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
   if (!embeddingState.available) {
     return { embedded: 0, skipped: 0, errors: 0, reason: "embeddings_unavailable" };
@@ -610,6 +744,9 @@ export function getEmbeddingStatus(totalDTUs = 0) {
   return {
     available: embeddingState.available,
     model: embeddingState.model,
+    backend: embeddingState.backend,
+    table: embeddingState.table,
+    reason: embeddingState.reason,
     dimension: embeddingState.dimension,
     ollamaUrl: embeddingState.ollamaUrl,
     cached,
@@ -685,7 +822,7 @@ function _loadEmbeddingsFromDb() {
 
   try {
     // Load from dedicated embedding_cache table
-    const rows = _db.prepare("SELECT dtu_id, embedding FROM embedding_cache").all();
+    const rows = _db.prepare(`SELECT dtu_id, embedding FROM ${embeddingState.table}`).all();
     let loaded = 0;
 
     for (const row of rows) {
@@ -709,7 +846,7 @@ function _loadEmbeddingsFromDb() {
     }
 
     // Migration: also check legacy dtus table if embedding_cache is empty
-    if (loaded === 0) {
+    if (loaded === 0 && embeddingState.table === PRIMARY_TABLE) {
       try {
         const tableInfo = _db.prepare("PRAGMA table_info(dtus)").all();
         const hasEmbeddingCol = tableInfo.some(col => col.name === "embedding");
@@ -777,6 +914,9 @@ export function getEmbeddingCacheSize() {
 
 export default {
   initEmbeddings,
+  setLocalEmbedder,
+  reprobeEmbeddings,
+  tableForModel,
   embed,
   cosineSimilarity,
   findSimilar,

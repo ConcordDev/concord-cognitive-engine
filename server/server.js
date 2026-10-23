@@ -144,6 +144,8 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
+import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
+import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
@@ -2386,8 +2388,28 @@ import {
   initEmbeddings, embed, cosineSimilarity, findSimilar, semanticSearch,
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
-  trimEmbeddingCache, getEmbeddingCacheSize,
+  trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
 } from "./embeddings.js";
+
+// One backfill at a time. Started at boot, when the CPU embedder is
+// registered as the fallback, and when a re-probe switches models.
+let _semanticBackfillRunning = false;
+function startSemanticBackfill(trigger) {
+  if (_semanticBackfillRunning || !isEmbeddingAvailable() || !(STATE.dtus?.size > 0)) return false;
+  _semanticBackfillRunning = true;
+  const st = getEmbeddingStatus(STATE.dtus.size);
+  structuredLog("info", "backfill_start", { dtuCount: STATE.dtus.size, trigger, model: st.model, backend: st.backend });
+  backfillEmbeddings(STATE.dtus, {
+    onProgress: ({ progress, total, embedded, errors }) => {
+      if (progress % 100 === 0 || progress === total) {
+        structuredLog("info", "backfill_progress", { progress, total, embedded, errors });
+      }
+    },
+  })
+    .catch(e => structuredLog("warn", "backfill_error", { error: String(e?.message || e) }))
+    .finally(() => { _semanticBackfillRunning = false; });
+  return true;
+}
 import {
   initSemanticCache, semanticCacheCheck, recordCacheSatisfaction,
   warmRelatedQueries, getCacheStats,
@@ -3404,9 +3426,9 @@ async function gracefulShutdown(signal) {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, new Date().toISOString());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      const seq = _stateMutationSeq;
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(seq);
     }
     structuredLog("info", "shutdown_state_saved", {});
   } catch (e) {
@@ -9781,6 +9803,10 @@ if (String(process.env.AUTO_BACKUP || "true").toLowerCase() === "true") {
 // uses. Declared here (before the periodic saver below and before
 // saveStateDebounced's first call) so neither consumer hits the TDZ.
 let _stateMutationSeq = 0;
+// Which mutation seq is on disk. Lets an async save that finishes AFTER a
+// newer sync save discard itself instead of renaming an older snapshot over
+// the newer one. See lib/state-file-write.js.
+const _stateSnapshotOrder = createSnapshotOrdering();
 let _lastPeriodicSaveHash = "";
 let _lastPeriodicSaveSeq = -1;
 trackedSetInterval(() => {
@@ -9807,9 +9833,8 @@ trackedSetInterval(() => {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, new Date().toISOString());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(_lastPeriodicSaveSeq);
     }
     structuredLog("debug", "periodic_state_save", { sizeKb: Math.round(data.length / 1024) });
   } catch (e) {
@@ -13160,6 +13185,7 @@ function saveStateDebounced() {
     if (_saveTimer) return;
     _saveTimer = setTimeout(async () => {
       _saveTimer = null;
+      let tmpPath = null;
       try {
         // Always use compact JSON (no pretty-print) to halve string memory
         let savedSeq = _stateMutationSeq;
@@ -13190,10 +13216,20 @@ function saveStateDebounced() {
         // the event loop for 4165 ms (see lib/chunked-write.js). JSON + rename
         // is crash-safe and keeps maxGap ~1 ms; loadStateFromDisk prefers the
         // newer of JSON vs SQLite by savedAt.
+        // Unique tmp per write: this path yields mid-write, and a sync save
+        // landing in that gap used to rename the shared `.tmp` out from under
+        // it (ENOENT `state_save_failed`). If a newer snapshot reached disk
+        // while this one was writing, drop this one rather than regress it.
         if (typeof STATE_PATH === "string") {
-          const tmpPath = STATE_PATH + ".tmp";
+          tmpPath = uniqueTmpPath(STATE_PATH);
           await writeFileChunkedYielding(tmpPath, data);
-          await fs.promises.rename(tmpPath, STATE_PATH);
+          if (_stateSnapshotOrder.isCurrent(savedSeq)) {
+            await fs.promises.rename(tmpPath, STATE_PATH);
+            _stateSnapshotOrder.committed(savedSeq);
+          } else {
+            await fs.promises.unlink(tmpPath).catch(() => {});
+          }
+          tmpPath = null;
         }
         // Optional sync SQLite upsert (off by default on the debounced path).
         // sync/critical/shutdown still write SQLite unconditionally.
@@ -13215,7 +13251,7 @@ function saveStateDebounced() {
         if (typeof realtimeEmit === "function") {
           realtimeEmit("health:pulse", { component: "state_save", status: "critical", score: 0, metrics: { failures: STATE._saveFailures, error: String(e?.message || e) }, timestamp: Date.now() });
         }
-        try { fs.unlinkSync(STATE_PATH + ".tmp"); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        if (tmpPath) { try { fs.unlinkSync(tmpPath); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }
       }
     }, STATE_SAVE_COALESCE_MS);
   } catch (e) {
@@ -13241,9 +13277,8 @@ function saveStateSync() {
       const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
       stmt.run(data, VERSION, nowISO());
     } else if (typeof STATE_PATH === "string") {
-      const tmpPath = STATE_PATH + ".tmp";
-      fs.writeFileSync(tmpPath, data, "utf-8");
-      fs.renameSync(tmpPath, STATE_PATH);
+      writeFileAtomicSync(STATE_PATH, data);
+      _stateSnapshotOrder.committed(savedSeq);
     }
     // Keep the 5-min periodic safety net's bookkeeping honest: this state
     // is on disk now, so an unchanged seq must not trigger a re-serialize.
@@ -13311,6 +13346,17 @@ process.on("beforeExit", () => {
     console.error("[beforeExit] State save failed:", e.message);
   }
 });
+
+// Clear tmp snapshots a crash left mid-write (each write uses its own tmp
+// name now, so without this sweep they would accumulate at ~30 MB apiece).
+// Only the writer sweeps — a read replica sharing DATA_DIR must not delete
+// the writer's in-flight tmp.
+if (!READ_REPLICA) {
+  try {
+    const removed = sweepStaleStateTmps(STATE_PATH);
+    if (removed) structuredLog("info", "state_tmp_swept", { removed });
+  } catch (_e) { /* best effort */ }
+}
 
 const STATE_DISK = loadStateFromDisk();
 
@@ -20127,6 +20173,25 @@ if (String(process.env.EMBEDDINGS_ENABLED || "true").toLowerCase() === "true") {
       // Rebuild index in background
       setTimeout(() => rebuildEmbeddingIndex(), 5000);
     }
+    // The CPU embedder (Xenova MiniLM, worker thread) doubles as the semantic
+    // layer's fallback when no Ollama embedding model is reachable — e.g. the
+    // Mac host with the GPU pod down. Vectors are kept per model, never mixed.
+    if (result.ok && result.backend === "xenova") {
+      try {
+        const activated = setLocalEmbedder({
+          model: "Xenova/all-MiniLM-L6-v2",
+          dimension: 384,
+          embed: async (text) => {
+            const r = await generateEmbedding(text);
+            if (!r.ok) throw new Error(r.error || "local_embed_failed");
+            return r.embedding;
+          },
+        });
+        if (activated) startSemanticBackfill("local_embedder");
+      } catch (e) {
+        structuredLog("warn", "local_embedder_register_failed", { error: String(e?.message || e) });
+      }
+    }
   });
 }
 
@@ -22025,16 +22090,7 @@ _unrefInTest(setTimeout(async () => {
     structuredLog("info", "semantic_intelligence_init", { embeddingsAvailable: isEmbeddingAvailable() });
 
     // Background backfill: embed existing DTUs that don't have embeddings
-    if (isEmbeddingAvailable() && STATE.dtus.size > 0) {
-      structuredLog("info", "backfill_start", { dtuCount: STATE.dtus.size });
-      backfillEmbeddings(STATE.dtus, {
-        onProgress: ({ progress, total, embedded, errors }) => {
-          if (progress % 100 === 0 || progress === total) {
-            structuredLog("info", "backfill_progress", { progress, total, embedded, errors });
-          }
-        },
-      }).catch(e => structuredLog("warn", "backfill_error", { error: String(e?.message || e) }));
-    }
+    startSemanticBackfill("boot");
   } catch (e) {
     structuredLog("warn", "semantic_intelligence_init_error", { error: String(e?.message || e) });
   }
@@ -43523,6 +43579,12 @@ async function governorTick(reason="heartbeat") {
       // Embeddings health check — every 100th tick
       if (_tick % TICK_FREQUENCIES.EMBEDDINGS_CHECK === 0) {
         await runHeartbeatModule("embeddings_check", async () => {
+          // While on the CPU fallback (or with nothing), check whether the
+          // primary Ollama embedding model is back; switch + backfill if so.
+          try {
+            const re = await reprobeEmbeddings();
+            if (re.changed) startSemanticBackfill("reprobe");
+          } catch (_e) { /* probe is best-effort */ }
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
@@ -44141,42 +44203,31 @@ async function _runDtuConsolidationCycle(ctx) {
   });
   await _markConsolidationRan(startedAt);
   return runHeartbeatModule("consolidation", async () => {
+    // Budget covers promotion only — see lib/consolidation-cycle.js.
     const CONSO_BUDGET_MS = 4000;
-    const startedAt = Date.now();
-    try {
-      const clusterResult = await runMacro("dtu", "cluster", {
+    const result = await runConsolidationCycle({
+      budgetMs: CONSO_BUDGET_MS,
+      clusterRegular: () => runMacro("dtu", "cluster", {
         minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
         maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
         fromTier: "regular",
-      }, cycleCtx);
-      if (clusterResult?.clusters?.length > 0) {
-        await _promoteClusterBatch(cycleCtx, clusterResult.clusters, {
-          tier: "mega",
-          minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
-          budgetMs: CONSO_BUDGET_MS,
-          startedAt,
-        });
-      }
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-
-    const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
-    if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION && Date.now() - startedAt <= CONSO_BUDGET_MS) {
-      try {
-        const megaClusters = await runMacro("dtu", "cluster", {
-          minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-          maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
-          fromTier: "mega",
-        }, cycleCtx);
-        if (megaClusters?.clusters?.length > 0) {
-          await _promoteClusterBatch(cycleCtx, megaClusters.clusters, {
-            tier: "hyper",
-            minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-            budgetMs: CONSO_BUDGET_MS,
-            startedAt,
-          });
-        }
-      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-    }
+      }, cycleCtx),
+      clusterMega: () => runMacro("dtu", "cluster", {
+        minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+        maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
+        fromTier: "mega",
+      }, cycleCtx),
+      promoteBatch: (clusters, tier, startedAt) => _promoteClusterBatch(cycleCtx, clusters, {
+        tier,
+        minCluster: tier === "hyper" ? CONSOLIDATION.HYPER_MIN_MEGAS : CONSOLIDATION.MEGA_MIN_CLUSTER,
+        budgetMs: CONSO_BUDGET_MS,
+        startedAt,
+      }),
+      megaPopulation: () => Array.from(STATE.dtus.values()).filter(d => d.tier === "mega").length,
+      hyperMinPopulation: CONSOLIDATION.HYPER_MIN_POPULATION,
+      onError: (_e) => logger.debug('server', 'silent catch', { error: _e?.message }),
+    });
+    structuredLog("info", "consolidation_cycle_done", result);
     return { ok: true };
   });
 }
@@ -75973,6 +76024,43 @@ try {
   }, 5_000).unref();
 } catch (e) {
   structuredLog("info", "event_loop_monitor_unavailable", { error: String(e?.message || e) });
+}
+
+// Stall attribution (2026-10-22). The monitors above measure how long the
+// loop stalled; nearly every live spike still logged "unattributed" because
+// only a few subsystems stamp recordLagWork(). Two runtime sources close that:
+//  - GC pauses (always on, kill-switch CONCORD_GC_PAUSE_LOG=0): each long
+//    pause is logged and stamped into the attribution ring as `gc:<kind>`,
+//    so a spike caused by GC (heap near ceiling, or heap paged to swap) names
+//    itself instead of blaming nothing.
+//  - Sampling CPU profiler (opt-in, CONCORD_LAG_PROFILER=1): one capture of
+//    CONCORD_LAG_PROFILER_DURATION_MS (default 10 min) after boot, then every
+//    busy run >= CONCORD_LAG_PROFILER_STALL_MS is logged (event_loop_busy_profile)
+//    with the exact function/line in our source that kept the loop busy. See lib/lag-profiler.js.
+try {
+  const lagProf = await import("./lib/lag-profiler.js");
+  if (process.env.CONCORD_GC_PAUSE_LOG !== "0") {
+    await lagProf.startGcPauseLogger({
+      minMs: Number(process.env.CONCORD_GC_PAUSE_LOG_MS) || 250,
+      onPause: (p) => {
+        try { presenceIdle.recordLagWork(`gc:${p.kind}`, p.ms); } catch (_e) { /* informational */ }
+        structuredLog("warn", "gc_pause", p);
+      },
+    });
+  }
+  if (process.env.CONCORD_LAG_PROFILER === "1") {
+    lagProf.startLagProfiler({
+      durationMs: Number(process.env.CONCORD_LAG_PROFILER_DURATION_MS) || 10 * 60_000,
+      samplingIntervalUs: Number(process.env.CONCORD_LAG_PROFILER_INTERVAL_US) || 10_000,
+      minStallMs: Number(process.env.CONCORD_LAG_PROFILER_STALL_MS) || 500,
+      appRoot: new URL("./", import.meta.url).href,
+      // Busy runs, not single blocks — see findStalls() doc.
+      onStall: (f) => structuredLog("warn", "event_loop_busy_profile", f),
+      onEvent: (event, data) => structuredLog("info", event, data),
+    });
+  }
+} catch (e) {
+  structuredLog("info", "lag_attribution_unavailable", { error: String(e?.message || e) });
 }
 
 // Track C (event-loop unblocking audit) — the log-only monitor above turns

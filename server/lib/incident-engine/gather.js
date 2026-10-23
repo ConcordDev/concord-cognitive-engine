@@ -25,6 +25,14 @@ export function readSentinelAlerts(sinceMinutes = 10, dbPath = DEFAULT_SENTINEL_
   const conn = openRo(dbPath);
   if (!conn) return [];
   try {
+    // `ORDER BY +id` (not `id`): with a plain `ORDER BY id DESC LIMIT 30`
+    // SQLite walks the rowid b-tree newest→oldest and ignores the created_at
+    // index — a full scan of the ~58 MB table whenever few rows are recent,
+    // on the main thread, every incident-watch tick (profiled live
+    // 2026-10-22: readSentinelAlerts 2.1 s per 10 min). The unary + stops the
+    // rowid being used for ordering, so the planner range-scans
+    // idx_sentinel_alerts_created_at and sorts the few matches. Same rows,
+    // same order (pinned by tests/incident-gather-sentinel-query.test.js).
     // Use a sargable UTC cutoff so an index on created_at can be used.
     // created_at is SQLite CURRENT_TIMESTAMP text ("YYYY-MM-DD HH:MM:SS", UTC),
     // so the cutoff must use the same format: an ISO "T...Z" string would sort
@@ -38,7 +46,7 @@ export function readSentinelAlerts(sinceMinutes = 10, dbPath = DEFAULT_SENTINEL_
         `SELECT id, observed_at, source, severity, message, delivered_via, trace_id
          FROM sentinel_alerts
          WHERE created_at > ?
-         ORDER BY id DESC LIMIT 30`,
+         ORDER BY +id DESC LIMIT 30`,
       )
       .all(cutoff);
     return rows.map((r) => ({
