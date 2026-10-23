@@ -85,7 +85,7 @@ export function findConversationCandidates(db, worldId, opts = {}) {
       candidates.push({
         a: a.id, b: b.id,
         nameA: a.name, nameB: b.name,
-        workA: a.npc_type || a.archetype, workB: b.npc_type || b.archetype,
+        workA: _work(a), workB: _work(b),
         factionA, factionB,
         sameFaction: !!(factionA && factionA === factionB),
         worldId,
@@ -94,6 +94,8 @@ export function findConversationCandidates(db, worldId, opts = {}) {
   }
   return candidates;
 }
+
+const _work = (n) => [n.npc_type, n.archetype].find((w) => w && !["generic", "humanoid", "citizen"].includes(w)) || "trade";
 
 // ── Deterministic opener (no LLM) ─────────────────────────────────────────
 // Six grounded patterns; the seeded RNG selects one based on the pair +

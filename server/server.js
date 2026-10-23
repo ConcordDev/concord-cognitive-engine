@@ -9813,7 +9813,6 @@ let _stateMutationSeq = 0;
 // newer sync save discard itself instead of renaming an older snapshot over
 // the newer one. See lib/state-file-write.js.
 const _stateSnapshotOrder = createSnapshotOrdering();
-let _lastPeriodicSaveHash = "";
 let _lastPeriodicSaveSeq = -1;
 trackedSetInterval(() => {
   try {
@@ -9829,20 +9828,17 @@ trackedSetInterval(() => {
     // the ~291 mutation call sites already goes through, so an unchanged seq
     // means no mutation path ran at all.
     if (_stateMutationSeq === _lastPeriodicSaveSeq) return;
-    _lastPeriodicSaveSeq = _stateMutationSeq;
-
-    const data = JSON.stringify(_serializeState());
-    const hash = data.length.toString(); // second-line guard, now rarely reached
-    if (hash === _lastPeriodicSaveHash) return; // no changes
-    _lastPeriodicSaveHash = hash;
-    if (USE_SQLITE_STATE && db) {
-      const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
-      stmt.run(data, VERSION, new Date().toISOString());
-    } else if (typeof STATE_PATH === "string") {
-      writeFileAtomicSync(STATE_PATH, data);
-      _stateSnapshotOrder.committed(_lastPeriodicSaveSeq);
-    }
-    structuredLog("debug", "periodic_state_save", { sizeKb: Math.round(data.length / 1024) });
+    // A debounced save is scheduled or writing: it will cover these
+    // mutations. Under steady mutation (NPCs, emergents) the seq almost
+    // always differs here, so this net used to run a full synchronous
+    // ~40 MB JSON.stringify + SQLite INSERT every 5 minutes — 3-4.5 s of
+    // blocked event loop in the live CPU profile (2026-10-23).
+    if (_saveTimer || _stateSaveInFlight) return;
+    // Mutations recorded but nothing saving them (a debounced save failed):
+    // run the same yielding save. Shutdown and saveStateSync still write
+    // synchronously, SQLite included.
+    _runAsyncStateSave().catch(() => {});
+    structuredLog("debug", "periodic_state_save", { seq: _stateMutationSeq });
   } catch (e) {
     structuredLog("error", "periodic_state_save_failed", { error: String(e?.message || e) });
   }
@@ -13156,6 +13152,95 @@ let _chunkedSaveTears = 0;
 // stranded in this file's module scope.
 const _stringifyStateChunked = (snapshot) => stringifyChunked(snapshot);
 
+// The yielding state save (chunked stringify + chunked write + ordered
+// rename). Shared by the debounced save and the 5-minute safety net, so
+// neither blocks the event loop. _stateSaveInFlight lets the safety net see
+// that a save is already running.
+let _stateSaveInFlight = false;
+async function _runAsyncStateSave() {
+  _saveTimer = null;
+  // Already writing: come back after the coalesce window rather than drop
+  // these mutations (and never leave _saveTimer set with nothing scheduled,
+  // which would stop saveStateDebounced from ever scheduling again).
+  if (_stateSaveInFlight) {
+    _saveTimer = setTimeout(_runAsyncStateSave, STATE_SAVE_COALESCE_MS);
+    return;
+  }
+  _stateSaveInFlight = true;
+  try {
+    let tmpPath = null;
+    try {
+      // Always use compact JSON (no pretty-print) to halve string memory
+      let savedSeq = _stateMutationSeq;
+      let data;
+      if (_CHUNKED_SAVE_ENABLED) {
+        data = await _stringifyStateChunked(_serializeState());
+        // TEAR CHECK. The chunked path yields, so a mutation landing between
+        // keys would produce a snapshot mixing pre- and post-mutation values
+        // — something the atomic sync path cannot do. Rather than persist a
+        // possibly-torn snapshot, fall back to one atomic stringify. Under
+        // the idle/low-mutation conditions this timer usually fires in, the
+        // fast path holds; under heavy mutation we pay exactly today's cost,
+        // never worse, and never write an inconsistent snapshot.
+        if (_stateMutationSeq !== savedSeq) {
+          _chunkedSaveTears++;
+          // Re-stamp BEFORE re-serializing: the atomic snapshot below
+          // reflects state as of this moment, and claiming the older seq
+          // would under-report what is on disk to the periodic safety net.
+          savedSeq = _stateMutationSeq;
+          data = JSON.stringify(_serializeState());
+        }
+      } else {
+        data = JSON.stringify(_serializeState());
+      }
+
+      // Always durable-write the JSON snapshot with yielding I/O first.
+      // INC-100: a sync better-sqlite3 INSERT of this ~38 MB blob blocked
+      // the event loop for 4165 ms (see lib/chunked-write.js). JSON + rename
+      // is crash-safe and keeps maxGap ~1 ms; loadStateFromDisk prefers the
+      // newer of JSON vs SQLite by savedAt.
+      // Unique tmp per write: this path yields mid-write, and a sync save
+      // landing in that gap used to rename the shared `.tmp` out from under
+      // it (ENOENT `state_save_failed`). If a newer snapshot reached disk
+      // while this one was writing, drop this one rather than regress it.
+      if (typeof STATE_PATH === "string") {
+        tmpPath = uniqueTmpPath(STATE_PATH);
+        await writeFileChunkedYielding(tmpPath, data);
+        if (_stateSnapshotOrder.isCurrent(savedSeq)) {
+          await fs.promises.rename(tmpPath, STATE_PATH);
+          _stateSnapshotOrder.committed(savedSeq);
+        } else {
+          await fs.promises.unlink(tmpPath).catch(() => {});
+        }
+        tmpPath = null;
+      }
+      // Optional sync SQLite upsert (off by default on the debounced path).
+      // sync/critical/shutdown still write SQLite unconditionally.
+      if (USE_SQLITE_STATE && db && _SQLITE_ON_DEBOUNCE) {
+        const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
+        stmt.run(data, VERSION, nowISO());
+      }
+      // Tell the 5-min periodic safety net this state is already on disk
+      // so it doesn't re-serialize an unchanged 28 MB two minutes later.
+      _lastPeriodicSaveSeq = savedSeq;
+      // NOTE: no forced global.gc() here. A full synchronous GC right
+      // after allocating a 28 MB string was the worst possible timing —
+      // it doubled the stall on the exact hot path this coalescing exists
+      // to protect. The memory-pressure watchdog (lib/memory-pressure.js)
+      // already runs rate-limited GC when the heap actually needs it.
+    } catch (e) {
+      structuredLog("error", "state_save_failed", { error: String(e?.message || e) });
+      STATE._saveFailures = (STATE._saveFailures || 0) + 1;
+      if (typeof realtimeEmit === "function") {
+        realtimeEmit("health:pulse", { component: "state_save", status: "critical", score: 0, metrics: { failures: STATE._saveFailures, error: String(e?.message || e) }, timestamp: Date.now() });
+      }
+      if (tmpPath) { try { fs.unlinkSync(tmpPath); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }
+    }
+  } finally {
+    _stateSaveInFlight = false;
+  }
+}
+
 function saveStateDebounced() {
   // Read-only replica: the writer owns state persistence. A replica that gets
   // here (e.g. via a stray in-memory mutation during a read) must not schedule
@@ -13189,77 +13274,7 @@ function saveStateDebounced() {
     // periodic safety net. With a fixed window, the save fires at most
     // STATE_SAVE_COALESCE_MS after the FIRST unsaved mutation, always.
     if (_saveTimer) return;
-    _saveTimer = setTimeout(async () => {
-      _saveTimer = null;
-      let tmpPath = null;
-      try {
-        // Always use compact JSON (no pretty-print) to halve string memory
-        let savedSeq = _stateMutationSeq;
-        let data;
-        if (_CHUNKED_SAVE_ENABLED) {
-          data = await _stringifyStateChunked(_serializeState());
-          // TEAR CHECK. The chunked path yields, so a mutation landing between
-          // keys would produce a snapshot mixing pre- and post-mutation values
-          // — something the atomic sync path cannot do. Rather than persist a
-          // possibly-torn snapshot, fall back to one atomic stringify. Under
-          // the idle/low-mutation conditions this timer usually fires in, the
-          // fast path holds; under heavy mutation we pay exactly today's cost,
-          // never worse, and never write an inconsistent snapshot.
-          if (_stateMutationSeq !== savedSeq) {
-            _chunkedSaveTears++;
-            // Re-stamp BEFORE re-serializing: the atomic snapshot below
-            // reflects state as of this moment, and claiming the older seq
-            // would under-report what is on disk to the periodic safety net.
-            savedSeq = _stateMutationSeq;
-            data = JSON.stringify(_serializeState());
-          }
-        } else {
-          data = JSON.stringify(_serializeState());
-        }
-
-        // Always durable-write the JSON snapshot with yielding I/O first.
-        // INC-100: a sync better-sqlite3 INSERT of this ~38 MB blob blocked
-        // the event loop for 4165 ms (see lib/chunked-write.js). JSON + rename
-        // is crash-safe and keeps maxGap ~1 ms; loadStateFromDisk prefers the
-        // newer of JSON vs SQLite by savedAt.
-        // Unique tmp per write: this path yields mid-write, and a sync save
-        // landing in that gap used to rename the shared `.tmp` out from under
-        // it (ENOENT `state_save_failed`). If a newer snapshot reached disk
-        // while this one was writing, drop this one rather than regress it.
-        if (typeof STATE_PATH === "string") {
-          tmpPath = uniqueTmpPath(STATE_PATH);
-          await writeFileChunkedYielding(tmpPath, data);
-          if (_stateSnapshotOrder.isCurrent(savedSeq)) {
-            await fs.promises.rename(tmpPath, STATE_PATH);
-            _stateSnapshotOrder.committed(savedSeq);
-          } else {
-            await fs.promises.unlink(tmpPath).catch(() => {});
-          }
-          tmpPath = null;
-        }
-        // Optional sync SQLite upsert (off by default on the debounced path).
-        // sync/critical/shutdown still write SQLite unconditionally.
-        if (USE_SQLITE_STATE && db && _SQLITE_ON_DEBOUNCE) {
-          const stmt = db.prepare("INSERT OR REPLACE INTO state_snapshots (id, data, version, saved_at) VALUES (1, ?, ?, ?)");
-          stmt.run(data, VERSION, nowISO());
-        }
-        // Tell the 5-min periodic safety net this state is already on disk
-        // so it doesn't re-serialize an unchanged 28 MB two minutes later.
-        _lastPeriodicSaveSeq = savedSeq;
-        // NOTE: no forced global.gc() here. A full synchronous GC right
-        // after allocating a 28 MB string was the worst possible timing —
-        // it doubled the stall on the exact hot path this coalescing exists
-        // to protect. The memory-pressure watchdog (lib/memory-pressure.js)
-        // already runs rate-limited GC when the heap actually needs it.
-      } catch (e) {
-        structuredLog("error", "state_save_failed", { error: String(e?.message || e) });
-        STATE._saveFailures = (STATE._saveFailures || 0) + 1;
-        if (typeof realtimeEmit === "function") {
-          realtimeEmit("health:pulse", { component: "state_save", status: "critical", score: 0, metrics: { failures: STATE._saveFailures, error: String(e?.message || e) }, timestamp: Date.now() });
-        }
-        if (tmpPath) { try { fs.unlinkSync(tmpPath); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }
-      }
-    }, STATE_SAVE_COALESCE_MS);
+    _saveTimer = setTimeout(_runAsyncStateSave, STATE_SAVE_COALESCE_MS);
   } catch (e) {
     structuredLog("error", "save_state_debounce_failed", { error: String(e?.message || e) });
   }
