@@ -145,6 +145,7 @@ import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat, getRegistryScheduleSummary, getRegistrySkipStats } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
+import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
@@ -44202,42 +44203,31 @@ async function _runDtuConsolidationCycle(ctx) {
   });
   await _markConsolidationRan(startedAt);
   return runHeartbeatModule("consolidation", async () => {
+    // Budget covers promotion only — see lib/consolidation-cycle.js.
     const CONSO_BUDGET_MS = 4000;
-    const startedAt = Date.now();
-    try {
-      const clusterResult = await runMacro("dtu", "cluster", {
+    const result = await runConsolidationCycle({
+      budgetMs: CONSO_BUDGET_MS,
+      clusterRegular: () => runMacro("dtu", "cluster", {
         minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
         maxClusters: CONSOLIDATION.MEGA_MAX_PER_CYCLE,
         fromTier: "regular",
-      }, cycleCtx);
-      if (clusterResult?.clusters?.length > 0) {
-        await _promoteClusterBatch(cycleCtx, clusterResult.clusters, {
-          tier: "mega",
-          minCluster: CONSOLIDATION.MEGA_MIN_CLUSTER,
-          budgetMs: CONSO_BUDGET_MS,
-          startedAt,
-        });
-      }
-    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-
-    const megaDtus = Array.from(STATE.dtus.values()).filter(d => d.tier === "mega");
-    if (megaDtus.length >= CONSOLIDATION.HYPER_MIN_POPULATION && Date.now() - startedAt <= CONSO_BUDGET_MS) {
-      try {
-        const megaClusters = await runMacro("dtu", "cluster", {
-          minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-          maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
-          fromTier: "mega",
-        }, cycleCtx);
-        if (megaClusters?.clusters?.length > 0) {
-          await _promoteClusterBatch(cycleCtx, megaClusters.clusters, {
-            tier: "hyper",
-            minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
-            budgetMs: CONSO_BUDGET_MS,
-            startedAt,
-          });
-        }
-      } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-    }
+      }, cycleCtx),
+      clusterMega: () => runMacro("dtu", "cluster", {
+        minCluster: CONSOLIDATION.HYPER_MIN_MEGAS,
+        maxClusters: CONSOLIDATION.HYPER_MAX_PER_CYCLE,
+        fromTier: "mega",
+      }, cycleCtx),
+      promoteBatch: (clusters, tier, startedAt) => _promoteClusterBatch(cycleCtx, clusters, {
+        tier,
+        minCluster: tier === "hyper" ? CONSOLIDATION.HYPER_MIN_MEGAS : CONSOLIDATION.MEGA_MIN_CLUSTER,
+        budgetMs: CONSO_BUDGET_MS,
+        startedAt,
+      }),
+      megaPopulation: () => Array.from(STATE.dtus.values()).filter(d => d.tier === "mega").length,
+      hyperMinPopulation: CONSOLIDATION.HYPER_MIN_POPULATION,
+      onError: (_e) => logger.debug('server', 'silent catch', { error: _e?.message }),
+    });
+    structuredLog("info", "consolidation_cycle_done", result);
     return { ok: true };
   });
 }
