@@ -281,7 +281,7 @@ describe("runSelfContinuation", () => {
       assert.ok(r.text.includes("Round 1 has enough text"));
       assert.ok(existsSync(killFile));
     } finally {
-      try { unlinkSync(killFile); } catch {}
+      try { unlinkSync(killFile); } catch { /* already gone */ }
     }
   });
 

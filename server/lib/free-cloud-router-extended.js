@@ -23,7 +23,7 @@ const RETRY_STATUS = /_(429|503):/;
 // 401 = bad key (skip the provider). 403 can be per model ("not in your subscription"), so it moves on.
 const AUTH_STATUS = /_401:/;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 const retryDelayMs = () => {
   const v = Number(process.env.CONCORD_FREE_CLOUD_RETRY_MS);
   return Number.isFinite(v) && v >= 0 ? v : 1000;

@@ -272,9 +272,9 @@ function forwardPass(tree, q, qdot, qddot, gravity, fixedBase, basePos, baseR) {
 /** Matrix multiply (3x3). */
 function matMul(A, B) {
   const r = [[0,0,0],[0,0,0],[0,0,0]];
-  for (let i = 0; i < 3; i += 1) for (let j = 0; j < 3; j += 1) {
+  for (let i = 0; i < 3; i += 1) {for (let j = 0; j < 3; j += 1) {
     r[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
-  }
+  }}
   return r;
 }
 

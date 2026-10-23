@@ -23,11 +23,11 @@ function fakeFetch() {
     u = String(u);
     if (u.endsWith("/rex/release.json")) return json({ archiveUrl: "/apps/archive/X", books: { [BOOK]: { defaultVersion: "v1" } } });
     if (u.includes("/apps/cms/api/v2/pages/")) return json({ items: [{ meta: { slug: "college-physics-2e" }, title: "College Physics 2e", cnx_id: BOOK, book_state: "live" }] });
-    if (u.endsWith(`/contents/${BOOK}@v1.json`)) return json({ tree: { contents: [{ contents: [
+    if (u.endsWith(`/contents/${BOOK}@v1.json`)) {return json({ tree: { contents: [{ contents: [
       { id: "p1@v1", title: PAGES.p1.title, slug: PAGES.p1.slug, toc_target_type: "numbered-section" },
       { id: "p2@v1", title: PAGES.p2.title, slug: PAGES.p2.slug, toc_target_type: "numbered-section" },
       { id: "p3@v1", title: "Problems", slug: "problems", toc_target_type: "composite-page" },
-    ] }] } });
+    ] }] } });}
     const m = u.match(/:(p\d)\.json$/);
     if (m && PAGES[m[1]]) return json({ content: PAGES[m[1]].content });
     return { ok: false, status: 404, json: async () => ({}) };

@@ -976,10 +976,10 @@ async function sportsResults(query, now = Date.now()) {
   const wanted = Object.entries(LEAGUE_WORDS).filter(([w]) => new RegExp(`\\b${w}\\b`).test(q)).map(([, l]) => l);
   const leagues = ESPN_LEAGUES.filter(([, l]) => !wanted.length || wanted.includes(l));
   const jobs = [];
-  for (const [path, label] of leagues) for (const d of dates) {
+  for (const [path, label] of leagues) {for (const d of dates) {
     jobs.push(fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${d}`, { headers: { "User-Agent": FEED_UA }, signal: AbortSignal.timeout(6000) })
       .then((r) => (r.ok ? r.json() : null)).then((j) => espnRows(j, label, query)).catch(() => []));
-  }
+  }}
   let rows = (await Promise.all(jobs)).flat();
   // A team named in the question narrows it ("did the Yankees win last night").
   const words = q.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !SEARCH_STOP.has(w) && !LEAGUE_WORDS[w] && !SPORT_FILLER_RE.test(w));

@@ -1403,23 +1403,39 @@ function uuid() {
   return 'vlt_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
 
+// Tags arrive from MCP clients. A client that builds them from missing fields
+// sends null / "pass:undefined" (live row vlt_mv5rrmr8_vztrld6i), and every
+// tag reader that calls string methods then throws on that row. Keep only
+// real, non-empty strings whose value part isn't a stringified undefined/null.
+export function cleanVaultTags(tags) {
+  if (!Array.isArray(tags)) return [];
+  const out = [];
+  for (const t of tags) {
+    if (typeof t !== 'string') continue;
+    const s = t.trim();
+    if (!s || /(^|:)(undefined|null)$/.test(s)) continue;
+    if (!out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
 export async function vaultWrite(db, args) {
   const namespace = String(args?.namespace || "").trim();
   const vaultType = String(args?.vault_type || "note").trim();
   const title = String(args?.title || "").trim();
   const content = String(args?.content || "").trim();
-  const tags = args?.tags || [];
+  const tags = cleanVaultTags(args?.tags);
   if (!namespace) return { ok: false, error: "namespace is required" };
   if (!title) return { ok: false, error: "title is required" };
   if (!content) return { ok: false, error: "content is required" };
 
   const id = uuid();
-  const fullTags = ['vault', 'vault_' + vaultType, namespace, ...(Array.isArray(tags) ? tags : [])];
+  const fullTags = ['vault', 'vault_' + vaultType, namespace, ...tags];
   const body = JSON.stringify({
     namespace,
     vault_type: vaultType,
     content,
-    tags: Array.isArray(tags) ? tags : [],
+    tags,
     written_at: new Date().toISOString(),
   });
 

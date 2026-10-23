@@ -47,15 +47,18 @@ export function createPodJobQueue({
     return new Promise((resolve) => {
       try {
         if (!hasWorker()) {
-          return resolve({ ok: false, error: "pod_worker_unavailable" });
+          resolve({ ok: false, error: "pod_worker_unavailable" });
+          return;
         }
 
         if (jobs.size >= maxQueued) {
-          return resolve({ ok: false, error: "pod_queue_full" });
+          resolve({ ok: false, error: "pod_queue_full" });
+          return;
         }
 
         if (JSON.stringify(payload).length > PAYLOAD_LIMIT) {
-          return resolve({ ok: false, error: "pod_payload_too_large" });
+          resolve({ ok: false, error: "pod_payload_too_large" });
+          return;
         }
 
         const id = crypto.randomUUID();

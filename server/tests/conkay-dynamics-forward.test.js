@@ -18,7 +18,7 @@ function simplePendulumTree(q) {
       { id: "base", parent: null, jointType: "fixed", axis: [1, 0, 0], origin: [0, 0, 0], mass: 0, com: [0, 0, 0], inertia: { Ixx: 1e-9, Iyy: 1e-9, Izz: 1e-9 } },
       { id: "bob", parent: "base", jointType: "revolute", axis: [1, 0, 0], origin: [0, 0, -1], mass: 1, com: [0, 0, -0.5], inertia: { Ixx: 1e-9, Iyy: 1/12, Izz: 1/12 } },
     ],
-  };
+  };
 }
 
 describe("dynamics.forward — forward dynamics integrator", () => {

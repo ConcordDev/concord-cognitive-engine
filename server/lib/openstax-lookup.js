@@ -227,7 +227,7 @@ export async function textbookLookup(query, opts = {}) {
   if (!ready.length && pending.length) {
     const first = pending.shift();
     try {
-      await Promise.race([buildBook(first, opts), new Promise((_, rej) => setTimeout(() => rej(new Error("still indexing")), waitMs))]);
+      await Promise.race([buildBook(first, opts), new Promise((_, rej) => { setTimeout(() => rej(new Error("still indexing")), waitMs); })]);
       ready.push(first);
     } catch { pending.unshift(first); }
   }
