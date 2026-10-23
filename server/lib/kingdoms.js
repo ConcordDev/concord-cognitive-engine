@@ -116,8 +116,9 @@ export function recomputeCitizenLoyalty(db, kingdomId) {
   let citizens = [];
   try {
     citizens = db.prepare(`
-      SELECT DISTINCT n.id FROM world_npcs n
+      SELECT n.id FROM world_npcs n
       WHERE n.faction = ? AND COALESCE(n.is_dead, 0) = 0
+      ORDER BY n.id
       LIMIT 500
     `).all(k.faction_id || "");
   } catch { /* table absent */ }

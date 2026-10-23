@@ -389,9 +389,14 @@ export function _combatStateFor(npcId) {
  *   change within one synchronous tick, so re-querying it per NPC is pure
  *   redundant DB work. Real production finding, 2026-08-23.
  */
-export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
+export function updateNPCCombatAI(npc, worldId, db, cachedPlayers, temperamentOn) {
   // Graceful skip if NPC has no position
   if (!npc || !npc.location) return;
+  // Read the kill-switch once. Every process.env read is a native call; this
+  // function read it up to 4x per NPC per tick, which a live CPU profile
+  // (2026-10-23) put at ~275 ms of each NPC tick. NPCSimulator#_tickWorld
+  // passes one value for the whole world-tick; direct callers fall back.
+  const tempOn = typeof temperamentOn === "boolean" ? temperamentOn : temperamentEnabled();
 
   const archetype = npc.archetype || 'default';
   let   profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
@@ -428,7 +433,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // state toward the nearest player, and grant a pacifist the capacity to engage
   // when emotion carries it into hostility. Off by default (CONCORD_TEMPERAMENT);
   // when off, effectiveAggro + profile stay exactly the archetype values above.
-  if (temperamentEnabled() && nearestPlayer) {
+  if (tempOn && nearestPlayer) {
     try {
       const r = resolveAggro(
         db, npc, { kind: 'player', id: nearestPlayer.userId },
@@ -474,7 +479,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // default (CONCORD_TEMPERAMENT); when off, cs.rung is untouched and the attack
   // path below behaves exactly as before. The climb forces a THREATENING (final
   // warning) tick before HOSTILE, so an NPC always warns before it strikes.
-  if (temperamentEnabled()) {
+  if (tempOn) {
     const tgt = targetRung({
       effectiveAggro,
       nearestDist,
@@ -572,7 +577,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
       // Temperament: hold fire until the NPC has climbed to HOSTILE — the
       // THREATENING final-warning tick must pass first. Off => attack now.
       if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS
-          && (!temperamentEnabled() || isEngaged(cs.rung))) {
+          && (!tempOn || isEngaged(cs.rung))) {
         cs._lastAttack = now;
         _performNPCAttack(npc, nearestPlayer, worldId, db, archetype);
       }
@@ -597,7 +602,7 @@ export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
 
   // Temperament: announce the break when the NPC first retreats (HP collapse) —
   // the FLEEING rung of the ladder. One bark on the transition into retreating.
-  if (temperamentEnabled() && cs.state === 'retreating' && prevState !== 'retreating') {
+  if (tempOn && cs.state === 'retreating' && prevState !== 'retreating') {
     _emitBark(npc, worldId, 'fleeing', barkFor('fleeing', archetype));
   }
 }
@@ -1047,14 +1052,14 @@ export class NPCAgent {
   // result for this whole world-tick — see NPCSimulator#tick's doc comment.
   // Left undefined, updateNPCCombatAI falls back to fetching it itself
   // (matches every pre-existing direct caller, e.g. tests/npc-combat-los.test.js).
-  async tick(dtMs = 3000, cachedPlayers = undefined) {
+  async tick(dtMs = 3000, cachedPlayers = undefined, temperamentOn = undefined) {
     this._updateNeeds();
     // Advance along active path first (position update each tick)
     this._tickPath(dtMs / 1000);
 
     // ── Combat AI (runs before action selection so combat can override movement) ──
     if (!this.isConscious && !this.isImmortal) {
-      try { updateNPCCombatAI(this, this.worldId, this._db, cachedPlayers); } catch { /* non-fatal */ }
+      try { updateNPCCombatAI(this, this.worldId, this._db, cachedPlayers, temperamentOn); } catch { /* non-fatal */ }
     }
 
     // Only choose a new action if not currently walking AND not in active combat
@@ -1457,9 +1462,11 @@ export class NPCSimulator {
     // Threaded through as an argument rather than cached on `this` so a
     // stale value can never survive past the tick that fetched it.
     const cachedPlayers = _getPlayerPositions(this._db, this.worldId);
+    // Same reasoning for the temperament kill-switch (an env read per call).
+    const temperamentOn = temperamentEnabled();
 
     // Autonomous NPCs: needs-based tick + faction coordination
-    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers));
+    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers, temperamentOn));
     await settleInBatches(autonomousAgents, (a) => a._maybeGenerateQuests());
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement

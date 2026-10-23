@@ -41,17 +41,34 @@ export function findStaleStatTables(db, { minRows = 10_000, ratio = 10 } = {}) {
   }
   const stale = [];
   for (const { tbl, est } of stats) {
+    const e = Number(est) || 0;
+    const bar = ratio * Math.max(e, 1);
     let rows = 0;
     try {
-      // max(rowid) is an O(log n) btree seek; it is an upper bound on the row
-      // count, which is all a "grew by 10x" check needs. WITHOUT ROWID tables
-      // throw here and are skipped.
-      rows = Number(db.prepare(`SELECT max(rowid) AS n FROM ${quoteIdent(tbl)}`).get()?.n) || 0;
+      // max(rowid) - min(rowid) + 1 is two O(log n) btree seeks and an upper
+      // bound on the row count, which is all a "grew by 10x" check needs.
+      // Plain max(rowid) was not enough: a table whose old rows a retention
+      // sweep deletes keeps a huge max(rowid) (event_timeline_log: 13M for
+      // 554k rows), so it looked stale forever and was re-ANALYZEd on every
+      // boot for ~1 s of blocked event loop. WITHOUT ROWID tables throw here
+      // and are skipped.
+      // Two scalar subqueries: SQLite only takes its O(log n) min/max seek
+      // when a SELECT has a single aggregate; max+min together is a scan.
+      const t = quoteIdent(tbl);
+      const r = db.prepare(`SELECT (SELECT max(rowid) FROM ${t}) AS hi, (SELECT min(rowid) FROM ${t}) AS lo`).get();
+      rows = r?.hi == null ? 0 : Number(r.hi) - Number(r.lo) + 1;
     } catch {
       continue;
     }
-    const e = Number(est) || 0;
-    if (rows >= minRows && rows > ratio * Math.max(e, 1)) stale.push({ tbl, est: e, rows });
+    if (!(rows >= minRows && rows > bar)) continue;
+    // The span can still overstate a table with deletes spread through it;
+    // confirm with a real count before paying for an ANALYZE.
+    try {
+      rows = Number(db.prepare(`SELECT count(*) AS n FROM ${quoteIdent(tbl)}`).get()?.n) || 0;
+    } catch {
+      continue;
+    }
+    if (rows >= minRows && rows > bar) stale.push({ tbl, est: e, rows });
   }
   return stale;
 }

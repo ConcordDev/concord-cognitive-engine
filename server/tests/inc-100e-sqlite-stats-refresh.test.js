@@ -36,6 +36,29 @@ test("stale stats: planner scans before refresh, uses idx_comm_from after", asyn
   assert.equal(db.pragma("analysis_limit", { simple: true }), 0, "analysis_limit restored");
 });
 
+// 2026-10-23: event_timeline_log (retention sweep deletes the oldest rows)
+// had max(rowid) 13M for 554k rows with accurate stats, so the max(rowid)
+// estimate flagged it on every boot and its ANALYZE blocked the loop ~1 s.
+test("rowid churn from deletes is not staleness; real growth still is", () => {
+  const db = new Database(":memory:");
+  db.exec(`CREATE TABLE churned (id INTEGER PRIMARY KEY AUTOINCREMENT, k TEXT); CREATE INDEX idx_churned_k ON churned(k);
+           CREATE TABLE scattered (id INTEGER PRIMARY KEY, k TEXT); CREATE INDEX idx_scattered_k ON scattered(k);
+           CREATE TABLE grown (id INTEGER PRIMARY KEY, k TEXT); CREATE INDEX idx_grown_k ON grown(k);`);
+  const fill = (t, n, start = 1) => db.transaction(() => {
+    const ins = db.prepare(`INSERT INTO ${t} (id, k) VALUES (?, ?)`);
+    for (let i = start; i < start + n; i++) ins.run(i, `k${i % 97}`);
+  })();
+  // churned: 20k rows that survived a sweep of the oldest 400k (high min rowid).
+  fill("churned", 20_000, 400_001);
+  // scattered: 20k rows spread across rowids 1..400k (span overstates; count must decide).
+  db.transaction(() => { const ins = db.prepare("INSERT INTO scattered (id, k) VALUES (?, ?)"); for (let i = 0; i < 20_000; i++) ins.run(1 + i * 20, "s"); })();
+  fill("grown", 20);
+  db.exec("ANALYZE");
+  fill("grown", 30_000, 1000); // grows 1500x after its stats were written
+  const stale = findStaleStatTables(db).map((s) => s.tbl);
+  assert.deepEqual(stale, ["grown"]);
+});
+
 test("no sqlite_stat1 / no db: no-op, never throws", async () => {
   const db = new Database(":memory:");
   db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY)");
