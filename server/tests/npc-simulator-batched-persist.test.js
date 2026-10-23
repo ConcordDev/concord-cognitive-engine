@@ -33,6 +33,7 @@ function setupDb() {
       archetype        TEXT,
       faction          TEXT,
       level            INTEGER DEFAULT 1,
+      xp               INTEGER NOT NULL DEFAULT 0,
       is_conscious     INTEGER DEFAULT 0,
       is_immortal      INTEGER DEFAULT 0,
       current_location TEXT,

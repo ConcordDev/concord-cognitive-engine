@@ -9,6 +9,8 @@
 import crypto from "crypto";
 import { getDayPhase } from "./world-clock.js";
 import { isPeopleArchetype } from "./npc-kind.js";
+import { actionXp, levelAfterXp, tradeSkillFor, loadActiveNpcQuests, npcTakeOpenQuests, progressNpcQuest } from "./npc-life.js";
+import { awardNpcXp } from "./npc-skill-progression.js";
 export { isPeopleArchetype };
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
@@ -640,6 +642,25 @@ function _emitBark(npc, worldId, rung, text, arrest = null) {
  * herb/soil — same table `world-gathering.js`'s TOOL_COMPAT already
  * encodes for the player-facing yield-estimate path).
  */
+const _npcXpColumn = new WeakMap();
+function _hasNpcXpColumn(db) {
+  if (!_npcXpColumn.has(db)) {
+    let has = false;
+    try { has = db.prepare("SELECT 1 FROM pragma_table_info('world_npcs') WHERE name = 'xp'").get() != null; } catch { /* no table */ }
+    _npcXpColumn.set(db, has);
+  }
+  return _npcXpColumn.get(db);
+}
+
+/** Room broadcast + Unity/Godot gateway mirror for NPC life events. */
+function _emitNpcEvent(worldId, event, payload) {
+  try {
+    const body = { worldId, ...payload };
+    globalThis._concordREALTIME?.io?.to(`world:${worldId}`).emit(event, body);
+    mirrorToGateways(event, body, { worldId });
+  } catch { /* non-fatal */ }
+}
+
 function _emitGather(npc, worldId, gathered) {
   if (!gathered) return;
   try {
@@ -958,6 +979,11 @@ export class NPCAgent {
     // tick()-site comment near wealthIncomeFor for why this is queued
     // rather than written immediately.
     this._pendingWealthIncome = 0;
+    // XP from work and finished quests; folded into the same batched flush.
+    this.xp = Number(row.xp) || 0;
+    this._pendingXp = 0;
+    this._pendingSkillXp = 0;
+    this._questDone = null;
     // Last state/location JSON successfully written (null until the first
     // write after load, so the first tick always persists the full row).
     this._persistedStateJson = null;
@@ -1071,6 +1097,17 @@ export class NPCAgent {
     if (!inCombat && (!this.state.currentPath || this.state.pathIndex >= (this.state.currentPath?.length ?? 0))) {
       const action = await this._chooseAction();
       await this._executeAction(action);
+      // Work earns XP and trade-skill XP; it may also move a quest forward.
+      const gain = actionXp(action?.action);
+      this._pendingXp += gain;
+      this._pendingSkillXp += gain;
+      try {
+        const qp = progressNpcQuest(this._db, this.id, action?.action);
+        if (qp?.completed) {
+          this._pendingXp += qp.xp;
+          this._questDone = qp;
+        }
+      } catch { /* non-fatal */ }
     }
     await this._maybeEvaluateCreations();
 
@@ -1323,6 +1360,8 @@ export function resetNpcQuestTickCounter() { NPC_QUEST_TICK_CALLS = 0; }
 // One LLM tactic per (world, faction) per this window; see _tickFactionCoordination.
 const FACTION_TACTIC_REFRESH_MS = Math.max(60_000, Number(process.env.CONCORD_FACTION_TACTIC_REFRESH_MS) || 15 * 60_000);
 const _factionTacticAt = new Map();
+// How often each world lets NPCs take quests that no player picked up.
+const NPC_QUEST_TAKE_EVERY_MS = Math.max(60_000, Number(process.env.CONCORD_NPC_QUEST_TAKE_EVERY_MS) || 5 * 60_000);
 export const NPC_TICK_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_TICK_BATCH) || 25);
 export const NPC_FLUSH_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_FLUSH_BATCH) || 200);
 
@@ -1353,6 +1392,7 @@ export class NPCSimulator {
     ).all(this.worldId);
 
     this._agents = rows.map(r => new NPCAgent(r, this.worldId, this._db, this._selectBrain));
+    loadActiveNpcQuests(this._db, this.worldId);
 
     // Seed NPCs from world archetypes if empty
     if (this._agents.length === 0) {
@@ -1462,6 +1502,7 @@ export class NPCSimulator {
 
     // Autonomous NPCs: needs-based tick + faction coordination
     await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers, temperamentOn));
+    this._settleNpcQuests(autonomousAgents);
     await settleInBatches(autonomousAgents, (a) => a._maybeGenerateQuests());
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement
@@ -1595,38 +1636,87 @@ export class NPCSimulator {
   //
   // maxRows caps one call to a slice of the queue; the return value is how
   // many writes are still queued after it (0 when the queue is empty).
+  /**
+   * After a world-tick: credit givers whose quests NPCs finished (their need
+   * is met), then let NPCs take quests no player has picked up, at most once
+   * every few minutes per world.
+   */
+  _settleNpcQuests(agents) {
+    const done = agents.filter((a) => a._questDone);
+    if (done.length) {
+      const byId = new Map(this._agents.map((a) => [a.id, a]));
+      for (const a of done) {
+        const qp = a._questDone;
+        a._questDone = null;
+        const giver = byId.get(qp.giverId);
+        if (giver && qp.need && giver.needs?.[qp.need] != null) giver.needs[qp.need] = Math.min(1, giver.needs[qp.need] + 0.5);
+        _emitNpcEvent(this.worldId, "npc:quest-completed", { npcId: a.id, questId: qp.questId, giverId: qp.giverId, xp: qp.xp });
+      }
+    }
+    const now = Date.now();
+    if (now - (this._lastQuestTakeAt || 0) < NPC_QUEST_TAKE_EVERY_MS) return;
+    this._lastQuestTakeAt = now;
+    try {
+      for (const t of npcTakeOpenQuests(this._db, this.worldId, agents, { now })) {
+        _emitNpcEvent(this.worldId, "npc:quest-accepted", t);
+      }
+    } catch { /* non-fatal */ }
+  }
+
   _flushPendingPersists(maxRows = Infinity) {
     const queued = this._agents.filter((a) => a._pendingPersist);
     if (queued.length === 0) return 0;
     const pending = queued.length > maxRows ? queued.slice(0, maxRows) : queued;
     try {
-      const stmt = _prep(this._db,
-        "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
-      );
-      const wealthOnly = _prep(this._db,
-        "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
-      );
+      // xp arrived with migration 486; a DB without it keeps the old writes.
+      const hasXp = _hasNpcXpColumn(this._db);
+      const stmt = hasXp
+        ? _prep(this._db, "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, xp = xp + ?, level = ?, last_tick_at = unixepoch() WHERE id = ?")
+        : _prep(this._db, "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?");
+      const wealthOnly = hasXp
+        ? _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, xp = xp + ?, level = ?, last_tick_at = unixepoch() WHERE id = ?")
+        : _prep(this._db, "UPDATE world_npcs SET wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?");
       const written = [];
+      const grown = [];
       const flush = this._db.transaction((agents) => {
         for (const a of agents) {
           const p = a._pendingPersist;
+          const xpGain = a._pendingXp || 0;
+          const level = levelAfterXp(a.level, a.xp + xpGain);
           if (p.stateJson === null) {
-            wealthOnly.run(a._pendingWealthIncome || 0, a.id);
+            if (hasXp) wealthOnly.run(a._pendingWealthIncome || 0, xpGain, level, a.id);
+            else wealthOnly.run(a._pendingWealthIncome || 0, a.id);
           } else {
-            stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, a.id);
+            if (hasXp) stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, xpGain, level, a.id);
+            else stmt.run(p.stateJson, p.locationJson, a._pendingWealthIncome || 0, a.id);
             written.push([a, p]);
           }
+          // Trade skill: written in chunks, not every tick.
+          if (a._pendingSkillXp >= 5) {
+            awardNpcXp(this._db, a.id, tradeSkillFor(a.archetype), a._pendingSkillXp);
+            a._pendingSkillXp = 0;
+          }
+          grown.push([a, xpGain, level]);
           a._pendingPersist = null;
           a._pendingWealthIncome = 0;
+          a._pendingXp = 0;
         }
       });
       flush(pending);
       // Baselines move only after the transaction committed.
       for (const [a, p] of written) { a._persistedStateJson = p.stateJson; a._persistedLocationJson = p.locationJson; }
+      for (const [a, xpGain, level] of grown) {
+        a.xp += xpGain;
+        if (level > a.level) {
+          const from = a.level;
+          a.level = level;
+          _emitNpcEvent(this.worldId, "npc:level-up", { npcId: a.id, name: a.state?.name || a.archetype, from, level, xp: a.xp });
+        }
+      }
     } catch (_e) {
       // non-fatal — matches this file's existing try/catch convention. Drop
       // the failed slice so a persistent error can't spin the caller's loop.
-      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; }
+      for (const a of pending) { a._pendingPersist = null; a._pendingWealthIncome = 0; a._pendingXp = 0; }
     }
     return queued.length - pending.length;
   }
