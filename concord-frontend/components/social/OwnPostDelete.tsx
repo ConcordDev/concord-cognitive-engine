@@ -19,8 +19,12 @@ export function OwnPostDelete({ postId, onDeleted }: { postId: string; onDeleted
           setBusy(true);
           const result = await deleteOwnPost(postId);
           setBusy(false);
+          // Reset the two-step confirm either way: on failure so the user
+          // can retry, on success so a row that is still on screen for the
+          // refetch round-trip never sits in a sticky "Confirm delete"
+          // state (clicking it again would 404 against the deleted post).
+          setConfirming(false);
           if (!result.ok) {
-            setConfirming(false);
             return;
           }
           onDeleted?.();
