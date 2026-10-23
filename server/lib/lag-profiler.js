@@ -7,18 +7,16 @@
 // "culprit":"unattributed". A stall is synchronous JS by definition, so the
 // honest way to name it is to sample the stack while it happens.
 //
-// How: an in-process inspector session runs V8's sampling CPU profiler in
-// rolling windows. V8 samples from its own thread, so a blocked main thread
-// is still sampled. At each window boundary the profile is collected, the
-// longest run of consecutive non-idle samples is found, and if it exceeds
-// the threshold it is attributed to the deepest frame in our own source
-// (not node_modules / node internals) — i.e. the line in Concord that made
-// the blocking call — plus the hottest leaf frames inside the run.
+// How: an in-process inspector session runs V8's sampling CPU profiler for
+// one capture window. V8 samples from its own thread, so a blocked main
+// thread is still sampled. At the end, every run of consecutive non-idle
+// samples above the threshold is attributed to the deepest frame in our own
+// source (not node_modules / node internals) — i.e. the line in Concord that
+// made the blocking call — plus the hottest leaf frames inside the run.
 //
-// Cost is self-measured: restarting the profiler re-logs code objects, which
-// grows with the heap. Every restart is timed; if restarts are slow the
-// profiler disables itself and says so rather than becoming a stall source.
-// Opt-in via CONCORD_LAG_PROFILER=1 (wired in server.js).
+// One-shot by design: Profiler.start costs ~650 ms on the live heap, so a
+// rolling profiler would cause the stalls it measures. Start/stop cost is
+// logged. Opt-in via CONCORD_LAG_PROFILER=1 (wired in server.js).
 
 import inspector from "node:inspector";
 
@@ -133,77 +131,65 @@ export function analyzeProfile(profile, opts = {}) {
 }
 
 /**
- * Start rolling-window profiling. Returns { stop() } (no-op handle when disabled).
+ * One-shot capture: profile for `durationMs`, then log every stall found and
+ * stop. Deliberately NOT a rolling profiler — measured on the live heap
+ * (2026-10-22), Profiler.start costs ~650 ms because V8 re-logs every code
+ * object, so restarting every window would itself stall the loop. One start,
+ * one stop, then nothing: the same cost profile as the manual capture that
+ * found the NPC-tick stalls.
  * @param {object} opts
- * @param {(finding: object) => void} opts.onStall  called with analyzeProfile() result + {at}
+ * @param {(finding: object) => void} opts.onStall  called once per stall (findStalls() entry + {at})
  * @param {(event: string, data: object) => void} [opts.onEvent]  lifecycle/self-cost reporting
+ * @returns {{stop: () => void}}
  */
 export function startLagProfiler({
-  windowMs = 30_000,
+  durationMs = 10 * 60_000,
   samplingIntervalUs = 10_000,
   minStallMs = 500,
+  maxReported = 50,
   appRoot = "",
-  maxRestartMs = 250,
   onStall,
   onEvent = () => {},
 } = {}) {
   let session;
   let timer = null;
-  let slowRestarts = 0;
-  let stopped = false;
+  let done = false;
   const post = (method, params) => new Promise((resolve, reject) => {
     session.post(method, params || {}, (err, res) => (err ? reject(err) : resolve(res)));
   });
 
-  const startWindow = async () => {
-    const t0 = performance.now();
-    await post("Profiler.start");
-    return performance.now() - t0;
-  };
+  function stop() {
+    if (done) return;
+    done = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    try { session?.post("Profiler.stop", () => {}); session?.disconnect(); } catch (_e) { /* best effort */ }
+  }
 
-  const rotate = async () => {
-    if (stopped) return;
+  const finish = async () => {
+    if (done) return;
     let profile;
-    let restartMs = 0;
     try {
       const t0 = performance.now();
       ({ profile } = await post("Profiler.stop"));
-      const stopMs = performance.now() - t0;
-      restartMs = await startWindow();
-      if (stopMs + restartMs > maxRestartMs) {
-        slowRestarts++;
-        onEvent("lag_profiler_slow_rotate", { stopMs: Math.round(stopMs), startMs: Math.round(restartMs), slowRestarts });
-        if (slowRestarts >= 3) {
-          onEvent("lag_profiler_disabled", { reason: "rotation_cost_exceeds_budget", maxRestartMs });
-          stop();
-          return;
-        }
-      } else {
-        slowRestarts = 0;
-      }
+      onEvent("lag_profiler_stopped", { stopMs: Math.round(performance.now() - t0) });
     } catch (e) {
       onEvent("lag_profiler_error", { error: String(e?.message || e) });
       stop();
       return;
     }
+    stop();
     try {
-      const finding = analyzeProfile(profile, { appRoot, minStallMs });
-      if (finding) {
-        // Convert the profile-relative start into wall time for log correlation.
-        const windowStartWall = Date.now() - Math.round(((profile.endTime || 0) - (profile.startTime || 0)) / 1000);
-        onStall({ ...finding, at: new Date(windowStartWall + finding.startOffsetMs).toISOString() });
+      const stalls = findStalls(profile, { appRoot, minStallMs });
+      const wallStart = Date.now() - Math.round(((profile.endTime || 0) - (profile.startTime || 0)) / 1000);
+      for (const f of stalls.slice(0, maxReported)) {
+        onStall({ ...f, at: new Date(wallStart + f.startOffsetMs).toISOString() });
       }
+      onEvent("lag_profiler_summary", { stalls: stalls.length, reported: Math.min(stalls.length, maxReported), minStallMs, durationMs });
     } catch (e) {
       onEvent("lag_profiler_analyze_error", { error: String(e?.message || e) });
     }
   };
-
-  function stop() {
-    stopped = true;
-    if (timer) clearInterval(timer);
-    timer = null;
-    try { session?.post("Profiler.stop", () => {}); session?.disconnect(); } catch (_e) { /* best effort */ }
-  }
 
   (async () => {
     try {
@@ -211,10 +197,11 @@ export function startLagProfiler({
       session.connect();
       await post("Profiler.enable");
       await post("Profiler.setSamplingInterval", { interval: samplingIntervalUs });
-      const firstStartMs = await startWindow();
-      onEvent("lag_profiler_started", { windowMs, samplingIntervalUs, minStallMs, firstStartMs: Math.round(firstStartMs) });
-      if (stopped) return;
-      timer = setInterval(() => { rotate(); }, windowMs);
+      const t0 = performance.now();
+      await post("Profiler.start");
+      onEvent("lag_profiler_started", { durationMs, samplingIntervalUs, minStallMs, startMs: Math.round(performance.now() - t0) });
+      if (done) return;
+      timer = setTimeout(() => { finish(); }, durationMs);
       timer.unref?.();
     } catch (e) {
       onEvent("lag_profiler_unavailable", { error: String(e?.message || e) });

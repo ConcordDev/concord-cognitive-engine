@@ -76007,7 +76007,9 @@ try {
 //    pause is logged and stamped into the attribution ring as `gc:<kind>`,
 //    so a spike caused by GC (heap near ceiling, or heap paged to swap) names
 //    itself instead of blaming nothing.
-//  - Sampling CPU profiler (opt-in, CONCORD_LAG_PROFILER=1): names the exact
+//  - Sampling CPU profiler (opt-in, CONCORD_LAG_PROFILER=1): one capture of
+//    CONCORD_LAG_PROFILER_DURATION_MS (default 10 min) after boot, then every
+//    stall >= CONCORD_LAG_PROFILER_STALL_MS is logged with the exact
 //    function/line in our source that held the loop. See lib/lag-profiler.js.
 try {
   const lagProf = await import("./lib/lag-profiler.js");
@@ -76022,7 +76024,7 @@ try {
   }
   if (process.env.CONCORD_LAG_PROFILER === "1") {
     lagProf.startLagProfiler({
-      windowMs: Number(process.env.CONCORD_LAG_PROFILER_WINDOW_MS) || 30_000,
+      durationMs: Number(process.env.CONCORD_LAG_PROFILER_DURATION_MS) || 10 * 60_000,
       samplingIntervalUs: Number(process.env.CONCORD_LAG_PROFILER_INTERVAL_US) || 10_000,
       minStallMs: Number(process.env.CONCORD_LAG_PROFILER_STALL_MS) || 500,
       appRoot: new URL("./", import.meta.url).href,

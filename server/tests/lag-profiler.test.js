@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import inspector from "node:inspector";
-import { findStalls, analyzeProfile, isAppFrame, startGcPauseLogger } from "../lib/lag-profiler.js";
+import { findStalls, analyzeProfile, isAppFrame, startGcPauseLogger, startLagProfiler } from "../lib/lag-profiler.js";
 
 const APP_ROOT = new URL("../", import.meta.url).href;
 
@@ -75,4 +75,24 @@ test("GC logger reports pauses at or above the threshold", async () => {
   h.stop();
   assert.ok(seen.length > 0, "expected at least one GC entry");
   assert.ok(seen.every((p) => typeof p.kind === "string" && Number.isFinite(p.ms) && !Number.isNaN(Date.parse(p.at))));
+});
+
+test("one-shot capture reports the stall, then stops", async () => {
+  const stalls = [];
+  const events = [];
+  startLagProfiler({
+    durationMs: 900,
+    samplingIntervalUs: 1000,
+    minStallMs: 200,
+    appRoot: APP_ROOT,
+    onStall: (f) => stalls.push(f),
+    onEvent: (e, d) => events.push([e, d]),
+  });
+  await new Promise((r) => setTimeout(r, 150));
+  blockTheLoopOnPurpose(350);
+  await new Promise((r) => setTimeout(r, 1200));
+  const names = events.map(([e]) => e);
+  assert.deepEqual(names, ["lag_profiler_started", "lag_profiler_stopped", "lag_profiler_summary"]);
+  assert.ok(stalls.some((f) => /^blockTheLoopOnPurpose /.test(f.owner)), JSON.stringify(stalls));
+  assert.ok(stalls.every((f) => !Number.isNaN(Date.parse(f.at))));
 });
