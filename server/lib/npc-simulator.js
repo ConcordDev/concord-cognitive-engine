@@ -11,6 +11,8 @@ import { getDayPhase } from "./world-clock.js";
 import { isPeopleArchetype } from "./npc-kind.js";
 import { actionXp, levelAfterXp, tradeSkillFor, loadActiveNpcQuests, npcTakeOpenQuests, progressNpcQuest } from "./npc-life.js";
 import { awardNpcXp } from "./npc-skill-progression.js";
+import { composeExchange, pairOnCooldown, recordConversation, backstorySentence } from "./npc-conversation.js";
+import { activeNpcQuest } from "./npc-life.js";
 export { isPeopleArchetype };
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
@@ -981,6 +983,8 @@ export class NPCAgent {
     this._pendingWealthIncome = 0;
     // XP from work and finished quests; folded into the same batched flush.
     this.xp = Number(row.xp) || 0;
+    this.backstory = backstorySentence(row.narrative_context);
+    this._lastAction = null;
     this._pendingXp = 0;
     this._pendingSkillXp = 0;
     this._questDone = null;
@@ -1033,50 +1037,6 @@ export class NPCAgent {
     } catch { /* non-fatal */ }
   }
 
-  /** NPC speaks to another NPC or conscious emergent */
-  async _speakTo(partner) {
-    const myName      = this.state.name || this.archetype;
-    const partnerName = partner.state?.name || partner.archetype || 'stranger';
-    const topic       = this.state.factionTactic?.tactic || this.goals[0]?.directive || 'the world around us';
-
-    try {
-      const { handle } = await this._selectBrain("subconscious", {
-        brainOverride: "subconscious", callerId: "world:npc:conversation",
-      });
-      const raw = await handle.generate(
-        TASK_PROMPTS.npcSimulatorPartnerDialogue({
-          myName,
-          archetype: this.archetype,
-          faction: this.faction,
-          partnerName,
-          partnerArch: partner.archetype,
-          topic,
-          worldId: this.worldId,
-        })
-      );
-
-      if (!raw) return;
-
-      // Partner hears and may update their goals based on what was said
-      if (partner.goals !== undefined) {
-        partner.goals = partner.goals || [];
-        partner.goals.push({ heardFrom: myName, said: raw.slice(0, 200), at: Date.now() });
-        if (partner.goals.length > 10) partner.goals = partner.goals.slice(-10);
-        partner._persistState?.();
-      }
-
-      // Log the conversation as a world event (mig-315 world_events schema:
-      // event_type/kind/title/description — the actor + payload ride in description).
-      _prep(this._db,
-        "INSERT OR IGNORE INTO world_events (id, world_id, event_type, kind, title, description, created_at) VALUES (?,?,?,?,?,?,unixepoch())"
-      ).run(
-        crypto.randomUUID(), this.worldId, 'npc_conversation', 'conversation',
-        `${myName} → ${partnerName}`,
-        JSON.stringify({ actorId: this.id, speaker: myName, listener: partnerName, line: raw.slice(0, 200) })
-      );
-    } catch { /* non-fatal */ }
-  }
-
   // cachedPlayers: optional, pre-fetched _getPlayerPositions(db, worldId)
   // result for this whole world-tick — see NPCSimulator#tick's doc comment.
   // Left undefined, updateNPCCombatAI falls back to fetching it itself
@@ -1097,6 +1057,7 @@ export class NPCAgent {
     if (!inCombat && (!this.state.currentPath || this.state.pathIndex >= (this.state.currentPath?.length ?? 0))) {
       const action = await this._chooseAction();
       await this._executeAction(action);
+      this._lastAction = action?.action || null;
       // Work earns XP and trade-skill XP; it may also move a quest forward.
       const gain = actionXp(action?.action);
       this._pendingXp += gain;
@@ -1362,6 +1323,9 @@ const FACTION_TACTIC_REFRESH_MS = Math.max(60_000, Number(process.env.CONCORD_FA
 const _factionTacticAt = new Map();
 // How often each world lets NPCs take quests that no player picked up.
 const NPC_QUEST_TAKE_EVERY_MS = Math.max(60_000, Number(process.env.CONCORD_NPC_QUEST_TAKE_EVERY_MS) || 5 * 60_000);
+// NPC conversations: at most this many per world-tick, within this distance.
+const NPC_CONVERSATIONS_PER_TICK = Math.max(1, Number(process.env.CONCORD_NPC_CONVERSATIONS_PER_TICK) || 6);
+const NPC_TALK_RADIUS_M = Math.max(5, Number(process.env.CONCORD_NPC_TALK_RADIUS_M) || 60);
 export const NPC_TICK_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_TICK_BATCH) || 25);
 export const NPC_FLUSH_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_FLUSH_BATCH) || 200);
 
@@ -1511,10 +1475,8 @@ export class NPCSimulator {
     // Conscious emergents: emergent-AI tick (lighter — just goal updates)
     await settleInBatches(consciousAgents, (a) => a.tickConscious());
 
-    // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
-    if (Math.random() < 0.05) {
-      await this._tickNPCConversations(autonomousAgents, consciousAgents);
-    }
+    // NPCs who chose to socialize this tick talk to someone nearby.
+    await this._tickNPCConversations(autonomousAgents, consciousAgents);
 
     // Grief decay — slow healing over time
     try { decayGrief(this._db, this.id); } catch { /* non-fatal */ }
@@ -1770,22 +1732,55 @@ export class NPCSimulator {
   }
 
   /** NPC ↔ NPC and NPC ↔ Emergent conversations */
-  async _tickNPCConversations(autonomousAgents, consciousAgents) {
-    if (!autonomousAgents.length) return;
-
-    const speaker = autonomousAgents[Math.floor(Math.random() * autonomousAgents.length)];
-    // Pick a conversation partner: another NPC or a conscious emergent
-    const partners = [...autonomousAgents.filter(a => a.id !== speaker.id), ...consciousAgents];
-    if (!partners.length) return;
-
-    const partner = partners[Math.floor(Math.random() * partners.length)];
-    await speaker._speakTo(partner).catch(() => {});
-
-    // Update mutual opinion from conversation (slight warmth from interaction)
-    try {
-      const { recordNPCToNPCInteraction } = await import('./npc-relations.js');
-      recordNPCToNPCInteraction(this._db, speaker.id, partner.id, 0.01, 'conversation');
-    } catch { /* non-fatal */ }
+  /**
+   * NPCs who chose to socialize this tick turn to the nearest named person
+   * within reach and talk (lib/npc-conversation.js). Capped per tick; a pair
+   * talks at most once per cooldown. Replaces a 5%-per-tick random pairing
+   * across the whole world (creatures included) that needed the LLM.
+   */
+  async _tickNPCConversations(autonomousAgents, _consciousAgents) {
+    const people = autonomousAgents.filter((a) => isPeopleArchetype(a.archetype) && a.state?.name && a.state.name !== a.archetype && a.location);
+    const speakers = people.filter((a) => a._lastAction === "socialize").slice(0, NPC_CONVERSATIONS_PER_TICK);
+    if (speakers.length === 0) return;
+    const segment = getDayPhase();
+    const questTitle = _prep(this._db, "SELECT title FROM world_quests WHERE giver_npc_id = ? AND status = 'available' LIMIT 1");
+    const talked = new Set();
+    for (const speaker of speakers) {
+      if (talked.has(speaker.id)) continue;
+      let best = null; let bestD = NPC_TALK_RADIUS_M * NPC_TALK_RADIUS_M;
+      for (const other of people) {
+        if (other.id === speaker.id || talked.has(other.id)) continue;
+        const dx = (other.location.x || 0) - (speaker.location.x || 0);
+        const dz = (other.location.z || 0) - (speaker.location.z || 0);
+        const d = dx * dx + dz * dz;
+        if (d <= bestD) { best = other; bestD = d; }
+      }
+      if (!best || pairOnCooldown(this._db, this.worldId, speaker.id, best.id)) continue;
+      let quest = null;
+      try {
+        quest = questTitle.get(speaker.id)?.title || null;
+        if (!quest && activeNpcQuest(speaker.id)) quest = "a job I took on";
+      } catch { /* optional */ }
+      const a = { id: speaker.id, name: speaker.state.name, work: speaker.npcType || speaker.archetype, faction: speaker.faction, activity: speaker.currentActivity, quest, backstory: speaker.backstory };
+      const b = { id: best.id, name: best.state.name, work: best.npcType || best.archetype, faction: best.faction };
+      const messages = composeExchange(a, b, { segment, seed: new Date().toISOString().slice(0, 13) });
+      const rec = recordConversation(this._db, this.worldId, a.id, b.id, messages, { segment, sameFaction: a.faction === b.faction, quest: !!quest });
+      if (!rec) continue;
+      talked.add(speaker.id); talked.add(best.id);
+      // Talking meets both NPCs' social need; the listener remembers it.
+      best.needs.social = Math.min(1, (best.needs.social ?? 0) + 0.15);
+      best.goals = (best.goals || []).concat({ heardFrom: a.name, said: messages[1]?.text?.slice(0, 200) || messages[0].text, at: Date.now() }).slice(-10);
+      best._persistState?.();
+      _emitNpcEvent(this.worldId, "npc:conversation-bid", {
+        id: rec.id, npcA: a.id, npcB: b.id, nameA: a.name, nameB: b.name,
+        opener: messages[0].text, lines: messages.map((m) => ({ from: m.from === a.id ? a.name : b.name, text: m.text })),
+        expiresAt: rec.expiresAt,
+      });
+      try {
+        const { recordNPCToNPCInteraction } = await import("./npc-relations.js");
+        recordNPCToNPCInteraction(this._db, speaker.id, best.id, 0.01, "conversation");
+      } catch { /* non-fatal */ }
+    }
   }
 
   start() {

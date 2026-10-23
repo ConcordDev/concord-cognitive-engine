@@ -41,7 +41,8 @@ function seedNpcs(worldId, count = 4) {
     VALUES (?, ?, 'generic', '{}', ?)
   `);
   for (let i = 0; i < count; i++) {
-    stmt.run(`npc-${worldId}-${i}`, worldId, JSON.stringify({ factionId: i < count / 2 ? "alpha" : "beta" }));
+    // Real NPCs carry a name; the composer speaks names, never ids.
+    stmt.run(`npc-${worldId}-${i}`, worldId, JSON.stringify({ name: `Resident ${i}`, factionId: i < count / 2 ? "alpha" : "beta" }));
   }
 }
 
@@ -88,8 +89,21 @@ test("tryInitiateConversation inserts a row and returns id", async () => {
   assert.match(r.conversationId, /^conv_/);
   const rows = getActiveConversations(db, "w-init");
   assert.strictEqual(rows.length, 1);
-  assert.strictEqual(rows[0].messages.length, 1);
-  assert.match(rows[0].messages[0].text, /\w+/);
+  assert.ok(rows[0].messages.length >= 2, "an exchange, not a single stock line");
+  for (const m of rows[0].messages) {
+    assert.match(m.text, /\w+/);
+    assert.doesNotMatch(m.text, /npc-w-init-/, "lines use names, never ids (live 2026-10-11 rows printed raw ids)");
+  }
+  assert.match(rows[0].messages.map((m) => m.text).join(" "), /Resident \d/);
+});
+
+test("unnamed, dead and creature NPCs are never conversation candidates", () => {
+  const ins = db.prepare("INSERT INTO world_npcs (id, world_id, npc_type, archetype, current_location, state, is_dead) VALUES (?, 'w-filter', 'generic', ?, '{}', ?, ?)");
+  ins.run("nf-unnamed", "trader", JSON.stringify({}), 0);
+  ins.run("nf-dead", "trader", JSON.stringify({ name: "Gone" }), 1);
+  ins.run("nf-deer", "creature:deer", JSON.stringify({ name: "Deer" }), 0);
+  ins.run("nf-ok", "trader", JSON.stringify({ name: "Only One" }), 0);
+  assert.deepEqual(findConversationCandidates(db, "w-filter"), [], "one valid person is not a pair");
 });
 
 test("tryInitiateConversation honours pair cooldown", async () => {
