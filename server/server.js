@@ -2387,8 +2387,28 @@ import {
   initEmbeddings, embed, cosineSimilarity, findSimilar, semanticSearch,
   findCrossDomainConnections, embedDTU, storeEmbedding, getEmbedding,
   removeEmbedding, backfillEmbeddings, getEmbeddingStatus, isEmbeddingAvailable,
-  trimEmbeddingCache, getEmbeddingCacheSize,
+  trimEmbeddingCache, getEmbeddingCacheSize, setLocalEmbedder, reprobeEmbeddings,
 } from "./embeddings.js";
+
+// One backfill at a time. Started at boot, when the CPU embedder is
+// registered as the fallback, and when a re-probe switches models.
+let _semanticBackfillRunning = false;
+function startSemanticBackfill(trigger) {
+  if (_semanticBackfillRunning || !isEmbeddingAvailable() || !(STATE.dtus?.size > 0)) return false;
+  _semanticBackfillRunning = true;
+  const st = getEmbeddingStatus(STATE.dtus.size);
+  structuredLog("info", "backfill_start", { dtuCount: STATE.dtus.size, trigger, model: st.model, backend: st.backend });
+  backfillEmbeddings(STATE.dtus, {
+    onProgress: ({ progress, total, embedded, errors }) => {
+      if (progress % 100 === 0 || progress === total) {
+        structuredLog("info", "backfill_progress", { progress, total, embedded, errors });
+      }
+    },
+  })
+    .catch(e => structuredLog("warn", "backfill_error", { error: String(e?.message || e) }))
+    .finally(() => { _semanticBackfillRunning = false; });
+  return true;
+}
 import {
   initSemanticCache, semanticCacheCheck, recordCacheSatisfaction,
   warmRelatedQueries, getCacheStats,
@@ -20152,6 +20172,25 @@ if (String(process.env.EMBEDDINGS_ENABLED || "true").toLowerCase() === "true") {
       // Rebuild index in background
       setTimeout(() => rebuildEmbeddingIndex(), 5000);
     }
+    // The CPU embedder (Xenova MiniLM, worker thread) doubles as the semantic
+    // layer's fallback when no Ollama embedding model is reachable — e.g. the
+    // Mac host with the GPU pod down. Vectors are kept per model, never mixed.
+    if (result.ok && result.backend === "xenova") {
+      try {
+        const activated = setLocalEmbedder({
+          model: "Xenova/all-MiniLM-L6-v2",
+          dimension: 384,
+          embed: async (text) => {
+            const r = await generateEmbedding(text);
+            if (!r.ok) throw new Error(r.error || "local_embed_failed");
+            return r.embedding;
+          },
+        });
+        if (activated) startSemanticBackfill("local_embedder");
+      } catch (e) {
+        structuredLog("warn", "local_embedder_register_failed", { error: String(e?.message || e) });
+      }
+    }
   });
 }
 
@@ -22050,16 +22089,7 @@ _unrefInTest(setTimeout(async () => {
     structuredLog("info", "semantic_intelligence_init", { embeddingsAvailable: isEmbeddingAvailable() });
 
     // Background backfill: embed existing DTUs that don't have embeddings
-    if (isEmbeddingAvailable() && STATE.dtus.size > 0) {
-      structuredLog("info", "backfill_start", { dtuCount: STATE.dtus.size });
-      backfillEmbeddings(STATE.dtus, {
-        onProgress: ({ progress, total, embedded, errors }) => {
-          if (progress % 100 === 0 || progress === total) {
-            structuredLog("info", "backfill_progress", { progress, total, embedded, errors });
-          }
-        },
-      }).catch(e => structuredLog("warn", "backfill_error", { error: String(e?.message || e) }));
-    }
+    startSemanticBackfill("boot");
   } catch (e) {
     structuredLog("warn", "semantic_intelligence_init_error", { error: String(e?.message || e) });
   }
@@ -43548,6 +43578,12 @@ async function governorTick(reason="heartbeat") {
       // Embeddings health check — every 100th tick
       if (_tick % TICK_FREQUENCIES.EMBEDDINGS_CHECK === 0) {
         await runHeartbeatModule("embeddings_check", async () => {
+          // While on the CPU fallback (or with nothing), check whether the
+          // primary Ollama embedding model is back; switch + backfill if so.
+          try {
+            const re = await reprobeEmbeddings();
+            if (re.changed) startSemanticBackfill("reprobe");
+          } catch (_e) { /* probe is best-effort */ }
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
