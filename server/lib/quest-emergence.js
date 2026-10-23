@@ -67,7 +67,8 @@ function stableIndex(key, n) {
 function backstoryLine(narrative) {
   const b = String(parse(narrative, {})?.backstory || "").trim();
   if (!b) return "";
-  const first = b.split(/(?<=[.!?])\s+/)[0] || b;
+  // Authored backstories carry faction ids ("scholars_guild"); speak them as words.
+  const first = (b.split(/(?<=[.!?])\s+/)[0] || b).replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (m) => m.replace(/_/g, " "));
   return first.length > 180 ? `${first.slice(0, 177).trimEnd()}...` : first;
 }
 

@@ -48,6 +48,7 @@ test("a quest comes up in conversation, and the friend offers to ask around", ()
 
 test("a past-tense backstory comes back as hearsay; others are not forced into speech", () => {
   assert.equal(backstorySentence(JSON.stringify({ backstory: "Answered every call for aid. Then more." })), "Answered every call for aid.");
+  assert.equal(backstorySentence(JSON.stringify({ backstory: "Apprenticed to the lore-keepers of scholars_guild." })), "Apprenticed to the lore-keepers of scholars guild.", "faction ids read as words");
   const heard = composeExchange({ id: "a", name: "A", work: "healer", faction: "x", backstory: "Answered every call for aid." }, { id: "b", name: "B", work: "cook", faction: "y" });
   assert.match(heard.at(-1).text, /^People say you answered every call for aid\.$/);
   const noun = composeExchange({ id: "a", name: "A", work: "healer", faction: "x", backstory: "A familiar face in the guild." }, { id: "b", name: "B", work: "cook", faction: "y" });
