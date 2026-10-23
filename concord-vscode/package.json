@@ -104,7 +104,7 @@
     "publish": "vsce publish --no-yarn"
   },
   "dependencies": {
-    "socket.io-client": "^4.7.0",
+    "socket.io-client": "^4.8.4",
     "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
