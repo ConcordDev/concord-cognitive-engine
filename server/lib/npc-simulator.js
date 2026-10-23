@@ -644,6 +644,14 @@ function _emitBark(npc, worldId, rung, text, arrest = null) {
  * herb/soil — same table `world-gathering.js`'s TOOL_COMPAT already
  * encodes for the player-facing yield-estimate path).
  */
+/** What an NPC would say it does: the first real job among type, job, archetype. */
+function _workOf(a) {
+  for (const w of [a.npcType, a.jobType, a.archetype]) {
+    if (w && w !== "generic" && w !== "humanoid" && w !== "citizen") return w;
+  }
+  return "trade";
+}
+
 const _npcXpColumn = new WeakMap();
 function _hasNpcXpColumn(db) {
   if (!_npcXpColumn.has(db)) {
@@ -984,6 +992,7 @@ export class NPCAgent {
     // XP from work and finished quests; folded into the same batched flush.
     this.xp = Number(row.xp) || 0;
     this.backstory = backstorySentence(row.narrative_context);
+    this.jobType = row.job_type || null;
     this._lastAction = null;
     this._pendingXp = 0;
     this._pendingSkillXp = 0;
@@ -1475,7 +1484,14 @@ export class NPCSimulator {
     const temperamentOn = temperamentEnabled();
 
     // Autonomous NPCs: needs-based tick + faction coordination
-    await settleInBatches(autonomousAgents, (a) => a.tick(3000, cachedPlayers, temperamentOn));
+    // Walk for the real time since the last world-tick. A fixed 3 s per tick
+    // with ticks a minute apart made a 50 m walk take ~12 real minutes, during
+    // which the NPC chose nothing — live, 4,977 of 5,366 NPCs sat on
+    // "travel" with hunger and rest near 0.
+    const nowMs = Date.now();
+    const dtMs = Math.min(this._tickRate || 60_000, Math.max(1000, nowMs - (this._lastWorldTickAt || nowMs - 3000)));
+    this._lastWorldTickAt = nowMs;
+    await settleInBatches(autonomousAgents, (a) => a.tick(dtMs, cachedPlayers, temperamentOn));
     this._settleNpcQuests(autonomousAgents);
     await settleInBatches(autonomousAgents, (a) => a._maybeGenerateQuests());
 
@@ -1771,8 +1787,8 @@ export class NPCSimulator {
         quest = questTitle.get(speaker.id)?.title || null;
         if (!quest && activeNpcQuest(speaker.id)) quest = "a job I took on";
       } catch { /* optional */ }
-      const a = { id: speaker.id, name: speaker.state.name, work: speaker.npcType || speaker.archetype, faction: speaker.faction, activity: speaker.currentActivity, quest, backstory: speaker.backstory };
-      const b = { id: best.id, name: best.state.name, work: best.npcType || best.archetype, faction: best.faction };
+      const a = { id: speaker.id, name: speaker.state.name, work: _workOf(speaker), faction: speaker.faction, activity: speaker.currentActivity, quest, backstory: speaker.backstory };
+      const b = { id: best.id, name: best.state.name, work: _workOf(best), faction: best.faction };
       const messages = composeExchange(a, b, { segment, seed: new Date().toISOString().slice(0, 13) });
       const rec = recordConversation(this._db, this.worldId, a.id, b.id, messages, { segment, sameFaction: a.faction === b.faction, quest: !!quest });
       if (!rec) continue;

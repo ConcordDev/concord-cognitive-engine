@@ -42,3 +42,19 @@ test("animals restore hunger by foraging", async () => {
   await deer._executeAction({ action: "gather_resource" });
   assert.ok(deer.needs.hunger > 0);
 });
+
+test("a world-tick walks NPCs for the real time since the last tick, not a fixed 3 s", async () => {
+  const { NPCSimulator } = await import("../lib/npc-simulator.js");
+  const db = new Database(":memory:");
+  await runMigrations(db);
+  const a = await agentWithZeroNeeds(db, "walker", "guard");
+  a.needs = { hunger: 1, rest: 1, social: 1, purpose: 1, safety: 1 };
+  a.state.currentPath = [{ x: 20, z: 0 }, { x: 40, z: 0 }, { x: 50, z: 0 }];
+  a.state.pathIndex = 0;
+  const sim = new NPCSimulator("w", db, brain);
+  sim._tickRate = 60_000;
+  sim._agents = [a];
+  sim._lastWorldTickAt = Date.now() - 60_000; // the world last ticked a minute ago
+  await sim._tickWorld();
+  assert.ok(a.location.x >= 49, `a 50 m walk finishes within a one-minute tick (x=${a.location.x})`);
+});

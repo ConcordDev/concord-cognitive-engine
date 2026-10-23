@@ -364,6 +364,40 @@ export function loadEmergentState(STATE, opts = {}) {
   }
 }
 
+/**
+ * Same snapshot as persistEmergentState, written with non-blocking file I/O
+ * and compact JSON. The 15-minute timer used the synchronous version: pretty
+ * JSON + writeFileSync + copyFileSync + renameSync held the event loop for
+ * 1.5-8 s per run in the live CPU profile (2026-10-23), worst when the Mac
+ * was swapping. Shutdown keeps the synchronous version so it finishes before
+ * exit. The loader reads either format.
+ */
+let _asyncPersistRunning = false;
+export async function persistEmergentStateAsync(STATE, opts = {}) {
+  if (_asyncPersistRunning) return { ok: false, error: "already_running" };
+  _asyncPersistRunning = true;
+  const dir = opts.dataDir || _dataDir;
+  const filepath = path.join(dir, STATE_FILE);
+  const tempPath = `${filepath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await fs.promises.mkdir(dir, { recursive: true });
+    const serialized = serializeEmergentState(STATE);
+    const json = JSON.stringify(serialized);
+    await fs.promises.writeFile(tempPath, json, "utf-8");
+    try { await fs.promises.copyFile(filepath, path.join(dir, BACKUP_FILE)); } catch { /* first run or backup failure: non-fatal */ }
+    await fs.promises.rename(tempPath, filepath);
+    _lastPersistAt = Date.now();
+    _persistCount++;
+    return { ok: true, path: filepath, size: json.length, persistedAt: serialized.persistedAt };
+  } catch (e) {
+    _errors++;
+    try { await fs.promises.unlink(tempPath); } catch { /* already gone */ }
+    return { ok: false, error: e.message };
+  } finally {
+    _asyncPersistRunning = false;
+  }
+}
+
 // ── Auto-Persist Timer ──────────────────────────────────────────────────────
 
 /**
@@ -378,7 +412,7 @@ export function startAutoPersist(STATE, opts = {}) {
   }
 
   _persistTimer = setInterval(() => {
-    persistEmergentState(STATE, { dataDir: _dataDir });
+    persistEmergentStateAsync(STATE, { dataDir: _dataDir }).catch(() => {});
   }, interval);
 
   // Prevent timer from keeping Node process alive
