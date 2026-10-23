@@ -31,6 +31,7 @@ import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { MentionAutocomplete } from './MentionAutocomplete';
+import { invalidatePostSurfaces } from './invalidate-post-surfaces';
 
 function failureMessage(err: unknown, data?: { ok?: boolean; error?: string; message?: string } | null): string {
   if (data && data.ok === false) {
@@ -145,10 +146,12 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 1500);
       useUIStore.getState().addToast({ type: 'success', message: 'Posted.' });
-      queryClient.invalidateQueries({ queryKey: ['social-following-activity'] });
-      queryClient.invalidateQueries({ queryKey: ['feed-for-you'] });
-      queryClient.invalidateQueries({ queryKey: ['stories'] });
-      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      // Refresh every surface that shows the viewer's posts — the feeds,
+      // You > Posts, the profile post count, stories. Prefix keys only
+      // (['social-for-you'], ['user-content'], …), matching the keys the
+      // consumers actually declare. The old list invalidated
+      // ['feed-for-you'] / ['social-feed'], which no component uses.
+      void invalidatePostSurfaces(queryClient);
       queryClient.invalidateQueries({ queryKey: ['social-following'] });
       onPosted?.(data.post?.id || null);
     },

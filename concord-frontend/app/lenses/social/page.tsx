@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
 import { OwnPostDelete } from '@/components/social/OwnPostDelete';
+import { invalidatePostSurfaces } from '@/components/social/invalidate-post-surfaces';
 import { Discovery } from '@/components/social/Discovery';
 import { NotificationBell } from '@/components/social/NotificationBell';
 import { NotificationCenter } from '@/components/social/NotificationCenter';
@@ -588,7 +589,10 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
                 postId={item.id}
                 onDeleted={() => {
                   setRemoved((prev) => new Set(prev).add(item.id));
-                  void queryClient.invalidateQueries({ queryKey: ['social-following-activity', currentUserId] });
+                  // The row is gone here; reconcile every other surface —
+                  // You > Posts, the profile post count, For You — with the
+                  // server, so no place keeps the deleted post.
+                  void invalidatePostSurfaces(queryClient);
                 }}
               />
             )}

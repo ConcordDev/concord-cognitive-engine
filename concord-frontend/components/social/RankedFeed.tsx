@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { OwnPostDelete } from './OwnPostDelete';
+import { invalidatePostSurfaces } from './invalidate-post-surfaces';
 
 interface RankedPost {
   id: string;
@@ -53,7 +54,9 @@ export function RankedFeed({ currentUserId }: { currentUserId: string }) {
                 postId={post.id}
                 onDeleted={() => {
                   setRemoved((prev) => new Set(prev).add(post.id));
-                  void queryClient.invalidateQueries({ queryKey: ['social-for-you', currentUserId] });
+                  // Row already dropped here; reconcile the Following
+                  // timeline, You > Posts and the post count too.
+                  void invalidatePostSurfaces(queryClient);
                 }}
               />
             )}

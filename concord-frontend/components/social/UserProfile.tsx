@@ -32,6 +32,7 @@ import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { OwnPostDelete } from './OwnPostDelete';
+import { invalidatePostSurfaces } from './invalidate-post-surfaces';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -285,6 +286,11 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [actionNote, setActionNote] = useState<string | null>(null);
+  // Post ids the server already confirmed deleted. The row vanishes the
+  // moment the confirm lands — not one refetch round-trip later, when a
+  // still-rendered deleted row reads as "the delete didn't work" and a
+  // retry 404s. Reconciled away by the invalidate+refetch in onDeleted.
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
 
   const isOwnProfile = currentUserId === userId;
   const gradient = pickGradient(userId);
@@ -330,6 +336,23 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
       // For posts/dtus/liked, use the user's posts endpoint (route is /posts/user/:userId)
       const res = await api.get(`/api/social/posts/user/${userId}`, { params: { limit: 20 } });
       return (res.data.posts || res.data.feed || []) as FeedItem[];
+    },
+  });
+
+  // The profile's real post count, straight from the server
+  // (GET /api/social/posts/user/:id returns `total` across all the user's
+  // posts — a limit:1 window still counts everything). Invalidated on every
+  // confirmed create/delete by invalidatePostSurfaces, so it never lags the
+  // lists. null while unknown — never a fabricated number.
+  const postsCountQuery = useQuery({
+    queryKey: ['user-post-count', userId],
+    queryFn: async () => {
+      const res = await api.get<{ ok?: boolean; total?: number; error?: string }>(
+        `/api/social/posts/user/${userId}`,
+        { params: { limit: 1 } },
+      );
+      const total = res.data?.total;
+      return typeof total === 'number' ? total : null;
     },
   });
 
@@ -662,11 +685,17 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-5 gap-2 p-3 rounded-xl bg-lattice-deep border border-lattice-border">
+        <div
+          data-testid="profile-stats"
+          className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-lattice-deep border border-lattice-border sm:grid-cols-6"
+        >
+          {typeof postsCountQuery.data === 'number' ? (
+            <StatCard label="Posts" value={postsCountQuery.data} icon={BookOpen} />
+          ) : null}
           <button
             onClick={() => setShowFollowers(true)}
             className="hover:bg-lattice-surface rounded-lg p-2 transition-colors"
-          aria-label="Stat card">
+            aria-label="Stat card">
             <StatCard label="Followers" value={profile.stats.followerCount} icon={Users} />
           </button>
           <button
@@ -708,14 +737,22 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
               <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
             </div>
           ) : contentQuery.data && contentQuery.data.length > 0 ? (
-            contentQuery.data.map((item) => (
-              <ContentItem
-                key={item.id || item.dtuId}
-                item={item}
-                canDelete={isOwnProfile && activeTab === 'posts' && !!item.id}
-                onDeleted={() => { void queryClient.invalidateQueries({ queryKey: ['user-content', userId] }); }}
-              />
-            ))
+            contentQuery.data
+              .filter((item) => !(item.id && removed.has(item.id)))
+              .map((item) => (
+                <ContentItem
+                  key={item.id || item.dtuId}
+                  item={item}
+                  canDelete={isOwnProfile && activeTab === 'posts' && !!item.id}
+                  onDeleted={() => {
+                    // Server confirmed the delete: drop the row now, then
+                    // reconcile every surface (both home feeds, You > Posts,
+                    // the post count, stories) with a real refetch.
+                    if (item.id) setRemoved((prev) => new Set(prev).add(item.id as string));
+                    void invalidatePostSurfaces(queryClient);
+                  }}
+                />
+              ))
           ) : (
             <div className="text-center py-12">
               <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
