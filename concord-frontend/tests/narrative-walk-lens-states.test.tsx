@@ -52,6 +52,17 @@ beforeEach(() => {
 });
 
 describe('narrative trail', () => {
+  it('PROGRESS: shows the step position and the watched count from the stored journal', async () => {
+    listSequences.mockReturnValue(SEQS);
+    // A journal from an earlier visit: one watched id, one renamed away.
+    localStorage.setItem('concordia:narrative-walk:watched', JSON.stringify(['vela_reveal', 'gone_seq']));
+    const view = render(<NarrativeWalkLens />);
+    fireEvent.click(await view.findByRole('button', { name: 'Begin the walk' }));
+    expect(await view.findByTestId('narrative-progress')).toHaveTextContent('Step 1 of 2 · 2 watched');
+    fireEvent.click(view.getByRole('button', { name: 'The next step' }));
+    await waitFor(() => expect(view.getByTestId('narrative-progress')).toHaveTextContent('Step 2 of 2 · 2 watched'));
+  });
+
   it('EMPTY: says no walk is open and offers Begin', async () => {
     listSequences.mockReturnValue(SEQS);
     const view = render(<NarrativeWalkLens />);
