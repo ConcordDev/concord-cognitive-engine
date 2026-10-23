@@ -186,4 +186,36 @@ describe('QuickPostComposer', () => {
       expect(typeof last[1].expiresAt).toBe('string');
     });
   });
+
+  it('at narrow width every composer option and the Post button stay reachable (no clipped right edge)', () => {
+    // Real defect: the options row was a single no-wrap flex line inside the
+    // form's overflow-hidden shell, so at 375-414 px everything past the tags
+    // input ('Who can reply', visibility, server, Save draft, Post) was
+    // clipped off the right edge. Structure assertion (jsdom has no
+    // layout): the row now wraps and holds every control including the
+    // submit button, so nothing can exceed the form's width.
+    const { container } = render(withQuery(
+      React.createElement(QuickPostComposer, { currentUserId: 'me' }),
+      qc,
+    ));
+    const post = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(post).not.toBeNull();
+    expect(post.getAttribute('aria-label')).toBe('Post');
+    expect(post.className).toContain('min-h-[44px]');
+    expect(post.className).toContain('ml-auto');
+    const row = post.parentElement as HTMLElement;
+    expect(row.className).toContain('flex-wrap');
+    for (const label of ['Who can see this', 'Who can reply']) {
+      const select = container.querySelector(`select[aria-label="${label}"]`) as HTMLSelectElement;
+      expect(select).not.toBeNull();
+      expect(row.contains(select)).toBe(true);
+      expect(select.className).toContain('max-w-full');
+    }
+    const saveDraft = [...row.querySelectorAll('button')].find((b) => b.textContent === 'Save draft');
+    expect(saveDraft).toBeTruthy();
+    expect(row.contains(saveDraft!)).toBe(true);
+    const federation = container.querySelector('select[aria-label="Federation visibility"]') as HTMLSelectElement;
+    expect(federation).not.toBeNull();
+    expect(row.contains(federation)).toBe(true);
+  });
 });

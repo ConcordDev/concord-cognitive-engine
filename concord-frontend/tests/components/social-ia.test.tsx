@@ -72,7 +72,10 @@ describe('social 5-place IA', () => {
 
   it('renders Home, Explore, Create, Inbox, You and a single composer', async () => {
     renderPage();
-    await screen.findByRole('button', { name: /^Home$/i });
+    // Two navs now render in jsdom (desktop sidebar + phone top bar — they
+    // are never both visible in a real browser: hidden lg:flex vs lg:hidden),
+    // so every place must appear at least once across them.
+    await screen.findAllByRole('button', { name: /^Home$/i });
     expect(screen.getAllByRole('button', { name: /^Explore$/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /^Create$/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /^Inbox$/i }).length).toBeGreaterThan(0);

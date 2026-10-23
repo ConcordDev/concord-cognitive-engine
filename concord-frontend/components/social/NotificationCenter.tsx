@@ -666,7 +666,10 @@ function NotificationCenter({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           className={cn(
-            'absolute w-[400px] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden',
+            // max-w keeps the fixed 400px dropdown inside a phone viewport
+            // (right-0 anchored, so it shrinks leftward instead of running
+            // off-screen left at 375-414 px).
+            'absolute w-[400px] max-w-[calc(100vw-2rem)] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden',
             placement === 'side' ? 'left-full bottom-0 ml-3' : 'right-0 top-full mt-2',
           )}
         >

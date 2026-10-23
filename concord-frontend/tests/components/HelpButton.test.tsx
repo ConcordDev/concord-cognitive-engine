@@ -282,4 +282,21 @@ describe('HelpButton', () => {
     expect(sendBtn.disabled).toBe(true);
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it('launcher and panel clear the global bottom bar + safe area on phones', () => {
+    // Real defect: the launcher's hard-coded bottom-20 (80px) sat under the
+    // global MobileNav at phone width (h-14 = 56px + up to 34px home-indicator
+    // inset on notched phones), and the panel then opened over the bar too.
+    // Structure assertion (jsdom has no layout): below md both offset by
+    // calc(4rem + safe-area inset) / calc(7rem + safe-area inset); at md+
+    // (bar hidden) the old md:bottom-5 / md:bottom-20 values are kept.
+    render(<HelpButton />);
+    const launcher = screen.getByLabelText('Help and feedback');
+    expect(launcher.className).toContain('bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]');
+    expect(launcher.className).toContain('md:bottom-5');
+    fireEvent.click(launcher);
+    const panel = screen.getByRole('dialog');
+    expect(panel.className).toContain('bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]');
+    expect(panel.className).toContain('md:bottom-20');
+  });
 });

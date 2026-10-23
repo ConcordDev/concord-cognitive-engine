@@ -278,14 +278,19 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         )}
       />
 
-      <div className="px-3 py-1.5 border-t border-zinc-800/40 flex items-center gap-2">
+      {/* flex-wrap: at 375-414 px the selects + Save draft + Post cannot
+          share one row with the tags input. Wrapping keeps every option
+          reachable and the Post button visible below the fold of the row
+          instead of clipped off the right edge by the form's
+          overflow-hidden (rounded-corner) shell. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-zinc-800/40 px-3 py-1.5">
         <Hash className="w-3 h-3 text-zinc-400 shrink-0" />
         <input
           type="text"
           value={tagsRaw}
           onChange={(e) => setTagsRaw(e.target.value)}
           placeholder="tags, comma-separated"
-          className="flex-1 text-[11px] bg-transparent text-zinc-300 placeholder-zinc-600 focus:outline-none"
+          className="min-w-0 grow basis-32 text-[11px] bg-transparent text-zinc-300 placeholder-zinc-600 focus:outline-none"
         />
         {/* Phase 11 (Item 12) — federation visibility. Defaults to
             'local' so posts never leave the instance unless the
@@ -294,7 +299,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
           aria-label="Who can see this"
           value={privacy}
           onChange={(e) => choosePrivacy(e.target.value as 'public' | 'followers' | 'private')}
-          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
+          className="max-w-full text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
         >
           <option value="public">Public</option>
           <option value="followers">Followers</option>
@@ -304,7 +309,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
           aria-label="Who can reply"
           value={replyAudience}
           onChange={(e) => setReplyAudience(e.target.value as 'everyone' | 'followers' | 'mentioned')}
-          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
+          className="max-w-full text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400"
         >
           <option value="everyone">Replies: everyone</option>
           <option value="followers">Replies: followers</option>
@@ -319,9 +324,10 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
           Save draft
         </button>
         <select
+          aria-label="Federation visibility"
           value={federationVisibility}
           onChange={(e) => setFederationVisibility(e.target.value as FederationVisibility)}
-          className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400 hover:text-zinc-200"
+          className="max-w-full text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-zinc-400 hover:text-zinc-200"
           title="Federation visibility"
         >
           <option value="local">🏠 This server</option>
@@ -336,7 +342,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
           aria-label={mode === 'story' ? 'Post 24h story' : 'Post'}
           disabled={mutation.isPending || !content.trim() || overLimit}
           className={cn(
-            'inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-xs px-2.5 py-1 rounded border font-medium transition-colors',
+            'ml-auto inline-flex min-h-[44px] min-w-[44px] items-center gap-1 text-xs px-2.5 py-1 rounded border font-medium transition-colors',
             mode === 'story'
               ? 'bg-rose-700/40 hover:bg-rose-700/60 text-rose-100 border-rose-600/60'
               : 'bg-indigo-700/40 hover:bg-indigo-700/60 text-indigo-100 border-indigo-600/60',

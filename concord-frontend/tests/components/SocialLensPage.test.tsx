@@ -120,8 +120,11 @@ describe('social lens page — real unread badge (ManifestActionBar removed)', (
 
   it('the same real count also badges Inbox (shared query, not two fake numbers)', async () => {
     renderPage();
-    const inbox = await screen.findByRole('button', { name: /^Inbox$/i });
-    await waitFor(() => expect(inbox).toHaveTextContent('3'));
+    // Both navs (desktop sidebar + phone top bar) badge Inbox from the one
+    // shared notification-count query.
+    const inbox = await screen.findAllByRole('button', { name: /^Inbox$/i });
+    expect(inbox.length).toBeGreaterThan(0);
+    await waitFor(() => inbox.forEach((b) => expect(b).toHaveTextContent('3')));
   });
 
   it('clicking the topbar bell opens the real dropdown preview (a genuine state change, not decoration)', async () => {

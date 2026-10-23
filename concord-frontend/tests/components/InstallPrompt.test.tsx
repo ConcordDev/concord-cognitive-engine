@@ -101,4 +101,21 @@ describe('InstallPrompt', () => {
     rerender(<InstallPrompt />);
     expect(screen.queryByText('Install Concord')).toBeNull();
   });
+
+  it('sits above the global bottom bar + safe area on phones (still dismissible)', () => {
+    // Real defect: at phone width the global MobileNav (fixed bottom-0,
+    // h-14 + safe-area inset, z-50) covered the banner, which sat at a
+    // hard-coded bottom-4. Structure assertion (jsdom has no layout):
+    // below md the banner offsets by the bar height (3.5rem) + gap + the
+    // home-indicator inset; at md+ (bar hidden) it keeps bottom-4.
+    render(<InstallPrompt />);
+    fireInstallable();
+    const banner = screen.getByRole('banner');
+    expect(banner.className).toContain('bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]');
+    expect(banner.className).toContain('md:bottom-4');
+    // The dismiss control is still there and still works.
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss install prompt' }));
+    expect(localStorage.getItem('concord_pwa_dismissed')).toBe('1');
+    expect(screen.queryByText('Install Concord')).toBeNull();
+  });
 });
