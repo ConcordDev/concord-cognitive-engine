@@ -1473,9 +1473,26 @@ export function broadcastPositions(cityId, realtimeEmit, opts = {}) {
  * @param {number} [intervalMs=100]
  * @returns {() => void} Cleanup function to stop broadcasting.
  */
-export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
-  // Stamina regen runs at 1/sec (every 10th broadcast tick)
-  let staminaRegenCounter = 0;
+export function startPresenceBroadcast(realtimeEmit, intervalMs) {
+  // Interval: caller arg → env (CONCORD_PRESENCE_BROADCAST_MS) → default 1000ms (1Hz).
+  // The 100ms (10Hz) default from the original Concordia prototype starved
+  // the event loop under realistic user counts — see `event_loop_lag_spike`
+  // counts for culprit `city_presence_broadcast` in ~/concord/logs/
+  // backend.log (16k+ events in a typical heavy hour; maxMs spikes of
+  // 100s+). 1Hz is humanly indistinguishable for avatar animation, cuts
+  // the per-second cost by 10x, and leaves the event loop room for
+  // _everything else_ (chat, NPC loop, AI calls, DTU writes).
+  // Override via env: CONCORD_PRESENCE_BROADCAST_MS=500 for 2Hz, or
+  // CONCORD_PRESENCE_BROADCAST_MS=100 to restore the old behavior if a
+  // specific game slice needs higher fidelity than 1Hz.
+  const _envMs = Number(process.env.CONCORD_PRESENCE_BROADCAST_MS);
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+    intervalMs = Number.isFinite(_envMs) && _envMs > 0 ? _envMs : 1000;
+  }
+  // Stamina regen runs at 1/sec regardless of broadcast rate: accumulate the
+  // nominal tick interval and regen once per full second elapsed. (A fixed
+  // "every 10th tick" counter only equals 1/sec at the old 100ms rate.)
+  let staminaRegenAccumMs = 0;
 
   // Sprint 60+ — dynamic idle gating. When no real users are present
   // (no auth activity in 5 min, no session traffic in 2 min), skip the
@@ -1506,10 +1523,10 @@ export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
         broadcastPositions(cityId, realtimeEmit);
       }
       // Stamina regen — 1 point per second
-      staminaRegenCounter++;
-      if (staminaRegenCounter >= 10) {
+      staminaRegenAccumMs += intervalMs;
+      while (staminaRegenAccumMs >= 1000) {
         regenStamina();
-        staminaRegenCounter = 0;
+        staminaRegenAccumMs -= 1000;
       }
     } finally {
       try { recordLagWork("city_presence_broadcast", performance.now() - _t0); } catch (_e) { /* attribution is informational */ }
