@@ -7,6 +7,7 @@
 //     serve as world Jarls/Bosses/Governors, generate main quests
 
 import crypto from "crypto";
+import { getDayPhase } from "./world-clock.js";
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
@@ -1135,30 +1136,19 @@ export class NPCAgent {
       return _needToAction(urgentNeed[0]);
     }
 
-    // Otherwise use subconscious brain for richer decision
-    try {
-      const { handle } = await this._selectBrain("subconscious", {
-        brainOverride: "subconscious",
-        callerId: "world:npc:decision",
-      });
-
-      const prompt = `NPC type: ${this.npcType}
-World: ${this.worldId}
-Needs: ${JSON.stringify(this.needs)}
-Goals: ${JSON.stringify(this.goals)}
-Location: ${JSON.stringify(this.location)}
-
-Choose one action for this NPC. Return JSON only:
-{ "action": "<gather_resource|build_structure|practice_skill|socialize|travel|trade|rest|create>", "target": "<optional string>" }`;
-
-      const raw   = await handle.generate(prompt);
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) return JSON.parse(match[0]);
-    } catch (_e) {
-      // fallback
-    }
-
-    return { action: "rest" };
+    // Otherwise follow the day: the NPC's job by day, people at dusk, sleep
+    // at night, with the lowest open need taking priority. This used to ask
+    // the LLM for EVERY non-urgent NPC on EVERY tick (~16k NPCs); the queue
+    // could never drain, so almost every call failed into "rest", social
+    // needs never recovered, and NPCs posted an endless stream of "Help X
+    // with social" quests (live 2026-10-23: 53,962 open, none taken).
+    this._decisionTick = (this._decisionTick || 0) + 1;
+    return chooseRoutineAction({
+      archetype: this.archetype,
+      needs: this.needs,
+      segment: getDayPhase(),
+      roll: _stableRoll(this.id, this._decisionTick),
+    });
   }
 
   async _executeAction({ action, target }) {
@@ -1328,6 +1318,9 @@ export function resetNpcQuestTickCounter() { NPC_QUEST_TICK_CALLS = 0; }
 // gets the loop back every few dozen agents instead of after the whole
 // world. A live CPU profile (2026-10-08, ~8,200 NPCs over 15+ worlds) showed
 // whole-world ticks holding the loop for 1-3s at a stretch.
+// One LLM tactic per (world, faction) per this window; see _tickFactionCoordination.
+const FACTION_TACTIC_REFRESH_MS = Math.max(60_000, Number(process.env.CONCORD_FACTION_TACTIC_REFRESH_MS) || 15 * 60_000);
+const _factionTacticAt = new Map();
 export const NPC_TICK_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_TICK_BATCH) || 25);
 export const NPC_FLUSH_BATCH = Math.max(1, Number(process.env.CONCORD_NPC_FLUSH_BATCH) || 200);
 
@@ -1668,7 +1661,15 @@ export class NPCSimulator {
       // Leader = highest level in faction
       const leader = members.sort((a, b) => (b.level || 1) - (a.level || 1))[0];
       try {
-        await leader._coordinateFaction(members);
+        // A tactic is a standing order (it feeds dialogue topics and the NPC
+        // inspector), not a per-tick decision. Asking the LLM for one per
+        // faction per world-tick kept Ollama's single queue saturated.
+        const key = `${this.worldId}:${faction}`;
+        const now = Date.now();
+        if (!(now - (_factionTacticAt.get(key) || 0) < FACTION_TACTIC_REFRESH_MS)) {
+          _factionTacticAt.set(key, now);
+          await leader._coordinateFaction(members);
+        }
         // Leader ensures undergeared members receive wealth transfers
         const memberIds = members.filter(m => m.id !== leader.id).map(m => m.id);
         leaderEnsuresFactionGear(this._db, leader.id, memberIds);
@@ -1727,6 +1728,66 @@ export class NPCSimulator {
 
 function _defaultNeeds() {
   return { hunger: 1, rest: 1, social: 1, purpose: 1, safety: 1 };
+}
+
+// What each archetype does on shift. Anything unlisted works as a laborer.
+const ARCHETYPE_WORK = {
+  farmer: "gather_resource", miller: "gather_resource", logger: "gather_resource",
+  miner: "gather_resource", fisher: "gather_resource", hunter: "gather_resource",
+  laborer: "gather_resource", builder: "build_structure", blacksmith: "build_structure",
+  engineer: "build_structure", trader: "trade", merchant: "trade", cook: "trade",
+  innkeeper: "trade", bard: "socialize", scholar: "practice_skill", healer: "practice_skill",
+  medic: "practice_skill", mystic: "practice_skill", mage: "practice_skill", cyber: "practice_skill",
+  elder: "practice_skill", scientist: "practice_skill", warrior: "practice_skill",
+  guard: "travel", soldier: "travel", wanderer: "travel", citizen: "trade",
+};
+
+/** Creatures and monsters don't trade, build or hold conversations. */
+export function isPeopleArchetype(archetype) {
+  const a = String(archetype || "");
+  if (a.startsWith("creature:")) return false;
+  return !["undead", "wraith", "lich_king", "dragon_lord", "dark_jarl", "drift_eater",
+    "shard_husk", "goblin", "orc_warrior", "dark_wizard"].includes(a);
+}
+
+/** Deterministic 0..1 from an id and a counter (no Math.random in the plan). */
+function _stableRoll(id, n) {
+  let h = 2166136261;
+  const str = `${id}:${n}`;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * One NPC's next action from its needs, its archetype's work and the time of
+ * day. Pure: same inputs, same action. Urgent needs (< 0.3) are handled by the
+ * caller before this runs.
+ * @param {{archetype?:string, needs?:object, segment?:string, roll?:number}} p
+ */
+export function chooseRoutineAction({ archetype = "generic", needs = {}, segment = "morning", roll = 0 } = {}) {
+  const people = isPeopleArchetype(archetype);
+  if (!people) {
+    // Animals and monsters: forage by day, roam, rest at night.
+    if (segment === "night") return { action: "rest" };
+    if ((needs.hunger ?? 1) < 0.6) return { action: "gather_resource" };
+    return { action: roll < 0.5 ? "travel" : "gather_resource" };
+  }
+  const work = ARCHETYPE_WORK[archetype] || "gather_resource";
+  // The lowest need under 0.5 comes first.
+  const open = Object.entries(needs).filter(([, v]) => typeof v === "number" && v < 0.5).sort(([, a], [, b]) => a - b)[0];
+  if (open) {
+    const [need] = open;
+    if (need === "rest") return { action: "rest" };
+    if (need === "social") return { action: "socialize" };
+    if (need === "hunger") return { action: "gather_resource" };
+    if (need === "safety") return { action: "travel" };
+    if (need === "purpose") return { action: work };
+  }
+  if (segment === "night") return { action: work === "travel" && roll < 0.5 ? "travel" : "rest" };
+  if (segment === "dusk") return { action: roll < 0.6 ? "socialize" : "trade" };
+  // Working hours: mostly the job, sometimes a walk or a word with someone.
+  if (roll < 0.75) return { action: work };
+  return { action: roll < 0.88 ? "socialize" : "travel" };
 }
 
 function _needToAction(need) {
