@@ -50,7 +50,17 @@ interface PeerInfo {
   analyser: AnalyserNode;
 }
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+// ICE baseline when /api/webrtc/ice-servers can't be reached — same two
+// Google STUN servers TelehealthVideoCall falls back to. The endpoint
+// normally adds Cloudflare TURN credentials (short-lived, minted
+// server-side) so strict-NAT clients connect too.
+type IceServersResponse = { ok: boolean; iceServers?: RTCIceServer[] };
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
+
+const ICE_CONNECT_FAILED_MESSAGE = 'Couldn\u2019t connect audio on this network \u2014 try another network';
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try { const r = await api.post('/api/lens/run', { domain, name, input }); return r?.data as T; }
@@ -68,18 +78,28 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
   const [joinedMesh, setJoinedMesh] = useState(false);
   const [error, setError]   = useState<string | null>(null);
   const [muted, setMuted]   = useState(true);
-  const [handRaised, setHandRaised] = useState(false);
+  // Hand state is derived from the server room (myHandUp) plus the
+  // in-flight raise request — no local mirror to drift out of sync.
   // _peerIds is the React-state mirror of peersRef.current — its only
   // job is to trigger a render whenever a peer joins/leaves so the
-  // "X peer mesh connections" footer is fresh. Read via peersRef.size.
-  const [, setPeerIds] = useState<string[]>([]);
-  const [, forceTick] = useState(0);
+  // "X peer mesh connections" footer is fresh (reading the ref during
+  // render is forbidden by react-hooks/refs).
+  const [peerIds, setPeerIds] = useState<string[]>([]);
+  // speakLevels is the render-side mirror of speakLevelsRef — the RMS
+  // rAF loop writes the ref, then publishes a fresh Map into state when
+  // a level actually changed, so the speaking rings re-render.
+  const [speakLevels, setSpeakLevels] = useState<Map<string, number>>(new Map());
 
   const audioCtxRef    = useRef<AudioContext | null>(null);
   const masterGainRef  = useRef<GainNode | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef       = useRef<Map<string, PeerInfo>>(new Map());
   const speakLevelsRef = useRef<Map<string, number>>(new Map());
+  // ICE servers for every peer connection. Starts as the STUN baseline
+  // and is replaced by /api/webrtc/ice-servers (TURN included when the
+  // backend has credentials) as soon as the mount effect resolves it —
+  // before any peer is created.
+  const iceServersRef  = useRef<RTCIceServer[]>(FALLBACK_ICE_SERVERS);
 
   // ── Server-side room state (speakers, listeners, hands) ─────────────
   const { data: roomData, refetch: refetchRoom } = useQuery<{ ok: boolean; room?: Room } | null>({
@@ -93,14 +113,15 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
   const isSpeaker = !!room && (room.speakers || []).some(s => s.user_id === selfUserId);
   const myHandUp  = !!room && (room.handsRaised || []).some(h => h.user_id === selfUserId);
 
-  // Keep local UI in sync with server hand state.
-  useEffect(() => { setHandRaised(myHandUp); }, [myHandUp]);
-
   // ── Mutations ───────────────────────────────────────────────────────
   const raiseMut = useMutation({
     mutationFn: async () => runMacro<{ ok: boolean }>('spaces', 'raise_hand', { roomId }),
-    onSuccess: () => { setHandRaised(true); refetchRoom(); },
+    onSuccess: () => { refetchRoom(); },
   });
+  // Hand state is derived from the server room plus the in-flight raise
+  // request — no local mirror to drift out of sync (the old useState +
+  // sync-effect pair was also a react-hooks/set-state-in-effect warning).
+  const handRaised = myHandUp || raiseMut.isPending;
   const promoteMut = useMutation({
     mutationFn: async (userId: string) => runMacro<{ ok: boolean }>('spaces', 'promote', { roomId, userId, role: 'speaker' }),
     onSuccess: () => refetchRoom(),
@@ -132,7 +153,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
     if (!ctx || !masterGainRef.current) return null;
     if (peersRef.current.has(peerId)) return peersRef.current.get(peerId)!;
 
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
     const gain = ctx.createGain();
     gain.gain.value = 1.0;
     const analyser = ctx.createAnalyser();
@@ -152,7 +173,14 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
       }
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') cleanupPeer(peerId);
+      if (pc.connectionState === 'failed') {
+        // Plain user-facing message (oc-social-3afix item 6): NAT/TURN
+        // config instructions don't help the person in the room.
+        setError(ICE_CONNECT_FAILED_MESSAGE);
+        cleanupPeer(peerId);
+      } else if (pc.connectionState === 'closed') {
+        cleanupPeer(peerId);
+      }
     };
 
     if (localStreamRef.current) {
@@ -200,11 +228,25 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
     try { await peer.pc.addIceCandidate(candidate); } catch { /* late ICE */ }
   }, []);
 
-  // ── Mount: getUserMedia + audio-room:join ──────────────────────────
+  // ── Mount: fetch ICE config, getUserMedia, join the room ──────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        // Fetch the dynamic ICE-server config first (same pattern as
+        // TelehealthVideoCall): the endpoint returns the STUN baseline plus
+        // short-lived Cloudflare TURN credentials when the backend has
+        // CF_TURN_KEY_ID set. Any failure keeps the STUN-only fallback.
+        try {
+          const r = await fetch('/api/webrtc/ice-servers');
+          if (r.ok) {
+            const data = (await r.json()) as IceServersResponse;
+            if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+              iceServersRef.current = data.iceServers;
+            }
+          }
+        } catch { /* keep the STUN-only baseline */ }
+
         const ctx = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
         const master = ctx.createGain();
         master.connect(ctx.destination);
@@ -304,7 +346,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
           dirty = true;
         }
       }
-      if (dirty) forceTick(t => t + 1);
+      if (dirty) setSpeakLevels(new Map(speakLevelsRef.current));
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -366,7 +408,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
               <ul className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {room.speakers.map(s => {
                   const isMe = s.user_id === selfUserId;
-                  const speaking = !isMe && Array.from(speakLevelsRef.current.values()).some(v => v > 0.05);
+                  const speaking = !isMe && Array.from(speakLevels.values()).some(v => v > 0.05);
                   return (
                     <li key={s.user_id} className="flex flex-col items-center gap-1">
                       <div className={cn(
@@ -456,7 +498,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
               )}
 
               <span className="flex-1 text-[10px] text-zinc-400">
-                {peersRef.current.size} peer mesh connection{peersRef.current.size === 1 ? '' : 's'}
+                {peerIds.length} peer mesh connection{peerIds.length === 1 ? '' : 's'}
               </span>
 
               {isHost && (

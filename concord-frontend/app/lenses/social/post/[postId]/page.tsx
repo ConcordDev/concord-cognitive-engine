@@ -8,30 +8,20 @@
  */
 
 import { useRouter, useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { Globe2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { api } from '@/lib/api/client';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { PostDetail } from '@/components/social/feed/PostDetail';
-
-interface MeResponse {
-  ok: boolean;
-  user?: { id: string; username: string; displayName?: string };
-}
 
 export default function SocialPostPermalinkPage() {
   const router = useRouter();
   const params = useParams<{ postId: string }>();
   const postId = String(params?.postId || '');
 
-  const { data: me, isLoading: meLoading } = useQuery<MeResponse | null>({
-    queryKey: ['me'],
-    queryFn: async () => {
-      try { const r = await api.get<MeResponse>('/api/auth/me'); return r?.data; }
-      catch { return null; }
-    },
-    staleTime: 60 * 1000,
-  });
+  // Shared session query (hooks/use-current-user) — same ['me'] key as the
+  // social hub, so both pages read one cached session instead of racing two
+  // queryFns over the same key.
+  const { data: me, isLoading: meLoading } = useCurrentUser();
 
   const currentUserId = me?.user?.id || 'current-user';
   const username = me?.user?.username || me?.user?.displayName || currentUserId;

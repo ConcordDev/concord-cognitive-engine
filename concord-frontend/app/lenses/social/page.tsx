@@ -26,9 +26,10 @@
  *   └───────────────────────────┴────────────────┘
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useReducedMotion } from 'framer-motion';
 import {
   Activity, Loader2, Plus, Home, Compass, Inbox, User,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -79,11 +81,6 @@ type PlaceId = SocialPlaceId;
 type HomeFeed = 'following' | 'forYou';
 type InboxTab = 'messages' | 'notifications';
 type YouTab = 'posts' | 'saved' | 'analytics' | 'muted';
-
-interface MeResponse {
-  ok: boolean;
-  user?: { id: string; username: string; displayName?: string };
-}
 
 interface FollowingActivityItem {
   id: string;
@@ -128,15 +125,19 @@ export default function SocialHubPage() {
   // Live audio Room stage. RoomList sets this when the user clicks Join.
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [storyRequest, setStoryRequest] = useState(0);
+  // Create-tap focus request. A counter (not a boolean) so tapping Create
+  // again always re-requests, and so the focus can run AFTER the Home
+  // view commits — the old requestAnimationFrame inside startPost raced
+  // React's commit when coming from Explore/Inbox/You, so the DOM query
+  // found no composer and the tap did nothing visible.
+  const [composerFocusRequest, setComposerFocusRequest] = useState(0);
+  const handledFocusRequest = useRef(0);
+  const reduceMotion = useReducedMotion();
 
-  const { data: me } = useQuery<MeResponse | null>({
-    queryKey: ['me'],
-    queryFn: async () => {
-      try { const r = await api.get<MeResponse>('/api/auth/me'); return r?.data; }
-      catch { return null; }
-    },
-    staleTime: 60 * 1000,
-  });
+  // Shared session query (hooks/use-current-user): one ['me'] declaration
+  // for every Social surface — a failed fetch keeps the previous data and
+  // self-heals instead of caching "anonymous" and blanking the composer.
+  const { data: me } = useCurrentUser();
 
   const currentUserId = me?.user?.id || '';
   const railUserId = me?.user?.id || null;
@@ -205,14 +206,27 @@ export default function SocialHubPage() {
     { id: 'you', label: 'You', keys: '4', icon: User },
   ];
 
-  const startPost = () => {
+  const startPost = useCallback(() => {
     setView('home');
-    requestAnimationFrame(() => {
-      const box = document.querySelector<HTMLElement>('#social-main textarea, #social-quick-post textarea, #social-main [contenteditable="true"]');
-      box?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      box?.focus();
-    });
-  };
+    setComposerFocusRequest((n) => n + 1);
+  }, [setView]);
+
+  // Focus the Home composer after a Create tap, once the request and the
+  // Home view have both committed. The composer's form gets a visible
+  // focus-within ring, so this is something you SEE, not a silent focus.
+  // currentUserId is a dependency so a tap that lands while the session
+  // query is still loading focuses as soon as the composer mounts.
+  useEffect(() => {
+    if (composerFocusRequest === 0 || composerFocusRequest === handledFocusRequest.current) return;
+    if (view !== 'home') return; // request stays pending; Home commits soon
+    const box = document.querySelector<HTMLElement>('#social-quick-post textarea');
+    if (!box) return; // not mounted yet (session still loading) — stays pending
+    handledFocusRequest.current = composerFocusRequest;
+    if (typeof box.scrollIntoView === 'function') {
+      box.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    }
+    box.focus();
+  }, [composerFocusRequest, view, reduceMotion, currentUserId]);
 
   const onPlace = (id: PlaceId | 'create') => {
     if (id === 'create') {
@@ -222,17 +236,16 @@ export default function SocialHubPage() {
     setView(id);
   };
 
+  // One 'n' binding: place-create. The old second "social-post" entry
+  // bound the same key again (PR #1451 nit).
   useLensCommand(
-    [
-      ...PLACES.map((t) => ({
-        id: `place-${t.id}`,
-        keys: t.keys,
-        description: t.label,
-        category: 'navigation' as const,
-        action: () => onPlace(t.id),
-      })),
-      { id: 'social-post', keys: 'n', description: 'New post', category: 'actions' as const, action: startPost },
-    ],
+    PLACES.map((t) => ({
+      id: `place-${t.id}`,
+      keys: t.keys,
+      description: t.label,
+      category: 'navigation' as const,
+      action: () => onPlace(t.id),
+    })),
     { lensId: 'social' },
   );
 
@@ -254,8 +267,7 @@ export default function SocialHubPage() {
               return (
                 <button
                   key={t.id}
-                  type={t.id === 'create' ? 'submit' : 'button'}
-                  form={t.id === 'create' ? 'social-quick-post' : undefined}
+                  type="button"
                   onClick={() => onPlace(t.id)}
                   aria-label={t.label}
                   aria-current={on ? 'page' : undefined}
@@ -523,14 +535,23 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
   const items = data?.items || [];
   const headId = items[0]?.id || null;
   if (headId && seenHead === null) setSeenHead(headId);
+  // The cursor is the newest post the viewer had already seen; anything
+  // above it is "new". The viewer's OWN posts are never buffered behind
+  // the "Show N new posts" button (oc-social-3afix item 5): your
+  // just-published post appears at the top of Home immediately, and the
+  // button counts only OTHER people's posts.
   let newer = 0;
+  let cursorIndex = items.length;
   if (seenHead) {
-    for (const item of items) {
-      if (item.id === seenHead) break;
-      newer += 1;
+    const found = items.findIndex((item) => item.id === seenHead);
+    cursorIndex = found === -1 ? items.length : found;
+    for (let i = 0; i < cursorIndex; i++) {
+      if (items[i].userId !== currentUserId) newer += 1;
     }
   }
-  const visible = (newer > 0 ? items.slice(newer) : items).filter((item) => !removed.has(item.id));
+  const visible = items
+    .filter((item, idx) => idx >= cursorIndex || item.userId === currentUserId)
+    .filter((item) => !removed.has(item.id));
 
   if (error) {
     return (

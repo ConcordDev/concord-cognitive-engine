@@ -6,6 +6,12 @@ export interface LayoutSlice {
   commandPaletteOpen: boolean;
   theme: 'dark' | 'light';
   fullPageMode: boolean;
+  // Viewport height covered by the PWA install banner while it is showing
+  // (px, measured from the banner's real rect — includes the bottom-bar +
+  // safe-area clearance it sits above). 0 when hidden/dismissed. Published
+  // by InstallPrompt so floating chrome can keep clear of the banner
+  // (HelpButton) and <main> can reserve matching scroll padding (AppShell).
+  installBannerFootprint: number;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -14,6 +20,7 @@ export interface LayoutSlice {
   setCommandPaletteOpen: (open: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setFullPageMode: (mode: boolean) => void;
+  setInstallBannerFootprint: (px: number) => void;
 }
 
 export const createLayoutSlice: StateCreator<LayoutSlice, [], [], LayoutSlice> = (set) => ({
@@ -23,6 +30,7 @@ export const createLayoutSlice: StateCreator<LayoutSlice, [], [], LayoutSlice> =
   commandPaletteOpen: false,
   theme: 'dark',
   fullPageMode: false,
+  installBannerFootprint: 0,
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -31,4 +39,5 @@ export const createLayoutSlice: StateCreator<LayoutSlice, [], [], LayoutSlice> =
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => set({ theme }),
   setFullPageMode: (mode) => set({ fullPageMode: mode }),
+  setInstallBannerFootprint: (px) => set({ installBannerFootprint: Math.max(0, Math.round(px)) }),
 });

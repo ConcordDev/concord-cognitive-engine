@@ -221,7 +221,10 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       id="social-quick-post"
       onSubmit={onSubmit}
       className={cn(
+        // focus-within ring: the Create button scrolls to and focuses the
+        // textarea programmatically — the ring is what makes that visible.
         'rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden',
+        'focus-within:border-teal-400/60 focus-within:ring-1 focus-within:ring-teal-400/40',
         className,
       )}
     >

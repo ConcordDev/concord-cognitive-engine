@@ -29,13 +29,6 @@ vi.mock('next/link', () => ({
     React.createElement('a', { href, onClick }, children),
 }));
 
-// useUIStore.getState().addToast — imperative toast access.
-const addToast = vi.fn();
-vi.mock('@/store/ui', () => ({
-  __esModule: true,
-  useUIStore: { getState: () => ({ addToast }) },
-}));
-
 // useBugContext → reportClientError (client-error funnel).
 const reportClientError = vi.fn();
 vi.mock('@/hooks/useBugContext', () => ({
@@ -43,16 +36,22 @@ vi.mock('@/hooks/useBugContext', () => ({
   reportClientError: (...args: unknown[]) => reportClientError(...args),
 }));
 
+// Real UI store (not a mock): HelpButton reads the live
+// installBannerFootprint the InstallPrompt publishes, and toasts are
+// asserted against the real store state.
+import { useUIStore } from '@/store/ui';
 import { HelpButton } from '@/components/help/HelpButton';
 
 describe('HelpButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    useUIStore.setState({ toasts: [], installBannerFootprint: 0 });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    useUIStore.setState({ toasts: [], installBannerFootprint: 0 });
   });
 
   it('renders the floating launcher button', () => {
@@ -244,9 +243,9 @@ describe('HelpButton', () => {
     fireEvent.click(screen.getByText('Send').closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' })
-      );
+      expect(
+        useUIStore.getState().toasts.some((t) => t.type === 'error')
+      ).toBe(true);
     });
     // Still on the form, not the sent view.
     expect(screen.queryByText('Thank you — we got it.')).toBeNull();
@@ -264,9 +263,11 @@ describe('HelpButton', () => {
     fireEvent.click(screen.getByText('Send').closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', message: expect.stringContaining('support@concord-os.org') })
-      );
+      expect(
+        useUIStore
+          .getState()
+          .toasts.some((t) => t.type === 'error' && t.message.includes('support@concord-os.org'))
+      ).toBe(true);
     });
   });
 
@@ -298,5 +299,33 @@ describe('HelpButton', () => {
     const panel = screen.getByRole('dialog');
     expect(panel.className).toContain('bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]');
     expect(panel.className).toContain('md:bottom-20');
+  });
+
+  it('never shares a position with the Install banner: launcher + panel lift above its measured footprint', () => {
+    // Real defect (oc-social-3afix item 1): at 390x844 the launcher's
+    // bottom offset landed exactly on the Install banner's X close button,
+    // so tapping X opened this menu and the banner could not be dismissed.
+    // The banner publishes its measured footprint; while it is showing
+    // the launcher sits 16px above the banner top (inline style wins over
+    // the class offsets at every width) and the panel opens above the
+    // launcher.
+    useUIStore.setState({ installBannerFootprint: 168 });
+    render(<HelpButton />);
+    const launcher = screen.getByLabelText('Help and feedback');
+    expect(launcher.style.bottom).toBe('184px'); // 168 + 16
+    fireEvent.click(launcher);
+    const panel = screen.getByRole('dialog');
+    expect(panel.style.bottom).toBe('232px'); // 168 + 64 (above the 44px launcher)
+    // The banner's own close button stays clickable — the help menu is
+    // nowhere near it.
+  });
+
+  it('returns to its normal offsets once the banner is dismissed (no leftover inline style)', () => {
+    useUIStore.setState({ installBannerFootprint: 168 });
+    const { rerender } = render(<HelpButton />);
+    expect(screen.getByLabelText('Help and feedback').style.bottom).toBe('184px');
+    useUIStore.setState({ installBannerFootprint: 0 });
+    rerender(<HelpButton />);
+    expect(screen.getByLabelText('Help and feedback').style.bottom).toBe('');
   });
 });

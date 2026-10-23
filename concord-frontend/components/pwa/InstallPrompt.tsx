@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { Z_INDEX } from '@/lib/ui/z-index';
+import { useUIStore } from '@/store/ui';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -19,12 +20,22 @@ interface BeforeInstallPromptEvent extends Event {
  *
  * Hidden on `/lenses/studio` — the toast sits over the mixer and device
  * rack (same music-only hide as Topbar's health chip).
+ *
+ * While showing, the banner publishes its real viewport footprint to the
+ * UI store (`installBannerFootprint`): the global Help launcher lifts
+ * above it (at phone width the launcher used to sit exactly on this
+ * banner's X close button) and AppShell's <main> reserves matching
+ * bottom padding so page content + the footer scroll fully into view.
+ * The footprint is cleared to 0 whenever the banner hides or unmounts.
  */
 export function InstallPrompt() {
   const pathname = usePathname();
   const studioWorkspace = !!pathname && /^\/lenses\/studio(\/|$)/.test(pathname);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const bannerRef = useRef<HTMLDivElement | null>(null);
+  const setInstallBannerFootprint = useUIStore((s) => s.setInstallBannerFootprint);
+  const showing = !studioWorkspace && !!deferredPrompt && !dismissed;
 
   useEffect(() => {
     // Don't capture the one-shot beforeinstallprompt on Studio: preventDefault
@@ -40,6 +51,30 @@ export function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, [studioWorkspace]);
+
+  // Publish the measured footprint whenever the banner shows, hides,
+  // resizes, or unmounts. (jsdom reports a zero-height rect — treat that
+  // as "no banner" so headless tests stay honest instead of reserving
+  // padding for a phantom banner.)
+  useLayoutEffect(() => {
+    if (!showing) {
+      setInstallBannerFootprint(0);
+      return;
+    }
+    const el = bannerRef.current;
+    const measure = () => {
+      if (!el) { setInstallBannerFootprint(0); return; }
+      const rect = el.getBoundingClientRect();
+      if (rect.height <= 0) { setInstallBannerFootprint(0); return; }
+      setInstallBannerFootprint(Math.max(0, window.innerHeight - rect.top));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      setInstallBannerFootprint(0);
+    };
+  }, [showing, setInstallBannerFootprint]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -58,10 +93,11 @@ export function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  if (studioWorkspace || !deferredPrompt || dismissed) return null;
+  if (!showing) return null;
 
   return (
     <div
+      ref={bannerRef}
       role="banner"
       style={{ zIndex: Z_INDEX.INSTALL_PROMPT }}
       className="fixed left-1/2 -translate-x-1/2 flex items-center gap-4 rounded-xl border border-neon-cyan/30 bg-lattice-surface p-4 shadow-lg shadow-neon-cyan/10 max-w-md w-[calc(100%-2rem)] bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] md:bottom-4"
