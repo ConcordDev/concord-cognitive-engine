@@ -194,3 +194,45 @@ describe("NPCSimulator#_flushPendingPersists — batches queued writes into one 
     assert.doesNotThrow(() => sim._flushPendingPersists());
   });
 });
+
+// 2026-10-22: live, 0 of 15,219 per-minute NPC row writes changed state or
+// location — only wealth moved. Unchanged state/location is no longer
+// re-sent; wealth + last_tick_at are still written every tick.
+describe("_persistState skips unchanged state/location (2026-10-22)", () => {
+  it("first persist after load writes the full row, then unchanged ticks write wealth only", () => {
+    const db = setupDb();
+    const sim = new NPCSimulator("w1", db, async () => ({ handle: { generate: async () => "" } }));
+    const a = makeAgent(db, "w1", "n1", { state: { name: "Ann" }, location: { x: 1, y: 0, z: 2 } });
+    sim._agents = [a];
+    const writes = [];
+    const origPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => { const st = origPrepare(sql); if (/^UPDATE world_npcs/.test(sql)) { const run = st.run.bind(st); return { run: (...args) => { writes.push(/state = \?/.test(sql) ? "full" : "wealth"); return run(...args); } }; } return st; };
+
+    a._pendingWealthIncome = 2; a._persistState(); sim._flushPendingPersists();
+    a._pendingWealthIncome = 3; a._persistState(); sim._flushPendingPersists();
+    a.location = { x: 5, y: 0, z: 2 };
+    a._pendingWealthIncome = 1; a._persistState(); sim._flushPendingPersists();
+    db.prepare = origPrepare;
+
+    assert.deepEqual(writes, ["full", "wealth", "full"]);
+    const row = db.prepare("SELECT state, current_location, wealth_sparks, last_tick_at FROM world_npcs WHERE id = 'n1'").get();
+    assert.equal(row.wealth_sparks, 6, "every tick's income landed");
+    assert.deepEqual(JSON.parse(row.current_location), { x: 5, y: 0, z: 2 });
+    assert.equal(JSON.parse(row.state).name, "Ann");
+    assert.ok(row.last_tick_at > 0);
+  });
+
+  it("a failed flush does not advance the baseline, so the change is retried", () => {
+    const db = setupDb();
+    const sim = new NPCSimulator("w1", db, async () => ({ handle: { generate: async () => "" } }));
+    const a = makeAgent(db, "w1", "n2", { state: { name: "Bo" } });
+    sim._agents = [a];
+    const tx = db.transaction.bind(db);
+    db.transaction = () => () => { throw new Error("disk full"); };
+    a._persistState(); sim._flushPendingPersists();
+    db.transaction = tx;
+    assert.equal(a._persistedStateJson, null);
+    a._persistState();
+    assert.notEqual(a._pendingPersist.stateJson, null, "change is still pending a full write");
+  });
+});
