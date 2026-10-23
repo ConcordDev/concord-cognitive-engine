@@ -25,6 +25,15 @@ interface SkillMarketplaceProps {
 
 const UNIVERSE_ICONS: Record<string, string> = {
   'concordia-hub':     '🏙️',
+  'fantasy':            '🧙',
+  'superhero':          '⚡',
+  'crime':              '🔫',
+  'cyber':              '💾',
+  'sere':               '🌑',
+  'tunya':              '🌊',
+  'sovereign-ruins':    '🏛️',
+  'lattice-crucible':   '🔷',
+  'concord-link-frontier': '🧭',
   'fable-world':       '🧙',
   'superhero-world':   '⚡',
   'wasteland-world':   '☢️',

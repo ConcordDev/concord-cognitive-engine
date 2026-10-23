@@ -36,6 +36,15 @@ const TYPE_LABELS: Record<string, string> = {
 
 const UNIVERSE_ICON: Record<string, string> = {
   'concordia-hub':      '🏙️',
+  'fantasy':            '🧙',
+  'superhero':          '⚡',
+  'crime':              '🔫',
+  'cyber':              '💾',
+  'sere':               '🌑',
+  'tunya':              '🌊',
+  'sovereign-ruins':    '🏛️',
+  'lattice-crucible':   '🔷',
+  'concord-link-frontier': '🧭',
   'fable-world':        '🧙',
   'superhero-world':    '⚡',
   'wasteland-world':    '☢️',
