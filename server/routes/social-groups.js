@@ -35,7 +35,8 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       rules       TEXT DEFAULT '',
       tags        TEXT DEFAULT '[]',
       created_by  TEXT NOT NULL,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      visibility  TEXT NOT NULL DEFAULT 'public'
     );
 
     CREATE TABLE IF NOT EXISTS social_group_members (

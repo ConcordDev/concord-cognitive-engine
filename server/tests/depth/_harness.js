@@ -226,7 +226,14 @@ export async function lensRun(domain, action, { data = {}, params = {} } = {}, c
     id, domain, type: domain, data,
     ownerId: c.actor.userId, createdBy: c.actor.userId,
   });
-  return runMacro("lens", "run", { id, action, params }, c);
+  const r = await runMacro("lens", "run", { id, action, params }, c);
+  // lens.run returns a handler refusal ({ ok:false, ... }) at the top level
+  // since INC-SWEEP lab F3 (a032eccab), instead of wrapping it as
+  // { ok:true, result:{ ok:false } }. Depth tests read the handler's verdict
+  // at r.result, so expose the same refusal there too. r.ok stays false, so
+  // a refusal can never read as a success.
+  if (r && typeof r === "object" && r.ok === false && !("result" in r)) return { ...r, result: r };
+  return r;
 }
 
 /**
