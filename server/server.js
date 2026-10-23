@@ -2406,6 +2406,12 @@ function startSemanticBackfill(trigger) {
       }
     },
   })
+    .then((r) => {
+      // A skipped or stopped backfill used to be silent: backfill_start with
+      // no end looked like work in progress while coverage stayed flat.
+      if (typeof r?.skipped === "string") structuredLog("info", "backfill_skipped", { trigger, reason: r.skipped });
+      else if (r?.reason) structuredLog("warn", "backfill_stopped", { trigger, reason: r.reason, embedded: r.embedded, errors: r.errors });
+    })
     .catch(e => structuredLog("warn", "backfill_error", { error: String(e?.message || e) }))
     .finally(() => { _semanticBackfillRunning = false; });
   return true;
@@ -43586,6 +43592,9 @@ async function governorTick(reason="heartbeat") {
             if (re.changed) startSemanticBackfill("reprobe");
           } catch (_e) { /* probe is best-effort */ }
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
+          // The boot backfill can be skipped (idle gate) or stop early, and
+          // nothing else re-runs it; resume while vectors are missing.
+          if (embStatus?.available && embStatus.cached < embStatus.totalDTUs) startSemanticBackfill("resume");
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
               reason: embStatus?.reason || "unknown",

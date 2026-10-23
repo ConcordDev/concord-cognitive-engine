@@ -70,6 +70,21 @@ test("registering the local embedder activates it, in its own table", async () =
   assert.ok(hits[0].rawSimilarity > 0.99);
 });
 
+test("the CPU-embedder backfill runs even when the host counts as idle / low-memory", async () => {
+  // No auth or traffic activity in this process, so presence-idle reports
+  // idle and shouldRunHeavyMaintenance() is false — the live Mac's state.
+  const presenceIdle = await import("../lib/presence-idle.js");
+  assert.equal(presenceIdle.shouldRunHeavyMaintenance(), false, "precondition: heavy maintenance is gated off");
+  const dtus = new Map([
+    ["dtu-b1", { id: "dtu-b1", title: "first backfill target" }],
+    ["dtu-b2", { id: "dtu-b2", title: "second backfill target" }],
+  ]);
+  const r = await emb.backfillEmbeddings(dtus);
+  assert.equal(r.skipped === "idle_no_users", false, JSON.stringify(r));
+  assert.equal(emb.getEmbedding("dtu-b1").length, 384);
+  assert.equal(emb.getEmbedding("dtu-b2").length, 384);
+});
+
 test("re-probe does nothing while Ollama is still down", async () => {
   assert.deepEqual(await emb.reprobeEmbeddings(), { changed: false });
   assert.equal(emb.getEmbeddingStatus().backend, "local");
@@ -94,9 +109,9 @@ test("when Ollama returns, re-probe switches back to the primary model and its v
 
 test("deleting a DTU removes its vector from every model's table", () => {
   emb.removeEmbedding("dtu-a");
-  assert.equal(db.prepare("SELECT count(*) AS c FROM embedding_cache__xenova_all_minilm_l6_v2").get().c, 0);
+  assert.equal(db.prepare("SELECT count(*) AS c FROM embedding_cache__xenova_all_minilm_l6_v2 WHERE dtu_id = 'dtu-a'").get().c, 0);
   emb.removeEmbedding("dtu-pod");
-  assert.equal(db.prepare("SELECT count(*) AS c FROM embedding_cache").get().c, 0);
+  assert.equal(db.prepare("SELECT count(*) AS c FROM embedding_cache WHERE dtu_id = 'dtu-pod'").get().c, 0);
 });
 
 test.after(() => { globalThis.fetch = realFetch; db.close(); });
