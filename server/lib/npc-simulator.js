@@ -8,6 +8,8 @@
 
 import crypto from "crypto";
 import { getDayPhase } from "./world-clock.js";
+import { isPeopleArchetype } from "./npc-kind.js";
+export { isPeopleArchetype };
 import logger from "../logger.js";
 import { adjustSimulationDensity } from "./population-scaling.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
@@ -1741,14 +1743,6 @@ const ARCHETYPE_WORK = {
   elder: "practice_skill", scientist: "practice_skill", warrior: "practice_skill",
   guard: "travel", soldier: "travel", wanderer: "travel", citizen: "trade",
 };
-
-/** Creatures and monsters don't trade, build or hold conversations. */
-export function isPeopleArchetype(archetype) {
-  const a = String(archetype || "");
-  if (a.startsWith("creature:")) return false;
-  return !["undead", "wraith", "lich_king", "dragon_lord", "dark_jarl", "drift_eater",
-    "shard_husk", "goblin", "orc_warrior", "dark_wizard"].includes(a);
-}
 
 /** Deterministic 0..1 from an id and a counter (no Math.random in the plan). */
 function _stableRoll(id, n) {

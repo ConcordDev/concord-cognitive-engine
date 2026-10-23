@@ -211,6 +211,16 @@ export function checkQuestCompletion(db, userId, worldId, questId) {
       AND (status IS NULL OR status = 'active')
   `).run(userId, worldId, questId);
 
+  // Close the posted quest too. Without this a finished NPC quest stayed
+  // 'active' on the board forever, and its giver (one open quest each) could
+  // never post another.
+  try {
+    db.prepare(`
+      UPDATE world_quests SET status = 'completed', completed_at = unixepoch()
+       WHERE id = ? AND status IN ('available', 'active')
+    `).run(questId);
+  } catch { /* world_quests absent on minimal DBs */ }
+
   return true;
 }
 
