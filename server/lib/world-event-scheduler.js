@@ -23,6 +23,7 @@
 
 import { createEvent, EVENT_TYPES } from "./world-events.js";
 import { LruMap, LruSet } from "./lru-map.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS  = 24 * ONE_HOUR_MS;
@@ -185,7 +186,7 @@ export function scheduleEventsForWorld({ worldId, now = Date.now() }) {
 /**
  * Heartbeat tick — call from governorTick on a slow cadence (every 40 ticks).
  */
-export function tick({ worlds = ["concordia"] } = {}) {
+export function tick({ worlds = [HUB_WORLD_ID] } = {}) {
   const allCreated = [];
   for (const worldId of worlds) {
     const r = scheduleEventsForWorld({ worldId });

@@ -665,7 +665,7 @@ export function pullWorldEventsIntoNews(STATE, db, sinceUnixSec, opts = {}) {
         source:    "world_events_log",
         domain:    inferDomainFromTrigger(row.trigger_id),
         human:     {
-          summary: `Event ${row.trigger_id}${row.user_id ? ` by ${row.user_id}` : ""} in ${row.city_id || "concordia"}.`,
+          summary: `Event ${row.trigger_id}${row.user_id ? ` by ${row.user_id}` : ""} in ${row.city_id || "concordia-hub"}.`,
         },
         core:      {
           definitions: [],

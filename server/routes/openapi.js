@@ -293,7 +293,7 @@ export default function openapiRoutes() {
     },
     "/world/bazaar": {
       get: { tags: ["World"], summary: "Top marketplace listings as in-world stalls",
-             parameters: [{ name: "worldId", in: "query", schema: { type: "string", default: "concordia" } },
+             parameters: [{ name: "worldId", in: "query", schema: { type: "string", default: "concordia-hub" } },
                           { name: "limit",   in: "query", schema: { type: "integer", default: 24 } }],
              responses: { 200: { description: "Stall list with positions" } } },
     },

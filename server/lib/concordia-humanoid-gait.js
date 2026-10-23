@@ -4,6 +4,7 @@
 // owning authority. Editor visual quality remains separate (NEED_DUTCH Play).
 
 import { generateCreature, validateCreaturePhysics } from "./procedural-creature.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 /**
  * Assemble a procedural humanoid blueprint from seed/description.
@@ -12,7 +13,7 @@ export function assembleHumanoid(opts = {}) {
   const description = opts.description || "procedural humanoid biped person";
   const bp = generateCreature({
     description,
-    worldId: opts.worldId || "concordia",
+    worldId: opts.worldId || HUB_WORLD_ID,
     topology: "humanoid",
     massKg: opts.massKg,
     heightM: opts.heightM,

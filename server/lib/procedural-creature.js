@@ -35,6 +35,7 @@ import { readFileSync, readdirSync, statSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { LruMap, LruSet } from "./lru-map.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 const G = 9.81; // gravity
 const AIR_DENSITY = 1.225;
@@ -527,7 +528,7 @@ function buildGait(topology, massKg, heightM, rng) {
  */
 export function generateCreature(seed) {
   const description = seed?.description ?? "creature";
-  const worldId     = seed?.worldId ?? "concordia";
+  const worldId     = seed?.worldId ?? HUB_WORLD_ID;
   const worldMod    = WORLD_MODIFIERS[worldId] ?? WORLD_MODIFIERS.concordia;
 
   const id = `crt_${seedHash(description + Date.now())}`;

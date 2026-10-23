@@ -5431,7 +5431,7 @@ export default function WorldOsSurface() {
           <ComboEvolvedBridge />
           <CinematicCaptureBootstrap />
           <PerformanceOverlay />
-          <BazaarLayer worldId="concordia" />
+          <BazaarLayer worldId="concordia-hub" />
           <NPCActivityTag
             npcs={rawWorldNPCs.map((n) => ({
               id: n.id,
@@ -6358,7 +6358,7 @@ export default function WorldOsSurface() {
                 skillLevel={1}
                 onClose={() => setShowPanel('none')}
               />
-              <CraftingPanelV2 worldId="concordia" onClose={() => setShowPanel('none')} />
+              <CraftingPanelV2 worldId="concordia-hub" onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'guild' && (

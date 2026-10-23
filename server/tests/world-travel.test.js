@@ -51,7 +51,9 @@ describe("world-travel", () => {
   it("travels to a known world and updates current_world", () => {
     const r = travelTo(db, "alice", "test_fantasy");
     assert.equal(r.ok, true);
-    assert.equal(r.fromWorld, "concordia");
+    // One hub id since 2026-10-23 (lib/world-ids.js): a user still holding
+    // the old default "concordia" is in the hub, reported as "concordia-hub".
+    assert.equal(r.fromWorld, "concordia-hub");
     assert.equal(r.toWorld, "test_fantasy");
     assert.equal(getCurrentWorld(db, "alice"), "test_fantasy");
   });

@@ -1,4 +1,5 @@
 import { LruMap, LruSet } from "./lru-map.js";
+import { HUB_WORLD_ID } from "./world-ids.js";
 /**
  * Cooperative mechanics — coop build, shared inventory, cross-world raids.
  *
@@ -132,7 +133,7 @@ export function getSharedStash(partyId) {
 
 // ── Cross-world raid coordination ────────────────────────────────────────
 
-export function startRaid({ partyId, leaderId, target, threshold = 100, worlds = ["concordia"] }) {
+export function startRaid({ partyId, leaderId, target, threshold = 100, worlds = [HUB_WORLD_ID] }) {
   if (!partyId || !leaderId || !target) {
     return { ok: false, error: "missing_party_leader_or_target" };
   }

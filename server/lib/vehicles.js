@@ -20,13 +20,14 @@
  */
 
 import crypto from "crypto";
+import { HUB_WORLD_ID } from "./world-ids.js";
 
 const VEHICLE_TYPES = Object.freeze(new Set(["car", "glider", "plane"]));
 
 /**
  * @returns {{ ok:true, vehicle:object } | { ok:false, reason:string }}
  */
-export function spawnVehicle(db, { ownerId, world = "concordia", type = "car", pose = null }) {
+export function spawnVehicle(db, { ownerId, world = HUB_WORLD_ID, type = "car", pose = null }) {
   if (!ownerId) return { ok: false, reason: "missing_owner" };
   if (!VEHICLE_TYPES.has(type)) return { ok: false, reason: "invalid_type" };
 
