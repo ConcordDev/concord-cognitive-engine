@@ -1,12 +1,15 @@
 import { GameMode, registerGameMode } from '../game-mode-orchestrator';
 
+// The authored megaworld regions (content/world). The legacy seed worlds
+// (fable-world, superhero-world, crime-city, wasteland-world, war-zone) were
+// merged into these or retired on 2026-10-23 and are no longer simulated.
 export const EXPEDITION_WORLDS = [
   'concordia-hub',
-  'fable-world',
-  'superhero-world',
-  'wasteland-world',
-  'crime-city',
-  'war-zone',
+  'fantasy',
+  'superhero',
+  'crime',
+  'cyber',
+  'sere',
 ] as const;
 
 // Expedition is a multi-world journey: arrive, act (skill use or quest), record.
