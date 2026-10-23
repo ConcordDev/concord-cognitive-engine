@@ -3,7 +3,13 @@
 import { isFullHeightLens } from '@/lib/full-height-lenses';
 import { TOGGLE_SESSIONS_EVENT } from './RailAccount';
 import { PanelRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+
+// Stable hooks for the client-mounted flag below — module scope so
+// useSyncExternalStore never re-subscribes (identity churn).
+const emptySubscribe = () => () => {};
+const getTrue = () => true;
+const getFalse = () => false;
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useDiegetic } from '@/hooks/useDiegetic';
@@ -170,6 +176,14 @@ export function AppShell({ children }: AppShellProps) {
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const fullPageMode = useUIStore((s) => s.fullPageMode);
+  // The PWA install banner publishes its measured viewport footprint while
+  // it is showing (0 when dismissed). <main> reserves it as bottom padding
+  // so page content and the legal footer scroll fully into view instead of
+  // hiding behind the fixed banner. The footprint already includes the
+  // bottom-bar + safe-area clearance the banner sits above, so it is >= the
+  // .mobile-nav-pad offset at every width; when it clears to 0 the inline
+  // style goes away and the class padding takes over again.
+  const installBannerFootprint = useUIStore((s) => s.installBannerFootprint);
   const pathname = usePathname();
   // Lens-as-Station: a lens opened inside the in-world station frame (?diegetic=1)
   // renders without the global sidebar/topbar chrome.
@@ -177,7 +191,11 @@ export function AppShell({ children }: AppShellProps) {
   // World Lens's manual "hide HUD" toggle (H key) — see the hook doc
   // comment. No effect on any lens other than World.
   const worldHudHidden = useWorldHudHidden();
-  const [mounted, setMounted] = useState(false);
+  // Client-mounted flag — the canonical useSyncExternalStore replacement
+  // for the old `useState(false)` + `useEffect(() => setMounted(true))`
+  // hydration gate: false during the SSR/hydration render, true on the
+  // client afterwards, with no setState-in-effect render cascade.
+  const mounted = useSyncExternalStore(emptySubscribe, getTrue, getFalse);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const quickCapture = useQuickCapture();
   const router = useRouter();
@@ -197,8 +215,6 @@ export function AppShell({ children }: AppShellProps) {
   const nowPlayingEverActive = useEverTrue(hasNowPlayingTrack);
 
   useEffect(() => {
-    setMounted(true);
-
     // WebSocket is connected in Providers.tsx — no duplicate connectSocket() here.
 
     // Register service worker for PWA support
@@ -360,6 +376,7 @@ export function AppShell({ children }: AppShellProps) {
           className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad ${
             sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
+          style={installBannerFootprint > 0 ? { paddingBottom: `${installBannerFootprint + 16}px` } : undefined}
         >
           <LensErrorBoundary name="Main Content">{children}</LensErrorBoundary>
           {/* Phase P — shared legal footer. Lives outside the world

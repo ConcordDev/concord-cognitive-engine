@@ -42,6 +42,7 @@ function resetUiState() {
     commandPaletteOpen: false,
     setCommandPaletteOpen,
     fullPageMode: false,
+    installBannerFootprint: 0,
   };
 }
 resetUiState();
@@ -249,5 +250,34 @@ describe('AppShell', () => {
     expect(queryByTestId('session-sidebar')).toBeNull();
     fireEvent.click(getByLabelText('Open sessions'));
     await waitFor(() => expect(getByTestId('session-sidebar').getAttribute('data-open')).toBe('true'));
+  });
+
+  it('reserves bottom padding on <main> equal to the install banner\u2019s footprint while it is showing', () => {
+    // Real defect (oc-social-3afix item 2): at phone width the fixed install
+    // banner covered the bottom of the page — the footer could not scroll
+    // into view. The banner publishes its measured footprint; <main> pads
+    // by footprint + 16px so all content clears it. The footprint already
+    // includes the bottom-bar + safe-area clearance the banner sits above,
+    // so the inline padding replaces (and is >=) the .mobile-nav-pad
+    // offset at every width.
+    mockUiState.installBannerFootprint = 244;
+    const { container } = render(<AppShell><div>Body</div></AppShell>);
+    const main = container.querySelector('main#main-content') as HTMLElement;
+    expect(main.style.paddingBottom).toBe('260px'); // 244 + 16
+    // The class padding (bottom bar clearance) is still declared — the
+    // inline style only wins while the banner is showing.
+    expect(main.classList.contains('mobile-nav-pad')).toBe(true);
+  });
+
+  it('removes the reserved padding once the banner is dismissed', () => {
+    mockUiState.installBannerFootprint = 244;
+    const { container, rerender } = render(<AppShell><div>Body</div></AppShell>);
+    const main = container.querySelector('main#main-content') as HTMLElement;
+    expect(main.style.paddingBottom).toBe('260px');
+    // The banner cleared its footprint to 0 (InstallPrompt does this on
+    // dismiss) — the inline padding goes away with it.
+    mockUiState.installBannerFootprint = 0;
+    rerender(<AppShell><div>Body</div></AppShell>);
+    expect(main.style.paddingBottom).toBe('');
   });
 });

@@ -11,12 +11,12 @@
  * Empty state says "No live rooms right now."
  *
  * WebRTC peer connection is a separate concern handled when the user
- * actually joins — this component only shows the roster + the
- * honest TURN-server caveat.
+ * actually joins (RoomStage fetches TURN/STUN config from
+ * /api/webrtc/ice-servers). No operator-facing config text here.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Radio, Mic, Users, Plus, Loader2, AlertTriangle, Lock } from 'lucide-react';
+import { Radio, Mic, Users, Plus, Loader2, Lock } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { UserLink } from '@/components/social/UserLink';
@@ -98,7 +98,7 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Radio className="w-4 h-4 text-rose-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Spaces · live now</h3>
+        <h3 className="text-sm font-medium text-zinc-100 flex-1">Live rooms</h3>
         <span className="text-[10px] text-zinc-400 font-mono">{rooms.length}</span>
         {currentUserId && (
           <button
@@ -190,11 +190,6 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
           );
         })}
       </ul>
-
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40 flex items-start gap-1">
-        <AlertTriangle className="w-3 h-3 mt-0.5 text-amber-400/80 flex-shrink-0" />
-        <span>WebRTC is peer-to-peer. Strict-NAT clients need a TURN server (set CONCORD_TURN_URL).</span>
-      </footer>
     </section>
   );
 }

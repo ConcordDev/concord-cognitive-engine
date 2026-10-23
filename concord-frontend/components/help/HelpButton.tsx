@@ -29,6 +29,14 @@ const SUPPORT_EMAIL = "support@concord-os.org";
 export function HelpButton() {
   // On app-style lenses the composer docks at the bottom; sit above it.
   const aboveComposer = isFullHeightLens(usePathname());
+  // While the PWA install banner is showing, sit above its measured
+  // footprint (oc-social-3afix): at phone width the launcher's old
+  // bottom offset landed exactly on the banner's X close button, so
+  // tapping X opened this menu and the banner could not be dismissed.
+  // The banner publishes its real rect so the two can never share a
+  // position at any viewport width.
+  const installBannerFootprint = useUIStore((s) => s.installBannerFootprint);
+  const aboveBanner = installBannerFootprint > 0;
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"menu" | "report">("menu");
   const [kind, setKind] = useState("bug_report");
@@ -88,11 +96,15 @@ export function HelpButton() {
       {/* Floating launcher — bottom-right, above the mobile nav.
           Below md the global bottom bar (h-14 + safe-area inset) is fixed
           too, so offset by its height instead of a hard-coded bottom-20 that
-          a notched phone's home indicator overlaps. */}
+          a notched phone's home indicator overlaps. While the install banner
+          is showing, the measured footprint (which already includes the
+          bottom-bar + safe-area clearance the banner sits above) positions
+          the launcher 16px above the banner top — inline style wins over the
+          class offsets at every width. */}
       <button
         onClick={() => { setOpen((v) => !v); setMode("menu"); setSent(false); }}
         aria-label="Help and feedback"
-        style={{ zIndex: Z_INDEX.HELP }}
+        style={{ zIndex: Z_INDEX.HELP, ...(aboveBanner ? { bottom: `${installBannerFootprint + 16}px` } : {}) }}
         className={`fixed ${aboveComposer ? "bottom-40 md:bottom-36" : "bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] md:bottom-5"} right-4 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center lg:hidden`}
         title="Help & feedback"
       >
@@ -103,7 +115,7 @@ export function HelpButton() {
         <div
           role="dialog"
           aria-label="Help and feedback"
-          style={{ zIndex: Z_INDEX.HELP }}
+          style={{ zIndex: Z_INDEX.HELP, ...(aboveBanner ? { bottom: `${installBannerFootprint + 64}px` } : {}) }}
           className="fixed right-4 md:right-5 md:bottom-20 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl bg-lattice-surface border border-lattice-border shadow-2xl p-4 text-sm bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
         >
           {mode === "menu" && (

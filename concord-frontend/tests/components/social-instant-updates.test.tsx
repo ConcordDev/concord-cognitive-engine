@@ -18,9 +18,10 @@
  *
  * What already worked on main and is pinned here as regression tests:
  *  - Posting refreshes the Following timeline (composer invalidates
- *    ['social-following-activity'], which prefix-matches the real key) — the
- *    new post surfaces behind the timeline's "Show N new posts" cursor, the
- *    designed no-scroll-yank pattern. (test 1)
+ *    ['social-following-activity'], which prefix-matches the real key).
+ *    Since oc-social-3afix the viewer's OWN new post renders at the top
+ *    immediately — never behind the "Show N new posts" cursor, which
+ *    stays for OTHER people's new posts (tests 1, 8, 9).
  *  - A row is removed only after the server confirms the delete; a failed
  *    delete keeps the row and toasts the server's error. (#1452 behaviour,
  *    test 6)
@@ -129,12 +130,12 @@ const srv = vi.hoisted(() => ({
   posts: [] as Array<{ id: string; userId: string; username: string; content: string; createdAt: string }>,
   seq: 0,
   failNextDelete: false,
-  add(content: string) {
+  add(content: string, who?: { userId: string; username: string }) {
     this.seq += 1;
     const post = {
       id: `p${this.seq}`,
-      userId: 'u1',
-      username: 'ana',
+      userId: who?.userId ?? 'u1', // the signed-in viewer by default
+      username: who?.username ?? 'ana',
       content,
       createdAt: new Date().toISOString(),
     };
@@ -228,11 +229,12 @@ function renderPage(view = '') {
   urlState.snapshot = null;
   urlState.listeners.clear();
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={qc}>
       <SocialHubPage />
     </QueryClientProvider>,
   );
+  return { ...utils, qc };
 }
 
 /**
@@ -291,7 +293,12 @@ describe('social instant feed — posting', () => {
     useUIStore.setState({ toasts: [] });
   });
 
-  it('1. a new post surfaces in the Following timeline without a reload (cursor pattern)', async () => {
+  it('1. your own new post appears at the top of Home immediately — never behind the "Show N new posts" button', async () => {
+    // oc-social-3afix item 5: the timeline\u2019s seen-head cursor used to
+    // buffer the viewer\u2019s OWN just-published post behind the button, so
+    // Home showed "Show 1 new post" for your own post. Own posts now
+    // render immediately; the button stays for OTHER people\u2019s posts
+    // (pinned by tests 8 and 9 below).
     const seed = srv.add('seed own post');
     renderPage();
     await settleHome();
@@ -301,14 +308,51 @@ describe('social instant feed — posting', () => {
     await postFromComposer('hello instant world');
 
     // The timeline refetches immediately (the composer invalidates the key
-    // the timeline actually uses) and the new post surfaces behind the
-    // no-scroll-yank "Show N new posts" cursor right away.
-    const showNew = await screen.findByRole('button', { name: /Show 1 new post/i });
-    expect(getCalls('get', '/api/social/feed/following').length).toBeGreaterThan(fetchesBefore);
-    fireEvent.click(showNew);
+    // the timeline actually uses) and your own post is at the top right
+    // away — no button, no click needed.
     expect(await screen.findByText('hello instant world')).toBeInTheDocument();
     expect(screen.getByText('seed own post')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show \d+ new posts?/i })).toBeNull();
+    expect(getCalls('get', '/api/social/feed/following').length).toBeGreaterThan(fetchesBefore);
     expect(seed.content).toBe('seed own post');
+  });
+
+  it('8. another user\u2019s new post still surfaces behind the "Show 1 new post" button (own-post fix kept the no-scroll-yank buffer for others)', async () => {
+    srv.add('seed own post');
+    const { qc } = renderPage();
+    await settleHome();
+    expect(await screen.findByText('seed own post')).toBeInTheDocument();
+
+    // Another user\u2019s post arrives (as the 30s poll / socket event
+    // would deliver it) — forced refetch via the real query key.
+    srv.add('a friend\u2019s fresh take', { userId: 'u2', username: 'bea' });
+    await qc.invalidateQueries({ queryKey: ['social-following-activity'] });
+
+    const showNew = await screen.findByRole('button', { name: /Show 1 new post/i });
+    fireEvent.click(showNew);
+    expect(await screen.findByText('a friend\u2019s fresh take')).toBeInTheDocument();
+    expect(screen.getByText('seed own post')).toBeInTheDocument();
+  });
+
+  it('9. when your own post and someone else\u2019s arrive together, yours shows immediately and the button counts only theirs', async () => {
+    srv.add('seed own post');
+    const { qc } = renderPage();
+    await settleHome();
+    expect(await screen.findByText('seed own post')).toBeInTheDocument();
+
+    srv.add('friend arrived too', { userId: 'u2', username: 'bea' });
+    srv.add('mine arrived too', { userId: 'u1', username: 'ana' });
+    await qc.invalidateQueries({ queryKey: ['social-following-activity'] });
+
+    // Own post is visible immediately (never buffered)…
+    expect(await screen.findByText('mine arrived too')).toBeInTheDocument();
+    expect(screen.getByText('seed own post')).toBeInTheDocument();
+    // …while the friend\u2019s post waits behind a button that counts
+    // exactly ONE new post (not two — the viewer\u2019s own is excluded).
+    expect(screen.queryByText('friend arrived too')).toBeNull();
+    const showNew = screen.getByRole('button', { name: /Show 1 new post/i });
+    fireEvent.click(showNew);
+    expect(await screen.findByText('friend arrived too')).toBeInTheDocument();
   });
 
   it('2. a new post appears in the For You feed immediately (the real key is invalidated)', async () => {
