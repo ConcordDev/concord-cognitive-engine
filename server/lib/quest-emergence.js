@@ -166,6 +166,7 @@ function pickHostile(db, giver) {
 }
 
 const pretty = (s) => String(s || "").replace(/[_-]+/g, " ").trim();
+const plural = (s) => (/(^|\s)undead$/.test(s) ? s : /(s|x|ch|sh)$/.test(s) ? `${s}es` : /[^aeiou]y$/.test(s) ? `${s.slice(0, -1)}ies` : `${s}s`);
 
 /**
  * Build a quest for a need from real world state, or null when the world has
@@ -215,9 +216,9 @@ export function planQuest(db, giver, need) {
     plan = {
       kind: "clear_threat",
       title: `Trouble near ${name}`,
-      description: `${name} the ${work} has seen ${pretty(foe)} too close for comfort. Drive off ${n} of them.${story ? ` ${story}` : ""}`,
+      description: `${name} the ${work} has seen ${plural(pretty(foe))} too close for comfort. Drive off ${n} of them.${story ? ` ${story}` : ""}`,
       objectives: [
-        { type: "defeat", target: foe, requiredCount: n, description: `Defeat ${n} ${pretty(foe)}` },
+        { type: "defeat", target: foe, requiredCount: n, description: `Defeat ${n} ${plural(pretty(foe))}` },
         back,
       ],
     };
@@ -236,7 +237,11 @@ export function planQuest(db, giver, need) {
 export async function detectQuestOpportunities(npc, db, _selectBrain) {
   if (!db || !npc?.id) return [];
   expireStaleQuests(db);
-  const need = PLAYER_DEPENDENT_NEEDS.find((n) => (npc.needs?.[n] ?? 1) < URGENCY_THRESHOLD);
+  // The NPC's most pressing player-facing need, not a fixed order (safety
+  // first made every quest "Trouble near ...").
+  const need = PLAYER_DEPENDENT_NEEDS
+    .filter((n) => (npc.needs?.[n] ?? 1) < URGENCY_THRESHOLD)
+    .sort((x, y) => (npc.needs[x] ?? 1) - (npc.needs[y] ?? 1))[0];
   if (!need) return [];
   const quest = await createQuestFromNeed(npc, need, db, _selectBrain);
   return quest ? [quest] : [];
