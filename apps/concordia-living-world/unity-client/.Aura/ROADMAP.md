@@ -112,13 +112,14 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Note: `Pass`/`Fail` write `[AuraVerify] <ID> PASS|FAIL` (FAIL as a warning so Play health counts see it). F10 poller is created by a `RuntimeInitializeOnLoadMethod` driver hidden with `HideFlags.DontSave`, so it is invisible to `FindObjectsByType` — use `Resources.FindObjectsOfTypeAll` to detect it. Dev keys are installed only when `Application.isEditor || Debug.isDebugBuild`.
 
 ### Epic B2 · Settings, input, connection
-- [ ] **B-05 · ConcordiaSettings + reduced motion** (deps: B-04)
+- [x] **B-05 · ConcordiaSettings + reduced motion** (deps: B-04)
   - Goal: Add a PlayerPrefs-backed `ConcordiaSettings` with `ReducedMotion`, `CameraShake` (0–1), `DamageNumbers`, `SubtitleScale`, `ConnectInLeanPlay`, `MouseSensitivity`. Show them in the menu (I) with a "Settings" tab.
   - Touch: new `Scripts/Aura/ConcordiaSettings.cs`; `ConcordiaHUD.cs` (menu tab)
   - Reuse: the existing I-menu (`ToggleMenu`) in `ConcordiaPlayer.cs`/`ConcordiaHUD.cs`
   - Verify: toggling ReducedMotion persists across two Play sessions (log both reads).
   - Server: —
-  - Result: —
+  - Result: PASS · session 1 boot read `reducedMotion=False` (09:37:56) → set True (`storedReducedMotion=1`) → session 2 boot read `reducedMotion=True` (09:42:17), then restored to False · SETTINGS tab renders (shot) · f0638d885
+  - Note: `ConcordiaSettings.Line()` logs at `AfterSceneLoad` so every Play session records what it read. Defaults: reducedMotion off, shake 1, damage numbers on, subtitles 1, `ConnectInLeanPlay` on in the editor and off in a player, mouse 1. The tab is a second tab on the existing `KitMenu`; F1/F8/F9 stay with `ConcordiaHUD`.
 - [ ] **B-06 · Input action asset** (deps: B-04)
   - Goal: Create a `ConcordiaControls.inputactions` mirroring today's hardcoded keys. Route `ConcordiaPlayer.KeyDown/KeyHeld` through a `ConcordiaInput` wrapper so behaviour is identical. Add gamepad bindings.
     - Keys: WASD, Shift sprint, Space jump, LMB light, F heavy, G special, X dodge, C guard, E interact, Q cycle kit, I menu, K skills, 1–3, [ ], H, J, Tab/Esc.

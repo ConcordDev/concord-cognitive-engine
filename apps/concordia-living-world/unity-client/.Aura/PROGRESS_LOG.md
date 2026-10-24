@@ -38,6 +38,13 @@ Aura-owned at open (committed as part of B-01):
 
 2026-10-24T09:28-04:00 | B-04 | PASS | `AuraVerify` (`Pass`/`Fail`/`Snapshot`) + F10 dev driver: live line `world=Hub pos=(11.2,0.1,-12.0) hp=100 stamina=100 poise=15 client=connected(unknown) quests=0 gear=none items=0`; driver alive (`drivers=1`, `simKeysObjects=1`); F10 action proven via `KeyDriver.Trigger()` (OS key injection cannot reach Unity, so the literal `Input.GetKeyDown` read is unverified by machine) | d28c7f5e6 | Unity console `[AuraVerify] SNAPSHOT …` (no PNG)
 
+2026-10-24T09:45-04:00 | B-05 | PASS | `ConcordiaSettings` (PlayerPrefs) + SETTINGS tab on the I-menu: two-session persistence proven — session 1 `reducedMotion=False` → set True (`storedReducedMotion=1`) → session 2 `reducedMotion=True`, then restored to False | f0638d885 | ~/.zuko/aura-shots/B-05.png
+
+### B-05 notes
+- Settings defaults: reducedMotion **off**, cameraShake **1.00**, damageNumbers **on**, subtitleScale **1.00**, `ConnectInLeanPlay` **on in editor / off in a player**, mouseSensitivity **1.00**.
+- The Settings panel is a second tab inside the existing `KitMenu` (tab strip rides the title row so inventory columns keep their coordinates); `K` still opens the lattice, `I` still closes the menu.
+- Play health during B-05: `errors=0`. The `warnings=2` counted in Play come from **pre-existing** `Assets/Concordia/Editor/LookCapture.cs` CS0618 compile warnings surfacing during a Play-time recompile — not from Aura files.
+
 ### B-04 gotchas worth remembering
 - `execute_script` compiles its target file in a way that gives **fresh statics** for types defined in that file — reading `AuraVerify.KeysInstalled`/`KeyDriver.Instance` there reported stale defaults while the real component existed. Detect the driver object via `Resources.FindObjectsOfTypeAll<MonoBehaviour>()`, not statics or `FindObjectsByType` (it is `HideFlags.DontSave`).
 - **Editing any script during Play keeps Play running but reloads the domain**, so `RuntimeInitializeOnLoadMethod` installers do NOT re-run and their objects are destroyed. A/B facts gathered after a mid-Play edit are meaningless — always start a fresh Play after touching scripts.
