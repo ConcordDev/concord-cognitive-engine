@@ -112,23 +112,15 @@ static void Bind(Transform chunk, WorldId world)
                 art.transform.localPosition = Vector3.zero;
                 art.transform.localRotation = Quaternion.identity;
                 art.transform.localScale = Vector3.one;
-                FreePacks.FitMax(art, spec.maxDimension);
-                if (!string.IsNullOrEmpty(spec.masterMaterialPath))
-                {
-                    FreePacks.ApplyMat(art, spec.masterMaterialPath);
-                    marker.materialAssignmentState = "master-material-applied-through-FreePacks.ApplyMat";
-                }
-                else marker.materialAssignmentState = "generated-material-retained";
-                FreePacks.MakeWalkable(art);
-                FreePacks.EnsureCollider(hero, spec.colliderHeight);
-                Concordia.GameplayCore.Presentation.PresentationSurfaceFidelity.ApplySurfaceAging(art, world, spec.surfaceKey, 0.42f, StableHash(spec.semanticId));
-                marker.colliderState = "hero-root-capsule-plus-asset-walkable-collider";
+                Dress(hero, art, spec, world, marker);
             }
             else
             {
-                marker.materialAssignmentState = "asset-unavailable; no visual fallback fabricated";
-                marker.colliderState = "not-validated; asset unavailable";
-                Debug.LogWarning("[Concordia] WorldContent " + world + ": asset unavailable at " + spec.assetPath + "; keeping a non-visual marker.");
+                // Builds: the Tripo hero streams from StreamingAssets/HubKit/tripo and is
+                // dressed when it lands. Nothing is drawn in its place meanwhile.
+                marker.materialAssignmentState = "streaming from HubKit";
+                marker.colliderState = "pending; asset streaming";
+                _ = AttachStreamed(hero, spec, world, marker);
             }
             var inspect = new GameObject("InspectionAnchor");
             inspect.transform.SetParent(hero.transform, false);
@@ -140,6 +132,42 @@ static void Bind(Transform chunk, WorldId world)
             marker.inspectionIdentity = spec.semanticId;
             marker.lodPolicy = spec.lodPolicy;
             marker.stagedStatus = spec.stagedStatus;
+        }
+
+static void Dress(GameObject hero, GameObject art, WorldHeroSpec spec, WorldId world, WorldHeroMarker marker)
+        {
+            FreePacks.FitMax(art, spec.maxDimension);
+            if (!string.IsNullOrEmpty(spec.masterMaterialPath))
+            {
+                FreePacks.ApplyMat(art, spec.masterMaterialPath);
+                marker.materialAssignmentState = "master-material-applied-through-FreePacks.ApplyMat";
+            }
+            else marker.materialAssignmentState = "generated-material-retained";
+            FreePacks.MakeWalkable(art);
+            FreePacks.EnsureCollider(hero, spec.colliderHeight);
+            Concordia.GameplayCore.Presentation.PresentationSurfaceFidelity.ApplySurfaceAging(art, world, spec.surfaceKey, 0.42f, StableHash(spec.semanticId));
+            marker.colliderState = "hero-root-capsule-plus-asset-walkable-collider";
+        }
+
+        static async System.Threading.Tasks.Task AttachStreamed(GameObject hero, WorldHeroSpec spec, WorldId world, WorldHeroMarker marker)
+        {
+            try
+            {
+                var art = await HubKit.AttachBySource(spec.assetPath, hero ? hero.transform : null);
+                if (!hero) return;
+                if (art)
+                {
+                    Dress(hero, art, spec, world, marker);
+                    return;
+                }
+                marker.materialAssignmentState = "asset-unavailable; no visual fallback fabricated";
+                marker.colliderState = "not-validated; asset unavailable";
+                Debug.LogWarning("[Concordia] WorldContent " + world + ": asset unavailable at " + spec.assetPath + "; keeping a non-visual marker.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Concordia] WorldContent " + world + ": streaming " + spec.assetPath + " failed: " + e.Message);
+            }
         }
 
 static void BindTunyaExisting(Transform visualRoot, WorldHeroSpec spec)

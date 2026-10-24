@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -53,6 +54,11 @@ namespace Concordia
 
         static readonly Dictionary<string, string> Files = new Dictionary<string, string>(160);
         static readonly Dictionary<string, BindRow> Binds = new Dictionary<string, BindRow>(64);
+
+        /// Registry + bind text fetched from StreamingAssets/HubKit/organic/ on WebGL,
+        /// keyed by the project path ReadText is asked for. See PreloadAsync.
+        static readonly Dictionary<string, string> Fetched = new Dictionary<string, string>(2);
+        static Task _preload;
         static bool _indexed;
         static string _source = "(not indexed)";
 
@@ -73,6 +79,8 @@ namespace Concordia
         {
             Files.Clear();
             Binds.Clear();
+            Fetched.Clear();
+            _preload = null;
             _indexed = false;
             _source = "(not indexed)";
         }
@@ -107,6 +115,29 @@ namespace Concordia
             catch (Exception e)
             {
                 Debug.LogWarning("[Concordia] OrganicKit index failed: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// WebGL cannot read project files, so the export ships the registry and bind
+        /// contract beside the kit (StreamingAssets/HubKit/organic/). Await this before
+        /// <see cref="EnsureIndexed"/>; elsewhere it completes at once.
+        /// </summary>
+        public static Task PreloadAsync()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return _preload ??= FetchTexts();
+#else
+            return Task.CompletedTask;
+#endif
+        }
+
+        static async Task FetchTexts()
+        {
+            foreach (var path in new[] { ManifestPath, BindPath })
+            {
+                var text = await HubKit.ReadKitText("organic/" + Path.GetFileName(path));
+                if (!string.IsNullOrEmpty(text)) Fetched[path] = text;
             }
         }
 
@@ -197,6 +228,7 @@ namespace Concordia
 
         static string ReadText(string projectRelativePath)
         {
+            if (Fetched.TryGetValue(projectRelativePath, out var fetched)) return fetched;
 #if UNITY_EDITOR
             var asset = AssetDatabase.LoadAssetAtPath<TextAsset>(projectRelativePath);
             if (asset) return asset.text;

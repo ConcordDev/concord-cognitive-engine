@@ -22,6 +22,11 @@ namespace Concordia
         /// "available to import"; presence in Runtime means "already imported".
         static readonly Dictionary<string, string> Index = new Dictionary<string, string>(1024);
 
+        /// Lowercased project path an entry was made from (its manifest `source`) -> stem.
+        /// Lets code that names an asset by its editor path (Tripo .fbx, organic _lods.glb)
+        /// find the kit copy in builds, where that path does not exist.
+        static readonly Dictionary<string, string> Sources = new Dictionary<string, string>(1024);
+
         /// Stems with an import in flight, so a stem requested every frame is only imported once.
         static readonly HashSet<string> Loading = new HashSet<string>();
 
@@ -76,6 +81,7 @@ namespace Concordia
             Modules.Clear();
             Aliases.Clear();
             Index.Clear();
+            Sources.Clear();
             _cache = null;
             _loaded = false;
             _manifestLoaded = false;
@@ -258,8 +264,80 @@ namespace Concordia
         public static void IndexExternal(string stem, string projectRelativePath)
         {
             if (string.IsNullOrEmpty(stem) || string.IsNullOrEmpty(projectRelativePath)) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // The browser cannot read project paths. Keep the web-compressed kit copy the
+            // manifest already lists for this stem (StreamingAssets/HubKit/organic/...).
+            if (Index.ContainsKey(stem.ToLowerInvariant())) return;
+#endif
             Index[stem.ToLowerInvariant()] = projectRelativePath.Replace('\\', '/');
         }
+
+        /// <summary>Kit stem for an asset named by its editor path, or null.</summary>
+        public static string StemForSource(string projectRelativePath)
+        {
+            if (string.IsNullOrEmpty(projectRelativePath)) return null;
+            return Sources.TryGetValue(projectRelativePath.Replace('\\', '/').ToLowerInvariant(), out var stem) ? stem : null;
+        }
+
+        /// <summary>True when the manifest lists this stem (imported or not).</summary>
+        public static bool Has(string stem) => !string.IsNullOrEmpty(stem) && Index.ContainsKey(Alias(stem));
+
+        /// <summary>
+        /// Spawn any kit asset by its manifest id (stem): Kenney/PolyHaven pieces, the
+        /// organic generator's meshes, Meshy creatures and bosses, Tripo heroes. Loads the
+        /// manifest and imports the glb on first use (streamed from StreamingAssets/HubKit,
+        /// never part of the main download), then places a live copy. Returns null when
+        /// the id is not in the manifest or its file fails to load; no stand-in is made.
+        /// Placement (where, how big) is the caller's: this only puts the real model there.
+        /// </summary>
+        public static async Task<GameObject> SpawnById(string id, Transform parent, Vector3 position, float yawDeg = 0f)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            await EnsureLoaded();
+            if (!await Prewarm(id) || !TryGet(id, out var template) || !template) return null;
+            var go = InstantiateTemplate(template, parent);
+            go.name = Alias(id);
+            go.transform.position = position;
+            go.transform.rotation = Quaternion.Euler(0f, yawDeg, 0f);
+            return go;
+        }
+
+        /// <summary>
+        /// Like <see cref="SpawnById"/> for an asset named by its editor path: attaches the
+        /// kit copy under <paramref name="host"/> at its local origin. Null when the
+        /// manifest has no copy of that path.
+        /// </summary>
+        public static async Task<GameObject> AttachBySource(string projectRelativePath, Transform host)
+        {
+            if (!host) return null;
+            await EnsureLoaded();
+            var stem = StemForSource(projectRelativePath);
+            if (stem == null || !host) return null;
+            if (!await Prewarm(stem) || !host || !TryGet(stem, out var template) || !template) return null;
+            var go = InstantiateTemplate(template, host);
+            go.name = "Asset";
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            return go;
+        }
+
+        /// <summary>
+        /// A visible copy of an imported template. Templates keep their renderers disabled
+        /// in the hidden cache, so a bare Instantiate draws nothing.
+        /// </summary>
+        public static GameObject InstantiateTemplate(GameObject template, Transform parent)
+        {
+            var go = UnityEngine.Object.Instantiate(template, parent);
+            foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                if (t) t.gameObject.SetActive(true);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (r) r.enabled = true;
+            return go;
+        }
+
+        /// <summary>Text file shipped with the kit (e.g. organic/ORGANIC_BIND.json), any platform.</summary>
+        public static Task<string> ReadKitText(string file) => ReadText(file);
 
         public static Task EnsureLoaded()
         {
@@ -308,10 +386,14 @@ namespace Concordia
                 // world only ever instantiates a small subset. Entries are now imported on first
                 // use by TryGet, so startup cost is one small JSON parse.
                 Index.Clear();
+                Sources.Clear();
                 foreach (var entry in manifest.files)
                 {
                     if (entry == null || string.IsNullOrEmpty(entry.file) || string.IsNullOrEmpty(entry.stem)) continue;
-                    Index[entry.stem.ToLowerInvariant()] = entry.file;
+                    var stemKey = entry.stem.ToLowerInvariant();
+                    Index[stemKey] = entry.file;
+                    if (!string.IsNullOrEmpty(entry.source) && entry.source.StartsWith("Assets/", StringComparison.Ordinal))
+                        Sources[entry.source.Replace('\\', '/').ToLowerInvariant()] = stemKey;
                 }
                 _manifestLoaded = true;
                 Debug.Log("Concordia HubKit indexed " + Index.Count + " meshes (lazy; imported on first use)");
@@ -490,6 +572,7 @@ namespace Concordia
             public string file;
             public string license;
             public string author;
+            public string source;
         }
 
         [Serializable]
