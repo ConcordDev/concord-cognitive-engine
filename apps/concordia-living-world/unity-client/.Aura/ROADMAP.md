@@ -77,7 +77,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Verify: branch = `aura/gameplay`; the project path is inside `~/concord/aura-wt`; free disk is logged; first commit hash is logged.
   - Server: —
   - Result: PASS · branch `aura/gameplay`, project inside worktree, disk 11 GiB, baseline dirty snapshot in `.Aura/PROGRESS_LOG.md` · c369f8b9e
-- [ ] **B-02 · Request ledger** (deps: B-01)
+- [x] **B-02 · Request ledger** (deps: B-01)
   - Goal: Create `.Aura/REQUESTS_FOR_CLAUDE.md` with this template: `## REQ-<n> · <title>` / why / exact ask / blocking tasks / status. Pre-file these known gaps:
     - REQ-1: chat event on `/unity-ws`
     - REQ-2: sync `content/world/concordia-hub/city-layout.json` and `zones.json` into `Canon/concordia-hub/`
@@ -88,7 +88,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: —
   - Verify: file exists, 5 REQs present, committed.
   - Server: —
-  - Result: —
+  - Result: PASS · 5 REQs filed (chat, canon layout/zones, melee clips, served WebGL, loot); each carries tool-verified evidence · pending
 - [ ] **B-03 · Baseline Play capture** (deps: B-01)
   - Goal: Record how Play looks before any change.
     - Enter Play and wait for the LeanPlay boot to finish (hero dressed and the Court visible). The AuraPlayHoldGuard helper is in Editor.
