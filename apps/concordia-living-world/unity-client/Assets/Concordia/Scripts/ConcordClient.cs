@@ -49,6 +49,15 @@ namespace Concordia
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
+
+        /// <summary>
+        /// B-09: the LeanPlay retry gate. Defaults false and stays false until the boot is idle,
+        /// so the loop in <see cref="Update"/> cannot handshake during the boot window.
+        /// ConcordiaGame.StagedConnect sets it true. Defaulting false also makes the gate survive
+        /// a play-mode domain reload (statics reset to this initialiser), which would otherwise
+        /// silently re-open the socket mid-boot.
+        /// </summary>
+        public static bool LeanAutoConnect;
         public static string FieldBecause { get; private set; } = "";
         public static int AbandonedCount { get; private set; }
         public static string SnapshotJson { get; private set; } = "";
@@ -98,6 +107,10 @@ namespace Concordia
 #if UNITY_WEBGL && !UNITY_EDITOR
             if (string.IsNullOrWhiteSpace(gatewayUrl)) return;
 #endif
+            // B-09: in LeanPlay the retry loop must not open the socket during the boot
+            // window. ConcordiaGame re-enables this once the hero is dressed and the world
+            // has been idle (StagedConnect), so the handshake happens exactly once, late.
+            if (ConcordiaHost.LeanPlay && !LeanAutoConnect) return;
             if (Time.unscaledTime < _retryAt) return;
             _retryAt = Time.unscaledTime + 8f;
             _ = EnsureConnected();

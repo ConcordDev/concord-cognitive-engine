@@ -107,6 +107,10 @@ namespace Concordia
             pgo.AddComponent<EvoResolver>();
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
+            // B-09: hold the socket shut for the whole boot window. ConcordClient.Start already
+            // defers in LeanPlay, but its Update retry loop re-dialled 3 s later, so the
+            // handshake happened mid-boot anyway. StagedConnect re-opens this when idle.
+            if (ConcordiaHost.LeanPlay) ConcordClient.LeanAutoConnect = false;
             kernel.OnEvent += HandleKernelEvent;
             // Other players' avatars — players only. The headless host renders
             // nothing; at 100 players it was spending ~100% CPU building bodies
@@ -258,7 +262,9 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             bool accountHasCharacter = false;
             if (kernel != null)
             {
-                var connectTask = kernel.Connected ? null : kernel.EnsureConnected();
+                // B-09: never dial during the boot window. In LeanPlay this stage uses the local
+                // appearance cache; the socket opens later in StagedConnect.
+                var connectTask = (kernel.Connected || ConcordiaHost.LeanPlay) ? null : kernel.EnsureConnected();
                 float connectBy = Time.realtimeSinceStartup + 4f;
                 while (connectTask != null && !connectTask.IsCompleted && Time.realtimeSinceStartup < connectBy) yield return null;
                 if (kernel.Connected)
@@ -367,12 +373,54 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
             if (kernel != null)
             {
-                // Defer WS + RestoreAgentSoul — both sat on the ~28–29s post-Expand melt.
-                // Probe SUCCESS first; re-enable once Play holds 60s with buildings.
-                Debug.Log("[Concordia] LeanPlay: skip EnsureConnected/RestoreAgentSoul (post-Expand stability)");
+                // RestoreAgentSoul stays off (post-Expand melt). The gateway opens only after
+                // the boot is idle — see StagedConnect.
+                Debug.Log("[Concordia] LeanPlay: skip RestoreAgentSoul (post-Expand stability)");
                 _leanDressDone = true;
                 Debug.Log("[Concordia] LeanPlay: DressHeroAfterHub complete (Bridge locomotion; Expand guests live)");
+                if (ConcordiaSettings.ConnectInLeanPlay && !_stagedConnectStarted)
+                {
+                    _stagedConnectStarted = true;
+                    StartCoroutine(StagedConnect(kernel));
+                }
             }
+        }
+
+        bool _stagedConnectStarted;
+        bool _stagedConnectDone;
+
+        // B-09: never open the socket during the boot window. Wait until the hero is dressed
+        // and the world has been idle for IdleSeconds, then handshake once.
+        const float StagedIdleSeconds = 30f;
+
+        System.Collections.IEnumerator StagedConnect(ConcordClient kernel)
+        {
+            float idleUntil = Time.realtimeSinceStartup + StagedIdleSeconds;
+            while (Time.realtimeSinceStartup < idleUntil) yield return null;
+            if (!ConcordiaSettings.ConnectInLeanPlay)
+            {
+                Debug.Log("[Concordia] LeanPlay: staged connect disabled (connectInLeanPlay=False) — socket stays shut");
+                _stagedConnectDone = true;
+                yield break;
+            }
+            ConcordClient.LeanAutoConnect = true;
+            Debug.Log("[Concordia] LeanPlay: staged connect — boot idle " + StagedIdleSeconds.ToString("F0") +
+                "s, hero dressed, connecting (t=" + Time.realtimeSinceStartup.ToString("F1") + ")");
+            Debug.Log("[AuraVerify] B-09 boot-window frame budget (whole boot, for comparison) " + FrameWatch.Line());
+            FrameWatch.Reset();
+            var task = kernel.Connected ? null : kernel.EnsureConnected();
+            float openBy = Time.realtimeSinceStartup + 10f;
+            while (task != null && !task.IsCompleted && Time.realtimeSinceStartup < openBy) yield return null;
+            Debug.Log("[AuraVerify] B-09 connected=" + kernel.Connected +
+                " timedOut=" + (task != null && !task.IsCompleted) +
+                " status=" + ConcordClient.StatusJson +
+                " hud=" + ConcordClient.HudLine);
+            // 10 s of frame watching after the handshake, per the task's frame gate.
+            float watchUntil = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < watchUntil) yield return null;
+            Debug.Log("[AuraVerify] B-09 FrameWatch after connect " + FrameWatch.Line() +
+                " connected=" + kernel.Connected + " reason=" + ConcordClient.LastReason);
+            _stagedConnectDone = true;
         }
 
         void RefreshProbe()
@@ -398,6 +446,11 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                 {
                     Debug.Log("[Concordia] LeanPlay: play-mode domain reload killed the boot coroutine — re-kicking");
                     _bootPending = true;
+                }
+                else if (_stagedConnectStarted && !_stagedConnectDone && _bootKernel != null)
+                {
+                    Debug.Log("[Concordia] LeanPlay: play-mode domain reload killed the staged connect — re-kicking");
+                    StartCoroutine(StagedConnect(_bootKernel));
                 }
             }
             if (_bootPending) KickBootCoroutines();
