@@ -120,7 +120,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: PASS · session 1 boot read `reducedMotion=False` (09:37:56) → set True (`storedReducedMotion=1`) → session 2 boot read `reducedMotion=True` (09:42:17), then restored to False · SETTINGS tab renders (shot) · f0638d885
   - Note: `ConcordiaSettings.Line()` logs at `AfterSceneLoad` so every Play session records what it read. Defaults: reducedMotion off, shake 1, damage numbers on, subtitles 1, `ConnectInLeanPlay` on in the editor and off in a player, mouse 1. The tab is a second tab on the existing `KitMenu`; F1/F8/F9 stay with `ConcordiaHUD`.
-- [ ] **B-06 · Input action asset** (deps: B-04)
+- [x] **B-06 · Input action asset** (deps: B-04)
   - Goal: Create a `ConcordiaControls.inputactions` mirroring today's hardcoded keys. Route `ConcordiaPlayer.KeyDown/KeyHeld` through a `ConcordiaInput` wrapper so behaviour is identical. Add gamepad bindings.
     - Keys: WASD, Shift sprint, Space jump, LMB light, F heavy, G special, X dodge, C guard, E interact, Q cycle kit, I menu, K skills, 1–3, [ ], H, J, Tab/Esc.
     - Keep `ENABLE_INPUT_SYSTEM` with the legacy fallback.
@@ -128,7 +128,8 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `ConcordiaPlayer` KeyDown map (~line 1033), `bible/COMBAT.md` control list
   - Verify: each action logs once on press in Play; the dodge/attack/guard flows are unchanged.
   - Server: —
-  - Result: —
+  - Result: PASS · `[AuraVerify] B-06 PASS pressed=20/20` — sprint jump heavy special dodge guard interact cycleKit menu skills slot1-3 groupPrev groupNext horde extraction cancel light move all fire from real Keyboard/Mouse device events · 9009ffd51
+  - Note: `ConcordiaInput.ResourcePath` loads the asset from `Resources/Concordia/ConcordiaControls` (the roadmap's `Assets/Concordia/Input/` path cannot be loaded at runtime; the authored copy lives in Resources). The raw key stays authoritative and the action adds the pad + the press log, so keyboard feel is byte-identical. Also fixed a dormant bug: `ToKey` never mapped `S`/`LeftCtrl`, so vehicle brake and descend were dead under the Input System.
 - [ ] **B-07 · Rebind + controls panel** (deps: B-05, B-06)
   - Goal: Generate the controls strip and help from live bindings. Add a rebinding UI. This closes the "no remap" gap in `bible/ACCESSIBILITY.md`.
   - Touch: `ConcordiaHUD.cs`, `Scripts/Aura/ConcordiaInput.cs`

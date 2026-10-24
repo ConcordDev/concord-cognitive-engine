@@ -40,6 +40,14 @@ Aura-owned at open (committed as part of B-01):
 
 2026-10-24T09:45-04:00 | B-05 | PASS | `ConcordiaSettings` (PlayerPrefs) + SETTINGS tab on the I-menu: two-session persistence proven — session 1 `reducedMotion=False` → set True (`storedReducedMotion=1`) → session 2 `reducedMotion=True`, then restored to False | f0638d885 | ~/.zuko/aura-shots/B-05.png
 
+2026-10-24T10:45-04:00 | B-06 | PASS | `ConcordiaControls.inputactions` (21 actions / 42 bindings) + `ConcordiaInput` wrapper routed through `ConcordiaPlayer.KeyDown/KeyHeld/MouseDown/MoveAxes`; 20/20 actions fire from queued Keyboard/Mouse device events | 9009ffd51 | ~/.zuko/aura-shots/B-06.png
+
+### B-06 notes
+- Verification had to go through the Input System, not the OS: `InputSystem.QueueStateEvent(device, state)` + `InputSystem.Update()` drives the real device, and `InputProbe.PressAll()` reads each action's `WasPressedThisFrame`. First run was 17/20 — `slot1/2/3` missed because `<Keyboard>/digit1` does not resolve; the canonical paths are `<Keyboard>/1|2|3`. Re-bound and it went to 20/20.
+- The asset must live under `Resources/` to be loadable at runtime, so it sits at `Assets/Concordia/Resources/Concordia/ConcordiaControls.inputactions` (a local, **untracked** copy was left at `Assets/Concordia/Input/` from the first attempt — delete it when convenient; the tracked one is authoritative).
+- Dormant bug found and fixed while centralising the key table: the old `ToKey` in `ConcordiaPlayer` had no mapping for `S` or `LeftCtrl`, so `KeyHeld(KeyCode.S)` (brake) and `KeyHeld(KeyCode.LeftControl)` (descend) always returned false under the Input System. `ConcordiaInput.ToKey` is now a superset (WASD, S, LeftCtrl included).
+- Play health after the input refactor: `errors=0 warnings=0 hero=True heroMeshes=1 transforms=11241 pos=(11.2,0.1,-12.0)` — no regression against the B-03 baseline.
+
 ### B-05 notes
 - Settings defaults: reducedMotion **off**, cameraShake **1.00**, damageNumbers **on**, subtitleScale **1.00**, `ConnectInLeanPlay` **on in editor / off in a player**, mouseSensitivity **1.00**.
 - The Settings panel is a second tab inside the existing `KitMenu` (tab strip rides the title row so inventory columns keep their coordinates); `K` still opens the lattice, `I` still closes the menu.
