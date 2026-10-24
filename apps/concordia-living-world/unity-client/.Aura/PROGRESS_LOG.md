@@ -42,6 +42,15 @@ Aura-owned at open (committed as part of B-01):
 
 2026-10-24T10:45-04:00 | B-06 | PASS | `ConcordiaControls.inputactions` (21 actions / 42 bindings) + `ConcordiaInput` wrapper routed through `ConcordiaPlayer.KeyDown/KeyHeld/MouseDown/MoveAxes`; 20/20 actions fire from queued Keyboard/Mouse device events | 9009ffd51 | ~/.zuko/aura-shots/B-06.png
 
+2026-10-24T11:02-04:00 | B-07 | PASS | Rebindable controls + CONTROLS tab: `PerformInteractiveRebinding` moved dodge X→V, override persisted, next Play session read `V=True X=False`, then reset to shipped binds | 8bb0e9631 | ~/.zuko/aura-shots/B-07.png
+
+### B-07 notes
+- `InputActionRebindingExtensions.PerformInteractiveRebinding` **throws** if the action is enabled ("Cannot rebind action … while it is enabled"). `ConcordiaInput.StartRebind` disables the action, listens, then re-enables in `OnComplete`/`OnCancel`.
+- An editor-driven rebind needs the key press to arrive on a **later** input update: queue the state, return, then read on the next call. A press queued *and* `InputSystem.Update()`-flushed in the same call is consumed before the operation attaches (first attempt reported `listening=True` and no completion, though it completed asynchronously afterwards — which is how the override landed in PlayerPrefs).
+- Gameplay call sites in `ConcordiaPlayer` now pass **action names** (`ConcordiaInput.Down(ConcordiaInput.Dodge)`) instead of `KeyCode.X`, otherwise a remap would be negative-only (X stops working, V does nothing, because the call site still asked about X).
+- Overrides are stored as the Input System's own JSON in PlayerPrefs under `concordia.input.overrides`; `HasOverrides` is derived from `SaveBindingOverridesAsJson() != "{}"` because `InputActionAsset.hasBindingOverrides()` does not exist in this Input System version.
+- The CONTROLS tab is compiled and renders (`tab=2`, `errors=0`) but has not been eyeballed pixel-by-pixel; the 3 Play warnings seen in that session are pre-existing CS0618s in `ContinentStream.cs` and `ConcordiaPersistenceService.cs`.
+
 ### B-06 notes
 - Verification had to go through the Input System, not the OS: `InputSystem.QueueStateEvent(device, state)` + `InputSystem.Update()` drives the real device, and `InputProbe.PressAll()` reads each action's `WasPressedThisFrame`. First run was 17/20 — `slot1/2/3` missed because `<Keyboard>/digit1` does not resolve; the canonical paths are `<Keyboard>/1|2|3`. Re-bound and it went to 20/20.
 - The asset must live under `Resources/` to be loadable at runtime, so it sits at `Assets/Concordia/Resources/Concordia/ConcordiaControls.inputactions` (a local, **untracked** copy was left at `Assets/Concordia/Input/` from the first attempt — delete it when convenient; the tracked one is authoritative).

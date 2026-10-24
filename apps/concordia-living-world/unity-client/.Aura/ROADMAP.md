@@ -130,13 +130,14 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: PASS · `[AuraVerify] B-06 PASS pressed=20/20` — sprint jump heavy special dodge guard interact cycleKit menu skills slot1-3 groupPrev groupNext horde extraction cancel light move all fire from real Keyboard/Mouse device events · 9009ffd51
   - Note: `ConcordiaInput.ResourcePath` loads the asset from `Resources/Concordia/ConcordiaControls` (the roadmap's `Assets/Concordia/Input/` path cannot be loaded at runtime; the authored copy lives in Resources). The raw key stays authoritative and the action adds the pad + the press log, so keyboard feel is byte-identical. Also fixed a dormant bug: `ToKey` never mapped `S`/`LeftCtrl`, so vehicle brake and descend were dead under the Input System.
-- [ ] **B-07 · Rebind + controls panel** (deps: B-05, B-06)
+- [x] **B-07 · Rebind + controls panel** (deps: B-05, B-06)
   - Goal: Generate the controls strip and help from live bindings. Add a rebinding UI. This closes the "no remap" gap in `bible/ACCESSIBILITY.md`.
   - Touch: `ConcordiaHUD.cs`, `Scripts/Aura/ConcordiaInput.cs`
   - Reuse: Input System `PerformInteractiveRebinding`
   - Verify: rebind dodge X→V, restart Play, V dodges and X does not.
   - Server: —
-  - Result: —
+  - Result: PASS · `PerformInteractiveRebinding` on `dodge` → override saved to PlayerPrefs → next Play session read `[AuraVerify] B-07 persist dodge bind=V · Button East overrides=True V=True X=False`; then reset to shipped binds (`dodge=X overrides=False`). CONTROLS tab renders, `errors=0` · 8bb0e9631
+  - Note: `PerformInteractiveRebinding` *requires* the action to be disabled — enabling it throws "Cannot rebind … while it is enabled", so `StartRebind` disables and the OnComplete/OnCancel handlers re-enable. Driving a rebind from an editor script must let the key press land on a later input update; a press queued and flushed in the same update is consumed before the operation attaches. Imgui: the CONTROLS tab is a two-column strip generated from `ConcordiaInput.Panel` + `BindingLine`, with per-row change buttons and a reset, plus a third tab on the I-menu.
 - [ ] **B-08 · Live boot map** (deps: B-03)
   - Goal: Document the LeanPlay boot order in `.Aura/LIVE_PATH.md`: what `ConcordiaGame` installs, what it skips (EnsureConnected/RestoreAgentSoul and Persistence.Restore, ~lines 320–332), which components exist in Play (via `FindObjectsByType` dump), and the combat path `ActionRunner → HitResolver`.
     - Note: `GameplayCore/Combat/CombatContracts.cs` `CombatDefenseEvaluator` is the DISCONNECTED one. Do not wire it.
