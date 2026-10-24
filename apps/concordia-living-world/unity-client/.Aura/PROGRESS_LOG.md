@@ -46,6 +46,15 @@ Aura-owned at open (committed as part of B-01):
 
 2026-10-24T11:10-04:00 | B-08 | PASS | `.Aura/LIVE_PATH.md` — boot phase order, install/skip table, 56 live component types with owner scripts, combat grammar, baseline numbers | eadddf9aa | .Aura/LIVE_PATH.md
 
+2026-10-24T11:28-04:00 | B-09 | BLOCKED | Staged Concord connect cannot be verified: `DressHeroAfterHub` never reaches its tail in LeanPlay (no `complete` log after 9 min), and `ConcordClient.Start` already handshakes itself after Hub staged | e2b85edb3 | .Aura/ROADMAP.md
+
+### B-09 notes (blocked — read before retrying)
+- **`DressHeroAfterHub` never completes on this machine.** After 9 minutes in Play there is no `[Concordia] LeanPlay: DressHeroAfterHub complete …` line, so the code at the end of that coroutine (the `if (kernel != null)` tail where the connect would be staged, and the existing persistence/Bridge step before it) **never runs**. Anything gated behind that tail is unreachable, not merely slow.
+- Evidence from the same session: boot reached `staged full HubPlaza begin` at 11:11:16 and was still churning `StreamNpcPresence` park logs at 11:15:31 with `sim=78 live=0`. `ExpandSystemsStaged()` is the most likely thing holding the coroutine open.
+- **The roadmap's premise is partly stale.** The socket is *not* dead in LeanPlay: `ConcordClient` logs `LeanPlay: defer ConcordClient websocket until Hub staged` (11:10:50) and then `LeanPlay: WS full handshake (ApplyScene staged; AgentBody later)` (11:10:54) on its own. Only the account/agent connect (`EnsureConnected` → `AgentBody`) is skipped.
+- I implemented the gated connect, watched it never fire, and **reverted** `ConcordiaGame.cs` rather than commit an unverifiable claim. `Scripts/Aura/FrameWatch.cs` was kept (dev-only recorder: `MaxMs`, `Over100`, `Samples`, `Line()`, `Reset()`); it compiled clean but was not itself exercised in Play.
+- Next attempt: gate on a signal that actually becomes true (e.g. `ConcordClient.Connected` + a fixed wall-clock idle) instead of the `DressHeroAfterHub` tail, and first find out why `ExpandSystemsStaged` does not return.
+
 ### B-08 notes
 - Live dump: **946 MonoBehaviours / 56 types** at `plaza`. Top counts: `CharacterVisualProfile` 89, `ModularPerson` 89, `PersonLabel` 89, `StreamNpcPresence` 89, `NpcLife` 84, `GuestNpc` 81, `LoreStone` 74, `QuestBoard` 41, `BuildingPlace` 36.
 - Boot phases, in order: `guests` (15 named, ~1 s each) → `guests_done` → `lore` → `city_ring` → `forest` (those three in one frame) → `realmfill` → `crowd` → `realmfill_done` → `plaza` (settled). First guest → `crowd` ≈ 68 s; `plaza` ≈ 2 min.

@@ -147,7 +147,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: PASS · `.Aura/LIVE_PATH.md` lists **56** live component types (946 MonoBehaviours) with owner scripts, the full `guests → plaza` phase order, both LeanPlay skips (persistence Restore/ReceiveHere, EnsureConnected/RestoreAgentSoul), and the real combat grammar · eadddf9aa
   - Note: verified against a live dump, and it corrected the roadmap: `ConcordiaGame` L801–813 shows the path is `ConcordiaPlayer → Core.AttackContext → Core.HitResolver.Resolve(attack, _body, _action)`, with `ActionRunner` supplying guard/i-frame state — `ActionRunner` does not call `HitResolver` itself, and `CombatDefenseEvaluator` stays disconnected.
-- [ ] **B-09 · Staged Concord connection in LeanPlay** (deps: B-05, B-08)
+- [ ] **B-09 · Staged Concord connection in LeanPlay** (deps: B-05, B-08) · **BLOCKED(verify-window)**
   - Goal: Behind `ConcordiaSettings.ConnectInLeanPlay` (default ON in Editor), call `ConcordClient.EnsureConnected()` only after boot is idle: hero dressed, RealmFill done, +30 s stable. Never connect during the boot window (the post-Expand melt reason). Do not enable `RestoreAgentSoul` yet.
   - Touch: `ConcordiaGame.cs` (the LeanPlay branch only)
   - Reuse: `ConcordClient.EnsureConnected`, `ConcordiaHUD` connection text
@@ -155,7 +155,8 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
     - Server up: log `connected` + `kingdom:data` received, and no frame >100 ms in the 10 s after connecting.
     - Server down: HUD shows `no_gateway`, and Play holds 120 s with no exceptions.
   - Server: `/unity-ws`
-  - Result: —
+  - Result: BLOCKED · cannot be verified: `DressHeroAfterHub` never reaches its tail on this machine (no `DressHeroAfterHub complete` after 9 min of PlayPost), so anything gated behind it — including a staged connect — never fires. Also the premise is partly stale: `ConcordClient.Start` already defers then handshakes itself after Hub staged (`LeanPlay: defer ConcordClient websocket until Hub staged` → `WS full handshake`), so the socket is not actually skipped. · e2b85edb3
+  - Note: no code kept for this task. The `ConcordiaGame` staged-connect edit was reverted rather than shipped unverified; `Scripts/Aura/FrameWatch.cs` (frame-budget recorder: `MaxMs`, `Over100`, `Line()`) did land and is reusable for the P-* perf tasks. To unblock: find why `ExpandSystemsStaged` does not complete in LeanPlay (it holds `DressHeroAfterHub` open past the 2-min boot), then re-attempt with a gate that does not depend on that tail.
 - [ ] **QA-0 · Baseline regression** (deps: B-01…B-09)
   - Goal: Run the full regression route and compare it to B-03.
   - Touch: log only
