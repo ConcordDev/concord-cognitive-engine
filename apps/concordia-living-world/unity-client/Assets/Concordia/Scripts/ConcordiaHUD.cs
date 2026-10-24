@@ -30,6 +30,8 @@ namespace Concordia
         static string _seenToast;
         Font _font;
         HudMode _mode = HudMode.Explore;
+        int _menuTab;
+        static readonly string[] _menuTabs = { "KIT", "SETTINGS" };
         float _hurtT;
         float _lastHp = -1f;
         public static WorldGate Bearing;
@@ -427,7 +429,24 @@ namespace Concordia
             GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.9f);
             GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons", _title);
+            GUI.Label(new Rect(x + 18, y + 12, pw - 320, 24), "KIT  ·  inventory  ·  weapons", _title);
+
+            // Tab strip rides the title row so the inventory columns keep their coordinates.
+            float tabW = 120f, tabGap = 6f;
+            float tabX = x + pw - 18f - (_menuTabs.Length * (tabW + tabGap) - tabGap);
+            for (int i = 0; i < _menuTabs.Length; i++)
+            {
+                var tabLabel = (_menuTab == i ? "▸ " : "  ") + _menuTabs[i];
+                if (GUI.Button(new Rect(tabX, y + 12, tabW, 22f), tabLabel, _btn)) _menuTab = i;
+                tabX += tabW + tabGap;
+            }
+
+            if (_menuTab == 1)
+            {
+                SettingsTab(x, y, pw, ph);
+                return;
+            }
+
             float col = (pw - 48f) / 2f;
             DrawInvCol(x + 16, y + 44, col, "Carry", false);
             DrawInvCol(x + 32 + col, y + 44, col, "Weapons", true);
@@ -436,6 +455,60 @@ namespace Concordia
                     ? "K  opens the " + SkillLattice.CatalogCount + "-skill lattice  ·  " + SkillLattice.HudLine()
                     : "K  opens the lattice. Skills stay empty until Concord answers.", _small);
             GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
+        }
+
+        /// <summary>
+        /// Settings tab of the I-menu. Everything here comes from <see cref="ConcordiaSettings"/>
+        /// and persists to PlayerPrefs the moment it changes.
+        /// </summary>
+        void SettingsTab(float x, float y, float pw, float ph)
+        {
+            float cx = x + 20f;
+            float cy = y + 46f;
+            const float labelW = 250f;
+            float ctrlX = cx + labelW;
+            float ctrlW = pw - labelW - 140f;
+
+            GUI.Label(new Rect(cx, cy, pw - 40f, 18f), "Accessibility and feel. Saved to this machine.", _small);
+            cy += 30f;
+
+            bool reduced = GUI.Toggle(new Rect(cx, cy, labelW - 8f, 22f), ConcordiaSettings.ReducedMotion, "Reduced motion");
+            if (reduced != ConcordiaSettings.ReducedMotion) ConcordiaSettings.ReducedMotion = reduced;
+            GUI.Label(new Rect(ctrlX, cy, ctrlW, 22f), reduced ? "on  ·  shakes, flashes and pulses are damped" : "off  ·  full motion", _small);
+            cy += 32f;
+
+            GUI.Label(new Rect(cx, cy, labelW - 8f, 22f), "Camera shake", _small);
+            float shake = GUI.HorizontalSlider(new Rect(ctrlX, cy + 7f, ctrlW, 18f),
+                ConcordiaSettings.CameraShake, ConcordiaSettings.CameraShakeMin, ConcordiaSettings.CameraShakeMax);
+            if (!Mathf.Approximately(shake, ConcordiaSettings.CameraShake)) ConcordiaSettings.CameraShake = shake;
+            GUI.Label(new Rect(ctrlX + ctrlW + 10f, cy, 74f, 22f),
+                Mathf.RoundToInt(ConcordiaSettings.CameraShake * 100f) + "%", _small);
+            cy += 32f;
+
+            bool numbers = GUI.Toggle(new Rect(cx, cy, labelW - 8f, 22f), ConcordiaSettings.DamageNumbers, "Damage numbers");
+            if (numbers != ConcordiaSettings.DamageNumbers) ConcordiaSettings.DamageNumbers = numbers;
+            GUI.Label(new Rect(ctrlX, cy, ctrlW, 22f), numbers ? "on  ·  strikes print their damage" : "off  ·  no floating numbers", _small);
+            cy += 32f;
+
+            GUI.Label(new Rect(cx, cy, labelW - 8f, 22f), "Subtitle scale", _small);
+            float subs = GUI.HorizontalSlider(new Rect(ctrlX, cy + 7f, ctrlW, 18f),
+                ConcordiaSettings.SubtitleScale, ConcordiaSettings.SubtitleScaleMin, ConcordiaSettings.SubtitleScaleMax);
+            if (!Mathf.Approximately(subs, ConcordiaSettings.SubtitleScale)) ConcordiaSettings.SubtitleScale = subs;
+            GUI.Label(new Rect(ctrlX + ctrlW + 10f, cy, 74f, 22f), "x" + ConcordiaSettings.SubtitleScale.ToString("F2"), _small);
+            cy += 32f;
+
+            bool connect = GUI.Toggle(new Rect(cx, cy, labelW - 8f, 22f), ConcordiaSettings.ConnectInLeanPlay, "Connect in LeanPlay");
+            if (connect != ConcordiaSettings.ConnectInLeanPlay) ConcordiaSettings.ConnectInLeanPlay = connect;
+            GUI.Label(new Rect(ctrlX, cy, ctrlW, 22f), connect ? "on  ·  gateway opens once the boot settles" : "off  ·  stays offline", _small);
+            cy += 32f;
+
+            GUI.Label(new Rect(cx, cy, labelW - 8f, 22f), "Mouse sensitivity", _small);
+            float sens = GUI.HorizontalSlider(new Rect(ctrlX, cy + 7f, ctrlW, 18f),
+                ConcordiaSettings.MouseSensitivity, ConcordiaSettings.MouseSensitivityMin, ConcordiaSettings.MouseSensitivityMax);
+            if (!Mathf.Approximately(sens, ConcordiaSettings.MouseSensitivity)) ConcordiaSettings.MouseSensitivity = sens;
+            GUI.Label(new Rect(ctrlX + ctrlW + 10f, cy, 74f, 22f), "x" + ConcordiaSettings.MouseSensitivity.ToString("F2"), _small);
+
+            GUI.Label(new Rect(cx, y + ph - 26f, pw - 40f, 18f), "I  closes the menu  ·  changes save immediately", _small);
         }
 
         void SkillSheet(float w, float h)
