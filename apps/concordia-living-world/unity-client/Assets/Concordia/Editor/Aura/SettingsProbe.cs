@@ -36,6 +36,17 @@ namespace Concordia.Editor
         /// </summary>
         public static string ShowSettingsTab()
         {
+            return ShowTab(1, "B-05");
+        }
+
+        /// <summary>Open the I-menu on its Controls tab and capture it (B-07).</summary>
+        public static string ShowControlsTab()
+        {
+            return ShowTab(2, "B-07");
+        }
+
+        static string ShowTab(int want, string shotId)
+        {
             var hud = Object.FindAnyObjectByType<ConcordiaHUD>();
             if (hud == null) return "hud=absent";
             if (hud.player == null) return "hud=True player=absent";
@@ -44,13 +55,13 @@ namespace Concordia.Editor
             var field = typeof(ConcordiaHUD).GetField("_menuTab", BindingFlags.Instance | BindingFlags.NonPublic);
             if (field != null)
             {
-                field.SetValue(hud, 1);
+                field.SetValue(hud, want);
                 tab = (int)field.GetValue(hud);
             }
 
             if (!hud.player.menuOpen) hud.player.ToggleMenu();
 
-            string shot = AuraShots.CaptureAndProbe("B-05");
+            string shot = AuraShots.CaptureAndProbe(shotId);
             return "hud=True menuOpen=" + hud.player.menuOpen + " tab=" + tab + " | " + shot;
         }
     }

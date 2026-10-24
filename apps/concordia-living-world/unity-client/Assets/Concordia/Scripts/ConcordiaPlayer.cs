@@ -129,7 +129,7 @@ namespace Concordia
             var seatedVehicle = GetComponentInParent<VehicleEntity>();
             if (seatedVehicle && seatedVehicle.gameObject != gameObject)
             {
-                if (KeyDown(KeyCode.E)) Interact();
+                if (ConcordiaInput.Down(ConcordiaInput.Interact)) Interact();
                 return;
             }
 
@@ -158,7 +158,7 @@ namespace Concordia
             HandleMenuKeys();
             LookInput();
             var axes = Busy ? Vector2.zero : MoveAxes();
-            var sprint = !Busy && KeyHeld(KeyCode.LeftShift);
+            var sprint = !Busy && ConcordiaInput.Held(ConcordiaInput.Sprint);
             var speed = (sprint ? 8.1f : 5.2f) * style.speedMul;
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
@@ -186,8 +186,8 @@ namespace Concordia
             {
                 Move = axes,
                 Sprint = sprint,
-                Jump = !Busy && KeyDown(KeyCode.Space) && _coyote > 0f,
-                Ascend = !Busy && KeyHeld(KeyCode.Space),
+                Jump = !Busy && ConcordiaInput.Down(ConcordiaInput.Jump) && _coyote > 0f,
+                Ascend = !Busy && ConcordiaInput.Held(ConcordiaInput.Jump),
                 Descend = !Busy && KeyHeld(KeyCode.LeftControl),
                 Brake = KeyHeld(KeyCode.S)
             };
@@ -219,7 +219,7 @@ namespace Concordia
             }
             // Dodge now injects momentum into the gameplay-core motor; the motor performs the
             // single authoritative CharacterController.Move for this frame.
-            if (!Busy && KeyDown(KeyCode.X))
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Dodge))
             {
                 _body.Stamina = stamina;
                 if (_action.TryBegin(DodgeAction, _body))
@@ -233,7 +233,7 @@ namespace Concordia
                     if (client != null) client.SendDodge();
                 }
             }
-            if (!Busy && KeyHeld(KeyCode.C))
+            if (!Busy && ConcordiaInput.Held(ConcordiaInput.Guard))
             {
                 _body.Stamina = stamina;
                 if (_action.CanAct) _action.TryBegin(GuardAction, _body);
@@ -301,10 +301,10 @@ namespace Concordia
                 if (KitBag.Art == 2) TrySpecial();
                 else TryAttack(KitBag.Art == 1);
             }
-            if (!Busy && KeyDown(KeyCode.F)) TryAttack(true);
-            if (!Busy && KeyDown(KeyCode.G)) TrySpecial();
-            if (!talkOpen && KeyDown(KeyCode.E)) Interact();
-            if (!Busy && KeyDown(KeyCode.Q)) CycleKit();
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Heavy)) TryAttack(true);
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Special)) TrySpecial();
+            if (!talkOpen && ConcordiaInput.Down(ConcordiaInput.Interact)) Interact();
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.CycleKit)) CycleKit();
 
             prompt = nearPrompt;
             if (_toastT > 0) _toastT -= dt;
@@ -491,16 +491,16 @@ namespace Concordia
         void HandleMenuKeys()
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
-            if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
-            if (KeyDown(KeyCode.K) && !talkOpen) ToggleSkillSheet();
+            if (ConcordiaInput.Down(ConcordiaInput.Menu) && !talkOpen) ToggleMenu();
+            if (ConcordiaInput.Down(ConcordiaInput.Skills) && !talkOpen) ToggleSkillSheet();
             if (talkOpen) return;
-            if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
-            if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
-            if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
-            if ((menuOpen || skillOpen) && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
-            if ((menuOpen || skillOpen) && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
-            if (!Busy && KeyDown(KeyCode.H)) ConcordClient.Live?.RequestRunStart("horde");
-            if (!Busy && KeyDown(KeyCode.J)) ConcordClient.Live?.RequestRunStart("extraction");
+            if (ConcordiaInput.Down(ConcordiaInput.Slot1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
+            if (ConcordiaInput.Down(ConcordiaInput.Slot2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
+            if (ConcordiaInput.Down(ConcordiaInput.Slot3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
+            if ((menuOpen || skillOpen) && ConcordiaInput.Down(ConcordiaInput.GroupPrev)) SkillLattice.CycleGroup(-1);
+            if ((menuOpen || skillOpen) && ConcordiaInput.Down(ConcordiaInput.GroupNext)) SkillLattice.CycleGroup(1);
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Horde)) ConcordClient.Live?.RequestRunStart("horde");
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Extraction)) ConcordClient.Live?.RequestRunStart("extraction");
         }
 
         void TryAttack(bool heavy)
@@ -965,25 +965,25 @@ namespace Concordia
 
         void LookInput()
         {
-            if (talkOpen && KeyDown(KeyCode.Escape))
+            if (talkOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 CloseTalk();
                 return;
             }
-            if (skillOpen && KeyDown(KeyCode.Escape))
+            if (skillOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 skillOpen = false;
                 LockCursor();
                 return;
             }
-            if (menuOpen && KeyDown(KeyCode.Escape))
+            if (menuOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 menuOpen = false;
                 LockCursor();
                 return;
             }
             if (Busy) return;
-            if (KeyDown(KeyCode.Escape) || KeyDown(KeyCode.Tab))
+            if (ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;

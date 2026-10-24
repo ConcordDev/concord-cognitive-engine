@@ -31,7 +31,7 @@ namespace Concordia
         Font _font;
         HudMode _mode = HudMode.Explore;
         int _menuTab;
-        static readonly string[] _menuTabs = { "KIT", "SETTINGS" };
+        static readonly string[] _menuTabs = { "KIT", "SETTINGS", "CONTROLS" };
         float _hurtT;
         float _lastHp = -1f;
         public static WorldGate Bearing;
@@ -447,6 +447,12 @@ namespace Concordia
                 return;
             }
 
+            if (_menuTab == 2)
+            {
+                ControlsTab(x, y, pw, ph);
+                return;
+            }
+
             float col = (pw - 48f) / 2f;
             DrawInvCol(x + 16, y + 44, col, "Carry", false);
             DrawInvCol(x + 32 + col, y + 44, col, "Weapons", true);
@@ -455,6 +461,68 @@ namespace Concordia
                     ? "K  opens the " + SkillLattice.CatalogCount + "-skill lattice  ·  " + SkillLattice.HudLine()
                     : "K  opens the lattice. Skills stay empty until Concord answers.", _small);
             GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
+        }
+
+        /// <summary>
+        /// Controls tab (B-07). Every row is generated from the live action map, so it shows the
+        /// key the player will actually press — including any remap saved in PlayerPrefs.
+        /// </summary>
+        void ControlsTab(float x, float y, float pw, float ph)
+        {
+            float cx = x + 20f, cy = y + 50f;
+            const float labelW = 96f, bindW = 150f, btnW = 78f;
+            float colW = (pw - 40f - 16f) * 0.5f;
+            int half = Mathf.CeilToInt(ConcordiaInput.Panel.Length * 0.5f);
+
+            GUI.Label(new Rect(cx, cy - 24f, pw - 40f, 18f),
+                ConcordiaInput.Rebinding
+                    ? "Press a key for " + ConcordiaInput.RebindingAction + "  ·  Esc cancels"
+                    : "Bindings read straight from the action map. Click change, then press a key.",
+                _small);
+
+            for (int i = 0; i < ConcordiaInput.Panel.Length; i++)
+            {
+                int col = i < half ? 0 : 1;
+                int row = i < half ? i : i - half;
+                float rx = cx + col * (colW + 16f);
+                float ry = cy + 6f + row * 30f;
+
+                string action = ConcordiaInput.Panel[i];
+                GUI.Label(new Rect(rx, ry, labelW, 22f), LabelFor(action), _small);
+                GUI.Label(new Rect(rx + labelW, ry, bindW, 22f), ConcordiaInput.BindingLine(action), _small);
+
+                string btn = ConcordiaInput.RebindingAction == action ? "press…" : "change";
+                if (GUI.Button(new Rect(rx + labelW + bindW + 8f, ry, btnW, 22f), btn, _btn) &&
+                    !ConcordiaInput.Rebinding)
+                {
+                    ConcordiaInput.StartRebind(action);
+                }
+            }
+
+            if (GUI.Button(new Rect(cx, y + ph - 44f, 150f, 24f), "reset to defaults", _btn))
+            {
+                ConcordiaInput.ResetOverrides();
+            }
+
+            GUI.Label(new Rect(cx + 162f, y + ph - 44f, pw - 250f, 24f),
+                ConcordiaInput.HasOverrides ? "custom binds active  ·  saved to this machine" : "shipped binds",
+                _small);
+        }
+
+        /// <summary>Readable row label for an action name.</summary>
+        static string LabelFor(string action)
+        {
+            switch (action)
+            {
+                case "slot1": return "Slot 1";
+                case "slot2": return "Slot 2";
+                case "slot3": return "Slot 3";
+                case "groupPrev": return "Group ◂";
+                case "groupNext": return "Group ▸";
+                case "cycleKit": return "Cycle kit";
+                default:
+                    return char.ToUpperInvariant(action[0]) + action.Substring(1);
+            }
         }
 
         /// <summary>
