@@ -5574,6 +5574,1196 @@
       "license": "CC0",
       "author": "Quaternius",
       "source": "Assets/Concordia/FreePacks/Quaternius/ultimate_animated_character_pack_by_quaternius/Ultimate Animated Character Pack - Nov 2019/FBX/Zombie_Male.fbx"
+    },
+    {
+      "stem": "meshy_mon_boss_census",
+      "file": "meshy/bosses/mon_boss_census_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/bosses/mon_boss_census_lods.glb"
+    },
+    {
+      "stem": "meshy_mon_boss_compound_mark",
+      "file": "meshy/bosses/mon_boss_compound_mark_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/bosses/mon_boss_compound_mark_lods.glb"
+    },
+    {
+      "stem": "meshy_mon_boss_held_curse",
+      "file": "meshy/bosses/mon_boss_held_curse_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/bosses/mon_boss_held_curse_lods.glb"
+    },
+    {
+      "stem": "meshy_mon_boss_unender",
+      "file": "meshy/bosses/mon_boss_unender_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/bosses/mon_boss_unender_lods.glb"
+    },
+    {
+      "stem": "meshy_mon_boss_unfinished",
+      "file": "meshy/bosses/mon_boss_unfinished_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/bosses/mon_boss_unfinished_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_aegis_kestrel",
+      "file": "meshy/fauna/faun_aegis_kestrel_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_aegis_kestrel_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_ark_heron",
+      "file": "meshy/fauna/faun_ark_heron_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_ark_heron_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_ash_wolf",
+      "file": "meshy/fauna/faun_ash_wolf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_ash_wolf_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_blackroot_elk",
+      "file": "meshy/fauna/faun_blackroot_elk_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_blackroot_elk_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_cable_sparrow",
+      "file": "meshy/fauna/faun_cable_sparrow_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_cable_sparrow_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_catalogue_crow",
+      "file": "meshy/fauna/faun_catalogue_crow_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_catalogue_crow_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_court_cat",
+      "file": "meshy/fauna/faun_court_cat_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_court_cat_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_court_pigeon",
+      "file": "meshy/fauna/faun_court_pigeon_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_court_pigeon_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_cursefold_owl",
+      "file": "meshy/fauna/faun_cursefold_owl_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_cursefold_owl_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_dock_hound",
+      "file": "meshy/fauna/faun_dock_hound_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_dock_hound_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_dust_wolf",
+      "file": "meshy/fauna/faun_dust_wolf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_dust_wolf_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_grid_stray",
+      "file": "meshy/fauna/faun_grid_stray_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_grid_stray_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_lantern_moth",
+      "file": "meshy/fauna/faun_lantern_moth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_lantern_moth_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_lattice_moth",
+      "file": "meshy/fauna/faun_lattice_moth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_lattice_moth_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_mark_hound",
+      "file": "meshy/fauna/faun_mark_hound_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_mark_hound_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_nil_sealie",
+      "file": "meshy/fauna/faun_nil_sealie_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_nil_sealie_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_pinewood_stag",
+      "file": "meshy/fauna/faun_pinewood_stag_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_pinewood_stag_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_pollen_hare",
+      "file": "meshy/fauna/faun_pollen_hare_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_pollen_hare_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_rain_gull",
+      "file": "meshy/fauna/faun_rain_gull_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_rain_gull_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_rib_lizard",
+      "file": "meshy/fauna/faun_rib_lizard_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_rib_lizard_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_saltroad_hare",
+      "file": "meshy/fauna/faun_saltroad_hare_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_saltroad_hare_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_sodium_rat",
+      "file": "meshy/fauna/faun_sodium_rat_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_sodium_rat_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_sunder_wolf",
+      "file": "meshy/fauna/faun_sunder_wolf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_sunder_wolf_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_terrace_goat",
+      "file": "meshy/fauna/faun_terrace_goat_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_terrace_goat_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_veil_hound",
+      "file": "meshy/fauna/faun_veil_hound_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_veil_hound_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_wagon_horse",
+      "file": "meshy/fauna/faun_wagon_horse_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_wagon_horse_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_wardwood_boar",
+      "file": "meshy/fauna/faun_wardwood_boar_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_wardwood_boar_lods.glb"
+    },
+    {
+      "stem": "meshy_faun_wind_pronghorn",
+      "file": "meshy/fauna/faun_wind_pronghorn_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Meshy",
+      "source": "Assets/Concordia/Models/Meshy/fauna/faun_wind_pronghorn_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crime_escape_stair",
+      "file": "organic/architecture/arch_hero_crime_escape_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crime_escape_stair_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crime_tenement_bay",
+      "file": "organic/architecture/arch_hero_crime_tenement_bay_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crime_tenement_bay_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crime_warehouse_door",
+      "file": "organic/architecture/arch_hero_crime_warehouse_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crime_warehouse_door_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crucible_lattice_hall",
+      "file": "organic/architecture/arch_hero_crucible_lattice_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crucible_lattice_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crucible_lean_stair",
+      "file": "organic/architecture/arch_hero_crucible_lean_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crucible_lean_stair_lods.glb"
+    },
+    {
+      "stem": "arch_hero_crucible_quartz_facade",
+      "file": "organic/architecture/arch_hero_crucible_quartz_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_crucible_quartz_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_cyber_acrylic_facade",
+      "file": "organic/architecture/arch_hero_cyber_acrylic_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_cyber_acrylic_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_cyber_bridge_hall",
+      "file": "organic/architecture/arch_hero_cyber_bridge_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_cyber_bridge_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_cyber_hatch_door",
+      "file": "organic/architecture/arch_hero_cyber_hatch_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_cyber_hatch_door_lods.glb"
+    },
+    {
+      "stem": "arch_hero_dawn_launch_lip",
+      "file": "organic/architecture/arch_hero_dawn_launch_lip_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_dawn_launch_lip_lods.glb"
+    },
+    {
+      "stem": "arch_hero_dawn_pad_facade",
+      "file": "organic/architecture/arch_hero_dawn_pad_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_dawn_pad_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_dawn_spire_hall",
+      "file": "organic/architecture/arch_hero_dawn_spire_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_dawn_spire_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_frontier_cabin_hall",
+      "file": "organic/architecture/arch_hero_frontier_cabin_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_frontier_cabin_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_frontier_canvas_facade",
+      "file": "organic/architecture/arch_hero_frontier_canvas_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_frontier_canvas_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_frontier_wagon_stair",
+      "file": "organic/architecture/arch_hero_frontier_wagon_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_frontier_wagon_stair_lods.glb"
+    },
+    {
+      "stem": "arch_hero_hub_arena_gate",
+      "file": "organic/architecture/arch_hero_hub_arena_gate_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_hub_arena_gate_lods.glb"
+    },
+    {
+      "stem": "arch_hero_hub_council_hall",
+      "file": "organic/architecture/arch_hero_hub_council_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_hub_council_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_hub_market_facade",
+      "file": "organic/architecture/arch_hero_hub_market_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_hub_market_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_hub_pinewood_stable",
+      "file": "organic/architecture/arch_hero_hub_pinewood_stable_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_hub_pinewood_stable_lods.glb"
+    },
+    {
+      "stem": "arch_hero_ix_crown_stair",
+      "file": "organic/architecture/arch_hero_ix_crown_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_ix_crown_stair_lods.glb"
+    },
+    {
+      "stem": "arch_hero_ix_foundry",
+      "file": "organic/architecture/arch_hero_ix_foundry_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_ix_foundry_lods.glb"
+    },
+    {
+      "stem": "arch_hero_ix_wharf",
+      "file": "organic/architecture/arch_hero_ix_wharf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_ix_wharf_lods.glb"
+    },
+    {
+      "stem": "arch_hero_ruins_catalogue_hall",
+      "file": "organic/architecture/arch_hero_ruins_catalogue_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_ruins_catalogue_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_ruins_rib_facade",
+      "file": "organic/architecture/arch_hero_ruins_rib_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_ruins_rib_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sere_furnace_facade",
+      "file": "organic/architecture/arch_hero_sere_furnace_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sere_furnace_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sere_mark_door",
+      "file": "organic/architecture/arch_hero_sere_mark_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sere_mark_door_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sere_spire_footing",
+      "file": "organic/architecture/arch_hero_sere_spire_footing_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sere_spire_footing_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sere_tally_hall",
+      "file": "organic/architecture/arch_hero_sere_tally_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sere_tally_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sunder_pillar_door",
+      "file": "organic/architecture/arch_hero_sunder_pillar_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sunder_pillar_door_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sunder_shrine_hall",
+      "file": "organic/architecture/arch_hero_sunder_shrine_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sunder_shrine_hall_lods.glb"
+    },
+    {
+      "stem": "arch_hero_sunder_timber_facade",
+      "file": "organic/architecture/arch_hero_sunder_timber_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_sunder_timber_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_tunya_canopy_stair",
+      "file": "organic/architecture/arch_hero_tunya_canopy_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_tunya_canopy_stair_lods.glb"
+    },
+    {
+      "stem": "arch_hero_tunya_fluxom_lockhouse",
+      "file": "organic/architecture/arch_hero_tunya_fluxom_lockhouse_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_tunya_fluxom_lockhouse_lods.glb"
+    },
+    {
+      "stem": "arch_hero_tunya_graft_facade",
+      "file": "organic/architecture/arch_hero_tunya_graft_facade_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_tunya_graft_facade_lods.glb"
+    },
+    {
+      "stem": "arch_hero_tunya_terrace_hall",
+      "file": "organic/architecture/arch_hero_tunya_terrace_hall_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/architecture/arch_hero_tunya_terrace_hall_lods.glb"
+    },
+    {
+      "stem": "env_crime_bill_board",
+      "file": "organic/environment/env_crime_bill_board_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_bill_board_lods.glb"
+    },
+    {
+      "stem": "env_crime_fire_escape",
+      "file": "organic/environment/env_crime_fire_escape_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_fire_escape_lods.glb"
+    },
+    {
+      "stem": "env_crime_gutter_mouth",
+      "file": "organic/environment/env_crime_gutter_mouth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_gutter_mouth_lods.glb"
+    },
+    {
+      "stem": "env_crime_overpass_pier",
+      "file": "organic/environment/env_crime_overpass_pier_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_overpass_pier_lods.glb"
+    },
+    {
+      "stem": "env_crime_sodium_lamp",
+      "file": "organic/environment/env_crime_sodium_lamp_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_sodium_lamp_lods.glb"
+    },
+    {
+      "stem": "env_crime_warehouse_door",
+      "file": "organic/environment/env_crime_warehouse_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_warehouse_door_lods.glb"
+    },
+    {
+      "stem": "env_crime_wharf_bollard",
+      "file": "organic/environment/env_crime_wharf_bollard_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crime_wharf_bollard_lods.glb"
+    },
+    {
+      "stem": "env_crucible_seam_rock",
+      "file": "organic/environment/env_crucible_seam_rock_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_crucible_seam_rock_lods.glb"
+    },
+    {
+      "stem": "env_cyber_census_plinth",
+      "file": "organic/environment/env_cyber_census_plinth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_cyber_census_plinth_lods.glb"
+    },
+    {
+      "stem": "env_dawn_roof_pad",
+      "file": "organic/environment/env_dawn_roof_pad_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_dawn_roof_pad_lods.glb"
+    },
+    {
+      "stem": "env_frontier_walker_cairn",
+      "file": "organic/environment/env_frontier_walker_cairn_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_frontier_walker_cairn_lods.glb"
+    },
+    {
+      "stem": "env_hub_arena_arch",
+      "file": "organic/environment/env_hub_arena_arch_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_arena_arch_lods.glb"
+    },
+    {
+      "stem": "env_hub_court_cobble",
+      "file": "organic/environment/env_hub_court_cobble_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_court_cobble_lods.glb"
+    },
+    {
+      "stem": "env_hub_flower_law_urn",
+      "file": "organic/environment/env_hub_flower_law_urn_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_flower_law_urn_lods.glb"
+    },
+    {
+      "stem": "env_hub_lantern_bracket",
+      "file": "organic/environment/env_hub_lantern_bracket_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_lantern_bracket_lods.glb"
+    },
+    {
+      "stem": "env_hub_pinewood_milepost",
+      "file": "organic/environment/env_hub_pinewood_milepost_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_pinewood_milepost_lods.glb"
+    },
+    {
+      "stem": "env_hub_ring_door",
+      "file": "organic/environment/env_hub_ring_door_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_ring_door_lods.glb"
+    },
+    {
+      "stem": "env_hub_salt_verge",
+      "file": "organic/environment/env_hub_salt_verge_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_hub_salt_verge_lods.glb"
+    },
+    {
+      "stem": "env_ruins_aqueduct_spout",
+      "file": "organic/environment/env_ruins_aqueduct_spout_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_ruins_aqueduct_spout_lods.glb"
+    },
+    {
+      "stem": "env_ruins_ash_cairn",
+      "file": "organic/environment/env_ruins_ash_cairn_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_ruins_ash_cairn_lods.glb"
+    },
+    {
+      "stem": "env_ruins_forum_column",
+      "file": "organic/environment/env_ruins_forum_column_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_ruins_forum_column_lods.glb"
+    },
+    {
+      "stem": "env_ruins_rib_bridge",
+      "file": "organic/environment/env_ruins_rib_bridge_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_ruins_rib_bridge_lods.glb"
+    },
+    {
+      "stem": "env_ruins_unfinished_arch",
+      "file": "organic/environment/env_ruins_unfinished_arch_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_ruins_unfinished_arch_lods.glb"
+    },
+    {
+      "stem": "env_sere_furnace_stack",
+      "file": "organic/environment/env_sere_furnace_stack_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sere_furnace_stack_lods.glb"
+    },
+    {
+      "stem": "env_sere_waystone",
+      "file": "organic/environment/env_sere_waystone_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sere_waystone_lods.glb"
+    },
+    {
+      "stem": "env_sunder_fold_lip",
+      "file": "organic/environment/env_sunder_fold_lip_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_fold_lip_lods.glb"
+    },
+    {
+      "stem": "env_sunder_salt_toll",
+      "file": "organic/environment/env_sunder_salt_toll_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_salt_toll_lods.glb"
+    },
+    {
+      "stem": "env_sunder_titan_pillar",
+      "file": "organic/environment/env_sunder_titan_pillar_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_titan_pillar_lods.glb"
+    },
+    {
+      "stem": "env_sunder_voss_stair_fragment",
+      "file": "organic/environment/env_sunder_voss_stair_fragment_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_voss_stair_fragment_lods.glb"
+    },
+    {
+      "stem": "env_sunder_ward_stone",
+      "file": "organic/environment/env_sunder_ward_stone_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_ward_stone_lods.glb"
+    },
+    {
+      "stem": "env_sunder_waterfall_shelf",
+      "file": "organic/environment/env_sunder_waterfall_shelf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_waterfall_shelf_lods.glb"
+    },
+    {
+      "stem": "env_sunder_wildwood_root_arch",
+      "file": "organic/environment/env_sunder_wildwood_root_arch_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_sunder_wildwood_root_arch_lods.glb"
+    },
+    {
+      "stem": "env_tunya_aekon_ark_rib",
+      "file": "organic/environment/env_tunya_aekon_ark_rib_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_aekon_ark_rib_lods.glb"
+    },
+    {
+      "stem": "env_tunya_asbir_vault_mouth",
+      "file": "organic/environment/env_tunya_asbir_vault_mouth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_asbir_vault_mouth_lods.glb"
+    },
+    {
+      "stem": "env_tunya_fluxom_lock",
+      "file": "organic/environment/env_tunya_fluxom_lock_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_fluxom_lock_lods.glb"
+    },
+    {
+      "stem": "env_tunya_masond_cliff_stair",
+      "file": "organic/environment/env_tunya_masond_cliff_stair_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_masond_cliff_stair_lods.glb"
+    },
+    {
+      "stem": "env_tunya_nil_root",
+      "file": "organic/environment/env_tunya_nil_root_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_nil_root_lods.glb"
+    },
+    {
+      "stem": "env_tunya_sangree_stack",
+      "file": "organic/environment/env_tunya_sangree_stack_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_sangree_stack_lods.glb"
+    },
+    {
+      "stem": "env_tunya_solar_eave",
+      "file": "organic/environment/env_tunya_solar_eave_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_solar_eave_lods.glb"
+    },
+    {
+      "stem": "env_tunya_terrace_lip",
+      "file": "organic/environment/env_tunya_terrace_lip_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/environment/env_tunya_terrace_lip_lods.glb"
+    },
+    {
+      "stem": "faun_court_cat",
+      "file": "organic/fauna/faun_court_cat_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_court_cat_lods.glb"
+    },
+    {
+      "stem": "faun_court_pigeon",
+      "file": "organic/fauna/faun_court_pigeon_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_court_pigeon_lods.glb"
+    },
+    {
+      "stem": "faun_grove_finch",
+      "file": "organic/fauna/faun_grove_finch_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_grove_finch_lods.glb"
+    },
+    {
+      "stem": "faun_lantern_moth",
+      "file": "organic/fauna/faun_lantern_moth_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_lantern_moth_lods.glb"
+    },
+    {
+      "stem": "faun_pinewood_stag",
+      "file": "organic/fauna/faun_pinewood_stag_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_pinewood_stag_lods.glb"
+    },
+    {
+      "stem": "faun_saltroad_hare",
+      "file": "organic/fauna/faun_saltroad_hare_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_saltroad_hare_lods.glb"
+    },
+    {
+      "stem": "faun_smog_roach",
+      "file": "organic/fauna/faun_smog_roach_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_smog_roach_lods.glb"
+    },
+    {
+      "stem": "faun_sunder_wolf",
+      "file": "organic/fauna/faun_sunder_wolf_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_sunder_wolf_lods.glb"
+    },
+    {
+      "stem": "faun_wagon_horse",
+      "file": "organic/fauna/faun_wagon_horse_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/fauna/faun_wagon_horse_lods.glb"
+    },
+    {
+      "stem": "flora_crime_dock_reed",
+      "file": "organic/flora/flora_crime_dock_reed_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_crime_dock_reed_lods.glb"
+    },
+    {
+      "stem": "flora_crime_gutter_fern",
+      "file": "organic/flora/flora_crime_gutter_fern_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_crime_gutter_fern_lods.glb"
+    },
+    {
+      "stem": "flora_crime_plane",
+      "file": "organic/flora/flora_crime_plane_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_crime_plane_lods.glb"
+    },
+    {
+      "stem": "flora_crucible_fault_moss",
+      "file": "organic/flora/flora_crucible_fault_moss_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_crucible_fault_moss_lods.glb"
+    },
+    {
+      "stem": "flora_crucible_seam_lichen",
+      "file": "organic/flora/flora_crucible_seam_lichen_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_crucible_seam_lichen_lods.glb"
+    },
+    {
+      "stem": "flora_cyber_roof_moss",
+      "file": "organic/flora/flora_cyber_roof_moss_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_cyber_roof_moss_lods.glb"
+    },
+    {
+      "stem": "flora_cyber_well_weed",
+      "file": "organic/flora/flora_cyber_well_weed_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_cyber_well_weed_lods.glb"
+    },
+    {
+      "stem": "flora_dawn_park_plane",
+      "file": "organic/flora/flora_dawn_park_plane_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_dawn_park_plane_lods.glb"
+    },
+    {
+      "stem": "flora_frontier_cottonwood",
+      "file": "organic/flora/flora_frontier_cottonwood_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_frontier_cottonwood_lods.glb"
+    },
+    {
+      "stem": "flora_frontier_sage",
+      "file": "organic/flora/flora_frontier_sage_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_frontier_sage_lods.glb"
+    },
+    {
+      "stem": "flora_frontier_wind_grass",
+      "file": "organic/flora/flora_frontier_wind_grass_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_frontier_wind_grass_lods.glb"
+    },
+    {
+      "stem": "flora_hub_court_linden",
+      "file": "organic/flora/flora_hub_court_linden_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_hub_court_linden_lods.glb"
+    },
+    {
+      "stem": "flora_hub_salt_grass",
+      "file": "organic/flora/flora_hub_salt_grass_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_hub_salt_grass_lods.glb"
+    },
+    {
+      "stem": "flora_ruins_ash_cypress",
+      "file": "organic/flora/flora_ruins_ash_cypress_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_ruins_ash_cypress_lods.glb"
+    },
+    {
+      "stem": "flora_ruins_bone_moss",
+      "file": "organic/flora/flora_ruins_bone_moss_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_ruins_bone_moss_lods.glb"
+    },
+    {
+      "stem": "flora_ruins_catalogue_vine",
+      "file": "organic/flora/flora_ruins_catalogue_vine_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_ruins_catalogue_vine_lods.glb"
+    },
+    {
+      "stem": "flora_sere_flood_reed",
+      "file": "organic/flora/flora_sere_flood_reed_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sere_flood_reed_lods.glb"
+    },
+    {
+      "stem": "flora_sere_furnace_scrub",
+      "file": "organic/flora/flora_sere_furnace_scrub_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sere_furnace_scrub_lods.glb"
+    },
+    {
+      "stem": "flora_sere_highland_thorn",
+      "file": "organic/flora/flora_sere_highland_thorn_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sere_highland_thorn_lods.glb"
+    },
+    {
+      "stem": "flora_sere_stubble",
+      "file": "organic/flora/flora_sere_stubble_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sere_stubble_lods.glb"
+    },
+    {
+      "stem": "flora_sunder_fold_willow",
+      "file": "organic/flora/flora_sunder_fold_willow_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sunder_fold_willow_lods.glb"
+    },
+    {
+      "stem": "flora_sunder_pillar_fern",
+      "file": "organic/flora/flora_sunder_pillar_fern_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sunder_pillar_fern_lods.glb"
+    },
+    {
+      "stem": "flora_sunder_rune_pine",
+      "file": "organic/flora/flora_sunder_rune_pine_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sunder_rune_pine_lods.glb"
+    },
+    {
+      "stem": "flora_sunder_thorn_oak",
+      "file": "organic/flora/flora_sunder_thorn_oak_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_sunder_thorn_oak_lods.glb"
+    },
+    {
+      "stem": "flora_tunya_ash_scrub",
+      "file": "organic/flora/flora_tunya_ash_scrub_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_tunya_ash_scrub_lods.glb"
+    },
+    {
+      "stem": "flora_tunya_dye_reed",
+      "file": "organic/flora/flora_tunya_dye_reed_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_tunya_dye_reed_lods.glb"
+    },
+    {
+      "stem": "flora_tunya_ice_rim_grass",
+      "file": "organic/flora/flora_tunya_ice_rim_grass_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_tunya_ice_rim_grass_lods.glb"
+    },
+    {
+      "stem": "flora_tunya_nil_fig",
+      "file": "organic/flora/flora_tunya_nil_fig_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_tunya_nil_fig_lods.glb"
+    },
+    {
+      "stem": "flora_tunya_terrace_tree",
+      "file": "organic/flora/flora_tunya_terrace_tree_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/flora/flora_tunya_terrace_tree_lods.glb"
+    },
+    {
+      "stem": "mon_coast_billhound",
+      "file": "organic/monsters/mon_coast_billhound_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_coast_billhound_lods.glb"
+    },
+    {
+      "stem": "mon_crucible_drift",
+      "file": "organic/monsters/mon_crucible_drift_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_crucible_drift_lods.glb"
+    },
+    {
+      "stem": "mon_dawn_mercy_sentinel",
+      "file": "organic/monsters/mon_dawn_mercy_sentinel_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_dawn_mercy_sentinel_lods.glb"
+    },
+    {
+      "stem": "mon_frontier_domebreaker",
+      "file": "organic/monsters/mon_frontier_domebreaker_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_frontier_domebreaker_lods.glb"
+    },
+    {
+      "stem": "mon_grid_construct",
+      "file": "organic/monsters/mon_grid_construct_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_grid_construct_lods.glb"
+    },
+    {
+      "stem": "mon_grid_drone",
+      "file": "organic/monsters/mon_grid_drone_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_grid_drone_lods.glb"
+    },
+    {
+      "stem": "mon_grid_sentinel",
+      "file": "organic/monsters/mon_grid_sentinel_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_grid_sentinel_lods.glb"
+    },
+    {
+      "stem": "mon_ruins_crawler",
+      "file": "organic/monsters/mon_ruins_crawler_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_ruins_crawler_lods.glb"
+    },
+    {
+      "stem": "mon_ruins_wraith",
+      "file": "organic/monsters/mon_ruins_wraith_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_ruins_wraith_lods.glb"
+    },
+    {
+      "stem": "mon_sunder_basilisk",
+      "file": "organic/monsters/mon_sunder_basilisk_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_sunder_basilisk_lods.glb"
+    },
+    {
+      "stem": "mon_sunder_griffin",
+      "file": "organic/monsters/mon_sunder_griffin_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_sunder_griffin_lods.glb"
+    },
+    {
+      "stem": "mon_tunya_reapjackal",
+      "file": "organic/monsters/mon_tunya_reapjackal_lods.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Concord organic generator (FLUX + TRELLIS)",
+      "source": "Assets/Concordia/Models/Generated/monsters/mon_tunya_reapjackal_lods.glb"
+    },
+    {
+      "stem": "Concordia_GunsmithWorkbench",
+      "file": "tripo/Concordia_GunsmithWorkbench.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/Concordia_GunsmithWorkbench/Concordia_GunsmithWorkbench.fbx"
+    },
+    {
+      "stem": "Concordia_IronOreVein",
+      "file": "tripo/Concordia_IronOreVein.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/Concordia_IronOreVein/Concordia_IronOreVein.fbx"
+    },
+    {
+      "stem": "Concordia_PackHorse",
+      "file": "tripo/Concordia_PackHorse.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/Concordia_PackHorse/Concordia_PackHorse.fbx"
+    },
+    {
+      "stem": "Concordia_Sangree_Fire_Forge",
+      "file": "tripo/Concordia_Sangree_Fire_Forge.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/Concordia_Sangree_Fire_Forge/Concordia_Sangree_Fire_Forge.fbx"
+    },
+    {
+      "stem": "CrimeHero",
+      "file": "tripo/CrimeHero.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/CrimeHero/CrimeHero.fbx"
+    },
+    {
+      "stem": "FirstLaunchCradle",
+      "file": "tripo/FirstLaunchCradle.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/FirstLaunchCradle/FirstLaunchCradle.fbx"
+    },
+    {
+      "stem": "FrontierMeshGate",
+      "file": "tripo/FrontierMeshGate.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/FrontierMeshGate/FrontierMeshGate.fbx"
+    },
+    {
+      "stem": "GridHero",
+      "file": "tripo/GridHero.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/GridHero/GridHero.fbx"
+    },
+    {
+      "stem": "PermanentDawnHero",
+      "file": "tripo/PermanentDawnHero.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/PermanentDawnHero/PermanentDawnHero.fbx"
+    },
+    {
+      "stem": "RefusalCascadeArchive",
+      "file": "tripo/RefusalCascadeArchive.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/RefusalCascadeArchive/RefusalCascadeArchive.fbx"
+    },
+    {
+      "stem": "RootCurseForestShrine",
+      "file": "tripo/RootCurseForestShrine.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/RootCurseForestShrine/RootCurseForestShrine.fbx"
+    },
+    {
+      "stem": "SevenDoors",
+      "file": "tripo/SevenDoors.glb",
+      "license": "Concord-generated (owner)",
+      "author": "Tripo",
+      "source": "Assets/Generated_Models/SevenDoors/SevenDoors.fbx"
     }
   ],
   "aliases": [

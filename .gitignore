@@ -130,6 +130,9 @@ concord-frontend/public/unity-client/StreamingAssets/Streamed/
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/organic/
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/meshy/
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/tripo/
+concord-frontend/public/unity-client/StreamingAssets/HubKit/organic/
+concord-frontend/public/unity-client/StreamingAssets/HubKit/meshy/
+concord-frontend/public/unity-client/StreamingAssets/HubKit/tripo/
 
 # AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
 # the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via
