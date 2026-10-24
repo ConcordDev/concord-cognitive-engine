@@ -44,6 +44,15 @@ Aura-owned at open (committed as part of B-01):
 
 2026-10-24T11:02-04:00 | B-07 | PASS | Rebindable controls + CONTROLS tab: `PerformInteractiveRebinding` moved dodge X→V, override persisted, next Play session read `V=True X=False`, then reset to shipped binds | 8bb0e9631 | ~/.zuko/aura-shots/B-07.png
 
+2026-10-24T11:10-04:00 | B-08 | PASS | `.Aura/LIVE_PATH.md` — boot phase order, install/skip table, 56 live component types with owner scripts, combat grammar, baseline numbers | eadddf9aa | .Aura/LIVE_PATH.md
+
+### B-08 notes
+- Live dump: **946 MonoBehaviours / 56 types** at `plaza`. Top counts: `CharacterVisualProfile` 89, `ModularPerson` 89, `PersonLabel` 89, `StreamNpcPresence` 89, `NpcLife` 84, `GuestNpc` 81, `LoreStone` 74, `QuestBoard` 41, `BuildingPlace` 36.
+- Boot phases, in order: `guests` (15 named, ~1 s each) → `guests_done` → `lore` → `city_ring` → `forest` (those three in one frame) → `realmfill` → `crowd` → `realmfill_done` → `plaza` (settled). First guest → `crowd` ≈ 68 s; `plaza` ≈ 2 min.
+- `ConcordiaGame.cs:320–335` logs both skips: persistence `Restore/ReceiveHere`, and `EnsureConnected/RestoreAgentSoul`. LeanPlay is offline **by design** — `no_gateway` is the correct honest answer for server reads.
+- Correction to the roadmap's phrasing: `ActionRunner` does not call `HitResolver`. The real path is `ConcordiaPlayer.TryAttack` → `Core.AttackContext` → `Core.HitResolver.Resolve(attack, _body, _action)` (L801–813), where `_action` is the `ActionRunner` carrying guard/i-frame state (`_action.IsInvulnerable` → passed as `null` when already invulnerable).
+- `Generated/runtime-stage.txt` holds only the **latest** stage string (overwritten, not appended) — use console `phase=` lines for history.
+
 ### B-07 notes
 - `InputActionRebindingExtensions.PerformInteractiveRebinding` **throws** if the action is enabled ("Cannot rebind action … while it is enabled"). `ConcordiaInput.StartRebind` disables the action, listens, then re-enables in `OnComplete`/`OnCancel`.
 - An editor-driven rebind needs the key press to arrive on a **later** input update: queue the state, return, then read on the next call. A press queued *and* `InputSystem.Update()`-flushed in the same call is consumed before the operation attaches (first attempt reported `listening=True` and no completion, though it completed asynchronously afterwards — which is how the override landed in PlayerPrefs).

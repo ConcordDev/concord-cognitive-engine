@@ -138,14 +138,15 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: PASS · `PerformInteractiveRebinding` on `dodge` → override saved to PlayerPrefs → next Play session read `[AuraVerify] B-07 persist dodge bind=V · Button East overrides=True V=True X=False`; then reset to shipped binds (`dodge=X overrides=False`). CONTROLS tab renders, `errors=0` · 8bb0e9631
   - Note: `PerformInteractiveRebinding` *requires* the action to be disabled — enabling it throws "Cannot rebind … while it is enabled", so `StartRebind` disables and the OnComplete/OnCancel handlers re-enable. Driving a rebind from an editor script must let the key press land on a later input update; a press queued and flushed in the same update is consumed before the operation attaches. Imgui: the CONTROLS tab is a two-column strip generated from `ConcordiaInput.Panel` + `BindingLine`, with per-row change buttons and a reset, plus a third tab on the I-menu.
-- [ ] **B-08 · Live boot map** (deps: B-03)
+- [x] **B-08 · Live boot map** (deps: B-03)
   - Goal: Document the LeanPlay boot order in `.Aura/LIVE_PATH.md`: what `ConcordiaGame` installs, what it skips (EnsureConnected/RestoreAgentSoul and Persistence.Restore, ~lines 320–332), which components exist in Play (via `FindObjectsByType` dump), and the combat path `ActionRunner → HitResolver`.
     - Note: `GameplayCore/Combat/CombatContracts.cs` `CombatDefenseEvaluator` is the DISCONNECTED one. Do not wire it.
   - Touch: new `.Aura/LIVE_PATH.md`
   - Reuse: `ConcordiaGame.cs`, `Editor/AuraDirectTestRunner.cs`
   - Verify: the doc lists ≥20 live components with their owner script.
   - Server: —
-  - Result: —
+  - Result: PASS · `.Aura/LIVE_PATH.md` lists **56** live component types (946 MonoBehaviours) with owner scripts, the full `guests → plaza` phase order, both LeanPlay skips (persistence Restore/ReceiveHere, EnsureConnected/RestoreAgentSoul), and the real combat grammar · eadddf9aa
+  - Note: verified against a live dump, and it corrected the roadmap: `ConcordiaGame` L801–813 shows the path is `ConcordiaPlayer → Core.AttackContext → Core.HitResolver.Resolve(attack, _body, _action)`, with `ActionRunner` supplying guard/i-frame state — `ActionRunner` does not call `HitResolver` itself, and `CombatDefenseEvaluator` stays disconnected.
 - [ ] **B-09 · Staged Concord connection in LeanPlay** (deps: B-05, B-08)
   - Goal: Behind `ConcordiaSettings.ConnectInLeanPlay` (default ON in Editor), call `ConcordClient.EnsureConnected()` only after boot is idle: hero dressed, RealmFill done, +30 s stable. Never connect during the boot window (the post-Expand melt reason). Do not enable `RestoreAgentSoul` yet.
   - Touch: `ConcordiaGame.cs` (the LeanPlay branch only)
