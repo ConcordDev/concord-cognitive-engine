@@ -14,12 +14,16 @@ namespace Concordia.Editor
     {
         public static bool Busy;
 
+        /// Models above this (source + dependencies) stream as AssetBundles
+        /// instead of riding in the main download. See ConcordiaBuildAssetRegistry.
+        const long StreamAboveBytes = 64L * 1024 * 1024;
+
         public static void Export()
         {
             ConcordiaUrpEnsure.Ensure();
             ConcordiaShaderKeep.Ensure(); // runtime-built materials need their shaders shipped
             ConcordiaMenu.BuildHubSceneSilent();
-            ConcordiaBuildAssetRegistry.Generate(); // ship the assets the editor uses (see BuildAssets)
+            ConcordiaBuildAssetRegistry.Generate(StreamAboveBytes); // ship the assets the editor uses (see BuildAssets)
 
             var repoRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", ".."));
             var staging = System.Environment.GetEnvironmentVariable("CONCORD_UNITY_STAGING");
@@ -55,7 +59,44 @@ namespace Concordia.Editor
                     EditorApplication.Exit(1);
                 return;
             }
+            if (!BuildStreamedBundles(Path.Combine(staging, "StreamingAssets", "Streamed")))
+            {
+                Debug.LogError("Concordia WebGL export: streamed asset bundles failed");
+                if (Application.isBatchMode)
+                    EditorApplication.Exit(1);
+                return;
+            }
             Debug.Log("Concordia WebGL export wrote " + staging);
+        }
+
+        /// One AssetBundle per streamed registry path, named as the registry
+        /// records it, so BuildAssets can fetch each on its own. Built after
+        /// BuildPlayer, when WebGL is already the active target.
+        static bool BuildStreamedBundles(string outDir)
+        {
+            var reg = ConcordiaBuildAssetRegistry.Current();
+            if (!reg || reg.streamed.Count == 0) return true;
+            var builds = new AssetBundleBuild[reg.streamed.Count];
+            for (int i = 0; i < builds.Length; i++)
+                builds[i] = new AssetBundleBuild
+                {
+                    assetBundleName = reg.streamedBundles[i],
+                    assetNames = new[] { reg.streamed[i] },
+                };
+            var work = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Library", "ConcordiaStreamedBundles"));
+            Directory.CreateDirectory(work);
+            var manifest = BuildPipeline.BuildAssetBundles(work, builds,
+                BuildAssetBundleOptions.ChunkBasedCompression, BuildTarget.WebGL);
+            if (!manifest) return false;
+            Directory.CreateDirectory(outDir);
+            foreach (var b in reg.streamedBundles)
+            {
+                var src = Path.Combine(work, b);
+                if (!File.Exists(src)) return false;
+                File.Copy(src, Path.Combine(outDir, b), true);
+                Debug.Log($"[Concordia] streamed bundle {b} ({new FileInfo(src).Length / (1024 * 1024)} MB)");
+            }
+            return true;
         }
 
         [MenuItem("Concordia/Export WebGL (in Editor)")]

@@ -105,6 +105,9 @@ namespace Concordia
 #else
             var recorded = BuildAssets.LoadByKey<GameObject>("freepacks:" + key);
             if (recorded) return recorded;
+            // A streamed model that hasn't arrived yet: wait for its bundle rather
+            // than importing HubKit's (LOD-less, equally heavy) glb of the same model.
+            if (BuildAssets.IsStreamedKey("freepacks:" + key)) return null;
 #endif
             if (HubKit.TryGet(key, out var kit) && kit) return kit;
 #if UNITY_EDITOR

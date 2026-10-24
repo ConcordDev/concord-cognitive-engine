@@ -182,7 +182,7 @@ export function postUnityCmd(
     ts: Date.now(),
   };
   try {
-    // Same-origin static build under /concordia-webgl — '*' is fine for stub;
+    // Same-origin static build under /unity-client — '*' is fine for stub;
     // tighten to location.origin when a cross-origin host is used.
     win.postMessage(msg, typeof window !== 'undefined' ? window.location.origin : '*');
     return true;

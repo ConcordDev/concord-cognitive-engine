@@ -110,8 +110,10 @@ if (!fs.existsSync(stagedIndex)) {
   });
 }
 
-// Unity names wasm/loader after the output folder. Staging is a dotfolder, so
-// files would be `.unity-web-staging.wasm.unityweb` which Next/nginx hide.
+// Unity names wasm/loader after the output folder (the default staging is a
+// dotfolder, so files would be `.unity-web-staging.wasm.unityweb`, which
+// Next/nginx hide). Rename them to the stable `concordia.*` names the site
+// serves, whatever CONCORD_UNITY_STAGING is called.
 undotBuildNames(STAGING);
 fs.writeFileSync(stagedIndex, applyUnityWebEmbed(fs.readFileSync(stagedIndex, "utf8")));
 
@@ -124,7 +126,21 @@ if (!fs.existsSync(buildDir)) {
 for (const f of fs.readdirSync(STAGING)) {
   if (f === "index.html") continue;
   if (f.endsWith("_DoNotShip") || f.endsWith("_BackUpThisFolder_ButDontShipItWithYourGame")) continue;
-  fs.cpSync(path.join(STAGING, f), path.join(OUT_DIR, f), { recursive: true });
+  copyTree(path.join(STAGING, f), path.join(OUT_DIR, f));
+}
+
+// The export ships ~3 GB of HubKit. On APFS (the Mac) `cp -c` clones blocks
+// instead of duplicating them, so the second copy costs no disk; elsewhere,
+// or if cloning fails, fall back to a plain recursive copy.
+function copyTree(src, dest) {
+  fs.rmSync(dest, { recursive: true, force: true });
+  if (process.platform === "darwin") {
+    try {
+      execFileSync("cp", ["-cR", src, dest], { stdio: "ignore" });
+      return;
+    } catch { /* not APFS or cp failed: plain copy below */ }
+  }
+  fs.cpSync(src, dest, { recursive: true });
 }
 
 fs.mkdirSync(path.dirname(COMMITTED_INDEX), { recursive: true });
@@ -139,15 +155,17 @@ log(JSON.stringify({
 }));
 
 function undotBuildNames(stagingDir) {
+  const stem = `${path.basename(stagingDir)}.`;
+  if (stem === "concordia.") return;
   const dir = path.join(stagingDir, "Build");
   if (!fs.existsSync(dir)) return;
   for (const f of fs.readdirSync(dir)) {
-    if (!f.startsWith(".unity-web-staging.")) continue;
-    const dest = f.replace(/^\.unity-web-staging/, "concordia");
+    if (!f.startsWith(stem)) continue;
+    const dest = `concordia.${f.slice(stem.length)}`;
     fs.renameSync(path.join(dir, f), path.join(dir, dest));
   }
   const index = path.join(stagingDir, "index.html");
   if (!fs.existsSync(index)) return;
-  const html = fs.readFileSync(index, "utf8").replaceAll(".unity-web-staging.", "concordia.");
+  const html = fs.readFileSync(index, "utf8").replaceAll(stem, "concordia.");
   fs.writeFileSync(index, html);
 }

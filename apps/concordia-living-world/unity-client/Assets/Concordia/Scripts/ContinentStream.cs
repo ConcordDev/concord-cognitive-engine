@@ -595,6 +595,28 @@ System.Collections.IEnumerator FinishContinentPresentationStaged(int generation)
                 _wildernessBuild = StartCoroutine(BuildWildernessStaged(generation));
             if (_wildernessBuild != null)
                 yield return _wildernessBuild;
+            if (generation != _continentGeneration) yield break;
+
+            StartCoroutine(UpgradeStreamedScenery(generation));
+        }
+
+        /// Web builds stream their heaviest scenery models (the PolyHaven hero and
+        /// wild trees) after the world is up instead of in the main download — see
+        /// BuildAssets.LoadStreamed. Until they arrive the Hub wilderness and the
+        /// Court tree use their next-preferred trees; rebuild both once they land.
+        System.Collections.IEnumerator UpgradeStreamedScenery(int generation)
+        {
+            if (BuildAssets.StreamedCount == 0) yield break;
+            yield return BuildAssets.LoadStreamed();
+            while (!BuildAssets.StreamingDone) yield return null;
+            if (generation != _continentGeneration || !continent || BuildAssets.StreamedLoaded == 0) yield break;
+
+            Debug.Log("[Concordia] continent stage=streamed_scenery loaded=" + BuildAssets.StreamedLoaded);
+            try { HubWilderness.Ensure(continent, force: true); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            try { HubLook.EnsureCourtRig(WorldId.Hub); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
         }
 
 
