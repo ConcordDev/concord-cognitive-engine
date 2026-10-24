@@ -100,7 +100,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Server: —
   - Result: PASS · fps 4.1 · transforms 11235 · WorldBuilder children 4 · heroMeshes 1 · errors 0 / warnings 0 · shot 2560×1410 · b0306cf32
   - Note (code wins): `Editor/AuraPlayHoldGuard.cs` and `Editor/AuraGameViewStill.cs` do not exist; `Editor/Aura/AuraShots.cs` (`CaptureAndProbe`) is the live helper and was committed here. `World` is not a scene root in this build — probe counts `WorldBuilder` children (4); the bible's ~1143 no longer applies.
-- [ ] **B-04 · AuraVerify helper** (deps: B-01)
+- [x] **B-04 · AuraVerify helper** (deps: B-01)
   - Goal: Add static `AuraVerify.Pass(id,msg)` / `Fail(id,msg)` / `Snapshot()`.
     - `Snapshot()` logs world, position, hp, stamina, poise, `ConcordClient` connected state, active quests and equipped item.
     - Never log tokens.
@@ -108,7 +108,8 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `ConcordiaPlayer` (`_body`), `QuestLog`, `KitBag`, `ConcordClient`
   - Verify: in Play, F10 (dev only) prints `[AuraVerify] SNAPSHOT …`.
   - Server: —
-  - Result: —
+  - Result: PASS · `[AuraVerify] SNAPSHOT world=Hub pos=(11.2,0.1,-12.0) hp=100 stamina=100 poise=15 client=connected quests=0 gear=none items=0` in Play; install log + KeyDriver component both confirmed (`drivers=1`); F10 action invoked via `KeyDriver.Trigger()` since OS key injection cannot reach Unity · d28c7f5e6
+  - Note: `Pass`/`Fail` write `[AuraVerify] <ID> PASS|FAIL` (FAIL as a warning so Play health counts see it). F10 poller is created by a `RuntimeInitializeOnLoadMethod` driver hidden with `HideFlags.DontSave`, so it is invisible to `FindObjectsByType` — use `Resources.FindObjectsOfTypeAll` to detect it. Dev keys are installed only when `Application.isEditor || Debug.isDebugBuild`.
 
 ### Epic B2 · Settings, input, connection
 - [ ] **B-05 · ConcordiaSettings + reduced motion** (deps: B-04)
