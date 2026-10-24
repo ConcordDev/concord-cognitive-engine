@@ -65,7 +65,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
 ## Phase 0 — Bootstrap & guardrails (B)
 
 ### Epic B1 · Branch, logs, baseline
-- [ ] **B-01 · Worktree check + no-touch snapshot** (deps: —)
+- [x] **B-01 · Worktree check + no-touch snapshot** (deps: —)
   - Goal: Confirm you are in the Aura worktree, not the live tree.
     - `pwd` / Unity project path must be `/Users/dutch/concord/aura-wt/apps/concordia-living-world/unity-client`.
     - `git -C ~/concord/aura-wt branch --show-current` must print `aura/gameplay`. Do **not** create or switch branches. If it isn't `aura/gameplay`, stop and file a REQ.
@@ -76,7 +76,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: —
   - Verify: branch = `aura/gameplay`; the project path is inside `~/concord/aura-wt`; free disk is logged; first commit hash is logged.
   - Server: —
-  - Result: —
+  - Result: PASS · branch `aura/gameplay`, project inside worktree, disk 11 GiB, baseline dirty snapshot in `.Aura/PROGRESS_LOG.md` · c369f8b9e
 - [ ] **B-02 · Request ledger** (deps: B-01)
   - Goal: Create `.Aura/REQUESTS_FOR_CLAUDE.md` with this template: `## REQ-<n> · <title>` / why / exact ask / blocking tasks / status. Pre-file these known gaps:
     - REQ-1: chat event on `/unity-ws`
