@@ -75,6 +75,10 @@ namespace Concordia
                 yield break;
             }
 
+            var texts = OrganicKit.PreloadAsync();
+            var textDeadline = Time.realtimeSinceStartup + ImportWaitSeconds;
+            while (!texts.IsCompleted && Time.realtimeSinceStartup < textDeadline) yield return null;
+
             OrganicKit.EnsureIndexed();
             if (OrganicKit.Count == 0)
             {

@@ -66,7 +66,21 @@ namespace Concordia.Editor
                     EditorApplication.Exit(1);
                 return;
             }
+            ShipOrganicRegistry(Path.Combine(staging, "StreamingAssets", "HubKit", "organic"));
             Debug.Log("Concordia WebGL export wrote " + staging);
+        }
+
+        /// OrganicKit reads the registry and bind contract from project paths, which a
+        /// browser cannot open; on WebGL it fetches these copies from the kit instead.
+        static void ShipOrganicRegistry(string outDir)
+        {
+            Directory.CreateDirectory(outDir);
+            foreach (var src in new[] { OrganicKit.ManifestPath, OrganicKit.BindPath })
+            {
+                var full = Path.GetFullPath(Path.Combine(Application.dataPath, "..", src));
+                if (File.Exists(full)) File.Copy(full, Path.Combine(outDir, Path.GetFileName(src)), true);
+                else Debug.LogWarning("[Concordia] export: " + src + " missing; organic meshes will not bind on web");
+            }
         }
 
         /// One AssetBundle per streamed registry path, named as the registry

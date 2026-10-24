@@ -164,24 +164,48 @@ namespace Concordia.GameplayCore.GoldenSlice
             EnsureCollider(ore); EnsureCollider(forge); EnsureCollider(workbench);
         }
 
+        /// <summary>
+        /// The presentation object for one Tripo model. Editor: the .fbx prefab. Builds: the
+        /// registry copy if the export shipped one, otherwise the web-compressed kit copy
+        /// streamed from StreamingAssets/HubKit/tripo and attached once it lands (the holder
+        /// exists immediately, so markers and identities bind to it either way). Nothing
+        /// stands in while it loads or if it is missing — the old coloured cube is gone.
+        /// </summary>
         static GameObject SpawnAsset(string assetPath, Transform parent, string name, Vector3 localPosition, Color fallbackColor)
         {
             GameObject prefab = null;
 #if UNITY_EDITOR
             prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
 #endif
-            var go = prefab != null ? UnityEngine.Object.Instantiate(prefab) : null;
-            if (go == null)
-            {
-                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                go.transform.localScale = new Vector3(2f, 1.2f, 2f);
-                var renderer = go.GetComponent<Renderer>();
-                if (renderer != null) renderer.sharedMaterial = HubLook.Lit(fallbackColor, 0.2f, 0.35f);
-            }
+            if (prefab == null) prefab = FreePacks.Load<GameObject>(assetPath);
+            var go = prefab != null ? UnityEngine.Object.Instantiate(prefab) : new GameObject(name);
             go.name = name;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPosition;
+            if (prefab == null) _ = AttachStreamed(assetPath, go);
             return go;
+        }
+
+        static async System.Threading.Tasks.Task AttachStreamed(string assetPath, GameObject host)
+        {
+            try
+            {
+                var art = await HubKit.AttachBySource(assetPath, host ? host.transform : null);
+                if (!host) return;
+                if (!art)
+                {
+                    Debug.LogWarning("[GoldenSlice] no kit copy of " + assetPath + "; " + host.name + " stays without a mesh.");
+                    return;
+                }
+                // The collider was sized before the mesh arrived; fit it to the real bounds.
+                var box = host.GetComponent<BoxCollider>();
+                if (box) UnityEngine.Object.Destroy(box);
+                FitCollider(host);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[GoldenSlice] streamed " + assetPath + " failed: " + e.Message);
+            }
         }
 
         static GoldenSliceMarker StampMarker(GameObject target, GoldenSliceMarkerKind kind, string semanticId, string provenanceId)
@@ -197,6 +221,12 @@ namespace Concordia.GameplayCore.GoldenSlice
         static void EnsureCollider(GameObject target)
         {
             if (target == null || target.GetComponentInChildren<Collider>() != null) return;
+            FitCollider(target);
+        }
+
+        static void FitCollider(GameObject target)
+        {
+            if (target == null) return;
             var renderers = target.GetComponentsInChildren<Renderer>();
             var bounds = new Bounds(target.transform.position, Vector3.one * 2f);
             for (var i = 0; i < renderers.Length; i++) if (renderers[i] != null) bounds.Encapsulate(renderers[i].bounds);

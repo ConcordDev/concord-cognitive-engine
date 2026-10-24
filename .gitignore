@@ -124,6 +124,12 @@ concord-frontend/public/unity-client/**/*_BackUpThisFolder_ButDontShipItWithYour
 # the repo's GitHub LFS budget is full (2026-10-23). The frontend deploy copies
 # them from ~/concord/unity-client-build-<date>/ into the build's public/.
 concord-frontend/public/unity-client/StreamingAssets/Streamed/
+# Dutch's generated models, web-compressed for the kit (organic/meshy/tripo, ~103 MB).
+# Listed in HubKit/MANIFEST.json but not pushed while the LFS budget is full; the
+# Mac copies them in from ~/concord/asset-staging-20261023/ before an export.
+apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/organic/
+apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/meshy/
+apps/concordia-living-world/unity-client/Assets/StreamingAssets/HubKit/tripo/
 
 # AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
 # the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via
