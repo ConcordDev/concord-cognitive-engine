@@ -169,7 +169,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
 ## Phase 1 — Feel: animation, camera, input (F)
 
 ### Epic F1 · Rig + locomotion
-- [ ] **F-01 · Hero rig audit** (deps: B-04)
+- [x] **F-01 · Hero rig audit** (deps: B-04)
   - Goal: Log the hero's `ModularPerson` `clipsFit` / `av.isHuman` and Animator controller, plus the `AnimationRuntimeValidator` findings.
     - Rocketbox FBX metas are now `animationType: 3` (Humanoid). `bible/ANIMATION.md` still says Biped; note that it is outdated.
     - `Generated/Rig/CX_Humanoid_*.fbx` are Generic, so UAL clips will not fit them.
@@ -177,7 +177,13 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `ModularPerson.cs`, `Animation/AnimationRuntimeValidator.cs`, `Editor/RocketboxDress.cs`
   - Verify: `[AuraVerify] F-01 PASS hero=<model> human=<bool> controller=<name>`
   - Server: —
-  - Result: —
+  - Result: PASS · `[AuraVerify] F-01 PASS hero=m002_hipoly_81_bones_opacity human=True avatarValid=True controller=ConcordiaLocomotion clipsFit=True animatorEnabled=True prefab=none findings=none verbs:clean` from `HeroRigProbe.Audit()` on the hero the **production boot** dressed (no forced bind). Rocketbox FBX metas are Humanoid as the task said; `bible/ANIMATION.md` still says Biped and is stale. · 3e53936cc
+  - Note: **root cause of the "DressHeroAfterHub never reaches its tail" blocker is solved.** Two causes, both fixed in `ConcordiaGame.cs`:
+    1. Coroutines started from `Start()`'s first-frame continuation were being lost. All four boot coroutines (`DressHeroAfterHub`, `ConcordiaShot.Grab`, `ConcordiaShot.Tour`, `PlayHeartbeat`) are now stashed in `_bootLook/_bootChase/_bootKernel` and started from the first `Update()` via `KickBootCoroutines()`.
+    2. A **play-mode script reload** (`[ScriptCompilation] … Define symbols changed` → `Begin MonoManager ReloadAssembly`, `Domain Reload Profiling: 22324ms`, ~30 s into Play) destroys every running coroutine while leaving the object and its fields intact — this is what killed `PlayHeartbeat` at 24.6/28.8/29.9 s in every earlier session. `Update()` now carries a domain-reload watchdog (`static bool s_domainAlive` resets with the domain) that re-kicks the boot when `_bootStarted && !_leanDressDone && _coreBridge == null`.
+    - Timings from the passing run: kick frame 1 → `wait-done t=6.8 stageComplete=False` (CourtGround branch) → `settle-done` → `attach-done person=Person` → `pre-expand bridge=True` → `post-expand` → `DressHeroAfterHub complete`, total 208 s at ~1 fps.
+    - The trigger for the mid-play recompile was **not** isolated; the boot now survives it instead of depending on its absence. `Assets/Editor/KenneyPersonSetup.cs` re-imports four Kenney FBX on every domain load (`SaveAndReimport` runs unconditionally because `clipAnimations` is always re-assigned) — a candidate, filed as a REQ rather than edited.
+    - Verifying facts: a stale `realmfill_done` in `Generated/runtime-stage.txt` still shortcuts the staging wait at t≈2 s; it was blanked by hand before the passing run and the real sentinel was rewritten at the end of staging. The wait-loop path still needs a freshness guard.
 - [ ] **F-02 · ConcordiaLocomotion on the hero** (deps: F-01)
   - Goal: When `clipsFit`, the hero runs `Anim/ConcordiaLocomotion.controller` on the UAL1 clips instead of the procedural sine gait. Keep the sine fallback for non-human rigs.
   - Touch: `ModularPerson.cs`, `ConcordiaPlayer.cs` (Animator param feed)
