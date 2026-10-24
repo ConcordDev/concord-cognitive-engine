@@ -944,8 +944,12 @@ namespace Concordia
 
         Vector2 MoveAxes()
         {
-            float x = 0, y = 0;
 #if ENABLE_INPUT_SYSTEM
+            // WASD composite or the gamepad left stick, whichever moved last (B-06).
+            var pad = ConcordiaInput.Axis(ConcordiaInput.Move);
+            if (pad.sqrMagnitude > 0.0001f) return pad;
+
+            float x = 0, y = 0;
             if (Keyboard.current != null)
             {
                 if (Keyboard.current.aKey.isPressed) x -= 1;
@@ -953,11 +957,10 @@ namespace Concordia
                 if (Keyboard.current.wKey.isPressed) y += 1;
                 if (Keyboard.current.sKey.isPressed) y -= 1;
             }
-#else
-            x = Input.GetAxisRaw("Horizontal");
-            y = Input.GetAxisRaw("Vertical");
-#endif
             return new Vector2(x, y);
+#else
+            return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+#endif
         }
 
         void LookInput()
@@ -1008,63 +1011,12 @@ namespace Concordia
 
         static bool MouseOverHud() => Live != null && Live.Busy;
 
-#if ENABLE_INPUT_SYSTEM
-        static Key? ToKey(KeyCode k) => k switch
-        {
-            KeyCode.LeftShift => Key.LeftShift,
-            KeyCode.Space => Key.Space,
-            KeyCode.X => Key.X,
-            KeyCode.C => Key.C,
-            KeyCode.F => Key.F,
-            KeyCode.G => Key.G,
-            KeyCode.Q => Key.Q,
-            KeyCode.E => Key.E,
-            KeyCode.I => Key.I,
-            KeyCode.K => Key.K,
-            KeyCode.H => Key.H,
-            KeyCode.J => Key.J,
-            KeyCode.Return => Key.Enter,
-            KeyCode.Alpha1 => Key.Digit1,
-            KeyCode.Alpha2 => Key.Digit2,
-            KeyCode.Alpha3 => Key.Digit3,
-            KeyCode.LeftBracket => Key.LeftBracket,
-            KeyCode.RightBracket => Key.RightBracket,
-            KeyCode.Escape => Key.Escape,
-            KeyCode.Tab => Key.Tab,
-            _ => null
-        };
-#endif
+        // Input is read through ConcordiaInput (B-06): the raw key stays authoritative for the
+        // keyboard, the action asset adds the gamepad binding and the press log.
+        bool KeyDown(KeyCode k) => ConcordiaInput.Down(k);
 
-        bool KeyDown(KeyCode k)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current == null) return false;
-            var key = ToKey(k);
-            return key.HasValue && Keyboard.current[key.Value].wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(k);
-#endif
-        }
+        bool KeyHeld(KeyCode k) => ConcordiaInput.Held(k);
 
-        bool KeyHeld(KeyCode k)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current == null) return false;
-            var key = ToKey(k);
-            return key.HasValue && Keyboard.current[key.Value].isPressed;
-#else
-            return Input.GetKey(k);
-#endif
-        }
-
-        bool MouseDown(int b)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Mouse.current == null) return false;
-            return b == 0 ? Mouse.current.leftButton.wasPressedThisFrame : Mouse.current.rightButton.wasPressedThisFrame;
-#else
-            return Input.GetMouseButtonDown(b);
-#endif
-        }
+        bool MouseDown(int b) => ConcordiaInput.MouseDown(b);
     }
 }
