@@ -1,0 +1,1592 @@
+# Aura for Unity — Concordia Nonstop Build Roadmap (2026-10-23)
+
+> **Tracker.** Aura edits `.Aura/ROADMAP.md`. It ticks boxes and fills `Result:` lines.
+> The copy at `~/.zuko/remaining-work/AURA-ROADMAP-2026-10-23.md` is the frozen original.
+> **Loop.** Follow `.Aura/Skills/concordia-nonstop/SKILL.md`. Take the first unchecked task whose `deps` are all checked. Implement it, Play-verify it, commit, tick it, log it, and go to the next one.
+> **Worktree (2026-10-23 PM).** Aura's project is `~/concord/aura-wt/apps/concordia-living-world/unity-client` (`/Users/dutch/concord/aura-wt/apps/concordia-living-world/unity-client`). It is a sparse git worktree with branch `aura/gameplay` **already checked out**. The live tree `/Users/dutch/concord vs code/concord-cognitive-engine` runs the production backend (launchd `com.concord.backend`) and frontend. **Never** run `git checkout`, `switch`, `reset`, `stash`, `commit`, `merge` or `pull` there, and never edit files there. Commit only in `~/concord/aura-wt`. Never push to main. Claude merges through a PR.
+> **First open.** `Library/` in the worktree is an APFS clone of the live tree's cache, so Unity may reimport some assets on first open. That is expected; let it finish and don't force a full reimport.
+> **Project.** Unity 6000.5.9f1. Single scene `Assets/Scenes/ConcordiaHub.unity`, runtime-spawned by `ConcordiaGame`. `ConcordiaHost.LeanPlay` is ON (never set it false).
+> **Paths.** `Scripts/` means `Assets/Concordia/Scripts/`. `Canon/` means `Assets/Concordia/Resources/Concordia/Canon/`. `content/` means repo `content/` (read-only source; Unity reads the Resources copies). `server/` is read-only for Aura.
+
+## 0. Ownership and rules (summary; the skill has the full text)
+- **Aura owns** gameplay C#, prefabs, runtime placement, animation, UI, input, camera, VFX/audio hooks and Aura-only editor helpers. New editor helpers go in `Assets/Concordia/Editor/Aura/`.
+- **Aura must not edit** (they belong to Claude; write a request to `.Aura/REQUESTS_FOR_CLAUDE.md` instead):
+  - `scripts/export-unity-web.mjs`
+  - `Editor/ConcordiaWebExport.cs`
+  - `Editor/ConcordiaBuildAssetRegistry.cs`
+  - `Scripts/BuildAssets*.cs`
+  - `Scripts/ContinentStream*.cs`
+  - `Scripts/FreePacks.cs` and the `Assets/Concordia/FreePacks/` folder layout
+  - `Scripts/HubKit.cs`, `Scripts/Organic/OrganicKit*.cs` and other HubKit/OrganicKit loaders
+  - `StreamingAssets/HubKit/` contents
+  - anything under `server/`, and any `.env*` file
+- **Builds.** No WebGL exports and no deploys. Claude ships builds.
+- **Git.** Work only in the worktree `~/concord/aura-wt` on branch `aura/gameplay` (already checked out; never switch branches). Commit once per task as `aura(<ID>): <what>`. Never push to main, never force-push, never use `--no-verify`. Never stage files that were dirty before you started.
+  - **Live tree is off-limits.** Never run git write commands, checkouts or edits in `/Users/dutch/concord vs code/concord-cognitive-engine`; it serves production.
+  - Claude reviews and merges `aura/gameplay` through a PR.
+- **Nothing fake.**
+  - Use real lore, content and generated assets.
+  - Placeholder geometry is allowed only when named `TODO_<thing>` and logged.
+  - Never invent HP, loot, prices, quest completion or XP. Offline means honest: `{ok:false, reason:'no_gateway'}`.
+- **Court law.** The Hub Court (`Canon.HubLawRadius` 42 m) never gets violence. The server also refuses combat on `concordia-hub` (`server/lib/combat-engine.js` hubGroundCheck). Test combat in the Proving Ring arena (steel) or in steel worlds.
+- **Accessibility.** Every UI animation, shake, flash or tween must respect `ConcordiaSettings.ReducedMotion` (created in B-05).
+- **Machine.** Keep ≥10 GB free. Do not mass-reimport textures. Only one agent drives the editor at a time.
+- **Names.** Do not use other games' trademarked feature names. Say "heat", not a franchise term.
+
+## 1. Verification conventions
+- **Log line.** Each task logs `[AuraVerify] <ID> PASS|FAIL <facts>` through `AuraVerify` (B-04) during Play.
+- **Screenshot.** Save to `~/.zuko/aura-shots/<ID>.png`, outside the repo so nothing gets imported. If the tool saves somewhere else, record that path.
+- **Server checks.** These need the local Concord server on `ws://127.0.0.1:5050/unity-ws` (`{evt,data}` envelope).
+  - If it is down, the acceptance check becomes "client shows the honest offline state". Mark `Result: PASS(offline)`, continue, and put the online re-check in REQUESTS.
+  - Never start, stop or edit the server.
+- **Envelope events already handled by `ConcordClient.cs`:**
+  - combat: `combat:attack:ack`, `combat:hit`, `combat:kill`, `combat:telegraph`
+  - bosses and dungeons: `boss:state`, `boss:phase-enter`, `dungeon:data`, `dungeon:hit:ack`, `world:boss-spawn`
+  - other: `party:data`, `quest:completed`, `world:clock`, `world:weather`, `faction:*`
+- **Senders:** `SendAttack`, `SendDodge`, `SendDungeonOpen`, `SendDungeonHit`, `RequestRunStart`, `SendMove`, `SendAgentIntent`, `SendGift`, `SendRaw`. There is **no** chat sender and **no** HTTP/REST helper yet.
+- **Regression.** Every ~10 tasks, and at each `QA-*` task, run spawn → walk/sprint the Court → walk to the Proving Ring → fight the arena dummy → accept and track one quest → return. Then run the existing EditMode tests and `Concordia/Verification/Run Focused PlayMode Proofs Direct`.
+
+## 2. Phase overview
+| Phase | Code | Tasks |
+|---|---|---|
+| 0 Bootstrap & guardrails | B | 10 |
+| 1 Feel: animation, camera, input | F | 25 |
+| 2 Combat | C | 39 |
+| 3 Gear, crafting, economy | G | 18 |
+| 4 World: cities, roads, travel, mounts | W | 36 |
+| 5 Adventure: quests, NPCs, factions, dungeons, saves | A | 39 |
+| 6 MMO | M | 11 |
+| 7 Polish: VFX, audio, perf, accessibility | P | 16 |
+| **Total** | | **194** (incl. 7 QA checkpoints) |
+
+Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Verify / Server / Result. In deps, `X-01…X-09` means every task in that range. To tick a task: change `[ ]` to `[x]` and fill `Result: PASS|PASS(offline)|BLOCKED(REQ-n) · <one line> · <commit hash>`.
+
+---
+## Phase 0 — Bootstrap & guardrails (B)
+
+### Epic B1 · Branch, logs, baseline
+- [ ] **B-01 · Worktree check + no-touch snapshot** (deps: —)
+  - Goal: Confirm you are in the Aura worktree, not the live tree.
+    - `pwd` / Unity project path must be `/Users/dutch/concord/aura-wt/apps/concordia-living-world/unity-client`.
+    - `git -C ~/concord/aura-wt branch --show-current` must print `aura/gameplay`. Do **not** create or switch branches. If it isn't `aura/gameplay`, stop and file a REQ.
+    - Record `git -C ~/concord/aura-wt status --porcelain` in `.Aura/PROGRESS_LOG.md` as the baseline. At setup it showed only the untracked `.Aura/ROADMAP.md` and `.Aura/Skills/concordia-nonstop/`; commit those two first as `aura(B-01): add roadmap + nonstop skill`.
+    - Run `df -h /System/Volumes/Data` and stop if under 10 GB.
+    - Never touch `/Users/dutch/concord vs code/concord-cognitive-engine` (the live production tree).
+  - Touch: git (in aura-wt only). Create `.Aura/PROGRESS_LOG.md`.
+  - Reuse: —
+  - Verify: branch = `aura/gameplay`; the project path is inside `~/concord/aura-wt`; free disk is logged; first commit hash is logged.
+  - Server: —
+  - Result: —
+- [ ] **B-02 · Request ledger** (deps: B-01)
+  - Goal: Create `.Aura/REQUESTS_FOR_CLAUDE.md` with this template: `## REQ-<n> · <title>` / why / exact ask / blocking tasks / status. Pre-file these known gaps:
+    - REQ-1: chat event on `/unity-ws`
+    - REQ-2: sync `content/world/concordia-hub/city-layout.json` and `zones.json` into `Canon/concordia-hub/`
+    - REQ-3: import the "Human Melee Animations FREE" pack (Asset Store 165785, named in `bible/ANIMATION.md`) or supply block/parry/heavy/strafe/riposte/get-up/ride clips
+    - REQ-4: a served WebGL build for two-client tests
+    - REQ-5: a server `loot:dropped` event or a WS route for loot-bag claim
+  - Touch: `.Aura/REQUESTS_FOR_CLAUDE.md`
+  - Reuse: —
+  - Verify: file exists, 5 REQs present, committed.
+  - Server: —
+  - Result: —
+- [ ] **B-03 · Baseline Play capture** (deps: B-01)
+  - Goal: Record how Play looks before any change.
+    - Enter Play and wait for the LeanPlay boot to finish (hero dressed and the Court visible). The AuraPlayHoldGuard helper is in Editor.
+    - Screenshot SHOT 01 (Court).
+    - Log console error/warning counts, fps, and `World` child count. The bible observed ~1143.
+  - Touch: none (log only)
+  - Reuse: `Editor/AuraPlayHoldGuard.cs`, `Editor/AuraGameViewStill.cs`, menu `Concordia/Focus Game View`
+  - Verify: `~/.zuko/aura-shots/B-03.png` exists; the baseline numbers are in PROGRESS_LOG.
+  - Server: —
+  - Result: —
+- [ ] **B-04 · AuraVerify helper** (deps: B-01)
+  - Goal: Add static `AuraVerify.Pass(id,msg)` / `Fail(id,msg)` / `Snapshot()`.
+    - `Snapshot()` logs world, position, hp, stamina, poise, `ConcordClient` connected state, active quests and equipped item.
+    - Never log tokens.
+  - Touch: new `Scripts/Aura/AuraVerify.cs`
+  - Reuse: `ConcordiaPlayer` (`_body`), `QuestLog`, `KitBag`, `ConcordClient`
+  - Verify: in Play, F10 (dev only) prints `[AuraVerify] SNAPSHOT …`.
+  - Server: —
+  - Result: —
+
+### Epic B2 · Settings, input, connection
+- [ ] **B-05 · ConcordiaSettings + reduced motion** (deps: B-04)
+  - Goal: Add a PlayerPrefs-backed `ConcordiaSettings` with `ReducedMotion`, `CameraShake` (0–1), `DamageNumbers`, `SubtitleScale`, `ConnectInLeanPlay`, `MouseSensitivity`. Show them in the menu (I) with a "Settings" tab.
+  - Touch: new `Scripts/Aura/ConcordiaSettings.cs`; `ConcordiaHUD.cs` (menu tab)
+  - Reuse: the existing I-menu (`ToggleMenu`) in `ConcordiaPlayer.cs`/`ConcordiaHUD.cs`
+  - Verify: toggling ReducedMotion persists across two Play sessions (log both reads).
+  - Server: —
+  - Result: —
+- [ ] **B-06 · Input action asset** (deps: B-04)
+  - Goal: Create a `ConcordiaControls.inputactions` mirroring today's hardcoded keys. Route `ConcordiaPlayer.KeyDown/KeyHeld` through a `ConcordiaInput` wrapper so behaviour is identical. Add gamepad bindings.
+    - Keys: WASD, Shift sprint, Space jump, LMB light, F heavy, G special, X dodge, C guard, E interact, Q cycle kit, I menu, K skills, 1–3, [ ], H, J, Tab/Esc.
+    - Keep `ENABLE_INPUT_SYSTEM` with the legacy fallback.
+  - Touch: new `Assets/Concordia/Input/ConcordiaControls.inputactions`, new `Scripts/Aura/ConcordiaInput.cs`; `ConcordiaPlayer.cs` (input calls only)
+  - Reuse: `ConcordiaPlayer` KeyDown map (~line 1033), `bible/COMBAT.md` control list
+  - Verify: each action logs once on press in Play; the dodge/attack/guard flows are unchanged.
+  - Server: —
+  - Result: —
+- [ ] **B-07 · Rebind + controls panel** (deps: B-05, B-06)
+  - Goal: Generate the controls strip and help from live bindings. Add a rebinding UI. This closes the "no remap" gap in `bible/ACCESSIBILITY.md`.
+  - Touch: `ConcordiaHUD.cs`, `Scripts/Aura/ConcordiaInput.cs`
+  - Reuse: Input System `PerformInteractiveRebinding`
+  - Verify: rebind dodge X→V, restart Play, V dodges and X does not.
+  - Server: —
+  - Result: —
+- [ ] **B-08 · Live boot map** (deps: B-03)
+  - Goal: Document the LeanPlay boot order in `.Aura/LIVE_PATH.md`: what `ConcordiaGame` installs, what it skips (EnsureConnected/RestoreAgentSoul and Persistence.Restore, ~lines 320–332), which components exist in Play (via `FindObjectsByType` dump), and the combat path `ActionRunner → HitResolver`.
+    - Note: `GameplayCore/Combat/CombatContracts.cs` `CombatDefenseEvaluator` is the DISCONNECTED one. Do not wire it.
+  - Touch: new `.Aura/LIVE_PATH.md`
+  - Reuse: `ConcordiaGame.cs`, `Editor/AuraDirectTestRunner.cs`
+  - Verify: the doc lists ≥20 live components with their owner script.
+  - Server: —
+  - Result: —
+- [ ] **B-09 · Staged Concord connection in LeanPlay** (deps: B-05, B-08)
+  - Goal: Behind `ConcordiaSettings.ConnectInLeanPlay` (default ON in Editor), call `ConcordClient.EnsureConnected()` only after boot is idle: hero dressed, RealmFill done, +30 s stable. Never connect during the boot window (the post-Expand melt reason). Do not enable `RestoreAgentSoul` yet.
+  - Touch: `ConcordiaGame.cs` (the LeanPlay branch only)
+  - Reuse: `ConcordClient.EnsureConnected`, `ConcordiaHUD` connection text
+  - Verify:
+    - Server up: log `connected` + `kingdom:data` received, and no frame >100 ms in the 10 s after connecting.
+    - Server down: HUD shows `no_gateway`, and Play holds 120 s with no exceptions.
+  - Server: `/unity-ws`
+  - Result: —
+- [ ] **QA-0 · Baseline regression** (deps: B-01…B-09)
+  - Goal: Run the full regression route and compare it to B-03.
+  - Touch: log only
+  - Reuse: B-03 numbers
+  - Verify: error count ≤ baseline; SHOT 01 unchanged or better.
+  - Server: optional
+  - Result: —
+
+---
+## Phase 1 — Feel: animation, camera, input (F)
+
+### Epic F1 · Rig + locomotion
+- [ ] **F-01 · Hero rig audit** (deps: B-04)
+  - Goal: Log the hero's `ModularPerson` `clipsFit` / `av.isHuman` and Animator controller, plus the `AnimationRuntimeValidator` findings.
+    - Rocketbox FBX metas are now `animationType: 3` (Humanoid). `bible/ANIMATION.md` still says Biped; note that it is outdated.
+    - `Generated/Rig/CX_Humanoid_*.fbx` are Generic, so UAL clips will not fit them.
+  - Touch: log only (plus `AuraVerify` calls)
+  - Reuse: `ModularPerson.cs`, `Animation/AnimationRuntimeValidator.cs`, `Editor/RocketboxDress.cs`
+  - Verify: `[AuraVerify] F-01 PASS hero=<model> human=<bool> controller=<name>`
+  - Server: —
+  - Result: —
+- [ ] **F-02 · ConcordiaLocomotion on the hero** (deps: F-01)
+  - Goal: When `clipsFit`, the hero runs `Anim/ConcordiaLocomotion.controller` on the UAL1 clips instead of the procedural sine gait. Keep the sine fallback for non-human rigs.
+  - Touch: `ModularPerson.cs`, `ConcordiaPlayer.cs` (Animator param feed)
+  - Reuse: UAL clips in `UAL1_Standard.fbx`: Idle_Loop, Walk_Loop, Jog_Fwd_Loop, Sprint_Loop. Params Speed/Grounded/Jump.
+  - Verify: walk in the Court, screenshot; Animator state names logged; no T-pose.
+  - Server: —
+  - Result: —
+- [ ] **F-03 · Locomotion 1D blend tree** (deps: F-02)
+  - Goal: Replace the discrete Idle/Walk/Run/Sprint states with one 1D BlendTree on `Speed`. Pick thresholds from LocomotionKernel walk/run/sprint speeds and log the chosen values. Match clip speed to ground speed so feet don't skate.
+  - Touch: `Anim/ConcordiaLocomotion.controller` (and its Resources copy if `Resources/` loads it — check which one is loaded)
+  - Reuse: `GameplayCore/Movement/LocomotionKernel`, UAL Walk/Jog/Sprint loops
+  - Verify: ramping speed 0→sprint logs blend weights; SHOT 04 (sprint) screenshot.
+  - Server: —
+  - Result: —
+- [ ] **F-04 · Turning + start/stop** (deps: F-03)
+  - Goal: There are no turn clips. Add procedural upper-body yaw lag plus a short decel blend. Label it `TODO_anim_turn` in code and log.
+  - Touch: `ModularPerson.cs` or a new `Scripts/Aura/LocomotionPolish.cs`
+  - Reuse: KCC Ethan turn clips (Humanoid, `KinematicCharacterController` example) as an optional source if they retarget cleanly
+  - Verify: a 180° turn has no foot pop; side-by-side before/after screenshots.
+  - Server: —
+  - Result: —
+- [ ] **F-05 · Jump / fall / land** (deps: F-03)
+  - Goal: Drive JumpStart → Jump_Loop → Jump_Land from LocomotionKernel grounded + vertical speed. Gate landing recovery on fall height.
+  - Touch: `Anim/ConcordiaLocomotion.controller`, `ConcordiaPlayer.cs`
+  - Reuse: UAL Jump_Start/Jump_Loop/Jump_Land; PlayMode test `L0Ual1SequenceProofTest`
+  - Verify: the test passes; the logged sequence is Start→Loop→Land.
+  - Server: —
+  - Result: —
+- [ ] **F-06 · Crouch** (deps: F-03, B-06)
+  - Goal: Add a crouch action (LeftCtrl when grounded; it stays Descend while flying) using Crouch_Idle_Loop / Crouch_Fwd_Loop. Reduce capsule height and noise radius (needed by A-08 stealth).
+  - Touch: `ConcordiaPlayer.cs`, controller, `ConcordiaInput.cs`
+  - Reuse: UAL Crouch clips
+  - Verify: the crouch state is logged, the capsule height changes, a screenshot.
+  - Server: —
+  - Result: —
+- [ ] **F-07 · Swim** (deps: F-03)
+  - Goal: Inside a `WorldWaterSurface` volume, switch to Swim_Idle_Loop / Swim_Fwd_Loop with reduced speed and no attacks.
+  - Touch: `ConcordiaPlayer.cs`, controller
+  - Reuse: `WorldWaterSurface.cs`, UAL Swim clips
+  - Verify: walk into water, the swim state is logged, a screenshot.
+  - Server: —
+  - Result: —
+
+### Epic F2 · Combat animation
+- [ ] **F-08 · Upper-body combat layer** (deps: F-03)
+  - Goal: Create `Anim/Masks/UpperBody.mask` and an override layer for Sword_Idle / Sword_Attack / Punch_*, so legs keep locomotion while attacking.
+  - Touch: new mask asset; `ConcordiaLocomotion.controller`
+  - Reuse: UAL Sword_Idle, Sword_Attack, Punch_Jab, Punch_Cross
+  - Verify: attacking while jogging keeps the legs in jog (screenshot strip).
+  - Server: —
+  - Result: —
+- [ ] **F-09 · ActionRunner → animation sync** (deps: F-08)
+  - Goal: Map `Core.ActionRunner` phases (Startup/Active/Recovery, integer ms) to clip normalized time so the contact frame lands inside Active. Do not let root motion move the capsule.
+  - Touch: `ConcordiaPlayer.cs`, `CombatMotion.cs`
+  - Reuse: `Core/ActionRunner.cs` (220 ms buffer), `CombatMotion.Delay`
+  - Verify: the log shows phase entry vs clip time, with contact inside Active on 10/10 swings; SHOT 03.
+  - Server: —
+  - Result: —
+- [ ] **F-10 · 3-beat light combo** (deps: F-09)
+  - Goal: Make `_comboBeat` 0–2 visually distinct.
+    - Armed: Sword_Attack at speed variants plus mirror.
+    - Unarmed: Punch_Jab → Punch_Cross → Sword_Attack-as-hook.
+    - Label `TODO_anim_combo` until real clips arrive (REQ-3).
+  - Touch: controller, `ConcordiaPlayer.CommitStrike`
+  - Reuse: UAL clips, `bible/MOVES.md` named arts (Palm, Ash cut, Reed…) for labels
+  - Verify: 3 screenshots differ; the beat index logs cycling 0,1,2,0.
+  - Server: —
+  - Result: —
+- [ ] **F-11 · Heavy attack presentation** (deps: F-09)
+  - Goal: Heavy (F) holds the anticipation through Startup, then plays Sword_Attack at ~0.7 speed with a bigger CombatMotion lunge. Label `TODO_anim_heavy`.
+  - Touch: `ConcordiaPlayer.cs`, `CombatMotion.cs`
+  - Reuse: the existing heavy ActionDef
+  - Verify: the heavy windup is visibly longer than light (timed log).
+  - Server: —
+  - Result: —
+- [ ] **F-12 · Directional dodge roll** (deps: F-09)
+  - Goal: Dodge (X) plays UAL `Roll`, directed by the input vector (backstep when there is no input). Keep the `DodgeAction` 350 ms i-frames and 18 stamina.
+  - Touch: `ConcordiaPlayer.cs`
+  - Reuse: `DodgeAction`, `HopIFrame`, UAL Roll
+  - Verify: rolls left/right/back match input; the i-frame window is logged.
+  - Server: —
+  - Result: —
+- [ ] **F-13 · Guard + parry pose** (deps: F-08)
+  - Goal: While `GuardAction` is active, hold Sword_Idle plus a procedural forearm raise. Flash a parry glint in the first 120 ms (no flash in reduced motion). Label `TODO_anim_block`.
+  - Touch: `ConcordiaPlayer.cs`, `ModularPerson.cs`
+  - Reuse: `GuardAction` parry window, `CombatFeel`
+  - Verify: guard screenshot; the parry window is logged.
+  - Server: —
+  - Result: —
+- [ ] **F-14 · Directional hit reactions** (deps: F-08)
+  - Goal: Hits play Hit_Chest (front/light) or Hit_Head (heavy). Side and back hits add a procedural lean. Use the same component for hostiles.
+  - Touch: `ModularPerson.cs` (`ReactCombat`), `Hostile.cs`
+  - Reuse: UAL Hit_Chest/Hit_Head, `HitResult`
+  - Verify: front vs side hits look different (screenshots).
+  - Server: —
+  - Result: —
+- [ ] **F-15 · Stagger + knockdown** (deps: F-14)
+  - Goal: Map `Core.StaggerTier` to a stagger (Hit_Chest held) and a knockdown (Death01 to 40%, hold, blend out). Label `TODO_anim_getup`. GuardBroken always knocks down.
+  - Touch: `ModularPerson.cs`, `ConcordiaPlayer.cs`
+  - Reuse: `Core` poise/stagger, UAL Death01
+  - Verify: a guard-break against the arena dummy shows a knockdown and recovers within 1.2 s.
+  - Server: —
+  - Result: —
+- [ ] **F-16 · Death animation** (deps: F-14)
+  - Goal: Player and hostiles play Death01 on hp ≤ 0, with a ragdoll-free hold. This is presentation only; the flow is C-17.
+  - Touch: `ModularPerson.cs`, `Hostile.cs`
+  - Reuse: UAL Death01
+  - Verify: hostile death screenshot.
+  - Server: —
+  - Result: —
+- [ ] **F-17 · Interact / pickup / talk clips** (deps: F-08)
+  - Goal: Play UAL clips for these actions:
+    - E on Gatherable/LoreStone/GatePost → `Interact`
+    - loot pickup → `PickUp_Table`
+    - talking (OpenTalk) → `Idle_Talking_Loop`
+    - repairs → `Fixing_Kneeling`
+  - Touch: `ConcordiaPlayer.Interact/OpenTalk`, `ModularPerson.cs`
+  - Reuse: UAL clips, `WorldGate.cs` (Gatherable, LoreStone)
+  - Verify: each logs the clip name; one screenshot per clip.
+  - Server: —
+  - Result: —
+- [ ] **F-18 · Foot IK grounding** (deps: F-03)
+  - Goal: `OnAnimatorIK` plants feet on the Court steps and slopes, with pelvis offset clamped.
+  - Touch: new `Scripts/Aura/FootIK.cs`, added to the hero (and REAL-LOD NPCs later)
+  - Reuse: `Grounding.cs`
+  - Verify: Court steps screenshot with no floating feet.
+  - Server: —
+  - Result: —
+
+### Epic F3 · NPC animation
+- [ ] **F-19 · NPC job animations** (deps: F-03)
+  - Goal: Map `NpcLife` jobs to animations: Sit → Sitting_Enter/Idle/Exit, Stall → Idle_Talking_Loop, Sweep → Push_Loop, Watch → Idle_Loop, Wander → walk blend. Applies to `GuestNpc` and townsfolk on human rigs.
+  - Touch: `NpcLife.cs`, `ModularPerson.cs`
+  - Reuse: UAL Sitting_*, Push_Loop, Idle_Talking_Loop
+  - Verify: SHOT 08: 5 NPCs, none in T-pose, each doing its job (log list).
+  - Server: —
+  - Result: —
+- [ ] **F-20 · Creature locomotion** (deps: F-03)
+  - Goal: Quaternius animal packs (`FreePacks`, read-only) drive fauna and creature walk/run/attack/death through `AnimationVerbCatalog.Creatures`.
+  - Touch: `Animation/AnimationVerbCatalog.Creatures.cs`, `CreatureCompiler.cs`
+  - Reuse: `AnimationLiveBindings`, `AnimationCoverage`
+  - Verify: 3 creature kinds animate; coverage log shows verbs bound.
+  - Server: —
+  - Result: —
+
+### Epic F4 · Camera + controls
+- [ ] **F-21 · Camera states** (deps: F-03)
+  - Goal: ChaseCamera has explore, sprint (+FOV) and combat (closer, higher) states. Collision pull-in under arches. Reduced motion clamps FOV change to 0.
+  - Touch: `ChaseCamera.cs`
+  - Reuse: Cinemachine 3.1.6 OrbitalFollow, the existing kick API
+  - Verify: per-state distance/FOV logged; screenshot under the Court arch.
+  - Server: —
+  - Result: —
+- [ ] **F-22 · Shake/punch respects settings** (deps: B-05, F-21)
+  - Goal: Every `CombatFeel` shake and kick is scaled by `ConcordiaSettings.CameraShake`; ReducedMotion sets it to 0.
+  - Touch: `CombatFeel.cs`, `ChaseCamera.cs`
+  - Reuse: `CombatFeel.Present`
+  - Verify: hit the dummy with shake 1 vs 0; amplitude is logged.
+  - Server: —
+  - Result: —
+- [ ] **F-23 · Gamepad look curves + sensitivity** (deps: B-06, F-21)
+  - Goal: Add a response curve, deadzone, invert-Y and sensitivity sliders in Settings.
+  - Touch: `ChaseCamera.cs`, `ConcordiaSettings.cs`, `ConcordiaHUD.cs`
+  - Reuse: B-05 settings
+  - Verify: the sensitivity change is logged and persists.
+  - Server: —
+  - Result: —
+- [ ] **F-24 · Animation validation pass** (deps: F-01…F-23)
+  - Goal: Run `AnimationRuntimeValidator` plus the EditMode tests `AnimationVerbRegistryTests` and `CinematicFeelTests`. Fix any new findings.
+  - Touch: as needed (Aura-owned files only)
+  - Reuse: existing tests
+  - Verify: tests green; validator clean or remaining findings logged.
+  - Server: —
+  - Result: —
+- [ ] **QA-1 · Feel regression** (deps: F-24)
+  - Goal: Run the regression route plus SHOTs 02/03/04.
+  - Touch: log
+  - Reuse: —
+  - Verify: no new errors; fps ≥ baseline −5.
+  - Server: —
+  - Result: —
+
+---
+## Phase 2 — Combat (C)
+> All combat tests run in the **Proving Ring arena** (steel, "the sand does not" — Arena Warden Gale) or in steel worlds, never inside the Court 42 m law disk.
+> Combat grammar lives in `Scripts/Core/ActionRunner.cs` + `Core/HitResolver.cs`. HitResolver checks i-frames, then parry, then block (chip 0.15, stamina 0.55, GuardBroken), then hit. Both are **live** in `ConcordiaPlayer` and `Hostile`.
+> Do not wire `GameplayCore.CombatDefenseEvaluator` (it is marked DISCONNECTED in `CombatContracts.cs:153`).
+
+### Epic C1 · Melee core
+- [ ] **C-01 · Unified combat target** (deps: QA-1)
+  - Goal: `HitScan` today finds only `TrainingDummy` (hostiles carry one).
+    - Add a cached `CombatTargetRegistry` instead of a per-strike `FindObjectsByType`.
+    - SphereCast results resolve to the target via collider → component.
+  - Touch: `ConcordiaPlayer.HitScan`, new `Scripts/Aura/CombatTargetRegistry.cs`, `TrainingDummy.cs` (register/unregister)
+  - Reuse: `TrainingDummy`, `Hostile`
+  - Verify: striking a road hostile in a steel world lowers its hp (log before/after); no FindObjects call per swing (profiler marker).
+  - Server: —
+  - Result: —
+- [ ] **C-02 · One hit per target per swing** (deps: C-01, F-09)
+  - Goal: Add a hit registry keyed by (swing id, target), and fire hits only during the Active phase.
+  - Touch: `ConcordiaPlayer.cs`
+  - Reuse: `ActionRunner` phase flags
+  - Verify: 20 swings into two dummies log 0 double hits.
+  - Server: —
+  - Result: —
+- [ ] **C-03 · Weapon class table** (deps: C-01)
+  - Goal: Add `WeaponClassDef` data for: sword, greatsword, hammer, dagger, spear, axe, shield, staff, bow, pistol, rifle, unarmed.
+    - Class names must match `server/lib/combat/loadout.js` `NAME_TO_CLASS`.
+    - Each def has ActionDef frames (startup/active/recovery ms), reach, stamina, poise damage, handedness and peril kind.
+    - Peril kinds follow `server/lib/combat/telegraph-peril.js`: spear/rapier/lance → thrust; axe/scythe/greatsword/maul/hammer → sweep; grapple → grab.
+  - Touch: new `Scripts/Aura/Combat/WeaponClassDef.cs`; EditMode test in `Assets/Concordia/Tests/EditMode/`
+  - Reuse: the `Core.ActionRunner` ActionDef shape
+  - Verify: EditMode test checks all 12 classes have `startup>0`, `active>0`, and peril kinds matching the server table.
+  - Server: —
+  - Result: —
+- [ ] **C-04 · Weapons in hands** (deps: C-03, F-08)
+  - Goal: Parent weapon meshes to the hand bones with grip offsets per class. Shields go left-hand.
+    - Quaternius Medieval Weapons: Sword, Sword_2, Sword_Big, Sword_Golden, Claymore, Axe, Axe_Double, Axe_Small, Dagger, Spear, Scythe, Hammer_Double, Hammer_Small, Shield_Heater, Shield_Round, Shield_Celtic_Golden, Bow_Wooden, Arrow.
+    - Generated prefabs: `CX_Weapon_Longsword`, `CX_Weapon_Steel_longsword`, `CX_Weapon_Hatchet`, `CX_Weapon_Switchblade`, `CX_Weapon_PulseBaton`, `CX_Weapon_Bow`.
+  - Touch: `CharacterGear.cs`, `PersonKit` (HubObjectives.cs)
+  - Reuse: those prefabs and FBX (read-only)
+  - Verify: SHOT 02 with a gripped sword and shield, nothing floating; 6 weapon screenshots.
+  - Server: —
+  - Result: —
+- [ ] **C-05 · Weapon switching** (deps: C-04)
+  - Goal: Q (`CycleKit`) swaps the equipped `KitBag` weapon, its model and its ActionDef set. There is a 300 ms swap lockout.
+  - Touch: `ConcordiaPlayer.cs`, `KitBag` (HubObjectives.cs)
+  - Reuse: `KitBag.HoldWeapon`, `PersonKit`
+  - Verify: the log shows reach/frames changing per class after a swap.
+  - Server: —
+  - Result: —
+- [ ] **C-06 · Stamina model** (deps: C-03)
+  - Goal: Each ActionDef has a stamina cost. Regen is 18/s (`bible/COMBAT.md`) after a 0.6 s delay. At 0 stamina, dodge/heavy are blocked and a "winded" state shows.
+  - Touch: `ConcordiaPlayer.cs`, `Core/ActorState` (if needed)
+  - Reuse: `_body` ActorState
+  - Verify: the logged drain/regen curve matches 18/s ±1.
+  - Server: —
+  - Result: —
+- [ ] **C-07 · Block with frontal arc** (deps: C-06, F-13)
+  - Goal: Holding C = `GuardAction`. HitResolver today has no facing check, so add a frontal-arc test (±70°) on the player side before calling `Resolve`. Attacks from behind are not blocked.
+    - Blocked hits deal chip 0.15 and cost stamina 0.55; at 0 stamina the result is GuardBroken.
+  - Touch: `ConcordiaPlayer.TakeHit`, optionally `Core/HitResolver.cs` (keep its EditMode tests green)
+  - Reuse: `HitResolver` block branch
+  - Verify: the arena dummy swings: front = Blocked, back = Hit, empty stamina = GuardBroken (3 logs).
+  - Server: —
+  - Result: —
+- [ ] **C-08 · Parry → riposte** (deps: C-07)
+  - Goal: The first 120 ms of guard is a Parried result with `CounterOpening`. A light attack within 600 ms becomes a **riposte** (×2 damage, poise break) and is recorded in `SkillLedger`. `bible/COMBAT.md` lists 180 ms for the browser; keep Unity's 120 ms and log both.
+  - Touch: `ConcordiaPlayer.cs`
+  - Reuse: `HitResult.CounterOpening`, `SkillLedger`
+  - Verify: 5 parries → 5 ripostes logged with damage ×2.
+  - Server: —
+  - Result: —
+- [ ] **C-09 · Peril counters + perfect dodge** (deps: C-08, F-12)
+  - Goal: Use the existing `Hostile.CounterMatches` table: thrust → dodge, sweep → jump/hop, grab → break/dodge (a block does not stop a grab). A dodge in the last 100 ms before contact refunds 50% of its stamina.
+  - Touch: `ConcordiaPlayer.cs`, `Hostile.cs`
+  - Reuse: `Hostile` static TelegraphKind / Perils, `HopIFrame`
+  - Verify: each peril with the right counter = avoid, wrong counter = hit (6 logs).
+  - Server: —
+  - Result: —
+- [ ] **C-10 · Enemy poise + stagger** (deps: C-03, F-15)
+  - Goal: Hostiles carry `ActorState` poise. Heavy or riposte hits stagger them (interrupting their windup). Poise regen is 4.2/s (`bible/COMBAT.md`).
+  - Touch: `Hostile.cs`
+  - Reuse: `Core` stagger tiers
+  - Verify: 2 heavies interrupt a hostile windup (log + screenshot).
+  - Server: —
+  - Result: —
+- [ ] **C-11 · Hitstop + impact** (deps: C-02)
+  - Goal: 45 ms local hitstop on connect (`bible/COMBAT.md`) as a planar animator pause, not `Time.timeScale`. Add a `CombatFeel` impact; reduced motion keeps the hitstop but drops the flash.
+  - Touch: `CombatFeel.cs`, `ConcordiaPlayer.cs`
+  - Reuse: `CombatFeel.Present(HitResult)`
+  - Verify: hitstop duration is logged at 45 ±5 ms.
+  - Server: —
+  - Result: —
+- [ ] **C-12 · Lock-on** (deps: C-01, F-21)
+  - Goal: R (and gamepad R3) locks onto the nearest hostile in a 20 m forward cone; mouse flick or stick switches target. Lock breaks at 25 m or when line of sight is lost for 1 s.
+    - Locked movement orients the body to the target with walk/jog. Label `TODO_anim_strafe` (REQ-3).
+    - Camera uses the F-21 combat framing.
+  - Touch: new `Scripts/Aura/Combat/LockOn.cs`, `ChaseCamera.cs`, `ConcordiaInput.cs`
+  - Reuse: `CombatTargetRegistry`
+  - Verify: acquire, switch and break logs; screenshot with a reticle (reticle static under reduced motion).
+  - Server: —
+  - Result: —
+- [ ] **C-13 · Soft aim assist** (deps: C-12)
+  - Goal: When unlocked, strikes rotate up to 25° toward the best target.
+  - Touch: `ConcordiaPlayer.CommitStrike`
+  - Reuse: `CombatTargetRegistry`
+  - Verify: hit rate on a moving hostile rises (logged over 20 swings).
+  - Server: —
+  - Result: —
+
+### Epic C2 · Feedback UI
+- [ ] **C-14 · Enemy health bars** (deps: C-01, B-05)
+  - Goal: A world-space bar appears over damaged hostiles and dummies and hides after 5 s. Kernel-authored targets show a "Concord" tag (HP came from the server). There is no tween under reduced motion.
+  - Touch: new `Scripts/Aura/UI/WorldHealthBar.cs`
+  - Reuse: `TrainingDummy` hp/KernelAuthored, UI plates `Generated/Materials` CX_HUD_* if present
+  - Verify: screenshot; the bar value equals the logged hp.
+  - Server: —
+  - Result: —
+- [ ] **C-15 · Damage numbers** (deps: C-14)
+  - Goal: Floating numbers show **actual** damage: local `HitResult` or the server ack. Colors: hit white, blocked grey, parry gold, riposte red. Off switch in Settings; static fade under reduced motion.
+  - Touch: new `Scripts/Aura/UI/DamageNumbers.cs`
+  - Reuse: `HitResult`, `ApplyKernelAttackAck`
+  - Verify: the numbers equal the logged damage for 10 hits.
+  - Server: —
+  - Result: —
+- [ ] **C-16 · Player vitals** (deps: C-06)
+  - Goal: The ConcordiaHUD vitals rings show live hp/stamina/poise. Low hp adds a vignette (static under reduced motion).
+  - Touch: `ConcordiaHUD.cs`
+  - Reuse: the existing rings and minimap
+  - Verify: the ring values match `AuraVerify.Snapshot`.
+  - Server: —
+  - Result: —
+- [ ] **C-17 · Death & respawn flow** (deps: F-16, C-16)
+  - Goal: Replace the instant reset in `TakeHit` with: Death01 → 1.5 s fade (cut under reduced motion) → respawn at the last gate/hold used, falling back to `MegaworldMap.Present` or `Canon.Spawn`. Keep the toast "You fall. The world does not." Drop nothing.
+  - Touch: `ConcordiaPlayer.TakeHit`, new `Scripts/Aura/RespawnFlow.cs`
+  - Reuse: `Canon.Spawn`, `Canon.SteelSpawn`, `MegaworldMap.Present`, `ReviveNearest`
+  - Verify: die in the arena → fade → respawn point logged; hp restored to max.
+  - Server: optional (`city-presence.js` respawnPlayer is server-side; log a REQ if a WS route is wanted)
+  - Result: —
+- [ ] **C-18 · Court refusal regression** (deps: C-02)
+  - Goal: Inside the 42 m Court, strikes still FlowerBurst and send nothing. If connected, any attack from the hub is refused server-side.
+  - Touch: none, or test only
+  - Reuse: `Canon.SteelLive`, `InHubCourt`
+  - Verify: Court swing logs `flower` and no `SendAttack`; screenshot.
+  - Server: `combat-engine.js` hubGroundCheck
+  - Result: —
+
+### Epic C3 · Server authority
+- [ ] **C-19 · Kernel dummy round trip** (deps: B-09, C-02)
+  - Goal: Connected arena-dummy hits go `SendAttack` → `combat:attack:ack` → `ApplyKernelAttackAck`, and hp is the server value ("Never invent HP"). The `/unity-ws` route goes through `_onGodotClientMessage` → applyAttack/combat-limits.
+  - Touch: `ConcordiaPlayer.cs` (only if a bug is found)
+  - Reuse: `ConcordClient.SendAttack`, `TrainingDummy.ApplyServerHit`
+  - Verify: 10 hits log send/ack pairs with the server hp; offline shows `no_gateway` and the dummy hp is unchanged.
+  - Server: `/unity-ws` `combat:attack`, `server/lib/combat-hp-authority.js`
+  - Result: —
+- [ ] **C-20 · Stable ids for hostiles** (deps: C-19)
+  - Goal: Bind hostiles' kernel target id to `hostile:<world>:<creature>:<n>` so `combat-hp-authority.ensureActor` tracks them, and send attacks when connected. If the server rejects unknown ids, file a REQ and keep hostiles local, labeled "local".
+  - Touch: `Hostile.cs`, `TrainingDummy.cs`
+  - Reuse: `TrainingDummy.BindId`/`KernelAuthored`
+  - Verify: the ack applies hp to a road hostile (log), or a REQ is filed.
+  - Server: `/unity-ws` `combat:attack`
+  - Result: —
+- [ ] **C-21 · Consume combat:hit / combat:kill** (deps: C-20)
+  - Goal: Server `combat:hit` on the player drives `TakeHit` presentation. `combat:kill` triggers the death flow. Note: hostile → player damage is client-local today; file a REQ for server-authored hostile damage.
+  - Touch: `ConcordiaPlayer.cs`, `ConcordClient` handlers (client side only)
+  - Reuse: existing `combat:hit`/`combat:kill` receivers
+  - Verify: online, one server hit lands with the correct hp; offline, honest.
+  - Server: `combat-netcode.js` broadcastHit/broadcastDeath
+  - Result: —
+
+### Epic C4 · Enemy AI archetypes (one per world's creatures)
+> `CreatureCompiler`: no mesh means no spawn, which is honest. Each task logs which creatures spawned and which were skipped. Names come from `content/world/<world>/creatures.json` and the `Canon/<world>/creatures.json` copies.
+- [ ] **C-22 · Archetype framework** (deps: C-10)
+  - Goal: `EnemyArchetype` data covers Skirmisher, Brute, Swarm, Ranged, Ambusher, Construct, Caster and Fauna(flee). Fields: speed, reach, windup ms, peril set, aggro radius, poise, group token cost.
+  - Touch: new `Scripts/Aura/Combat/EnemyArchetype.cs`, `Hostile.cs`
+  - Reuse: `Hostile` perception/strafe/windup
+  - Verify: EditMode test; Brute vs Skirmisher visibly differ (timed windups logged).
+  - Server: —
+  - Result: —
+- [ ] **C-23 · Attack tokens (fair groups)** (deps: C-22)
+  - Goal: At most 2 hostiles attack at once; the rest circle at 4–6 m.
+  - Touch: `Hostile.cs`, new `Scripts/Aura/Combat/AttackTokens.cs`
+  - Reuse: `Hostile` strafe
+  - Verify: 5 hostiles produce ≤2 simultaneous windups (log over 60 s).
+  - Server: —
+  - Result: —
+- [ ] **C-24 · Telegraph readability** (deps: C-22)
+  - Goal: Windup telegraph color per peril (thrust/sweep/grab) using a colorblind-safe palette, plus a small HUD counter glyph. No pulse under reduced motion.
+  - Touch: `Hostile.cs`, `ConcordiaHUD.cs`
+  - Reuse: `Hostile` telegraph mesh, `combat:telegraph` event
+  - Verify: screenshots of 3 perils.
+  - Server: —
+  - Result: —
+- [ ] **C-25 · Ranged projectiles** (deps: C-22)
+  - Goal: The Ranged archetype fires a visible projectile (kenney_particlePack trail). On contact it calls `HitResolver` (dodgeable, blockable).
+  - Touch: new `Scripts/Aura/Combat/Projectile.cs`, `Hostile.cs`
+  - Reuse: `FreePacks/VFX/kenney_particlePack`
+  - Verify: dodge through a projectile (i-frame log) and block one (chip log).
+  - Server: —
+  - Result: —
+- [ ] **C-26 · Sovereign Ruins + Hub fauna** (deps: C-22)
+  - Goal: Ruins: Ruin Rat King (Brute), Ash Revenant (Ambusher), Gloom Stalker (Ambusher). Hub fauna outside the Court: Plaza Strider, Cistern Lurker, Lamplighter Moth, Court pigeon (`Models/Generated/fauna/court_pigeon`, `lantern_moth`) are Fauna only — the Court never fights.
+  - Touch: archetype assignments (data)
+  - Reuse: `CreatureCompiler`
+  - Verify: the spawned list is logged; one fight screenshot in Ruins.
+  - Server: —
+  - Result: —
+- [ ] **C-27 · The Sundering + Tunya** (deps: C-22)
+  - Goal: Fantasy: Thorn Wolf (Skirmisher pack), Mana Drake (Caster), Bone Sentinel (Construct), Gloom Stalker, Crystal Elemental (Construct). Tunya bestiary animals (ass, fowl, mountain_cow, ram, oxen, equine…) are Fauna/livestock and do not attack unless the bestiary says so.
+  - Touch: data
+  - Reuse: `content/world/tunya/bestiary` (Canon copy)
+  - Verify: logs + screenshot.
+  - Server: —
+  - Result: —
+- [ ] **C-28 · Crime World + The Grid** (deps: C-25)
+  - Goal: Crime: Rage Junkie (Brute), Scrap Golem (Construct), Night Crawler (Ambusher), Chrome Enforcer (Ranged), Ash Hound (Skirmisher). Grid: Glitch Hound, Neural Parasite, Black ICE Construct, Void Walker, Rogue Drone Swarm (Swarm/Ranged), with the bestiary ids security_drone, ice_construct, data_ghost, chrome_rat, aug_predator, kill_switch.
+  - Touch: data
+  - Reuse: —
+  - Verify: logs + screenshots.
+  - Server: —
+  - Result: —
+- [ ] **C-29 · Permanent Dawn + Frontier** (deps: C-25)
+  - Goal: Superhero: Street Mutant, Energy Wraith (Caster), Mech Hound, Shadow Stalker, Riot Elemental. Frontier: Dust Courser (Skirmisher), Rail Vulture (Ranged/air), Thunder Yak (Brute/Fauna).
+  - Touch: data
+  - Reuse: —
+  - Verify: logs + screenshots.
+  - Server: —
+  - Result: —
+- [ ] **C-30 · Crucible + Sere** (deps: C-22)
+  - Goal: Crucible: Drift Mote Swarm (Swarm), Crucible Warden (Construct), Echo Serpent. Sere bestiary: tithe_rat, ledger_crow, furnace_hound, drowned_eel, deep_watcher. Do not resolve the Eighth's secret in any text.
+  - Touch: data
+  - Reuse: —
+  - Verify: logs.
+  - Server: —
+  - Result: —
+
+### Epic C5 · Bosses
+- [ ] **C-31 · Boss presenter + bar** (deps: C-14, C-24)
+  - Goal: `BossPresenter` on `WorldBoss` (`WorldGate.cs:507`) shows a top-center bar with name and phase from `boss:state` / `boss:phase-enter`. Offline it shows local phases labeled "local".
+  - Touch: new `Scripts/Aura/Combat/BossPresenter.cs`, `ConcordiaHUD.cs`
+  - Reuse: `WorldBoss`, server `boss-hud.js` payload shape
+  - Verify: screenshot; the phase change is logged.
+  - Server: `boss:state`, `boss:phase-enter`
+  - Result: —
+- [ ] **C-32 · The Hollow Warden** (deps: C-31, C-19)
+  - Goal: In a steel-world `DungeonGate` hold, send `SendDungeonOpen("hollow_warden")` and handle `dungeon:data`. Phases guarded → sundered → desperate (`server/lib/dungeon-instance.js`) change telegraphs and patterns. Hits go through `SendDungeonHit` → `dungeon:hit:ack`. Honor the lockout (`locked_out`).
+  - Touch: `WorldGate.cs` (DungeonGate/WorldBoss), `BossPresenter.cs`
+  - Reuse: `RealmFill.DungeonHold` mouth/hall/vault
+  - Verify: online, the phase transitions are logged and the hp comes from the ack; offline, honest.
+  - Server: `dungeon:open`, `dungeon:hit`
+  - Result: —
+- [ ] **C-33 · Tide Colossus** (deps: C-32)
+  - Goal: Second encounter `tide_colossus` (6000 hp). Its hold location is **not grounded**: check DungeonGate config/content. If no mapping exists, file a REQ asking Dutch which world.
+  - Touch: `WorldGate.cs`
+  - Reuse: C-32
+  - Verify: encounter opens, or a REQ is filed.
+  - Server: `dungeon:open`
+  - Result: —
+- [ ] **C-34 · World boss spawns** (deps: C-31)
+  - Goal: `world:boss-spawn` spawns a presenter at the given world/coords if a body exists. A REQ asks Claude for a test schedule (`world-bosses.js` registerSchedule).
+  - Touch: `ConcordClient` handler (client), `BossPresenter.cs`
+  - Reuse: `WorldBoss`
+  - Verify: event → spawn logged (online), or a REQ is filed.
+  - Server: `world:boss-spawn`
+  - Result: —
+
+### Epic C6 · Loot, ranged, magic
+- [ ] **C-35 · Loot drops (server only)** (deps: C-21)
+  - Goal: On a kill, show spoils only when the server says so: reuse the existing "spoils off corpse" code and a server loot payload. There is no loot event on `/unity-ws` today (REQ-5). Offline toast: "spoils unrecorded (no_gateway)". Never mint loot.
+  - Touch: `Hostile.cs`, new `Scripts/Aura/LootBag.cs`
+  - Reuse: `loot-generator.js` shape (createLootBag/claimLootBag), REST `GET /api/worlds/:worldId/loot-bags` + `POST …/claim`
+  - Verify: honest offline toast; online pickup once REQ-5 ships.
+  - Server: REQ-5
+  - Result: —
+- [ ] **C-36 · Firearms** (deps: C-03, F-08)
+  - Goal: Use the pistol class with Pistol_Idle/Aim/Shoot/Reload. A shot is allowed only when `GameplayCoreBridge.EvaluateFireEligibility` and the world field allow it (Crime/Grid/Dawn). Hitscan ray, then `HitResolver`. In the Court it refuses.
+  - Touch: `ConcordiaPlayer.cs`, `GameplayCoreBridge.cs` (call only)
+  - Reuse: `Gunsmithing` composer, UAL Pistol_* clips
+  - Verify: fire in the Grid; the Court refusal is logged.
+  - Server: `SendAttack` with weapon=pistol
+  - Result: —
+- [ ] **C-37 · Spellcasting** (deps: C-03, C-25)
+  - Goal: `Spell_Simple_Enter/Idle/Shoot/Exit` with a cast ActionDef. The `SpellcraftingComposer` result picks the projectile/VFX. Allowed per world law (life magic in the Sundering).
+  - Touch: `ConcordiaPlayer.cs`, `Projectile.cs`
+  - Reuse: `GameplayCoreBridge` Spellcrafting, UAL Spell_* clips
+  - Verify: cast in the Sundering; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **C-38 · Combat counts on the skill sheet** (deps: C-08, C-09)
+  - Goal: `SkillLedger` counts per art (tries/connects, parries, ripostes, perfect dodges) shown on K. These are counts only, no fake XP.
+  - Touch: `HubObjectives.cs` (SkillLedger), `ConcordiaHUD.cs`
+  - Reuse: `SkillLattice`
+  - Verify: the counts increment correctly over 10 actions.
+  - Server: —
+  - Result: —
+- [ ] **QA-2 · Combat regression** (deps: C-38)
+  - Goal: Run the regression route plus a 3-minute arena fight (block, parry, riposte, dodge, lock-on, heavy, death/respawn) and SHOT 03.
+  - Touch: log
+  - Reuse: —
+  - Verify: no errors; HitResolver EditMode tests green.
+  - Server: optional
+  - Result: —
+
+---
+## Phase 3 — Gear, crafting, economy (G)
+> `bible/ECONOMY.md` says "Do not fake a market UI", and no shop debits the player without the server. Any price, balance or trade must come from the server, or the screen is honestly closed.
+
+### Epic G1 · Inventory + equipment
+- [ ] **G-01 · Inventory model** (deps: QA-2)
+  - Goal: Extend `KitBag` into stacks/slots with kinds (weapon, armor, tool, material, food, quest, relic). Keep the `KitBag.HoldWeapon/Has/Equipped` API so existing callers work.
+  - Touch: `HubObjectives.cs` (KitBag), or a new `Scripts/Aura/Gear/Inventory.cs` that KitBag forwards to
+  - Reuse: `KitBag.Item` (id, name, kind, stem, affixLine)
+  - Verify: EditMode test covers add/stack/remove/equip.
+  - Server: —
+  - Result: —
+- [ ] **G-02 · Inventory screen** (deps: G-01, B-05)
+  - Goal: The I-menu Inventory tab is a grid with icons, filters and a detail pane. Court screens use the parchment theme, steel worlds the metal theme. Opens without animation under reduced motion.
+  - Touch: `ConcordiaHUD.cs`, or a new UI Toolkit panel `Scripts/Aura/UI/InventoryPanel.cs`
+  - Reuse: icons in `Assets/RPG_inventory_icons`, `FreePacks/GameIcons`, `KenneyUI`/`FoozleUI`/`TinyRPGUI`
+  - Verify: screenshot with ≥5 items; keyboard and gamepad navigation logged.
+  - Server: —
+  - Result: —
+- [ ] **G-03 · Equipment slots** (deps: G-02, C-05)
+  - Goal: Right / left / two-hand slots per `server/lib/combat/loadout.js` handedness: two-hand clears left; shield is left-only. Equipping updates the model (C-04) and the ActionDef set.
+  - Touch: `Inventory.cs`, `CharacterGear.cs`
+  - Reuse: `WeaponClassDef` handedness
+  - Verify: equip a claymore and the shield unequips; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **G-04 · Tooltips + affixes** (deps: G-02)
+  - Goal: Tooltip shows class stats (reach, frames, stamina) and `affixLine`. Affix names follow `server/lib/item-affixes.js` shapes and come only from the server or real content, never rolled on the client.
+  - Touch: `InventoryPanel.cs`
+  - Reuse: `KitBag.Item.affixLine`
+  - Verify: screenshot.
+  - Server: —
+  - Result: —
+- [ ] **G-05 · REST helper (auth-safe)** (deps: B-09)
+  - Goal: `ConcordRest` uses UnityWebRequest with the **same** token source `ConcordClient` uses. Never log or print the token. Base URL comes from the ConcordClient config. Missing token or server means `{ok:false, reason:'no_gateway'}`.
+  - Touch: new `Scripts/Aura/Net/ConcordRest.cs`
+  - Reuse: `ConcordClient` config/auth fields (read, don't duplicate secrets)
+  - Verify: `GET /api/worlds/concordia-hub/quests` returns ok online / honest offline; the log has no token.
+  - Server: `routes/worlds.js`
+  - Result: —
+- [ ] **G-06 · Server inventory sync** (deps: G-05, G-03)
+  - Goal: Online, load `GET /api/world/sim/inventory/:userId` and equip through `POST /api/world/sim/inventory/:userId/equip`. Offline, the local KitBag is labeled "local".
+  - Touch: `Inventory.cs`
+  - Reuse: `routes/world.js`
+  - Verify: the server list renders (online), or the local label shows.
+  - Server: `/api/world/sim/inventory`
+  - Result: —
+- [ ] **G-07 · Loot pickup → inventory** (deps: C-35, G-01)
+  - Goal: Claiming a server loot bag adds its items with provenance; PickUp_Table plays.
+  - Touch: `LootBag.cs`, `Inventory.cs`
+  - Reuse: F-17
+  - Verify: online claim adds items, or blocked on REQ-5.
+  - Server: `POST /api/worlds/:worldId/loot-bags/:id/claim`
+  - Result: —
+- [ ] **G-08 · Containers** (deps: G-02)
+  - Goal: Chests in holds and vaults open a two-pane take/put UI through the canonical container runtime.
+  - Touch: new `Scripts/Aura/UI/ContainerPanel.cs`
+  - Reuse: GameplayCore containers (`GameplayCoreBridge` vehicle/container hooks), `DungeonHold` vault
+  - Verify: move 1 item each direction.
+  - Server: —
+  - Result: —
+
+### Epic G2 · Crafting
+- [ ] **G-09 · Forge / fabrication UI** (deps: G-02)
+  - Goal: E at a forge opens recipes. `GameplayCoreBridge.TryFabricate` returns a result with provenance; output goes to the inventory. Place the forge using the real model `Generated_Models/Concordia_Sangree_Fire_Forge` in Tunya/Sangree and the hub industrial district.
+  - Touch: new `Scripts/Aura/UI/CraftPanel.cs`, placement code in `RealmFill.cs`/`CityTown`
+  - Reuse: `GameplayCoreBridge.TryFabricate`, `content/world/concordia-hub/recipes` (Canon copy if present)
+  - Verify: craft 1 item; it appears in the inventory.
+  - Server: —
+  - Result: —
+- [ ] **G-10 · Server craft path** (deps: G-09, G-05)
+  - Goal: Online, crafting goes through `POST /api/world/sim/crafting/craft` (recipes from `/sim/crafting/recipes`). Offline, the local composer result is labeled "local".
+  - Touch: `CraftPanel.cs`
+  - Reuse: `server/lib/craft-resolve.js` contract
+  - Verify: online craft logs the server id.
+  - Server: `/api/world/sim/crafting/*`
+  - Result: —
+- [ ] **G-11 · Gunsmithing bench** (deps: G-09, C-36)
+  - Goal: The `Concordia_GunsmithWorkbench` model sits in the Crime and Grid hero cities. The UI composes parts with `Gunsmithing Compose`, shows fire eligibility, and outputs a pistol/rifle item.
+  - Touch: new `Scripts/Aura/UI/GunsmithPanel.cs`, placement
+  - Reuse: `GameplayCoreBridge` Gunsmithing
+  - Verify: build a pistol, equip it, fire it (C-36).
+  - Server: —
+  - Result: —
+- [ ] **G-12 · Spellcrafting desk** (deps: G-09, C-37)
+  - Goal: Compose a spell with `Spellcrafting Compose` and slot it into 1–3.
+  - Touch: new `Scripts/Aura/UI/SpellPanel.cs`
+  - Reuse: `GameplayCoreBridge` Spellcrafting
+  - Verify: compose → cast.
+  - Server: —
+  - Result: —
+- [ ] **G-13 · Gathering nodes** (deps: G-01, F-17)
+  - Goal: `Concordia_IronOreVein` becomes `Gatherable` ore in Frontier/Tunya/Ruins wilderness, with yields into the inventory and respawn timers.
+  - Touch: `WorldGate.cs` (Gatherable), placement
+  - Reuse: `Gatherable`
+  - Verify: gather 3 ore; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **G-14 · Cooking** (deps: G-13)
+  - Goal: `CookStation` uses gathered items. Recipes come from content, and the result is consumable.
+  - Touch: `WorldGate.cs` (CookStation)
+  - Reuse: `CookStation`
+  - Verify: cook 1 dish; the consume effect is logged.
+  - Server: —
+  - Result: —
+
+### Epic G3 · Economy
+- [ ] **G-15 · Market screen (server-backed)** (deps: G-05, G-02)
+  - Goal: Shopkeepers at the hub market district (Bazaar Consortium, The Concord Exchange) and world markets.
+    - Prices: `GET /api/worlds/:worldId/market` (computeMarketPrice).
+    - Buy/sell: `POST /api/worlds/:worldId/market/trade`.
+    - Offline shows a closed shutter with "no_gateway", and no prices.
+  - Touch: new `Scripts/Aura/UI/MarketPanel.cs`
+  - Reuse: `server/lib/world-economy.js` contract
+  - Verify: online trade changes the server wallet/inventory (log); offline honest.
+  - Server: `/api/worlds/:worldId/market`
+  - Result: —
+- [ ] **G-16 · Wallet HUD** (deps: G-15)
+  - Goal: Show the balance only from the server (per-world currencies from world meta), and hide it offline.
+  - Touch: `ConcordiaHUD.cs`
+  - Reuse: —
+  - Verify: online value equals the server's.
+  - Server: as above
+  - Result: —
+- [ ] **G-17 · Caravans & trade HUD** (deps: G-15)
+  - Goal: Make CrossRing caravans readable: route, cargo and tariff 0.05. Inspecting a caravan shows the staple/need. Read-only.
+  - Touch: `WorldBook.cs` (CrossRing presentation only), `ConcordiaHUD.cs`
+  - Reuse: `CrossRing`, `TradeRouteTraffic`
+  - Verify: inspect 1 caravan; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **QA-3 · Gear regression** (deps: G-17)
+  - Goal: Run the regression route: equip, craft, gather, cook, open the market (online or offline).
+  - Touch: log
+  - Reuse: —
+  - Verify: no errors.
+  - Server: optional
+  - Result: —
+
+---
+## Phase 4 — World: cities, roads, travel, mounts (W)
+> Placement code Aura may edit: `RealmFill.cs` (RealmFill, CityTown, DungeonHold), `SettlementCompiler.cs`, `CityAtlas`/`WorldBook.cs`, `BuildingInterior.cs`, `RoadWorld.cs`, `NpcLife.cs`, hub dressing scripts.
+> Aura may **call** HubKit/OrganicKit/FreePacks/ContinentStream APIs but must **not edit** them. If one blocks you, file a REQ.
+> Streaming: about 220 m on foot per civilization (`bible/STREAMING.md`). Link gates are the only teleport.
+
+### Epic W1 · Hub & the Unburned Court
+- [ ] **W-01 · Hub layout data available** (deps: QA-1)
+  - Goal: `content/world/concordia-hub/city-layout.json` (60 buildings, 6 districts: plaza 9, market 6, academy 13, observatory 11, riverside 5, industrial 16; 3 landing pads) and `zones.json` are **not** in `Canon/concordia-hub/`.
+    - Confirm, then wait on REQ-2.
+    - While waiting, read nothing from outside `Assets` at runtime.
+  - Touch: —
+  - Reuse: REQ-2
+  - Verify: the Canon file exists (after Claude syncs it), or status stays BLOCKED.
+  - Server: —
+  - Result: —
+- [ ] **W-02 · Hub building placement** (deps: W-01)
+  - Goal: Place all 60 authored buildings at their authored x/z with district tags. That is 34 stations, 6 services and 20 lens portals, including The Concord Exchange, The Concord Bank, The Auction House, The Royalty Ledger, The Forum, The Agora, The Sanctuary, The Watch House, The Observatory, The Archive, The Depot, The Tide Station, The Link Post, The Workshop and The Atelier.
+    - Use SettlementCompiler/ModuleKit facades, nothing primitive.
+    - Keep everything out of the Court disk (42 m) and wall (56 m).
+  - Touch: `SettlementCompiler.cs` or new `Scripts/Aura/World/HubDistrictPlacer.cs`
+  - Reuse: `ModuleKit`, `PersonLabel`-style signs
+  - Verify: log `placed=60 overlaps=0 inCourt=0`; aerial screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-03 · Market + plaza districts dressed** (deps: W-02)
+  - Goal: Stalls, awnings, crowd anchors and signage for the market and plaza districts. NPC stall jobs bind to the stalls (F-19).
+  - Touch: placement script
+  - Reuse: `NpcLife` Stall/UsePlace, Generated props
+  - Verify: street-level screenshot; stall NPCs are logged.
+  - Server: —
+  - Result: —
+- [ ] **W-04 · Academy + observatory districts** (deps: W-02)
+  - Goal: Dress The Academy, Schoolhouse, Archive, Laboratory, Physics Hall, Calcularium, Observatory and Lattice Terminal with courtyards and landmarks.
+  - Touch: placement script
+  - Reuse: Generated architecture
+  - Verify: screenshot; building names are readable.
+  - Server: —
+  - Result: —
+- [ ] **W-05 · Industrial + riverside + landing pads** (deps: W-02)
+  - Goal: Depot, Tide Station, Link Post, Survey Camp, Workshop and Atelier. Place 3 landing pads (plaza-north, riverside, industrial) and the hub forge (G-09).
+  - Touch: placement script
+  - Reuse: `Concordia_Sangree_Fire_Forge`, `CX_Civic_Frontier_Wagon`
+  - Verify: screenshot; pads are logged.
+  - Server: —
+  - Result: —
+- [ ] **W-06 · Hub zones** (deps: W-01)
+  - Goal: Three hub zones from `zones.json`:
+    - **The Seven Spokes Inn**: enterable interior (W-20 path).
+    - **The Proving Ring**: existing arena; steel law; `Arena Warden Gale` stands there.
+    - **The Sundered Verge**: an edge zone.
+  - Touch: placement, `BuildingInterior.cs`
+  - Reuse: the existing arena and Warden GuestDef (z=18)
+  - Verify: walk into each; the zone name is logged and toasted.
+  - Server: —
+  - Result: —
+- [ ] **W-07 · Hub-world towns** (deps: W-02)
+  - Goal: The `Canon/concordia-hub/cities.json` towns — Pinewood Crossing, Broken Spire, Upper Grove and the Three Refusals Tavern — each get a CityTown plaza, a CityGate and signage.
+  - Touch: `RealmFill.cs` (CityTown)
+  - Reuse: `CityAtlas.For(Hub)`
+  - Verify: visit all 4; screenshots.
+  - Server: —
+  - Result: —
+- [ ] **W-08 · Unburned Court: tree + sockets** (deps: QA-1)
+  - Goal: Apply the `.Aura/Skills/visual-fidelity` law. The ancient tree is to the north. Red cloth #B22222 hangs on two of the `CourtTree.BannerSocket.N/E/S/W` sockets; the warm key is #FDF5E6. Extend HubLook; do not add a second look stack.
+  - Touch: Court dressing scripts and HubLook (extend)
+  - Reuse: `Generated/CONCORDIA_ASSET_BIBLE.md`, `AuraRefs/north-star/court-tree-plate.jpg`
+  - Verify: SHOT 01 against the reference plate.
+  - Server: —
+  - Result: —
+- [ ] **W-09 · Court ground + lanterns** (deps: W-08)
+  - Goal: Wet engraved slate #2F4F4F with `CourtFloor.EngravingAnchor`/`PuddleAnchor`, `CourtStone.LanternSocket.*` soul lanterns, and teal fog #008080.
+  - Touch: same
+  - Reuse: same
+  - Verify: SHOT 01 day + night.
+  - Server: —
+  - Result: —
+- [ ] **W-10 · Ring of eight gates readable** (deps: W-08)
+  - Goal: Each gate gets a plaque with its `Canon.GateDef` name, refusal and theNo line, in the gate color. Examples: "The Grid · Refusal of Numbers · I will not be counted." and "The Permanent Dawn · Refusal of the Win". The Crucible plaque shows only "The Eighth Refusal" text.
+  - Touch: `WorldGate.cs` (GatePost presentation)
+  - Reuse: `Canon.cs` GateDef table
+  - Verify: 8 screenshots or one panorama.
+  - Server: —
+  - Result: —
+- [ ] **W-11 · Crown Road spokes** (deps: W-10)
+  - Goal: Check that the RealmFill SLICE 4 spokes and `SettlementCompiler.cs:260` Warden-ring spokes reach every gate. Add wayfinding posts with world names and distance.
+  - Touch: `RealmFill.cs`, `SettlementCompiler.cs`
+  - Reuse: existing spoke code
+  - Verify: walk 2 spokes end to end; log distances; SHOT 05 (road).
+  - Server: —
+  - Result: —
+
+### Epic W2 · World cities & regions
+> Each faction in `Canon/<world>/countries.json` is a settlement with a capital; `CityAtlas.For(world)` builds them. Place a hero-city landmark from `Assets/Concordia/Generated_Models/` where one exists. Each task should leave: plaza, gate, ≥1 landmark, NPC anchors, roads to neighbors, and a log listing what is honest-missing.
+- [ ] **W-12 · Sovereign Ruins (6)** (deps: W-11)
+  - Goal: Three Archivists, Scavenger Crews, Spell Spirits, Pilgrims of Refusal, Concordia Envoy and Cascade Deniers. Anchor landmark: the Sovereign Refusal Archive (`RefusalCascadeArchive` model).
+  - Touch: `RealmFill.cs`/`CityTown`
+  - Reuse: `CityAtlas`
+  - Verify: 6 settlements logged; landmark screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-13 · The Sundering (8)** (deps: W-11)
+  - Goal: Wildwood Circle, House Voss, Obsidian Crown, Goblin Warband League, Paladin Order of the Lit Veil, Arcane University at Spiremount, Underwarrens Thieves' Guild and Pantheon Priesthood of the Twelve. Landmark: `RootCurseForestShrine`. Tone: the "vacation world" with a curse underneath.
+  - Touch: same
+  - Reuse: same
+  - Verify: 8 logged; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-14 · Tunya (12 countries)** (deps: W-11)
+  - Goal: Dinye, Aekon, Asbir, Fluxom, Nil, Akeia, Sangree, Vessine Crash Island, Sahm Diaspora, Bahiij and the rest. Capitals: Dinye Gate, Aekon Glacier Gate, Asbir Threshold, Fluxom Gate, Nil Threshold, Akeia Capital, Sangree Fire Forge (`Concordia_Sangree_Fire_Forge`) and The Crash Site. Follow the Tunya visual grammars in the asset bible.
+  - Touch: same
+  - Reuse: same
+  - Verify: 12 logged; 3 capital screenshots.
+  - Server: —
+  - Result: —
+- [ ] **W-15 · Crime World (7)** (deps: W-11)
+  - Goal: Ghost Network, Iron Rose Syndicate, 14th Precinct, Hexshore Holdings Ring, Federal Organized-Crime Task Force, Halloran & Greer Investigations and North Market Gang. Landmark: `CrimeHero`.
+  - Touch: same
+  - Reuse: same
+  - Verify: 7 logged; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-16 · The Grid (7)** (deps: W-11)
+  - Goal: Zero Collective, Blackout Resistance, Nevex Corp, Polysteel Society, Street Docs Network, AI Rights Movement and Cordon Guild of Fixers. Landmark: `GridHero`.
+  - Touch: same
+  - Reuse: same
+  - Verify: 7 logged; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-17 · The Frontier (6)** (deps: W-11)
+  - Goal: Couriers' Guild, Freenodes, Signal Pirates, Isolationist Enclaves, Mesh Cult and Pioneer Township Alliance. Anchor: Link Post Alpha, with `FrontierMeshGate` as the landmark. "The road is our door."
+  - Touch: same
+  - Reuse: same
+  - Verify: 6 logged; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-18 · The Permanent Dawn (7)** (deps: W-11)
+  - Goal: Enforcers' Movement, Luminary Industries, Civic Super Task Force, Crimson Spire Cartel, Movement for Emerged Civil Rights, Baseline Resistance and College of Applied Biokinetics. Landmark: `PermanentDawnHero`.
+  - Touch: same
+  - Reuse: same
+  - Verify: 7 logged; screenshot.
+  - Server: —
+  - Result: —
+- [ ] **W-19 · The Crucible (6)** (deps: W-11)
+  - Goal: Witnesses, Drift Cultists, Lattice Engineers, Drift Refugees, Procgen Collective and Meta-Witnesses. Anchor: The Central Crucible. **Do not resolve the Eighth's secret.**
+  - Touch: same
+  - Reuse: same
+  - Verify: 6 logged.
+  - Server: —
+  - Result: —
+- [ ] **W-20 · Sere (11, satire, not a gate)** (deps: W-11)
+  - Goal: Tessera, House Aldermere, Tally House, Clearing Spire, Mercy Fund, Curtain, Verge Dynamics, Hollowford Seed, Open Table, Dovrane Reach and Keshar, across the biomes old_capital, spire_city, furnace_belt and others. Sere is reached by a Court waystone, never as a ninth Refusal gate.
+  - Touch: same
+  - Reuse: `Canon/sere/*`
+  - Verify: 11 logged.
+  - Server: —
+  - Result: —
+
+### Epic W3 · Interiors, roads, wilderness
+- [ ] **W-21 · Interiors per capital (part 1)** (deps: W-12…W-16)
+  - Goal: `BuildingInterior` has 4 rooms on the hero city only. Add one enterable hall or tavern per capital in Ruins, Sundering, Tunya, Crime and Grid, with a light transition. SHOT 07.
+  - Touch: `BuildingInterior.cs`
+  - Reuse: existing 4-room pattern
+  - Verify: enter and exit each; screenshots.
+  - Server: —
+  - Result: —
+- [ ] **W-22 · Interiors per capital (part 2)** (deps: W-17…W-20, W-06)
+  - Goal: Frontier, Dawn, Crucible, Sere and the Seven Spokes Inn.
+  - Touch: same
+  - Reuse: same
+  - Verify: same
+  - Server: —
+  - Result: —
+- [ ] **W-23 · City streets** (deps: W-12…W-20)
+  - Goal: Street grids connect plazas to CityGates and landmarks: sidewalks, lamps and signage per world grammar.
+  - Touch: `RealmFill.cs`/`SettlementCompiler.cs`
+  - Reuse: the street-cross code
+  - Verify: navmesh/walk test from plaza to gate in 3 worlds.
+  - Server: —
+  - Result: —
+- [ ] **W-24 · Regional roads (a)** (deps: W-23)
+  - Goal: Roads between settlements inside Ruins, Sundering, Tunya and Frontier, following terrain and the trade routes. `RoadWorld` mid-ring threats stay staged (SeedStaged).
+  - Touch: `RoadWorld.cs`, `TradeRouteTraffic`
+  - Reuse: `CrossRing`
+  - Verify: aerial screenshot; route lengths logged.
+  - Server: —
+  - Result: —
+- [ ] **W-25 · Regional roads (b)** (deps: W-24)
+  - Goal: Crime, Grid, Dawn, Crucible and Sere. Urban worlds get avenues; the Crucible gets drift paths.
+  - Touch: same
+  - Reuse: same
+  - Verify: same
+  - Server: —
+  - Result: —
+- [ ] **W-26 · Wilderness POIs (a)** (deps: W-24)
+  - Goal: Shrines, wrecks (`CX_Prop_WreckWagon`), camps, ore veins (G-13) and LoreStones in Ruins, Sundering, Tunya and Frontier biomes. 6–10 per world, placed by biome rules.
+  - Touch: placement script
+  - Reuse: `LoreStone`, `Gatherable`, Generated props
+  - Verify: the POI list per world is logged; 2 screenshots.
+  - Server: —
+  - Result: —
+- [ ] **W-27 · Wilderness POIs (b)** (deps: W-25)
+  - Goal: Same for Crime, Grid, Dawn, Crucible and Sere: urban rooftops, alleys and drift motes.
+  - Touch: same
+  - Reuse: same
+  - Verify: same
+  - Server: —
+  - Result: —
+- [ ] **W-28 · Day/night** (deps: W-09)
+  - Goal: The `WorldClock` hour (and the server's `world:clock`) drives sun angle and color through **HubLook (extend)**. Lanterns light at dusk. SHOT 06 at 4 times of day.
+  - Touch: HubLook, `WorldBook.cs` (WorldClock)
+  - Reuse: `world:clock` handler
+  - Verify: 4 screenshots; hour→sun is logged.
+  - Server: `world:clock`
+  - Result: —
+- [ ] **W-29 · Weather** (deps: W-28)
+  - Goal: `world:weather` and the local weather drive rain/fog particles from kenney_particlePack. Wet-slate shading appears in the Court. Reduced motion lowers the particle rate.
+  - Touch: `WorldVisualDirector`, HubLook
+  - Reuse: `world:weather` handler
+  - Verify: SHOT 06 rain.
+  - Server: `world:weather`
+  - Result: —
+
+### Epic W4 · Travel, mounts, vehicles
+- [ ] **W-30 · Discovered gates + travel** (deps: W-11)
+  - Goal: Lore says link gates are the only teleport, so travel works only between **discovered** WorldGates/link plaques. Show a confirm panel; record `LastTravelKind=link_gate`. No travel during combat.
+  - Touch: `WorldGate.cs`, new `Scripts/Aura/World/TravelBook.cs`
+  - Reuse: `MegaworldMap.Present`, gate transit code
+  - Verify: discover 2 gates and travel between them (log).
+  - Server: —
+  - Result: —
+- [ ] **W-31 · World map + minimap markers** (deps: W-30)
+  - Goal: M opens a map of the Ring of eight with discovered cities, gates, quest markers (A-03) and the player. The circular minimap gets the same markers.
+  - Touch: new `Scripts/Aura/UI/WorldMapPanel.cs`, `ConcordiaHUD.cs`
+  - Reuse: `MegaworldMap`, `CityAtlas`
+  - Verify: screenshot; marker count is logged.
+  - Server: —
+  - Result: —
+- [ ] **W-32 · Rideable horse** (deps: W-30, F-17)
+  - Goal: `Generated/Prefabs/CX_Mount_Horse.prefab` has a `CX_Seat` transform; use it (or `CX_Mount_Horse_rideable`).
+    - E mounts and dismounts. The rider uses Sitting_Idle_Loop at the seat, labeled `TODO_anim_ride` (REQ-3).
+    - Movement uses `VehicleEntity`/`VehicleGroundMovement` (Mount kind).
+    - Speed is capped by the server MOVE_MODES via `player:mode` when connected.
+  - Touch: new `Scripts/Aura/World/MountController.cs`
+  - Reuse: `GameplayCore/Vehicles/*`, `GameplayCoreBridge.ActiveVehicle`, `MOUNT_AND_VEHICLE.json`
+  - Verify: SHOT 09: mount, ride 100 m, dismount (log).
+  - Server: `player:mode` (`/unity-ws`)
+  - Result: —
+- [ ] **W-33 · Pack horse (lead)** (deps: W-32, G-08)
+  - Goal: `Concordia_PackHorse` follows the player on the verb "lead" (MOUNT_HONESTY: wagon horse = lead, no rider) and carries a container.
+  - Touch: `MountController.cs`
+  - Reuse: `GoldenSliceRuntime` pack-horse note, containers
+  - Verify: lead 50 m; open the bags.
+  - Server: —
+  - Result: —
+- [ ] **W-34 · Hitched wagon** (deps: W-33)
+  - Goal: `veh_salt_wagon` = hitch and walk (MOUNT_HONESTY). Use `CX_Civic_Frontier_Wagon`; wheel spin ω = v/r. `faun_wagon_horse` has **no mesh**, so use the pack horse as the hitched animal and log the substitution.
+  - Touch: `MountController.cs`, new `WagonHitch.cs`
+  - Reuse: `VehicleVerticalSlice`
+  - Verify: hitch, walk, wheels turn (log ω).
+  - Server: —
+  - Result: —
+- [ ] **W-35 · Ground vehicles (honest)** (deps: W-32)
+  - Goal: Wire `VehicleVerticalSlice` to one urban vehicle in the Grid/Crime/Dawn **only if** a mesh exists. Candidates are the `~/.zuko/asset-catalog/vehicles/HUB_FRONTIER_VEHICLES_B26.json` specs, which have no meshes yet. Otherwise use a `TODO_vehicle_mesh` labeled blockout and file a REQ. Add a vehicle HUD (speed, enter/exit).
+  - Touch: `MountController.cs`, `ConcordiaHUD.cs`
+  - Reuse: `GameplayCore/Vehicles`, `Driving_Loop` clip
+  - Verify: enter/drive/exit logged; screenshot.
+  - Server: `player:mode`
+  - Result: —
+- [ ] **QA-4 · World regression** (deps: W-35)
+  - Goal: Run the regression route plus a tour: Court → spoke → 2 worlds → interior → mount. Compare `World` child count and fps to the B-03 baseline.
+  - Touch: log
+  - Reuse: —
+  - Verify: no errors; renderer budget noted for P-07.
+  - Server: —
+  - Result: —
+
+---
+## Phase 5 — Adventure: quests, NPCs, factions, dungeons, saves (A)
+> `bible/QUESTS.md`: max 3 active quests. Never auto-complete and never mint rewards; rewards come from the server's `claim-reward`.
+> Unity already supports talk_to/interact, reach_location (`QuestBeacon`), defeat, gather (`Gatherable`) and deliver. Content also uses observe, any_of, relic, travel, stealth_traverse, cook, consume, branch_decision, perceive_clue, attend_event, time_window and others.
+
+### Epic A1 · Quest UX
+- [ ] **A-01 · Quest content audit** (deps: QA-1)
+  - Goal: Diff `content/quests/*.json` (16 top-level files, plus 3 per world in frontier, crime, cyber, fantasy, crucible, ruins and superhero, plus sere main-arc and Tunya's arks-of-memory, bloc-secret, nil-protection and vessine-origin) against `Canon/<world>/quests`.
+    - List missing files and unsupported objective types per quest in `.Aura/QUEST_AUDIT.md`.
+    - Missing files become a REQ for sync. Do not copy them yourself.
+  - Touch: new `.Aura/QUEST_AUDIT.md`
+  - Reuse: `QuestLog` loader
+  - Verify: the audit lists every quest with a supported/unsupported count.
+  - Server: —
+  - Result: —
+- [ ] **A-02 · Journal** (deps: A-01, B-05)
+  - Goal: L opens a journal: active (max 3), available and completed quests. Each quest shows giver, objectives and progress. Unsupported objectives say plainly "this client can't do <type> yet".
+  - Touch: new `Scripts/Aura/UI/JournalPanel.cs`, `ConcordiaInput.cs`
+  - Reuse: `QuestLog` / `ActiveQuest` (HubObjectives.cs)
+  - Verify: screenshot with 3 active quests.
+  - Server: —
+  - Result: —
+- [ ] **A-03 · Tracker + waypoints** (deps: A-02)
+  - Goal: The top-right tracker shows the current objective. A world waypoint points to the `QuestBeacon`, giver or target. Static under reduced motion.
+  - Touch: `ConcordiaHUD.cs`, new `Scripts/Aura/UI/Waypoint.cs`
+  - Reuse: `QuestBeacon`, `QuestBoard`
+  - Verify: the waypoint leads to the beacon (distance decreasing is logged).
+  - Server: —
+  - Result: —
+- [ ] **A-04 · Quest givers marked** (deps: A-02)
+  - Goal: NPCs with an available quest (`giver_npc_id`) show a marker over the `PersonLabel` and a QuestBoard listing.
+  - Touch: `WorldGate.cs` (PersonLabel/QuestBoard)
+  - Reuse: `Canon` GuestDefs (Lamplighter, Elias Voss, Vesper Kane, Lady Seraphine Voss, Jax Rivera, Mama Iron Rose, Kael Nakamura, Nyx Torres, Thorne Blackroot, Lyra Silentchant, Arena Warden Gale, Asbir Thelane, Maren Ashveil, Brackish, Old Seam, Concordia)
+  - Verify: markers screenshot; the count is logged.
+  - Server: —
+  - Result: —
+- [ ] **A-05 · Server quest sync** (deps: G-05, A-02)
+  - Goal: When online, use these routes:
+    - Load: `GET /api/worlds/:worldId/quests` and `/quests/active`.
+    - Actions: `POST …/:questId/accept|event|complete|claim-reward`, following `quest-engine.js` accept/recordObjectiveProgress/checkQuestCompletion/claimQuestRewards.
+    - Listen for `quest:completed`.
+    - Offline, progress is labeled "local". Never claim rewards offline.
+  - Touch: `QuestLog` (HubObjectives.cs), `ConcordRest.cs`
+  - Reuse: `routes/worlds.js`
+  - Verify: online accept → event → complete → claim, with server responses logged.
+  - Server: `/api/worlds/:worldId/quests/*`
+  - Result: —
+
+### Epic A2 · Objective types
+- [ ] **A-06 · observe** (deps: A-03)
+  - Goal: Keep the target in view within range for N seconds (raycast plus angle).
+  - Touch: `QuestLog`, new `Scripts/Aura/Quests/ObjectiveObserve.cs`
+  - Reuse: —
+  - Verify: an onboarding observe step completes.
+  - Server: event POST
+  - Result: —
+- [ ] **A-07 · relic / any_of / travel** (deps: A-03)
+  - Goal: relic = interact with a named object. any_of = complete any child objective. travel = arrive in a world or city through a gate.
+  - Touch: objective handlers
+  - Reuse: `Gatherable`, `WorldGate`
+  - Verify: one quest step of each type.
+  - Server: event POST
+  - Result: —
+- [ ] **A-08 · stealth_traverse** (deps: F-06, C-22)
+  - Goal: Cross an area unseen. Hostile/guard perception cones are shrunk while the player crouches. Fail resets to a checkpoint.
+  - Touch: new `ObjectiveStealth.cs`, `Hostile.cs` (perception)
+  - Reuse: `Hostile` perception
+  - Verify: pass once and fail once (logs).
+  - Server: event POST
+  - Result: —
+- [ ] **A-09 · time_window / wait** (deps: W-28)
+  - Goal: An objective is only valid during `WorldClock` hours, and the tracker shows the window.
+  - Touch: objective handlers
+  - Reuse: `WorldClock`
+  - Verify: an outside-window attempt is rejected and an inside-window attempt passes.
+  - Server: —
+  - Result: —
+- [ ] **A-10 · branch_decision + perceive_clue** (deps: A-21)
+  - Goal: Dialogue choices set a branch. Perceive_clue highlights an object only within range and after "inspect" (`inspect:request`).
+  - Touch: `DialoguePanel.cs`, objective handlers
+  - Reuse: `inspect:request` gateway route
+  - Verify: a Sere/Tunya quest branches (both outcomes logged).
+  - Server: `inspect:request`, `dialogue:request`
+  - Result: —
+- [ ] **A-11 · craft / cook / consume / gather** (deps: G-09, G-14)
+  - Goal: Wire the gear events into quest progress (kael-torchlight: craft/gather/tool).
+  - Touch: objective handlers
+  - Reuse: G tasks
+  - Verify: the kael-torchlight steps progress.
+  - Server: event POST
+  - Result: —
+- [ ] **A-12 · attend_event** (deps: A-09)
+  - Goal: Festival events (`content/festivals`, `festival:started`) at a place and time count as attendance.
+  - Touch: objective handlers
+  - Reuse: festival handler in ConcordClient (if present), else a REQ
+  - Verify: a first-day-arc attend step completes.
+  - Server: `festival:*`
+  - Result: —
+- [ ] **A-13 · defeat (server-confirmed)** (deps: C-21)
+  - Goal: Defeat progress counts only on `combat:kill` (online) or a local kill labeled local.
+  - Touch: objective handlers
+  - Reuse: C-21
+  - Verify: one defeat quest progresses.
+  - Server: `combat:kill`
+  - Result: —
+
+### Epic A3 · Story playthroughs
+- [ ] **A-14 · Onboarding (11) + first-day-arc** (deps: A-06, A-07)
+  - Goal: Play `onboarding.json` and `first-day-arc` end to end in Editor and fix blockers.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: every step is logged in order; screenshot at the end.
+  - Server: optional
+  - Result: —
+- [ ] **A-15 · Main arc (7)** (deps: A-14)
+  - Goal: Play `main-arc.json` plus founding-day-reading, the-handshake-revelation and sealed-record.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: all steps are logged.
+  - Server: optional
+  - Result: —
+- [ ] **A-16 · Hub stories** (deps: A-14)
+  - Goal: brackish-trust (Brackish), nesha-old-seam (Old Seam), kael-torchlight, impossible-print, consolidation-stake, first-adaptation, southern-arc-mystery, first_cycle_phase_d and faction-quests (8).
+  - Touch: as needed
+  - Reuse: —
+  - Verify: each quest logs completed or names its blocker.
+  - Server: optional
+  - Result: —
+- [ ] **A-17 · Frontier + Ruins chains** (deps: A-15, W-17, W-12)
+  - Goal: Frontier: mara-letter, silas-quinn-portal, zara-perimeter. Ruins: calla-rebellion, silv-marn-dome, thanis-glyph.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: 6 quests logged.
+  - Server: optional
+  - Result: —
+- [ ] **A-18 · Crime + Grid chains** (deps: A-15, W-15, W-16)
+  - Goal: Crime: ada-pell-log, dahlia-ledger, thorpe-bust. Grid: ghost-7-trace, kira-packet-map, silver-identity.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: 6 logged.
+  - Server: optional
+  - Result: —
+- [ ] **A-19 · Sundering + Dawn chains** (deps: A-15, W-13, W-18)
+  - Goal: Sundering: lyra-thorne-chain, maeris-crossing, seraphine-heir. Dawn: iron-hex-redemption, mira-discretion, sifu-revelation.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: 6 logged.
+  - Server: optional
+  - Result: —
+- [ ] **A-20 · Crucible + Tunya + Sere** (deps: A-15, W-14, W-19, W-20, A-10)
+  - Goal: Crucible: emer-print, ono-nesha-letter, voss-pact. Tunya: arks-of-memory, bloc-secret, nil-protection, vessine-origin. Sere: main-arc.
+  - Touch: as needed
+  - Reuse: —
+  - Verify: logged.
+  - Server: optional
+  - Result: —
+
+### Epic A4 · NPCs
+- [ ] **A-21 · Dialogue panel** (deps: B-05, F-17)
+  - Goal: Upgrade `OpenTalk/SubmitTalk` to a panel with name and title from GuestDef, a scrolling log, choices, and subtitle scale from Settings. The NPC replies through `dialogue:request` → `dialogue:data`. Offline it shows the authored `GuestDef.line` and says plainly that live talk is offline.
+  - Touch: new `Scripts/Aura/UI/DialoguePanel.cs`, `ConcordiaPlayer.OpenTalk`
+  - Reuse: the existing talk flow, `content/dialogues/*.json` (23 files) as authored greetings
+  - Verify: talk to Maren Ashveil online and offline (screenshots).
+  - Server: `dialogue:request`
+  - Result: —
+- [ ] **A-22 · Authored dialogue trees** (deps: A-21)
+  - Goal: Load `content/dialogues` (Canon copy; file a REQ if missing) for the leaders and secondary NPCs of each world as branching trees.
+  - Touch: `DialoguePanel.cs`
+  - Reuse: `content/dialogues/{crime,cyber,fantasy,frontier,…}-leaders.json`
+  - Verify: one tree per world is navigable.
+  - Server: —
+  - Result: —
+- [ ] **A-23 · NPC schedules** (deps: W-28, F-19)
+  - Goal: `NpcLife` follows `WorldClock` schedules: work by day, home or tavern at night. Load `Canon/cyber/schedules.json`, sere and tunya where present.
+  - Touch: `NpcLife.cs`
+  - Reuse: UsePlace/BuildingPlace
+  - Verify: at 09:00 vs 22:00 NPC positions differ (logged for 5 NPCs).
+  - Server: —
+  - Result: —
+- [ ] **A-24 · Ambient life density** (deps: A-23)
+  - Goal: Crowds within the 20–30 skinned budget. BULK/VIRTUAL LOD tiers handle the rest.
+  - Touch: `NpcLife.cs`
+  - Reuse: NpcLife LOD tiers
+  - Verify: skinned count ≤30 logged in the hub market.
+  - Server: —
+  - Result: —
+
+### Epic A5 · Factions, reputation, heat
+- [ ] **A-25 · Standing panel** (deps: A-02, G-05)
+  - Goal: The I-menu Factions tab shows `FactionStandingBook` per world, with tier names from `faction-reputation.js`. Online data comes from `GET /api/worlds/:worldId/reputation`.
+  - Touch: new `Scripts/Aura/UI/FactionPanel.cs`
+  - Reuse: `FactionStandingBook`, `FactionStandingIntegration`
+  - Verify: screenshot; the online value matches the server.
+  - Server: `/api/worlds/:worldId/reputation`
+  - Result: —
+- [ ] **A-26 · Reputation effects** (deps: A-25, G-15)
+  - Goal: GatePost inspection and tariff text change by tier, and dialogue openers vary. Prices change only if the server prices them.
+  - Touch: `WorldGate.cs` (GatePost), `DialoguePanel.cs`
+  - Reuse: `GatePost`
+  - Verify: two tiers show different gate text.
+  - Server: —
+  - Result: —
+- [ ] **A-27 · Crime heat** (deps: A-25, C-22)
+  - Goal: `WorldClock.FactionHeat` rises on crimes (attacking civilians in steel worlds, theft). Guards respond: Concordant Watch in the hub never fights in the Court and only escorts out; the 14th Precinct in Crime World. Heat decays over time. The HUD heat meter uses no franchise terms.
+  - Touch: `WorldBook.cs` (FactionHeat), `Hostile.cs`, `ConcordiaHUD.cs`
+  - Reuse: FactionHeat
+  - Verify: commit a crime → heat rises → a guard approaches → heat decays (logs).
+  - Server: —
+  - Result: —
+- [ ] **A-28 · Faction wars visible** (deps: A-25)
+  - Goal: `faction:*` events (war declared/ended) show a toast and map markers. Read-only; `faction-war.js` is server-side.
+  - Touch: `ConcordiaHUD.cs`, `WorldMapPanel.cs`
+  - Reuse: faction handlers
+  - Verify: event → toast (online), or a REQ for a test event.
+  - Server: `faction:*`
+  - Result: —
+
+### Epic A6 · Dungeons, runs, progression
+- [ ] **A-29 · Dungeon hold flow** (deps: C-32, G-08)
+  - Goal: The `DungeonGate` mouth → hall → vault in each steel world has enemy waves and a vault chest. Loot comes only from the server. Leaving keeps state per lockout.
+  - Touch: `RealmFill.cs` (DungeonHold), `WorldGate.cs`
+  - Reuse: DungeonHold
+  - Verify: full clear logged in 1 world.
+  - Server: `dungeon:*`
+  - Result: —
+- [ ] **A-30 · Horde / extraction runs** (deps: A-29)
+  - Goal: H/J send `RequestRunStart("horde"|"extraction")` and handle `run:data`, with a run HUD (timer, waves, extraction point). Offline is honest.
+  - Touch: `ConcordiaHUD.cs`, `ConcordiaPlayer.cs`
+  - Reuse: `RequestRunStart`
+  - Verify: start a run online; HUD screenshot.
+  - Server: `run:start`
+  - Result: —
+- [ ] **A-31 · Skill sheet upgrade** (deps: C-38)
+  - Goal: K shows `SkillLattice` rows and groups ([ ]), `SkillPylon` unlocks, and use counts. No invented XP or levels.
+  - Touch: `ConcordiaHUD.cs`, `HubObjectives.cs`
+  - Reuse: SkillLattice/SkillLedger/SkillPylon
+  - Verify: screenshot.
+  - Server: —
+  - Result: —
+- [ ] **A-32 · Progression authority request** (deps: A-31)
+  - Goal: File a REQ for server-authored player progression (XP/level from `damage-calculator.js` checkCrossSkillUnlock or a new event) and add a UI slot that stays hidden until it arrives.
+  - Touch: `.Aura/REQUESTS_FOR_CLAUDE.md`, `ConcordiaHUD.cs`
+  - Reuse: —
+  - Verify: REQ filed; the slot is hidden.
+  - Server: REQ
+  - Result: —
+
+### Epic A7 · Save/restore, re-enabled safely
+- [ ] **A-33 · Persistence audit** (deps: B-08)
+  - Goal: Document in `.Aura/LIVE_PATH.md` what `ConcordiaPersistenceService.Restore` (line ~176) restores (world, player, quests, skills, npcs, systems, economy, fabric, fabrication, gunsmithing, spellcrafting) and why LeanPlay skips it (post-Expand melt). Run `ConcordiaPersistenceTests`.
+  - Touch: doc
+  - Reuse: `ConcordiaPersistenceService.cs`
+  - Verify: tests green; the doc is updated.
+  - Server: —
+  - Result: —
+- [ ] **A-34 · Staged restore 1: quests/skills/factions** (deps: A-33, A-05)
+  - Goal: Behind `ConcordiaSettings.RestoreInLeanPlay`, restore only quests, skills and faction standing, after boot idle + 30 s, one subsystem per frame.
+  - Touch: `ConcordiaGame.cs` (LeanPlay branch), `ConcordiaPersistenceService.cs` (subset API)
+  - Reuse: Restore
+  - Verify: accept a quest → stop Play → Play → the quest is still active; no frame >100 ms during restore.
+  - Server: —
+  - Result: —
+- [ ] **A-35 · Staged restore 2: inventory/equipment** (deps: A-34, G-03)
+  - Goal: Same staging for inventory and equipment.
+  - Touch: same
+  - Reuse: same
+  - Verify: an equipped weapon survives a restart.
+  - Server: —
+  - Result: —
+- [ ] **A-36 · Staged restore 3: position/world** (deps: A-35)
+  - Goal: Restore the last world and position only if it is a safe spawn (inside a known city or gate); otherwise use Canon.Spawn. Respect the LeanPlay hub-first boot by restoring after the hub is ready, then travelling.
+  - Touch: same
+  - Reuse: `MegaworldMap.Present`
+  - Verify: restart in the Sundering returns there; a corrupt save falls back (test).
+  - Server: —
+  - Result: —
+- [ ] **A-37 · Staged restore 4: systems/economy/crafting** (deps: A-36)
+  - Goal: Restore npcs/systems/economy/fabric/fabrication/gunsmithing/spellcrafting, one per frame.
+  - Touch: same
+  - Reuse: same
+  - Verify: no hitch; `ConcordiaPersistenceTests` green.
+  - Server: —
+  - Result: —
+- [ ] **A-38 · Autosave + indicator** (deps: A-37)
+  - Goal: Autosave on quest step, travel and every 5 min, plus an on-quit save. The indicator is static under reduced motion.
+  - Touch: `ConcordiaPersistenceService.cs`, `ConcordiaHUD.cs`
+  - Reuse: the existing two save keys (`bible/SAVE_SYSTEM.md`)
+  - Verify: the autosave log fires at triggers.
+  - Server: —
+  - Result: —
+- [ ] **QA-5 · Adventure regression** (deps: A-38)
+  - Goal: Run the regression route plus one full sub-world chain and a restart restore.
+  - Touch: log
+  - Reuse: —
+  - Verify: no errors.
+  - Server: optional
+  - Result: —
+
+---
+## Phase 6 — MMO (M)
+> Two-client tests need a second client. Aura does **not** export builds, so these tests pair Unity Editor Play with a WebGL build that Claude serves (REQ-4). Without it, mark the step `BLOCKED(REQ-4)` and move on.
+- [ ] **M-01 · Connection status HUD** (deps: B-09)
+  - Goal: Show connected / connecting / `no_gateway` / rate_limited with the reconnect countdown. Reuse the 8 s retry cadence already present.
+  - Touch: `ConcordiaHUD.cs`
+  - Reuse: `ConcordClient` state
+  - Verify: kill the network → state changes are logged.
+  - Server: `/unity-ws`
+  - Result: —
+- [ ] **M-02 · Remote players** (deps: M-01)
+  - Goal: `RemotePlayers` consumes `city:positions` (presentation only) using ModularPerson bodies with the locomotion blend from their speed.
+  - Touch: `RemotePlayers.cs`
+  - Reuse: F-03
+  - Verify: with a second client, both see each other move (2 screenshots).
+  - Server: `city:positions` (`city-presence.js` broadcastPositions)
+  - Result: —
+- [ ] **M-03 · Nameplates** (deps: M-02)
+  - Goal: `PersonLabel` nameplates for remote players and NPCs: distance fade, occlusion, no bob under reduced motion.
+  - Touch: `WorldGate.cs` (PersonLabel)
+  - Reuse: PersonLabel
+  - Verify: screenshot.
+  - Server: —
+  - Result: —
+- [ ] **M-04 · Remote combat presentation** (deps: M-02, C-21)
+  - Goal: Remote players' swings, hits and deaths come from `combat:hit`/`combat:kill`/`combat:impact` broadcasts.
+  - Touch: `RemotePlayers.cs`
+  - Reuse: F-14/F-16
+  - Verify: a second client hits a dummy and the first sees the reaction.
+  - Server: combat broadcasts
+  - Result: —
+- [ ] **M-05 · Chat panel (capability-gated)** (deps: M-01)
+  - Goal: Build the chat UI: input, channels (say/party/world) and a log. It stays hidden until the server advertises chat on `/unity-ws` (REQ-1); today there is no chat sender or route. Messages are never simulated.
+  - Touch: new `Scripts/Aura/UI/ChatPanel.cs`, `ConcordClient` (sender once REQ-1 ships)
+  - Reuse: —
+  - Verify: hidden today; after REQ-1, messages round-trip between two clients.
+  - Server: REQ-1
+  - Result: —
+- [ ] **M-06 · Party invite** (deps: M-02)
+  - Goal: Invite or join a nearby player via `party:request` and handle `party:data`. Party list in the I-menu.
+  - Touch: new `Scripts/Aura/UI/PartyPanel.cs`
+  - Reuse: `party:request` gateway handler
+  - Verify: two clients form a party (logs on both).
+  - Server: `party:request`
+  - Result: —
+- [ ] **M-07 · Party HUD** (deps: M-06, C-16)
+  - Goal: Member HP/stamina bars from party state (`party-combat.js` shapes).
+  - Touch: `ConcordiaHUD.cs`
+  - Reuse: —
+  - Verify: screenshot with 2 members.
+  - Server: `party:data`
+  - Result: —
+- [ ] **M-08 · Party dungeon** (deps: M-06, C-32)
+  - Goal: `dungeon:open` with the party roster puts both clients in one instance, with a shared boss bar.
+  - Touch: `WorldGate.cs`, `BossPresenter.cs`
+  - Reuse: `dungeon-instance.js` openInstance roster
+  - Verify: both clients see the same boss hp.
+  - Server: `dungeon:open`
+  - Result: —
+- [ ] **M-09 · Visibility + presence** (deps: M-02)
+  - Goal: Settings toggle for presence visibility (`city-presence.js` setUserVisibility via the existing route, if one exists on `/unity-ws`; otherwise a REQ).
+  - Touch: `ConcordiaSettings.cs`
+  - Reuse: —
+  - Verify: hidden on client A, absent on client B.
+  - Server: as available
+  - Result: —
+- [ ] **M-10 · Two-client test script** (deps: M-02…M-09)
+  - Goal: Write `.Aura/TWO_CLIENT_TEST.md` with the steps for Dutch (Editor + browser on Claude's served build), the expected logs per step, and a pass/fail table.
+  - Touch: new doc
+  - Reuse: —
+  - Verify: the doc exists and was run once (or is BLOCKED(REQ-4)).
+  - Server: —
+  - Result: —
+- [ ] **QA-6 · MMO regression** (deps: M-10)
+  - Goal: Run the regression route plus a reconnect test.
+  - Touch: log
+  - Reuse: —
+  - Verify: no errors.
+  - Server: `/unity-ws`
+  - Result: —
+
+---
+## Phase 7 — Polish: VFX, audio, performance, accessibility (P)
+- [ ] **P-01 · Hit VFX set** (deps: QA-2)
+  - Goal: kenney_particlePack effects keyed to the outcome (hit, blocked, parried, guard-broken, dodged), with reduced-motion variants.
+  - Touch: `CombatFeel.cs`
+  - Reuse: `FreePacks/VFX/kenney_particlePack`
+  - Verify: 5 screenshots.
+  - Server: —
+  - Result: —
+- [ ] **P-02 · Weapon trails** (deps: C-04)
+  - Goal: A TrailRenderer during the Active phase only, toggled off under reduced motion.
+  - Touch: `CharacterGear.cs`
+  - Reuse: —
+  - Verify: screenshot.
+  - Server: —
+  - Result: —
+- [ ] **P-03 · Footsteps** (deps: F-03)
+  - Goal: Foot-contact events play surface-specific steps.
+  - Touch: `Footsteps.cs`
+  - Reuse: `RPGsounds_Kenney`
+  - Verify: steps logged per surface.
+  - Server: —
+  - Result: —
+- [ ] **P-04 · Combat audio + mixer** (deps: C-11)
+  - Goal: Swing, impact, block and parry sounds. Create an AudioMixer with groups ambient/combat/UI/dialogue/music (`bible/AUDIO.md` layers). The Background_Music prefabs are missing, so leave a music hook with no fake score.
+  - Touch: new `Assets/Concordia/Audio/ConcordiaMixer.mixer`, `CombatFeel.cs`
+  - Reuse: `RPGsounds_Kenney`
+  - Verify: sounds fire per outcome (log).
+  - Server: —
+  - Result: —
+- [ ] **P-05 · UI sounds** (deps: P-04)
+  - Goal: Menu, journal, inventory and dialogue clicks.
+  - Touch: UI panels
+  - Reuse: `kenney_interfaceSounds`
+  - Verify: log.
+  - Server: —
+  - Result: —
+- [ ] **P-06 · Ambient audio hooks** (deps: P-04, W-29)
+  - Goal: Ambient beds per world, time of day and weather, only where clips exist. Missing beds are logged as TODO.
+  - Touch: new `Scripts/Aura/Audio/AmbientDirector.cs`
+  - Reuse: —
+  - Verify: log per world.
+  - Server: —
+  - Result: —
+- [ ] **P-07 · Perf budget probe** (deps: QA-4)
+  - Goal: Measure renderers, point lights, skinned meshes, draw calls and fps in the Hub and 2 worlds against `bible/PERFORMANCE.md` (Hub <400 renderers, ≤8 point lights, 20–30 skinned NPCs, 60 fps at 1080p).
+  - Touch: new `Scripts/Aura/PerfProbe.cs`, or reuse `ConcordiaRenderPerformanceAudit` if present
+  - Reuse: —
+  - Verify: table in PROGRESS_LOG.
+  - Server: —
+  - Result: —
+- [ ] **P-08 · Renderer reduction (Aura content only)** (deps: P-07)
+  - Goal: Combine or LOD Aura-placed static props (W tasks) to get the Hub under 400 renderers. Do not touch HubKit/ContinentStream content.
+  - Touch: Aura placement scripts
+  - Reuse: static batching, LODGroup
+  - Verify: P-07 rerun shows Hub <400.
+  - Server: —
+  - Result: —
+- [ ] **P-09 · Skinned NPC LOD + animator culling** (deps: P-07, F-19)
+  - Goal: `cullingMode=CullUpdateTransforms` off-screen. REAL/BULK/VIRTUAL tiers stay within the 20–30 skinned budget.
+  - Touch: `NpcLife.cs`, `ModularPerson.cs`
+  - Reuse: —
+  - Verify: skinned ≤30 and fps up (P-07 rerun).
+  - Server: —
+  - Result: —
+- [ ] **P-10 · Light budget** (deps: P-07, W-09)
+  - Goal: ≤8 realtime point lights in view. Distant lanterns become emissive-only.
+  - Touch: HubLook (extend), lantern placement
+  - Reuse: —
+  - Verify: the light count is logged at dusk in the Court.
+  - Server: —
+  - Result: —
+- [ ] **P-11 · WebGL-safe content check** (deps: P-08)
+  - Goal: Textures Aura added are ≤2k with compression set per file (no mass reimport). List new assets for Claude's WebGL budget in a REQ. Aura does not build.
+  - Touch: import settings of Aura-added assets only
+  - Reuse: —
+  - Verify: REQ filed with the asset list and sizes.
+  - Server: —
+  - Result: —
+- [ ] **P-12 · Subtitles + text scale** (deps: A-21)
+  - Goal: Dialogue and barks show subtitles with speaker names. `SubtitleScale` comes from Settings (`bible/ACCESSIBILITY.md` gap).
+  - Touch: `DialoguePanel.cs`, `ConcordiaHUD.cs`
+  - Reuse: —
+  - Verify: screenshot at 3 scales.
+  - Server: —
+  - Result: —
+- [ ] **P-13 · Colorblind palettes** (deps: C-24)
+  - Goal: Settings palette (default / deuteranopia / protanopia / tritanopia) for telegraphs, health bars and map markers.
+  - Touch: `ConcordiaSettings.cs`, telegraph/UI
+  - Reuse: —
+  - Verify: 4 screenshots.
+  - Server: —
+  - Result: —
+- [ ] **P-14 · Reduced-motion audit** (deps: P-12, P-13)
+  - Goal: Search Aura UI code for tweens, Lerp-in-Update UI, shakes, flashes and pulses; every one must check `ConcordiaSettings.ReducedMotion`. Fix any misses.
+  - Touch: Aura UI files
+  - Reuse: —
+  - Verify: the list of animations with their gate is in PROGRESS_LOG; spot-check 5 in Play.
+  - Server: —
+  - Result: —
+- [ ] **P-15 · Cinematic shot gate** (deps: P-01…P-14)
+  - Goal: Capture SHOTs 01 Court, 02 Character, 03 Combat, 04 Sprint, 05 Road, 06 Weather, 07 Interior, 08 NPC and 09 Mount (`bible/CINEMATIC.md`). "Presence is not completion": each shot needs a Play capture.
+  - Touch: none
+  - Reuse: `AuraGameViewStill`
+  - Verify: 9 screenshots in `~/.zuko/aura-shots/`.
+  - Server: —
+  - Result: —
+- [ ] **P-16 · Final regression + handoff** (deps: P-15)
+  - Goal: Full regression, all EditMode/PlayMode tests, and a summary at the top of PROGRESS_LOG: what shipped, what is blocked (REQ list), what's next. Do not merge; Claude reviews and merges.
+  - Touch: log
+  - Reuse: —
+  - Verify: tests green; summary written.
+  - Server: optional
+  - Result: —
+
+---
+## Appendix A — Known gaps (grounded 2026-10-23)
+- **Animation clips:**
+  - Missing: block, parry, heavy, strafe/backpedal, riposte, get-up and mounted riding. UAL1 has none, and Human Melee Animations FREE is not imported (REQ-3).
+  - No `.anim` files exist; clips come from FBX.
+  - The bible's "Rocketbox Biped" note is outdated; the metas are Humanoid now.
+- **Hub layout:** `city-layout.json` and `zones.json` are not in `Canon/concordia-hub/` (REQ-2). Only the hub has zones.
+- **Wagon horse:** `faun_wagon_horse` is spec only (MOUNT_HONESTY), with no mesh.
+- **Vehicles:** the catalog has specs without meshes.
+- **Network:**
+  - No chat on `/unity-ws` (REQ-1).
+  - No loot event on `/unity-ws` (REQ-5).
+  - No REST helper in ConcordClient (G-05 adds one).
+- **Combat authority:** hostile → player damage is client-local. Player → kernel targets is server-authoritative.
+- **Disconnected code:** `CombatDefenseEvaluator` is DISCONNECTED; ActionRunner and HitResolver are LIVE.
+- **Tide Colossus:** its location is not mapped (C-33).
+- **Bible age:** most bible docs are dated Sept 2026, so re-check facts in code before trusting them.
+
+## Appendix B — Request template (`.Aura/REQUESTS_FOR_CLAUDE.md`)
+```
+## REQ-<n> · <title>          status: open|done|wontfix
+why: <task ids blocked + one line>
+ask: <exact file/route/event + payload shape>
+evidence: <log line / file:line>
+```
