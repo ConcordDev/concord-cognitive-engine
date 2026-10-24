@@ -89,7 +89,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Verify: file exists, 5 REQs present, committed.
   - Server: —
   - Result: PASS · 5 REQs filed (chat, canon layout/zones, melee clips, served WebGL, loot); each carries tool-verified evidence · pending
-- [ ] **B-03 · Baseline Play capture** (deps: B-01)
+- [x] **B-03 · Baseline Play capture** (deps: B-01)
   - Goal: Record how Play looks before any change.
     - Enter Play and wait for the LeanPlay boot to finish (hero dressed and the Court visible). The AuraPlayHoldGuard helper is in Editor.
     - Screenshot SHOT 01 (Court).
@@ -98,7 +98,8 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `Editor/AuraPlayHoldGuard.cs`, `Editor/AuraGameViewStill.cs`, menu `Concordia/Focus Game View`
   - Verify: `~/.zuko/aura-shots/B-03.png` exists; the baseline numbers are in PROGRESS_LOG.
   - Server: —
-  - Result: —
+  - Result: PASS · fps 4.1 · transforms 11235 · WorldBuilder children 4 · heroMeshes 1 · errors 0 / warnings 0 · shot 2560×1410 · b0306cf32
+  - Note (code wins): `Editor/AuraPlayHoldGuard.cs` and `Editor/AuraGameViewStill.cs` do not exist; `Editor/Aura/AuraShots.cs` (`CaptureAndProbe`) is the live helper and was committed here. `World` is not a scene root in this build — probe counts `WorldBuilder` children (4); the bible's ~1143 no longer applies.
 - [ ] **B-04 · AuraVerify helper** (deps: B-01)
   - Goal: Add static `AuraVerify.Pass(id,msg)` / `Fail(id,msg)` / `Snapshot()`.
     - `Snapshot()` logs world, position, hp, stamina, poise, `ConcordClient` connected state, active quests and equipped item.

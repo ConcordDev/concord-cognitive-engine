@@ -34,3 +34,15 @@ Aura-owned at open (committed as part of B-01):
 ## Log
 
 2026-10-23 | B-01 | PASS | worktree + branch verified (`aura/gameplay`), disk 11 GiB, baseline dirty snapshot recorded, roadmap + skill committed | pending | — (log only)
+2026-10-24T09:00-04:00 | B-03 | PASS | baseline Play (fresh boot, `phase=crowd` settled): fps 4.1 · transforms 11235 · WorldBuilder children 4 · hero=True heroMeshes=1 · errors 0 · warnings 0 · lean=True · pos (11.2, 0.1, -12.0) · shot 2560×1410 | b0306cf32 | ~/.zuko/aura-shots/B-03.png
+
+### B-03 baseline numbers (SHOT 01 — Court, LeanPlay boot settled)
+
+- **fps** (idle, editor Play, focused): **4.1** — flagging as a real perf signal for the P-* perf tasks.
+- **transforms in scene** (`FindObjectsByType<Transform>`, active): **11235**
+- **WorldBuilder children**: **4** (bible's `World` ~1143 no longer describes this build; content sits under `Megaworld` + `CourtLookRig`)
+- **hero**: `ModularPerson` present, 1 enabled SkinnedMeshRenderer (dressed) — guest dress completed (15 guests staged)
+- **console during Play**: errors **0**, warnings **0**
+- **LeanPlay**: on · hero pos `(11.2, 0.1, -12.0)`
+- **evidence**: `~/.zuko/aura-shots/B-03.png` (2560×1410, 2.5 MB)
+- **discrepancy**: roadmap named `Editor/AuraPlayHoldGuard.cs` + `Editor/AuraGameViewStill.cs` (absent); used and committed `Editor/Aura/AuraShots.cs` instead.
