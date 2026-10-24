@@ -123,7 +123,13 @@ namespace Concordia
             WorldClock.Enter(world);
             // Full and Lean: Bridge + hero after staged Hub (BuildChunkStaged / realmfill_done).
             Debug.Log("[Concordia] defer GameplayCoreBridge.Install until Hub staged");
-            StartCoroutine(DressHeroAfterHub(look, chase, kernel));
+            // Coroutines started from Start()'s first-frame continuation never resume on
+            // this machine (verified 2026-10-24: a canary started here never reached 40
+            // frames while the game advanced 497; the same body started from Update ran
+            // at once). Stash the args and kick them from the first Update instead.
+            _bootLook = look;
+            _bootChase = chase;
+            _bootKernel = kernel;
             if (!ConcordiaHost.LeanPlay && _loadedPersistence != null)
             {
                 // Persistence restore after Expand in DressHero — stash for then.
@@ -149,6 +155,29 @@ namespace Concordia
             UnityEditor.EditorApplication.isPaused = false;
 #endif
             Time.timeScale = 1f;
+            _bootStarted = true;
+            s_domainAlive = true;
+            _bootPending = true;
+        }
+
+        // A play-mode script reload destroys every running coroutine but leaves this
+        // object and its fields intact — Editor.log shows "Begin MonoManager
+        // ReloadAssembly" / "Domain Reload Profiling: 22324ms" ~30 s into every
+        // session, which is what killed DressHeroAfterHub before its tail. Statics
+        // reset with the domain, so a false s_domainAlive in Update means it happened.
+        static bool s_domainAlive;
+        bool _bootStarted;
+
+        Appearance _bootLook;
+        ChaseCamera _bootChase;
+        ConcordClient _bootKernel;
+        bool _bootPending;
+
+        void KickBootCoroutines()
+        {
+            _bootPending = false;
+            Debug.Log("[Concordia] LeanPlay: kicking boot coroutines from Update (frame " + Time.frameCount + ")");
+            if (_bootKernel != null) StartCoroutine(DressHeroAfterHub(_bootLook, _bootChase, _bootKernel));
             StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
@@ -216,8 +245,12 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                 catch { }
                 yield return null;
             }
+            Debug.Log("[Concordia] LeanPlay: heroTrace wait-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " stageComplete=" + (_world != null && _world.HubStageComplete));
             // Let guest/gate CX settle — AttachHero same frame as last guest was the cliff.
             for (int i = 0; i < 20; i++) yield return null;
+            Debug.Log("[Concordia] LeanPlay: heroTrace settle-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " player=" + (_player != null) + " person=" + (_player != null && _player.person != null));
 
             // Your character lives on your Concord account: load it before the hero
             // is built so you appear as yourself on any device. Bounded wait — a
@@ -242,6 +275,8 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                     }
                 }
             }
+            Debug.Log("[Concordia] LeanPlay: heroTrace account-done t=" + Time.realtimeSinceStartup.ToString("F1") +
+                " connected=" + (kernel != null && kernel.Connected) + " accountChar=" + accountHasCharacter);
             _needsCharacterCreator = !accountHasCharacter && !AppearanceStore.HasSaved;
             // A character made on this device before accounts held them: adopt it
             // onto the account instead of making the player create it again.
@@ -286,6 +321,8 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                     Debug.LogError("[Concordia] AttachHero failed after 3 attempts; hero binding remains incomplete");
                     yield break;
                 }
+                Debug.Log("[Concordia] LeanPlay: heroTrace attach-done person=" + _player.person.name +
+                    " t=" + Time.realtimeSinceStartup.ToString("F1"));
                 _player.EquipWorldKit();
             }
             // Spread kit/gear work off the bind frame.
@@ -314,8 +351,11 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             }
             for (int i = 0; i < 8; i++) yield return null;
 
+            Debug.Log("[Concordia] LeanPlay: heroTrace pre-expand bridge=" + (_coreBridge != null) +
+                " t=" + Time.realtimeSinceStartup.ToString("F1"));
             if (_coreBridge != null)
                 yield return _coreBridge.ExpandSystemsStaged();
+            Debug.Log("[Concordia] LeanPlay: heroTrace post-expand t=" + Time.realtimeSinceStartup.ToString("F1"));
 
             // Skip persistence Restore/ReceiveHere during Full Play stabilize — was part of post-Expand melt.
             if (_loadedPersistence != null)
@@ -351,6 +391,16 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
         void Update()
         {
+            if (!s_domainAlive)
+            {
+                s_domainAlive = true;
+                if (_bootStarted && !_leanDressDone && _coreBridge == null)
+                {
+                    Debug.Log("[Concordia] LeanPlay: play-mode domain reload killed the boot coroutine — re-kicking");
+                    _bootPending = true;
+                }
+            }
+            if (_bootPending) KickBootCoroutines();
             if (!_player) _player = ConcordiaPlayer.Live;
             if (ContinentStream.Live == null && _world)
                 ContinentStream.Bind(_world);
