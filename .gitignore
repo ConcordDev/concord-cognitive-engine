@@ -119,6 +119,11 @@ concord-frontend/public/godot-client/
 # Staging remains local. DoNotShip folders from Unity's export never ship.
 concord-frontend/public/unity-client/**/*_DoNotShip*
 concord-frontend/public/unity-client/**/*_BackUpThisFolder_ButDontShipItWithYourGame*
+# Streamed AssetBundles (heavy scenery; see BuildAssets.LoadStreamed) and the
+# current player build are deployed straight onto the Mac host, not pushed:
+# the repo's GitHub LFS budget is full (2026-10-23). The frontend deploy copies
+# them from ~/concord/unity-client-build-<date>/ into the build's public/.
+concord-frontend/public/unity-client/StreamingAssets/Streamed/
 
 # AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
 # the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via

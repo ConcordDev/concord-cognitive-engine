@@ -4,7 +4,7 @@
  * World lens retail shell — Unity WebGL viewport first.
  *
  * Default: full-bleed Concordia WebGL (env UNITY_WEBGL_URL / /unity-client /
- * /concordia-webgl) with id=concordia-unity-webgl for the ConKay postMessage
+ * the Unity living world) with id=concordia-unity-webgl for the ConKay postMessage
  * bridge + /unity-ws config injection. Escape (or the floating Menu chip)
  * opens a minimal overlay: leave lens, settings, advanced OS tools.
  *

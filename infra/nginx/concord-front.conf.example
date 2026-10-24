@@ -1,0 +1,79 @@
+# Concord public front door (Mac self-host).
+# Install: copy to /opt/homebrew/etc/nginx/servers/concord-front.conf, set the
+# com.concord.frontend launchd PORT to 3001, restart it, then `nginx -s reload`.
+#
+# Why: cloudflared serves concord-os.org from 127.0.0.1:3000. The frontend
+# runs Next's standalone server.js, which cannot upgrade WebSockets, so on the
+# public site /unity-ws (the Unity living world's kernel gateway), /socket.io
+# (site realtime) and /godot-ws time out (verified 2026-10-23: handshake
+# timeout publicly, 101 on :5080/:5050). server-proxy.js was the intended fix
+# but is not what launchd runs. This block sends those sockets straight to the
+# backend upstream (concord_sticky, defined in concord-sticky.conf) and passes
+# everything else to Next on :3001 unchanged.
+#
+# Rollback: delete the file, `nginx -s reload`, PORT back to 3000, restart
+# com.concord.frontend.
+
+upstream concord_next {
+    server 127.0.0.1:3001;
+    keepalive 32;
+}
+
+server {
+    listen 127.0.0.1:3000;
+    server_name concord-os.org www.concord-os.org localhost;
+
+    # No tighter limits than Next had on its own.
+    client_max_body_size 512m;
+    proxy_request_buffering off;
+
+    location /unity-ws {
+        proxy_pass http://concord_sticky;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    location /godot-ws {
+        proxy_pass http://concord_sticky;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://concord_sticky;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    location / {
+        proxy_pass http://concord_next;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}

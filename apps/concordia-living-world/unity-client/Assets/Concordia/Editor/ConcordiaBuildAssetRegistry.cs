@@ -18,6 +18,14 @@ namespace Concordia.Editor
     ///      game is played in the editor; the export's own Hub build adds to it).
     /// Writes Generated/BuildAssets/registry-report.txt: every asset and the
     /// on-disk size of it plus its dependencies, so the download cost is visible.
+    ///
+    /// Streaming (web export): a model outside the core set (characters always
+    /// ship up front) whose source plus dependencies reaches
+    /// <c>streamAboveBytes</c> is listed in registry.streamed instead of being
+    /// referenced, so it stays out of the main download; ConcordiaWebExport ships
+    /// each as its own AssetBundle and BuildAssets loads it once the world is up.
+    /// Two PolyHaven trees (jacaranda 3.86 M triangles, island_tree_03) were
+    /// 406 MB of a 518 MB main download (2026-10-23).
     /// </summary>
     public static class ConcordiaBuildAssetRegistry
     {
@@ -37,7 +45,10 @@ namespace Concordia.Editor
         };
 
         [MenuItem("Concordia/Generate Build Asset Registry")]
-        public static void Generate()
+        public static void Generate() => Generate(0);
+
+        /// <param name="streamAboveBytes">0 = ship everything in the main download.</param>
+        public static void Generate(long streamAboveBytes)
         {
             var paths = new SortedSet<string>(CorePaths.Where(p => File.Exists(p)));
             foreach (var folder in CoreFolders)
@@ -68,6 +79,7 @@ namespace Concordia.Editor
                         }
                     }
             }
+            var core = new HashSet<string>(paths);
             if (File.Exists(BuildAssets.UsedPathsFile))
             {
                 foreach (var line in File.ReadAllLines(BuildAssets.UsedPathsFile))
@@ -91,15 +103,24 @@ namespace Concordia.Editor
                 AssetDatabase.CreateAsset(reg, RegistryPath);
             }
             reg.paths.Clear(); reg.objects.Clear(); reg.keys.Clear(); reg.keyPaths.Clear();
+            reg.streamed.Clear(); reg.streamedBundles.Clear();
 
             var report = new StringBuilder();
             var counted = new HashSet<string>();
-            long totalBytes = 0;
+            long totalBytes = 0, streamedBytes = 0;
             int missing = 0;
             foreach (var p in paths)
             {
                 var obj = AssetDatabase.LoadMainAssetAtPath(p);
                 if (!obj) { missing++; report.AppendLine("MISSING  " + p); continue; }
+                if (streamAboveBytes > 0 && !core.Contains(p) && obj is GameObject && OwnBytes(p) >= streamAboveBytes)
+                {
+                    reg.streamed.Add(p);
+                    reg.streamedBundles.Add(BundleName(p));
+                    streamedBytes += OwnBytes(p);
+                    report.AppendLine($"{OwnBytes(p) / 1024,9} KB  {p}  STREAMED → {BundleName(p)}");
+                    continue;
+                }
                 reg.paths.Add(p);
                 reg.objects.Add(obj);
                 long bytes = 0;
@@ -112,15 +133,31 @@ namespace Concordia.Editor
                 report.AppendLine($"{bytes / 1024,9} KB  {p}");
             }
             foreach (var kv in keys)
-                if (reg.paths.Contains(kv.Value)) { reg.keys.Add(kv.Key); reg.keyPaths.Add(kv.Value); }
+                if (reg.paths.Contains(kv.Value) || reg.streamed.Contains(kv.Value)) { reg.keys.Add(kv.Key); reg.keyPaths.Add(kv.Value); }
 
             EditorUtility.SetDirty(reg);
             AssetDatabase.SaveAssets();
 
-            var summary = $"{reg.paths.Count} assets, {reg.keys.Count} stems, {missing} missing, ~{totalBytes / (1024 * 1024)} MB source incl. dependencies";
+            var summary = $"{reg.paths.Count} assets, {reg.keys.Count} stems, {missing} missing, ~{totalBytes / (1024 * 1024)} MB source incl. dependencies"
+                + $"; {reg.streamed.Count} streamed (~{streamedBytes / (1024 * 1024)} MB)";
             Directory.CreateDirectory(Path.GetDirectoryName(ReportPath));
             File.WriteAllText(ReportPath, "# Build asset registry — " + summary + "\n" + report);
             Debug.Log("[BuildAssetRegistry] " + summary + " → " + RegistryPath + " (report: " + ReportPath + ")");
         }
+
+        /// <summary>The registry's streamed paths and their bundle names (after Generate).</summary>
+        public static BuildAssetRegistry Current() => AssetDatabase.LoadAssetAtPath<BuildAssetRegistry>(RegistryPath);
+
+        /// On-disk size of an asset plus everything it depends on.
+        static long OwnBytes(string path)
+        {
+            long bytes = 0;
+            foreach (var dep in AssetDatabase.GetDependencies(path, true))
+                if (File.Exists(dep)) bytes += new FileInfo(dep).Length;
+            return bytes;
+        }
+
+        public static string BundleName(string path) =>
+            "streamed-" + Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
     }
 }

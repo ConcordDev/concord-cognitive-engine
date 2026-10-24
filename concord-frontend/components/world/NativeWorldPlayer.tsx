@@ -4,7 +4,7 @@
  * Native Concordia presenter slot — Unity WebGL only.
  *
  * When Unity WebGL has been exported, this is a full-bleed iframe
- * (UNITY_WEBGL_URL → /unity-client → /concordia-webgl). iframe id is
+ * (UNITY_WEBGL_URL → /unity-client, the Unity living world). iframe id is
  * `concordia-unity-webgl` so ConKay postUnityCmd /unity-ws bridge works.
  * When the export is missing, this slot stays an honest
  * `{ok:false, reason:'unity_web_export_not_built'}` — it does **not**

@@ -72,8 +72,8 @@ export function scriptSrcForDocument(pathname: string, nonce: string, nodeEnv: s
 }
 
 function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'"; pathname?: string }): string {
-  // Default document policy is frame-ancestors 'none'. /unity-client/ and
-  // /concordia-webgl/ are the same-origin iframe exceptions (world lens → Unity WebGL).
+  // Default document policy is frame-ancestors 'none'. /unity-client/ is the
+  // same-origin iframe exception (world lens → Unity living world).
   const frameAncestors = opts?.frameAncestors ?? "'none'";
   const pathname = opts?.pathname ?? '/';
   const directives = [
@@ -240,14 +240,11 @@ const PUBLIC_PREFIXES = [
   // /meshes/ above: these are asset bytes, not a page route, and the real
   // auth happens inside the client via the gateway token it's given at boot.
   '/godot-client/',
-  // Unity WebGL — two export paths coexist: the deployed frontend serves the
-  // gzip build from public/concordia-webgl/ (NEXT_PUBLIC_UNITY_WEBGL_URL), and
-  // scripts/export-unity-web.mjs writes the canonical export to
+  // Unity living world — scripts/export-unity-web.mjs writes the export to
   // public/unity-client/ (index.html nonce-injected by
-  // app/unity-client/index.html/route.ts). Both are static render-pipeline
-  // asset bytes that must load inside the world-lens iframe without a
-  // 307→/login; real auth is the parent /lenses/world session + /unity-ws.
-  '/concordia-webgl/',
+  // app/unity-client/index.html/route.ts). Static render-pipeline asset
+  // bytes that must load inside the world-lens iframe without a 307→/login;
+  // real auth is the parent /lenses/world session + /unity-ws.
   '/unity-client/',
   '/manifest.json',
   '/manifest.webmanifest',
@@ -360,13 +357,13 @@ export function middleware(request: NextRequest) {
   // of a random UUID, the standard pattern (128 bits of entropy, never
   // reused across requests).
   const nonce = btoa(crypto.randomUUID());
-  // /unity-client/ and /concordia-webgl/ are world-lens iframe documents.
+  // /unity-client/ is the world-lens iframe document.
   // frame-ancestors 'none' (and X-Frame-Options DENY) would refuse even a
   // same-origin embed — pass frameAncestors into buildCsp (not only a later
   // string-replace) so the CSP is correct from the start.
   const csp = buildCsp(nonce, {
     pathname,
-    ...(pathname.startsWith('/unity-client/') || pathname.startsWith('/concordia-webgl/')
+    ...(pathname.startsWith('/unity-client/')
       ? { frameAncestors: "'self'" as const }
       : {}),
   });
@@ -383,7 +380,6 @@ export function middleware(request: NextRequest) {
     // Unity WebGL static template + ConKay smoke need classic inline scripts
     // (no nonce). Also allow same-origin framing for world lens / smoke iframe.
     if (
-      pathname.startsWith('/concordia-webgl/') ||
       pathname === '/conkay-bridge-smoke.html' ||
       pathname === '/conkay-industrial-smoke.html' ||
       pathname === '/conkay-apply-mesh-smoke.html' ||

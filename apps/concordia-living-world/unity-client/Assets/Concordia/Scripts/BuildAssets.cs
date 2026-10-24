@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -21,11 +23,89 @@ namespace Concordia
     /// Generated/BuildAssets/used-paths.txt. Export: ConcordiaBuildAssetRegistry
     /// turns that record plus a core include list into a Resources registry, so a
     /// build ships exactly what the game uses. Build: loads from that registry.
+    ///
+    /// Streamed assets (web): models too heavy for the main download are not in
+    /// the registry's objects; Load returns null for them until
+    /// <see cref="LoadStreamed"/> has fetched their AssetBundles, after which
+    /// they resolve like any other path. Callers rebuild what used a fallback
+    /// once <see cref="StreamingDone"/> is true.
     /// </summary>
     public static class BuildAssets
     {
         public const string RegistryResource = "Concordia/BuildAssetRegistry";
         public const string UsedPathsFile = "Assets/Concordia/Generated/BuildAssets/used-paths.txt";
+
+        /// <summary>Paths the build streams instead of shipping up front (empty in the editor).</summary>
+        public static int StreamedCount
+        {
+#if UNITY_EDITOR
+            get => 0;
+#else
+            get { Ensure(); return _streamed.Count; }
+#endif
+        }
+
+        /// <summary>True for a lookup key whose asset streams (arrived or not).</summary>
+        public static bool IsStreamedKey(string key)
+        {
+#if UNITY_EDITOR
+            return false;
+#else
+            return !string.IsNullOrEmpty(key) && Keys.TryGetValue(key, out var path) && _streamed.Contains(path);
+#endif
+        }
+
+        /// <summary>How many streamed assets have arrived.</summary>
+        public static int StreamedLoaded { get; private set; }
+
+        /// <summary>True once every streamed asset has arrived or failed.</summary>
+        public static bool StreamingDone { get; private set; }
+
+        static bool _streamingStarted;
+
+        /// <summary>
+        /// Coroutine: fetch each streamed AssetBundle one at a time (one heavy
+        /// download in memory at once) and register its asset under its editor
+        /// path. Runs once; later calls finish immediately. Never throws.
+        /// </summary>
+        public static IEnumerator LoadStreamed()
+        {
+#if UNITY_EDITOR
+            StreamingDone = true;
+            yield break;
+#else
+            if (_streamingStarted) yield break;
+            _streamingStarted = true;
+            Ensure();
+            for (int i = 0; i < _streamed.Count && i < _streamedBundles.Count; i++)
+            {
+                var path = _streamed[i];
+                var url = Application.streamingAssetsPath + "/Streamed/" + _streamedBundles[i];
+                using (var req = UnityWebRequestAssetBundle.GetAssetBundle(url))
+                {
+                    yield return req.SendWebRequest();
+                    if (req.result != UnityWebRequest.Result.Success)
+                    {
+                        Debug.LogWarning($"[BuildAssets] streamed {path} failed: {req.error}");
+                        continue;
+                    }
+                    var bundle = DownloadHandlerAssetBundle.GetContent(req);
+                    if (!bundle) { Debug.LogWarning($"[BuildAssets] streamed {path}: no bundle"); continue; }
+                    var op = bundle.LoadAssetAsync<GameObject>(path);
+                    yield return op;
+                    if (op.asset)
+                    {
+                        _registry[path] = op.asset;
+                        StreamedLoaded++;
+                        Debug.Log($"[BuildAssets] streamed {path}");
+                    }
+                    else Debug.LogWarning($"[BuildAssets] streamed {path}: asset missing in bundle");
+                    bundle.Unload(false); // keep the loaded model, free the bundle
+                }
+            }
+            StreamingDone = true;
+#endif
+        }
 
         public static T Load<T>(string path) where T : Object
         {
@@ -91,6 +171,8 @@ namespace Concordia
 #else
         static Dictionary<string, Object> _registry;
         static Dictionary<string, string> _keys;
+        static readonly List<string> _streamed = new List<string>();
+        static readonly List<string> _streamedBundles = new List<string>();
 
         static Dictionary<string, Object> Registry { get { Ensure(); return _registry; } }
         static Dictionary<string, string> Keys { get { Ensure(); return _keys; } }
@@ -106,7 +188,12 @@ namespace Concordia
                 if (reg.objects[i]) _registry[reg.paths[i]] = reg.objects[i];
             for (int i = 0; i < reg.keys.Count && i < reg.keyPaths.Count; i++)
                 _keys[reg.keys[i]] = reg.keyPaths[i];
-            Debug.Log($"[BuildAssets] registry: {_registry.Count} assets, {_keys.Count} keys");
+            if (reg.streamed != null && reg.streamedBundles != null)
+            {
+                _streamed.AddRange(reg.streamed);
+                _streamedBundles.AddRange(reg.streamedBundles);
+            }
+            Debug.Log($"[BuildAssets] registry: {_registry.Count} assets, {_keys.Count} keys, {_streamed.Count} streamed");
         }
 #endif
     }
