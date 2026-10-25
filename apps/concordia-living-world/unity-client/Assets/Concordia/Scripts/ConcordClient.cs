@@ -320,6 +320,7 @@ namespace Concordia
                     await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                     await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                     await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    await SendEvt("npc:residents", "{\"worldId\":\"" + Escape(worldId) + "\",\"limit\":96}");
                     LastReason = "lean_connected";
                     StatusJson = "{\"ok\":true,\"reason\":\"lean_connected\"}";
                     Debug.Log("[Concordia] LeanPlay: WS full handshake (ApplyScene staged; AgentBody later)");
@@ -333,6 +334,7 @@ namespace Concordia
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                 await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                await SendEvt("npc:residents", "{\"worldId\":\"" + Escape(worldId) + "\",\"limit\":96}");
                 await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
@@ -626,7 +628,12 @@ namespace Concordia
             }
             if (evt == "npc:conversation-bid")
             {
-                RunMain(() => WorldClock.NoteAct("voices nearby"));
+                RunMain(() => HubResidents.PlayConversation(text));
+                return;
+            }
+            if (evt == "npc:residents")
+            {
+                RunMain(() => HubResidents.Apply(text));
                 return;
             }
             if (evt == "gift:result")
@@ -1139,27 +1146,8 @@ namespace Concordia
             var w = JsonNestedString(json, "type");
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
-            if (ConcordiaHost.LeanPlay)
-            {
-                // Gossip live; PresentKernelCreatures/Ecology still skip (compile storm).
-                var leanGossip = JsonArrayCount(json, "gossip");
-                if (leanGossip > 0)
-                {
-                    var shown = 0;
-                    ForEachArrayObject(json, "gossip", row =>
-                    {
-                        var summary = JsonString(row, "summary");
-                        if (string.IsNullOrEmpty(summary)) return;
-                        if (shown < 3)
-                        {
-                            WorldClock.PushFeed("gossip", summary);
-                            shown++;
-                        }
-                    });
-                }
-                Debug.Log("[Concordia] LeanPlay: ApplyWorldSnapshot soft (gossip on; skip creatures/ecology)");
-                return;
-            }
+            // LeanPlay used to stop here (gossip only) to dodge the mid-Play recompile
+            // storm. #1470 removed that recompile, so Lean presents the same world as Full.
             var gossipN = JsonArrayCount(json, "gossip");
             if (gossipN > 0)
             {
