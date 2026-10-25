@@ -2061,6 +2061,7 @@ import * as cityPresence from "./lib/city-presence.js";
 // deliberately non-persisted module rather than an extension of
 // lib/ambient-chat.js's district-scoped, DB-backed system.
 import * as proximityChat from "./lib/proximity-chat.js";
+import { routeWorldChat } from "./lib/world-chat.js";
 // Godot Phase 3a — mount legitimacy check for the player:mode handler
 // (validates a claimed "mount:<speciesId>" mode against a real active
 // mounted_instances row before it's allowed to relax the anti-cheat speed cap).
@@ -11446,6 +11447,14 @@ async function tryInitWebSockets(server) {
       for (const rid of recipients) {
         try { REALTIME?.io?.to(`user:${rid}`).emit("proximity:chat", built.message); } catch { /* best-effort */ }
       }
+      // Unity/Godot players in earshot hear a browser player too, on the
+      // game clients' chat:message shape (see lib/world-chat.js).
+      const _gameMsg = {
+        id: built.message.id, from: userId, fromName: built.message.senderName,
+        channel: "say", text: built.message.body, ts: built.message.ts,
+        worldId: built.message.worldId ?? null, radiusM: built.message.radiusM,
+      };
+      for (const rid of recipients) _mirrorRealtimeToGateways("chat:message", _gameMsg, { userId: rid });
       // Echo to the sender (their own other devices, and so the sending UI
       // renders its own message without waiting on a recipient round-trip).
       socket.emit("proximity:chat", built.message);
@@ -76751,6 +76760,21 @@ function _onGodotClientClose(client) {
   }
 }
 
+// Deliver a routed in-world chat message (lib/world-chat.js) to every
+// recipient on every transport: game clients get chat:message on their user
+// room; browser clients get their existing proximity:chat for `say`. The
+// sender's own game clients get the message back so the UI can render it.
+function _deliverWorldChat(routed, senderId) {
+  const { message, recipients, proximity } = routed;
+  for (const rid of recipients) {
+    _mirrorRealtimeToGateways("chat:message", message, { userId: rid });
+    if (proximity) {
+      try { REALTIME?.io?.to(`user:${rid}`).emit("proximity:chat", proximity); } catch { /* best-effort */ }
+    }
+  }
+  _mirrorRealtimeToGateways("chat:message", message, { userId: senderId });
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   // A player in the World lens talks almost only over this socket. Count
@@ -76893,6 +76917,54 @@ function _onGodotClientMessage(client, evt, data) {
         .catch((e) => {
           _godotGatewaySend(client, "design:mode:nack", { reason: "handler_error", message: String(e?.message || e) });
         });
+      return;
+    }
+    case "chat:send": {
+      // REQ-1 (Aura) — say / tell / party. lib/world-chat.js validates and
+      // resolves recipients; refusals come back as chat:error {reason}.
+      const routed = routeWorldChat(STATE?.db || db, {
+        senderId: userId,
+        senderName: client?.username || null,
+        text: data?.text,
+        channel: data?.channel,
+        to: data?.to,
+        radius: data?.radius,
+      });
+      if (!routed.ok) {
+        _godotGatewaySend(client, "chat:error", { reason: routed.reason, channel: data?.channel ?? "say" });
+        return;
+      }
+      _deliverWorldChat(routed, userId);
+      _godotGatewaySend(client, "chat:ack", { id: routed.message.id, channel: routed.message.channel, recipientCount: routed.recipients.length });
+      return;
+    }
+    case "loot:claim": {
+      // REQ-5 (Aura) — same claim + inventory credit as
+      // POST /api/worlds/:worldId/loot-bags/:bagId/claim.
+      const bagId = String(data?.bagId || "").slice(0, 64);
+      if (!bagId) { _godotGatewaySend(client, "loot:claim:ack", { ok: false, reason: "missing_bag", taken: [] }); return; }
+      import("./lib/loot-generator.js").then(({ claimLootBagToInventory }) => {
+        const _db = STATE?.db || db;
+        let worldId = null;
+        try { worldId = _db.prepare("SELECT world_id FROM loot_bags WHERE id = ?").get(bagId)?.world_id || null; } catch { /* table optional */ }
+        const r = claimLootBagToInventory(_db, bagId, userId, worldId);
+        _godotGatewaySend(client, "loot:claim:ack", r.ok
+          ? { ok: true, bagId, taken: r.items.map((i) => ({ id: i.id, name: i.name, qty: i.quantity ?? 1, type: i.type ?? null })) }
+          : { ok: false, bagId, reason: r.reason, taken: [] });
+        if (r.ok && worldId) _mirrorRealtimeToGateways("loot:claimed", { bagId, worldId, by: userId }, { worldId });
+      }).catch((e) => {
+        _godotGatewaySend(client, "loot:claim:ack", { ok: false, bagId, reason: "handler_error", message: String(e?.message || e), taken: [] });
+      });
+      return;
+    }
+    case "loot:request": {
+      // Open bags in a world, for join / reconnect. Reply: loot:bags.
+      const worldId = String(data?.worldId || cityPresence.getUserPosition?.(userId)?.worldId || "concordia-hub").slice(0, 128);
+      import("./lib/loot-generator.js").then(({ listOpenLootBags }) => {
+        let bags = [];
+        try { bags = listOpenLootBags(STATE?.db || db, worldId, userId); } catch { /* table optional */ }
+        _godotGatewaySend(client, "loot:bags", { worldId, bags });
+      }).catch(() => _godotGatewaySend(client, "loot:bags", { worldId, bags: [] }));
       return;
     }
     case "combat:attack": {

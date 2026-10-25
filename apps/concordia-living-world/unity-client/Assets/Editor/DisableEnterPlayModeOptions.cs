@@ -12,6 +12,7 @@ static class DisableEnterPlayModeOptions
 
     static void Apply()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         if (!EditorSettings.enterPlayModeOptionsEnabled
             && EditorSettings.enterPlayModeOptions == EnterPlayModeOptions.None)
             return;
