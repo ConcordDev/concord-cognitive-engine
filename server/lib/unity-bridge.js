@@ -51,10 +51,17 @@ export function mountUnityGateway(server, deps) {
       const hit = await deps.verifyToken(token);
       if (hit) return hit;
     }
+    // The web build sends no bearer: the page's login is the httpOnly
+    // concord_auth cookie, which the browser sends on the socket upgrade.
+    if (meta.cookieToken && typeof deps.verifyToken === "function") {
+      const hit = await deps.verifyToken(meta.cookieToken);
+      if (hit) return hit;
+    }
     // Kitchen / Editor guest. Remote production still requires a real bearer.
     // Loopback (this box's Unity Editor → :5050) may use unity-local-guest
-    // so Concord 2B can answer without a Convai cloud key.
-    const loopback = isLoopback(meta.remoteAddress);
+    // so Concord 2B can answer without a Convai cloud key. Behind nginx every
+    // visitor's socket is 127.0.0.1 too, so a forwarded connection never counts.
+    const loopback = isLoopback(meta.remoteAddress) && meta.forwarded !== true;
     if (!token || token === "unity-local-guest") {
       if (process.env.NODE_ENV !== "production" || (token === "unity-local-guest" && loopback)) {
         return { userId: "unity-local-guest" };
