@@ -79,6 +79,11 @@ const SQL_INTERP = /db\.(prepare|exec)\(`[^`]*\$\{/g;
 // Every entry below was individually read and found to interpolate only
 // identifiers from literals, constants, allowlists or regex-guarded input.
 const REVIEWED = {
+  // embeddings.js (4) — the only identifier is the embedding table name:
+  // PRIMARY_TABLE, or PRIMARY_TABLE + "__" + a model slug reduced to
+  // [a-z0-9_] by tableForModel(), or a name read from sqlite_master filtered to
+  // that prefix. dtu_id / embedding / created_at are bound '?'.
+  "embeddings.js": 4,
   "domains/_dtu-recent-mine.js": 4,
   "domains/ar.js": 5,
   "domains/companion.js": 1,
@@ -261,10 +266,15 @@ const REVIEWED = {
   "lib/skill-tree-engine.js": 1,
   "lib/skills/character-level.js": 1,
   "lib/social/reputation.js": 2,
-  // lib/sqlite-stats-refresh.js (2) — the only interpolated identifier is a
+  // lib/sqlite-stats-refresh.js (3) — the only interpolated identifier is a
   // table name read back from sqlite_stat1 (the DB's own catalog, never
   // caller input), double-quote escaped by quoteIdent(); no values are spliced.
-  "lib/sqlite-stats-refresh.js": 2,
+  // The third site is the min/max(rowid) staleness probe, same quoteIdent().
+  "lib/sqlite-stats-refresh.js": 3,
+  // lib/social-share.js (2) — `table` iterates the LISTING_TABLES literals,
+  // the column list is LISTING_FIELDS filtered by PRAGMA table_info, and the
+  // owner column is one of two literals; listingId and userId are bound '?'.
+  "lib/social-share.js": 2,
   // lib/strip-object-object-dtu-tags.js (7) — `table` is only the literals
   // "dtu_store" and "dtus". `select` and `sets` are those tables' column
   // names chosen from PRAGMA table_info, or the assignment fragments
