@@ -6,6 +6,8 @@
 
 import crypto from 'crypto';
 import logger from '../logger.js';
+import { awardSparks } from './currency.js';
+import { tryLearnFromLoot } from './item-knowledge.js';
 
 const LOOT_BAG_TTL_MS   = 5 * 60 * 1000;   // 5 minutes before bag disappears
 const MAX_LOOT_SLOTS    = 8;                 // cap bag size to prevent spam
@@ -226,6 +228,91 @@ export function claimLootBag(db, bagId, claimerId, claimerType = 'player') {
   const items = _parseJSON(bag.items, []);
   logger.info('loot-generator', 'bag_claimed', { bagId, claimerId, claimerType, itemCount: items.length });
   return items;
+}
+
+/**
+ * Claim a loot bag and put its items in the claimer's inventory: sparks go to
+ * the wallet (awardSparks), everything else stacks into player_inventory
+ * (user-global, keyed by item_id), and schematics are learned. Shared by
+ * POST /api/worlds/:worldId/loot-bags/:bagId/claim and the game clients'
+ * `loot:claim` socket verb, so both paths credit identically.
+ *
+ * @returns {{ok:true, items:object[]}|{ok:false, reason:'bag_unavailable'}}
+ */
+export function claimLootBagToInventory(db, bagId, playerId, worldId = null) {
+  const items = claimLootBag(db, bagId, playerId, 'player');
+  if (!items) return { ok: false, reason: 'bag_unavailable' };
+
+  for (const item of items) {
+    if (item.type === 'currency' && item.id === 'sparks') {
+      try { awardSparks(db, playerId, item.quantity, 'loot_claim', worldId); } catch { /* non-fatal */ }
+      continue;
+    }
+    try {
+      const existing = db.prepare(
+        'SELECT id FROM player_inventory WHERE user_id = ? AND item_id = ?'
+      ).get(playerId, item.id);
+      if (existing) {
+        db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
+          .run(item.quantity ?? 1, existing.id);
+      } else {
+        db.prepare(`
+          INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality, schema_id, gear_level)
+          VALUES (?,?,?,?,?,?,1,?,?)
+        `).run(
+          crypto.randomUUID(), playerId, item.type, item.id, item.name,
+          item.quantity ?? 1, item.schemaId ?? null, item.gearLevel ?? null,
+        );
+      }
+      if (item.type === 'schematic' && item.schemaId) {
+        try { tryLearnFromLoot(db, playerId, item); } catch { /* non-fatal */ }
+      }
+    } catch { /* non-fatal */ }
+  }
+  return { ok: true, items };
+}
+
+/**
+ * Unclaimed, unexpired bags in a world, newest first (max 50) — what a client
+ * shows on join or reconnect. `killerPriority` marks bags this viewer killed for.
+ */
+export function listOpenLootBags(db, worldId, viewerId = null) {
+  const now = Math.floor(Date.now() / 1000);
+  const rows = db.prepare(`
+    SELECT id, position, owner_type, items, expires_at, killer_id
+    FROM loot_bags
+    WHERE world_id = ? AND claimed_by IS NULL AND expires_at > ?
+    ORDER BY created_at DESC LIMIT 50
+  `).all(worldId, now);
+  return rows.map((b) => {
+    const items = _parseJSON(b.items, []);
+    return {
+      id: b.id,
+      position: _parseJSON(b.position, {}),
+      itemCount: items.length,
+      items,
+      killerPriority: !!viewerId && b.killer_id === viewerId,
+      expiresAt: b.expires_at,
+    };
+  });
+}
+
+/**
+ * The game clients' `loot:dropped` payload for a freshly created bag.
+ * `rarity` is passed through only when the item carries one (the NPC loot
+ * tables don't assign rarity today, so it is usually null).
+ */
+export function lootDroppedPayload(bagId, worldId, position, items) {
+  return {
+    bagId,
+    worldId,
+    x: Number(position?.x) || 0,
+    y: Number(position?.y) || 0,
+    z: Number(position?.z) || 0,
+    items: (items || []).map((i) => ({
+      id: i.id, name: i.name, qty: i.quantity ?? 1, type: i.type ?? null, rarity: i.rarity ?? null,
+    })),
+  };
 }
 
 /**

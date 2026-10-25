@@ -20,6 +20,9 @@ namespace Concordia.Editor
 
         static void Ensure()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            // The Kenney person pack is no longer in the project; nothing to set up.
+            if (AssetImporter.GetAtPath(Fbx) == null) return;
             Configure(Fbx, true);
             Configure(Idle, false);
             Configure(Run, false);
@@ -86,8 +89,12 @@ namespace Concordia.Editor
                 imp.globalScale = 0.01f;
                 dirty = true;
             }
-            var clips = imp.defaultClipAnimations;
-            if (clips != null && clips.Length > 0)
+            // Only touch clipAnimations when a clip actually needs looping;
+            // reassigning it unconditionally reimported the FBX on every load.
+            var clips = imp.clipAnimations != null && imp.clipAnimations.Length > 0
+                ? imp.clipAnimations
+                : imp.defaultClipAnimations;
+            if (clips != null && clips.Length > 0 && System.Array.Exists(clips, c => !c.loopTime))
             {
                 foreach (var c in clips) c.loopTime = true;
                 imp.clipAnimations = clips;

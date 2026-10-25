@@ -1,0 +1,29 @@
+[
+  {
+    "name": "The Seven Spokes Inn",
+    "kind": "sanctuary",
+    "x": 60,
+    "z": 40,
+    "radius": 30,
+    "rules": { "combat": false, "pvp": false, "regenPerTick": 5, "noAggro": true },
+    "lore": "The cross-world travellers' hearth where the Ring of Doors empties out. No blade is drawn here; the Watch and the Consortium both keep it neutral. Rest restores you faster than anywhere in the hub."
+  },
+  {
+    "name": "The Proving Ring",
+    "kind": "pvp",
+    "x": -120,
+    "z": 90,
+    "radius": 45,
+    "rules": { "combat": true, "pvp": true, "regenPerTick": 0 },
+    "lore": "After The Night Someone Tried, the Concordant Watch carved out one sanctioned circle where the hub's refusal of violence is lifted by consent — duels are settled here, and only here. Step inside and PvP is on."
+  },
+  {
+    "name": "The Sundered Verge",
+    "kind": "hazard",
+    "x": 280,
+    "z": -240,
+    "radius": 70,
+    "rules": { "combat": true, "pvp": false, "hazard": 8, "element": "energy" },
+    "lore": "The eastern edge where The Dome Stabilisation never fully took. Arcane backlash sheets off the broken lattice; linger and it burns. The Curators study it from a distance and warn newcomers off."
+  }
+]

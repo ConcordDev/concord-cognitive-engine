@@ -1,0 +1,1018 @@
+{
+  "worldId": "concordia-hub",
+  "format": "concord-city-layout/v1",
+  "conceptsByDistrict": {
+    "concordia-hub:plaza": "Social",
+    "concordia-hub:market": "Commerce",
+    "concordia-hub:academy": "Knowledge",
+    "concordia-hub:observatory": "Systems",
+    "concordia-hub:riverside": "Transit",
+    "concordia-hub:industrial": "Creation"
+  },
+  "buildings": [
+    {
+      "id": "portal-studio",
+      "source": "lens_portal",
+      "building_type": "studio",
+      "name": "Recording Studio",
+      "purpose": "Compose music, record tracks, and perform live in Concordia.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "studio",
+      "levels": {
+        "ground": "Recording Studio floor — walk-in access to the studio lens."
+      },
+      "position": {
+        "x": 104,
+        "z": -236
+      }
+    },
+    {
+      "id": "portal-architecture",
+      "source": "lens_portal",
+      "building_type": "office",
+      "name": "Architect's Office",
+      "purpose": "Design buildings and structures; blueprints feed straight into the crafting queue.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "architecture",
+      "levels": {
+        "ground": "Architect's Office floor — walk-in access to the architecture lens."
+      },
+      "position": {
+        "x": 148,
+        "z": -236
+      }
+    },
+    {
+      "id": "portal-code",
+      "source": "lens_portal",
+      "building_type": "lab",
+      "name": "Hacker's Den",
+      "purpose": "Write and run code; Engineering DTUs power Engineering skill XP.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "code",
+      "levels": {
+        "ground": "Hacker's Den floor — walk-in access to the code lens."
+      },
+      "position": {
+        "x": -236,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-research",
+      "source": "lens_portal",
+      "building_type": "library",
+      "name": "Research Library",
+      "purpose": "Search and synthesise knowledge; Scholarship XP for every discovery.",
+      "district_id": "concordia-hub:academy",
+      "lens": "research",
+      "levels": {
+        "ground": "Research Library floor — walk-in access to the research lens."
+      },
+      "position": {
+        "x": -56,
+        "z": 104
+      }
+    },
+    {
+      "id": "portal-materials",
+      "source": "lens_portal",
+      "building_type": "workshop",
+      "name": "Materials Lab",
+      "purpose": "Analyse and design materials; Metallurgy skill accrues with every test.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "materials",
+      "levels": {
+        "ground": "Materials Lab floor — walk-in access to the materials lens."
+      },
+      "position": {
+        "x": 192,
+        "z": -236
+      }
+    },
+    {
+      "id": "portal-marketplace",
+      "source": "lens_portal",
+      "building_type": "market",
+      "name": "Trade Exchange",
+      "purpose": "Buy and sell DTUs and designs; Commerce skill grows with every deal.",
+      "district_id": "concordia-hub:market",
+      "lens": "marketplace",
+      "levels": {
+        "ground": "Trade Exchange floor — walk-in access to the marketplace lens."
+      },
+      "position": {
+        "x": 104,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-chat",
+      "source": "lens_portal",
+      "building_type": "hall",
+      "name": "Community Hall",
+      "purpose": "Talk to anyone on the platform, run councils, and publish to the world feed.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "chat",
+      "levels": {
+        "ground": "Community Hall floor — walk-in access to the chat lens."
+      },
+      "position": {
+        "x": -56,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-graph",
+      "source": "lens_portal",
+      "building_type": "observatory",
+      "name": "Knowledge Cartography",
+      "purpose": "Visualise and edit the knowledge graph; Systems Thinking XP for mapping connections.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "graph",
+      "levels": {
+        "ground": "Knowledge Cartography floor — walk-in access to the graph lens."
+      },
+      "position": {
+        "x": -192,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-collab",
+      "source": "lens_portal",
+      "building_type": "studio",
+      "name": "Collaboration Studio",
+      "purpose": "Co-create with other players in real time; multi-author DTUs.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "collab",
+      "levels": {
+        "ground": "Collaboration Studio floor — walk-in access to the collab lens."
+      },
+      "position": {
+        "x": 236,
+        "z": -236
+      }
+    },
+    {
+      "id": "portal-engineering",
+      "source": "lens_portal",
+      "building_type": "workshop",
+      "name": "Engineering Workshop",
+      "purpose": "Mechanical and civil engineering; higher-tier blueprints unlock here.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "engineering",
+      "levels": {
+        "ground": "Engineering Workshop floor — walk-in access to the engineering lens."
+      },
+      "position": {
+        "x": 104,
+        "z": -206
+      }
+    },
+    {
+      "id": "portal-game-design",
+      "source": "lens_portal",
+      "building_type": "office",
+      "name": "Game Design Atelier",
+      "purpose": "Design worlds, mechanics, and quests; Strategy XP with every system.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "game-design",
+      "levels": {
+        "ground": "Game Design Atelier floor — walk-in access to the game-design lens."
+      },
+      "position": {
+        "x": 148,
+        "z": -206
+      }
+    },
+    {
+      "id": "portal-science",
+      "source": "lens_portal",
+      "building_type": "lab",
+      "name": "Field Science Station",
+      "purpose": "Run experiments, collect samples, plan expeditions.",
+      "district_id": "concordia-hub:academy",
+      "lens": "science",
+      "levels": {
+        "ground": "Field Science Station floor — walk-in access to the science lens."
+      },
+      "position": {
+        "x": -19,
+        "z": 104
+      }
+    },
+    {
+      "id": "portal-film-studios",
+      "source": "lens_portal",
+      "building_type": "studio",
+      "name": "Film Studio",
+      "purpose": "Direct, edit, and distribute films; host watch parties in the world cinema.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "film-studios",
+      "levels": {
+        "ground": "Film Studio floor — walk-in access to the film-studios lens."
+      },
+      "position": {
+        "x": 192,
+        "z": -206
+      }
+    },
+    {
+      "id": "portal-music",
+      "source": "lens_portal",
+      "building_type": "studio",
+      "name": "Music Practice Room",
+      "purpose": "Composition, genre deep-dives, MIDI sequencing.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "music",
+      "levels": {
+        "ground": "Music Practice Room floor — walk-in access to the music lens."
+      },
+      "position": {
+        "x": 236,
+        "z": -206
+      }
+    },
+    {
+      "id": "portal-quantum",
+      "source": "lens_portal",
+      "building_type": "lab",
+      "name": "Quantum Computing Lab",
+      "purpose": "Qubit circuits and quantum simulation; high-skill Engineering crossover.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "quantum",
+      "levels": {
+        "ground": "Quantum Computing Lab floor — walk-in access to the quantum lens."
+      },
+      "position": {
+        "x": -148,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-neuro",
+      "source": "lens_portal",
+      "building_type": "lab",
+      "name": "Neuroscience Institute",
+      "purpose": "Brain mapping, neural pathway analysis; Scholarship XP at 2x.",
+      "district_id": "concordia-hub:academy",
+      "lens": "neuro",
+      "levels": {
+        "ground": "Neuroscience Institute floor — walk-in access to the neuro lens."
+      },
+      "position": {
+        "x": 19,
+        "z": 104
+      }
+    },
+    {
+      "id": "portal-philosophy",
+      "source": "lens_portal",
+      "building_type": "hall",
+      "name": "Philosophy Hall",
+      "purpose": "Socratic debate, argument analysis, and ethical frameworks.",
+      "district_id": "concordia-hub:academy",
+      "lens": "philosophy",
+      "levels": {
+        "ground": "Philosophy Hall floor — walk-in access to the philosophy lens."
+      },
+      "position": {
+        "x": 56,
+        "z": 104
+      }
+    },
+    {
+      "id": "portal-linguistics",
+      "source": "lens_portal",
+      "building_type": "library",
+      "name": "Language Institute",
+      "purpose": "Translation, grammar analysis, 18 human languages.",
+      "district_id": "concordia-hub:academy",
+      "lens": "linguistics",
+      "levels": {
+        "ground": "Language Institute floor — walk-in access to the linguistics lens."
+      },
+      "position": {
+        "x": -56,
+        "z": 134
+      }
+    },
+    {
+      "id": "portal-ml",
+      "source": "lens_portal",
+      "building_type": "lab",
+      "name": "AI Research Lab",
+      "purpose": "Train and deploy models; Engineering + Scholarship crossover XP.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "ml",
+      "levels": {
+        "ground": "AI Research Lab floor — walk-in access to the ml lens."
+      },
+      "position": {
+        "x": -104,
+        "z": -56
+      }
+    },
+    {
+      "id": "portal-art",
+      "source": "lens_portal",
+      "building_type": "studio",
+      "name": "Fine Arts Studio",
+      "purpose": "Painting, sculpture, digital art; Design skill at 1.5x.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "art",
+      "levels": {
+        "ground": "Fine Arts Studio floor — walk-in access to the art lens."
+      },
+      "position": {
+        "x": 104,
+        "z": -176
+      }
+    },
+    {
+      "id": "station-trading_floor",
+      "source": "station",
+      "building_type": "trading_floor",
+      "name": "The Concord Exchange",
+      "purpose": "The open trading floor where creations are listed, bid, and sold.",
+      "district_id": "concordia-hub:market",
+      "lens": "markets",
+      "levels": {
+        "ground": "The Concord Exchange — main floor.",
+        "mid": "The Concord Exchange — upper floor / gallery."
+      },
+      "position": {
+        "x": 148,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-bank_house",
+      "source": "station",
+      "building_type": "bank_house",
+      "name": "The Concord Bank",
+      "purpose": "Vaulted deposits and earned-CC withdrawals — mind the money, earn the withdrawal.",
+      "district_id": "concordia-hub:market",
+      "lens": "finance",
+      "levels": {
+        "ground": "The Concord Bank — main floor.",
+        "mid": "The Concord Bank — upper floor / gallery."
+      },
+      "position": {
+        "x": 192,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-auction_house",
+      "source": "station",
+      "building_type": "auction_house",
+      "name": "The Auction House",
+      "purpose": "Going once — the snipe window and the gavel.",
+      "district_id": "concordia-hub:market",
+      "lens": "auction",
+      "levels": {
+        "ground": "The Auction House — main floor.",
+        "mid": "The Auction House — upper floor / gallery."
+      },
+      "position": {
+        "x": 236,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-ledger_desk",
+      "source": "station",
+      "building_type": "ledger_desk",
+      "name": "The Royalty Ledger",
+      "purpose": "The counting house — the royalty cascade reconciled to the coin.",
+      "district_id": "concordia-hub:market",
+      "lens": "accounting",
+      "levels": {
+        "ground": "The Royalty Ledger — main floor.",
+        "mid": "The Royalty Ledger — upper floor / gallery."
+      },
+      "position": {
+        "x": 104,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-forum_hall",
+      "source": "station",
+      "building_type": "forum_hall",
+      "name": "The Forum",
+      "purpose": "The open square — threads, debate, and the common voice.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "forum",
+      "levels": {
+        "ground": "The Forum — main floor."
+      },
+      "position": {
+        "x": -19,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-agora",
+      "source": "station",
+      "building_type": "agora",
+      "name": "The Agora",
+      "purpose": "Gather — the open social square.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "social",
+      "levels": {
+        "ground": "The Agora — main floor."
+      },
+      "position": {
+        "x": 19,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-sanctuary",
+      "source": "station",
+      "building_type": "sanctuary",
+      "name": "The Sanctuary",
+      "purpose": "A quiet place to breathe and find calm.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "meditation",
+      "levels": {
+        "ground": "The Sanctuary — main floor."
+      },
+      "position": {
+        "x": 56,
+        "z": -56
+      }
+    },
+    {
+      "id": "station-counsel_room",
+      "source": "station",
+      "building_type": "counsel_room",
+      "name": "The Counsel Room",
+      "purpose": "Talk it through — the mind has a ledger too.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "mental-health",
+      "levels": {
+        "ground": "The Counsel Room — main floor."
+      },
+      "position": {
+        "x": -56,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-gymnasium",
+      "source": "station",
+      "building_type": "gymnasium",
+      "name": "The Gymnasium",
+      "purpose": "Train the body — the fitness ledger.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "fitness",
+      "levels": {
+        "ground": "The Gymnasium — main floor."
+      },
+      "position": {
+        "x": -19,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-newsroom",
+      "source": "station",
+      "building_type": "newsroom",
+      "name": "The Newsroom",
+      "purpose": "File the story — the world reads it next.",
+      "district_id": "concordia-hub:plaza",
+      "lens": "news",
+      "levels": {
+        "ground": "The Newsroom — main floor.",
+        "mid": "The Newsroom — upper floor / gallery."
+      },
+      "position": {
+        "x": 19,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-courthouse",
+      "source": "station",
+      "building_type": "courthouse",
+      "name": "The Concordant Court",
+      "purpose": "Seat of Concordant Law — citation, refusal, and royalty disputes are argued here.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "legal",
+      "levels": {
+        "ground": "The Concordant Court — main floor.",
+        "mid": "The Concordant Court — upper floor / gallery."
+      },
+      "position": {
+        "x": -236,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-assembly_hall",
+      "source": "station",
+      "building_type": "assembly_hall",
+      "name": "The Assembly Hall",
+      "purpose": "Where proposals are convened and the governed constants amended.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "government",
+      "levels": {
+        "ground": "The Assembly Hall — main floor.",
+        "mid": "The Assembly Hall — upper floor / gallery."
+      },
+      "position": {
+        "x": -192,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-watch_house",
+      "source": "station",
+      "building_type": "watch_house",
+      "name": "The Watch House",
+      "purpose": "Keepers of the peace — crimes logged, bounties posted.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "law-enforcement",
+      "levels": {
+        "ground": "The Watch House — main floor."
+      },
+      "position": {
+        "x": -148,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-council_chamber",
+      "source": "station",
+      "building_type": "council_chamber",
+      "name": "The Council Chamber",
+      "purpose": "Where the council sits and the factions deliberate.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "council",
+      "levels": {
+        "ground": "The Council Chamber — main floor."
+      },
+      "position": {
+        "x": -104,
+        "z": -26
+      }
+    },
+    {
+      "id": "station-code_terminal",
+      "source": "station",
+      "building_type": "code_terminal",
+      "name": "The Lattice Terminal",
+      "purpose": "Jack into the Concord lattice and shape the substrate directly.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "code",
+      "levels": {
+        "ground": "The Lattice Terminal — main floor.",
+        "mid": "The Lattice Terminal — upper floor / gallery."
+      },
+      "position": {
+        "x": -236,
+        "z": 4
+      }
+    },
+    {
+      "id": "station-observatory",
+      "source": "station",
+      "building_type": "observatory",
+      "name": "The Observatory",
+      "purpose": "A domed eye on the heavens — ephemerides and apparitions.",
+      "district_id": "concordia-hub:observatory",
+      "lens": "astronomy",
+      "levels": {
+        "ground": "The Observatory — main floor.",
+        "mid": "The Observatory — upper floor / gallery.",
+        "rooftop": "The Observatory — rooftop deck."
+      },
+      "position": {
+        "x": -192,
+        "z": 4
+      }
+    },
+    {
+      "id": "station-laboratory",
+      "source": "station",
+      "building_type": "laboratory",
+      "name": "The Laboratory",
+      "purpose": "Run the experiment; let the residuals tell the truth.",
+      "district_id": "concordia-hub:academy",
+      "lens": "science",
+      "levels": {
+        "ground": "The Laboratory — main floor."
+      },
+      "position": {
+        "x": -19,
+        "z": 134
+      }
+    },
+    {
+      "id": "station-archive_hall",
+      "source": "station",
+      "building_type": "archive_hall",
+      "name": "The Archive",
+      "purpose": "The record of what was — read the long memory of the world.",
+      "district_id": "concordia-hub:academy",
+      "lens": "history",
+      "levels": {
+        "ground": "The Archive — main floor.",
+        "mid": "The Archive — upper floor / gallery."
+      },
+      "position": {
+        "x": 19,
+        "z": 134
+      }
+    },
+    {
+      "id": "station-physics_hall",
+      "source": "station",
+      "building_type": "physics_hall",
+      "name": "The Physics Hall",
+      "purpose": "Test the laws — forces, motion, and the residuals.",
+      "district_id": "concordia-hub:academy",
+      "lens": "physics",
+      "levels": {
+        "ground": "The Physics Hall — main floor."
+      },
+      "position": {
+        "x": 56,
+        "z": 134
+      }
+    },
+    {
+      "id": "station-calcularium",
+      "source": "station",
+      "building_type": "calcularium",
+      "name": "The Calcularium",
+      "purpose": "Work the proof — the CAS made a room.",
+      "district_id": "concordia-hub:academy",
+      "lens": "math",
+      "levels": {
+        "ground": "The Calcularium — main floor."
+      },
+      "position": {
+        "x": -56,
+        "z": 164
+      }
+    },
+    {
+      "id": "station-philosophy_porch",
+      "source": "station",
+      "building_type": "philosophy_porch",
+      "name": "The Porch",
+      "purpose": "Reason it out under the colonnade.",
+      "district_id": "concordia-hub:academy",
+      "lens": "philosophy",
+      "levels": {
+        "ground": "The Porch — main floor."
+      },
+      "position": {
+        "x": -19,
+        "z": 164
+      }
+    },
+    {
+      "id": "station-schoolhouse",
+      "source": "station",
+      "building_type": "schoolhouse",
+      "name": "The Schoolhouse",
+      "purpose": "Teach and learn — the first cycle and the long curriculum.",
+      "district_id": "concordia-hub:academy",
+      "lens": "classroom",
+      "levels": {
+        "ground": "The Schoolhouse — main floor."
+      },
+      "position": {
+        "x": 19,
+        "z": 164
+      }
+    },
+    {
+      "id": "station-academy",
+      "source": "station",
+      "building_type": "academy",
+      "name": "The Academy",
+      "purpose": "Study deeply; mastery is tracked and earned.",
+      "district_id": "concordia-hub:academy",
+      "lens": "education",
+      "levels": {
+        "ground": "The Academy — main floor.",
+        "mid": "The Academy — upper floor / gallery."
+      },
+      "position": {
+        "x": 56,
+        "z": 164
+      }
+    },
+    {
+      "id": "station-ethics_hall",
+      "source": "station",
+      "building_type": "ethics_hall",
+      "name": "The Ethics Hall",
+      "purpose": "Weigh the right — the refusal field is reasoned here.",
+      "district_id": "concordia-hub:academy",
+      "lens": "ethics",
+      "levels": {
+        "ground": "The Ethics Hall — main floor."
+      },
+      "position": {
+        "x": -56,
+        "z": 194
+      }
+    },
+    {
+      "id": "station-depot",
+      "source": "station",
+      "building_type": "depot",
+      "name": "The Depot",
+      "purpose": "Route the goods — the supply chain made physical.",
+      "district_id": "concordia-hub:riverside",
+      "lens": "logistics",
+      "levels": {
+        "ground": "The Depot — main floor."
+      },
+      "position": {
+        "x": -56,
+        "z": -236
+      }
+    },
+    {
+      "id": "station-tide_station",
+      "source": "station",
+      "building_type": "tide_station",
+      "name": "The Tide Station",
+      "purpose": "Read the tides — currents, depth, and the ocean.",
+      "district_id": "concordia-hub:riverside",
+      "lens": "ocean",
+      "levels": {
+        "ground": "The Tide Station — main floor."
+      },
+      "position": {
+        "x": -19,
+        "z": -236
+      }
+    },
+    {
+      "id": "station-post_office",
+      "source": "station",
+      "building_type": "post_office",
+      "name": "The Link Post",
+      "purpose": "Relays word across the Concord Link between worlds.",
+      "district_id": "concordia-hub:riverside",
+      "lens": "message",
+      "levels": {
+        "ground": "The Link Post — main floor."
+      },
+      "position": {
+        "x": 19,
+        "z": -236
+      }
+    },
+    {
+      "id": "station-survey_camp",
+      "source": "station",
+      "building_type": "survey_camp",
+      "name": "The Survey Camp",
+      "purpose": "Read the strata and chart the way through — expeditions stage here.",
+      "district_id": "concordia-hub:riverside",
+      "lens": "geology",
+      "levels": {
+        "ground": "The Survey Camp — main floor."
+      },
+      "position": {
+        "x": 56,
+        "z": -236
+      }
+    },
+    {
+      "id": "station-workshop",
+      "source": "station",
+      "building_type": "workshop",
+      "name": "The Workshop",
+      "purpose": "Resolve the recipe; the resources decide the potency.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "crafting",
+      "levels": {
+        "ground": "The Workshop — main floor."
+      },
+      "position": {
+        "x": 148,
+        "z": -176
+      }
+    },
+    {
+      "id": "station-atelier",
+      "source": "station",
+      "building_type": "atelier",
+      "name": "The Atelier",
+      "purpose": "Make something — the open studio floor.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "studio",
+      "levels": {
+        "ground": "The Atelier — main floor."
+      },
+      "position": {
+        "x": 192,
+        "z": -176
+      }
+    },
+    {
+      "id": "station-gallery_hall",
+      "source": "station",
+      "building_type": "gallery_hall",
+      "name": "The Gallery",
+      "purpose": "Show the work; let the citations gather.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "gallery",
+      "levels": {
+        "ground": "The Gallery — main floor."
+      },
+      "position": {
+        "x": 236,
+        "z": -176
+      }
+    },
+    {
+      "id": "station-mill",
+      "source": "station",
+      "building_type": "mill",
+      "name": "The Mill",
+      "purpose": "Run the line — raw stock to finished goods.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "manufacturing",
+      "levels": {
+        "ground": "The Mill — main floor.",
+        "mid": "The Mill — upper floor / gallery."
+      },
+      "position": {
+        "x": 104,
+        "z": -146
+      }
+    },
+    {
+      "id": "station-powerhouse",
+      "source": "station",
+      "building_type": "powerhouse",
+      "name": "The Powerhouse",
+      "purpose": "Mind the grid — generation and load.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "energy",
+      "levels": {
+        "ground": "The Powerhouse — main floor."
+      },
+      "position": {
+        "x": 148,
+        "z": -146
+      }
+    },
+    {
+      "id": "station-engineers_hall",
+      "source": "station",
+      "building_type": "engineers_hall",
+      "name": "The Engineers' Hall",
+      "purpose": "CAS and the beam-frame solver — engineer it for real.",
+      "district_id": "concordia-hub:industrial",
+      "lens": "engineering",
+      "levels": {
+        "ground": "The Engineers' Hall — main floor."
+      },
+      "position": {
+        "x": 192,
+        "z": -146
+      }
+    },
+    {
+      "id": "service-inn",
+      "source": "service",
+      "building_type": "inn",
+      "name": "The Wanderer's Rest",
+      "purpose": "Traveler lodging and the common room where new arrivals get their bearings.",
+      "district_id": "concordia-hub:plaza",
+      "lens": null,
+      "levels": {
+        "ground": "The Wanderer's Rest — ground floor.",
+        "mid": "The Wanderer's Rest — upper floor."
+      },
+      "position": {
+        "x": 56,
+        "z": -26
+      }
+    },
+    {
+      "id": "service-market",
+      "source": "service",
+      "building_type": "market",
+      "name": "Seed Market",
+      "purpose": "General trade stalls — the everyday goods market, distinct from the Trade Exchange's DTU trading floor.",
+      "district_id": "concordia-hub:market",
+      "lens": null,
+      "levels": {
+        "ground": "Seed Market — ground floor."
+      },
+      "position": {
+        "x": 148,
+        "z": -26
+      }
+    },
+    {
+      "id": "service-well",
+      "source": "service",
+      "building_type": "well",
+      "name": "Town Well",
+      "purpose": "Water utility infrastructure for the settlement — a literal system, not decoration.",
+      "district_id": "concordia-hub:observatory",
+      "lens": null,
+      "levels": {
+        "ground": "Town Well — ground floor."
+      },
+      "position": {
+        "x": -148,
+        "z": 4
+      }
+    },
+    {
+      "id": "service-house",
+      "source": "service",
+      "building_type": "house",
+      "name": "Settler House",
+      "purpose": "Residential dwelling — where settlers actually live.",
+      "district_id": "concordia-hub:plaza",
+      "lens": null,
+      "levels": {
+        "ground": "Settler House — ground floor."
+      },
+      "position": {
+        "x": -56,
+        "z": 4
+      }
+    },
+    {
+      "id": "service-warehouse",
+      "source": "service",
+      "building_type": "warehouse",
+      "name": "Community Storehouse",
+      "purpose": "Bulk goods storage feeding the logistics network out of the Depot.",
+      "district_id": "concordia-hub:riverside",
+      "lens": null,
+      "levels": {
+        "ground": "Community Storehouse — ground floor."
+      },
+      "position": {
+        "x": -56,
+        "z": -206
+      }
+    },
+    {
+      "id": "service-forge",
+      "source": "service",
+      "building_type": "forge",
+      "name": "The First Forge",
+      "purpose": "Smithing and tool repair — the settlement's first crafting station.",
+      "district_id": "concordia-hub:industrial",
+      "lens": null,
+      "levels": {
+        "ground": "The First Forge — ground floor."
+      },
+      "position": {
+        "x": 236,
+        "z": -146
+      }
+    }
+  ],
+  "_landingPadsComment": "C11/C12 (master-spec 'Aircraft/hover + landing pads') — real touch-down markers for flight-capable mounts and future aircraft, kept as a STANDALONE array (not a `buildings` entry) because a landing pad has no walk-in interior, no lens, and no world_buildings row backing it — jamming it into `buildings` would either fabricate a fake lens/purpose to satisfy assertNoDeadFacades' dead-facade contract (designed for real interactive shells) or require weakening that contract, neither of which is honest. Positions are chosen clear of every authored building's coordinates (max abs value elsewhere in this file is 236) so a pad never overlaps a building footprint.",
+  "landingPads": [
+    {
+      "id": "landing-pad-plaza-north",
+      "district_id": "concordia-hub:plaza",
+      "name": "Plaza Skydock",
+      "purpose": "Open-air touch-down platform north of the plaza for mounted flyers and future aircraft arriving at the city's civic heart.",
+      "position": { "x": 0, "z": 280 },
+      "radius_m": 14,
+      "elevation_m": 0
+    },
+    {
+      "id": "landing-pad-riverside",
+      "district_id": "concordia-hub:riverside",
+      "name": "Riverside Skydock",
+      "purpose": "A cleared touch-down strip past the riverside docks, sharing the district's transit role for arrivals by air instead of by water.",
+      "position": { "x": 0, "z": -300 },
+      "radius_m": 14,
+      "elevation_m": 0
+    },
+    {
+      "id": "landing-pad-industrial",
+      "district_id": "concordia-hub:industrial",
+      "name": "Industrial Skydock",
+      "purpose": "A reinforced pad past the workshops for hauling freight in and out of the industrial district by air.",
+      "position": { "x": 300, "z": -190 },
+      "radius_m": 16,
+      "elevation_m": 0
+    }
+  ]
+}

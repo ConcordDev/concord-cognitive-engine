@@ -2493,11 +2493,17 @@ export default function registerGameDesignActions(registerLensAction) {
     const dtuId = params.dtuId ? String(params.dtuId) : "";
     if (!dtuId) return { ok: false, error: "dtuId required" };
     const fetched = await ctx.macro.run("dtu", "get", { id: dtuId });
-    const dtu = fetched?.ok ? fetched.dtu : null;
-    // Same object a missing id produces. Do not consult STATE, and do not
-    // return the body: a different status or error would confirm the id exists.
+    // Same object a missing id produces. Do not consult STATE before dtu.get
+    // has accepted this caller, and do not return the body: a different
+    // status or error would confirm the id exists.
     const miss = { ok: false, error: "DTU not found" };
-    if (!dtu || !ctxMayReadDtu(ctx, dtu)) return miss;
+    if (!fetched?.ok || !fetched.dtu) return miss;
+    // dtu.get returns the wire copy, whose owner fields carry a display
+    // label instead of the raw user id (_presentDtuPublic). Owner checks
+    // need the stored row, which is safe to read now that dtu.get has
+    // already let this caller see it.
+    const dtu = globalThis._concordSTATE?.dtus?.get?.(dtuId) || fetched.dtu;
+    if (!ctxMayReadDtu(ctx, dtu)) return miss;
     // A private row owned by someone else is the same miss, even if an
     // inner read handed the body back. not_authorized is only for a DTU
     // this caller can already read that scene-load still will not rebuild.
