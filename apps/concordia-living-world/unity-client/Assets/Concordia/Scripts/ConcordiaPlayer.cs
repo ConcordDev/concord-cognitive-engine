@@ -98,6 +98,8 @@ namespace Concordia
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
+        float _moveIdleAt;
+        Vector3 _moveSentPos = new Vector3(float.NaN, 0f, 0f);
         WorldId _fightWorld = (WorldId)(-1);
         Vector3 _forceWalk = Vector3.forward;
         float _forceWalkT;
@@ -272,9 +274,15 @@ namespace Concordia
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
-            if (Time.time >= _moveSentAt)
+            // ~12 Hz while moving; standing still sends one keep-alive a second.
+            // The gateway allows 20 messages a second per user, shared with
+            // every other event, so idle frames must not spend it.
+            var movedEnough = float.IsNaN(_moveSentPos.x) || (transform.position - _moveSentPos).sqrMagnitude > 0.0025f;
+            if (Time.time >= _moveSentAt && (movedEnough || Time.time >= _moveIdleAt))
             {
                 _moveSentAt = Time.time + 0.08f;
+                _moveIdleAt = Time.time + 1f;
+                _moveSentPos = transform.position;
                 var client = ConcordClient.Live;
                 // The headless world host is not a player — it must never appear in
                 // everyone's city:positions.

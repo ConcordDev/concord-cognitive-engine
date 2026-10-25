@@ -18,7 +18,7 @@ namespace Concordia
     /// </summary>
     public class ConcordClient : MonoBehaviour
     {
-        [SerializeField] string gatewayUrl = "wss://live.concordos.ai/unity-ws";
+        [SerializeField] string gatewayUrl = "wss://concord-os.org/unity-ws";
         [SerializeField] string kitchenUrl = "ws://127.0.0.1:5050/unity-ws";
         [SerializeField] string worldId = "concordia-hub";
         [SerializeField] string bearerToken = "";
@@ -629,6 +629,11 @@ namespace Concordia
             if (evt == "npc:conversation-bid")
             {
                 RunMain(() => HubResidents.PlayConversation(text));
+                return;
+            }
+            if (evt == "world:aerial-traffic")
+            {
+                RunMain(() => AerialTraffic.Apply(text));
                 return;
             }
             if (evt == "npc:residents")
