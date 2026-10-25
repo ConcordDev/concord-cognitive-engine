@@ -41,6 +41,9 @@ export async function runNpcConversationInitiator({ db, io } = {}) {
             npcA: result.npcA,
             npcB: result.npcB,
             opener: result.opener,
+            nameA: result.nameA,
+            nameB: result.nameB,
+            lines: result.lines,
             expiresAt: result.expiresAt,
           };
           io?.to(`world:${worldId}`)?.emit?.("npc:conversation-bid", payload);

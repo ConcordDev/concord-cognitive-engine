@@ -203,7 +203,9 @@ export const EVENT_SHAPES = Object.freeze({
   // world:${worldId}) so ambient NPC dialogue is visible.
   "npc:conversation-bid": {
     required: ["id", "worldId", "npcA", "npcB", "opener"],
-    optional: ["expiresAt"],
+    // npc-simulator sends the speakers' names and the whole exchange; without
+    // these the wire carried only the first line.
+    optional: ["expiresAt", "nameA", "nameB", "lines"],
   },
 
   // ── Lattice-born quests (Phase 4c) ────────────────────────────────
