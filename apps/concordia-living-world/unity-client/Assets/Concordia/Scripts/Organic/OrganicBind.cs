@@ -268,17 +268,7 @@ namespace Concordia
             host.transform.position = pos;
             host.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
 
-            var art = UnityEngine.Object.Instantiate(template, host.transform);
-            art.name = "Asset";
-            art.transform.localPosition = Vector3.zero;
-            art.transform.localRotation = Quaternion.identity;
-            art.transform.localScale = Vector3.one;
-            foreach (var t in art.GetComponentsInChildren<Transform>(true))
-                if (t) t.gameObject.SetActive(true);
-            foreach (var r in art.GetComponentsInChildren<Renderer>(true))
-                if (r) r.enabled = true;
-
-            var lodLevels = BuildLods(art);
+            var art = InstantiateLodded(template, host.transform, out var lodLevels);
             FreePacks.FitMax(art, Mathf.Max(0.25f, row.maxDimension));
             GroundAndCenter(art);
             Collide(art, row, out var colliderState);
@@ -294,6 +284,33 @@ namespace Concordia
             marker.bindNote = row.note;
             marker.stagedStatus = "bound-in-play-from-organic-registry";
             return host;
+        }
+
+        /// <summary>
+        /// One registry mesh instanced under <paramref name="parent"/> at its local origin,
+        /// unit-sized as imported, with its LOD siblings composed into a LODGroup. Null
+        /// until HubKit has imported the id (HubKit.Prewarm waits for that).
+        /// </summary>
+        public static GameObject InstantiateLodded(string id, Transform parent, out int lodLevels)
+        {
+            lodLevels = 0;
+            if (!OrganicKit.Has(id) || !HubKit.TryGet(id, out var template) || !template) return null;
+            return InstantiateLodded(template, parent, out lodLevels);
+        }
+
+        static GameObject InstantiateLodded(GameObject template, Transform parent, out int lodLevels)
+        {
+            var art = UnityEngine.Object.Instantiate(template, parent);
+            art.name = "Asset";
+            art.transform.localPosition = Vector3.zero;
+            art.transform.localRotation = Quaternion.identity;
+            art.transform.localScale = Vector3.one;
+            foreach (var t in art.GetComponentsInChildren<Transform>(true))
+                if (t) t.gameObject.SetActive(true);
+            foreach (var r in art.GetComponentsInChildren<Renderer>(true))
+                if (r) r.enabled = true;
+            lodLevels = BuildLods(art);
+            return art;
         }
 
         /// <summary>
