@@ -17,6 +17,9 @@ public static class LeanPlayStarveProbe
     const string CompilePath = "/tmp/concord-play-compile-status.txt";
     static double _playStart = -1;
     static int _beats;
+    // Only a Play the probe started ends itself at 60 s; a Play someone pressed stays up.
+    // SessionState survives the domain reload that entering Play performs.
+    const string OwnsPlayKey = "LeanPlayStarveProbe.ownsPlay";
 
     static LeanPlayStarveProbe()
     {
@@ -68,6 +71,7 @@ public static class LeanPlayStarveProbe
             WriteStage("play_exiting beats=" + _beats);
             WriteHeart("exiting beats=" + _beats);
             _playStart = -1;
+            SessionState.EraseBool(OwnsPlayKey);
         }
     }
 
@@ -116,7 +120,7 @@ public static class LeanPlayStarveProbe
         _beats++;
         WriteHeart("t=" + _beats + "s fps~" + (1f / Mathf.Max(0.0001f, Time.deltaTime)).ToString("0.0"));
         WriteStage("play_alive t=" + _beats);
-        if (_beats >= 60)
+        if (_beats >= 60 && SessionState.GetBool(OwnsPlayKey, false))
         {
             WriteStage("play_ok_60s");
             WriteHeart("SUCCESS 60s alive");
@@ -161,6 +165,7 @@ public static class LeanPlayStarveProbe
         }
         try { File.WriteAllText(Abs(HeartPath), DateTime.UtcNow.ToString("o") + " probe_start\n"); }
         catch { }
+        SessionState.SetBool(OwnsPlayKey, true);
         EditorApplication.isPlaying = true;
     }
 }
