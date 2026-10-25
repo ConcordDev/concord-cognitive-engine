@@ -301,6 +301,18 @@ function isBinaryMovePayload(p) {
     return n;
   }
 
+  function readCookie(header, name) {
+    if (typeof header !== "string" || !header) return null;
+    for (const part of header.split(";")) {
+      const eq = part.indexOf("=");
+      if (eq < 0) continue;
+      if (part.slice(0, eq).trim() !== name) continue;
+      const raw = part.slice(eq + 1).trim();
+      try { return decodeURIComponent(raw) || null; } catch { return raw || null; }
+    }
+    return null;
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   async function tryAuth(client, data) {
     const token = data && typeof data.token === "string" ? data.token : null;
@@ -311,6 +323,8 @@ function isBinaryMovePayload(p) {
       try {
         res = await verifyToken(token, {
           remoteAddress: client.ws?._socket?.remoteAddress || "",
+          forwarded: client.forwarded === true,
+          cookieToken: client.cookieToken || null,
         });
       } catch {
         res = null;
@@ -846,10 +860,17 @@ function isBinaryMovePayload(p) {
   }
 
   // ── Connection setup ──────────────────────────────────────────────────────
-  function onConnection(ws) {
+  function onConnection(ws, req) {
+    const headers = req?.headers || {};
     const client = {
       id: nextClientId(),
       ws,
+      // A proxy in front (nginx, a tunnel) makes every visitor's socket read
+      // 127.0.0.1. Any forwarding header means this is not a direct local client.
+      forwarded: Boolean(headers["x-forwarded-for"] || headers.forwarded
+        || headers["x-real-ip"] || headers["cf-connecting-ip"]),
+      // The web build's login is the site's httpOnly cookie, sent on the upgrade.
+      cookieToken: readCookie(headers.cookie, "concord_auth"),
       authenticated: false,
       userId: null,
       username: null,
