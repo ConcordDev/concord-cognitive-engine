@@ -26,6 +26,7 @@ import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHisto
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
 import { recordCombatReject } from "../lib/desync-metrics.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
@@ -1044,6 +1045,11 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
             const bagId = createLootBag(db, worldId, pos, 'npc', npcId, 'player', killerId, items);
             result.lootBagId = bagId;
             result.lootItems = items;
+            // Game clients (Unity/Godot) in this world see the bag drop.
+            try {
+              const { lootDroppedPayload } = await import("../lib/loot-generator.js");
+              mirrorToGateways("loot:dropped", lootDroppedPayload(bagId, worldId, pos, items), { worldId });
+            } catch { /* fan-out best-effort */ }
           } catch (lootErr) {
             logger.debug('worlds', 'loot_bag_skip', { reason: lootErr?.message });
           }
@@ -1533,23 +1539,11 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
   // ── Loot bags ───────────────────────────────────────────────────────────────
 
   // GET /api/worlds/:worldId/loot-bags — list unclaimed bags visible to this player
-  router.get("/:worldId/loot-bags", requireAuth, (req, res) => {
+  router.get("/:worldId/loot-bags", requireAuth, async (req, res) => {
     try {
-      const { worldId } = req.params;
-      const now = Math.floor(Date.now() / 1000);
-      const bags = db.prepare(`
-        SELECT id, position, owner_type, items, expires_at, killer_id
-        FROM loot_bags
-        WHERE world_id = ? AND claimed_by IS NULL AND expires_at > ?
-        ORDER BY created_at DESC LIMIT 50
-      `).all(worldId, now);
-      res.json({ ok: true, bags: bags.map(b => ({
-        id: b.id,
-        position: _tryParseJSON(b.position, {}),
-        itemCount: _tryParseJSON(b.items, []).length,
-        killerPriority: b.killer_id === req.user.id,
-        expiresAt: b.expires_at,
-      }))});
+      const { listOpenLootBags } = await import("../lib/loot-generator.js");
+      const bags = listOpenLootBags(db, req.params.worldId, req.user.id);
+      res.json({ ok: true, bags: bags.map(({ items: _items, ...b }) => b) });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -1561,45 +1555,10 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       const { bagId } = req.params;
       const playerId  = req.user.id;
 
-      const { claimLootBag } = await import("../lib/loot-generator.js");
-      const items = claimLootBag(db, bagId, playerId, 'player');
-      if (!items) return res.status(409).json({ ok: false, error: 'bag_unavailable' });
-
-      // Add items to player inventory
-      for (const item of items) {
-        if (item.type === 'currency' && item.id === 'sparks') {
-          try {
-            const { awardSparks } = await import("../lib/currency.js");
-            awardSparks(db, playerId, item.quantity, 'loot_claim', req.params.worldId);
-          } catch { /* non-fatal */ }
-          continue;
-        }
-        try {
-          const existing = db.prepare(
-            'SELECT id FROM player_inventory WHERE user_id = ? AND item_id = ?'
-          ).get(playerId, item.id);
-          if (existing) {
-            db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
-              .run(item.quantity ?? 1, existing.id);
-          } else {
-            db.prepare(`
-              INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality, schema_id, gear_level)
-              VALUES (?,?,?,?,?,?,1,?,?)
-            `).run(
-              crypto.randomUUID(), playerId, item.type, item.id, item.name,
-              item.quantity ?? 1, item.schemaId ?? null, item.gearLevel ?? null,
-            );
-          }
-
-          // Auto-learn schematic if item is a schematic type
-          if (item.type === 'schematic' && item.schemaId) {
-            try {
-              const { tryLearnFromLoot } = await import("../lib/item-knowledge.js");
-              tryLearnFromLoot(db, playerId, item);
-            } catch { /* non-fatal */ }
-          }
-        } catch { /* non-fatal */ }
-      }
+      const { claimLootBagToInventory } = await import("../lib/loot-generator.js");
+      const r = claimLootBagToInventory(db, bagId, playerId, req.params.worldId);
+      if (!r.ok) return res.status(409).json({ ok: false, error: r.reason });
+      const items = r.items;
 
       req.app.locals.io?.emit('world:notification', {
         userId: playerId,

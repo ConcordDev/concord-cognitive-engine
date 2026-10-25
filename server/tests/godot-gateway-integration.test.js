@@ -1171,3 +1171,75 @@ test("apiKey auth rejects a bogus key honestly (invalid_api_key, no fabricated s
     assert.equal(err.data.reason, "invalid_api_key");
   } finally { ws.close(); }
 });
+
+// ── Aura REQ-1 / REQ-5: chat:send and loot verbs on the shared handler ─────
+
+async function authedAt(username, x, z, world) {
+  const { token, userId } = await registerUser(username);
+  const ws = await connect(WS_URL);
+  sendMsg(ws, "auth", { token });
+  await waitForEvt(ws, "hello");
+  sendMsg(ws, "player:move", { cityId: world, x, y: 0, z, direction: 0 });
+  await waitForEvt(ws, "player:move:ack");
+  return { ws, userId };
+}
+
+test("chat:send say reaches a player in earshot and echoes to the sender", async () => {
+  const world = `godot-it-chat-${TS}`;
+  const a = await authedAt(`godotit_${TS}_chat_a`, 0, 0, world);
+  const b = await authedAt(`godotit_${TS}_chat_b`, 6, 0, world);
+  try {
+    sendMsg(a.ws, "chat:send", { text: "over here", channel: "say" });
+    const heard = await waitForEvt(b.ws, "chat:message");
+    assert.equal(heard.data.text, "over here");
+    assert.equal(heard.data.channel, "say");
+    assert.equal(heard.data.from, a.userId);
+    const echo = await waitForEvt(a.ws, "chat:message");
+    assert.equal(echo.data.id, heard.data.id);
+    const ack = await waitForEvt(a.ws, "chat:ack");
+    assert.equal(ack.data.recipientCount, 1);
+  } finally { a.ws.close(); b.ws.close(); }
+});
+
+test("chat:send tell to an offline player is a chat:error, not a fabricated delivery", async () => {
+  const world = `godot-it-chat2-${TS}`;
+  const a = await authedAt(`godotit_${TS}_chat_c`, 0, 0, world);
+  try {
+    sendMsg(a.ws, "chat:send", { text: "hello?", channel: "tell", to: "nobody_by_this_name" });
+    const err = await waitForEvt(a.ws, "chat:error");
+    assert.equal(err.data.reason, "addressee_offline");
+    sendMsg(a.ws, "chat:send", { text: "x", channel: "yell" });
+    assert.equal((await waitForEvt(a.ws, "chat:error")).data.reason, "unknown_channel");
+  } finally { a.ws.close(); }
+});
+
+test("loot:request lists an open bag and loot:claim credits it exactly once", async () => {
+  const world = `godot-it-loot-${TS}`;
+  const a = await authedAt(`godotit_${TS}_loot_a`, 0, 0, world);
+  try {
+    const bagId = `bag_it_${TS}`;
+    __TEST__.db.prepare(`
+      INSERT INTO loot_bags (id, world_id, position, owner_type, owner_id, killer_type, killer_id, items, expires_at)
+      VALUES (?, ?, ?, 'npc', 'npc_it', 'player', ?, ?, ?)
+    `).run(bagId, world, JSON.stringify({ x: 2, y: 0, z: 3 }), a.userId,
+      JSON.stringify([{ id: "it-ore", name: "IT Ore", type: "resource", quantity: 2 }]),
+      Math.floor(Date.now() / 1000) + 600);
+
+    sendMsg(a.ws, "loot:request", { worldId: world });
+    const bags = await waitForEvt(a.ws, "loot:bags");
+    assert.deepEqual(bags.data.bags.map((b) => b.id), [bagId]);
+    assert.equal(bags.data.bags[0].killerPriority, true);
+
+    sendMsg(a.ws, "loot:claim", { bagId });
+    const ack = await waitForEvt(a.ws, "loot:claim:ack");
+    assert.equal(ack.data.ok, true);
+    assert.deepEqual(ack.data.taken, [{ id: "it-ore", name: "IT Ore", qty: 2, type: "resource" }]);
+    const row = __TEST__.db.prepare("SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = 'it-ore'").get(a.userId);
+    assert.equal(row?.quantity, 2, "the item must really be in inventory");
+
+    sendMsg(a.ws, "loot:claim", { bagId });
+    const again = await waitForEvt(a.ws, "loot:claim:ack");
+    assert.equal(again.data.ok, false);
+    assert.equal(again.data.reason, "bag_unavailable");
+  } finally { a.ws.close(); }
+});
