@@ -52,6 +52,7 @@ import { getTombsForWorld } from "./npc-legacy.js";
 import { listActiveBosses } from "./world-bosses.js";
 import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
 import { notePlayerWorld } from "./world-loader.js";
+import { listResidentsForGateway } from "./world-npc-snapshot.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -597,6 +598,19 @@ function isBinaryMovePayload(p) {
       case "run:start": {
         const result = handleRunStart(db, client.userId, data);
         send(client.ws, "run:data", result);
+        return;
+      }
+
+      case "npc:residents": {
+        // The world's living, named NPCs, so a game client's population is
+        // the server's people rather than invented extras. Public fields only.
+        const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        if (!worldId) {
+          send(client.ws, "npc:residents", { ok: false, reason: "missing_world" });
+          return;
+        }
+        const residents = listResidentsForGateway(db, worldId, { limit: data.limit });
+        send(client.ws, "npc:residents", { ok: true, worldId, residents, count: residents.length });
         return;
       }
 

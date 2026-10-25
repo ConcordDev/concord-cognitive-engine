@@ -197,7 +197,14 @@ export async function tryInitiateConversation(db, worldId, opts = {}) {
       worldId, a: c.a, b: c.b, opener, messages, composer,
       seedContext: { factionA: c.factionA, factionB: c.factionB, sameFaction: c.sameFaction },
     });
-    return { ok: true, conversationId: inserted.id, opener, npcA: c.a, npcB: c.b, expiresAt: inserted.expiresAt };
+    const nameA = c.nameA || null;
+    const nameB = c.nameB || null;
+    // The whole exchange as spoken lines, so a client can play it out. An LLM
+    // opener is a single line, sent as exactly that.
+    const lines = Array.isArray(messages) && messages.length
+      ? messages.map((m) => ({ from: (m.from === c.a ? nameA : nameB) || m.from, text: m.text }))
+      : [{ from: nameA || c.a, text: opener }];
+    return { ok: true, conversationId: inserted.id, opener, npcA: c.a, npcB: c.b, nameA, nameB, lines, expiresAt: inserted.expiresAt };
   } catch (e) {
     return { ok: false, reason: "insert_failed", error: String(e?.message || e) };
   }

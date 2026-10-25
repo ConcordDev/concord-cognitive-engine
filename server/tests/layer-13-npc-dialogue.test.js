@@ -156,3 +156,16 @@ test("internal cooldown / TTL constants are sane", () => {
   assert.ok(_internal.MAX_PER_PASS >= 1);
   assert.ok(_internal.MIN_NPCS_FOR_CONVERSATION >= 2);
 });
+
+test("tryInitiateConversation hands back both names and the whole exchange", async () => {
+  seedNpcs("w-lines", 3);
+  const r = await tryInitiateConversation(db, "w-lines");
+  assert.strictEqual(r.ok, true, JSON.stringify(r));
+  const stored = getActiveConversations(db, "w-lines")[0];
+  assert.strictEqual(r.lines.length, stored.messages.length, "every stored line goes out, not just the opener");
+  assert.strictEqual(r.lines[0].text, r.opener);
+  for (const line of r.lines) {
+    assert.ok([r.nameA, r.nameB].includes(line.from), `speaker ${line.from} is one of the two names`);
+    assert.doesNotMatch(line.from, /npc-w-lines-/, "speakers are names, never ids");
+  }
+});

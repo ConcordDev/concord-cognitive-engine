@@ -54,3 +54,44 @@ export function listNpcsForGatewaySnapshot(db, worldId, { limit = 48 } = {}) {
     };
   });
 }
+
+/**
+ * A world's living, named residents for the game clients' population
+ * (`npc:residents` on /unity-ws and /godot-ws). Clients bind these people to
+ * their own homes and stalls by job. Positions stay client-side because each
+ * client lays the city out its own way.
+ *
+ * narrative_context.secret is never read here: secrets are for authors and
+ * branch conditions, not for anything a player's client can see. Only the
+ * public backstory goes out, trimmed.
+ */
+export function listResidentsForGateway(db, worldId, { limit = 64 } = {}) {
+  if (!db || typeof db.prepare !== "function" || !worldId) return [];
+  const cap = Math.min(200, Math.max(1, Number(limit) || 64));
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT id, faction, job_type, current_activity, state, narrative_context
+        FROM world_npcs
+       WHERE world_id = ? AND is_dead = 0
+         AND json_extract(state, '$.name') IS NOT NULL
+       ORDER BY (job_type IS NULL OR job_type = 'generic') ASC, id ASC
+       LIMIT ?
+    `).all(worldId, cap);
+  } catch {
+    return [];
+  }
+  return rows.map((r) => {
+    const state = parseJson(r.state, {});
+    const story = parseJson(r.narrative_context, {});
+    const backstory = typeof story.backstory === "string" ? story.backstory.slice(0, 280) : "";
+    return {
+      id: r.id,
+      name: String(state.name),
+      job: r.job_type || "generic",
+      activity: r.current_activity || state.currentActivity || null,
+      faction: r.faction || null,
+      backstory,
+    };
+  });
+}
