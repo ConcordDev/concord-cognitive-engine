@@ -1422,3 +1422,107 @@ test("/unity-ws: combat:block arms the server guard that npc:attack respects", a
     assert.equal(hit.damageResult.blocked, true, "a held guard is on the server");
   } finally { ws.close(); }
 });
+
+// ── quest:report (owner decision 2026-10-26: client reports, server checks) ─
+function seedReportQuest(world, questId, objectives) {
+  const db = __TEST__.db;
+  db.prepare(`INSERT INTO world_quests (id, world_id, title, description, status, authored) VALUES (?, ?, ?, '', 'available', 1)`)
+    .run(questId, world, questId);
+  objectives.forEach(([type, target, n], i) => {
+    db.prepare(`INSERT INTO quest_objectives (id, quest_id, type, target, required_count, description, order_index) VALUES (?, ?, ?, ?, ?, '', ?)`)
+      .run(`${questId}_o${i}`, questId, type, target, n, i);
+  });
+}
+function acceptFor(userId, world, questId) {
+  __TEST__.db.prepare(`INSERT INTO player_quests (id, user_id, quest_id, world_id, status) VALUES (?, ?, ?, ?, 'active')`)
+    .run(`pq_${questId}_${userId}`, userId, questId, world);
+}
+async function wsUser(tag, world) {
+  const { token, userId } = await registerUser(`godotit_${TS}_${tag}`);
+  const ws = await connect(UNITY_WS_URL);
+  sendMsg(ws, "auth", { token });
+  await nextFrame(ws);
+  sendMsg(ws, "player:move", { cityId: world, x: 0, y: 0, z: 0, direction: 0 });
+  await waitForEvt(ws, "player:move:ack");
+  return { ws, userId };
+}
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
+
+test("/unity-ws quest:report: reached places count once per report and finish the quest for this player only", async () => {
+  const world = `unity-it-q-${TS}`;
+  const questId = `it_q_reach_${TS}`;
+  seedReportQuest(world, questId, [["reach_location", "retired_quarter", 2], ["observe", "the_pulse", 1]]);
+  const { ws, userId } = await wsUser("qr1", world);
+  try {
+    acceptFor(userId, world, questId);
+    sendMsg(ws, "quest:report", { questId, type: "reach_location", target: "retired_quarter" });
+    let { data: a } = await waitForEvt(ws, "quest:report:ack");
+    assert.equal(a.ok, true, JSON.stringify(a));
+    assert.equal(a.current, 1);
+    assert.equal(a.required, 2);
+    sendMsg(ws, "quest:report", { questId, type: "reach_location", target: "retired_quarter" });
+    ({ data: a } = await waitForEvt(ws, "quest:report:ack"));
+    assert.equal(a.error, "rate_limited");
+    await sleep(1600);
+    sendMsg(ws, "quest:report", { questId, type: "reach_location", target: "retired_quarter" });
+    ({ data: a } = await waitForEvt(ws, "quest:report:ack"));
+    assert.equal(a.objectiveComplete, true);
+    assert.equal(a.questComplete, false);
+    sendMsg(ws, "quest:report", { questId, type: "observe", target: "the_pulse" });
+    ({ data: a } = await waitForEvt(ws, "quest:report:ack"));
+    assert.equal(a.questComplete, true, JSON.stringify(a));
+    const row = __TEST__.db.prepare("SELECT status FROM world_quests WHERE id = ?").get(questId);
+    assert.equal(row.status, "available", "an authored quest stays open for everyone else");
+  } finally { ws.close(); }
+});
+
+test("/unity-ws quest:report refuses server-recorded types, unknown objectives, unaccepted quests and other worlds", async () => {
+  const world = `unity-it-q2-${TS}`;
+  const questId = `it_q_refuse_${TS}`;
+  seedReportQuest(world, questId, [["talk_to", "wend", 1], ["interact", "the_lever", 1]]);
+  const { ws, userId } = await wsUser("qr2", world);
+  try {
+    const ask = async (body) => { sendMsg(ws, "quest:report", body); return (await waitForEvt(ws, "quest:report:ack")).data; };
+    assert.equal((await ask({ questId, type: "interact", target: "the_lever" })).error, "quest_not_active");
+    acceptFor(userId, world, questId);
+    assert.equal((await ask({ questId, type: "talk_to", target: "wend" })).error, "type_recorded_by_server");
+    assert.equal((await ask({ questId, type: "interact", target: "a_lever_that_is_not_there" })).error, "objective_not_found");
+    assert.equal((await ask({ questId, type: "interact", target: "the_lever", worldId: "somewhere-else" })).error, "not_in_quest_world");
+  } finally { ws.close(); }
+});
+
+test("/unity-ws quest:report deliver needs the item and consumes it", async () => {
+  const world = `unity-it-q3-${TS}`;
+  const questId = `it_q_deliver_${TS}`;
+  seedReportQuest(world, questId, [["deliver", "patrol_report", 1]]);
+  const { ws, userId } = await wsUser("qr3", world);
+  try {
+    acceptFor(userId, world, questId);
+    sendMsg(ws, "quest:report", { questId, type: "deliver", target: "patrol_report" });
+    let { data: a } = await waitForEvt(ws, "quest:report:ack");
+    assert.equal(a.error, "item_not_held");
+    __TEST__.db.prepare("INSERT INTO player_inventory (id, user_id, item_id, quantity) VALUES (?, ?, 'patrol_report', 1)").run(`inv_${questId}`, userId);
+    await sleep(1600);
+    sendMsg(ws, "quest:report", { questId, type: "deliver", target: "patrol_report" });
+    ({ data: a } = await waitForEvt(ws, "quest:report:ack"));
+    assert.equal(a.ok, true, JSON.stringify(a));
+    assert.equal(a.questComplete, true);
+    const held = __TEST__.db.prepare("SELECT COUNT(*) n FROM player_inventory WHERE user_id = ? AND item_id = 'patrol_report'").get(userId);
+    assert.equal(held.n, 0, "the delivered item left the inventory");
+  } finally { ws.close(); }
+});
+
+test("authored quests: boot seeding marks them, and expiry and NPC claims leave them available", async () => {
+  const db = __TEST__.db;
+  const authored = db.prepare("SELECT COUNT(*) n FROM world_quests WHERE authored = 1").get().n;
+  assert.ok(authored > 50, `content seeding marks authored quests (${authored})`);
+  const { expireStaleQuests } = await import("../lib/quest-emergence.js");
+  expireStaleQuests(db, { now: Date.now() + 365 * 86400_000, force: true });
+  const notAvailable = db.prepare("SELECT COUNT(*) n FROM world_quests WHERE authored = 1 AND status = 'expired'").get().n;
+  assert.equal(notAvailable, 0, "TTL expiry skips authored quests");
+  const { npcTakeOpenQuests } = await import("../lib/npc-life.js");
+  const w = db.prepare("SELECT world_id FROM world_quests WHERE authored = 1 LIMIT 1").get().world_id;
+  const taken = npcTakeOpenQuests(db, w, [{ id: "npc_it_taker", archetype: "scholar", level: 9 }], { now: Date.now() + 365 * 86400_000 });
+  const claimedAuthored = taken.filter((t) => db.prepare("SELECT authored FROM world_quests WHERE id = ?").get(t.questId)?.authored === 1);
+  assert.deepEqual(claimedAuthored, [], "NPCs do not claim authored quests");
+});

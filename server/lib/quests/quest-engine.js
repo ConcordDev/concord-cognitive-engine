@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import { gainSkillXP } from '../skills/skill-engine.js';
 import { grantUnlock } from '../milestone-unlocks.js';
+import { hasAuthoredColumn } from './authored.js';
 
 /**
  * Accept an authored world_quests row into player_quests only.
@@ -217,7 +218,7 @@ export function checkQuestCompletion(db, userId, worldId, questId) {
   try {
     db.prepare(`
       UPDATE world_quests SET status = 'completed', completed_at = unixepoch()
-       WHERE id = ? AND status IN ('available', 'active')
+       WHERE id = ? AND status IN ('available', 'active')${hasAuthoredColumn(db) ? " AND authored = 0" : ""}
     `).run(questId);
   } catch { /* world_quests absent on minimal DBs */ }
 

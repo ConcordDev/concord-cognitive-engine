@@ -20,6 +20,7 @@
 import crypto from "crypto";
 import { addQuestObjectives, addQuestRewards } from "./quests/quest-engine.js";
 import { isPeopleArchetype, isHostileArchetype } from "./npc-kind.js";
+import { hasAuthoredColumn } from "./quests/authored.js";
 
 const URGENCY_THRESHOLD = 0.5;
 
@@ -104,7 +105,9 @@ export function expireStaleQuests(db, { now = Date.now(), force = false } = {}) 
   _lastExpireAt = now;
   try {
     const cutoff = Math.floor(now / 1000) - QUEST_LIMITS.ttlHours * 3600;
-    return db.prepare(`UPDATE world_quests SET status = 'expired' WHERE status = 'available' AND created_at < ?`).run(cutoff).changes;
+    // Authored catalog quests never expire (migration 491; older schemas have no column).
+    const authored = hasAuthoredColumn(db) ? " AND authored = 0" : "";
+    return db.prepare(`UPDATE world_quests SET status = 'expired' WHERE status = 'available' AND created_at < ?${authored}`).run(cutoff).changes;
   } catch {
     return 0;
   }

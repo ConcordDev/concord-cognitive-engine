@@ -296,6 +296,13 @@ const REVIEWED = {
   "lib/user-identity.js": 1,
   "lib/vassalage.js": 1,
   "lib/verified-human.js": 1,
+  // npc-life.js, quest-emergence.js, quests/quest-engine.js (1 each, 2026-10-26) —
+  // the interpolation is the literal " AND authored = 0" (or "q.authored"),
+  // added only when quests/authored.js#hasAuthoredColumn finds migration 491's
+  // column. Every value is bound with `?`.
+  "lib/npc-life.js": 1,
+  "lib/quest-emergence.js": 1,
+  "lib/quests/quest-engine.js": 1,
   "lib/world-snapshot.js": 3,
   "lib/world-tenancy.js": 2,
   "lib/world-vehicles.js": 2,

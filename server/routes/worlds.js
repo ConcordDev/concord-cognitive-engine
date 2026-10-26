@@ -378,9 +378,32 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
     res.status(409).json({
       ok: false,
       error: "progress_recorded_by_server",
-      detail: "Quest progress is recorded by the server action itself; read it from GET /api/worlds/:worldId/quests/active.",
+      detail: "Progress is recorded by the server action itself; reach_location / interact / observe / deliver are reported through POST /api/worlds/:worldId/quests/:questId/report {type, target}.",
       questId: req.params.questId,
     });
+  });
+
+  // POST /api/worlds/:worldId/quests/:questId/report — body: { type, target }
+  // Client-reported progress for reach_location / interact / observe, and a
+  // server-verified deliver (lib/quests/quest-report.js). The caller must have
+  // live presence in this world; the /unity-ws `quest:report` event is the same.
+  router.post("/:worldId/quests/:questId/report", requireAuth, async (req, res) => {
+    try {
+      const { worldId, questId } = req.params;
+      const { getUserPosition } = await import("../lib/city-presence.js");
+      const pos = getUserPosition(req.user.id);
+      const liveWorldId = pos?.worldId || pos?.cityId || null;
+      if (!liveWorldId) return res.status(409).json({ ok: false, error: "no_live_presence" });
+      const { reportObjective } = await import("../lib/quests/quest-report.js");
+      const r = reportObjective(db, {
+        userId: req.user.id, worldId, questId,
+        type: req.body?.type, target: req.body?.target, liveWorldId,
+      });
+      const status = r.ok ? 200 : r.error === "rate_limited" ? 429 : r.error === "objective_not_found" ? 404 : 409;
+      res.status(status).json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   // GET /api/worlds/:worldId/quests/active — player's active quests with objective progress

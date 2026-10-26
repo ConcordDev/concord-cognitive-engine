@@ -629,6 +629,19 @@ function seedQuestIntoSystemB(db, quest, worldId) {
     JSON.stringify(quest.objectives ?? []),
     JSON.stringify(quest.rewards ?? {}),
   );
+  // Mark the row authored and undo the procedural lifecycle if it ever ran on
+  // it (expired by TTL, claimed by an NPC, closed by one player's completion).
+  // A 'giver_dead' row stays as the world left it. Migration 491.
+  try {
+    db.prepare(`
+      UPDATE world_quests
+         SET authored = 1,
+             status = CASE WHEN status IN ('expired', 'active', 'completed') THEN 'available' ELSE status END,
+             accepted_by = CASE WHEN status IN ('expired', 'active', 'completed') THEN NULL ELSE accepted_by END,
+             completed_at = CASE WHEN status IN ('expired', 'active', 'completed') THEN NULL ELSE completed_at END
+       WHERE id = ?
+    `).run(quest.id);
+  } catch { /* pre-491 schema */ }
 
   const existingObjCount = db.prepare(
     "SELECT COUNT(*) c FROM quest_objectives WHERE quest_id = ?"
