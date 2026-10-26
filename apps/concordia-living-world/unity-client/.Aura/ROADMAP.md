@@ -733,6 +733,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `routes/world.js`
   - Verify: the server list renders (online), or the local label shows.
   - Server: `/api/world/sim/inventory`
+  - Route check 2026-10-26 by Claude (PR #1483, open): equip used to 404 for an owned item and accept one you never held. After #1483 it requires an owned item and writes the canonical `player_equipment`; slots: head, chest, main_hand, off_hand, neck, ring_left, ring_right, trinket (others 400). GET returns `equipped` from that loadout.
   - Result: —
 - [ ] **G-07 · Loot pickup → inventory** (deps: C-35, G-01)
   - Goal: Claiming a server loot bag adds its items with provenance; PickUp_Table plays.
@@ -763,6 +764,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `server/lib/craft-resolve.js` contract
   - Verify: online craft logs the server id.
   - Server: `/api/world/sim/crafting/*`
+  - Retarget 2026-10-26 by Claude: `/api/world/sim/crafting/craft` was fake (invented output, consumed nothing) and answers 410 after PR #1483. Use `POST /api/crafting/execute {recipeId, worldId, buildingId?}` (consumes inventory, awards craft XP; 422 with a reason when it can't); recipes are the player's own, from `GET /api/crafting/recipes` (designed via `POST /api/crafting/design`).
   - Result: —
 - [ ] **G-11 · Gunsmithing bench** (deps: G-09, C-36)
   - Goal: The `Concordia_GunsmithWorkbench` model sits in the Crime and Grid hero cities. The UI composes parts with `Gunsmithing Compose`, shows fire eligibility, and outputs a pistol/rifle item.
@@ -803,6 +805,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `server/lib/world-economy.js` contract
   - Verify: online trade changes the server wallet/inventory (log); offline honest.
   - Server: `/api/worlds/:worldId/market`
+  - Route check 2026-10-26 by Claude (PR #1483, open): markets were never seeded, so `GET …/market` was always empty and trade priced any id at a fallback. After #1483 the first read seeds the world's market (rows carry `resource_id`, `computed_price`), and trade refuses anything not listed (`404 not_sold_here`). Wallet is `users.concordia_credits` (`new_balance` in the reply).
   - Result: —
 - [ ] **G-16 · Wallet HUD** (deps: G-15)
   - Goal: Show the balance only from the server (per-world currencies from world meta), and hide it offline.
@@ -1149,6 +1152,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `routes/worlds.js`
   - Verify: online accept → event → complete → claim, with server responses logged.
   - Server: `/api/worlds/:worldId/quests/*`
+  - Route check 2026-10-26 by Claude (PR #1483, open): accept no longer hides the quest from other players; `…/event` records nothing and now says so (409 `progress_recorded_by_server`), so do not send it. Progress comes only from server actions, and today the server records just talk_to, kill/defeat and gather (see `.Aura/QUEST_AUDIT.md`): online, most quests cannot finish until Claude adds server writers for reach_location, interact, deliver and observe.
   - Result: —
 
 ### Epic A2 · Objective types
