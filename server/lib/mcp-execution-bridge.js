@@ -218,6 +218,14 @@ export async function runLensActionMcp(db, args = {}, STATE = null, callCtx = nu
   });
   if (!auth.ok) return { ok: false, ...auth, domain, action, risk };
 
+  const platformDeny = globalThis.__concordPlatformInternalLensDenial;
+  if (typeof platformDeny === "function") {
+    const denied = platformDeny({ actor }, domain);
+    if (denied?.body) {
+      return { ok: false, error: denied.body.error, requiredRoles: denied.body.requiredRoles, domain, action, risk };
+    }
+  }
+
   const actionInput = (clean.params && typeof clean.params === "object") ? clean.params : {};
   const dryRun = clean.dry_run === true || clean.preview === true;
 

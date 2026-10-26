@@ -15,8 +15,11 @@
 //   • Saved queries         — semantic-search query book + result export
 //
 // All state is per-user, persisted on globalThis._concordSTATE Maps so it
-// survives across macro calls within a process. Handlers never throw —
-// every path returns { ok: boolean, result?, error? }.
+// survives across macro calls within a process. The map key is only the
+// authenticated actor (ctx.actor.userId). A caller-supplied userId is
+// ignored, and an unauthenticated caller is refused so records are not
+// shared under one anonymous bucket. Handlers never throw — every path
+// returns { ok: boolean, result?, error? }.
 //
 // REGISTRATION (saved-class fix, 2026-06): this file used to register through
 // the legacy `registerLensAction(domain, action, (ctx, artifact, params), spec)`
@@ -37,7 +40,7 @@
 // have built. Handlers return a `{ ok, result }` envelope (the dispatcher's
 // `_unwrapLensEnvelope` strips the `result` layer so the frontend reads
 // `r.data.result.<field>`). All state is per-user (no publicReadDomains entry —
-// every read is keyed by the caller's own ctx.actor.userId).
+// every read is keyed by the authenticated actor only).
 //
 // Fail-CLOSED numeric guard: macros that take a numeric input (intervalMinutes /
 // relevance / days / limit) call `badNumericField` BEFORE using it, rejecting
@@ -70,13 +73,12 @@ function getState() {
   return s;
 }
 
-function userId(ctx, params) {
-  return (
-    ctx?.actor?.userId ||
-    ctx?.userId ||
-    params?.userId ||
-    'anonymous'
-  );
+function userId(ctx) {
+  const raw = ctx?.actor?.userId || ctx?.userId || null;
+  if (raw == null) return null;
+  const id = String(raw);
+  if (!id || id === 'anon' || id === 'anonymous') return null;
+  return id;
 }
 
 function uid(prefix) {
@@ -117,6 +119,7 @@ export default function registerSentinelActions(register) {
   // verified (ctx, artifact, params) handler bodies below, unchanged.
   const registerLensAction = (domain, action, handler, spec) =>
     register(domain, action, (ctx, input = {}, params) => {
+      if (!userId(ctx)) return { ok: false, error: 'Authentication required' };
       const inp = input && typeof input === 'object' ? input : {};
       // Dispatchers hand us a ready artifact envelope as arg1 (body under
       // `.data`) + the flat body as arg2; pass the envelope through (not
@@ -129,6 +132,7 @@ export default function registerSentinelActions(register) {
             : { id: null, domain, type: 'domain_action', data: inp, meta: {} });
       const p = params && typeof params === 'object' ? params : {};
       const data = { ...(base.data && typeof base.data === 'object' ? base.data : {}), ...p };
+      delete data.userId;
       return handler(ctx, { ...base, data }, data);
     }, spec);
 

@@ -115,6 +115,10 @@ import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from ".
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
+import {
+  enforcePlatformInternalLensRole,
+  platformInternalLensDenial,
+} from "./lib/platform-internal-lens-gate.js";
 import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
@@ -8730,6 +8734,11 @@ function requireRole(...roles) {
   return _roleGate.requireRole(...roles);
 }
 
+// Chat / MCP bridge (lib/mcp-execution-bridge.js) cannot import server.js.
+// It calls this with the actor ctx after its own bridge authz.
+globalThis.__concordPlatformInternalLensDenial = (ctx, domain) =>
+  platformInternalLensDenial(ctx, domain, requireRole);
+
 // Production write-auth: enforce authentication on all mutating requests in production
 // unless AUTH_MODE=public, where anonymous writes are intentionally allowed.
 // Only genuinely-public endpoints bypass the production write-auth gate. /api/chat and
@@ -14894,6 +14903,8 @@ async function runMacro(domain, name, input, ctx) {
     // action-dispatch vector are NOT public (H1). `run` is gated in its handler +
     // macro by _lensActionForbiddenForAnon.
     lens: new Set(["list", "get", "export", "spatial_at"]),
+    // Lens-run dispatch admin-gates every system action before this allowlist
+    // is consulted. The set stays for non-HTTP runMacro callers.
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
@@ -34595,13 +34606,13 @@ register("settings", "status", (ctx, _input) => {
     const r = await _aliasRun(ctx, "system", "status", input);
     if (r && typeof r === "object") return { ...r, aliasOf: "system.status" };
     return r;
-  }, { description: "publicRead alias of system.status (member-safe runtime status)." });
+  }, { description: "Alias of system.status. Lens-run dispatch is admin-gated." });
 
   register("system", "getStatus", async (ctx, input = {}) => {
     const r = await _aliasRun(ctx, "system", "status", input);
     if (r && typeof r === "object") return { ...r, aliasOf: "system.status" };
     return r;
-  }, { description: "publicRead alias of system.status." });
+  }, { description: "Alias of system.status. Lens-run dispatch is admin-gated." });
 
   register("graph", "visual", (ctx, input = {}) => {
     try {
@@ -39280,7 +39291,7 @@ registerDomainRoutes(app, {
   STATE, makeCtx, runMacro, _withAck, kernelTick, uiJson, listDomains, listMacros,
   dtusArray, normalizeText, clamp, nowISO, saveStateDebounced, retrieveDTUs,
   isShadowDTU, fs, ensureExperienceLearning, ensureAttentionManager, ensureReflectionEngine,
-  validate, requireOwner
+  validate, requireOwner, requireRole
 });
 
 // ---- Shield Routes (extracted to routes/shield.js) ----
@@ -48190,6 +48201,8 @@ register("lens", "run", async (ctx, input={}) => {
   // missing here: any authenticated caller who knew another user's artifact
   // id could invoke any domain action against it (an IDOR).
   if (!_lensArtifactVisible(ctx, artifact)) return { ok: false, error: "not found" }; // Don't reveal existence
+  const _platformDenied = platformInternalLensDenial(ctx, artifact.domain, requireRole);
+  if (_platformDenied) return _platformDenied.body;
   // Domain-specific action handlers can be registered via lens.registerAction.
   // INC-SWEEP batch 012: resolve via the same dual-registry helper as
   // /api/lens/run so COMMON_ACTIONS generics cannot shadow a MACROS-owned verb.
@@ -49376,6 +49389,8 @@ function _billLensDispatch(domain, name, result, startedAt, ctx) {
 }
 
 async function runMcpTool(domain, name, input, ctx) {
+  const _platformDenied = platformInternalLensDenial(ctx, domain, requireRole);
+  if (_platformDenied) return _platformDenied.body;
   const _t0 = Date.now();
   const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro, macros: MACROS });
   if (resolved.via === "lens_action") {
@@ -49542,6 +49557,7 @@ app.post("/api/lens/run", async (req, res) => {
           })()
     );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
+    if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) return;
     const ctx = makeCtx(req);
     // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
     // real intermediate `macro:stage` tied to this run id. It only emits when a
@@ -49773,6 +49789,7 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
 });
 app.post("/api/lens/:domain/:id/run", async (req, res) => {
   try {
+    if (enforcePlatformInternalLensRole(req, res, req.params.domain, requireRole)) return;
     const ctx = makeCtx(req);
     // INC-SWEEP lab F3 — same shapeLensRunHttp envelope as /api/lens/run so a
     // nested handler refusal is not HTTP 200 { ok:true, result:{ ok:false } }.
@@ -76291,6 +76308,8 @@ async function _runMacroFromGateway(domain, name, input, gatewayCtx) {
   if (!userId) {
     return { ok: false, reason: "authentication required", error: "authentication required", code: "LENS_AUTH" };
   }
+  const _platformDenied = platformInternalLensDenial(gatewayCtx, domain, requireRole);
+  if (_platformDenied) return _platformDenied.body;
   const ctx = makeCtx({
     user: { id: userId },
     headers: {},
