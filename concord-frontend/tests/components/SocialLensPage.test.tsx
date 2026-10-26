@@ -33,10 +33,24 @@ vi.mock('@/lib/api/client', () => ({
   },
 }));
 
+// The page reads the active place from the URL (?view=). Mirror that here:
+// urlState.view seeds useSearchParams for renderPage(view), so a test can
+// start on any of the four places.
+const urlState = vi.hoisted(() => ({ view: '' }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({
+    push: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    replace: (url: string) => {
+      const m = /[?&]view=([^&]+)/.exec(String(url));
+      urlState.view = m ? m[1] : '';
+    },
+    prefetch: vi.fn(),
+  }),
   usePathname: () => '/lenses/social',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(urlState.view ? `view=${urlState.view}` : ''),
 }));
 
 vi.mock('@/lib/realtime/socket', () => ({
@@ -82,7 +96,8 @@ vi.mock('@/components/social/NotificationCenter', () => ({
 
 import SocialHubPage from '@/app/lenses/social/page';
 
-function renderPage() {
+function renderPage(view = '') {
+  urlState.view = view;
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -94,11 +109,18 @@ function renderPage() {
 describe('social lens page — real unread badge (ManifestActionBar removed)', () => {
   beforeEach(() => {
     apiGet.mockReset();
+    urlState.view = '';
     apiGet.mockImplementation(async (url: string) => {
       if (url === '/api/auth/me') return { data: { ok: true, user: { id: 'u1', username: 'ana' } } };
       if (url === '/api/social/notifications/count') return { data: { count: 3 } };
       if (url === '/api/social/following-activity') return { data: { items: [] } };
       if (url === '/api/presence/active') return { data: { users: [] } };
+      // Welcome-pass endpoints: the checklist is dismissed server-side and
+      // there are no suggestions — both rows hide (oc-social-3b).
+      if (url === '/api/social/welcome-state') {
+        return { data: { ok: true, hasAvatar: true, hasBio: true, hasFirstPost: true, dismissed: true } };
+      }
+      if (url === '/api/social/people-to-follow') return { data: { ok: true, people: [] } };
       return { data: {} };
     });
   });
@@ -135,5 +157,75 @@ describe('social lens page — real unread badge (ManifestActionBar removed)', (
     expect(await screen.findByTestId('notif-dropdown')).toBeInTheDocument();
     fireEvent.click(bellButton);
     await waitFor(() => expect(screen.queryByTestId('notif-dropdown')).not.toBeInTheDocument());
+  });
+});
+
+describe('social lens page — You > Muted & blocked shows the admin queue only to admins (oc-social-3b)', () => {
+  beforeEach(() => {
+    apiGet.mockReset();
+    urlState.view = '';
+    apiGet.mockImplementation(async (url: string) => {
+      if (url === '/api/auth/me') return { data: { ok: true, user: { id: 'u1', username: 'ana', role: 'member' } } };
+      if (url === '/api/social/notifications/count') return { data: { count: 0 } };
+      if (url === '/api/social/following-activity') return { data: { items: [] } };
+      if (url === '/api/presence/active') return { data: { users: [] } };
+      if (url === '/api/social/welcome-state') {
+        return { data: { ok: true, hasAvatar: true, hasBio: true, hasFirstPost: true, dismissed: true } };
+      }
+      if (url === '/api/social/people-to-follow') return { data: { ok: true, people: [] } };
+      return { data: {} };
+    });
+  });
+
+  async function openMutedTab() {
+    renderPage('you');
+    const tab = await screen.findByRole('tab', { name: 'Muted & blocked' });
+    fireEvent.click(tab);
+    return tab;
+  }
+
+  it('a member never sees the admin moderation queue or its 403 message', async () => {
+    const tab = await openMutedTab();
+    expect(tab).toHaveAttribute('aria-selected', 'true');
+    // The queue section is simply not rendered for members — no dead 403
+    // "limited to admins" message where their own mute/block controls live.
+    expect(screen.queryByText('Moderation queue')).not.toBeInTheDocument();
+    expect(screen.queryByText(/The queue is limited to admins\./)).not.toBeInTheDocument();
+  });
+
+  it('an admin still sees the real queue', async () => {
+    apiGet.mockImplementation(async (url: string) => {
+      if (url === '/api/auth/me') return { data: { ok: true, user: { id: 'u1', username: 'ana', role: 'admin' } } };
+      if (url === '/api/social/notifications/count') return { data: { count: 0 } };
+      if (url === '/api/social/following-activity') return { data: { items: [] } };
+      if (url === '/api/presence/active') return { data: { users: [] } };
+      if (url === '/api/social/welcome-state') {
+        return { data: { ok: true, hasAvatar: true, hasBio: true, hasFirstPost: true, dismissed: true } };
+      }
+      if (url === '/api/social/people-to-follow') return { data: { ok: true, people: [] } };
+      if (url === '/api/moderation/queue') return { data: { ok: true, queue: [] } };
+      return { data: {} };
+    });
+    await openMutedTab();
+    expect(await screen.findByText('Moderation queue')).toBeInTheDocument();
+  });
+
+  it('an owner with the "*" scope passes the same gate the server enforces', async () => {
+    apiGet.mockImplementation(async (url: string) => {
+      if (url === '/api/auth/me') {
+        return { data: { ok: true, user: { id: 'u1', username: 'ana', role: 'owner', scopes: ['*'] } } };
+      }
+      if (url === '/api/social/notifications/count') return { data: { count: 0 } };
+      if (url === '/api/social/following-activity') return { data: { items: [] } };
+      if (url === '/api/presence/active') return { data: { users: [] } };
+      if (url === '/api/social/welcome-state') {
+        return { data: { ok: true, hasAvatar: true, hasBio: true, hasFirstPost: true, dismissed: true } };
+      }
+      if (url === '/api/social/people-to-follow') return { data: { ok: true, people: [] } };
+      if (url === '/api/moderation/queue') return { data: { ok: true, queue: [] } };
+      return { data: {} };
+    });
+    await openMutedTab();
+    expect(await screen.findByText('Moderation queue')).toBeInTheDocument();
   });
 });

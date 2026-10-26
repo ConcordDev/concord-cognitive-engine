@@ -13,6 +13,7 @@ import type { QueryClient } from '@tanstack/react-query';
  *   ['user-content', userId, tab]          — You > Posts list (UserProfile)
  *   ['user-post-count', userId]            — profile post count (UserProfile)
  *   ['stories', userId]                     — StoriesBar (24h posts)
+ *   ['social-welcome-state', userId]        — Welcome checklist (Home)
  *
  * The old composer invalidated ['feed-for-you'] and ['social-feed'] — keys
  * no component declared, so For You never refreshed on post. The real keys
@@ -25,5 +26,8 @@ export function invalidatePostSurfaces(queryClient: QueryClient): Promise<Array<
     queryClient.invalidateQueries({ queryKey: ['user-content'] }),
     queryClient.invalidateQueries({ queryKey: ['user-post-count'] }),
     queryClient.invalidateQueries({ queryKey: ['stories'] }),
+    // Welcome checklist (oc-social-3b): the "make your first post" step
+    // reads the server's own post store, so a confirmed create checks it off.
+    queryClient.invalidateQueries({ queryKey: ['social-welcome-state'] }),
   ]);
 }

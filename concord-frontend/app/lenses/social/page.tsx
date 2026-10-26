@@ -35,7 +35,6 @@ import {
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -74,6 +73,10 @@ import { RankedFeed } from '@/components/social/RankedFeed';
 import { SocialLists } from '@/components/social/SocialLists';
 import { SocialGroups } from '@/components/social/SocialGroups';
 import { AdminModerationQueue } from '@/components/social/AdminModerationQueue';
+import { PeopleToFollow } from '@/components/social/PeopleToFollow';
+import { WelcomeChecklist } from '@/components/social/WelcomeChecklist';
+import { PostMediaCard } from '@/components/social/PostMediaCard';
+import { PublicFallbackFeed } from '@/components/social/PublicFallbackFeed';
 
 import { parseSocialPlace, type SocialPlaceId } from '@/lib/social-places';
 
@@ -141,6 +144,14 @@ export default function SocialHubPage() {
 
   const currentUserId = me?.user?.id || '';
   const railUserId = me?.user?.id || null;
+  // The moderation queue route is admin-only server-side
+  // (requireRole("admin", "sovereign") in routes/moderation.js — the gate
+  // also passes role 'sovereign' and any scopes containing '*'). Mirror
+  // exactly that check on the client so members never see the 403
+  // "could not load" message, and admins/owners still see the queue.
+  const role = me?.user?.role;
+  const scopes = me?.user?.scopes;
+  const isAdminViewer = role === 'admin' || role === 'sovereign' || (Array.isArray(scopes) && scopes.includes('*'));
 
   useEffect(() => {
     const open = () => {
@@ -373,6 +384,19 @@ export default function SocialHubPage() {
                         storyRequest={storyRequest}
                       />
                     ) : null}
+                    {currentUserId ? (
+                      <WelcomeChecklist
+                        currentUserId={currentUserId}
+                        fallbackDisplayName={me?.user?.username || me?.user?.displayName || null}
+                        onStartPost={startPost}
+                      />
+                    ) : null}
+                    {currentUserId ? (
+                      <PeopleToFollow
+                        currentUserId={currentUserId}
+                        onOpenProfile={(userId) => router.push(`/lenses/social/u/${encodeURIComponent(userId)}`)}
+                      />
+                    ) : null}
                     {homeFeed === 'following' ? (
                       <FollowingTimeline
                         currentUserId={currentUserId}
@@ -446,7 +470,7 @@ export default function SocialHubPage() {
                     {youTab === 'analytics' && currentUserId ? <CreatorAnalytics userId={currentUserId} /> : null}
                     {youTab === 'muted' ? (
                       <>
-                        <AdminModerationQueue />
+                        {isAdminViewer ? <AdminModerationQueue /> : null}
                         <ModerationPanel />
                         <SocialPreferencesForm />
                       </>
@@ -563,13 +587,14 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
   }
 
   if (items.length === 0) {
+    // Never an empty first screen (oc-social-3b item a): with nothing to
+    // show from the people the viewer follows, Home fills with real recent
+    // PUBLIC posts from across the site (privacy held by the server-side
+    // explore route) plus a clear "Follow people to fill this feed" prompt.
     return (
-      <EmptyStateCTA
-        lensId="social"
-        headline="No activity yet"
-        caption="Follow some people. Their posts show up here in reverse-chronological order."
-        buttonLabel="Find people"
-        onAction={() => onFindPeople?.()}
+      <PublicFallbackFeed
+        currentUserId={currentUserId}
+        onFindPeople={() => onFindPeople?.()}
       />
     );
   }
@@ -620,19 +645,9 @@ function FollowingTimeline({ currentUserId, onFindPeople }: { currentUserId: str
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
           {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
-          {item.mediaType === 'audio' && item.mediaUrl && (
-            <audio controls src={item.mediaUrl} className="mt-2 w-full" />
-          )}
-          {item.listing && (
-            <p className="mt-1 text-xs text-zinc-400">
-              Listing {item.listing.id}
-              {typeof item.listing.price === 'number' ? ` · ${item.listing.price}` : ''}
-              {typeof item.listing.priceCents === 'number' ? ` · ${item.listing.priceCents} cents` : ''}
-              {item.listing.currency ? ` ${item.listing.currency}` : ''}
-              {typeof item.listing.transferRate === 'number' ? ` · transfer ${item.listing.transferRate}` : ''}
-              {typeof item.listing.marketplaceRate === 'number' ? ` · marketplace ${item.listing.marketplaceRate}` : ''}
-            </p>
-          )}
+          {/* Attached Studio track or Marketplace item → real media card
+              (play button, never autoplay) instead of a bare text line. */}
+          <PostMediaCard mediaType={item.mediaType} mediaUrl={item.mediaUrl} listing={item.listing} />
         </li>
       ))}
     </ul>
