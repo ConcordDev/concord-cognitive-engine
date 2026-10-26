@@ -23,8 +23,16 @@ import {
 
 const DEFAULT_WORLD = "concordia-hub";
 
+// The caller acts as themselves. `input.userId` names another account only
+// for internal / system / owner / admin callers; it used to win over the
+// logged-in actor, so any player could accept, progress or claim on another
+// player's account by naming their id (owner-approved fix, 2026-10-26).
 function ctxUser(ctx, input) {
-  return input.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
+  const actorId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  const privileged = !!(ctx?.internal || ctx?.actor?.internal
+    || ctx?.actor?.role === "owner" || ctx?.actor?.role === "admin");
+  if (input.userId && privileged) return input.userId;
+  return actorId;
 }
 function ctxWorld(ctx, input) {
   return input.worldId || ctx?.worldId || ctx?.actor?.worldId || DEFAULT_WORLD;
