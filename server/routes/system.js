@@ -16,6 +16,7 @@ import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
+import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
 
 export default function registerSystemRoutes(app, {
   STATE,
@@ -769,7 +770,12 @@ export default function registerSystemRoutes(app, {
   app.get("/api/search/indexed", (req, res) => {
     const q = String(req.query.q || "");
     const limit = clamp(Number(req.query.limit || 20), 1, 100);
-    const results = searchIndexed(q, { limit });
+    const viewerId = viewerIdFromCtx(makeCtx(req));
+    const visibleIds = new Set(userVisibleDTUs(viewerId).map((d) => d?.id).filter(Boolean));
+    const results = filterVisibleSearchHits(
+      searchIndexed(q, { limit: searchCandidateLimit(limit) }),
+      { visibleIds, limit },
+    );
     return res.json({ ok: true, query: q, results, count: results.length });
   });
 
@@ -789,8 +795,13 @@ export default function registerSystemRoutes(app, {
     const limit = clamp(Number(req.query.limit || 20), 1, 100);
     if (!query) return res.json({ ok: true, results: [], query: "", count: 0 });
     const results = [];
+    const viewerId = viewerIdFromCtx(makeCtx(req));
+    const visibleIds = new Set(userVisibleDTUs(viewerId).map((d) => d?.id).filter(Boolean));
     if (scope === "all" || scope === "dtus") {
-      const indexed = searchIndexed(query, { limit, minScore: 0.01 });
+      const indexed = filterVisibleSearchHits(
+        searchIndexed(query, { limit: searchCandidateLimit(limit), minScore: 0.01 }),
+        { visibleIds, limit },
+      );
       for (const dtu of indexed) {
         results.push({
           id: dtu.id,
@@ -807,7 +818,7 @@ export default function registerSystemRoutes(app, {
     if (scope === "all" || scope === "tags") {
       const qLower = query.toLowerCase();
       const tagCounts = new Map();
-      for (const dtu of userVisibleDTUs()) {
+      for (const dtu of userVisibleDTUs(viewerId)) {
         if (isShadowDTU(dtu)) continue;
         for (const tag of (dtu.tags || [])) {
           if (tag.toLowerCase().includes(qLower)) {

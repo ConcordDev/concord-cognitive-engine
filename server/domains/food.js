@@ -3,6 +3,7 @@
 
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerFoodActions(registerLensAction) {
   registerLensAction("food", "vision", async (ctx, artifact, _params) => {
@@ -1134,6 +1135,21 @@ export default function registerFoodActions(registerLensAction) {
   function bizView(s, biz) {
     return { ...biz, ...bizAggregate(s, biz.id), openNow: isOpenNow(biz) };
   }
+  function presentBiz(ctx, s, biz) {
+    return presentOwnedId(ctx, yaid(ctx), bizView(s, biz), "ownerUserId", { label: "Owner", nameKey: "ownerDisplayName" });
+  }
+  function presentFoodPerson(ctx, row) {
+    const { votes, ...rest } = row || {};
+    const presented = presentOwnedId(ctx, yaid(ctx), rest, "userId", { label: "Diner" });
+    if (votes && typeof votes === "object" && !presented.voteCounts) {
+      presented.voteCounts = {
+        useful: (votes.useful || []).length,
+        funny: (votes.funny || []).length,
+        cool: (votes.cool || []).length,
+      };
+    }
+    return presented;
+  }
 
   // ── Businesses ──────────────────────────────────────────────────────
   registerLensAction("food", "biz-create", (ctx, _a, params = {}) => {
@@ -1161,13 +1177,13 @@ export default function registerFoodActions(registerLensAction) {
     };
     s.businesses.set(biz.id, biz);
     saveStateIfAvailable();
-    return { ok: true, result: { business: bizView(s, biz) } };
+    return { ok: true, result: { business: presentBiz(ctx, s, biz) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
   registerLensAction("food", "biz-list", (ctx, _a, _params = {}) => {
     const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const businesses = [...s.businesses.values()].map((b) => bizView(s, b));
+    const businesses = [...s.businesses.values()].map((b) => presentBiz(ctx, s, b));
     return { ok: true, result: { businesses, count: businesses.length } };
   });
 
@@ -1179,7 +1195,7 @@ export default function registerFoodActions(registerLensAction) {
     const priceTier = params.priceTier != null ? Math.round(ynum(params.priceTier)) : null;
     const minRating = ynum(params.minRating, 0);
     const neighborhood = yclean(params.neighborhood, 80).toLowerCase();
-    let rows = [...s.businesses.values()].map((b) => bizView(s, b));
+    let rows = [...s.businesses.values()].map((b) => presentBiz(ctx, s, b));
     if (q) rows = rows.filter((b) => b.name.toLowerCase().includes(q) || b.cuisine.includes(q));
     if (cuisine) rows = rows.filter((b) => b.cuisine === cuisine);
     if (priceTier) rows = rows.filter((b) => b.priceTier === priceTier);
@@ -1201,10 +1217,10 @@ export default function registerFoodActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        business: bizView(s, biz),
-        reviews: (s.reviews.get(biz.id) || []).slice().reverse(),
-        photos: (s.photos.get(biz.id) || []).slice().reverse(),
-        tips: (s.tips.get(biz.id) || []).slice().reverse(),
+        business: presentBiz(ctx, s, biz),
+        reviews: (s.reviews.get(biz.id) || []).slice().reverse().map((r) => presentFoodPerson(ctx, r)),
+        photos: (s.photos.get(biz.id) || []).slice().reverse().map((r) => presentFoodPerson(ctx, r)),
+        tips: (s.tips.get(biz.id) || []).slice().reverse().map((r) => presentFoodPerson(ctx, r)),
       },
     };
   });
@@ -1236,7 +1252,7 @@ export default function registerFoodActions(registerLensAction) {
       existing.text = yclean(params.text, 2000);
       existing.updatedAt = ynow();
       saveStateIfAvailable();
-      return { ok: true, result: { review: existing, updated: true, aggregate: bizAggregate(s, biz.id) } };
+      return { ok: true, result: { review: presentFoodPerson(ctx, existing), updated: true, aggregate: bizAggregate(s, biz.id) } };
     }
     const review = {
       id: yid("rev"), bizId: biz.id, userId, rating,
@@ -1246,14 +1262,14 @@ export default function registerFoodActions(registerLensAction) {
     };
     revs.push(review);
     saveStateIfAvailable();
-    return { ok: true, result: { review, updated: false, aggregate: bizAggregate(s, biz.id) } };
+    return { ok: true, result: { review: presentFoodPerson(ctx, review), updated: false, aggregate: bizAggregate(s, biz.id) } };
   });
 
   registerLensAction("food", "review-list", (ctx, _a, params = {}) => {
     const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const biz = s.businesses.get(String(params.bizId));
     if (!biz) return { ok: false, error: "business not found" };
-    const reviews = (s.reviews.get(biz.id) || []).slice().reverse().map((r) => ({
+    const reviews = (s.reviews.get(biz.id) || []).slice().reverse().map((r) => presentFoodPerson(ctx, {
       ...r,
       voteCounts: { useful: r.votes.useful.length, funny: r.votes.funny.length, cool: r.votes.cool.length },
     }));
@@ -1391,7 +1407,7 @@ export default function registerFoodActions(registerLensAction) {
     const businesses = col.bizIds
       .map((id) => s.businesses.get(id))
       .filter(Boolean)
-      .map((b) => bizView(s, b));
+      .map((b) => presentBiz(ctx, s, b));
     return { ok: true, result: { collection: col, businesses } };
   });
 

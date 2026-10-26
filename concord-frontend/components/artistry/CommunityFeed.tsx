@@ -124,7 +124,7 @@ export function CommunityFeed() {
               </div>
               <div className="p-3">
                 <h3 className="font-medium text-sm truncate">{f.title}</h3>
-                <div className="text-[11px] text-gray-400">by {f.userId} · {f.discipline}</div>
+                <div className="text-[11px] text-gray-400">by {f.displayName || f.userId || 'Artist'} · {f.discipline}</div>
                 <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                   <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{f.views}</span>
                   <button onClick={() => appreciate(f.id)} className="flex items-center gap-1 hover:text-neon-pink">

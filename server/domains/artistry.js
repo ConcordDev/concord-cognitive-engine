@@ -17,6 +17,7 @@
 import {
   createNotification, getNotifications, markNotificationRead, markAllNotificationsRead,
 } from "../emergent/social-layer.js";
+import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerArtistryActions(registerLensAction) {
   // Fail-CLOSED numeric coercion for the pure-compute analysis macros.
@@ -495,6 +496,8 @@ export default function registerArtistryActions(registerLensAction) {
   const artId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const artNow = () => new Date().toISOString();
   const artAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const presentArtProject = (ctx, proj) => presentOwnedId(ctx, artAid(ctx), proj, "userId", { label: "Artist" });
+  const presentArtComment = (ctx, c) => presentOwnedId(ctx, artAid(ctx), c, "userId", { label: "Artist" });
   const artClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const artArr = (v) => (Array.isArray(v) ? v : []);
   const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
@@ -698,7 +701,7 @@ export default function registerArtistryActions(registerLensAction) {
           });
         }
       }
-      list = list.map((proj) => ({
+      list = list.map((proj) => presentArtProject(ctx, {
         ...proj,
         appreciations: (s.appreciations.get(proj.id) || []).length,
         commentCount: (s.comments.get(proj.id) || []).length,
@@ -718,14 +721,23 @@ export default function registerArtistryActions(registerLensAction) {
         if (proj) { found = proj; break; }
       }
       if (!found) return { ok: false, error: "project_not_found" };
-      if (found.userId !== artAid(ctx)) found.views += 1;
-      saveArtState();
-      const comments = (s.comments.get(found.id) || []).slice();
+      const viewer = artAid(ctx);
+      // Drafts stay with the owner. A miss is the same shape as a missing id
+      // so a refused call does not confirm the project exists, and it does
+      // not count a view.
+      if (found.userId !== viewer && found.published === false) {
+        return { ok: false, error: "project_not_found" };
+      }
+      if (found.userId !== viewer) {
+        found.views += 1;
+        saveArtState();
+      }
+      const comments = (s.comments.get(found.id) || []).map((c) => presentArtComment(ctx, c));
       const appreciations = (s.appreciations.get(found.id) || []);
       return {
         ok: true,
         result: {
-          project: found,
+          project: presentArtProject(ctx, found),
           comments,
           appreciations: appreciations.length,
           appreciated: appreciations.some((a) => a.userId === artAid(ctx)),
@@ -896,11 +908,11 @@ export default function registerArtistryActions(registerLensAction) {
       for (const followed of following) {
         for (const proj of (s.projects.get(followed) || [])) {
           if (proj.published) {
-            feed.push({
+            feed.push(presentArtProject(ctx, {
               ...proj,
               appreciations: (s.appreciations.get(proj.id) || []).length,
               commentCount: (s.comments.get(proj.id) || []).length,
-            });
+            }));
           }
         }
       }
@@ -914,11 +926,11 @@ export default function registerArtistryActions(registerLensAction) {
           if (owner === uid) continue;
           for (const proj of list) {
             if (proj.published) {
-              feed.push({
+              feed.push(presentArtProject(ctx, {
                 ...proj,
                 appreciations: (s.appreciations.get(proj.id) || []).length,
                 commentCount: (s.comments.get(proj.id) || []).length,
-              });
+              }));
             }
           }
         }
@@ -1496,11 +1508,11 @@ export default function registerArtistryActions(registerLensAction) {
             const hay = `${proj.title} ${proj.description} ${proj.tags.join(" ")} ${proj.discipline}`.toLowerCase();
             if (!hay.includes(q)) continue;
           }
-          results.push({
+          results.push(presentArtProject(ctx, {
             ...proj,
             appreciations: (s.appreciations.get(proj.id) || []).length,
             commentCount: (s.comments.get(proj.id) || []).length,
-          });
+          }));
         }
       }
       if (sort === "appreciated") results.sort((a, b) => b.appreciations - a.appreciations);
@@ -1578,11 +1590,12 @@ export default function registerArtistryActions(registerLensAction) {
       if (kind) jobs = jobs.filter((j) => j.kind === kind);
       if (mine) jobs = jobs.filter((j) => j.posterId === uid);
       if (!mine && !p.includeClosed) jobs = jobs.filter((j) => j.status === "open");
-      jobs = jobs.map((j) => ({
+      jobs = jobs.map((j) => presentOwnedId(ctx, uid, {
         ...j,
+        applications: (j.applications || []).map((a) => presentOwnedId(ctx, uid, a, "userId", { label: "Artist" })),
         applicationCount: j.applications.length,
         applied: j.applications.some((a) => a.userId === uid),
-      }));
+      }, "posterId", { label: "Artist" }));
       return { ok: true, result: { jobs, count: jobs.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -1657,7 +1670,7 @@ export default function registerArtistryActions(registerLensAction) {
       const theme = artClean((params || {}).theme, 80).toLowerCase();
       let galleries = (s.galleries.get("curated") || []).slice();
       if (theme) galleries = galleries.filter((g) => g.theme.toLowerCase() === theme);
-      galleries = galleries.map((g) => ({ ...g, projectCount: g.projectIds.length }));
+      galleries = galleries.map((g) => presentOwnedId(ctx, artAid(ctx), { ...g, projectCount: g.projectIds.length }, "curatorId", { label: "Curator" }));
       galleries.sort((a, b) => (Number(b.featured) - Number(a.featured))
         || (Date.parse(b.createdAt) - Date.parse(a.createdAt)));
       return { ok: true, result: { galleries, count: galleries.length } };
@@ -1675,15 +1688,15 @@ export default function registerArtistryActions(registerLensAction) {
         for (const [, list] of s.projects) {
           const proj = list.find((x) => x.id === pid && x.published);
           if (proj) {
-            items.push({
+            items.push(presentArtProject(ctx, {
               ...proj,
               appreciations: (s.appreciations.get(proj.id) || []).length,
-            });
+            }));
             break;
           }
         }
       }
-      return { ok: true, result: { gallery, items, count: items.length } };
+      return { ok: true, result: { gallery: presentOwnedId(ctx, artAid(ctx), gallery, "curatorId", { label: "Curator" }), items, count: items.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
