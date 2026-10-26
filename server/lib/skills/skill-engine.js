@@ -6,6 +6,7 @@ import { awardCharacterLevel } from './character-level.js';
 import { effectivenessMultiplier as crossWorldMul } from '../cross-world-effectiveness.js';
 import { grantTalentPoints } from '../talents.js';
 import { gainAscensionXp } from '../ascension.js';
+import { mirrorToGateways } from '../gateway-fanout.js';
 
 // ── Skill → native world type mapping ─────────────────────────────────────────
 
@@ -225,6 +226,13 @@ export function getPlayerSkillLevel(db, userId, skillType) {
  * @param {number} xpGain
  * @returns {{ leveled: boolean, newLevel: number, newXp: number }}
  */
+// Game clients (/unity-ws, /godot-ws) get one progression event per grant,
+// on the player's own user room only. The web keeps its system:* and
+// character:updated beats; those never reach the gateways.
+function _mirrorSkillProgress(userId, payload) {
+  mirrorToGateways('skill:progress', { userId, ...payload }, { userId });
+}
+
 export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {}) {
   const MAX_LEVEL = 100;
 
@@ -284,6 +292,10 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
     // account-wide ascension/paragon endgame track instead (the day-30 sink).
     let ascension = null;
     try { ascension = gainAscensionXp(db, userId, xpGain); } catch { /* ascension table optional */ }
+    _mirrorSkillProgress(userId, {
+      skill: skillType, worldType, level, xp, xpToNext: xp_to_next, xpGain,
+      leveled: false, levelsGained: 0, acquired: firstAcquisition, atCap: true,
+    });
     return { leveled: false, newLevel: level, newXp: xp, atCap: true, ascension };
   }
 
@@ -364,6 +376,11 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
       grantTalentPoints(db, userId, levelsGained);
     } catch { /* talents table optional */ }
   }
+
+  _mirrorSkillProgress(userId, {
+    skill: skillType, worldType, level, xp, xpToNext: xp_to_next, xpGain,
+    leveled, levelsGained, acquired: firstAcquisition, atCap: false,
+  });
 
   return { leveled, newLevel: level, newXp: xp, levelsGained, characterLevelResult };
 }
