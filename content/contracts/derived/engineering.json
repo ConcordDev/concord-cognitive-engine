@@ -49,6 +49,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.beamStudy",
+      "name": "beamStudy"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.beamStudy-get",
+      "name": "beamStudy-get"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.beamStudy-keep",
+      "name": "beamStudy-keep"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.beamSweep",
+      "name": "beamSweep"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.bom",
       "name": "bom"
     },
@@ -160,6 +212,19 @@
       ],
       "macro_id": "engineering.circuitSolve",
       "name": "circuitSolve"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.columnBucklingCheck",
+      "name": "columnBucklingCheck"
     },
     {
       "_derived": true,
@@ -590,6 +655,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.model-get",
+      "name": "model-get"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.model-save",
+      "name": "model-save"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.move",
       "name": "move"
     },
@@ -697,7 +788,7 @@
         "typeof output === 'object' && output !== null",
         "typeof output.ok === 'boolean'",
         "output.ok === false || (Number.isFinite(output.result.volume) && output.result.volume >= 0)",
-        "output.ok === false || (Number.isFinite(output.result.mass) && output.result.mass >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.mass) && output.result.mass >= 0) || (output.result.mass === null && Array.isArray(output.result.missingInputs) && output.result.missingInputs.length > 0)",
         "output.ok === false || (Number.isFinite(output.result.surfaceArea) && output.result.surfaceArea >= 0)",
         "output.ok === false || (output.result.boundingBox && Number.isFinite(output.result.boundingBox.x) && Number.isFinite(output.result.boundingBox.y) && Number.isFinite(output.result.boundingBox.z))"
       ],
@@ -788,6 +879,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "engineering.partStl",
+      "name": "partStl"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "engineering.pin",
       "name": "pin"
     },
@@ -842,6 +946,19 @@
       ],
       "macro_id": "engineering.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.renamePart",
+      "name": "renamePart"
     },
     {
       "_derived": true,
@@ -1173,9 +1290,74 @@
       ],
       "macro_id": "engineering.vote",
       "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.workspace-get",
+      "name": "workspace-get"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.workspace-save",
+      "name": "workspace-save"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.workspaceLog-append",
+      "name": "workspaceLog-append"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.workspaceLog-clear",
+      "name": "workspaceLog-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "engineering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "engineering.workspaceLog-get",
+      "name": "workspaceLog-get"
     }
   ],
   "domain": "engineering",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 59
+  "macroCount": 73
 }

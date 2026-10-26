@@ -374,6 +374,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "srs.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "srs",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "srs.like",
       "name": "like"
     },
@@ -731,5 +744,5 @@
   ],
   "domain": "srs",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 56
+  "macroCount": 57
 }

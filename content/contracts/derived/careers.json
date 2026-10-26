@@ -259,6 +259,19 @@
       "name": "offer"
     },
     {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.progress",
+      "name": "progress"
+    },
+    {
       "_derived": false,
       "domain": "careers",
       "fuzz_cases": [
@@ -403,5 +416,5 @@
   ],
   "domain": "careers",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 11
 }

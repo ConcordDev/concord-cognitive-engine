@@ -374,6 +374,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "platform.metrics-ingest",
+      "name": "metrics-ingest"
+    },
+    {
+      "_derived": true,
+      "domain": "platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "platform.move",
       "name": "move"
     },
@@ -549,5 +562,5 @@
   ],
   "domain": "platform",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 43
 }

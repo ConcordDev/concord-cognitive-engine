@@ -465,6 +465,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reflection.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reflection.list_mine",
       "name": "list_mine"
     },
@@ -913,5 +926,5 @@
   ],
   "domain": "reflection",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 70
+  "macroCount": 71
 }

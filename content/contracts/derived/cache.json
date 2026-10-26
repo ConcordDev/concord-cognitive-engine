@@ -64,9 +64,22 @@
       ],
       "macro_id": "cache.stats",
       "name": "stats"
+    },
+    {
+      "_derived": true,
+      "domain": "cache",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cache.status",
+      "name": "status"
     }
   ],
   "domain": "cache",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 6
 }

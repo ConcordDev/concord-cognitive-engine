@@ -426,6 +426,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "events.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "events",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "events.lock",
       "name": "lock"
     },
@@ -439,8 +452,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "events.log",
+      "name": "log"
+    },
+    {
+      "_derived": true,
+      "domain": "events",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "events.move",
       "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "events",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "events.paginated",
+      "name": "paginated"
     },
     {
       "_derived": true,
@@ -519,6 +558,19 @@
       ],
       "macro_id": "events.rate",
       "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "events",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "events.recent",
+      "name": "recent"
     },
     {
       "_derived": true,
@@ -900,5 +952,5 @@
   ],
   "domain": "events",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 69
+  "macroCount": 73
 }

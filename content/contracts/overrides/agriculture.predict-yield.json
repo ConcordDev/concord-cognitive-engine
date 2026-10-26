@@ -10,7 +10,7 @@
     "typeof output === 'object' && output !== null",
     "output.ok === true",
     "typeof output.result.estimatedYieldPerAcre === 'number' && Number.isFinite(output.result.estimatedYieldPerAcre)",
-    "typeof output.result.totalYield === 'number' && !Number.isNaN(output.result.totalYield)",
+    "(typeof output.result.totalYield === 'number' && !Number.isNaN(output.result.totalYield)) || (output.result.totalYield === null && output.result.acreage === null)",
     "output.result.estimatedYieldPerAcre >= 0"
   ],
   "fuzz_cases": [

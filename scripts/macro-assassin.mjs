@@ -306,6 +306,9 @@ async function runV2(runMacro, makeInternalCtx, contract) {
   return false;
 }
 
+/** Macros whose minimal-valid input got an honest NOT_COMPUTED (V3 skipped). */
+const notComputedSkips = [];
+
 /** V3 — invariant evaluation on minimal-valid input. */
 async function runV3(runMacro, makeInternalCtx, contract) {
   const invariants = Array.isArray(contract.invariants) ? contract.invariants : [];
@@ -321,6 +324,16 @@ async function runV3(runMacro, makeInternalCtx, contract) {
     return;
   }
   const output = res.value;
+  // Honest refusal: under the no-fabricated-inputs policy (a33651931 and
+  // follow-ups) a macro given only minimal input answers
+  // { ok:true, result:{ status:"NOT_COMPUTED", missingInputs:[...] } } instead
+  // of inventing defaults. The output-shape invariants describe the COMPUTED
+  // result, so they don't apply to this answer. Fuzz (V1/V2) still runs.
+  const r0 = output && typeof output === "object" ? output.result : null;
+  if (r0 && r0.status === "NOT_COMPUTED" && Array.isArray(r0.missingInputs) && r0.missingInputs.length > 0) {
+    notComputedSkips.push(contract.macro_id);
+    return;
+  }
   for (const expr of invariants) {
     const r = evalInvariant(expr, input, output);
     if (!r.ok) {
@@ -466,6 +479,9 @@ async function main() {
     console.log(`${C.dim}report → ${path.relative(REPO_ROOT, VIOLATIONS_FILE)}${C.rst}`);
   }
 
+  if (notComputedSkips.length && !FLAGS.quiet) {
+    console.log(`${C.dim}[assassin] V3 skipped for ${notComputedSkips.length} macro(s) that honestly returned NOT_COMPUTED on minimal input${C.rst}`);
+  }
   // ── Baseline / ratchet ──
   if (FLAGS.writeBaseline) {
     const baseline = {

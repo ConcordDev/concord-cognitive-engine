@@ -270,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "philosophy.debate-delete",
+      "name": "debate-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "philosophy.debate-detail",
       "name": "debate-detail"
     },
@@ -298,6 +311,19 @@
       ],
       "macro_id": "philosophy.debate-post",
       "name": "debate-post"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-publish",
+      "name": "debate-publish"
     },
     {
       "_derived": true,
@@ -705,5 +731,5 @@
   ],
   "domain": "philosophy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 56
 }

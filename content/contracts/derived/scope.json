@@ -23,6 +23,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "scope.dtus",
+      "name": "dtus"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.metrics",
+      "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.overrides",
+      "name": "overrides"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "scope.promote",
       "name": "promote"
     },
@@ -38,9 +77,22 @@
       ],
       "macro_id": "scope.royaltyPreview",
       "name": "royaltyPreview"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.status",
+      "name": "status"
     }
   ],
   "domain": "scope",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 7
 }

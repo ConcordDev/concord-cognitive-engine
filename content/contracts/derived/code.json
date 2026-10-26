@@ -348,6 +348,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "code.exec-status",
+      "name": "exec-status"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "code.extensions-catalog",
       "name": "extensions-catalog"
     },
@@ -1206,6 +1219,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "code.sandbox-exec",
+      "name": "sandbox-exec"
+    },
+    {
+      "_derived": true,
+      "domain": "code",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "code.save",
       "name": "save"
     },
@@ -1407,5 +1433,5 @@
   ],
   "domain": "code",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 108
+  "macroCount": 110
 }

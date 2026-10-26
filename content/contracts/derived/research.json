@@ -283,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.conduct",
+      "name": "conduct"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.cross-domain-scan",
       "name": "cross-domain-scan"
     },
@@ -335,6 +348,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.evaluate-source",
+      "name": "evaluate-source"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.find-gaps",
+      "name": "find-gaps"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.generate-bibliography",
+      "name": "generate-bibliography"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.library-stats",
       "name": "library-stats"
     },
@@ -350,6 +415,19 @@
       ],
       "macro_id": "research.like",
       "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -465,6 +543,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.match-questions",
+      "name": "match-questions"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.math.exec",
       "name": "math.exec"
     },
@@ -480,6 +571,19 @@
       ],
       "macro_id": "research.methodologyScore",
       "name": "methodologyScore"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.metrics",
+      "name": "metrics"
     },
     {
       "_derived": true,
@@ -907,6 +1011,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "research.report",
+      "name": "report"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "research.repost",
       "name": "repost"
     },
@@ -922,6 +1039,19 @@
       ],
       "macro_id": "research.reproducibilityCheck",
       "name": "reproducibilityCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "research",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "research.results",
+      "name": "results"
     },
     {
       "_derived": true,
@@ -1082,5 +1212,5 @@
   ],
   "domain": "research",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 83
+  "macroCount": 93
 }

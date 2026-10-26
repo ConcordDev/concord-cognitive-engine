@@ -24,6 +24,7 @@ function fakeCtx() {
     createConvolver: () => mk('conv', { buffer: null, normalize: true }),
     createOscillator: () => mk('osc', { frequency: param(440), start() {}, stop() {} }),
     createChannelSplitter: () => mk('split'),
+    createAnalyser: () => mk('analyser', { fftSize: 2048, getFloatTimeDomainData() {}, getFloatFrequencyData() {}, getByteTimeDomainData() {} }),
     createChannelMerger: () => mk('merge'),
     createBuffer: (ch: number, len: number) => ({ getChannelData: () => new Float32Array(len), numberOfChannels: ch }),
   };
@@ -80,12 +81,13 @@ describe('device menu only offers devices the engine processes', () => {
   });
 
   it('device types the engine skips are flagged unsupported (no fake controls)', () => {
-    for (const t of ['deesser', 'phaser', 'bitcrusher', 'tremolo', 'pitchShift'] as EffectType[]) {
+    for (const t of ['phaser', 'bitcrusher', 'tremolo', 'pitchShift'] as EffectType[]) {
       const { ctx } = fakeCtx();
       expect(createDevice(ctx, { id: 'x', type: t, name: t, enabled: true, wet: 1, params: {} })).toBeNull();
       expect(isSupportedDevice(t)).toBe(false);
     }
-    for (const t of ['eq8', 'parametricEQ', 'autoFilter', 'pingPongDelay', 'overdrive', 'flanger'] as EffectType[]) {
+    // deesser became a real device (keyed compressor, 404cd07b6).
+    for (const t of ['eq8', 'parametricEQ', 'autoFilter', 'pingPongDelay', 'overdrive', 'flanger', 'deesser'] as EffectType[]) {
       expect(isSupportedDevice(t)).toBe(true);
     }
   });

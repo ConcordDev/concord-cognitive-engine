@@ -10,11 +10,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "heartbeat.history",
+      "name": "history"
+    },
+    {
+      "_derived": true,
+      "domain": "heartbeat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "heartbeat.metrics",
+      "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "heartbeat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "heartbeat.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "heartbeat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "heartbeat.tick",
       "name": "tick"
     }
   ],
   "domain": "heartbeat",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 4
 }

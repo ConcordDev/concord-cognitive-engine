@@ -647,6 +647,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "docs.share-public",
+      "name": "share-public"
+    },
+    {
+      "_derived": true,
+      "domain": "docs",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "docs.share-revoke",
       "name": "share-revoke"
     },
@@ -809,5 +822,5 @@
   ],
   "domain": "docs",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 62
+  "macroCount": 63
 }

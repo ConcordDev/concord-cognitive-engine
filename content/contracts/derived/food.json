@@ -868,6 +868,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "food.recipe-delete",
+      "name": "recipe-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "food.recipe-import-url",
       "name": "recipe-import-url"
     },
@@ -1394,5 +1407,5 @@
   ],
   "domain": "food",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 107
+  "macroCount": 108
 }

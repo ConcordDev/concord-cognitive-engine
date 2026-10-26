@@ -299,8 +299,11 @@ const BATCHES = {
       // actual=50*100=5000; expected=48*100=4800; variance=(5000-4800)/4800=4.17% (filter by year=2025)
       assert: r => near(r.totalActualYield, 5000, 1) && near(r.totalExpectedYield, 4800, 1) && near(r.overallVariancePct, 4.17, 0.05),
       show: r => `act=${r.totalActualYield} exp=${r.totalExpectedYield} var=${r.overallVariancePct}%` },
-    { dom: "agriculture", act: "waterSchedule", data: { fields: [{ crop: "corn", acreage: 100, soilType: "sandy" }] },
-      // ET formula baseline (no forecast → temp 80, factor 1.0): corn(0.3)/sandy(0.6)=0.5"/day; daysAhead=7 → 3.5" total
+    { dom: "agriculture", act: "waterSchedule", data: { fields: [{ crop: "corn", acreage: 100, soilType: "sandy" }],
+        // a33651931 removed the fabricated 80°F default (days without a forecast high are NOT_COMPUTED),
+        // so supply an explicit 80°F / 0" forecast for each of the 7 days (UTC dates, as the macro uses).
+        weatherForecast: Array.from({ length: 7 }, (_, d) => { const t = new Date(); t.setDate(t.getDate() + d); return { date: t.toISOString().split("T")[0], highTemp: 80, precipInches: 0 }; }) },
+      // ET formula baseline (temp 80 → factor 1.0): corn(0.3)/sandy(0.6)=0.5"/day; daysAhead=7 → 3.5" total
       assert: r => { const f = r.fields?.[0]; return near(f?.schedule?.[0]?.irrigationNeededInches, 0.5, 0.01) && near(f?.totalIrrigationInches, 3.5, 0.02); },
       show: r => `perDay=${r.fields?.[0]?.schedule?.[0]?.irrigationNeededInches}" total=${r.fields?.[0]?.totalIrrigationInches}"` },
   ],

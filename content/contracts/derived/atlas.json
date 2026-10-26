@@ -88,8 +88,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.chat",
+      "name": "chat"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.comment",
       "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.contradictions",
+      "name": "contradictions"
     },
     {
       "_derived": true,
@@ -323,8 +349,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.like",
       "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -1061,6 +1113,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.scope-metrics",
+      "name": "scope-metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.score-explain",
+      "name": "score-explain"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.share",
       "name": "share"
     },
@@ -1262,5 +1353,5 @@
   ],
   "domain": "atlas",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 72
+  "macroCount": 79
 }

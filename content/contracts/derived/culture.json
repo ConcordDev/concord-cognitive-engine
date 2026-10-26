@@ -36,6 +36,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "culture.identity",
+      "name": "identity"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "culture.metrics",
+      "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "culture.preview_friction_delta",
       "name": "preview_friction_delta"
     },
@@ -64,9 +90,61 @@
       ],
       "macro_id": "culture.set_mine",
       "name": "set_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "culture.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "culture.stories",
+      "name": "stories"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "culture.traditions",
+      "name": "traditions"
+    },
+    {
+      "_derived": true,
+      "domain": "culture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "culture.values",
+      "name": "values"
     }
   ],
   "domain": "culture",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 11
 }

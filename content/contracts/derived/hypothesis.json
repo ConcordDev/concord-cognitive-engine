@@ -23,6 +23,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.add_evidence",
+      "name": "add_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.add_test",
+      "name": "add_test"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.analysisHistory",
       "name": "analysisHistory"
     },
@@ -337,6 +363,19 @@
       ],
       "macro_id": "hypothesis.lock",
       "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.metrics",
+      "name": "metrics"
     },
     {
       "_derived": true,
@@ -666,5 +705,5 @@
   ],
   "domain": "hypothesis",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 51
+  "macroCount": 54
 }

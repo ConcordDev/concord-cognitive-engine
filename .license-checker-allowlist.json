@@ -1,5 +1,5 @@
 {
-  "$comment": "Sprint 18 — license compliance allowlist for Concord. Permissive licenses only.",
+  "$comment": "Sprint 18 \u2014 license compliance allowlist for Concord. Permissive licenses only.",
   "allowed": [
     "MIT",
     "Apache-2.0",
@@ -34,5 +34,8 @@
     "SSPL-1.0",
     "Commons-Clause"
   ],
-  "policy": "Production deps must be in 'allowed'. Anything in 'denied' fails the build. Anything else falls to manual review (warning only)."
+  "policy": "Production deps must be in 'allowed'. Anything in 'denied' fails the build. Anything else falls to manual review (warning only).",
+  "exceptions": {
+    "@breezystack/lamejs": "LGPL-3.0 \u2014 unmodified, loaded via dynamic import() in a separate chunk (DAW MP3 export); attributed in the export dialog. Same rationale as the sharp/libvips exception in scripts/audit/gates/license-scan.mjs."
+  }
 }

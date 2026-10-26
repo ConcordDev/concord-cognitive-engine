@@ -36,6 +36,12 @@ const CI = process.argv.includes('--ci');
 const indexSrc = rd(path.join(DOMAINS, 'index.js'));
 const serverSrc = rd(path.join(ROOT, 'server', 'server.js'));
 
+// Deliberately-unwired WIP domains (name → reason). Listed, never silently
+// skipped; remove the entry when the domain is wired into domains/index.js.
+const WIP_UNWIRED = {
+  video: "WIP (9fe421f16): YouTube publish + generation; no lens UI yet and external OAuth/upload calls are not ready to expose.",
+};
+
 const unloaded = [];
 for (const file of (existsSync(DOMAINS) ? readdirSync(DOMAINS) : [])) {
   if (!file.endsWith('.js') || file === 'index.js') continue;
@@ -47,7 +53,10 @@ for (const file of (existsSync(DOMAINS) ? readdirSync(DOMAINS) : [])) {
   // Loaded if imported from index.js (the loader array) OR imported in server.js.
   const inIndex = new RegExp(`from\\s+['"]\\./${base}\\.js['"]`).test(indexSrc);
   const inServer = new RegExp(`from\\s+['"]\\./domains/${base}\\.js['"]`).test(serverSrc);
-  if (!inIndex && !inServer) unloaded.push({ domain: base, macros: macroCount });
+  if (!inIndex && !inServer) {
+    if (WIP_UNWIRED[base]) { if (!JSON_OUT) console.log(`  (quarantined WIP) ${base}: ${WIP_UNWIRED[base]}`); continue; }
+    unloaded.push({ domain: base, macros: macroCount });
+  }
 }
 unloaded.sort((a, b) => b.macros - a.macros);
 

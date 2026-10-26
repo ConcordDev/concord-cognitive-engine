@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "knowledge_trade.mentor_recipes",
+      "name": "mentor_recipes"
+    },
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "knowledge_trade.mentorship_complete_session",
       "name": "mentorship_complete_session"
     },
@@ -68,5 +81,5 @@
   ],
   "domain": "knowledge_trade",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 6
 }

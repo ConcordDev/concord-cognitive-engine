@@ -153,6 +153,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "graph.edges",
+      "name": "edges"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "graph.export-view",
       "name": "export-view"
     },
@@ -452,6 +465,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "graph.neighbors",
+      "name": "neighbors"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "graph.node-add",
       "name": "node-add"
     },
@@ -608,6 +634,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "graph.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "graph.share",
       "name": "share"
     },
@@ -623,6 +662,19 @@
       ],
       "macro_id": "graph.star",
       "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "graph.stats",
+      "name": "stats"
     },
     {
       "_derived": true,
@@ -686,6 +738,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "graph.visual",
+      "name": "visual"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "graph.visualData",
       "name": "visualData"
     },
@@ -705,5 +770,5 @@
   ],
   "domain": "graph",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 59
 }

@@ -348,6 +348,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.heartbeatSync",
       "name": "heartbeatSync"
     },
@@ -454,6 +467,19 @@
       ],
       "macro_id": "marketplace.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.listings",
+      "name": "listings"
     },
     {
       "_derived": true,
@@ -660,6 +686,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.orders-for-buyer",
+      "name": "orders-for-buyer"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.orders-list",
       "name": "orders-list"
     },
@@ -686,8 +725,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketplace.orders-mark-paid",
+      "name": "orders-mark-paid"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketplace.orders-mark-shipped",
       "name": "orders-mark-shipped"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.orders-pay",
+      "name": "orders-pay"
     },
     {
       "_derived": true,
@@ -1290,5 +1355,5 @@
   ],
   "domain": "marketplace",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 99
+  "macroCount": 104
 }

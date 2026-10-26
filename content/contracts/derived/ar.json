@@ -75,6 +75,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ar.capture",
+      "name": "capture"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ar.captureDelete",
       "name": "captureDelete"
     },
@@ -155,6 +168,19 @@
       ],
       "macro_id": "ar.duplicate",
       "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.export_3d",
+      "name": "export_3d"
     },
     {
       "_derived": true,
@@ -257,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ar.place_anchor",
+      "name": "place_anchor"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ar.priority",
       "name": "priority"
     },
@@ -311,6 +350,19 @@
       ],
       "macro_id": "ar.render",
       "name": "render"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.render_scene",
+      "name": "render_scene"
     },
     {
       "_derived": true,
@@ -497,5 +549,5 @@
   ],
   "domain": "ar",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 38
+  "macroCount": 42
 }

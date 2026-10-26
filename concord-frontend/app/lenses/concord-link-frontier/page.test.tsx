@@ -74,7 +74,7 @@ describe('concord link frontier', () => {
     install([]);
     const view = render(<ConcordLinkFrontierPage />);
     expect(await view.findByText('No link open.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'The frontier link' })).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Concord Link Frontier' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Open the link' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Royalty flow')).toBeNull();

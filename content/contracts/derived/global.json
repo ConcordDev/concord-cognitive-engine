@@ -101,6 +101,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "global.contributions",
+      "name": "contributions"
+    },
+    {
+      "_derived": true,
+      "domain": "global",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "global.correlationMatrix",
       "name": "correlationMatrix"
     },
@@ -348,6 +361,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "global.queue",
+      "name": "queue"
+    },
+    {
+      "_derived": true,
+      "domain": "global",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "global.rate",
       "name": "rate"
     },
@@ -484,5 +510,5 @@
   ],
   "domain": "global",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 37
+  "macroCount": 39
 }

@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "brain.health",
+      "name": "health"
+    },
+    {
+      "_derived": true,
+      "domain": "brain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "brain.list_mine",
       "name": "list_mine"
     },
@@ -25,9 +38,22 @@
       ],
       "macro_id": "brain.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "brain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "brain.status",
+      "name": "status"
     }
   ],
   "domain": "brain",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 4
 }

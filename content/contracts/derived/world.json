@@ -907,6 +907,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "world.stress-test",
+      "name": "stress-test"
+    },
+    {
+      "_derived": true,
+      "domain": "world",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "world.tag",
       "name": "tag"
     },
@@ -1017,5 +1030,5 @@
   ],
   "domain": "world",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 78
+  "macroCount": 79
 }

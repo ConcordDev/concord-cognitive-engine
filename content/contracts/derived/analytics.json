@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "analytics.citations",
+      "name": "citations"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "analytics.cohort-build",
       "name": "cohort-build"
     },
@@ -300,6 +313,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "analytics.dashboard",
+      "name": "dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "analytics.dashboard-delete",
       "name": "dashboard-delete"
     },
@@ -341,6 +367,19 @@
       ],
       "macro_id": "analytics.dashboard-save",
       "name": "dashboard-save"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.density",
+      "name": "density"
     },
     {
       "_derived": false,
@@ -725,6 +764,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "analytics.growth",
+      "name": "growth"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "analytics.like",
       "name": "like"
     },
@@ -751,6 +803,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "analytics.marketplace",
+      "name": "marketplace"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "analytics.move",
       "name": "move"
     },
@@ -766,6 +831,19 @@
       ],
       "macro_id": "analytics.path-analysis",
       "name": "path-analysis"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.personal",
+      "name": "personal"
     },
     {
       "_derived": true,
@@ -1071,5 +1149,5 @@
   ],
   "domain": "analytics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 52
+  "macroCount": 58
 }

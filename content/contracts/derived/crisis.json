@@ -139,7 +139,8 @@
         },
         {
           "expect": {
-            "ok": true
+            "error": "crisis_not_found",
+            "ok": false
           },
           "input": {
             "crisisId": "cr_x",
@@ -149,7 +150,8 @@
         },
         {
           "expect": {
-            "ok": true
+            "error": "crisis_not_found",
+            "ok": false
           },
           "input": {
             "crisisId": "cr_x2",
@@ -254,7 +256,8 @@
         },
         {
           "expect": {
-            "ok": true
+            "error": "crisis_not_found",
+            "ok": false
           },
           "input": {
             "crisisId": "cr_x",

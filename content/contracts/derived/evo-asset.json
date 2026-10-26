@@ -12,9 +12,35 @@
       ],
       "macro_id": "evo-asset.generate",
       "name": "generate"
+    },
+    {
+      "_derived": true,
+      "domain": "evo-asset",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "evo-asset.generate-organic",
+      "name": "generate-organic"
+    },
+    {
+      "_derived": true,
+      "domain": "evo-asset",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "evo-asset.organic-job",
+      "name": "organic-job"
     }
   ],
   "domain": "evo-asset",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 3
 }

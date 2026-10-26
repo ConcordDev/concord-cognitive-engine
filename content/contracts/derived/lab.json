@@ -114,6 +114,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "lab.design-experiment",
+      "name": "design-experiment"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "lab.dislike",
       "name": "dislike"
     },
@@ -699,11 +712,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "lab.validate-protocol",
+      "name": "validate-protocol"
+    },
+    {
+      "_derived": true,
+      "domain": "lab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "lab.vote",
       "name": "vote"
     }
   ],
   "domain": "lab",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 56
 }

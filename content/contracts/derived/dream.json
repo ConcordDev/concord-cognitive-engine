@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dream.history",
+      "name": "history"
+    },
+    {
+      "_derived": true,
+      "domain": "dream",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dream.list_for_player",
       "name": "list_for_player"
     },
@@ -42,5 +55,5 @@
   ],
   "domain": "dream",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 4
 }
