@@ -10680,6 +10680,7 @@ function enqueueNotification(item, { sessionId = "", orgId = "" } = {}) {
 
 import { applyAuthoritativeMove as _worldPhysicsMove } from "./lib/world-physics-authority.js";
 import { applyAuthoritativeHit as _worldCombatHit, ensureActor as _ensureCombatActor } from "./lib/combat-hp-authority.js";
+import { npcMaxHpForLevel as _npcMaxHpForLevel } from "./lib/entity-power.js";
 
 function _applyWorldPhysicsMove(userId, data, pos) {
   const worldId = data?.worldId || data?.cityId || pos?.worldId || pos?.cityId || "concordia-hub";
@@ -76390,6 +76391,120 @@ function _godotFakeReqFor(userId) {
 // `combat:attack:ack` (mirrors the socket.io path, which always emits
 // `combat:attack:ack` with the raw `applyAttack` result whether ok or not —
 // there is no separate nack event on this channel).
+// A Unity creature the server knows. CreatureCompiler names kernel creatures
+// `Evo_<world_npcs id>`; a bare id works too. Returns the row (dead or alive)
+// or null when the id is not a world_npcs row.
+function _unityCreatureRow(targetId) {
+  const id = String(targetId || "").replace(/^Evo_/, "").slice(0, 128);
+  if (!id || !db) return null;
+  try {
+    return db.prepare("SELECT id, world_id, level, current_hp, max_hp, x, z, is_dead FROM world_npcs WHERE id = ?").get(id) || null;
+  } catch { return null; }
+}
+
+// One /unity-ws hit on a world_npcs creature. The creature's own row is the hp
+// truth: the momentum×poise hit (combat-hp-authority) starts from current_hp,
+// the damage is written back through applyDamageToNPC, and a kill runs the same
+// lib/npc-kill.js path as POST /api/worlds/:worldId/npcs/:npcId/kill (loot bag,
+// loot:dropped, sparks, nemesis). Before this, a Unity hit on a real creature
+// fell through to a separate in-memory 80 hp and never touched the row.
+async function _unityCreatureHit(userId, row, data, worldId, baseDamage) {
+  if (row.is_dead) return { ok: false, error: "target_dead", npcId: row.id };
+  if (row.world_id && String(row.world_id) !== String(worldId)) {
+    return { ok: false, error: "target_not_in_world", npcId: row.id };
+  }
+  const { getOrCreateNPCResistances, applyDamageToNPC } = await import("./lib/combat/damage-calculator.js");
+  // Seeds max_hp/current_hp from the creature's level the first time.
+  const seeded = getOrCreateNPCResistances(db, row.id) || row;
+  const maxHp = Number(seeded.max_hp) > 0 ? Number(seeded.max_hp) : _npcMaxHpForLevel(seeded.level ?? 1);
+  const hp = Number.isFinite(Number(seeded.current_hp)) ? Math.max(0, Number(seeded.current_hp)) : maxHp;
+  const actorId = String(data.targetId || row.id).slice(0, 128);
+  const actor = _ensureCombatActor(actorId, { worldId, hp, maxHp });
+  actor.hp = hp;
+  actor.maxHp = maxHp;
+
+  const x = Number.isFinite(Number(data.x)) ? Number(data.x) : null;
+  const z = Number.isFinite(Number(data.z)) ? Number(data.z) : null;
+  const result = _worldCombatHit({
+    attackerId: userId,
+    targetId: actorId,
+    weapon: data.weapon || "sword",
+    baseDamage,
+    worldId,
+    localX: x,
+    localZ: z,
+    origin: data.originWorldId || data.nativeWorld || worldId,
+    skillKind: data.skillKind || null,
+    nativeStrength: Number(data.skillLevel) || 0,
+    actorKind: "player",
+  });
+  if (!result?.ok || result.refused) return result;
+
+  applyDamageToNPC(db, worldId, userId, "player", row.id, {
+    finalDamage: result.damage, rawDamage: result.damage, resistancePct: 0,
+    statusEffectsApplied: [], kill: !!result.targetKilled,
+  }, { x, z, element: "none" });
+  result.npcId = row.id;
+  result.persisted = "world_npcs";
+
+  if (result.targetKilled) {
+    try {
+      const { resolveNpcKill } = await import("./lib/npc-kill.js");
+      const kill = await resolveNpcKill(db, { worldId, npcId: row.id, killerId: userId, io: REALTIME?.io });
+      result.kill = {
+        died: !!kill.died,
+        spared: !!kill.spared,
+        reason: kill.reason || null,
+        lootBagId: kill.lootBagId || null,
+        sparksAwarded: kill.sparksAwarded || 0,
+      };
+    } catch (e) {
+      result.kill = { died: false, error: "kill_failed", message: String(e?.message || e) };
+    }
+  }
+  return result;
+}
+
+// `npc:attack {npcId}` — a world_npcs creature strikes the sending player.
+// The client decides WHEN its creature swings (the server does not move fauna
+// between snapshots); the server decides WHETHER it may and WHAT it does,
+// through the same lib/npc-attack.js as POST …/combat/npc-attack.
+// Ack: that route's body plus `status` and `npcId`.
+const NPC_STRIKE_LEASH_M = 48; // creature row must be this near the player; Unity fauna wander locally
+const NPC_STRIKE_COOLDOWN_MS = 850; // Hostile.cs never re-swings sooner than 0.85 s
+const _npcStrikeAt = new Map(); // `${userId}|${npcId}` → last strike ms
+
+async function _dispatchGodotNpcAttack(userId, data) {
+  if (!userId) return { ok: false, error: "not_authenticated" };
+  if (!data || typeof data !== "object") return { ok: false, error: "invalid_payload" };
+  const row = _unityCreatureRow(data.npcId);
+  if (!row) return { ok: false, error: "npc_not_found" };
+  if (row.is_dead) return { ok: false, error: "npc_dead", npcId: row.id };
+
+  const pos = cityPresence.getUserPosition?.(userId);
+  const worldId = cityPresence.getPlayerWorld?.(userId) ?? pos?.worldId ?? pos?.cityId ?? null;
+  if (!worldId || !pos) return { ok: false, error: "no_live_presence", npcId: row.id };
+  if (row.world_id && String(row.world_id) !== String(worldId)) {
+    return { ok: false, error: "npc_not_in_world", npcId: row.id };
+  }
+  if (Number.isFinite(Number(row.x)) && Number.isFinite(Number(row.z))
+      && Math.hypot(Number(row.x) - Number(pos.x || 0), Number(row.z) - Number(pos.z || 0)) > NPC_STRIKE_LEASH_M) {
+    return { ok: false, error: "npc_out_of_reach", npcId: row.id };
+  }
+
+  const key = `${userId}|${row.id}`;
+  const now = Date.now();
+  if (now - (_npcStrikeAt.get(key) || 0) < NPC_STRIKE_COOLDOWN_MS) {
+    return { ok: false, error: "rate_limited", npcId: row.id };
+  }
+  _npcStrikeAt.set(key, now);
+  if (_npcStrikeAt.size > 5000) _npcStrikeAt.delete(_npcStrikeAt.keys().next().value);
+
+  const { resolveNpcAttackOnPlayer } = await import("./lib/npc-attack.js");
+  const r = await resolveNpcAttackOnPlayer(db, { worldId: String(worldId), userId, npcId: row.id, io: REALTIME?.io });
+  return { ...r.body, status: r.status, npcId: row.id };
+}
+
 async function _dispatchGodotCombatAttack(userId, data) {
   if (!userId) return { ok: false, error: "not_authenticated" };
   if (!data || typeof data !== "object") return { ok: false, error: "invalid_payload" };
@@ -76479,8 +76594,15 @@ async function _dispatchGodotCombatAttack(userId, data) {
           contextModifiers: limbMods,
         });
       }
-      if (!result?.ok && result?.error === "target_not_found") {
-        _ensureCombatActor(targetId, { worldId: String(worldId), hp: 80 });
+      const creature = !result?.ok && result?.error === "target_not_found"
+        ? _unityCreatureRow(targetId)
+        : null;
+      if (creature) {
+        result = await _unityCreatureHit(userId, creature, data, String(worldId), clampBaseDamage(data.baseDamage, spellMaxDamage));
+      } else if (!result?.ok && result?.error === "target_not_found") {
+        // Not a server creature (a training dummy or a client-spawned hostile):
+        // a level-1 NPC by the server's own power model (lib/entity-power.js).
+        _ensureCombatActor(targetId, { worldId: String(worldId), hp: _npcMaxHpForLevel(1) });
         result = _worldCombatHit({
           attackerId: userId,
           targetId,
@@ -76979,6 +77101,19 @@ function _onGodotClientMessage(client, evt, data) {
         })
         .catch((e) => {
           _godotGatewaySend(client, "combat:attack:ack", {
+            ok: false, error: "handler_error", message: String(e?.message || e),
+          });
+        });
+      return;
+    }
+    case "npc:attack": {
+      // A server creature strikes this player — see _dispatchGodotNpcAttack.
+      _dispatchGodotNpcAttack(userId, data)
+        .then((result) => {
+          _godotGatewaySend(client, "npc:attack:ack", result);
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "npc:attack:ack", {
             ok: false, error: "handler_error", message: String(e?.message || e),
           });
         });

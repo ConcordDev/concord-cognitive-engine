@@ -1309,3 +1309,99 @@ test("/unity-ws: a stable hostile id keeps one server hp across hits", async () 
     assert.equal(second.hpBefore, first.hpAfter);
   } finally { ws.close(); }
 });
+
+// ── /unity-ws on real creatures (C-20 / C-21 server half) ──────────────────
+// Unity draws kernel creatures as `Evo_<world_npcs id>`. A hit on one must use
+// and write the creature's own row hp and, on the kill, run the same death path
+// as POST /api/worlds/:worldId/npcs/:npcId/kill. `npc:attack` is the reverse:
+// the creature strikes the player through lib/npc-attack.js.
+function seedCreature(id, world, { x = 1, z = 1, hp = 30 } = {}) {
+  __TEST__.db.prepare(`
+    INSERT INTO world_npcs (id, world_id, npc_type, archetype, level, max_hp, current_hp, x, z, is_dead, current_location)
+    VALUES (?, ?, 'creature', 'creature:ash_wolf', 1, ?, ?, ?, ?, 0, ?)
+  `).run(id, world, hp, hp, x, z, JSON.stringify({ x, y: 0, z }));
+}
+
+test("/unity-ws: hits on a world_npcs creature write its row hp and the kill drops a server loot bag", async () => {
+  const world = `unity-it-wild-${TS}`;
+  const npcId = `it_wolf_${TS}`;
+  seedCreature(npcId, world, { hp: 30 });
+  const ws = await unityAttacker("crt1", world);
+  try {
+    let ack = null;
+    for (let i = 0; i < 40; i++) {
+      sendMsg(ws, "combat:attack", { targetId: `Evo_${npcId}`, baseDamage: 14, range: 2.8, weapon: "sword", x: 0, z: 0 });
+      ({ data: ack } = await waitForEvt(ws, "combat:attack:ack"));
+      assert.equal(ack.ok, true, `hit ${i}: ${JSON.stringify(ack)}`);
+      assert.equal(ack.npcId, npcId);
+      assert.equal(ack.persisted, "world_npcs");
+      assert.equal(ack.targetMaxHealth, 30, "max hp comes from the creature's row");
+      if (i === 0) assert.equal(ack.hpBefore, 30);
+      const row = __TEST__.db.prepare("SELECT current_hp FROM world_npcs WHERE id = ?").get(npcId);
+      assert.equal(row.current_hp, ack.hpAfter, `hit ${i}: the row holds the ack's hp`);
+      if (ack.targetKilled) break;
+    }
+    assert.equal(ack.targetKilled, true, "40 hits should kill a 30 hp creature");
+    assert.equal(ack.kill?.died, true, JSON.stringify(ack.kill));
+    assert.ok(ack.kill.lootBagId, "the kill must create a loot bag");
+    const bag = __TEST__.db.prepare("SELECT owner_id, killer_id FROM loot_bags WHERE id = ?").get(ack.kill.lootBagId);
+    assert.equal(bag?.owner_id, npcId);
+    const dead = __TEST__.db.prepare("SELECT is_dead FROM world_npcs WHERE id = ?").get(npcId);
+    assert.equal(dead.is_dead, 1);
+
+    sendMsg(ws, "combat:attack", { targetId: `Evo_${npcId}`, baseDamage: 14, range: 2.8 });
+    const { data: after } = await waitForEvt(ws, "combat:attack:ack");
+    assert.equal(after.ok, false);
+    assert.equal(after.error, "target_dead");
+  } finally { ws.close(); }
+});
+
+test("/unity-ws: an id the server does not know starts at the server's level-1 NPC hp", async () => {
+  const { npcMaxHpForLevel } = await import("../lib/entity-power.js");
+  const ws = await unityAttacker("lvl1", `unity-it-arena2-${TS}`);
+  try {
+    sendMsg(ws, "combat:attack", { targetId: `ArenaDummy_lvl1_${TS}`, baseDamage: 14, range: 2.8 });
+    const { data: ack } = await waitForEvt(ws, "combat:attack:ack");
+    assert.equal(ack.ok, true, JSON.stringify(ack));
+    assert.equal(ack.targetMaxHealth, npcMaxHpForLevel(1));
+  } finally { ws.close(); }
+});
+
+test("/unity-ws: npc:attack lets a nearby creature wound the player through the server", async () => {
+  const world = `unity-it-den-${TS}`;
+  const npcId = `it_den_wolf_${TS}`;
+  const farId = `it_far_wolf_${TS}`;
+  seedCreature(npcId, world, { x: 1, z: 1 });
+  seedCreature(farId, world, { x: 500, z: 500 });
+  const ws = await unityAttacker("bitten", world);
+  try {
+    sendMsg(ws, "npc:attack", { npcId: `Evo_${npcId}` });
+    const { data: ack } = await waitForEvt(ws, "npc:attack:ack");
+    assert.equal(ack.ok, true, JSON.stringify(ack));
+    assert.equal(ack.status, 200);
+    assert.equal(ack.npcId, npcId);
+    assert.ok(ack.damageResult.finalDamage > 0, JSON.stringify(ack.damageResult));
+    assert.equal(ack.playerHp, ack.playerMaxHp - ack.damageResult.finalDamage, "the server bar took the hit");
+
+    sendMsg(ws, "npc:attack", { npcId: `Evo_${npcId}` });
+    const { data: again } = await waitForEvt(ws, "npc:attack:ack");
+    assert.equal(again.error, "rate_limited");
+
+    sendMsg(ws, "npc:attack", { npcId: `Evo_${farId}` });
+    const { data: far } = await waitForEvt(ws, "npc:attack:ack");
+    assert.equal(far.error, "npc_out_of_reach");
+  } finally { ws.close(); }
+});
+
+test("/unity-ws: npc:attack in the Hub is refused by Concordant Law", async () => {
+  const npcId = `it_hub_wolf_${TS}`;
+  seedCreature(npcId, "concordia-hub");
+  const ws = await unityAttacker("hubbite", "concordia-hub");
+  try {
+    sendMsg(ws, "npc:attack", { npcId });
+    const { data: ack } = await waitForEvt(ws, "npc:attack:ack");
+    assert.equal(ack.ok, false, JSON.stringify(ack));
+    assert.equal(ack.status, 403);
+    assert.equal(ack.error, "concordant_law_refusal");
+  } finally { ws.close(); }
+});
