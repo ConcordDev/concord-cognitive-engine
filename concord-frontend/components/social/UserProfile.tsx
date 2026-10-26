@@ -33,6 +33,7 @@ import { useUIStore } from '@/store/ui';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { OwnPostDelete } from './OwnPostDelete';
 import { invalidatePostSurfaces } from './invalidate-post-surfaces';
+import { socialPostViewTransitionName } from './PostDetailInPlace';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ interface UserProfileProps {
   userId: string;
   currentUserId?: string;
   onNavigateToUser?: (userId: string) => void;
+  /** JOB 7: open a profile post's detail in place (Social hub/profile). */
+  onOpenPost?: (postId: string) => void;
   className?: string;
 }
 
@@ -138,16 +141,34 @@ function StatCard({
 
 // ── Content Item ─────────────────────────────────────────────────────────────
 
-function ContentItem({ item, canDelete, onDeleted }: { item: FeedItem; canDelete?: boolean; onDeleted?: () => void }) {
+function ContentItem({
+  item,
+  canDelete,
+  onDeleted,
+  onOpenPost,
+}: { item: FeedItem; canDelete?: boolean; onDeleted?: () => void; onOpenPost?: (postId: string) => void }) {
   const MediaIcon = item.mediaType ? MEDIA_TYPE_ICONS[item.mediaType] || FileText : BookOpen;
+  const openable = !!onOpenPost && !!item.id;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 rounded-xl bg-lattice-deep border border-lattice-border hover:border-gray-600 transition-colors"
+      className={cn(
+        'relative p-4 rounded-xl bg-lattice-deep border border-lattice-border hover:border-gray-600 transition-colors',
+        openable && 'cursor-pointer',
+      )}
+      style={openable ? { viewTransitionName: socialPostViewTransitionName(item.id as string) } : undefined}
     >
-      <div className="flex items-start gap-3">
+      {openable && (
+        <button
+          type="button"
+          className="absolute inset-0 rounded-xl"
+          aria-label={`Open post${item.title || item.content ? ` — ${(item.title || item.content || '').slice(0, 80)}` : ''}`}
+          onClick={() => (onOpenPost as (postId: string) => void)(item.id as string)}
+        />
+      )}
+      <div className="relative flex items-start gap-3">
         <div className="p-2 rounded-lg bg-lattice-surface">
           <MediaIcon className="w-5 h-5 text-neon-cyan" />
         </div>
@@ -190,7 +211,7 @@ function ContentItem({ item, canDelete, onDeleted }: { item: FeedItem; canDelete
 
         {/* Engagement */}
         {item.engagement && (
-          <div className="flex items-center gap-3 text-xs text-gray-400">
+          <div className="relative flex items-center gap-3 text-xs text-gray-400">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {formatNumber(item.engagement.views)}
@@ -275,7 +296,7 @@ function FollowList({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-function UserProfile({ userId, currentUserId, onNavigateToUser, className }: UserProfileProps) {
+function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, className }: UserProfileProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<ContentTab>('posts');
   const [showFollowers, setShowFollowers] = useState(false);
@@ -731,7 +752,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
         </div>
 
         {/* Content list */}
-        <div className="mt-4 space-y-3">
+        <div className="social-reveal-items mt-4 space-y-3">
           {contentQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
@@ -751,6 +772,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
                     if (item.id) setRemoved((prev) => new Set(prev).add(item.id as string));
                     void invalidatePostSurfaces(queryClient);
                   }}
+                  onOpenPost={activeTab === 'posts' ? onOpenPost : undefined}
                 />
               ))
           ) : (

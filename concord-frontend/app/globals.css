@@ -894,6 +894,57 @@ html.a11y-reduce-motion *::after {
   scroll-behavior: auto !important;
 }
 
+/* ── Social open-in-place + feed scroll reveal (oc-social-4, JOB 7) ──
+   Exactly two motion additions for the Social lens, both native and
+   progressive — everything else in Social keeps its existing styles.
+
+   1. .social-post-open-fade — the plain cross-fade for the in-place post
+      detail panel where the View Transitions API is missing.
+      PostDetailInPlace feature-detects document.startViewTransition and
+      only adds this class when it is absent (the API itself drives the
+      card→detail morph everywhere it exists).
+
+   2. .social-reveal-items — CSS scroll-driven reveal for the Social feed
+      lists (Following, For You, Explore, profile posts). The class goes
+      on the LIST CONTAINER; the rule targets only its direct feed-item
+      children. Items already inside the viewport at load sit past the
+      entry range and render fully opaque — no flash of invisible
+      content — and the entry range completes early (first 30% of the
+      card entering), so anything meaningfully on screen is fully
+      revealed.
+
+   Reduced motion is honored on BOTH paths: the blocks live inside
+   `prefers-reduced-motion: no-preference`, and the in-app accessibility
+   toggle gets an explicit `animation: none` here because the global
+   `html.a11y-reduce-motion` kill above pins animation-DURATION, which
+   scroll timelines ignore. */
+@keyframes social-post-open-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .social-post-open-fade {
+    animation: social-post-open-fade 160ms linear both;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes social-feed-item-reveal {
+      from { opacity: 0.35; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .social-reveal-items > * {
+      animation: social-feed-item-reveal both linear;
+      animation-timeline: view();
+      animation-range: entry 0% entry 30%;
+    }
+  }
+}
+html.a11y-reduce-motion .social-reveal-items > * {
+  animation: none !important;
+}
+
 /* ── ConKay work-animation primitives (JARVIS "you can see it building") ──
    A small motif set driven by ConKay's phase: assemble-then-settle reveal,
    counter-rotating arc rings, core breathing, step-card draw-in, and a
