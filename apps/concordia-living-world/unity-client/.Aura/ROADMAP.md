@@ -533,9 +533,18 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Verify: the ack applies hp to a road hostile (log), or a REQ is filed.
   - Server: `/unity-ws` `combat:attack`
   - Server side verified 2026-10-25 by Claude (PR #1478): unknown ids are accepted, not rejected, and `hostile:<world>:<creature>:<n>` keeps one server hp across hits. The server starts every unknown actor at 80 hp (`ensureActor` default), because creature content has no hp field. Show the server's number and don't derive one locally.
+  - Update 2026-10-26 by Claude (PR #1481, open): the 80 hp default is gone.
+    - **Kernel creatures** (`Evo_<world_npcs id>`, from `CreatureCompiler.PresentKernel`) now use the creature's own row: hp starts at its `current_hp` (seeded from its level), every hit is written back, and the kill runs the server's NPC death path. The ack adds `npcId`, `persisted:"world_npcs"` and `kill {died, spared, reason, lootBagId, sparksAwarded}`; the bag also arrives as `loot:dropped`. A dead creature acks `target_dead`, one in another world `target_not_in_world`.
+    - **Other ids** (dummies, RealmFill/WorldGate hostiles with no server row) start at the server's level-1 NPC hp (`entity-power.js` `npcMaxHpForLevel(1)`: 100, or 112 with absolute power on).
+    - Client: on a kernel creature, set `TrainingDummy.hp` from the ack rather than the `massKg * 0.9` estimate.
   - Result: —
 - [ ] **C-21 · Consume combat:hit / combat:kill** (deps: C-20)
   - Goal: Server `combat:hit` on the player drives `TakeHit` presentation. `combat:kill` triggers the death flow. Note: hostile → player damage is client-local today; file a REQ for server-authored hostile damage.
+  - Server half 2026-10-26 by Claude (PR #1481, open; no REQ needed): `npc:attack {npcId}` → `npc:attack:ack`.
+    - The client still decides when its creature swings (`Hostile` attack beat); for a kernel creature (`Evo_<id>`) send `npc:attack` instead of calling `TakeHit(damage)` with the local number.
+    - The ack is the REST `combat/npc-attack` body plus `status` and `npcId`: `damageResult.finalDamage`, `kill`, `evaded` (server i-frames from `combat:dodge`), `damageResult.blocked`, `revived`, `lootDrop` on defeat, and `playerHp`/`playerMaxHp` (the server bar). Present `finalDamage`; set hp from `playerHp`.
+    - Refusals: `status 403 concordant_law_refusal` in the Hub, `npc_out_of_reach` (creature row > 48 m from your `player:move` position), `rate_limited` (one strike per creature per 850 ms), `npc_dead`, `npc_not_in_world`, `no_live_presence`.
+    - Hostiles with no server row (RealmFill/WorldGate) have nothing for the server to resolve; their damage stays local and should be labelled so.
   - Touch: `ConcordiaPlayer.cs`, `ConcordClient` handlers (client side only)
   - Reuse: existing `combat:hit`/`combat:kill` receivers
   - Verify: online, one server hit lands with the correct hp; offline, honest.
@@ -1337,6 +1346,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: —
   - Verify: REQ filed; the slot is hidden.
   - Server: REQ
+  - Server half 2026-10-26 by Claude (PR #1482, open; no REQ needed): every server XP grant (`gainSkillXP`: quests, crafting, gathering, occupations, the pain → XP cycle that `npc:attack` feeds) sends `skill:progress {userId, skill, worldType, level, xp, xpToNext, xpGain, leveled, levelsGained, acquired, atCap}` to your own `/unity-ws` user room. Show the slot only after the first one arrives.
   - Result: —
 
 ### Epic A7 · Save/restore, re-enabled safely
