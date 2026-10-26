@@ -1,0 +1,84 @@
+[
+  {
+    "id": "sere_arc_1_the_ferrymans_hint",
+    "title": "The Mirror — A Friend to the Gap",
+    "description": "Cassius Wend, the Ferryman, will meet you in two capitals on the same day. He does not lie; he simply carries the same truth to two enemies. If you earn his exhausted trust, he hands you the one thing the Curtain cannot redact — not the name of a villain, but proof there isn't one. Start by learning how the recognition works.",
+    "giver_npc_id": "the_ferryman_wend",
+    "difficulty": "moderate",
+    "domain": "investigation",
+    "estimated_time": "20m",
+    "world_id": "sere",
+    "objectives": [
+      { "id": "obj_sere1_1", "type": "talk_to_npc", "target": "the_ferryman_wend", "required_count": 1, "description": "Win the Ferryman's trust across two capitals" },
+      { "id": "obj_sere1_2", "type": "perceive_clue", "target": "the_broken_tile", "required_count": 1, "description": "Recognize the broken tile — how holders know each other without a meeting" },
+      { "id": "obj_sere1_3", "type": "open_lens", "target": "ledger", "required_count": 1, "description": "Toggle the Ledger lens to see the flows the Curtain hides" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "investigation", "amount": 250 },
+      { "kind": "dtu", "kind_tag": "holders_eye_account", "amount": 1 }
+    ],
+    "unlocks_quests": ["sere_arc_2_assemble_the_proof"]
+  },
+  {
+    "id": "sere_arc_2_assemble_the_proof",
+    "title": "The Border Mirror — Two Halves of a Proof",
+    "description": "The war between Dovrane and Keshar was manufactured. Amon of the Reach kept sixty years of letters from his Keshar friend Pell; Minister Dell Sarn keeps the dual manifests proving Verge shipped the same crates to both armies. Letters plus manifests reconstruct the truth the Curtain buried. Three parties are already hunting Sarn's safe.",
+    "difficulty": "hard",
+    "domain": "investigation",
+    "estimated_time": "30m",
+    "world_id": "sere",
+    "prerequisite_quests": ["sere_arc_1_the_ferrymans_hint"],
+    "objectives": [
+      { "id": "obj_sere2_1", "type": "collect_item", "target": "amons_letters", "required_count": 1, "description": "Recover Amon's sixty years of letters at the contested passes" },
+      { "id": "obj_sere2_2", "type": "collect_item", "target": "sarns_dual_manifests", "required_count": 1, "description": "Lift Sarn's dual supply manifests before three other parties do" },
+      { "id": "obj_sere2_3", "type": "perceive_clue", "target": "border_mirror_manufactured", "required_count": 1, "description": "Assemble the two halves — the incident never happened the way both realms were told" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "investigation", "amount": 500 },
+      { "kind": "dtu", "kind_tag": "border_mirror_proof", "amount": 1 }
+    ],
+    "unlocks_quests": ["sere_arc_3_interrupt_the_tea"]
+  },
+  {
+    "id": "sere_arc_3_interrupt_the_tea",
+    "title": "The Tea-House — The Smallest Key",
+    "description": "Pell pours tea and remembers everyone's order, and that is a complete and good life — except the shop is no longer Pell's, taken by a lien Pell never read for a rescue Pell does not remember asking for. Follow the lien up the chain: Mercy Fund to Tally House to the calibrated war that keeps Keshar paying. The world-historical lock turns on one person choosing to interrupt the pouring of tea.",
+    "difficulty": "hard",
+    "domain": "investigation",
+    "estimated_time": "25m",
+    "world_id": "sere",
+    "prerequisite_quests": ["sere_arc_2_assemble_the_proof"],
+    "objectives": [
+      { "id": "obj_sere3_1", "type": "perceive_clue", "target": "teahouse_lien_chain", "required_count": 1, "description": "Trace the rent-lien on Pell's tea-house up to the managed war" },
+      { "id": "obj_sere3_2", "type": "talk_to_npc", "target": "pell_of_keshar", "required_count": 1, "description": "Convince Pell the pouring of tea is worth interrupting — Pell holds the missing half" },
+      { "id": "obj_sere3_3", "type": "talk_to_npc", "target": "dreamer_amon_dov", "required_count": 1, "description": "Reunite Amon and Pell across the passes the Border Mirror severed" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "diplomacy", "amount": 600 },
+      { "kind": "concord_alignment", "amount": 0.10 }
+    ],
+    "unlocks_quests": ["sere_arc_4_heal_the_pact"]
+  },
+  {
+    "id": "sere_arc_4_heal_the_pact",
+    "title": "The Twin Pact — What the Tessera Fears",
+    "description": "With the proof assembled and the friendship reunited, the Twin Pact can begin to heal. Healing it cuts the precondition for the managed parity: a war that finally resolves ends the procurement. The Open Table needs both anchors to reach critical mass — and the Tessera fears nothing on Sere more. There is no villain to defeat here; there is only a funding to cut, and a coalition to let cohere.",
+    "difficulty": "epic",
+    "domain": "diplomacy",
+    "estimated_time": "30m",
+    "world_id": "sere",
+    "prerequisite_quests": ["sere_arc_3_interrupt_the_tea"],
+    "objectives": [
+      { "id": "obj_sere4_1", "type": "branch_decision", "target": "heal_or_hold", "required_count": 1, "description": "Decide: expose the manufactured war and heal the Twin Pact, or hold the proof for leverage" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "diplomacy", "amount": 1200 },
+      { "kind": "concord_alignment", "amount": 0.20 },
+      { "kind": "dtu", "kind_tag": "the_open_table_coheres", "amount": 1 }
+    ],
+    "branch_consequences": {
+      "heal_the_pact": "You expose the dual manifests and reunite the letters across the passes. The Border Mirror's funding is cut (arc.heal_twin_pact): the war can finally seek truce, and the Open Table reaches critical mass — the thing the Tessera cannot allow, allowed. The Exodus that follows is the first Refusal made physical.",
+      "hold_for_leverage": "You keep the proof. You become, in your small way, another holder — a friend to the gap between wars. The machine does not mind; it was never alive to mind. The tea still needs pouring."
+    }
+  }
+]

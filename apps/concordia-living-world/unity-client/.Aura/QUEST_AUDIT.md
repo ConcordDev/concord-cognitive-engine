@@ -7,7 +7,7 @@ Generated 2026-10-26 by Claude from repo `content/` and `Canon/`. Regenerate wit
 - **Quests:** 135, with 314 objectives.
 - **Unity can complete** 250/314 objectives (`QuestLog.CanDo`: defeat, deliver, gather, interact, observe, reach_location, talk_to). Quests completable end to end in Unity: 97/135.
 - **The server records progress for** 83/314 objectives (types with a `recordObjectiveProgress` call site: defeat, gather, kill, talk_to). Quests completable end to end online: 3/135.
-- **Canon files:** 8 missing, 0 differ from `content/`.
+- **Canon files:** 0 missing, 0 differ from `content/`.
 
 Online (A-05), a quest finishes on the server only when the server records every objective. `reach_location`, `interact`, `deliver` and `observe` have no server writer yet, so most quests cannot finish online; that is server work, not a client gap.
 
@@ -48,21 +48,7 @@ Online (A-05), a quest finishes on the server only when the server records every
 
 ## Canon sync
 
-Missing in Canon (needs a sync REQ; Aura must not copy them):
-
-- `content/quests/consolidation-stake.json` → `Canon/concordia-hub/quests/consolidation-stake.json`
-- `content/quests/faction-quests.json` → `Canon/concordia-hub/quests/faction-quests.json`
-- `content/quests/first_cycle_phase_d.json` → `Canon/concordia-hub/quests/first_cycle_phase_d.json`
-- `content/quests/kael-torchlight.json` → `Canon/concordia-hub/quests/kael-torchlight.json`
-- `content/quests/main-arc.json` → `Canon/concordia-hub/quests/main-arc.json`
-- `content/quests/southern-arc-mystery.json` → `Canon/concordia-hub/quests/southern-arc-mystery.json`
-- `content/quests/the-handshake-revelation.json` → `Canon/concordia-hub/quests/the-handshake-revelation.json`
-- `content/world/sere/quests/main-arc.json` → `Canon/sere/quests/main-arc.json`
-
-Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
-
-- `cracks_in_the_compact`
-- `first_cycle_phase_d`
+Every source file is in Canon and identical.
 
 ## Per quest
 
@@ -71,16 +57,16 @@ Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
 | `content/quests/brackish-trust.json` | concordia-hub | present | `brackish_01_notice` | 1 | 1 | 0 |  |
 | `content/quests/brackish-trust.json` | concordia-hub | present | `brackish_02_choice` | 1 | 0 | 0 | any_of |
 | `content/quests/brackish-trust.json` | concordia-hub | present | `brackish_03_intelligence` | 1 | 0 | 0 | any_of |
-| `content/quests/consolidation-stake.json` | concordia-hub | MISSING | `consolidation_01_two_ledgers` | 3 | 3 | 1 |  |
-| `content/quests/consolidation-stake.json` | concordia-hub | MISSING | `consolidation_02_two_worlds` | 5 | 3 | 2 | travel |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_scholars_1` | 4 | 4 | 3 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_scholars_2` | 4 | 4 | 2 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_wardens_1` | 4 | 4 | 2 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_wardens_2` | 4 | 4 | 1 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_merchants_1` | 4 | 4 | 2 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_merchants_2` | 4 | 4 | 4 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_network_1` | 3 | 3 | 1 |  |
-| `content/quests/faction-quests.json` | concordia-hub | MISSING | `faction_network_2` | 3 | 3 | 2 |  |
+| `content/quests/consolidation-stake.json` | concordia-hub | present | `consolidation_01_two_ledgers` | 3 | 3 | 1 |  |
+| `content/quests/consolidation-stake.json` | concordia-hub | present | `consolidation_02_two_worlds` | 5 | 3 | 2 | travel |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_scholars_1` | 4 | 4 | 3 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_scholars_2` | 4 | 4 | 2 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_wardens_1` | 4 | 4 | 2 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_wardens_2` | 4 | 4 | 1 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_merchants_1` | 4 | 4 | 2 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_merchants_2` | 4 | 4 | 4 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_network_1` | 3 | 3 | 1 |  |
+| `content/quests/faction-quests.json` | concordia-hub | present | `faction_network_2` | 3 | 3 | 2 |  |
 | `content/quests/first-adaptation.json` | concordia-hub | present | `first_adaptation_01_print` | 2 | 2 | 1 |  |
 | `content/quests/first-adaptation.json` | concordia-hub | present | `first_adaptation_02_yard` | 3 | 3 | 1 |  |
 | `content/quests/first-adaptation.json` | concordia-hub | present | `first_adaptation_03_name` | 2 | 2 | 1 |  |
@@ -88,7 +74,7 @@ Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
 | `content/quests/first-day-arc.json` | concordia-hub | present | `first_day_invite_friend` | 1 | 0 | 0 | macro |
 | `content/quests/first-day-arc.json` | concordia-hub | present | `first_day_attend_event` | 2 | 0 | 0 | attend_event, rsvp_event |
 | `content/quests/first-day-arc.json` | concordia-hub | present | `first_day_witness_faction_move` | 2 | 0 | 0 | macro, talk_to_npc |
-| `content/quests/first_cycle_phase_d.json` | concordia-hub | MISSING | `first_cycle_phase_d` | 4 | 4 | 0 |  |
+| `content/quests/first_cycle_phase_d.json` | concordia-hub | present | `first_cycle_phase_d` | 4 | 4 | 0 |  |
 | `content/quests/founding-day-reading.json` | concordia-hub | present | `founding_day_01_gather` | 2 | 2 | 1 |  |
 | `content/quests/founding-day-reading.json` | concordia-hub | present | `founding_day_02_reading` | 4 | 4 | 0 |  |
 | `content/quests/founding-day-reading.json` | concordia-hub | present | `founding_day_03_sign` | 2 | 2 | 1 |  |
@@ -96,14 +82,14 @@ Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
 | `content/quests/impossible-print.json` | concordia-hub | present | `impossible_print_02_orin` | 2 | 2 | 0 |  |
 | `content/quests/impossible-print.json` | concordia-hub | present | `impossible_print_03_kel` | 2 | 2 | 0 |  |
 | `content/quests/impossible-print.json` | concordia-hub | present | `impossible_print_04_synthesis` | 3 | 3 | 0 |  |
-| `content/quests/kael-torchlight.json` | concordia-hub | MISSING | `kael_torchlight` | 3 | 2 | 2 | craft |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `cracks_in_the_compact` | 4 | 4 | 3 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `the_shadow_archive` | 4 | 4 | 2 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `warden_crackdown` | 4 | 4 | 2 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `broker_gambit` | 4 | 4 | 3 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `the_merchants_dilemma` | 4 | 4 | 3 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `the_reckoning` | 4 | 4 | 3 |  |
-| `content/quests/main-arc.json` | concordia-hub | MISSING | `a_new_compact` | 5 | 5 | 4 |  |
+| `content/quests/kael-torchlight.json` | concordia-hub | present | `kael_torchlight` | 3 | 2 | 2 | craft |
+| `content/quests/main-arc.json` | concordia-hub | present | `cracks_in_the_compact` | 4 | 4 | 3 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `the_shadow_archive` | 4 | 4 | 2 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `warden_crackdown` | 4 | 4 | 2 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `broker_gambit` | 4 | 4 | 3 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `the_merchants_dilemma` | 4 | 4 | 3 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `the_reckoning` | 4 | 4 | 3 |  |
+| `content/quests/main-arc.json` | concordia-hub | present | `a_new_compact` | 5 | 5 | 4 |  |
 | `content/quests/nesha-old-seam.json` | concordia-hub | present | `nesha_seam_01_pattern` | 1 | 1 | 0 |  |
 | `content/quests/nesha-old-seam.json` | concordia-hub | present | `nesha_seam_02_history` | 2 | 2 | 2 |  |
 | `content/quests/nesha-old-seam.json` | concordia-hub | present | `nesha_seam_03_mediate` | 3 | 3 | 1 |  |
@@ -122,12 +108,12 @@ Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
 | `content/quests/sealed-record.json` | concordia-hub | present | `sealed_02_isa` | 3 | 3 | 0 |  |
 | `content/quests/sealed-record.json` | concordia-hub | present | `sealed_03_cavity` | 4 | 2 | 0 | stealth_traverse, time_window |
 | `content/quests/sealed-record.json` | concordia-hub | present | `sealed_04_choice` | 1 | 0 | 0 | any_of |
-| `content/quests/southern-arc-mystery.json` | concordia-hub | MISSING | `southern_arc_01_notice` | 2 | 2 | 1 |  |
-| `content/quests/southern-arc-mystery.json` | concordia-hub | MISSING | `southern_arc_02_witness` | 3 | 3 | 1 |  |
-| `content/quests/southern-arc-mystery.json` | concordia-hub | MISSING | `southern_arc_03_oracle` | 3 | 3 | 1 |  |
-| `content/quests/southern-arc-mystery.json` | concordia-hub | MISSING | `southern_arc_04_assembly` | 2 | 2 | 0 |  |
-| `content/quests/southern-arc-mystery.json` | concordia-hub | MISSING | `southern_arc_05_choice` | 1 | 0 | 0 | any_of |
-| `content/quests/the-handshake-revelation.json` | concordia-hub | MISSING | `the_handshake_revelation` | 11 | 1 | 0 | macro, talk_to_npc, travel |
+| `content/quests/southern-arc-mystery.json` | concordia-hub | present | `southern_arc_01_notice` | 2 | 2 | 1 |  |
+| `content/quests/southern-arc-mystery.json` | concordia-hub | present | `southern_arc_02_witness` | 3 | 3 | 1 |  |
+| `content/quests/southern-arc-mystery.json` | concordia-hub | present | `southern_arc_03_oracle` | 3 | 3 | 1 |  |
+| `content/quests/southern-arc-mystery.json` | concordia-hub | present | `southern_arc_04_assembly` | 2 | 2 | 0 |  |
+| `content/quests/southern-arc-mystery.json` | concordia-hub | present | `southern_arc_05_choice` | 1 | 0 | 0 | any_of |
+| `content/quests/the-handshake-revelation.json` | concordia-hub | present | `the_handshake_revelation` | 11 | 1 | 0 | macro, talk_to_npc, travel |
 | `content/quests/sub-worlds/concord-link-frontier/mara-letter.json` | concord-link-frontier | present | `frontier_mara_01_call` | 2 | 2 | 0 |  |
 | `content/quests/sub-worlds/concord-link-frontier/mara-letter.json` | concord-link-frontier | present | `frontier_mara_02_deliver` | 1 | 1 | 0 |  |
 | `content/quests/sub-worlds/concord-link-frontier/mara-letter.json` | concord-link-frontier | present | `frontier_mara_03_return` | 1 | 1 | 0 |  |
@@ -191,10 +177,10 @@ Named by Canon quests (as prerequisites or unlocks) but not loadable in Unity:
 | `content/quests/sub-worlds/superhero/sifu-revelation.json` | superhero | present | `superhero_sifu_01_tell` | 2 | 2 | 1 |  |
 | `content/quests/sub-worlds/superhero/sifu-revelation.json` | superhero | present | `superhero_sifu_02_carry` | 2 | 2 | 0 |  |
 | `content/quests/sub-worlds/superhero/sifu-revelation.json` | superhero | present | `superhero_sifu_03_gift` | 1 | 1 | 0 |  |
-| `content/world/sere/quests/main-arc.json` | sere | MISSING | `sere_arc_1_the_ferrymans_hint` | 3 | 0 | 0 | open_lens, perceive_clue, talk_to_npc |
-| `content/world/sere/quests/main-arc.json` | sere | MISSING | `sere_arc_2_assemble_the_proof` | 3 | 0 | 0 | collect_item, perceive_clue |
-| `content/world/sere/quests/main-arc.json` | sere | MISSING | `sere_arc_3_interrupt_the_tea` | 3 | 0 | 0 | perceive_clue, talk_to_npc |
-| `content/world/sere/quests/main-arc.json` | sere | MISSING | `sere_arc_4_heal_the_pact` | 1 | 0 | 0 | branch_decision |
+| `content/world/sere/quests/main-arc.json` | sere | present | `sere_arc_1_the_ferrymans_hint` | 3 | 0 | 0 | open_lens, perceive_clue, talk_to_npc |
+| `content/world/sere/quests/main-arc.json` | sere | present | `sere_arc_2_assemble_the_proof` | 3 | 0 | 0 | collect_item, perceive_clue |
+| `content/world/sere/quests/main-arc.json` | sere | present | `sere_arc_3_interrupt_the_tea` | 3 | 0 | 0 | perceive_clue, talk_to_npc |
+| `content/world/sere/quests/main-arc.json` | sere | present | `sere_arc_4_heal_the_pact` | 1 | 0 | 0 | branch_decision |
 | `content/world/tunya/quests/arks-of-memory.json` | tunya | present | `tunya_arks_of_memory_1_first_pilgrimage` | 4 | 3 | 1 | create_dtu |
 | `content/world/tunya/quests/arks-of-memory.json` | tunya | present | `tunya_arks_of_memory_2_curated_vault` | 3 | 1 | 0 | branch_decision, infiltrate_or_persuade |
 | `content/world/tunya/quests/bloc-secret.json` | tunya | present | `tunya_bloc_secret_1_twelfth_district` | 3 | 1 | 0 | attend_event, perceive_clue |
