@@ -115,7 +115,7 @@ export function CuratedGalleries() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                  <div className="text-[11px] text-gray-400">by {p.userId} · {p.discipline}</div>
+                  <div className="text-[11px] text-gray-400">by {p.displayName || p.userId || 'Artist'} · {p.discipline}</div>
                   <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations}</span>

@@ -33,7 +33,7 @@ interface GeoSegment {
   effortCount: number;
   courseRecordSeconds: number | null;
 }
-interface BoardRow { rank: number; userId: string; time: string; timeSeconds: number; isMe: boolean; title: string | null }
+interface BoardRow { rank: number; userId?: string; displayName?: string; time: string; timeSeconds: number; isMe: boolean; title: string | null }
 
 function timeLabel(sec: number | null): string {
   if (sec == null) return '—';
@@ -237,12 +237,12 @@ export function StravaSegmentsPanel() {
                   ) : (
                     <ol className="space-y-1 mb-2">
                       {board.map((row) => (
-                        <li key={row.userId} className={cn('flex items-center justify-between text-[11px] px-2 py-1 rounded',
+                        <li key={row.userId || `${row.rank}-${row.displayName}`} className={cn('flex items-center justify-between text-[11px] px-2 py-1 rounded',
                           row.isMe ? 'bg-orange-950/40 text-orange-200' : 'text-zinc-300')}>
                           <span className="flex items-center gap-1.5">
                             <span className="w-5 text-zinc-400">{row.rank}</span>
                             {row.title && <Trophy className="w-3 h-3 text-amber-400" />}
-                            <span className="font-mono">{row.userId.slice(0, 10)}</span>
+                            <span className="font-mono">{(row.displayName || row.userId || 'Athlete').slice(0, 18)}</span>
                           </span>
                           <span className="font-mono">{row.time}</span>
                         </li>

@@ -41,7 +41,9 @@ export interface Comment {
   id: string;
   postId: string;
   parentId: string | null;
-  authorId: string;
+  authorId?: string;
+  displayName?: string;
+  isMine?: boolean;
   text: string;
   createdAt: string;
   replies: Comment[];

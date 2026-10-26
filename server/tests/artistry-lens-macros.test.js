@@ -352,7 +352,12 @@ describe("artistry network — CommunityNetwork", () => {
     assert.equal(f.result.mode, "follows"); // feed?.mode
     assert.ok(Array.isArray(f.result.items));
     assert.equal(f.result.items[0].title, "B work");
-    assert.equal(f.result.items[0].userId, "artist_b"); // feed item: by {userId}
+    // Feed byline is a display handle. A's view of B's project must not
+    // carry B's raw account id (CommunityNetwork reads displayName).
+    assert.equal(f.result.items[0].userId, undefined);
+    assert.equal(f.result.items[0].isMine, false);
+    assert.equal(typeof f.result.items[0].displayName, "string");
+    assert.ok(f.result.items[0].displayName.length > 0);
     assert.equal(typeof f.result.items[0].appreciations, "number");
     assert.equal(typeof f.result.items[0].commentCount, "number");
     assert.equal(typeof f.result.fromFollowsCount, "number");

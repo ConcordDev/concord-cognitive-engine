@@ -1,3 +1,5 @@
+import { presentOwnedId, publicActor } from "../lib/public-actor.js";
+
 export default function registerFitnessActions(registerLensAction) {
   // Fail-CLOSED numeric coercion for the legacy calc surfaces (progression /
   // body-comp / periodization / class-utilization) which predate the `fnum`
@@ -807,12 +809,12 @@ Generate the plan.`;
       const efforts = s.segmentEfforts.get(seg.id) || [];
       const mine = efforts.filter((e) => e.userId === faid(ctx));
       const best = efforts.length ? Math.min(...efforts.map((e) => e.timeSeconds)) : null;
-      return {
+      return presentOwnedId(ctx, faid(ctx), {
         ...seg,
         effortCount: efforts.length,
         myBestSeconds: mine.length ? Math.min(...mine.map((e) => e.timeSeconds)) : null,
         courseRecordSeconds: best,
-      };
+      }, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" });
     });
     return { ok: true, result: { segments: segs, count: segs.length } };
   });
@@ -851,16 +853,22 @@ Generate the plan.`;
       const cur = bestByUser.get(e.userId);
       if (!cur || e.timeSeconds < cur.timeSeconds) bestByUser.set(e.userId, e);
     }
+    const viewer = faid(ctx);
     const board = [...bestByUser.values()]
       .sort((a, b) => a.timeSeconds - b.timeSeconds)
-      .map((e, i) => ({
-        rank: i + 1, userId: e.userId,
-        timeSeconds: e.timeSeconds, time: durStr(e.timeSeconds),
-        avgHr: e.avgHr, date: e.date,
-        title: i === 0 ? "CR" : null,
-        isMe: e.userId === faid(ctx),
-      }));
-    return { ok: true, result: { segment: seg, leaderboard: board, athletes: board.length } };
+      .map((e, i) => {
+        const card = publicActor(ctx, viewer, e.userId, "Athlete");
+        return {
+          rank: i + 1,
+          ...(card.isMine ? { userId: e.userId } : {}),
+          displayName: card.displayName,
+          timeSeconds: e.timeSeconds, time: durStr(e.timeSeconds),
+          avgHr: e.avgHr, date: e.date,
+          title: i === 0 ? "CR" : null,
+          isMe: card.isMine,
+        };
+      });
+    return { ok: true, result: { segment: presentOwnedId(ctx, viewer, seg, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" }), leaderboard: board, athletes: board.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1303,7 +1311,14 @@ Generate the plan.`;
     const userId = faid(ctx);
     let clubs = [...s.clubs.values()];
     if (params.mine) clubs = clubs.filter((c) => c.members.includes(userId));
-    clubs = clubs.map((c) => ({ ...c, memberCount: c.members.length, joined: c.members.includes(userId) }));
+    clubs = clubs.map((c) => {
+      const { members, ...rest } = c;
+      return presentOwnedId(ctx, userId, {
+        ...rest,
+        memberCount: members.length,
+        joined: members.includes(userId),
+      }, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" });
+    });
     return { ok: true, result: { clubs, count: clubs.length } };
   });
 
@@ -1374,12 +1389,22 @@ Generate the plan.`;
         userId: p,
         value: challengeProgress(ch, s.activities.get(p) || []),
       })).sort((a, b) => b.value - a.value)
-        .map((x, i) => ({ rank: i + 1, ...x, isMe: x.userId === userId }));
+        .map((x, i) => {
+          const card = publicActor(ctx, userId, x.userId, "Athlete");
+          return {
+            rank: i + 1,
+            value: x.value,
+            isMe: card.isMine,
+            displayName: card.displayName,
+            ...(card.isMine ? { userId: x.userId } : {}),
+          };
+        });
+      const { participants, ...rest } = ch;
       return {
-        ...ch,
-        joined: ch.participants.includes(userId),
+        ...presentOwnedId(ctx, userId, rest, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" }),
+        joined: participants.includes(userId),
         active: today >= ch.startDate && today <= ch.endDate,
-        participantCount: ch.participants.length,
+        participantCount: participants.length,
         myProgress: { value: myValue, pct: Math.round(fclamp(myValue / ch.target, 0, 1) * 100), complete: myValue >= ch.target },
         leaderboard: board,
       };

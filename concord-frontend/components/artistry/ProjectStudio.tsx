@@ -385,7 +385,7 @@ export function ProjectStudio() {
                     {detail.comments.map((c) => (
                       <div key={c.id} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex items-start justify-between gap-2">
                         <div>
-                          <div className="text-[11px] text-gray-400">{c.userId} · {new Date(c.createdAt).toLocaleDateString()}</div>
+                          <div className="text-[11px] text-gray-400">{c.displayName || c.userId || 'Artist'} · {new Date(c.createdAt).toLocaleDateString()}</div>
                           <p className="text-sm text-gray-300 mt-0.5">{c.body}</p>
                         </div>
                         <button onClick={() => removeComment(c.id)} aria-label="Delete comment" className="text-gray-500 hover:text-red-400 shrink-0">

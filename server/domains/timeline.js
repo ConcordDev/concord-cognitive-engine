@@ -6,6 +6,7 @@
 // authoritative, server-verified source for "are these two users friends",
 // as opposed to a client-supplied assertion. See checkPostAccess() below.
 import { areFriends } from "../lib/friendships.js";
+import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerTimelineActions(registerLensAction) {
   /**
@@ -473,6 +474,10 @@ export default function registerTimelineActions(registerLensAction) {
   const tlId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const tlNow = () => new Date().toISOString();
   const tlAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const presentComment = (ctx, viewer, c) => {
+    const replies = Array.isArray(c?.replies) ? c.replies.map((r) => presentComment(ctx, viewer, r)) : c?.replies;
+    return presentOwnedId(ctx, viewer, { ...c, replies }, "authorId", { label: "Member" });
+  };
   const tlList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const tlClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
   const tlNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
@@ -660,7 +665,7 @@ export default function registerTimelineActions(registerLensAction) {
       if (parent) pushNotif(s, parent.authorId, actorId, "reply", { postId, preview: text.slice(0, 80) });
     }
     saveTlState();
-    return { ok: true, result: { comment, total: list.length } };
+    return { ok: true, result: { comment: presentComment(ctx, actorId, comment), total: list.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -681,7 +686,8 @@ export default function registerTimelineActions(registerLensAction) {
       if (c.parentId && byId.has(c.parentId)) byId.get(c.parentId).replies.push(c);
       else roots.push(c);
     }
-    return { ok: true, result: { thread: roots, total: flat.length } };
+    const viewer = tlAid(ctx);
+    return { ok: true, result: { thread: roots.map((c) => presentComment(ctx, viewer, c)), total: flat.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 

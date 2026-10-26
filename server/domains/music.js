@@ -16,6 +16,7 @@
 
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { presentOwnedId } from "../lib/public-actor.js";
 
 const ADAPTIVE_STEM_NAMES = new Set([
   "ambient_bed",
@@ -1666,7 +1667,7 @@ export default function registerMusicActions(registerLensAction) {
     }
     if (pl.collabLog.length > 100) pl.collabLog = pl.collabLog.slice(-100);
     saveMusicState();
-    return { ok: true, result: { playlistId: pl.id, trackCount: pl.trackIds.length, collabLog: pl.collabLog.slice(-10) } };
+    return { ok: true, result: { playlistId: pl.id, trackCount: pl.trackIds.length, collabLog: pl.collabLog.slice(-10).map((e) => presentOwnedId(ctx, userId, e, "userId", { label: "Listener" })) } };
   });
 
   // ── 14. [S] Share to social / story cards ───────────────────────────
