@@ -13,6 +13,7 @@
 //   conkay_compile_brief — short brief → Design IR (no invented sizes)
 
 import { resolveDualRegistry } from "./dual-registry-resolve.js";
+import { invokeLensHandler, lensActionSpec } from "./lens-action-dispatch.js";
 import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 import { getCapabilityDescriptor } from "./runtime/capability-registry.js";
 import {
@@ -258,7 +259,7 @@ export async function runLensActionMcp(db, args = {}, STATE = null, callCtx = nu
   const ctx = buildLensCtx(db, STATE, actor);
   try {
     const result = resolved.via === "lens_action"
-      ? await resolved.handler(ctx, null, actionInput)
+      ? await invokeLensHandler(resolved.handler, ctx, null, actionInput, lensActionSpec(domain, action))
       : await runMacro(domain, action, actionInput, ctx);
 
     const failed = result && typeof result === "object" && result.ok === false;

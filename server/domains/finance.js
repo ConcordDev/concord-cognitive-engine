@@ -15,8 +15,10 @@ import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
 import { needNums, notComputed } from "../lib/lens-inputs.js";
+import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerFinanceActions(registerLensAction) {
+  registerLensAction = bindWave1(registerLensAction);
   // ─── Pre-existing analytical macros ─────────────────────────────────
 
   registerLensAction("finance", "portfolioAnalysis", (ctx, artifact, _params) => {

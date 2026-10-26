@@ -32,8 +32,10 @@ async function openfdaLabelLookup(name) {
 }
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
+import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerPharmacyActions(registerLensAction) {
+  registerLensAction = bindWave1(registerLensAction);
   /**
    * drugInteractionCheck — Real drug-interaction lookup via OpenFDA SPL.
    * Pulls the DRUG_INTERACTIONS section from each drug's FDA label and
