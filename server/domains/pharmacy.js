@@ -322,7 +322,9 @@ export default function registerPharmacyActions(registerLensAction) {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const med = findMed(s, raid(ctx), params.id);
     if (!med) return { ok: false, error: "medication not found" };
-    med.archived = !(params.unarchive === true);
+    const wantArchived = params.unarchive !== true;
+    if (med.archived === wantArchived) return { ok: true, unchanged: true, result: { medication: med } };
+    med.archived = wantArchived;
     saveRxState();
     return { ok: true, result: { medication: med } };
   });
@@ -1232,10 +1234,12 @@ export default function registerPharmacyActions(registerLensAction) {
     rxExtra(s);
     const userId = raid(ctx);
     const list = s.caregivers.get(userId) || [];
-    const before = list.length;
-    s.caregivers.set(userId, list.filter((c) => c.id !== params.id));
+    const id = String(params.id || "");
+    const next = list.filter((c) => c.id !== id);
+    if (!id || next.length === list.length) return { ok: false, error: "not_found" };
+    s.caregivers.set(userId, next);
     saveRxState();
-    return { ok: true, result: { removed: before - (s.caregivers.get(userId) || []).length } };
+    return { ok: true, result: { removed: 1 } };
   });
 
   // caregiver-alerts — computes which caregivers should be notified.

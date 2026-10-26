@@ -1031,9 +1031,10 @@ export default function registerEngineeringActions(registerLensAction) {
       const id = params?.id || artifact?.data?.id;
       const cases = egList(s.loadCases, egActor(ctx));
       const next = cases.filter((c) => c.id !== id);
+      if (!id || next.length === cases.length) return { ok: false, error: "not_found" };
       s.loadCases.set(egActor(ctx), next);
       persist();
-      return { ok: true, result: { deleted: cases.length - next.length, count: next.length } };
+      return { ok: true, result: { deleted: 1, count: next.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

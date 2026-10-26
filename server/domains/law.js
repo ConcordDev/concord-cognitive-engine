@@ -1896,7 +1896,8 @@ export default function registerLawActions(registerLensAction) {
     if (!c) return { ok: false, error: "contract not found" };
     const ob = (c.obligations || []).find((o) => o.id === params.obligationId);
     if (!ob) return { ok: false, error: "obligation not found" };
-    ob.done = !ob.done;
+    if (ob.done && params.reopen !== true) return { ok: true, unchanged: true, result: { obligation: ob } };
+    ob.done = params.reopen === true ? false : true;
     ob.completedAt = ob.done ? lwNow() : null;
     c.updatedAt = lwNow();
     saveLaw();

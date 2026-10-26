@@ -15,6 +15,7 @@ import { runPython } from "../lib/python-sandbox.js";
 import { pythonExecEnabled } from "./code.js";
 
 import { needNums, notComputed } from "../lib/lens-inputs.js";
+import { assertPayable } from "../lib/money-guards.js";
 
 export default function registerFinanceActions(registerLensAction) {
   // ─── Pre-existing analytical macros ─────────────────────────────────
@@ -727,6 +728,11 @@ Generate the summary.`;
     const bills = ensureBucket(state, "bills", userId);
     const b = bills.find(x => x.id === id);
     if (!b) return { ok: false, error: "bill not found" };
+    if (b.paidThisCycle) return { ok: true, unchanged: true, result: { bill: b } };
+    if (params.amount != null && params.amount !== "") {
+      const payable = assertPayable(b.amount, params.amount);
+      if (!payable.ok) return payable;
+    }
     b.paidThisCycle = true;
     b.lastPaidAt = new Date().toISOString();
     saveStateIfAvailable();

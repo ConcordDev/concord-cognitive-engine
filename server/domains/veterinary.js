@@ -6,6 +6,7 @@
 // veterinary adverse-event feed. Free public source, no API key.
 
 import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
+import { assertPayable } from "../lib/money-guards.js";
 
 export default function registerVeterinaryActions(registerLensAction) {
   // ─── Clinical calculators ───────────────────────────────────────────
@@ -216,6 +217,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       const patientName = vtClean(params.patientName, 120);
       if (!patientName) return { ok: false, error: "patientName required" };
       const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
+      if (rawItems.length === 0) return { ok: false, error: "at least one line item required" };
       const lineItems = rawItems.map((li) => ({
         description: vtClean(li.description, 200) || "service",
         qty: Math.max(1, vtNum(li.qty) || 1),
@@ -225,6 +227,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       const taxRate = Math.max(0, Math.min(0.3, vtNum(params.taxRate)));
       const tax = Math.round(subtotal * taxRate * 100) / 100;
       const total = Math.round((subtotal + tax) * 100) / 100;
+      if (total <= 0) return { ok: false, error: "invoice total must be > 0" };
       const invoice = {
         id: vtId("inv"),
         patientId: vtClean(params.patientId, 60) || "",
@@ -233,7 +236,7 @@ export default function registerVeterinaryActions(registerLensAction) {
         lineItems, subtotal, taxRate, tax, total,
         amountPaid: 0,
         balanceDue: total,
-        status: total === 0 ? "paid" : "unpaid",
+        status: "unpaid",
         payments: [],
         createdAt: new Date().toISOString(),
       };
@@ -269,8 +272,13 @@ export default function registerVeterinaryActions(registerLensAction) {
       const arr = vtList(vtCollection(s, "invoices"), vtActor(ctx));
       const inv = arr.find((iv) => iv.id === params.id);
       if (!inv) return { ok: false, error: "invoice not found" };
-      const amount = Math.max(0, vtNum(params.amount));
-      if (amount <= 0) return { ok: false, error: "payment amount required" };
+      const payable = assertPayable(inv.balanceDue, params.amount, {
+        alreadyPaid: inv.status === "paid" || Number(inv.balanceDue) <= 0,
+        nonPositiveError: "payment amount required",
+        alreadyPaidError: "already_paid",
+      });
+      if (!payable.ok) return payable;
+      const amount = payable.amount;
       const payment = {
         amount: Math.round(amount * 100) / 100,
         method: ["cash", "card", "check", "insurance", "plan"].includes(params.method) ? params.method : "card",

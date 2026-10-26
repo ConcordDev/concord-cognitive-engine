@@ -375,6 +375,7 @@ export default function registerServicesActions(registerLensAction) {
       const list = svcList(s.bookings, userId);
       const booking = list.find(b => b.id === (params || {}).id);
       if (!booking) return { ok: false, error: "booking not found" };
+      if (booking.status === "cancelled") return { ok: true, unchanged: true, result: { booking, promotedFromWaitlist: null } };
       booking.status = "cancelled";
       booking.cancelledAt = new Date().toISOString();
       // Promote first matching waitlist entry into the freed slot.

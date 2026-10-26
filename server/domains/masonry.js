@@ -1,4 +1,12 @@
 // server/domains/masonry.js
+import { assertPayable, assertTransition } from "../lib/money-guards.js";
+
+const CHANGE_ORDER_STATUS = {
+  pending: ["approved", "rejected"],
+  approved: [],
+  rejected: [],
+};
+
 export default function registerMasonryActions(registerLensAction) {
   registerLensAction("masonry", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -518,7 +526,10 @@ export default function registerMasonryActions(registerLensAction) {
       const list = mlist(s.changeOrders, maid(ctx));
       const co = list.find((c) => c.id === params.id);
       if (!co) return { ok: false, error: "Change order not found" };
-      const status = ["pending", "approved", "rejected"].includes(params.status) ? params.status : "approved";
+      const transition = assertTransition(co.status, params.status, CHANGE_ORDER_STATUS);
+      if (!transition.ok) return transition;
+      if (transition.unchanged) return { ok: true, unchanged: true, result: co };
+      const status = params.status;
       co.status = status;
       co.updatedAt = mnow();
       if (status === "approved") {
@@ -543,7 +554,15 @@ export default function registerMasonryActions(registerLensAction) {
       const pct = Math.max(0, Math.min(100, mnum(params.progressPct, 100)));
       const amount = Math.round(contractTotal * (pct / 100) * 100) / 100;
       const list = mlist(s.invoices, userId);
-      const num = `INV-${String(list.length + 2001).padStart(4, "0")}`;
+      if (!(s.invoiceSeq instanceof Map)) s.invoiceSeq = new Map();
+      let seq = s.invoiceSeq.get(userId) || 2000;
+      let num = "";
+      const taken = new Set(list.map((row) => row.number));
+      do {
+        seq += 1;
+        num = `INV-${String(seq).padStart(4, "0")}`;
+      } while (taken.has(num));
+      s.invoiceSeq.set(userId, seq);
       const rec = {
         id: mid("inv"), number: num, client, jobId: mclean(params.jobId, 60) || "general",
         contractTotal, progressPct: pct, amount,
@@ -574,8 +593,13 @@ export default function registerMasonryActions(registerLensAction) {
       const list = mlist(s.invoices, maid(ctx));
       const inv = list.find((i) => i.id === params.id);
       if (!inv) return { ok: false, error: "Invoice not found" };
-      const amt = Math.round(mnum(params.amount) * 100) / 100;
-      if (amt <= 0) return { ok: false, error: "Payment amount must be positive" };
+      const payable = assertPayable(inv.balance, params.amount, {
+        alreadyPaid: inv.status === "paid" || Number(inv.balance) <= 0,
+        nonPositiveError: "Payment amount must be positive",
+        alreadyPaidError: "already_paid",
+      });
+      if (!payable.ok) return payable;
+      const amt = payable.amount;
       inv.payments.push({
         id: mid("pay"), amount: amt,
         method: mclean(params.method, 40) || "check",

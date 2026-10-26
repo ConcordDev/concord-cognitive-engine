@@ -460,6 +460,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = ensureBucket(s.matters, aid(ctx)).find(x => x.id === String(params.id || ""));
     if (!m) return { ok: false, error: "matter not found" };
+    if (m.status === "closed") return { ok: true, unchanged: true, result: { matter: m } };
     m.status = 'closed';
     m.closedAt = isoDay();
     saveLegalState();
