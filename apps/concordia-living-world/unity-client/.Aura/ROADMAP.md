@@ -1107,7 +1107,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
 > Unity already supports talk_to/interact, reach_location (`QuestBeacon`), defeat, gather (`Gatherable`) and deliver. Content also uses observe, any_of, relic, travel, stealth_traverse, cook, consume, branch_decision, perceive_clue, attend_event, time_window and others.
 
 ### Epic A1 · Quest UX
-- [ ] **A-01 · Quest content audit** (deps: QA-1)
+- [x] **A-01 · Quest content audit** (deps: QA-1)
   - Goal: Diff `content/quests/*.json` (16 top-level files, plus 3 per world in frontier, crime, cyber, fantasy, crucible, ruins and superhero, plus sere main-arc and Tunya's arks-of-memory, bloc-secret, nil-protection and vessine-origin) against `Canon/<world>/quests`.
     - List missing files and unsupported objective types per quest in `.Aura/QUEST_AUDIT.md`.
     - Missing files become a REQ for sync. Do not copy them yourself.
@@ -1115,7 +1115,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `QuestLog` loader
   - Verify: the audit lists every quest with a supported/unsupported count.
   - Server: —
-  - Result: —
+  - Result: PASS 2026-10-26 by Claude (ahead of QA-1, document only) · `.Aura/QUEST_AUDIT.md`, regenerate with `python3 .Aura/tools/quest_audit.py .Aura/QUEST_AUDIT.md`. 135 quests / 314 objectives: Unity completes 250 objectives (97 quests end to end); the server records progress for only 83 (3 quests end to end), because `reach_location`, `interact`, `deliver` and `observe` have no server writer (server work, filed for Claude). 8 source files are not in Canon (main-arc, faction-quests, kael-torchlight, consolidation-stake, southern-arc-mystery, the-handshake-revelation, first_cycle_phase_d, sere main-arc); onboarding names two of them (`cracks_in_the_compact`, `first_cycle_phase_d`) that Unity cannot load. `talk_to_npc` (10) is unsupported only because of the spelling.
 - [ ] **A-02 · Journal** (deps: A-01, B-05)
   - Goal: L opens a journal: active (max 3), available and completed quests. Each quest shows giver, objectives and progress. Unsupported objectives say plainly "this client can't do <type> yet".
   - Touch: new `Scripts/Aura/UI/JournalPanel.cs`, `ConcordiaInput.cs`
