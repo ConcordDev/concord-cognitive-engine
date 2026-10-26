@@ -14,7 +14,6 @@ import {
   getActiveQuests,
   getCompletedQuests,
   getQuestProgress,
-  recordObjectiveProgress,
   checkQuestCompletion,
   claimQuestRewards,
   addQuestObjectives,
@@ -176,10 +175,15 @@ export default function registerQuestsMacros(register) {
   }, { note: "objective progress for one quest" });
 
   /**
-   * quests.recordProgress — add progress toward matching objectives. Monotonic
-   * + capped at required_count by the engine; auto-completes the quest when the
-   * last objective lands.
-   * input: { type, target, questId?, count?, userId?, worldId? }  → { ok }
+   * quests.recordProgress — a client's report of progress the server cannot
+   * observe (reach_location / interact / observe; deliver is item-checked).
+   * Goes through lib/quests/quest-report.js, the same checks as /unity-ws
+   * quest:report: an accepted active quest that has this (type, target), the
+   * player's live world, one unit per call, rate-limited. kill / defeat /
+   * gather / talk_to are recorded by the server's own actions and refused
+   * here. This macro used to record any type at any count on the client's
+   * word, which let a client finish quests by claim alone.
+   * input: { type, target, questId, worldId? }  → reportObjective's result
    */
   register("quests", "recordProgress", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -189,11 +193,19 @@ export default function registerQuestsMacros(register) {
     const badNum = badNumericField(input, ["count"]);
     if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     if (!input.type || !input.target) return { ok: false, reason: "missing_objective_key" };
+    if (!input.questId) return { ok: false, reason: "no_quest_id" };
     const worldId = ctxWorld(ctx, input);
-    const count = Math.max(1, Math.floor(Number(input.count) || 1));
-    recordObjectiveProgress(db, userId, worldId, input.questId || null, input.type, input.target, count);
-    return { ok: true };
-  }, { note: "record objective progress (monotonic, capped, auto-completes)" });
+    let liveWorldId = null;
+    try {
+      const { getUserPosition } = await import("../lib/city-presence.js");
+      const pos = getUserPosition(userId);
+      liveWorldId = pos?.worldId || pos?.cityId || null;
+    } catch { /* presence unavailable */ }
+    if (!liveWorldId) return { ok: false, reason: "no_live_presence" };
+    const { reportObjective } = await import("../lib/quests/quest-report.js");
+    const r = reportObjective(db, { userId, worldId, questId: input.questId, type: input.type, target: input.target, liveWorldId });
+    return r.ok ? r : { ...r, reason: r.error };
+  }, { note: "client-reported objective progress, server-checked (lib/quests/quest-report.js)" });
 
   /**
    * quests.checkCompletion — recompute whether a quest is fully done.

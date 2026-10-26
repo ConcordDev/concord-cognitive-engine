@@ -2054,6 +2054,7 @@ import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
 import { validateParamSchema } from "./lib/macro-param-schema.js";
+import { invokeLensHandler, rememberLensActionSpec, lensActionSpec } from "./lib/lens-action-dispatch.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 // V1.2 Wave A — Society & Presence: ephemeral spatially-scoped chat channel.
@@ -15485,7 +15486,7 @@ async function runMacro(domain, name, input, ctx) {
   // clean { ok:false, error:"param_validation" } instead of a 500 / silent
   // wrong-thing. Opt-in + additive — a macro with no paramSchema is unaffected.
   if (m.spec?.paramSchema) {
-    const pv = validateParamSchema(m.spec.paramSchema, input ?? {});
+    const pv = validateParamSchema(m.spec.paramSchema, input ?? {}, ctx);
     if (!pv.ok) {
       return { ok: false, error: "param_validation", domain, name, fields: pv.errors };
     }
@@ -48202,7 +48203,7 @@ register("lens", "run", async (ctx, input={}) => {
       return { ok: false, error: `${artifact.domain}.${action} encountered an error`, domain: artifact.domain, action };
     }
   }
-  const handlerResult = await handler(ctx, artifact, params);
+  const handlerResult = await invokeLensHandler(handler, ctx, artifact, params, lensActionSpec(artifact.domain, action));
   // INC-SWEEP lab F3 — a handler { ok:false } must not ride out as outer ok:true
   // (Lab Analysis calibrationCurve / sampleTracker looked successful to the page).
   if (handlerResult && typeof handlerResult === "object" && handlerResult.ok === false) {
@@ -49274,8 +49275,9 @@ globalThis.__concordLensActions = LENS_ACTIONS;
 // adversarially driven. Deterministic registerLensAction handlers are NOT here.
 const BRAIN_BACKED_LENS_ACTIONS = new Set();
 globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
-function registerLensAction(domain, action, handler) {
+function registerLensAction(domain, action, handler, spec) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
+  rememberLensActionSpec(`${domain}.${action}`, spec);
 }
 
 // Sprint 18.5 follow-up — moved here from ~line 23664. mountChatAgentStream
@@ -49338,7 +49340,7 @@ async function runMcpTool(domain, name, input, ctx) {
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    const result = await resolved.handler(ctx, virtualArtifact, data);
+    const result = await invokeLensHandler(resolved.handler, ctx, virtualArtifact, data, lensActionSpec(domain, name));
     _billLensDispatch(domain, name, result, _t0, ctx);
     return result;
   }
@@ -49452,7 +49454,7 @@ async function _dispatchLensRunForTest(domain, name, input, ctx) {
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return await resolved.handler(ctx, virtualArtifact, data);
+    return await invokeLensHandler(resolved.handler, ctx, virtualArtifact, data, lensActionSpec(domain, name));
   }
   if (resolved.via === "macro") {
     return await runMacro(domain, name, input || {}, ctx);
@@ -49532,7 +49534,7 @@ app.post("/api/lens/run", async (req, res) => {
     if (resolved.via === "lens_action") {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const _lensT0 = Date.now();
-      const lensRaw = await resolved.handler(ctx, virtualArtifact, rest);
+      const lensRaw = await invokeLensHandler(resolved.handler, ctx, virtualArtifact, rest, lensActionSpec(domain, action));
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
       // Ownership refusals (engineering.deletePart / renamePart) carry
       // status 403 and an error that starts with "forbidden". That is an
@@ -76273,7 +76275,7 @@ async function _dispatchDesignCommand(domain, action, params, ctx) {
   });
   if (resolved.via === "lens_action") {
     const virtualArtifact = { id: null, domain, type: "domain_action", data: params, meta: {} };
-    return await resolved.handler(ctx, virtualArtifact, params);
+    return await invokeLensHandler(resolved.handler, ctx, virtualArtifact, params, lensActionSpec(domain, action));
   }
   if (resolved.via === "macro") {
     return await runMacro(domain, action, params, ctx);
