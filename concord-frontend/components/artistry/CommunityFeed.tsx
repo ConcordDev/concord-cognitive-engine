@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 interface FeedItem {
+  displayName?: string; isMine?: boolean;
   id: string; title: string; discipline: string; userId: string;
   coverUrl: string; images: { url: string }[]; views: number;
   appreciations: number; commentCount: number; createdAt: string;

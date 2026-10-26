@@ -11,6 +11,7 @@ import { ArtistryDmPanel, type DmMessage, type DmThread } from './ArtistryDmPane
 import { ArtistryNotifications } from './ArtistryNotifications';
 
 interface FeedProject {
+  displayName?: string; isMine?: boolean;
   id: string; userId: string; title: string; description: string; discipline: string;
   coverUrl: string; images: { url: string }[]; views: number;
   appreciations: number; commentCount: number; createdAt: string;

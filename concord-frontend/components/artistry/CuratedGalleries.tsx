@@ -12,6 +12,7 @@ interface Gallery {
   projectIds: string[]; projectCount: number; featured: boolean; createdAt: string;
 }
 interface GalleryProject {
+  displayName?: string; isMine?: boolean;
   id: string; userId: string; title: string; discipline: string;
   coverUrl: string; images: { url: string }[]; views: number; appreciations: number;
 }

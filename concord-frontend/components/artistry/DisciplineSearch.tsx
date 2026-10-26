@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 interface SearchProject {
+  displayName?: string; isMine?: boolean;
   id: string; userId: string; title: string; description: string; discipline: string;
   tags: string[]; coverUrl: string; images: { url: string }[];
   views: number; appreciations: number; commentCount: number; createdAt: string;
