@@ -59,6 +59,9 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
       if (data && data.ok === false) return;
       queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       queryClient.invalidateQueries({ queryKey: ['social-profiles'] });
+      // The welcome checklist's avatar/bio steps read the profile record —
+      // a real save checks them off (oc-social-3b).
+      queryClient.invalidateQueries({ queryKey: ['social-welcome-state'] });
       onClose();
     },
   });

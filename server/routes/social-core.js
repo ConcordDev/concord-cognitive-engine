@@ -66,6 +66,12 @@ import {
   searchSocial,
 } from "../lib/social-feeds.js";
 import { shareListing, shareStudioAsset } from "../lib/social-share.js";
+import {
+  peopleToFollow,
+  welcomeState,
+  dismissWelcome,
+  discoverForViewer,
+} from "../lib/social-welcome.js";
 
 function stateOf() {
   return globalThis._concordSTATE || null;
@@ -614,6 +620,47 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
     if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
     const result = getPinnedPosts(STATE, req.params.userId, req.user?.id || null);
     sendLayer(res, result);
+  });
+
+  // ── Welcome pass (job oc-social-3b) ─────────────────────────────────────
+  // All real data from the canonical store; nothing fabricated.
+
+  // Active creators (recent PUBLIC posts and/or finished Studio projects)
+  // minus the viewer, followed accounts, blocked (either direction) and
+  // muted users. Empty means empty — the frontend hides the row.
+  router.get("/people-to-follow", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 12);
+    sendLayer(res, peopleToFollow(STATE, { viewerId: req.user?.id, limit }));
+  });
+
+  // Real first-run checklist state for the session user only (no user
+  // param — a caller can only ever read their own booleans).
+  router.get("/welcome-state", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, welcomeState(STATE, req.user?.id));
+  });
+
+  // Persist checklist dismissal on the social profile (payload_json
+  // round-trips unknown keys, so the flag survives restarts).
+  router.post("/welcome-dismiss", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    sendLayer(res, dismissWelcome(STATE, req.user?.id));
+  });
+
+  // Override of the server.js handler (mounted first, wins by registration
+  // order): suggestions are computed for the SESSION user — the :userId
+  // param is no longer trusted — blocked (either direction) and muted users
+  // are never suggested, and a viewer with no interest signal gets real
+  // active creators instead of an always-empty list.
+  router.get("/discover/:userId", auth, (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 20);
+    res.json(discoverForViewer(STATE, req.user?.id, { limit }));
   });
 
   return router;

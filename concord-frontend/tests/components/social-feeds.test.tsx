@@ -6,6 +6,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const calls: Array<{ method: string; url: string }> = [];
 const deleteGate = vi.hoisted(() => ({ resolve: null as null | ((value: unknown) => void) }));
 
+// RankedFeed renders PostMediaCard for attached media, which navigates to
+// the marketplace via next/navigation — stub the router a headless render
+// can't provide.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+}));
+
 vi.mock('@/lib/api/client', () => ({
   api: {
     get: vi.fn(async (url: string) => {

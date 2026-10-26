@@ -26,7 +26,7 @@ import { api } from '@/lib/api/client';
 
 export interface MeResponse {
   ok: boolean;
-  user?: { id: string; username: string; displayName?: string };
+  user?: { id: string; username: string; displayName?: string; role?: string; scopes?: string[] };
 }
 
 export function useCurrentUser(): UseQueryResult<MeResponse | null> {

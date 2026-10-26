@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { OwnPostDelete } from './OwnPostDelete';
 import { invalidatePostSurfaces } from './invalidate-post-surfaces';
+import { PostMediaCard, type PostListingAttachment } from './PostMediaCard';
 
 interface RankedPost {
   id: string;
@@ -12,6 +13,10 @@ interface RankedPost {
   content?: string;
   createdAt?: string;
   why?: string[];
+  mediaType?: string;
+  mediaUrl?: string | null;
+  sensitiveHidden?: boolean;
+  listing?: PostListingAttachment | null;
 }
 
 export function RankedFeed({ currentUserId }: { currentUserId: string }) {
@@ -43,6 +48,10 @@ export function RankedFeed({ currentUserId }: { currentUserId: string }) {
       {posts.map((post) => (
         <li key={post.id} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
           <p className="text-sm text-zinc-200">{post.content}</p>
+          {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+          {/* Attached Studio track or Marketplace item → real media card
+              (play button, never autoplay). */}
+          <PostMediaCard mediaType={post.mediaType} mediaUrl={post.mediaUrl} listing={post.listing} />
           {post.why && post.why.length > 0 && (
             <p className="mt-1 text-[11px] text-zinc-500">Why this is here: {post.why.join(' · ')}</p>
           )}
