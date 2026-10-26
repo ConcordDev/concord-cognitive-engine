@@ -18,7 +18,7 @@ interface Project {
   coverUrl: string; published: boolean; views: number;
   appreciations?: number; commentCount?: number; createdAt: string;
 }
-interface Comment { id: string; userId: string; body: string; createdAt: string }
+interface Comment { id: string; userId: string; displayName?: string; isMine?: boolean; body: string; createdAt: string }
 
 // Resolves an `artistry-img:<id>` reference — minted by the real
 // artistry.project-image-upload macro (server/domains/artistry.js, closes
