@@ -97,6 +97,7 @@ namespace Concordia
         float _dmgMul = 1f;
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
+        float _blockSentAt;
         float _moveSentAt;
         float _moveIdleAt;
         Vector3 _moveSentPos = new Vector3(float.NaN, 0f, 0f);
@@ -235,7 +236,20 @@ namespace Concordia
                     if (client != null) client.SendDodge();
                 }
             }
-            if (!Busy && ConcordiaInput.Held(ConcordiaInput.Guard))
+            // The server's guard (combat:block) lasts ~0.8 s per message, so a held
+            // guard re-sends it; letting go sends one release.
+            var guardHeld = ConcordiaInput.Held(ConcordiaInput.Guard);
+            if (guardHeld && Time.time >= _blockSentAt + 0.5f)
+            {
+                _blockSentAt = Time.time;
+                ConcordClient.Live?.SendBlock(true);
+            }
+            else if (!guardHeld && _blockSentAt > 0f)
+            {
+                _blockSentAt = 0f;
+                ConcordClient.Live?.SendBlock(false);
+            }
+            if (!Busy && guardHeld)
             {
                 _body.Stamina = stamina;
                 // The opening of a guard is the parry window; the server's

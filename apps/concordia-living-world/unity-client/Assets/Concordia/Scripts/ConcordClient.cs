@@ -1953,6 +1953,10 @@ if (JsonFlagFalse(json, "ok"))
         public Task SendNpcAttack(string npcId) =>
             SendEvt("npc:attack", "{\"npcId\":\"" + Escape(npcId) + "\"}");
 
+        /// <summary>Held guard: arms the server block window for ~0.8 s (combat:block:ack).</summary>
+        public Task SendBlock(bool active) =>
+            SendEvt("combat:block", active ? "{\"active\":true}" : "{\"active\":false}");
+
         public Task SendDodge(bool parry = false, string action = null)
         {
             if (string.IsNullOrEmpty(action)) action = parry ? "parry" : "dodge";
