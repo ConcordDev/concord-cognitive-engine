@@ -306,10 +306,11 @@ export default function registerCustomActions(registerLensAction) {
       const s = getCustomState();
       const userId = actorId(ctx);
       const map = userMap(s, "canvases", userId);
-      const id = String(params.canvasId || "");
-      const existed = map.delete(id);
+      const id = String(params.canvasId || params.id || "");
+      const existed = id ? map.delete(id) : false;
+      if (!existed) return { ok: false, error: "not_found" };
       userMap(s, "published", userId).delete(id);
-      return { ok: true, result: { deleted: existed, canvasId: id } };
+      return { ok: true, result: { deleted: true, canvasId: id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -368,8 +369,10 @@ export default function registerCustomActions(registerLensAction) {
     try {
       const s = getCustomState();
       const map = userMap(s, "bindings", actorId(ctx));
-      const id = String(params.bindingId || "");
-      return { ok: true, result: { deleted: map.delete(id), bindingId: id } };
+      const id = String(params.bindingId || params.id || "");
+      const existed = id ? map.delete(id) : false;
+      if (!existed) return { ok: false, error: "not_found" };
+      return { ok: true, result: { deleted: true, bindingId: id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

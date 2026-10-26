@@ -1,6 +1,8 @@
 // server/domains/trades.js
 // Domain actions for trades/contracting: estimates, inspections, materials costs.
 
+import { assertPayable } from "../lib/money-guards.js";
+
 export default function registerTradesActions(registerLensAction) {
   /**
    * calculateEstimate
@@ -1256,8 +1258,10 @@ export default function registerTradesActions(registerLensAction) {
     const inv = ensureTrBucket(s, "invoices", userId).find(i => i.id === id);
     if (!inv) return { ok: false, error: "invoice not found" };
     if (inv.status === "paid") return { ok: false, error: "invoice already paid" };
-    const amount = Number(params.amount);
-    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const remaining = Math.round(((Number(inv.total) || 0) - (Number(inv.amountPaid) || 0)) * 100) / 100;
+    const payable = assertPayable(remaining, params.amount, { nonPositiveError: "amount must be > 0" });
+    if (!payable.ok) return payable;
+    const amount = payable.amount;
     const method = ["card", "ach", "cash", "check"].includes(params.method) ? params.method : "card";
     inv.amountPaid = Math.round((inv.amountPaid + amount) * 100) / 100;
     inv.method = method;

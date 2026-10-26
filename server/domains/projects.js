@@ -198,7 +198,9 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = pjProject(s, pjAid(ctx), params.id);
     if (!project) return { ok: false, error: "project not found" };
-    project.archived = params.archived !== false;
+    const wantArchived = params.archived !== false;
+    if (project.archived === wantArchived) return { ok: true, unchanged: true, result: { id: project.id, archived: project.archived } };
+    project.archived = wantArchived;
     project.updatedAt = pjNow();
     savePjState();
     return { ok: true, result: { id: project.id, archived: project.archived } };
@@ -485,6 +487,7 @@ export default function registerProjectsActions(registerLensAction) {
     const userId = pjAid(ctx);
     const sprint = (s.sprints.get(userId) || []).find((sp) => sp.id === params.id);
     if (!sprint) return { ok: false, error: "sprint not found" };
+    if (sprint.status === "completed") return { ok: true, unchanged: true, result: { id: sprint.id, status: "completed", carriedOver: 0 } };
     sprint.status = "completed";
     // carry unfinished tasks back to the backlog (Linear-style cycle rollover)
     let carried = 0;
@@ -615,7 +618,9 @@ export default function registerProjectsActions(registerLensAction) {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const milestone = (s.milestones.get(pjAid(ctx)) || []).find((m) => m.id === params.id);
     if (!milestone) return { ok: false, error: "milestone not found" };
-    milestone.status = params.reopen ? "open" : "completed";
+    const nextStatus = params.reopen ? "open" : "completed";
+    if (milestone.status === nextStatus) return { ok: true, unchanged: true, result: { id: milestone.id, status: milestone.status } };
+    milestone.status = nextStatus;
     savePjState();
     return { ok: true, result: { id: milestone.id, status: milestone.status } };
   });
