@@ -16,6 +16,12 @@ export function ellipsoidArea(a, b, c) {
   return 4 * PI * (((a * b) ** p + (a * c) ** p + (b * c) ** p) / 3) ** (1 / p);
 }
 
+/** Solid volume in m³. Null for a kernel CAD body and for shapes with no closed volume. */
+export function geometryVolumeM3(g) {
+  if (!g || g.shape === "cad-body") return null;
+  return volumeM3(g);
+}
+
 function volumeM3(g) {
   switch (g.shape) {
     case "box": return g.length * g.width * g.height;
@@ -57,7 +63,7 @@ export const MASS_INCONSISTENCY_REL = 0.05;
 
 export function geometryMassKg(geometry, densityKgM3) {
   if (!geometry || geometry.shape === "cad-body" || !(densityKgM3 > 0)) return null;
-  const V = volumeM3(geometry);
+  const V = geometryVolumeM3(geometry);
   if (!Number.isFinite(V)) return null;
   return V * densityKgM3;
 }

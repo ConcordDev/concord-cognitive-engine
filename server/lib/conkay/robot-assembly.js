@@ -130,6 +130,30 @@ function scopeCount(text, noun) {
 
 export function meshBuilder() {
   const positions = [], indices = [];
+  const slices = [];
+  let vertCursor = 0;
+  let idxCursor = 0;
+  // Claims the triangles `make` just drew. An empty maker claims triangles
+  // drawn since the previous claim (phone-stand / truss segments that call
+  // box() and then add() with an empty maker).
+  const run = (meta, make) => {
+    const beforeV = positions.length / 3;
+    const beforeI = indices.length;
+    if (typeof make === "function") make();
+    const afterV = positions.length / 3;
+    const afterI = indices.length;
+    const drew = afterI > beforeI;
+    slices.push({
+      name: meta?.name ?? null,
+      shape: meta?.shape ?? null,
+      v0: drew ? beforeV : vertCursor,
+      v1: afterV,
+      i0: drew ? beforeI : idxCursor,
+      i1: afterI,
+    });
+    vertCursor = afterV;
+    idxCursor = afterI;
+  };
   const quad = (a, b, c, d) => {
     const i = positions.length / 3;
     for (const v of [a, b, c, d]) positions.push(v[0], v[1], v[2]);
@@ -159,7 +183,7 @@ export function meshBuilder() {
       quad(c1, c1, at(a0, h), at(a1, h));
     }
   };
-  return { positions, indices, box, cyl };
+  return { positions, indices, box, cyl, slices, run };
 }
 
 const r3 = (v) => Math.round(v * 1000) / 1000;
@@ -173,7 +197,7 @@ function finishAssembly(spec, parts, m, notes) {
     spec,
     parts,
     bbox_mm: { length: span(xs), height: span(ys), width: span(zs) },
-    mesh: { kind: "robot-assembly", positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3 },
+    mesh: { kind: "robot-assembly", positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3, parts: m.slices },
     notes,
   };
 }
@@ -181,7 +205,7 @@ function finishAssembly(spec, parts, m, notes) {
 function partAdder(m) {
   const parts = [];
   const add = (name, shape, center, size, make) => {
-    make();
+    m.run({ name, shape }, make);
     parts.push({ name, shape, center_mm: center.map((v) => Math.round(v * 1000)), size_mm: size.map((v) => Math.round(v * 1000)) });
   };
   return { parts, add };

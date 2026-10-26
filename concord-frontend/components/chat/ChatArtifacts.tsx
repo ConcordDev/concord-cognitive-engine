@@ -46,8 +46,24 @@ export interface ChatArtifact {
   triangleCount?: number;
   mediaId?: string;
   /** Robot / assembly parts with sizes (mm), for the workspace parts panel. */
-  partList?: Array<{ name: string; size_mm?: number[] }>;
+  partList?: Array<{ name: string; size_mm?: number[] | { x?: number; y?: number; z?: number } }>;
   bbox_mm?: { length?: number; height?: number; width?: number };
+  units?: string;
+  geometryUnits?: string;
+  scale?: number;
+  scaleNote?: string;
+  extents_mm?: { x?: number; y?: number; z?: number };
+  partRanges?: Array<{ name?: string; nodeName?: string; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
+  engineering?: { massKg?: number | null; massNote?: string };
+}
+
+function meshSizeCaption(a: ChatArtifact): string {
+  const b = a.bbox_mm;
+  if (b && [b.length, b.height, b.width].every((n) => typeof n === 'number' && Number.isFinite(n) && (n as number) > 0)) {
+    return `${b.length} × ${b.height} × ${b.width} mm · `;
+  }
+  if (a.units === 'unitless' || a.scaleNote === 'unitless (not to scale)') return 'unitless (not to scale) · ';
+  return '';
 }
 
 const SAFE_SRC = /^(?:https?:\/\/|\/|data:(?:image|audio)\/)/i;
@@ -118,12 +134,24 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
         if (kind === 'mesh' && (meshPositions || meshUrl)) {
           return (
             <div key={i} className="max-w-md space-y-1">
-              <MeshArtifactView positions={a.positions} indices={a.indices} url={meshUrl || undefined} color={a.color} title={a.title} />
+              <MeshArtifactView
+                positions={a.positions}
+                indices={a.indices}
+                url={meshUrl || undefined}
+                color={a.color}
+                title={a.title}
+                units={a.units}
+                geometryUnits={a.geometryUnits}
+                bbox_mm={a.bbox_mm}
+                scaleNote={a.scaleNote}
+                extents_mm={a.extents_mm}
+                partList={a.partList}
+              />
               <div className="text-[11px] text-zinc-400">
                 {a.title || '3D model'}
                 {typeof a.triangleCount === 'number' ? ` · ${a.triangleCount} triangles` : ''}
                 {a.pass === true ? ' · passes' : a.pass === false ? ' · fails the check' : ''}
-                {' · drag to orbit'}
+                {` · ${meshSizeCaption(a)}drag to orbit`}
               </div>
             </div>
           );

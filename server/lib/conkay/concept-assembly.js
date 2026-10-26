@@ -189,7 +189,7 @@ export function buildConceptAssembly(text) {
   const m = meshBuilder();
   const parts = [];
   const add = (name, shape, center, size, make) => {
-    make();
+    m.run({ name, shape }, make);
     parts.push({ name, shape, center_mm: center.map(mm), size_mm: size.map(mm) });
   };
   const extra = tpl.build(t, m, add) || {};
@@ -201,7 +201,7 @@ export function buildConceptAssembly(text) {
     kind: tpl.kind,
     parts,
     bbox_mm: { length: span(xs), height: span(ys), width: span(zs) },
-    mesh: { kind: `${tpl.kind}-concept`, positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3 },
+    mesh: { kind: `${tpl.kind}-concept`, positions: m.positions.map(r3), indices: m.indices, vertexCount: m.positions.length / 3, triangleCount: m.indices.length / 3, parts: m.slices },
     notes: `Concept layout from sized primitives (y up). ${extra.notes || ""} Not a solved design: no structural or tolerance analysis was run.`.trim(),
   };
 }
