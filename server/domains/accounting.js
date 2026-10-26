@@ -2,8 +2,10 @@
 // Domain actions for accounting: trial balance, P&L, invoice aging, budget variance, rent roll.
 
 import { requireOwner } from "../lib/lens-authz.js";
+import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerAccountingActions(registerLensAction) {
+  registerLensAction = bindWave1(registerLensAction);
   /**
    * trialBalance
    * Generate a trial balance from the chart of accounts.
