@@ -25,11 +25,18 @@ const read = (p) => { try { return fs.readFileSync(path.join(root, p), "utf8"); 
 const fails = [];
 
 const worlds = read("server/routes/worlds.js");
+// The kill path moved into lib/npc-kill.js (resolveNpcKill, shared by the HTTP
+// kill route and the /unity-ws creature kill). Check the route still delegates
+// there, then apply the original ordering check to whichever file holds it.
+const delegates = /resolveNpcKill/.test(worlds) && /npc-kill\.js/.test(worlds);
+const killSrc = delegates ? read("server/lib/npc-kill.js") : worlds;
+const where = delegates ? "lib/npc-kill.js" : "kill route";
 // The spare gate must appear, and before the (first) triggerNPCDeath call.
-const spareIdx = worlds.indexOf("shouldSpareExecution");
-const killIdx = worlds.indexOf("triggerNPCDeath");
-if (spareIdx === -1) fails.push("kill route no longer calls shouldSpareExecution");
-else if (killIdx !== -1 && spareIdx > killIdx) fails.push("shouldSpareExecution runs AFTER triggerNPCDeath (gate is dead code)");
+// Match call sites ("name("), not doc-comment mentions.
+const spareIdx = killSrc.indexOf("shouldSpareExecution(");
+const killIdx = killSrc.indexOf("triggerNPCDeath(");
+if (spareIdx === -1) fails.push(`${where} no longer calls shouldSpareExecution`);
+else if (killIdx !== -1 && spareIdx > killIdx) fails.push(`shouldSpareExecution runs AFTER triggerNPCDeath in ${where} (gate is dead code)`);
 
 const lib = read("server/lib/combat-restraint.js");
 for (const sym of ["shouldSpareExecution", "applyCombatHit", "nextCombatState", "assessForce"]) {

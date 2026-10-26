@@ -375,7 +375,13 @@ for (const n of sourceCreateNames) knownTables.add(n);
 //    server/lib/literary-vec.js#ensureVec() (needs the loadable sqlite-vec
 //    extension this in-memory gate DB lacks, so its CREATE can't be exec'd here).
 //    LRL degrades gracefully when it's absent — ADR 009.
-for (const n of ["schema_migrations", "creative_artifact_listings", "literary_vec"]) knownTables.add(n);
+//  - social_post_fts: an FTS5 VIRTUAL TABLE created at runtime by
+//    server/lib/social-feeds.js (CREATE VIRTUAL TABLE isn't picked up by the
+//    source-CREATE scan above).
+//  - sentinel_alerts / observations: tables in the SEPARATE read-only sentinel.db /
+//    browser_organ.db that server/lib/incident-engine/gather.js opens with openRo();
+//    they are not part of concord.db's schema.
+for (const n of ["schema_migrations", "creative_artifact_listings", "literary_vec", "social_post_fts", "sentinel_alerts", "observations"]) knownTables.add(n);
 
 const violations = [];
 

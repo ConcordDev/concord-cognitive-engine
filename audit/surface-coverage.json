@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-06-01T22:32:05.428Z",
+  "generatedAt": "2026-10-26T15:09:46.435Z",
   "floor": 1,
   "totals": {
-    "items": 127,
+    "items": 172,
     "shippedVerbs": 20,
     "floorViolations": 0,
     "byScore": [
       {
         "score": 0,
-        "count": 27
+        "count": 34
       },
       {
         "score": 1,
-        "count": 65
+        "count": 103
       },
       {
         "score": 2,
@@ -163,8 +163,8 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx:151",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:105",
+        "visual": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx:161",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:122",
         "animation": "n/a",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
@@ -178,6 +178,20 @@
       "score": 2,
       "channels": {
         "visual": "concord-frontend/components/world-lens/ComboEvolvedBridge.tsx:4",
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "combat:npc-combo-evolved",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
         "audio": 0,
         "animation": 0,
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
@@ -450,6 +464,20 @@
       }
     },
     {
+      "name": "qualia:policy",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
       "name": "world:invariant-warning",
       "category": "emergent_event",
       "source": "EmergentEventFeed",
@@ -506,6 +534,20 @@
       }
     },
     {
+      "name": "faction:strategy-move",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
       "name": "npc:scheme-resolved",
       "category": "emergent_event",
       "source": "EmergentEventFeed",
@@ -513,7 +555,7 @@
       "shippedVerb": false,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/world/AdaptiveScoreBridge.tsx:25",
+        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:207",
         "audio": "concord-frontend/lib/concordia/adaptive-score.ts:42",
         "animation": 0,
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
@@ -569,7 +611,7 @@
       "shippedVerb": false,
       "score": 2,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:162",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:199",
         "audio": 0,
         "animation": 0,
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
@@ -585,7 +627,7 @@
       "channels": {
         "visual": 0,
         "audio": 0,
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1561",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1943",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
     },
@@ -744,6 +786,20 @@
       }
     },
     {
+      "name": "spouse:reaction",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
       "name": "npc:combat-resolved",
       "category": "emergent_event",
       "source": "EmergentEventFeed",
@@ -849,8 +905,8 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/fractal/FractalRenderer.tsx:202",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
+        "visual": "concord-frontend/components/fractal/FractalRenderer.tsx:240",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:222",
         "animation": "n/a",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
@@ -871,6 +927,20 @@
     },
     {
       "name": "scheme:intervened",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "scheme:deception",
       "category": "emergent_event",
       "source": "EmergentEventFeed",
       "frequency": 5,
@@ -990,7 +1060,7 @@
       "score": 3,
       "channels": {
         "visual": "concord-frontend/components/world/DamageBillboard.tsx:8",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:222",
         "animation": "n/a",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
@@ -1108,17 +1178,423 @@
       }
     },
     {
-      "name": "combat:attack",
-      "category": "combat",
-      "source": "event-shapes",
-      "frequency": 1000,
-      "shippedVerb": true,
-      "score": 4,
+      "name": "world:npc-bark",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
-        "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:npc-attack",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:npc-spared",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:racing-started",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:basketball-started",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "mount:behavior",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:node-update",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:loot-node",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:broadcast",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:boss-spawn",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "scheme:player_assassinated",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "plague:resolved",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "faction:collapse-cascade",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "scheme:cross_world",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "creature:predation",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "career:shift",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:npc-event",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "secret:weaponised",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "agent:value-drift",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:viability",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "realm:governance-adjusted",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "lattice:claim-verified",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "pain:avoidance_created",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "royalty:cross-world",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "npc:prop-interaction",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "app:created",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "forge:template:created",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "forge:template:generated",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "forge:template:published",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
+      }
+    },
+    {
+      "name": "world:gathering-detected",
+      "category": "emergent_event",
+      "source": "EmergentEventFeed",
+      "frequency": 5,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
     },
     {
@@ -1129,24 +1605,10 @@
       "shippedVerb": true,
       "score": 4,
       "channels": {
-        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:197",
+        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:200",
         "audio": "concord-frontend/components/world/WorldAudioBridge.tsx:18",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1828",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
-      }
-    },
-    {
-      "name": "combat:miss",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
       }
     },
     {
@@ -1171,7 +1633,7 @@
       "shippedVerb": false,
       "score": 1,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:195",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:232",
         "audio": 0,
         "animation": 0,
         "legibility": 0
@@ -1199,7 +1661,7 @@
       "shippedVerb": false,
       "score": 1,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:196",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:233",
         "audio": 0,
         "animation": 0,
         "legibility": 0
@@ -1234,34 +1696,6 @@
       }
     },
     {
-      "name": "fishing:cast",
-      "category": "minigame",
-      "source": "event-shapes",
-      "frequency": 80,
-      "shippedVerb": true,
-      "score": 3,
-      "channels": {
-        "visual": 0,
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:591",
-        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx:37"
-      }
-    },
-    {
-      "name": "minigame:started",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
-      }
-    },
-    {
       "name": "social:ping",
       "category": "social",
       "source": "event-shapes",
@@ -1270,7 +1704,7 @@
       "score": 2,
       "channels": {
         "visual": "concord-frontend/components/world/AdaptiveScoreBridge.tsx:7",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:237",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:259",
         "animation": "n/a",
         "legibility": 0
       }
@@ -1286,7 +1720,7 @@
         "visual": 0,
         "audio": 0,
         "animation": 0,
-        "legibility": "concord-frontend/components/world/concordia-hud/HUDContextProvider.tsx:267"
+        "legibility": "concord-frontend/components/world/concordia-hud/HUDContextProvider.tsx:311"
       }
     },
     {
@@ -1328,21 +1762,7 @@
         "visual": 0,
         "audio": 0,
         "animation": 0,
-        "legibility": "concord-frontend/components/concordia/HUD/ActiveEffectsBar.tsx:5"
-      }
-    },
-    {
-      "name": "npc:dialogue",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
+        "legibility": "concord-frontend/components/concordia/hud/ActiveEffectsBar.tsx:5"
       }
     },
     {
@@ -1368,7 +1788,7 @@
       "score": 3,
       "channels": {
         "visual": "concord-frontend/lib/concordia/juice.ts:105",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:222",
         "animation": "n/a",
         "legibility": "concord-frontend/components/guidance/ActivityFeed.tsx:57"
       }
@@ -1381,70 +1801,14 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx:64",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:103",
+        "visual": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx:74",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:120",
         "animation": "n/a",
-        "legibility": "concord-frontend/components/world-lens/CurrencyHUD.tsx:70"
+        "legibility": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx:74"
       }
     },
     {
       "name": "walker:dispatched",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
-      }
-    },
-    {
-      "name": "gameJuice:fanfare",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
-      }
-    },
-    {
-      "name": "forge:template:created",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
-      }
-    },
-    {
-      "name": "forge:template:generated",
-      "category": "socket_event",
-      "source": "event-shapes",
-      "frequency": 8,
-      "shippedVerb": false,
-      "score": 0,
-      "channels": {
-        "visual": 0,
-        "audio": 0,
-        "animation": 0,
-        "legibility": 0
-      }
-    },
-    {
-      "name": "forge:template:published",
       "category": "socket_event",
       "source": "event-shapes",
       "frequency": 8,
@@ -1507,7 +1871,7 @@
       "shippedVerb": false,
       "score": 2,
       "channels": {
-        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:194",
+        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:197",
         "audio": 0,
         "animation": 0,
         "legibility": "concord-frontend/components/world/CombatPolishHUD.tsx:14"
@@ -1535,9 +1899,9 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:200",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:133",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:91",
+        "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:203",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:154",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:363",
         "legibility": 0
       }
     },
@@ -1552,6 +1916,20 @@
         "visual": "concord-frontend/components/world/BuildingCollapseVFX.tsx:6",
         "audio": "concord-frontend/components/world/WorldAudioBridge.tsx:18",
         "animation": "n/a",
+        "legibility": 0
+      }
+    },
+    {
+      "name": "world:aerial-traffic",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
         "legibility": 0
       }
     },
@@ -1599,6 +1977,34 @@
     },
     {
       "name": "whiteboard:vote-cast",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "collab:participant-joined",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "collab:participant-left",
       "category": "socket_event",
       "source": "event-shapes",
       "frequency": 8,
@@ -1710,6 +2116,118 @@
       }
     },
     {
+      "name": "npc:heir-rose",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "npc:stress-break",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "npc:migrated",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "npc:funeral",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "npc:wedding",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "creature:born",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "combat:chronicle",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "scheme:overheard",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
       "name": "combat:impact",
       "category": "combat",
       "source": "event-shapes",
@@ -1717,9 +2235,107 @@
       "shippedVerb": true,
       "score": 4,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1331",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:212",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:153",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1659",
+        "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
+      }
+    },
+    {
+      "name": "macro:started",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/conkay/conkayHudStore.ts:10"
+      }
+    },
+    {
+      "name": "macro:stage",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/conkay/conkayHudStore.ts:153"
+      }
+    },
+    {
+      "name": "macro:completed",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 1,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": "concord-frontend/components/conkay/conkayHudStore.ts:10"
+      }
+    },
+    {
+      "name": "conkay:verdict",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "productivity:reminder-fired",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "forecast:alert-triggered",
+      "category": "socket_event",
+      "source": "event-shapes",
+      "frequency": 8,
+      "shippedVerb": false,
+      "score": 0,
+      "channels": {
+        "visual": 0,
+        "audio": 0,
+        "animation": 0,
+        "legibility": 0
+      }
+    },
+    {
+      "name": "combat:attack",
+      "category": "combat",
+      "source": "core-verb",
+      "frequency": 1000,
+      "shippedVerb": true,
+      "score": 4,
+      "channels": {
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:212",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:153",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1828",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1731,9 +2347,9 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:186",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:124",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:345",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:98",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:141",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:632",
         "legibility": 0
       }
     },
@@ -1747,7 +2363,7 @@
       "channels": {
         "visual": "concord-frontend/components/chat/MessageRenderer.tsx:91",
         "audio": "concord-frontend/components/meditation/SoundscapePlayer.tsx:252",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:93",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:64",
         "legibility": 0
       }
     },
@@ -1759,9 +2375,9 @@
       "shippedVerb": true,
       "score": 4,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:212",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:153",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1828",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1773,9 +2389,9 @@
       "shippedVerb": true,
       "score": 4,
       "channels": {
-        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
+        "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:212",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:153",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1828",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1788,8 +2404,8 @@
       "score": 2,
       "channels": {
         "visual": 0,
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:61",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:26",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:62",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:27",
         "legibility": "n/a"
       }
     },
@@ -1803,8 +2419,22 @@
       "channels": {
         "visual": "concord-frontend/components/world/NpcPerceptionBridge.tsx:64",
         "audio": "concord-frontend/components/audio-rooms/RoomStage.tsx:47",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:156",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:428",
         "legibility": "n/a"
+      }
+    },
+    {
+      "name": "fishing:cast",
+      "category": "minigame",
+      "source": "core-verb",
+      "frequency": 80,
+      "shippedVerb": true,
+      "score": 3,
+      "channels": {
+        "visual": 0,
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:222",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:78",
+        "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx:40"
       }
     }
   ],
@@ -1900,20 +2530,6 @@
       ]
     },
     {
-      "name": "combat:miss",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
       "name": "combat:dodge:ack",
       "category": "socket_event",
       "score": 0,
@@ -1970,35 +2586,7 @@
       ]
     },
     {
-      "name": "minigame:started",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
       "name": "timeline:post",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
-      "name": "npc:dialogue",
       "category": "socket_event",
       "score": 0,
       "applicable": 4,
@@ -2027,62 +2615,6 @@
     },
     {
       "name": "walker:dispatched",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
-      "name": "gameJuice:fanfare",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
-      "name": "forge:template:created",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
-      "name": "forge:template:generated",
-      "category": "socket_event",
-      "score": 0,
-      "applicable": 4,
-      "frequency": 8,
-      "gapWeight": 32,
-      "missing": [
-        "visual",
-        "audio",
-        "animation",
-        "legibility"
-      ]
-    },
-    {
-      "name": "forge:template:published",
       "category": "socket_event",
       "score": 0,
       "applicable": 4,
@@ -2138,6 +2670,20 @@
       ]
     },
     {
+      "name": "world:aerial-traffic",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
       "name": "whiteboard:scene-update",
       "category": "socket_event",
       "score": 0,
@@ -2167,6 +2713,34 @@
     },
     {
       "name": "whiteboard:vote-cast",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "collab:participant-joined",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "collab:participant-left",
       "category": "socket_event",
       "score": 0,
       "applicable": 4,
@@ -2278,6 +2852,160 @@
       ]
     },
     {
+      "name": "npc:heir-rose",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "npc:stress-break",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "npc:migrated",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "npc:funeral",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "npc:wedding",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "creature:born",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "combat:chronicle",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "scheme:overheard",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "conkay:verdict",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "productivity:reminder-fired",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
+      "name": "forecast:alert-triggered",
+      "category": "socket_event",
+      "score": 0,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 32,
+      "missing": [
+        "visual",
+        "audio",
+        "animation",
+        "legibility"
+      ]
+    },
+    {
       "name": "combat:dodge:perfect",
       "category": "socket_event",
       "score": 1,
@@ -2366,6 +3094,45 @@
         "audio",
         "animation",
         "legibility"
+      ]
+    },
+    {
+      "name": "macro:started",
+      "category": "socket_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 24,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "macro:stage",
+      "category": "socket_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 24,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "macro:completed",
+      "category": "socket_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 8,
+      "gapWeight": 24,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
       ]
     },
     {
@@ -2486,6 +3253,19 @@
     },
     {
       "name": "attention:allocation",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "combat:npc-combo-evolved",
       "category": "emergent_event",
       "score": 1,
       "applicable": 4,
@@ -2654,6 +3434,19 @@
       ]
     },
     {
+      "name": "qualia:policy",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
       "name": "world:invariant-warning",
       "category": "emergent_event",
       "score": 1,
@@ -2668,6 +3461,19 @@
     },
     {
       "name": "faction:truce-sought",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "faction:strategy-move",
       "category": "emergent_event",
       "score": 1,
       "applicable": 4,
@@ -2823,6 +3629,19 @@
       ]
     },
     {
+      "name": "spouse:reaction",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
       "name": "npc:combat-resolved",
       "category": "emergent_event",
       "score": 1,
@@ -2928,6 +3747,19 @@
     },
     {
       "name": "scheme:intervened",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "scheme:deception",
       "category": "emergent_event",
       "score": 1,
       "applicable": 4,
@@ -3110,6 +3942,396 @@
     },
     {
       "name": "world:weather",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:npc-bark",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:npc-attack",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:npc-spared",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:racing-started",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:basketball-started",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "mount:behavior",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:node-update",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:loot-node",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:broadcast",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:boss-spawn",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "scheme:player_assassinated",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "plague:resolved",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "faction:collapse-cascade",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "scheme:cross_world",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "creature:predation",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "career:shift",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:npc-event",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "secret:weaponised",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "agent:value-drift",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:viability",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "realm:governance-adjusted",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "lattice:claim-verified",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "pain:avoidance_created",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "royalty:cross-world",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "npc:prop-interaction",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "app:created",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "forge:template:created",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "forge:template:generated",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "forge:template:published",
+      "category": "emergent_event",
+      "score": 1,
+      "applicable": 4,
+      "frequency": 5,
+      "gapWeight": 15,
+      "missing": [
+        "visual",
+        "audio",
+        "animation"
+      ]
+    },
+    {
+      "name": "world:gathering-detected",
       "category": "emergent_event",
       "score": 1,
       "applicable": 4,
