@@ -13,6 +13,7 @@
 
 import crypto from "crypto";
 import { isPeopleArchetype } from "./npc-kind.js";
+import { hasAuthoredColumn } from "./quests/authored.js";
 
 // The trade skill each archetype improves by working.
 const TRADE_SKILL = {
@@ -102,7 +103,7 @@ export function npcTakeOpenQuests(db, worldId, agents, { now = Date.now(), takeA
     open = db.prepare(`
       SELECT q.id, q.giver_npc_id
         FROM world_quests q
-       WHERE q.world_id = ? AND q.status = 'available' AND q.created_at <= ?
+       WHERE q.world_id = ? AND q.status = 'available' AND q.created_at <= ?${hasAuthoredColumn(db) ? " AND q.authored = 0" : ""}
        ORDER BY q.created_at
        LIMIT ?
     `).all(worldId, cutoff, max * 4);

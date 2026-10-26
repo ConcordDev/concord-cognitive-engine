@@ -76897,6 +76897,8 @@ function _deliverWorldChat(routed, senderId) {
   _mirrorRealtimeToGateways("chat:message", message, { userId: senderId });
 }
 
+const _gatewayBlockAt = new Map(); // userId → last combat:block over a game gateway
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   // A player in the World lens talks almost only over this socket. Count
@@ -77117,6 +77119,40 @@ function _onGodotClientMessage(client, evt, data) {
             ok: false, error: "handler_error", message: String(e?.message || e),
           });
         });
+      return;
+    }
+    case "quest:report": {
+      // Client-reported quest progress (lib/quests/quest-report.js): the same
+      // checks as POST /api/worlds/:worldId/quests/:questId/report, with the
+      // player's live /unity-ws position as their current world.
+      (async () => {
+        const pos = cityPresence.getUserPosition?.(userId);
+        const liveWorldId = pos?.worldId || pos?.cityId || null;
+        if (!userId) return { ok: false, error: "not_authenticated" };
+        if (!liveWorldId) return { ok: false, error: "no_live_presence" };
+        const { reportObjective } = await import("./lib/quests/quest-report.js");
+        return reportObjective(db, {
+          userId, worldId: String(data?.worldId || liveWorldId), questId: String(data?.questId || ""),
+          type: data?.type, target: data?.target, liveWorldId,
+        });
+      })()
+        .then((r) => _godotGatewaySend(client, "quest:report:ack", r))
+        .catch((e) => _godotGatewaySend(client, "quest:report:ack", { ok: false, error: "handler_error", message: String(e?.message || e) }));
+      return;
+    }
+    case "combat:block": {
+      // A held guard: same server block window the socket.io combat:block arms
+      // (_setBlock, ~800 ms, re-armed while the client re-sends), which
+      // applyHitToState halves damage against on npc:attack. Parry timing for
+      // game clients goes through combat:dodge {wasParry:true}.
+      const now = Date.now();
+      const active = !!data?.active;
+      if (!userId) { _godotGatewaySend(client, "combat:block:ack", { ok: false, error: "not_authenticated" }); return; }
+      if (now - (_gatewayBlockAt.get(userId) || 0) < 200) return;
+      _gatewayBlockAt.set(userId, now);
+      if (_gatewayBlockAt.size > 5000) _gatewayBlockAt.delete(_gatewayBlockAt.keys().next().value);
+      if (active) { try { _setBlock(userId, 800); } catch { /* in-memory state optional */ } }
+      _godotGatewaySend(client, "combat:block:ack", { ok: true, active, t: now });
       return;
     }
     case "combat:dodge": {
