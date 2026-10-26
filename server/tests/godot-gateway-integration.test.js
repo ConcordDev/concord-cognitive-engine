@@ -1243,3 +1243,69 @@ test("loot:request lists an open bag and loot:claim credits it exactly once", as
     assert.equal(again.data.reason, "bag_unavailable");
   } finally { a.ws.close(); }
 });
+
+// ── /unity-ws dummy + hostile HP authority (Aura roadmap C-19 / C-20) ──────
+// The Unity client's TrainingDummy and Hostile ids are not cityPresence
+// entries, so applyAttack answers target_not_found and the dispatcher falls
+// back to lib/combat-hp-authority.js. These pin that the ack's hp is the
+// server's running value (each hit starts where the last one ended), so the
+// client has a real number to apply instead of inventing one.
+const UNITY_WS_URL = `ws://127.0.0.1:${PORT}/unity-ws`;
+
+async function unityAttacker(tag, cityId) {
+  const { token } = await registerUser(`godotit_${TS}_${tag}`);
+  const ws = await connect(UNITY_WS_URL);
+  sendMsg(ws, "auth", { token });
+  await nextFrame(ws); // hello
+  if (cityId) {
+    sendMsg(ws, "player:move", { cityId, x: 0, y: 0, z: 0, direction: 0 });
+    await waitForEvt(ws, "player:move:ack");
+  }
+  return ws;
+}
+
+test("/unity-ws: 10 hits on an arena dummy carry the server's running hp", async () => {
+  const ws = await unityAttacker("dummy1", `unity-it-arena-${TS}`);
+  try {
+    const targetId = `ArenaDummy_${TS}`;
+    let prev = null;
+    for (let i = 0; i < 10; i++) {
+      sendMsg(ws, "combat:attack", { targetId, baseDamage: 14, range: 2.8, weapon: "sword" });
+      const { data: ack } = await waitForEvt(ws, "combat:attack:ack");
+      assert.equal(ack.ok, true, `hit ${i}: ${JSON.stringify(ack)}`);
+      assert.equal(ack.authority, "combat-hp-authority");
+      assert.equal(ack.targetId, targetId);
+      assert.equal(ack.targetHealth, ack.hpAfter);
+      assert.ok(ack.hpAfter <= ack.hpBefore);
+      if (prev) assert.equal(ack.hpBefore, prev.hpAfter, `hit ${i} must start from the server's last hp`);
+      else assert.equal(ack.hpBefore, ack.targetMaxHealth);
+      prev = ack;
+    }
+    assert.ok(prev.hpAfter < prev.targetMaxHealth, "ten hits should have cost the dummy hp");
+  } finally { ws.close(); }
+});
+
+test("/unity-ws: a dummy attack from the Hub is refused and deals no damage", async () => {
+  const ws = await unityAttacker("dummyhub", "concordia-hub");
+  try {
+    sendMsg(ws, "combat:attack", { targetId: `ArenaDummy_hub_${TS}`, baseDamage: 14, range: 2.8 });
+    const { data: ack } = await waitForEvt(ws, "combat:attack:ack");
+    assert.equal(ack.refused, true, JSON.stringify(ack));
+    assert.equal(ack.damage, 0);
+  } finally { ws.close(); }
+});
+
+test("/unity-ws: a stable hostile id keeps one server hp across hits", async () => {
+  const world = `unity-it-road-${TS}`;
+  const ws = await unityAttacker("hostile1", world);
+  try {
+    const targetId = `hostile:${world}:ash_wolf:0`;
+    sendMsg(ws, "combat:attack", { targetId, baseDamage: 14, range: 2.8, weapon: "sword" });
+    const { data: first } = await waitForEvt(ws, "combat:attack:ack");
+    sendMsg(ws, "combat:attack", { targetId, baseDamage: 14, range: 2.8, weapon: "sword" });
+    const { data: second } = await waitForEvt(ws, "combat:attack:ack");
+    assert.equal(first.ok, true, JSON.stringify(first));
+    assert.equal(first.targetId, targetId);
+    assert.equal(second.hpBefore, first.hpAfter);
+  } finally { ws.close(); }
+});
