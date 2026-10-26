@@ -24,24 +24,11 @@ export default defineConfig({
       'tests/perf-urban-hub-playwright.test.ts',
     ],
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: process.env.CI ? 2 : undefined,
-        // Raise the per-fork heap. Adopted from open PR #220, which was
-        // opened specifically to fix CI OOMs in this suite. Forks otherwise
-        // inherit Node's default heap, and an OOM'd fork fails the gate in a
-        // way that reads like a test failure rather than a resource limit.
-        //
-        // #220 also sets `isolate: true` and `fileParallelism: false`; neither
-        // is taken here. `isolate` is ALREADY the default for the forks pool
-        // (verified in the installed vitest 3.2.x: "Isolate tests in forks
-        // pool (default: `true`)"), so setting it changes nothing and would
-        // read as a fix that isn't one. `fileParallelism: false` serializes
-        // every file, which trades the OOM for a much slower suite --
-        // `maxForks: 2` in CI already bounds concurrency.
-        execArgv: ['--max-old-space-size=4096'],
-      },
-    },
+    // Vitest 4 removed `poolOptions`; worker limits and execArgv are top-level.
+    maxWorkers: process.env.CI ? 2 : undefined,
+    // Raise the per-fork heap (adopted from PR #220) so an OOM'd fork does not
+    // read like a test failure. `isolate` is already the forks default.
+    execArgv: ['--max-old-space-size=4096'],
     // CI stabilization for the loaded parallel coverage run. Timing-fragile
     // React/jsdom tests intermittently exceeded the default 5s timeout (or lost
     // a render-tick race) under memory pressure, failing the whole gate AND
