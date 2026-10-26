@@ -299,7 +299,9 @@ export function ConKayWorkspace() {
       seenArtifacts.add(k);
       artifacts.push(rec as ChatArtifact);
       patch(id, { artifacts: artifacts.slice() });
-      if (rec.kind === 'mesh' && Array.isArray(rec.positions) && Array.isArray(rec.indices) && rec.positions.length >= 9) {
+      const meshUrl = typeof rec.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(rec.url);
+      const meshPos = Array.isArray(rec.positions) && Array.isArray(rec.indices) && rec.positions.length >= 9;
+      if (rec.kind === 'mesh' && (meshPos || meshUrl)) {
         setDesign(null);
         setViewMesh(rec as ChatArtifact);
       }
@@ -719,13 +721,20 @@ export function ConKayWorkspace() {
         {!design && !viewMesh && ws.fresh && status !== 'loading' && (
           <StartScreen busy={busy} onPick={(t) => void send(t)} onBeam={ws.startBeam} />
         )}
-        {viewMesh && Array.isArray(viewMesh.positions) && Array.isArray(viewMesh.indices) ? (
+        {viewMesh && ((Array.isArray(viewMesh.positions) && Array.isArray(viewMesh.indices) && viewMesh.positions.length >= 9) || (typeof viewMesh.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(viewMesh.url))) ? (
           <>
             <MeshArtifactView
               positions={viewMesh.positions}
               indices={viewMesh.indices}
+              url={viewMesh.url}
               color={viewMesh.color}
               title={viewMesh.title}
+              units={viewMesh.units}
+              geometryUnits={viewMesh.geometryUnits}
+              bbox_mm={viewMesh.bbox_mm}
+              scaleNote={viewMesh.scaleNote}
+              extents_mm={viewMesh.extents_mm}
+              partList={viewMesh.partList}
               className="absolute inset-0"
               testId="viewport-model"
             />

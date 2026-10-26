@@ -1189,6 +1189,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const text = String(call.params.text || call.params.brief || call.params.prompt || "").slice(0, 4000);
         if (!text.trim()) return { tool: call.tool, ok: false, error: "conkay_design requires text describing the part" };
         const { layoutWouldSubstitute, THREE_D_UNAVAILABLE_REPLY } = await import("./chat/route-3d-ask.js");
+        const { layoutMeshFields, solvedPartMeshFields } = await import("./conkay/cad-glb.js");
         const userAsk = typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "";
         const refuseSubstitute = (kind) => (
           layoutWouldSubstitute(userAsk, kind)
@@ -1215,7 +1216,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             artifact: { kind: "mesh", source: "conkay_design", title: "robot concept assembly", meshKind: mesh.kind,
               positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
               color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name),
-              partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm },
+              partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
+              ...layoutMeshFields(mesh, asm.parts) },
           };
         }
         const { solveDesignText, summarizeDesignSolve, feaUtilToColor } = await import("./conkay/nlp-design-intent.js");
@@ -1242,7 +1244,8 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
                 artifact: { kind: "mesh", source: "conkay_design", title: `${asm.kind.replace(/-/g, " ")} concept`, meshKind: mesh.kind,
                   positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
                   color: "#94a3b8", pass: null, feaOk: null, parts: asm.parts.map((x) => x.name),
-                  partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm },
+                  partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
+                  ...layoutMeshFields(mesh, asm.parts) },
               };
             }
           }
@@ -1276,6 +1279,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             vertexCount: mesh.vertexCount ?? Math.floor(mesh.positions.length / 3),
             triangleCount: mesh.triangleCount ?? Math.floor(mesh.indices.length / 3),
             color, pass: summary.pass, feaOk: summary.fea?.ok === true,
+            ...solvedPartMeshFields(mesh),
           };
         }
         return { tool: call.tool, ok: true, key: "conkay_design.solve", input: { text }, result: summary, ...(artifact ? { artifact } : {}) };
@@ -1667,6 +1671,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             // deadline and no transport on ctx. A busy pod fails in seconds.
             preflight: true,
             ...(transport ? { transport } : {}),
+            scaleText: [user, prompt].filter(Boolean).join("\n"),
           });
         }
         const conceptArtifact = async (b64) => {
@@ -1691,7 +1696,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const concept = g.conceptB64 ? await conceptArtifact(g.conceptB64) : null;
         const meshArtifact = { kind: "mesh", source: "generate_3d", title: `${prompt.slice(0, 60)} (3D)`, meshKind: "generated",
           positions: g.mesh.positions, indices: g.mesh.indices, vertexCount: g.mesh.vertexCount, triangleCount: g.mesh.triangleCount,
-          color: "#a3a3a3", pass: null, feaOk: null };
+          color: "#a3a3a3", pass: null, feaOk: null,
+          ...(g.units ? { units: g.units } : {}),
+          ...(g.geometryUnits ? { geometryUnits: g.geometryUnits } : {}),
+          ...(Number.isFinite(g.scale) ? { scale: g.scale } : {}),
+          ...(g.scaleNote ? { scaleNote: g.scaleNote } : {}),
+          ...(g.bbox_mm ? { bbox_mm: g.bbox_mm } : {}) };
         const generated = { tool: call.tool, ok: true, prompt, source: g.provider, seconds: g.seconds, triangleCount: g.mesh.triangleCount,
           artifact: meshArtifact, artifacts: concept ? [meshArtifact, concept] : [meshArtifact] };
         // A CAD ask returns the layout. The mesh replaces it only when the
@@ -1945,7 +1955,13 @@ export function formatToolResults(results) {
       return _screenUntrusted("web_search", "web_search", webText, (t) => `[TOOL_RESULT: web_search] ${t}`);
     }
     if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${r.note ? `${r.note} ` : ""}${JSON.stringify(r.result).slice(0, 4000)}`;
-    if (r.tool === "generate_3d") return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.`;
+    if (r.tool === "generate_3d") {
+      const b = r.artifact?.bbox_mm;
+      const sized = b && [b.length, b.height, b.width].every((n) => Number.isFinite(Number(n)) && Number(n) > 0)
+        ? ` Scaled to ${b.length} mm long, ${b.height} mm tall, ${b.width} mm wide.`
+        : (r.artifact?.units === "unitless" ? " It is unitless (not to scale). Do not invent dimensions." : "");
+      return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.${sized}`;
+    }
     if (r.tool === "conkay_design") {
       const v = r.result?.safety?.verdict;
       const b = specBbox(r);

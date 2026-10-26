@@ -212,7 +212,9 @@ export function userFacingMeshReply(hit) {
   if (/concept/i.test(kind)) return MESH_REPLY.concept + size;
   const instruction = String(hit?.result?.instruction || "").trim();
   if (instruction) return sanitizeUserReply(instruction + size);
-  return size ? `The 3D model is shown below.${size}` : "The 3D model is shown below.";
+  if (size) return `The 3D model is shown below.${size}`;
+  if (hit?.artifact?.units === "unitless") return "The 3D model is shown below. It is unitless (not to scale).";
+  return "The 3D model is shown below.";
 }
 
 /** Default recovery hint for a failed call that came back without one. */

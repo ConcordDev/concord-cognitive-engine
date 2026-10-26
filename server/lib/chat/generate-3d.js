@@ -19,6 +19,7 @@ import {
   imageByteFailure, isGenerationAbort, isGlb,
 } from "../pollinations-image.js";
 import { JSON_MESH_BUDGET_REPLY, MESH_BUDGET_REPLY } from "./route-3d-ask.js";
+import { applyRequestedScale } from "./mesh-scale.js";
 
 export const THREE_D_TIMEOUT_REPLY = "3D generation timed out before the GPU finished. Try again in a moment.";
 const MESH_TIMEOUT_REPLY = "3D generation timed out before the GPU finished the mesh. Try again in a moment.";
@@ -189,7 +190,7 @@ async function probeHealth(fetchImpl, capMs) {
 /**
  * @returns {Promise<{ok:true, mesh, conceptB64, seconds, provider} | {ok:false, error, reason, stage}>}
  */
-export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false, transport = "" } = {}) {
+export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0, maxTris = MAX_TRIS, conceptTimeoutMs = 120_000, deadlineMs = 0, preflight = false, transport = "", scaleText = null } = {}) {
   // Stream turns used to skip this probe (`preflight` only when a budget or
   // transport was set). The POST then queued on the gen-server lock for the
   // whole concept timeout. Chat always probes. `preflight` stays accepted.
@@ -289,5 +290,18 @@ export async function generate3dFromPrompt(prompt, { fetchImpl = fetch, seed = 0
     return { ok: false, stage: "convert", reason: "glb_parse_failed", error: `the pod returned a 3D file Concord could not read (${String(err?.message || err).slice(0, 160)})` };
   }
   if (tri.triangleCount < 4) return { ok: false, stage: "convert", reason: "empty_mesh", error: "the pod returned an empty 3D mesh" };
-  return { ok: true, mesh: tri, conceptB64: concept.png_b64, provider: mesh.provider || "local-gpu:TRELLIS", faces: mesh.faces, seconds: Math.round((Date.now() - t0) / 1000) };
+  const sized = applyRequestedScale(tri, scaleText == null ? clean : scaleText);
+  return {
+    ok: true,
+    mesh: sized.mesh,
+    units: sized.units,
+    geometryUnits: sized.geometryUnits,
+    bbox_mm: sized.bbox_mm,
+    scale: sized.scale,
+    scaleNote: sized.scaleNote,
+    conceptB64: concept.png_b64,
+    provider: mesh.provider || "local-gpu:TRELLIS",
+    faces: mesh.faces,
+    seconds: Math.round((Date.now() - t0) / 1000),
+  };
 }

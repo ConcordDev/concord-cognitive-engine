@@ -87,6 +87,10 @@ function countsFrom(artifact, positions, indices) {
 function slimMesh(artifact, published, counts) {
   const partList = Array.isArray(artifact.partList) && jsonLength(artifact.partList) < 8000 ? artifact.partList : undefined;
   const bbox = artifact.bbox_mm && jsonLength(artifact.bbox_mm) < 2000 ? artifact.bbox_mm : undefined;
+  const partRanges = Array.isArray(artifact.partRanges) && jsonLength(artifact.partRanges) < 8000 ? artifact.partRanges : undefined;
+  const engineering = artifact.engineering && jsonLength(artifact.engineering) < 12000 ? artifact.engineering : undefined;
+  const extents = artifact.extents_mm && jsonLength(artifact.extents_mm) < 500 ? artifact.extents_mm : undefined;
+  const scale = Number(artifact.scale);
   return {
     kind: "mesh",
     url: published.url,
@@ -99,8 +103,15 @@ function slimMesh(artifact, published, counts) {
     ...(artifact.meshKind ? { meshKind: artifact.meshKind } : {}),
     ...(artifact.source ? { source: artifact.source } : {}),
     ...(artifact.pass != null ? { pass: artifact.pass } : {}),
+    ...(artifact.units ? { units: artifact.units } : {}),
+    ...(artifact.geometryUnits ? { geometryUnits: artifact.geometryUnits } : {}),
+    ...(Number.isFinite(scale) ? { scale } : {}),
+    ...(artifact.scaleNote ? { scaleNote: String(artifact.scaleNote).slice(0, 400) } : {}),
     ...(partList ? { partList } : {}),
     ...(bbox ? { bbox_mm: bbox } : {}),
+    ...(partRanges ? { partRanges } : {}),
+    ...(engineering ? { engineering } : {}),
+    ...(extents ? { extents_mm: extents } : {}),
   };
 }
 
@@ -141,7 +152,12 @@ export async function externalizeChatArtifact(artifact, { ownerId, state } = {})
     if (url) return slimMesh(artifact, { url, mediaId: artifact.mediaId, mimeType: artifact.mimeType || GLB_MIME }, countsFrom(artifact, positions, indices));
     let bytes = glb && isGlb(glb) ? glb : null;
     if (!bytes && hasGeom) {
-      try { bytes = await trianglesToGlb({ positions, indices }); } catch { return null; }
+      try {
+        const { glbFromMeshArtifact } = await import("../conkay/cad-glb.js");
+        bytes = await glbFromMeshArtifact(artifact);
+      } catch {
+        try { bytes = await trianglesToGlb({ positions, indices }); } catch { return null; }
+      }
     }
     if (!bytes || !isGlb(bytes)) return jsonLength(artifact) < CHAT_ARTIFACT_JSON_MAX ? artifact : null;
     const published = await publishBytes({
