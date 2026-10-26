@@ -20,6 +20,9 @@ import crypto from "node:crypto";
 import Database from "better-sqlite3";
 
 import registerQuestsMacros from "../domains/quests.js";
+import { recordObjectiveProgress } from "../lib/quests/quest-engine.js";
+import { updateUserPosition } from "../lib/city-presence.js";
+import { resetQuestReportForTest } from "../lib/quests/quest-report.js";
 import { runMigrations } from "../migrate.js";
 
 const WORLD = "concordia-hub";
@@ -151,20 +154,20 @@ describe("quests domain — full lifecycle round-trip", () => {
 
   it("objective progress is monotonic and capped at required_count", async () => {
     // overshoot the wolves objective: +5 against a target of 3 → capped at 3
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 5 });
+    recordObjectiveProgress(db, USER, WORLD, null, "kill", "wolf", 5);
     let prog = await macros.get("quests.progress")(makeCtx(db), { questId: QUEST });
     const wolf = prog.objectives.find((o) => o.target === "wolf");
     assert.equal(wolf.current_count, 3, "capped at required_count");
     assert.ok(wolf.obj_completed_at, "objective marked complete");
 
     // a further record must NOT exceed the cap or regress
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 10 });
+    recordObjectiveProgress(db, USER, WORLD, null, "kill", "wolf", 10);
     prog = await macros.get("quests.progress")(makeCtx(db), { questId: QUEST });
     assert.equal(prog.objectives.find((o) => o.target === "wolf").current_count, 3);
   });
 
   it("quest auto-completes only when every objective is done", async () => {
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 3 });
+    recordObjectiveProgress(db, USER, WORLD, null, "kill", "wolf", 3);
     // one objective done — quest still active
     const chk = await macros.get("quests.checkCompletion")(makeCtx(db), { questId: QUEST });
     assert.equal(chk.completed, false);
@@ -172,7 +175,7 @@ describe("quests domain — full lifecycle round-trip", () => {
     assert.equal(active.quests.length, 1, "still active with one objective left");
 
     // finish the gather objective — quest completes
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "gather", target: "herb", count: 2 });
+    recordObjectiveProgress(db, USER, WORLD, null, "gather", "herb", 2);
     const row = db.prepare("SELECT status FROM player_quests WHERE quest_id = ?").get(QUEST);
     assert.equal(row.status, "completed");
     // no longer in the active list
@@ -182,8 +185,8 @@ describe("quests domain — full lifecycle round-trip", () => {
 
   it("rewards are granted exactly once", async () => {
     // complete the quest
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 3 });
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "gather", target: "herb", count: 2 });
+    recordObjectiveProgress(db, USER, WORLD, null, "kill", "wolf", 3);
+    recordObjectiveProgress(db, USER, WORLD, null, "gather", "herb", 2);
 
     const first = await macros.get("quests.claimRewards")(makeCtx(db), { questId: QUEST });
     assert.equal(first.ok, true);
@@ -215,8 +218,8 @@ describe("quests domain — full lifecycle round-trip", () => {
     assert.equal(completed.quests.length, 0);
 
     // Complete + claim it.
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 3 });
-    await macros.get("quests.recordProgress")(makeCtx(db), { type: "gather", target: "herb", count: 2 });
+    recordObjectiveProgress(db, USER, WORLD, null, "kill", "wolf", 3);
+    recordObjectiveProgress(db, USER, WORLD, null, "gather", "herb", 2);
     await macros.get("quests.claimRewards")(makeCtx(db), { questId: QUEST });
 
     // Now it's the ONLY thing quests.completed shows, lens-shaped identically
@@ -276,5 +279,74 @@ describe("quests.accept — player_quests only", () => {
     assert.equal(missing.ok, false);
     assert.equal(missing.reason, "quest_not_found");
     db.close();
+  });
+});
+
+describe("quests.recordProgress — client reports, server checks", () => {
+  const QUEST = "q_report";
+  let macros, db;
+
+  beforeEach(async () => {
+    macros = buildMacros();
+    db = await freshDb();
+    resetQuestReportForTest();
+    seedAcceptedQuest(db, QUEST);
+    await macros.get("quests.addObjectives")(makeCtx(db), {
+      questId: QUEST,
+      objectives: [
+        { type: "kill", target: "wolf", requiredCount: 1 },
+        { type: "reach_location", target: "north_gate", requiredCount: 1 },
+      ],
+    });
+  });
+
+  it("needs live presence", async () => {
+    const r = await macros.get("quests.recordProgress")(makeCtx(db, "u_no_presence"), { questId: QUEST, type: "reach_location", target: "north_gate" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_live_presence");
+  });
+
+  it("refuses a server-recorded type and records a reachable place once", async () => {
+    updateUserPosition(USER, { cityId: WORLD, x: 0, y: 0, z: 0, direction: 0 });
+    const kill = await macros.get("quests.recordProgress")(makeCtx(db), { questId: QUEST, type: "kill", target: "wolf", count: 99 });
+    assert.equal(kill.ok, false);
+    assert.equal(kill.reason, "type_recorded_by_server");
+    const reach = await macros.get("quests.recordProgress")(makeCtx(db), { questId: QUEST, type: "reach_location", target: "north_gate", count: 99 });
+    assert.equal(reach.ok, true, JSON.stringify(reach));
+    assert.equal(reach.current, 1);
+    assert.equal(reach.objectiveComplete, true);
+    assert.equal(reach.questComplete, false, "the kill objective still needs the server");
+  });
+});
+
+
+describe("quests macros act as the caller", () => {
+  const QUEST = "q_actor";
+  let macros, db;
+
+  beforeEach(async () => {
+    macros = buildMacros();
+    db = await freshDb();
+    db.prepare(`INSERT INTO world_quests (id, world_id, title, description, status) VALUES (?, ?, 'Actor quest', '', 'available')`).run(QUEST, WORLD);
+  });
+
+  it("a player naming another userId still acts on their own account", async () => {
+    const r = await macros.get("quests.accept")(makeCtx(db, "u_attacker"), { questId: QUEST, userId: "u_victim" });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const rows = db.prepare("SELECT user_id FROM player_quests WHERE quest_id = ?").all(QUEST).map((x) => x.user_id);
+    assert.deepEqual(rows, ["u_attacker"], "nothing was written to the named account");
+  });
+
+  it("an admin or internal caller may act for a named account", async () => {
+    await macros.get("quests.accept")({ db, actor: { userId: "u_admin", role: "admin" }, worldId: WORLD }, { questId: QUEST, userId: "u_member" });
+    await macros.get("quests.accept")({ db, actor: { userId: "system", role: "owner", internal: true }, worldId: WORLD, internal: true }, { questId: QUEST, userId: "u_member2" });
+    const rows = db.prepare("SELECT user_id FROM player_quests WHERE quest_id = ? ORDER BY user_id").all(QUEST).map((x) => x.user_id);
+    assert.deepEqual(rows, ["u_member", "u_member2"]);
+  });
+
+  it("no actor and no privilege means no user", async () => {
+    const r = await macros.get("quests.active")({ db, worldId: WORLD }, { userId: "u_victim" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_user");
   });
 });

@@ -667,7 +667,9 @@ export default function registerCreativeActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const comment = (s.reviewComments.get(crAid(ctx)) || []).find((c) => c.id === params.id);
     if (!comment) return { ok: false, error: "comment not found" };
-    comment.resolved = params.resolved != null ? !!params.resolved : !comment.resolved;
+    const wantResolved = params.resolved !== false;
+    if (comment.resolved === wantResolved) return { ok: true, unchanged: true, result: { comment } };
+    comment.resolved = wantResolved;
     saveCrState();
     return { ok: true, result: { comment } };
   });

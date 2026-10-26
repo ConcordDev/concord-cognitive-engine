@@ -10,6 +10,8 @@
 // globalThis._concordSTATE so it survives across macro calls and (via the
 // debounced save hook) across restarts.
 
+import { publicActor, presentOwnedId } from "../lib/public-actor.js";
+
 export default function registerCollabActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────────
   //  Shared collaboration state
@@ -59,6 +61,14 @@ export default function registerCollabActions(registerLensAction) {
     }
   }
   const cbUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const presentDocOwner = (ctx, uid, ownerId) => {
+    const card = publicActor(ctx, uid, ownerId, "Owner");
+    return {
+      ...(card.isMine ? { ownerId } : {}),
+      isOwner: card.isMine,
+      ownerDisplayName: card.displayName,
+    };
+  };
   const cbName = (ctx) => ctx?.actor?.name || ctx?.actor?.displayName || ctx?.userName || cbUid(ctx);
   const cbNow = () => Date.now();
   const cbId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -268,8 +278,9 @@ export default function registerCollabActions(registerLensAction) {
           // visible only if explicitly shared once it has a permission table
         }
         docs.push({
-          id: doc.id, title: doc.title, ownerId: doc.ownerId,
-          isOwner: doc.ownerId === uid, tier,
+          id: doc.id, title: doc.title,
+          ...presentDocOwner(ctx, uid, doc.ownerId),
+          tier,
           opCount: doc.ops.length, snapshotCount: doc.snapshots.length,
           updatedAt: doc.updatedAt, createdAt: doc.createdAt,
         });
@@ -287,7 +298,7 @@ export default function registerCollabActions(registerLensAction) {
       if (!doc) return { ok: false, error: "document not found" };
       const uid = cbUid(ctx);
       return { ok: true, result: {
-        id: doc.id, title: doc.title, ownerId: doc.ownerId,
+        id: doc.id, title: doc.title, ...presentDocOwner(ctx, uid, doc.ownerId),
         text: materialize(doc), lamport: doc.lamport, opCount: doc.ops.length,
         tier: tierFor(doc, uid), canEdit: canEdit(doc, uid), canComment: canComment(doc, uid),
         updatedAt: doc.updatedAt,
@@ -651,9 +662,13 @@ export default function registerCollabActions(registerLensAction) {
       const doc = s.documents.get(cbClean(params?.docId, 80));
       if (!doc) return { ok: false, error: "document not found" };
       const uid = cbUid(ctx);
-      const entries = Object.entries(doc.permissions).map(([userId, tier]) => ({ userId, tier }));
+      const entries = Object.entries(doc.permissions).map(([userId, tier]) => {
+        if (doc.ownerId === uid) return { userId, tier, isMine: userId === uid, displayName: publicActor(ctx, uid, userId, "Collaborator").displayName };
+        return presentOwnedId(ctx, uid, { userId, tier }, "userId", { label: "Collaborator" });
+      });
       return { ok: true, result: {
-        ownerId: doc.ownerId, defaultTier: doc.defaultTier,
+        ...presentDocOwner(ctx, uid, doc.ownerId),
+        defaultTier: doc.defaultTier,
         entries, myTier: tierFor(doc, uid),
       } };
     } catch (e) { return { ok: false, error: e.message }; }

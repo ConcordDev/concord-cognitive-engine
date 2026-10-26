@@ -93,6 +93,8 @@ import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
+import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
 import { publishableDtuForCaller } from "./lib/public-lattice-access.js";
 import { lookupUserIdentity } from "./lib/user-identity.js";
@@ -2054,6 +2056,7 @@ import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
 import { validateParamSchema } from "./lib/macro-param-schema.js";
+import { invokeLensHandler, rememberLensActionSpec, lensActionSpec } from "./lib/lens-action-dispatch.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 // V1.2 Wave A — Society & Presence: ephemeral spatially-scoped chat channel.
@@ -15485,7 +15488,7 @@ async function runMacro(domain, name, input, ctx) {
   // clean { ok:false, error:"param_validation" } instead of a 500 / silent
   // wrong-thing. Opt-in + additive — a macro with no paramSchema is unaffected.
   if (m.spec?.paramSchema) {
-    const pv = validateParamSchema(m.spec.paramSchema, input ?? {});
+    const pv = validateParamSchema(m.spec.paramSchema, input ?? {}, ctx);
     if (!pv.ok) {
       return { ok: false, error: "param_validation", domain, name, fields: pv.errors };
     }
@@ -26978,23 +26981,26 @@ register("dtu", "search", (ctx, input = {}) => {
     const limit = clamp(Number(input.limit || 20), 1, 200);
     if (!q) return { ok: false, error: "query required" };
     // Prefer inverted index when available; fall back to dtu.list token filter.
-    let hits = [];
+    let indexed = [];
     try {
       if (typeof searchIndexed === "function") {
-        hits = searchIndexed(q, { limit, minScore: 0.01 }) || [];
+        indexed = searchIndexed(q, { limit: searchCandidateLimit(limit), minScore: 0.01 }) || [];
       }
-    } catch (_e) { hits = []; }
+    } catch (_e) { indexed = []; }
+    // Same viewer as dtu.list. Indexed hits are existence-checked inside
+    // searchIndexed; visibility and the shadow/internal kind filter run
+    // here, and limit is applied after that filter. A window full of
+    // someone else's private rows must not hide the caller's own matches,
+    // so an empty visible set falls through to the token scan.
+    const userId = viewerIdFromCtx(ctx);
+    const visibleIds = new Set(userVisibleDTUs(userId).map((d) => d?.id).filter(Boolean));
+    let hits = filterVisibleSearchHits(indexed, { visibleIds, limit });
     if (!hits.length) {
-      const listed = (typeof runMacro === "function")
-        ? null
-        : null;
-      // Inline same visibility filter as dtu.list (avoid re-entrancy).
-      const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-      const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
       const qq = tokenish(q);
-      hits = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow")
-        .filter(d => tokenish(d.title).includes(qq) || tokenish((d.tags||[]).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq))
-        .slice(0, limit);
+      hits = filterVisibleSearchHits(
+        userVisibleDTUs(userId).filter((d) => tokenish(d.title).includes(qq) || tokenish((d.tags || []).join(" ")).includes(qq) || tokenish((d.cretiHuman || (typeof d.creti === "string" ? d.creti : "") || "")).includes(qq) || tokenish(d.content || "").includes(qq) || tokenish(d.human?.summary || "").includes(qq)),
+        { visibleIds, limit },
+      );
     }
     return { ok: true, query: q, dtus: hits, total: hits.length, limit };
   } catch (e) {
@@ -44423,8 +44429,32 @@ function searchIndexed(query, { limit = 20, minScore = 0.01 } = {}) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  // Filter out shadow DTUs - they are internal and should not appear in search results
-  return results.map(r => ({ ...STATE.dtus.get(r.id), _searchScore: r.score })).filter(d => d && !isShadowDTU(d));
+  // Resolve against the live store. A missing id is evicted so a deleted
+  // DTU cannot keep coming back as a hit with no id. Shadow docs stay internal.
+  return materializeIndexedHits(results, {
+    getLive: (id) => STATE.dtus.get(id),
+    evict: evictSearchIndexId,
+    isShadow: isShadowDTU,
+  });
+}
+
+function evictSearchIndexId(id) {
+  if (!id) return;
+  const doc = SEARCH_INDEX.documents.get(id);
+  SEARCH_INDEX.documents.delete(id);
+  const tokens = doc?.tokens ? [...doc.tokens.keys()] : null;
+  if (tokens) {
+    for (const token of tokens) {
+      const postings = SEARCH_INDEX.invertedIndex.get(token);
+      if (!postings) continue;
+      postings.delete(id);
+      if (postings.size === 0) SEARCH_INDEX.invertedIndex.delete(token);
+    }
+    return;
+  }
+  for (const [token, postings] of SEARCH_INDEX.invertedIndex) {
+    if (postings.delete(id) && postings.size === 0) SEARCH_INDEX.invertedIndex.delete(token);
+  }
 }
 
 // Mark index dirty on DTU changes
@@ -44506,7 +44536,10 @@ function queryDTUs(queryString, { limit = 50 } = {}) {
 register("search", "query", (ctx, input) => {
   const q = String(input.q || input.query || "");
   const limit = clamp(Number(input.limit || 50), 1, 500);
-  const results = queryDTUs(q, { limit });
+  const userId = viewerIdFromCtx(ctx);
+  const visibleIds = new Set(userVisibleDTUs(userId).map((d) => d?.id).filter(Boolean));
+  const wide = queryDTUs(q, { limit: searchCandidateLimit(limit) });
+  const results = filterVisibleSearchHits(wide, { visibleIds, limit });
   return { ok: true, query: q, count: results.length, dtus: results };
 });
 
@@ -48202,7 +48235,7 @@ register("lens", "run", async (ctx, input={}) => {
       return { ok: false, error: `${artifact.domain}.${action} encountered an error`, domain: artifact.domain, action };
     }
   }
-  const handlerResult = await handler(ctx, artifact, params);
+  const handlerResult = await invokeLensHandler(handler, ctx, artifact, params, lensActionSpec(artifact.domain, action));
   // INC-SWEEP lab F3 — a handler { ok:false } must not ride out as outer ok:true
   // (Lab Analysis calibrationCurve / sampleTracker looked successful to the page).
   if (handlerResult && typeof handlerResult === "object" && handlerResult.ok === false) {
@@ -49274,8 +49307,9 @@ globalThis.__concordLensActions = LENS_ACTIONS;
 // adversarially driven. Deterministic registerLensAction handlers are NOT here.
 const BRAIN_BACKED_LENS_ACTIONS = new Set();
 globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
-function registerLensAction(domain, action, handler) {
+function registerLensAction(domain, action, handler, spec) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
+  rememberLensActionSpec(`${domain}.${action}`, spec);
 }
 
 // Sprint 18.5 follow-up — moved here from ~line 23664. mountChatAgentStream
@@ -49338,7 +49372,7 @@ async function runMcpTool(domain, name, input, ctx) {
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    const result = await resolved.handler(ctx, virtualArtifact, data);
+    const result = await invokeLensHandler(resolved.handler, ctx, virtualArtifact, data, lensActionSpec(domain, name));
     _billLensDispatch(domain, name, result, _t0, ctx);
     return result;
   }
@@ -49452,7 +49486,7 @@ async function _dispatchLensRunForTest(domain, name, input, ctx) {
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return await resolved.handler(ctx, virtualArtifact, data);
+    return await invokeLensHandler(resolved.handler, ctx, virtualArtifact, data, lensActionSpec(domain, name));
   }
   if (resolved.via === "macro") {
     return await runMacro(domain, name, input || {}, ctx);
@@ -49532,7 +49566,7 @@ app.post("/api/lens/run", async (req, res) => {
     if (resolved.via === "lens_action") {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const _lensT0 = Date.now();
-      const lensRaw = await resolved.handler(ctx, virtualArtifact, rest);
+      const lensRaw = await invokeLensHandler(resolved.handler, ctx, virtualArtifact, rest, lensActionSpec(domain, action));
       _billLensDispatch(domain, action, lensRaw, _lensT0, ctx);
       // Ownership refusals (engineering.deletePart / renamePart) carry
       // status 403 and an error that starts with "forbidden". That is an
@@ -73649,90 +73683,23 @@ app.get("/api/time-crystals", (_req, res) => {
   res.json({ ok: true, crystals: STATE.timeCrystals });
 });
 
-app.post("/api/time-crystals/detect", (_req, res) => {
-  try {
-    const crystals = detectTimeCrystals();
-    res.json({ ok: true, crystals, count: crystals.length });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
+app.post("/api/time-crystals/detect", (req, res) => {
+  handleTimeCrystalDetect(req, res, detectTimeCrystals);
 });
 
 // ---------- TEMPORAL DIFFING — how your knowledge changed ----------
+// Aggregate counts only. Auth-gated so an anonymous caller cannot probe
+// the substrate, and no titles leave this handler.
 
 app.get("/api/substrate/diff", (req, res) => {
-  const fromDate = req.query.fromDate ? new Date(req.query.fromDate).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const toDate = req.query.toDate ? new Date(req.query.toDate).getTime() : Date.now();
-
-  const beforeDTUs = [];
-  const afterDTUs = [];
-  const newDTUs = [];
-
-  for (const dtu of STATE.dtus.values()) {
-    const created = new Date(dtu.createdAt || 0).getTime();
-    if (created < fromDate) beforeDTUs.push(dtu);
-    if (created <= toDate) afterDTUs.push(dtu);
-    if (created >= fromDate && created <= toDate) newDTUs.push(dtu);
-  }
-
-  // Domain growth
-  const domainGrowth = {};
-  for (const dtu of newDTUs) {
-    const d = dtu.domain || "general";
-    domainGrowth[d] = (domainGrowth[d] || 0) + 1;
-  }
-
-  // Tier changes
-  const tiersBefore = { regular: 0, mega: 0, hyper: 0 };
-  const tiersAfter = { regular: 0, mega: 0, hyper: 0 };
-  for (const d of beforeDTUs) tiersBefore[d.tier || "regular"]++;
-  for (const d of afterDTUs) tiersAfter[d.tier || "regular"]++;
-
-  res.json({
-    ok: true,
-    diff: {
-      period: { from: new Date(fromDate).toISOString(), to: new Date(toDate).toISOString() },
-      newDTUs: newDTUs.length,
-      totalBefore: beforeDTUs.length,
-      totalAfter: afterDTUs.length,
-      domainGrowth,
-      tiersBefore,
-      tiersAfter,
-      newSwarms: STATE.swarms.filter(s => new Date(s.created).getTime() >= fromDate).length,
-      newCrystals: STATE.timeCrystals.filter(c => new Date(c.detectedAt).getTime() >= fromDate).length,
-    },
-  });
+  handleSubstrateDiff(req, res, STATE);
 });
 
 // ---------- KNOWLEDGE ARCHAEOLOGY — "On This Day" ----------
+// Only DTUs the requester owns or that are already public to them.
 
-app.get("/api/archaeology", (_req, res) => {
-  const now = new Date();
-  const periods = [
-    { label: "1 week ago", ms: 7 * 24 * 60 * 60 * 1000 },
-    { label: "1 month ago", ms: 30 * 24 * 60 * 60 * 1000 },
-    { label: "3 months ago", ms: 90 * 24 * 60 * 60 * 1000 },
-    { label: "6 months ago", ms: 180 * 24 * 60 * 60 * 1000 },
-    { label: "1 year ago", ms: 365 * 24 * 60 * 60 * 1000 },
-  ];
-
-  const results = {};
-  for (const period of periods) {
-    const targetDate = new Date(now.getTime() - period.ms);
-    const dayStart = new Date(targetDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(targetDate); dayEnd.setHours(23, 59, 59, 999);
-
-    const matches = [];
-    for (const dtu of STATE.dtus.values()) {
-      const created = new Date(dtu.createdAt || 0).getTime();
-      if (created >= dayStart.getTime() && created <= dayEnd.getTime()) {
-        matches.push({ id: dtu.id, title: dtu.title, domain: dtu.domain, tier: dtu.tier });
-      }
-    }
-    results[period.label] = matches;
-  }
-
-  res.json({ ok: true, memories: results });
+app.get("/api/archaeology", (req, res) => {
+  handleArchaeology(req, res, userVisibleDTUs);
 });
 
 // ---------- RED TEAM BRAIN — adversarial fifth brain ----------
@@ -76273,7 +76240,7 @@ async function _dispatchDesignCommand(domain, action, params, ctx) {
   });
   if (resolved.via === "lens_action") {
     const virtualArtifact = { id: null, domain, type: "domain_action", data: params, meta: {} };
-    return await resolved.handler(ctx, virtualArtifact, params);
+    return await invokeLensHandler(resolved.handler, ctx, virtualArtifact, params, lensActionSpec(domain, action));
   }
   if (resolved.via === "macro") {
     return await runMacro(domain, action, params, ctx);

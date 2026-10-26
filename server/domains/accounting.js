@@ -2,8 +2,11 @@
 // Domain actions for accounting: trial balance, P&L, invoice aging, budget variance, rent roll.
 
 import { requireOwner } from "../lib/lens-authz.js";
+import { assertPayable } from "../lib/money-guards.js";
+import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerAccountingActions(registerLensAction) {
+  registerLensAction = bindWave1(registerLensAction);
   /**
    * trialBalance
    * Generate a trial balance from the chart of accounts.
@@ -3000,7 +3003,21 @@ Output the single best account code:`;
     seedDefaultCoA(userId, s);
     const amount = acN(params.amount);
     if (amount <= 0) return { ok: false, error: "payment amount must be positive" };
-    const taxAcct = acAcctByCode(s, userId, "2100") || acEnsureAccount(s, userId, "2100", "Sales Tax Payable", "liability");
+    const taxAcctId = acAcctByCode(s, userId, "2100");
+    const cashAcctId = acAcctByCode(s, userId, "1000");
+    let owed = 0;
+    let cash = 0;
+    for (const e of s.journal.get(userId) || []) {
+      for (const l of e.lines || []) {
+        if (taxAcctId && l.accountId === taxAcctId) owed += (Number(l.credit) || 0) - (Number(l.debit) || 0);
+        if (cashAcctId && l.accountId === cashAcctId) cash += (Number(l.debit) || 0) - (Number(l.credit) || 0);
+      }
+    }
+    const payable = assertPayable(Math.min(acN(owed), acN(cash)), amount, {
+      nonPositiveError: "payment amount must be positive",
+    });
+    if (!payable.ok) return payable;
+    const taxAcct = taxAcctId || acEnsureAccount(s, userId, "2100", "Sales Tax Payable", "liability");
     const cashAcct = acAcctByCode(s, userId, "1000") || acEnsureAccount(s, userId, "1000", "Cash", "asset");
     const je = acPostJE(s, userId, acStr(params.date, 10) || nowIso().slice(0, 10), "Sales tax remittance", [
       { accountId: taxAcct, debit: amount, credit: 0, memo: "Sales tax paid" },

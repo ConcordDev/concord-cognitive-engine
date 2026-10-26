@@ -12,7 +12,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Club { id: string; name: string; sport: string; description: string | null; memberCount: number; joined: boolean }
-interface ChallengeRow { rank: number; userId: string; value: number; isMe: boolean }
+interface ChallengeRow { rank: number; userId?: string; displayName?: string; value: number; isMe: boolean }
 interface Challenge {
   id: string; name: string; metric: string; target: number;
   startDate: string; endDate: string; active: boolean; joined: boolean;
@@ -167,11 +167,11 @@ export function StravaClubsPanel() {
                 {ch.leaderboard.length > 0 && (
                   <ol className="mt-2 space-y-0.5">
                     {ch.leaderboard.slice(0, 3).map((row) => (
-                      <li key={row.userId} className={cn('flex items-center justify-between text-[10px]',
+                      <li key={row.userId || `${row.rank}-${row.displayName}`} className={cn('flex items-center justify-between text-[10px]',
                         row.isMe ? 'text-orange-300' : 'text-zinc-400')}>
                         <span className="flex items-center gap-1">
                           {row.rank === 1 && <Trophy className="w-3 h-3 text-amber-400" />}
-                          #{row.rank} {row.userId.slice(0, 10)}
+                          #{row.rank} {(row.displayName || row.userId || 'Athlete').slice(0, 18)}
                         </span>
                         <span className="font-mono">{row.value}</span>
                       </li>

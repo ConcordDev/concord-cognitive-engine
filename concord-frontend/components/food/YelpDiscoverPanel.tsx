@@ -28,9 +28,9 @@ interface Business {
   checkinCount: number;
   openNow: boolean | null;
 }
-interface Review { id: string; userId: string; rating: number; text: string; voteCounts?: { useful: number; funny: number; cool: number } }
+interface Review { id: string; userId?: string; displayName?: string; rating: number; text: string; voteCounts?: { useful: number; funny: number; cool: number } }
 interface Photo { id: string; caption: string }
-interface Tip { id: string; text: string; userId: string }
+interface Tip { id: string; text: string; userId?: string; displayName?: string }
 
 function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
   const cls = size === 'lg' ? 'w-4 h-4' : 'w-3 h-3';
@@ -236,7 +236,7 @@ export function YelpDiscoverPanel() {
                 <li key={rv.id} className="border-b border-lattice-border pb-2 last:border-0 group">
                   <div className="flex items-center gap-2">
                     <Stars rating={rv.rating} />
-                    <span className="text-[10px] text-gray-400 font-mono">{rv.userId.slice(0, 10)}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">{(rv.displayName || rv.userId || 'Diner').slice(0, 18)}</span>
                     <button type="button" onClick={() => void deleteReview(rv.id)} aria-label="Delete my review"
                       className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] text-rose-300 hover:text-rose-200">Delete</button>
                   </div>

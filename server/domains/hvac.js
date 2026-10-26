@@ -878,6 +878,7 @@ export default function registerHVACActions(registerLensAction) {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const agr = hvFind(s.agreements, hvAid(ctx), params.id);
     if (!agr) return { ok: false, error: "agreement not found" };
+    if (agr.status === "cancelled") return { ok: true, unchanged: true, result: { agreement: agr } };
     agr.status = "cancelled";
     agr.autoRenew = false;
     agr.cancelledAt = hvNow();
@@ -958,6 +959,7 @@ export default function registerHVACActions(registerLensAction) {
     const userId = hvAid(ctx);
     const visit = hvFind(s.fieldVisits, userId, params.id);
     if (!visit) return { ok: false, error: "field visit not found" };
+    if (visit.status === "completed") return { ok: true, unchanged: true, result: { visit, partsTotal: visit.partsTotal } };
     visit.status = "completed";
     visit.completedAt = hvNow();
     visit.partsTotal = Math.round(visit.partsUsed.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0) * 100) / 100;
