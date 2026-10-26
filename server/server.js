@@ -10054,6 +10054,9 @@ function botGuardMiddleware(req, res, next) {
   if (!req.path.startsWith("/api/")) return next(); // non-API — pass
   if (_HEALTH_PROBE_RE.test(req.path)) return next(); // health probes — pass
   if (_AP_PUBLIC_RE.test(req.path)) return next(); // federation discovery — pass
+  // INC-72: inbound ingest webhooks are sent by external automation (Zapier,
+  // cron jobs, curl). The 32-hex token in the exact route is the credential.
+  if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
   const ua = req.headers["user-agent"] || "";
   if (!ua || _BOT_UA_RE.test(ua)) {
     return res.status(403).json({
