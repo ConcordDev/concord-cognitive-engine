@@ -822,7 +822,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
 > Streaming: about 220 m on foot per civilization (`bible/STREAMING.md`). Link gates are the only teleport.
 
 ### Epic W1 · Hub & the Unburned Court
-- [ ] **W-01 · Hub layout data available** (deps: QA-1)
+- [x] **W-01 · Hub layout data available** (deps: QA-1)
   - Goal: `content/world/concordia-hub/city-layout.json` (60 buildings, 6 districts: plaza 9, market 6, academy 13, observatory 11, riverside 5, industrial 16; 3 landing pads) and `zones.json` are **not** in `Canon/concordia-hub/`.
     - Confirm, then wait on REQ-2.
     - While waiting, read nothing from outside `Assets` at runtime.
@@ -830,7 +830,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: REQ-2
   - Verify: the Canon file exists (after Claude syncs it), or status stays BLOCKED.
   - Server: —
-  - Result: —
+  - Result: PASS 2026-10-26 by Claude (file check only; ticked ahead of QA-1 because its Verify needs no Play). `Canon/concordia-hub/city-layout.json` + `zones.json` (with metas) are byte-identical to repo `content/world/concordia-hub/`: 60 buildings (industrial 16, academy 13, observatory 11, plaza 9, market 6, riverside 5), 3 landing pads, zones The Seven Spokes Inn / The Proving Ring / The Sundered Verge. Building district is the `district_id` field. Nothing reads them at runtime yet; W-02/W-06 add the loader.
 - [ ] **W-02 · Hub building placement** (deps: W-01)
   - Goal: Place all 60 authored buildings at their authored x/z with district tags. That is 34 stations, 6 services and 20 lens portals, including The Concord Exchange, The Concord Bank, The Auction House, The Royalty Ledger, The Forum, The Agora, The Sanctuary, The Watch House, The Observatory, The Archive, The Depot, The Tide Station, The Link Post, The Workshop and The Atelier.
     - Use SettlementCompiler/ModuleKit facades, nothing primitive.
