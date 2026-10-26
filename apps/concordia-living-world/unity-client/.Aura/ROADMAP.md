@@ -524,6 +524,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `ConcordClient.SendAttack`, `TrainingDummy.ApplyServerHit`
   - Verify: 10 hits log send/ack pairs with the server hp; offline shows `no_gateway` and the dummy hp is unchanged.
   - Server: `/unity-ws` `combat:attack`, `server/lib/combat-hp-authority.js`
+  - Server side verified 2026-10-25 by Claude (PR #1478, `server/tests/godot-gateway-integration.test.js`): ten `/unity-ws` dummy hits each ack `authority: combat-hp-authority`, with `hpBefore` equal to the previous ack's `hpAfter`. Hub attacks come back `refused` with 0 damage, so attack from a steel world. The client half is still Aura's, after C-02.
   - Result: —
 - [ ] **C-20 · Stable ids for hostiles** (deps: C-19)
   - Goal: Bind hostiles' kernel target id to `hostile:<world>:<creature>:<n>` so `combat-hp-authority.ensureActor` tracks them, and send attacks when connected. If the server rejects unknown ids, file a REQ and keep hostiles local, labeled "local".
@@ -531,6 +532,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Reuse: `TrainingDummy.BindId`/`KernelAuthored`
   - Verify: the ack applies hp to a road hostile (log), or a REQ is filed.
   - Server: `/unity-ws` `combat:attack`
+  - Server side verified 2026-10-25 by Claude (PR #1478): unknown ids are accepted, not rejected, and `hostile:<world>:<creature>:<n>` keeps one server hp across hits. The server starts every unknown actor at 80 hp (`ensureActor` default), because creature content has no hp field. Show the server's number and don't derive one locally.
   - Result: —
 - [ ] **C-21 · Consume combat:hit / combat:kill** (deps: C-20)
   - Goal: Server `combat:hit` on the player drives `TakeHit` presentation. `combat:kill` triggers the death flow. Note: hostile → player damage is client-local today; file a REQ for server-authored hostile damage.
