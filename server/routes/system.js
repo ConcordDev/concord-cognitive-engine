@@ -14,6 +14,7 @@ import { getSustainedLagMs } from "../lib/event-loop-pressure.js";
 import { getShedLagMs } from "../lib/request-admission.js";
 import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
+import { getMemorySnapshot } from "../lib/heap-limit.js";
 import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
@@ -124,15 +125,11 @@ export default function registerSystemRoutes(app, {
     } else {
       checks.database = "no_db";
     }
-    const memUsage = process.memoryUsage();
-    const heapUsedMB = Math.round(memUsage.heapUsed / 1048576);
-    const heapTotalMB = Math.round(memUsage.heapTotal / 1048576);
-    checks.memoryMB = { used: heapUsedMB, total: heapTotalMB };
-    // Soft, informational pressure flag relative to the configured heap (default 32GB) —
-    // surfaced for ops visibility; real memory response is the memory-pressure watchdog +
-    // Prometheus alerts, NOT a liveness 503.
-    const heapLimitMB = Number(process.env.MAX_OLD_SPACE_SIZE) || 32768;
-    if (heapUsedMB > heapLimitMB * 0.9) checks.memoryPressure = true;
+    // INC-149: report REAL memory. heapUsed/heapTotal alone hid that the process
+    // was ~3 GB from its V8 ceiling; the old limit fallback (32768) was wrong too.
+    const mem = getMemorySnapshot();
+    checks.memoryMB = { used: mem.heapUsedMB, total: mem.heapTotalMB, rss: mem.rssMB, external: mem.externalMB, arrayBuffers: mem.arrayBuffersMB, heapLimit: mem.heapLimitMB, heapUsedPct: mem.heapUsedPct };
+    if (mem.heapUsedPct != null && mem.heapUsedPct >= 85) checks.memoryPressure = true;
     const dbStatus = typeof getDbStatus === 'function' ? getDbStatus() : {};
     checks.postgres = { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'sqlite-primary', optional: true };
     checks.redis = { connected: !!dbStatus.redisClient, status: dbStatus.redisClient ? 'connected' : 'in-memory-fallback' };
