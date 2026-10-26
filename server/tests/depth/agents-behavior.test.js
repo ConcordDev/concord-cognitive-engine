@@ -329,10 +329,11 @@ describe("agents — schedule/graph/thread lifecycle + templates + overview (sha
     const cleared = await lensRun("agents", "clearThread", { params: { agentId: "th1" } }, ctx);
     assert.equal(cleared.result.cleared, true);
 
-    // After clear, the thread map has no entry → getThread returns the empty default.
+    // After clear, the thread map has no entry → getThread refuses rather than
+    // fabricating an empty thread (INC-SWEEP agents F15).
     const after = await lensRun("agents", "getThread", { params: { agentId: "th1" } }, ctx);
-    assert.equal(after.result.thread.messages.length, 0);
-    assert.equal(after.result.thread.createdAt, null);
+    assert.equal(after.result.ok, false);
+    assert.equal(after.result.error, "thread not found");
   });
 
   it("clearThread is idempotent for a non-existent thread", async () => {

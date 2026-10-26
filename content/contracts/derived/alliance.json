@@ -23,8 +23,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "alliance.alliance-delete",
+      "name": "alliance-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "alliance.alliance-leave",
+      "name": "alliance-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "alliance.alliance-list",
       "name": "alliance-list"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "alliance.alliance-transfer",
+      "name": "alliance-transfer"
     },
     {
       "_derived": true,
@@ -77,6 +116,19 @@
       ],
       "macro_id": "alliance.channel-create",
       "name": "channel-create"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "alliance.channel-delete",
+      "name": "channel-delete"
     },
     {
       "_derived": true,
@@ -231,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "alliance.invite-revoke",
+      "name": "invite-revoke"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "alliance.like",
       "name": "like"
     },
@@ -298,6 +363,19 @@
       ],
       "macro_id": "alliance.member-set-role",
       "name": "member-set-role"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "alliance.message-delete",
+      "name": "message-delete"
     },
     {
       "_derived": true,
@@ -441,6 +519,19 @@
       ],
       "macro_id": "alliance.proposal-create",
       "name": "proposal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "alliance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "alliance.proposal-delete",
+      "name": "proposal-delete"
     },
     {
       "_derived": true,
@@ -614,5 +705,5 @@
   ],
   "domain": "alliance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 47
+  "macroCount": 54
 }

@@ -1,6 +1,19 @@
 {
   "contracts": [
     {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.ai-generate",
+      "name": "ai-generate"
+    },
+    {
       "_derived": false,
       "domain": "art",
       "fuzz_cases": [
@@ -530,6 +543,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "art.digital",
+      "name": "digital"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "art.dislike",
       "name": "dislike"
     },
@@ -997,6 +1023,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "art.painting",
+      "name": "painting"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "art.palette-create",
       "name": "palette-create"
     },
@@ -1064,6 +1103,19 @@
       ],
       "macro_id": "art.pattern-kinds",
       "name": "pattern-kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.photography",
+      "name": "photography"
     },
     {
       "_derived": true,
@@ -1246,6 +1298,19 @@
       ],
       "macro_id": "art.save",
       "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.sculpture",
+      "name": "sculpture"
     },
     {
       "_derived": true,
@@ -1521,6 +1586,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "art.text-to-image",
+      "name": "text-to-image"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "art.timelapse-clear",
       "name": "timelapse-clear"
     },
@@ -1605,5 +1683,5 @@
   ],
   "domain": "art",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 95
+  "macroCount": 101
 }

@@ -114,6 +114,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agents.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agents.createSchedule",
       "name": "createSchedule"
     },
@@ -244,6 +257,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agents.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agents.getBudget",
       "name": "getBudget"
     },
@@ -298,6 +324,19 @@
       ],
       "macro_id": "agents.like",
       "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agents.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -718,5 +757,5 @@
   ],
   "domain": "agents",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 55
+  "macroCount": 58
 }

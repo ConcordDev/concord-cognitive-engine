@@ -356,8 +356,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ethics.deleteAnalysis",
+      "name": "deleteAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "ethics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ethics.deleteBiasChecklist",
+      "name": "deleteBiasChecklist"
+    },
+    {
+      "_derived": true,
+      "domain": "ethics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ethics.deleteCase",
       "name": "deleteCase"
+    },
+    {
+      "_derived": true,
+      "domain": "ethics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ethics.deleteDecisionMatrix",
+      "name": "deleteDecisionMatrix"
+    },
+    {
+      "_derived": true,
+      "domain": "ethics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ethics.deleteReview",
+      "name": "deleteReview"
+    },
+    {
+      "_derived": true,
+      "domain": "ethics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ethics.deleteStakeholderMap",
+      "name": "deleteStakeholderMap"
     },
     {
       "_derived": true,
@@ -963,5 +1028,5 @@
   ],
   "domain": "ethics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 41
+  "macroCount": 46
 }

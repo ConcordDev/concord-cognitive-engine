@@ -559,7 +559,8 @@ describe("accounting — dimensions / segment-pl / fx + tax (wave 8 top-up)", ()
   it("tax-payment-record: rejects a non-positive payment", async () => {
     const bad = await lensRun("accounting", "tax-payment-record", { params: { amount: -5 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(String(bad.result.error), /payment amount must be positive/i);
+    // Param schema refuses a negative money value before the handler (#1486).
+    assert.ok(/payment amount must be positive/i.test(String(bad.result.error)) || (bad.result.error === "invalid_input" && bad.result.field === "amount"));
   });
 
   it("category-rules-create → category-rules-list: rule reads back; invalid account rejected", async () => {

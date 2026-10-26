@@ -885,8 +885,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "education.lessons-delete",
+      "name": "lessons-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "education.lessons-list",
       "name": "lessons-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lessons-move",
+      "name": "lessons-move"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lessons-update",
+      "name": "lessons-update"
     },
     {
       "_derived": true,
@@ -1630,5 +1669,5 @@
   ],
   "domain": "education",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 95
+  "macroCount": 98
 }

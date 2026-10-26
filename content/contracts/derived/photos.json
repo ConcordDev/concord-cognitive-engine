@@ -1,6 +1,71 @@
 {
   "contracts": [
     {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.album-create",
+      "name": "album-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.album-delete",
+      "name": "album-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.album-photos",
+      "name": "album-photos"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.album-set",
+      "name": "album-set"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.albums",
+      "name": "albums"
+    },
+    {
       "_derived": false,
       "domain": "photos",
       "fuzz_cases": [
@@ -147,11 +212,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "photos.update",
+      "name": "update"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "photos.world",
       "name": "world"
     }
   ],
   "domain": "photos",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 10
 }

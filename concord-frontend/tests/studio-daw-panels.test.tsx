@@ -8,7 +8,7 @@ vi.mock('@/lib/daw/studio-api', () => ({
   browseMusicLibrary: vi.fn(async () => []),
 }));
 vi.mock('@/lib/daw/playback-engine', () => ({
-  getStudioEngine: () => ({ ctx: { sampleRate: 48000 }, resume: async () => {} }),
+  getStudioEngine: () => ({ ctx: { sampleRate: 48000 }, resume: async () => {}, getBeat: () => 0 }), // the playhead rAF loop reads getBeat()
 }));
 
 import { Opener } from '@/components/studio/daw/Opener';

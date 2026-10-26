@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "courtship.accept",
+      "name": "accept"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "courtship.birth",
       "name": "birth"
     },
@@ -51,6 +64,19 @@
       ],
       "macro_id": "courtship.constants",
       "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.decline",
+      "name": "decline"
     },
     {
       "_derived": true,
@@ -170,6 +196,19 @@
       ],
       "macro_id": "courtship.marriages",
       "name": "marriages"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.notices",
+      "name": "notices"
     },
     {
       "_derived": false,
@@ -298,5 +337,5 @@
   ],
   "domain": "courtship",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 13
+  "macroCount": 16
 }

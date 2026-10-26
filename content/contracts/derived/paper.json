@@ -413,6 +413,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "paper.paper-add",
+      "name": "paper-add"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "paper.paper-alert-read",
       "name": "paper-alert-read"
     },
@@ -926,5 +939,5 @@
   ],
   "domain": "paper",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 71
+  "macroCount": 72
 }

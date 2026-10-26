@@ -92,7 +92,7 @@ describe("analytics — world-summary (REAL per-world DB aggregation)", () => {
 
   it("rejects a missing worldId", async () => {
     const r = await lensRun("analytics", "world-summary", { params: {} }, ctx);
-    assert.equal(r.ok, true, "dispatch still succeeds");
+    assert.equal(r.ok, false, "refusal surfaces at the top level (a032eccab)");
     assert.equal(r.result.ok, false, "handler refuses");
     assert.ok(String(r.result.error).includes("worldId required"));
   });

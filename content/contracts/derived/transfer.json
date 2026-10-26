@@ -10,6 +10,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.analogies",
+      "name": "analogies"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.apply",
+      "name": "apply"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.apply_pattern",
       "name": "apply_pattern"
     },
@@ -75,6 +101,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.classify-domain",
+      "name": "classify-domain"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.comment",
       "name": "comment"
     },
@@ -116,6 +155,19 @@
       ],
       "macro_id": "transfer.connector-read",
       "name": "connector-read"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.connector-refresh",
+      "name": "connector-refresh"
     },
     {
       "_derived": true,
@@ -205,8 +257,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.extract-pattern",
+      "name": "extract-pattern"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.find_analogies",
       "name": "find_analogies"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.history",
+      "name": "history"
     },
     {
       "_derived": true,
@@ -549,5 +627,5 @@
   ],
   "domain": "transfer",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 48
 }

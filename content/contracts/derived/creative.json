@@ -692,6 +692,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.create_work",
+      "name": "create_work"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.creative-dashboard",
       "name": "creative-dashboard"
     },
@@ -965,6 +978,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.exhibition",
+      "name": "exhibition"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.generate_shot_list",
       "name": "generate_shot_list"
     },
@@ -978,8 +1004,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.like",
       "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -1006,6 +1058,32 @@
       ],
       "macro_id": "creative.lock",
       "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.masterworks",
+      "name": "masterworks"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.metrics",
+      "name": "metrics"
     },
     {
       "_derived": true,
@@ -1045,6 +1123,19 @@
       ],
       "macro_id": "creative.priority",
       "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.profile",
+      "name": "profile"
     },
     {
       "_derived": true,
@@ -1329,6 +1420,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.run",
+      "name": "run"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.save",
       "name": "save"
     },
@@ -1490,5 +1594,5 @@
   ],
   "domain": "creative",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 89
+  "macroCount": 97
 }

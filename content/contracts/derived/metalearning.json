@@ -556,6 +556,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metalearning.strategies",
+      "name": "strategies"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metalearning.strategySelection",
       "name": "strategySelection"
     },
@@ -614,5 +627,5 @@
   ],
   "domain": "metalearning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 47
+  "macroCount": 48
 }

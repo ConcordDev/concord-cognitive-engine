@@ -300,6 +300,6 @@ describe("social — input validation rejections", () => {
     assert.equal(ok.result.attachment.kind, "image");
     const bad = await lensRun("social", "registerMedia", { params: { kind: "image", url: "ftp://nope" } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /http\(s\) or a data URI/);
+    assert.match(bad.result.error, /http\(s\) or \/api\/artifact\/ URL/); // data: URIs no longer accepted
   });
 });

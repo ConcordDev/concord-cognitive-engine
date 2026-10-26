@@ -283,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "daily.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "daily",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "daily.habit-checkin",
       "name": "habit-checkin"
     },
@@ -389,6 +402,19 @@
       ],
       "macro_id": "daily.like",
       "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "daily",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "daily.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -744,5 +770,5 @@
   ],
   "domain": "daily",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 57
+  "macroCount": 59
 }

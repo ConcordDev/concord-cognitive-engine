@@ -326,16 +326,20 @@ describe("pharmacy — med-update + med-archive (shared ctx)", () => {
   let ctx;
   before(async () => { ctx = await depthCtx("pharmacy-medupdate"); });
 
-  it("med-update: patches mutable fields and clamps quantity to >= 0", async () => {
+  it("med-update: patches mutable fields; a negative quantity is refused, not clamped", async () => {
     const add = await lensRun("pharmacy", "med-add", { params: { name: "Amlodipine", strength: "5mg", quantity: 30, refillsRemaining: 2 } }, ctx);
     const id = add.result.medication.id;
+    // #1486: clinical writes refuse bad input instead of coercing it.
+    const neg = await lensRun("pharmacy", "med-update", { params: { id, quantity: -5 } }, ctx);
+    assert.equal(neg.result.ok, false);
+    assert.equal(neg.result.field, "quantity");
     const upd = await lensRun("pharmacy", "med-update", {
-      params: { id, strength: "10mg", condition: "hypertension", quantity: -5, refillsRemaining: 4 },
+      params: { id, strength: "10mg", condition: "hypertension", quantity: 0, refillsRemaining: 4 },
     }, ctx);
     assert.equal(upd.ok, true);
     assert.equal(upd.result.medication.strength, "10mg");
     assert.equal(upd.result.medication.condition, "hypertension");
-    assert.equal(upd.result.medication.quantity, 0);      // max(0, round(-5))
+    assert.equal(upd.result.medication.quantity, 0);
     assert.equal(upd.result.medication.refillsRemaining, 4);
   });
 
@@ -584,10 +588,10 @@ describe("pharmacy — caregivers + alerts (shared ctx)", () => {
   before(async () => { ctx = await depthCtx("pharmacy-caregivers"); });
 
   it("caregiver-add → caregiver-list → caregiver-remove round-trip", async () => {
-    const add = await lensRun("pharmacy", "caregiver-add", { params: { name: "Jane Doe", contact: "jane@x.com", relationship: "daughter", missedThreshold: 99 } }, ctx);
+    const add = await lensRun("pharmacy", "caregiver-add", { params: { name: "Jane Doe", contact: "jane@x.com", relationship: "daughter", missedThreshold: 10 } }, ctx);
     assert.equal(add.ok, true);
     assert.equal(add.result.caregiver.name, "Jane Doe");
-    assert.equal(add.result.caregiver.missedThreshold, 10); // clamped to <=10
+    assert.equal(add.result.caregiver.missedThreshold, 10); // max allowed (11+ is refused, #1486)
     assert.equal(add.result.caregiver.notifyOnMissed, true); // default
 
     const list = await lensRun("pharmacy", "caregiver-list", {}, ctx);

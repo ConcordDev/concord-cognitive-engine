@@ -133,7 +133,9 @@ describe("energy — device + reading CRUD round-trip (shared ctx)", () => {
     assert.equal(add.result.device.alwaysOn, true);
     const devId = add.result.device.id;
 
-    // reading-log against that device computes cost at the default rate (0.17).
+    // No fabricated default tariff: cost is computed only at the user's set rate.
+    const rate = await lensRun("energy", "rate-set", { params: { ratePerKwh: 0.17 } }, ctx);
+    assert.notEqual(rate.result.ok, false, JSON.stringify(rate));
     const log = await lensRun("energy", "reading-log", {
       params: { deviceId: devId, kwh: 5, date: today() },
     }, ctx);

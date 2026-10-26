@@ -207,8 +207,86 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "commonsense.assumptions",
+      "name": "assumptions"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "commonsense.bookmark",
       "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.check-ask",
+      "name": "check-ask"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.check-detail",
+      "name": "check-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.check-exception",
+      "name": "check-exception"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.check-finding",
+      "name": "check-finding"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.check-list",
+      "name": "check-list"
     },
     {
       "_derived": true,
@@ -1067,6 +1145,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "commonsense.surface",
+      "name": "surface"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "commonsense.surface_assumptions",
       "name": "surface_assumptions"
     },
@@ -1099,5 +1190,5 @@
   ],
   "domain": "commonsense",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 49
 }

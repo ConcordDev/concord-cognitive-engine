@@ -221,7 +221,7 @@ describe("studio — CRUD round-trips + validation (shared ctx)", () => {
     // domains/studio.js bounce `ok: render.status === "completed"` — but the
     // envelope unwrap keeps only `result`, so honesty is asserted on the
     // render facts below, which are what the BouncePanel actually renders.)
-    assert.equal(b.ok, true); // dispatch succeeded
+    assert.equal(b.ok, false); // pending ≠ completed; the verdict surfaces at the top level (a032eccab)
     assert.equal(b.result.render.status, "pending"); // pending ≠ completed — honest
     assert.equal(b.result.render.reason, "needs_client_render"); // explicit honest reason
     assert.ok(!b.result.render.downloadUrl && !b.result.render.url); // no fabricated URL
@@ -686,7 +686,7 @@ describe("studio EXTEND — export-stems + dashboard summary", () => {
     // Dispatch contract (this file's header): top-level ok is DISPATCH success;
     // the handler's ok:false verdict is unwrapped away, so honesty is asserted
     // on the job facts (status/producedCount/per-stem reason) below.
-    assert.equal(r.ok, true); // dispatch succeeded
+    assert.equal(r.ok, false); // handler verdict (pending, not completed) surfaces at the top level (a032eccab)
     assert.equal(r.result.job.status, "pending");
     assert.equal(r.result.job.producedCount, 0);
     assert.equal(r.result.job.stemCount, 2);   // 2 tracks → 2 stems (all pending)

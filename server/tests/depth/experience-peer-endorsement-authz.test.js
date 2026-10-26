@@ -61,11 +61,11 @@ test("experience — peer endorsement authz (self-endorsement guard + visibility
   await t.test("self-endorsement is rejected even though the owner can always act on their own artifact", async () => {
     const id = makePortfolio({ visibility: "published" });
     const r = await runMacro("lens", "run", { id, action: "endorse", params: { skillId: "mixing", comment: "nice" } }, ctxFor(OWNER));
-    // lens.run itself succeeds (the owner CAN reach the handler) — the
-    // rejection is the handler's own business-rule verdict.
-    assert.equal(r.ok, true, JSON.stringify(r));
-    assert.equal(r.result.ok, false);
-    assert.equal(r.result.error, "cannot_self_endorse");
+    // The owner CAN reach the handler; the rejection is the handler's own
+    // business-rule verdict, surfaced at the top level (a032eccab).
+    assert.equal(r.ok, false, JSON.stringify(r));
+    assert.equal((r.result ?? r).ok, false);
+    assert.equal((r.result ?? r).error, "cannot_self_endorse");
     // No endorsement was actually appended.
     assert.equal((STATE.lensArtifacts.get(id).data.endorsements || []).length, 0);
   });

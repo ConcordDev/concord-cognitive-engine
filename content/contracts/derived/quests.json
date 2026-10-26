@@ -1,6 +1,19 @@
 {
   "contracts": [
     {
+      "_derived": true,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quests.accept",
+      "name": "accept"
+    },
+    {
       "_derived": false,
       "domain": "quests",
       "fuzz_cases": [],
@@ -194,6 +207,7 @@
         },
         "questId": {
           "maxLength": 80,
+          "required": true,
           "type": "string"
         },
         "target": {
@@ -229,5 +243,5 @@
   ],
   "domain": "quests",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 9
+  "macroCount": 10
 }

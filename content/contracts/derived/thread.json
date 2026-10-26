@@ -309,6 +309,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "thread.engagement-fetch",
+      "name": "engagement-fetch"
+    },
+    {
+      "_derived": true,
+      "domain": "thread",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "thread.engagement-report",
       "name": "engagement-report"
     },
@@ -506,6 +519,19 @@
       ],
       "macro_id": "thread.publish",
       "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "thread",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "thread.publish-mark-posted",
+      "name": "publish-mark-posted"
     },
     {
       "_derived": true,
@@ -783,5 +809,5 @@
   ],
   "domain": "thread",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 60
+  "macroCount": 62
 }

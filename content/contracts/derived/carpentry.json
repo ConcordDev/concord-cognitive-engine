@@ -741,6 +741,19 @@
       "name": "portalList"
     },
     {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalPublicView",
+      "name": "portalPublicView"
+    },
+    {
       "_derived": false,
       "domain": "carpentry",
       "fuzz_cases": [
@@ -796,6 +809,19 @@
       ],
       "macro_id": "carpentry.portalRespond",
       "name": "portalRespond"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalRevoke",
+      "name": "portalRevoke"
     },
     {
       "_derived": true,
@@ -1112,5 +1138,5 @@
   ],
   "domain": "carpentry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 52
+  "macroCount": 54
 }

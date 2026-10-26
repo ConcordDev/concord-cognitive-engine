@@ -51,9 +51,35 @@
       ],
       "macro_id": "lattice.resonance",
       "name": "resonance"
+    },
+    {
+      "_derived": true,
+      "domain": "lattice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lattice.stats",
+      "name": "stats"
+    },
+    {
+      "_derived": true,
+      "domain": "lattice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lattice.status",
+      "name": "status"
     }
   ],
   "domain": "lattice",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 6
 }

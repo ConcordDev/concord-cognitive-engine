@@ -214,6 +214,19 @@
       "name": "esign-list"
     },
     {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.esign-send",
+      "name": "esign-send"
+    },
+    {
       "_derived": false,
       "domain": "tools",
       "fuzz_cases": [
@@ -423,5 +436,5 @@
   ],
   "domain": "tools",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 15
+  "macroCount": 16
 }

@@ -23,6 +23,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "garage.despawn",
+      "name": "despawn"
+    },
+    {
+      "_derived": true,
+      "domain": "garage",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "garage.dismount",
       "name": "dismount"
     },
@@ -243,5 +256,5 @@
   ],
   "domain": "garage",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 9
 }

@@ -368,8 +368,11 @@ describe("law — approval workflow + obligations (shared ctx)", () => {
     const obId = ob.result.obligation.id;
     const done = await lensRun("law", "obligation-complete", { params: { contractId, obligationId: obId } }, ctx);
     assert.equal(done.result.obligation.done, true);
-    // toggle back to not-done so the tracker sees it as urgent.
-    const undone = await lensRun("law", "obligation-complete", { params: { contractId, obligationId: obId } }, ctx);
+    // Completing is idempotent now (a repeat call is unchanged); reopening is
+    // explicit with reopen:true, so the tracker sees it as urgent again.
+    const again = await lensRun("law", "obligation-complete", { params: { contractId, obligationId: obId } }, ctx);
+    assert.equal(again.result.obligation.done, true);
+    const undone = await lensRun("law", "obligation-complete", { params: { contractId, obligationId: obId, reopen: true } }, ctx);
     assert.equal(undone.result.obligation.done, false);
     const tracker = await lensRun("law", "obligation-tracker", { params: { urgentDays: 14 } }, ctx);
     const task = tracker.result.tasks.find((t) => t.id === obId);

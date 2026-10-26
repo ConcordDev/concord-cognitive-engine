@@ -1392,6 +1392,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.returns-create",
+      "name": "returns-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.returns-list",
+      "name": "returns-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.returns-update",
+      "name": "returns-update"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.reviews-delete",
       "name": "reviews-delete"
     },
@@ -2040,5 +2079,5 @@
   ],
   "domain": "retail",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 124
+  "macroCount": 127
 }

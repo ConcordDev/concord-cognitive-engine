@@ -190,7 +190,7 @@ describe("reasoning — persistent map substrate CRUD + scoring (shared ctx)", (
     const mapId = create.result.map.id;
     const rootId = create.result.map.nodes[0].id;
     const del = await lensRun("reasoning", "node-delete", { params: { mapId, nodeId: rootId } }, ctx);
-    assert.equal(del.ok, true);                       // outer envelope always ok
+    assert.equal(del.ok, false);                      // refusal surfaces at the top level (a032eccab)
     assert.equal(del.result.ok, false);              // handler refusal surfaces here
     assert.equal(del.result.error, "cannot delete the root claim");
   });

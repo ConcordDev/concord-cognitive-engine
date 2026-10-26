@@ -153,6 +153,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "schema.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "schema",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "schema.inferSchema",
       "name": "inferSchema"
     },
@@ -497,5 +510,5 @@
   ],
   "domain": "schema",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 38
+  "macroCount": 39
 }

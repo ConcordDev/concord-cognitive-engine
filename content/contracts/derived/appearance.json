@@ -49,6 +49,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "appearance.game_characters_for",
+      "name": "game_characters_for"
+    },
+    {
+      "_derived": true,
+      "domain": "appearance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "appearance.load_for_avatar",
       "name": "load_for_avatar"
     },
@@ -75,6 +88,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "appearance.load_game_character",
+      "name": "load_game_character"
+    },
+    {
+      "_derived": true,
+      "domain": "appearance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "appearance.options",
       "name": "options"
     },
@@ -90,9 +116,22 @@
       ],
       "macro_id": "appearance.save",
       "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "appearance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "appearance.save_game_character",
+      "name": "save_game_character"
     }
   ],
   "domain": "appearance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 10
 }

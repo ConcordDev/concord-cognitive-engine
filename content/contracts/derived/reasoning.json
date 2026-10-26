@@ -88,6 +88,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.chains",
+      "name": "chains"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.check_fallacies",
       "name": "check_fallacies"
     },
@@ -734,6 +747,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.steps",
+      "name": "steps"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.strengthAssessment",
       "name": "strengthAssessment"
     },
@@ -892,5 +918,5 @@
   ],
   "domain": "reasoning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 59
+  "macroCount": 61
 }

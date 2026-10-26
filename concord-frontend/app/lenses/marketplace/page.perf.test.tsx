@@ -186,7 +186,7 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     // Header / tab navigation is real structure, not a placeholder — it must
     // be present on the very first synchronous render, before any query has
     // had a chance to resolve (there has been no `await`/tick yet).
-    expect(screen.getByRole('heading', { level: 1, name: /^What is for sale/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /^Marketplace$/ })).toBeInTheDocument();
     expect(screen.getByTitle('Browse (B)')).toBeInTheDocument();
     expect(screen.getByTitle('Sell (M)')).toBeInTheDocument();
     expect(screen.getByTitle('Cart (C)')).toBeInTheDocument();

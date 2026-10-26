@@ -18,6 +18,54 @@ const SNIPE_WINDOW_S = Number(process.env.CONCORD_AUCTION_SNIPE_WINDOW_S) || 60;
 const SNIPE_EXTEND_S = Number(process.env.CONCORD_AUCTION_SNIPE_EXTEND_S) || 60;
 const PLATFORM_FEE_RATE = 0.05;
 
+// A DTU can live in three places: the legacy `dtus` table (raw INSERTs by
+// some domains, owner in creator_id or owner_user_id), the in-memory
+// STATE.dtus map, or its write-behind copy `dtu_store` (both written by
+// dtu.create, owner in ownerId/author/userId/createdBy — sometimes stamped
+// with the username rather than the user id). The ownership gate has to look
+// at all of them or owners can never list a DTU they made in the app.
+const OWNER_KEYS = ["ownerId", "owner_user_id", "author", "authorId", "userId", "createdBy", "creator_id"];
+function _ownerFromObj(d) {
+  if (!d || typeof d !== "object") return null;
+  for (const k of OWNER_KEYS) if (typeof d[k] === "string" && d[k]) return d[k];
+  return null;
+}
+function _storeDtu(db, itemId) {
+  const mem = globalThis._concordSTATE?.dtus;
+  const m = mem && typeof mem.get === "function" ? mem.get(itemId) : null;
+  if (m) return { where: "state", dtu: m };
+  try {
+    const row = db.prepare(`SELECT data FROM dtu_store WHERE id = ?`).get(itemId);
+    if (row) return { where: "dtu_store", dtu: JSON.parse(row.data || "{}") };
+  } catch { /* dtu_store optional on minimal builds */ }
+  return null;
+}
+/** Owner id of a DTU wherever it lives, or null when the item does not exist. */
+export function dtuOwnerOf(db, itemId) {
+  try {
+    const row = db.prepare(`SELECT creator_id FROM dtus WHERE id = ?`).get(itemId);
+    if (row?.creator_id) return row.creator_id;
+  } catch { /* dtus table optional on minimal builds */ }
+  try {
+    const row = db.prepare(`SELECT owner_user_id FROM dtus WHERE id = ?`).get(itemId);
+    if (row?.owner_user_id) return row.owner_user_id;
+  } catch { /* older dtus schema without owner_user_id */ }
+  return _ownerFromObj(_storeDtu(db, itemId)?.dtu);
+}
+/** Ids a user may appear under as a DTU owner: their id and their username. */
+function _selfIds(db, userId) {
+  const ids = new Set([userId]);
+  try {
+    const u = db.prepare(`SELECT username FROM users WHERE id = ?`).get(userId);
+    if (u?.username) ids.add(u.username);
+  } catch { /* users table optional */ }
+  return ids;
+}
+function _ownsDtu(db, userId, itemId) {
+  const owner = dtuOwnerOf(db, itemId);
+  return owner != null && _selfIds(db, userId).has(owner);
+}
+
 export function createAuction(db, sellerId, opts) {
   if (!db || !sellerId) return { ok: false, error: "missing_inputs" };
   const auth = requireActor({ actor: { userId: sellerId } });
@@ -34,15 +82,9 @@ export function createAuction(db, sellerId, opts) {
 
   // Ownership gate: the item must exist and belong to the seller.
   if (itemKind === "dtu") {
-    let ownerId = null;
-    try {
-      ownerId = db.prepare(`SELECT creator_id FROM dtus WHERE id = ?`).get(itemId)?.creator_id ?? null;
-    } catch { /* dtus table optional on minimal builds */ }
+    const ownerId = dtuOwnerOf(db, itemId);
     if (!ownerId) return { ok: false, error: "item_not_found" };
-    const ownerCheck = requireOwner({ actor: { userId: sellerId } }, ownerId);
-    if (!ownerCheck.ok) {
-      return { ok: false, error: ownerCheck.reason === "auth_required" ? "auth_required" : "not_authorized" };
-    }
+    if (!_ownsDtu(db, sellerId, itemId)) return { ok: false, error: "not_authorized" };
   } else {
     let qty = 0;
     try {
@@ -180,8 +222,7 @@ export function settleAuction(db, auctionId, opts = {}) {
     // item can still be stale by settlement time (owner transferred/sold it).
     // If ownership changed, abort before the seller is paid or the item moves.
     if (a.item_kind === "dtu") {
-      const row = db.prepare(`SELECT creator_id FROM dtus WHERE id = ?`).get(a.item_id);
-      if (!row || row.creator_id !== a.seller_user_id) throw new Error("ownership_changed");
+      if (!_ownsDtu(db, a.seller_user_id, a.item_id)) throw new Error("ownership_changed");
     } else {
       const row = db.prepare(`SELECT COALESCE(SUM(quantity), 0) AS qty FROM player_inventory WHERE user_id = ? AND item_id = ?`).get(a.seller_user_id, a.item_id);
       if (!row || row.qty < 1) throw new Error("ownership_changed");
@@ -192,7 +233,19 @@ export function settleAuction(db, auctionId, opts = {}) {
 
     // Transfer item ownership.
     if (a.item_kind === "dtu") {
-      db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
+      const moved = db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
+      if (!moved?.changes) {
+        const hit = _storeDtu(db, a.item_id);
+        if (hit) {
+          const d = hit.dtu;
+          for (const k of OWNER_KEYS) if (k in d) d[k] = a.leading_bidder_user_id;
+          d.ownerId = a.leading_bidder_user_id;
+          d.updatedAt = new Date().toISOString();
+          if (hit.where === "dtu_store") {
+            db.prepare(`UPDATE dtu_store SET data = ?, updated_at = datetime('now') WHERE id = ?`).run(JSON.stringify(d), a.item_id);
+          } // the STATE copy is persisted by the dtu write-behind flush
+        }
+      }
     }
     // inventory transfers handled elsewhere — ownership was re-checked above.
 

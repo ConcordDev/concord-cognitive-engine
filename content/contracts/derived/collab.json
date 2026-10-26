@@ -852,6 +852,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.revisions",
+      "name": "revisions"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.room-detail",
+      "name": "room-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.room-list",
+      "name": "room-list"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.room-open",
+      "name": "room-open"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.run_council",
       "name": "run_council"
     },
@@ -1188,9 +1240,22 @@
       ],
       "macro_id": "collab.vote",
       "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.workspace",
+      "name": "workspace"
     }
   ],
   "domain": "collab",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 62
+  "macroCount": 67
 }

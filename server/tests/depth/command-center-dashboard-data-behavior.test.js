@@ -126,7 +126,7 @@ describe("command-center — dashboardData (live widget grid resolution)", () =>
 
   it("honestly rejects a bogus dashboardId", async () => {
     const data = await lensRun("command-center", "dashboardData", { params: { dashboardId: "dash_does_not_exist" } }, ctx);
-    assert.equal(data.ok, true); // dispatch succeeded
+    assert.equal(data.ok, false); // refusal surfaces at the top level (a032eccab)
     assert.equal(data.result.ok, false); // handler-level rejection
     assert.equal(data.result.error, "dashboard_not_found");
   });

@@ -337,7 +337,11 @@ jobs:
           node scripts/grade-macro-depth.mjs
           score=$(jq -r .weightedScore audit/macro-depth.json)
           echo "Macro depth: $score"
-          awk -v s="$score" 'BEGIN { if (s+0 < 0.998) { print "::error::Macro depth regressed below 0.998 (real floor 0.999)"; exit 1 } }'
+          # 2026-10-26: re-pinned to the measured 0.996. The drop from 0.999 came from
+          # the no-fabricated-inputs sweep (a33651931 and follow-ups): macros that used
+          # to invent defaults now return NOT_COMPUTED, which the grader scores as
+          # `functional`. Floor 0.995 still catches a real regression at scale.
+          awk -v s="$score" 'BEGIN { if (s+0 < 0.995) { print "::error::Macro depth regressed below 0.995 (measured 0.996 on 2026-10-26)"; exit 1 } }'
 
       - name: UX polish grader
         run: |
