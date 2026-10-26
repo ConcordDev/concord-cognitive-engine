@@ -238,7 +238,10 @@ namespace Concordia
             if (!Busy && ConcordiaInput.Held(ConcordiaInput.Guard))
             {
                 _body.Stamina = stamina;
-                if (_action.CanAct) _action.TryBegin(GuardAction, _body);
+                // The opening of a guard is the parry window; the server's
+                // npc:attack resolution reads it from combat:dodge (wasParry).
+                if (_action.CanAct && _action.TryBegin(GuardAction, _body))
+                    ConcordClient.Live?.SendDodge(true);
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
             if (LivingBody.Hero && sprint && wish.sqrMagnitude > 0.04f)
@@ -705,7 +708,8 @@ namespace Concordia
         }
 
         /// <summary>Apply combat:attack:ack from the Concord kernel. Never invent HP.</summary>
-        public void ApplyKernelAttackAck(bool ok, bool refused, float damage, string error, string reason)
+        public void ApplyKernelAttackAck(bool ok, bool refused, float damage, string error, string reason,
+            bool serverHp = false, float hpBefore = 0f, float hpAfter = 0f, bool died = false, string lootBagId = null)
         {
             var dummy = _pendingKernelTarget;
             _pendingKernelTarget = null;
@@ -716,12 +720,63 @@ namespace Concordia
             }
             if (!ok)
             {
-                Toast("Concord {ok:false, error:'" + (error ?? "rejected") + "'}");
+                if (error == "target_dead" && dummy) Toast(dummy.GuestLabel + " is already down.");
+                else Toast("Concord {ok:false, error:'" + (error ?? "rejected") + "'}");
                 return;
             }
-            if (dummy) dummy.ApplyServerHit(damage, world);
+            if (dummy)
+            {
+                if (serverHp) dummy.ApplyServerHp(hpBefore, hpAfter, world);
+                else dummy.ApplyServerHit(damage, world);
+            }
             HubObjectives.NoteArenaHit();
-            if (dummy) Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
+            if (!dummy) return;
+            if (died) Toast(dummy.GuestLabel + " down" + (string.IsNullOrEmpty(lootBagId) ? "." : " — spoils on the ground."));
+            else Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
+        }
+
+        /// <summary>npc:attack:ack, decoded by ConcordiaGame.</summary>
+        public struct ServerStrike
+        {
+            public bool ok, evaded, blocked, killed;
+            public string error, npcId;
+            public float finalDamage, playerHp, playerMaxHp;
+        }
+
+        /// <summary>
+        /// A server creature's strike (C-21). The server resolved dodge, block,
+        /// cap and death; this presents its result and takes hp from its bar.
+        /// </summary>
+        public void ApplyServerStrike(ServerStrike s)
+        {
+            var from = TrainingDummy.FindServerNpc(s.npcId);
+            var who = from ? from.GuestLabel : "Something";
+            var feel = GetComponent<CombatFeel>();
+            var at = transform.position + transform.forward * 1.15f + Vector3.up * 1.05f;
+            if (!s.ok)
+            {
+                if (s.error == "concordant_law_refusal")
+                {
+                    FlowerBurst();
+                    Toast("The ground refuses " + who + ".");
+                }
+                // npc_out_of_reach / rate_limited / npc_dead: the server did not land it.
+                return;
+            }
+            if (s.evaded)
+            {
+                feel?.Present(new Core.HitResult { Outcome = Core.DefenseOutcome.Dodged }, at);
+                Toast("the cut passes through");
+                return;
+            }
+            // The server bar's scale may differ from the local 100; keep the fraction.
+            if (s.playerMaxHp > 0f) hp = Mathf.Clamp(100f * s.playerHp / s.playerMaxHp, 0f, 100f);
+            Toast((s.blocked ? "Guarded — " : who + " hits — ") + Mathf.Ceil(s.finalDamage) + " damage.");
+            _vel -= transform.forward * 1.8f;
+            person?.Hurt();
+            avatar?.Hit();
+            feel?.ApplyAck(true, Mathf.Min(s.finalDamage * 0.08f, 2.4f), false, false);
+            if (s.killed || hp <= 0f) FallAndRespawn();
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)
@@ -855,6 +910,11 @@ namespace Concordia
             }
             feel?.ApplyAck(true, impulse > 0f ? impulse : Mathf.Min(result.DamageDealt * 0.08f, 2.4f), false, false);
             if (hp > 0f) return;
+            FallAndRespawn();
+        }
+
+        void FallAndRespawn()
+        {
             hp = 100f;
             _body.Health = 100f;
             poise = 12f;

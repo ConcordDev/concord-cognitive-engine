@@ -322,6 +322,15 @@ namespace Concordia
                 GUI.color = Color.white;
             }
 
+            // A-32: server skill progress; hidden until the first skill:progress.
+            var progress = ServerProgress.Line;
+            if (!DebugHud && !string.IsNullOrEmpty(progress))
+            {
+                GUI.color = new Color(0.86f, 0.78f, 0.62f, 0.95f);
+                GUI.Label(new Rect(54, ny + 16, 260, 14), progress, _small);
+                GUI.color = Color.white;
+            }
+
             if (!DebugHud) return;
             GUI.Label(new Rect(32, 70 + extra, 250, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW")

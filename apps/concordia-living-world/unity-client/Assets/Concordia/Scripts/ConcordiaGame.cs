@@ -880,13 +880,45 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
 
         void HandleKernelEvent(string evt, string json)
         {
+            if (evt == "skill:progress")
+            {
+                ServerProgress.Apply(json);
+                var news = ServerProgress.TakeNews();
+                if (!string.IsNullOrEmpty(news)) _player?.Notice(news);
+                return;
+            }
+            if (evt == "npc:attack:ack")
+            {
+                NpcStrikeEnvelope strike = null;
+                try { strike = JsonUtility.FromJson<NpcStrikeEnvelope>(json); }
+                catch { return; }
+                if (strike?.data != null) _player?.ApplyServerStrike(ToStrike(strike.data));
+                return;
+            }
             if (evt != "combat:attack:ack") return;
             KernelAckEnvelope env = null;
             try { env = JsonUtility.FromJson<KernelAckEnvelope>(json); }
             catch { return; }
             if (env?.data == null) return;
-            _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
+            var d = env.data;
+            // combat-hp-authority acks carry the server's running hp (C-19/C-20).
+            var serverHp = d.authority == "combat-hp-authority";
+            _player?.ApplyKernelAttackAck(d.ok, d.refused, d.damage, d.error, d.reason,
+                serverHp, d.hpBefore, d.hpAfter, d.kill != null && d.kill.died, d.kill?.lootBagId);
         }
+
+        static ConcordiaPlayer.ServerStrike ToStrike(NpcStrikeData d) => new ConcordiaPlayer.ServerStrike
+        {
+            ok = d.ok,
+            error = d.error,
+            npcId = d.npcId,
+            evaded = d.evaded,
+            finalDamage = d.damageResult != null ? d.damageResult.finalDamage : 0f,
+            blocked = d.damageResult != null && d.damageResult.blocked,
+            killed = d.kill,
+            playerHp = d.playerHp,
+            playerMaxHp = d.playerMaxHp,
+        };
 
         async void SubmitTalk(string typed)
         {
@@ -960,6 +992,47 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             public float damage;
             public string error;
             public string reason;
+            public string authority;
+            public float hpBefore;
+            public float hpAfter;
+            public KernelKillData kill;
+        }
+
+        [Serializable]
+        class KernelKillData
+        {
+            public bool died;
+            public bool spared;
+            public string lootBagId;
+        }
+
+        [Serializable]
+        class NpcStrikeEnvelope
+        {
+            public string evt;
+            public NpcStrikeData data;
+        }
+
+        /// <summary>npc:attack:ack — the body of POST …/combat/npc-attack plus status and npcId.</summary>
+        [Serializable]
+        class NpcStrikeData
+        {
+            public bool ok;
+            public int status;
+            public string error;
+            public string npcId;
+            public bool evaded;
+            public bool kill;
+            public float playerHp;
+            public float playerMaxHp;
+            public NpcStrikeDamage damageResult;
+        }
+
+        [Serializable]
+        class NpcStrikeDamage
+        {
+            public float finalDamage;
+            public bool blocked;
         }
     }
 #if false

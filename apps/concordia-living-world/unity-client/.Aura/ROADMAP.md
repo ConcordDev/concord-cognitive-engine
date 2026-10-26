@@ -537,6 +537,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
     - **Kernel creatures** (`Evo_<world_npcs id>`, from `CreatureCompiler.PresentKernel`) now use the creature's own row: hp starts at its `current_hp` (seeded from its level), every hit is written back, and the kill runs the server's NPC death path. The ack adds `npcId`, `persisted:"world_npcs"` and `kill {died, spared, reason, lootBagId, sparksAwarded}`; the bag also arrives as `loot:dropped`. A dead creature acks `target_dead`, one in another world `target_not_in_world`.
     - **Other ids** (dummies, RealmFill/WorldGate hostiles with no server row) start at the server's level-1 NPC hp (`entity-power.js` `npcMaxHpForLevel(1)`: 100, or 112 with absolute power on).
     - Client: on a kernel creature, set `TrainingDummy.hp` from the ack rather than the `massKg * 0.9` estimate.
+  - Client half written 2026-10-26 by Claude (EditMode only; Play check pending, needs #1481 deployed): `TrainingDummy.ServerNpcId` set by `CreatureCompiler.PresentKernel`; such a body is `KernelAuthored`, its hits go to `combat:attack`, and `ApplyServerHp(hpBefore, hpAfter)` takes the server's hp. A server kill drops no local road spoils (the bag comes as `loot:dropped`). ServerCombatClientTests.
   - Result: —
 - [ ] **C-21 · Consume combat:hit / combat:kill** (deps: C-20)
   - Goal: Server `combat:hit` on the player drives `TakeHit` presentation. `combat:kill` triggers the death flow. Note: hostile → player damage is client-local today; file a REQ for server-authored hostile damage.
@@ -545,6 +546,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
     - The ack is the REST `combat/npc-attack` body plus `status` and `npcId`: `damageResult.finalDamage`, `kill`, `evaded` (server i-frames from `combat:dodge`), `damageResult.blocked`, `revived`, `lootDrop` on defeat, and `playerHp`/`playerMaxHp` (the server bar). Present `finalDamage`; set hp from `playerHp`.
     - Refusals: `status 403 concordant_law_refusal` in the Hub, `npc_out_of_reach` (creature row > 48 m from your `player:move` position), `rate_limited` (one strike per creature per 850 ms), `npc_dead`, `npc_not_in_world`, `no_live_presence`.
     - Hostiles with no server row (RealmFill/WorldGate) have nothing for the server to resolve; their damage stays local and should be labelled so.
+  - Client half written 2026-10-26 by Claude (EditMode only; Play check pending, needs #1481): `Hostile` sends `npc:attack` for a body with `ServerNpcId` when connected; `ConcordiaPlayer.ApplyServerStrike` presents the ack (evade, guard, hit, Hub refusal) and sets hp from `playerHp/playerMaxHp`; death runs the shared `FallAndRespawn`. Starting a guard now also sends `combat:dodge {wasParry:true}` so the server's parry window matches. Gap: `/unity-ws` has no `combat:block`, so a held guard's half damage is not on the server yet (Claude).
   - Touch: `ConcordiaPlayer.cs`, `ConcordClient` handlers (client side only)
   - Reuse: existing `combat:hit`/`combat:kill` receivers
   - Verify: online, one server hit lands with the correct hp; offline, honest.
@@ -1347,6 +1349,7 @@ Task format: `- [ ] **ID · title** (deps: …)`, then Goal / Touch / Reuse / Ve
   - Verify: REQ filed; the slot is hidden.
   - Server: REQ
   - Server half 2026-10-26 by Claude (PR #1482, open; no REQ needed): every server XP grant (`gainSkillXP`: quests, crafting, gathering, occupations, the pain → XP cycle that `npc:attack` feeds) sends `skill:progress {userId, skill, worldType, level, xp, xpToNext, xpGain, leveled, levelsGained, acquired, atCap}` to your own `/unity-ws` user room. Show the slot only after the first one arrives.
+  - Client half written 2026-10-26 by Claude (EditMode only; Play check pending, needs #1482): `Scripts/Aura/ServerProgress.cs` holds the last `skill:progress`; the HUD line under the region line stays hidden until one arrives; level-ups and new skills toast once.
   - Result: —
 
 ### Epic A7 · Save/restore, re-enabled safely

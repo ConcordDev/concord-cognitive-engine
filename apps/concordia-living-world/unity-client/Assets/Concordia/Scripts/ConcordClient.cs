@@ -1949,6 +1949,10 @@ if (JsonFlagFalse(json, "ok"))
                 + ",\"z\":" + z.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}");
         }
 
+        /// <summary>A server creature strikes this player; answered by npc:attack:ack.</summary>
+        public Task SendNpcAttack(string npcId) =>
+            SendEvt("npc:attack", "{\"npcId\":\"" + Escape(npcId) + "\"}");
+
         public Task SendDodge(bool parry = false, string action = null)
         {
             if (string.IsNullOrEmpty(action)) action = parry ? "parry" : "dodge";

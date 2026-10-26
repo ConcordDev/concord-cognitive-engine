@@ -8,6 +8,12 @@ namespace Concordia
         public bool unburied;
         public bool living;
         [SerializeField] string kernelTargetId = "ArenaDummy";
+        /// <summary>
+        /// world_npcs id when this body is a server creature (CreatureCompiler.PresentKernel).
+        /// The server then owns its hp and its loot: attacks go to combat:attack,
+        /// strikes to npc:attack, and the spoils arrive as loot:dropped.
+        /// </summary>
+        public string ServerNpcId;
         /// <summary>Kernel combat id. GameObject name is presentation-only (L4).</summary>
         public string KernelId => string.IsNullOrEmpty(kernelTargetId) ? "ArenaDummy" : kernelTargetId;
         /// <summary>Court gym only. Road hostiles and fauna stay dead.</summary>
@@ -20,6 +26,7 @@ namespace Concordia
         {
             get
             {
+                if (!string.IsNullOrEmpty(ServerNpcId)) return true;
                 if (living) return false;
                 if (GetComponent<Hostile>()) return false;
                 if (GetComponent<FaunaLife>()) return false;
@@ -106,6 +113,24 @@ namespace Concordia
             ApplyDamage(dmg, world);
         }
 
+        /// <summary>
+        /// An ack that carries the server's running hp (combat-hp-authority): start
+        /// from its hpBefore so a local estimate never leaks into the result.
+        /// </summary>
+        public void ApplyServerHp(float hpBefore, float hpAfter, WorldId world)
+        {
+            hp = hpBefore;
+            ApplyDamage(Mathf.Max(0f, hpBefore - hpAfter), world);
+        }
+
+        public static TrainingDummy FindServerNpc(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return null;
+            foreach (var d in FindObjectsByType<TrainingDummy>(FindObjectsInactive.Exclude))
+                if (d && d.ServerNpcId == npcId) return d;
+            return null;
+        }
+
         void ApplyDamage(float dmg, WorldId world)
         {
             if (hp <= 0) return;
@@ -134,8 +159,13 @@ namespace Concordia
                     try { WorldClock.NoteKill(KernelId); }
                     catch (System.Exception e) { Debug.LogException(e); }
                 }
-                RoadWorld.DropSpoils(transform);
-                KitBag.AddLoot("road-spoils", "road spoils");
+                // A server creature's spoils are a real loot bag (loot:dropped);
+                // only Unity-only bodies drop local road spoils.
+                if (string.IsNullOrEmpty(ServerNpcId))
+                {
+                    RoadWorld.DropSpoils(transform);
+                    KitBag.AddLoot("road-spoils", "road spoils");
+                }
                 var who = GuestLabel;
                 RoadWorld.NoticeKill(who, transform.position);
                 if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(who + " down.");

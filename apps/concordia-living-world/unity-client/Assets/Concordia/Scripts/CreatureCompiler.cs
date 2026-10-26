@@ -193,7 +193,11 @@ namespace Concordia
                 p = hostB.transform.position + hostB.transform.right * -1.4f;
             else
                 return null;
-            return Compile(parent, card, p, world);
+            var go = Compile(parent, card, p, world);
+            // Kernel cards are world_npcs rows: the server owns this body's hp and loot.
+            var body = go ? go.GetComponent<TrainingDummy>() : null;
+            if (body) body.ServerNpcId = card.id;
+            return go;
         }
 
         static string CxCreaturePrefabPath(CreatureCard card)
