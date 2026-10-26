@@ -5,7 +5,7 @@
   "inputs": {
     "type": { "type": "string", "required": true, "maxLength": 40 },
     "target": { "type": "string", "required": true, "maxLength": 120 },
-    "questId": { "type": "string", "maxLength": 80 },
+    "questId": { "type": "string", "required": true, "maxLength": 80 },
     "count": { "type": "number", "min": 1, "max": 1000 },
     "userId": { "type": "string", "maxLength": 80 },
     "worldId": { "type": "string", "maxLength": 120 }
