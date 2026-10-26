@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { ACCENT_MIN_CONTRAST, checkAccent, normalizeHex } from '@/lib/social/contrast';
 
 export interface ProfileEditValues {
   displayName: string;
@@ -10,6 +11,8 @@ export interface ProfileEditValues {
   avatar: string;
   website: string;
   isPublic: boolean;
+  /** User-picked accent (#rrggbb) for the avatar ring + Aura; null = none. */
+  accent?: string | null;
 }
 
 interface ProfileEditDialogProps {
@@ -42,7 +45,13 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
   const [avatar, setAvatar] = useState(initial.avatar);
   const [website, setWebsite] = useState(initial.website);
   const [isPublic, setIsPublic] = useState(initial.isPublic);
+  const [accentInput, setAccentInput] = useState(initial.accent || '');
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Accent validation is computed live from the shared pure module — the
+  // same math the server enforces. An empty field clears the accent.
+  const accentCheck = accentInput.trim() === '' ? { valid: true, contrast: null, error: null } : checkAccent(accentInput);
+  const accentReady = accentCheck.valid;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -52,6 +61,7 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
         avatar,
         website: website.trim(),
         isPublic,
+        accent: accentInput.trim() === '' ? null : normalizeHex(accentInput),
       });
       return res.data as { ok?: boolean; error?: string };
     },
@@ -121,6 +131,47 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
         />
       </label>
       {avatar ? <p className="truncate text-[11px] text-zinc-500">Avatar: {avatar}</p> : null}
+      <fieldset className="block text-xs text-zinc-400">
+        <legend>Accent colour</legend>
+        <div className="mt-1 flex items-center gap-2">
+          <input
+            type="color"
+            aria-label="Pick accent colour"
+            value={normalizeHex(accentInput) || '#12121a'}
+            onChange={(e) => setAccentInput(e.target.value)}
+            className="h-11 w-14 cursor-pointer rounded border border-white/10 bg-black/40 p-1"
+          />
+          <input
+            value={accentInput}
+            onChange={(e) => setAccentInput(e.target.value.trim().slice(0, 7))}
+            placeholder="#14b8a6"
+            aria-label="Accent colour hex"
+            className="min-h-[44px] w-28 rounded border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-sm text-zinc-100"
+          />
+          {accentInput.trim() !== '' ? (
+            <button
+              type="button"
+              onClick={() => setAccentInput('')}
+              className="min-h-[44px] rounded px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200"
+              aria-label="Clear accent colour"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Colours the ring around your avatar and one tone of your Aura. Needs at least{' '}
+          {ACCENT_MIN_CONTRAST}:1 contrast against the dark profile surface.
+          {accentCheck.contrast !== null
+            ? ` Currently ${accentCheck.contrast.toFixed(2)}:1 — ${accentCheck.valid ? 'passes' : 'too low'}.`
+            : ''}
+        </p>
+        {accentInput.trim() !== '' && accentCheck.error ? (
+          <p className="mt-1 text-xs text-rose-400" role="alert">
+            {accentCheck.error}
+          </p>
+        ) : null}
+      </fieldset>
       <label className="flex items-center gap-2 text-xs text-zinc-300">
         <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
         Public profile
@@ -130,7 +181,7 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
         <button type="button" onClick={onClose} className="rounded px-3 py-1.5 text-xs text-zinc-400">Cancel</button>
         <button
           type="submit"
-          disabled={save.isPending || !displayName.trim()}
+          disabled={save.isPending || !displayName.trim() || !accentReady}
           className="rounded bg-teal-400 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
         >
           {save.isPending ? 'Saving…' : 'Save profile'}

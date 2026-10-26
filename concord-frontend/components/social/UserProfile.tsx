@@ -34,6 +34,9 @@ import { ProfileEditDialog } from './ProfileEditDialog';
 import { OwnPostDelete } from './OwnPostDelete';
 import { invalidatePostSurfaces } from './invalidate-post-surfaces';
 import { socialPostViewTransitionName } from './PostDetailInPlace';
+import { AuraBanner } from './AuraBanner';
+import { ProfileTrack, type ProfileTrackData } from './ProfileTrack';
+import { ShowcaseShelf, type ShowcaseItem } from './ShowcaseShelf';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,12 @@ interface UserProfileData {
   createdAt: string;
   updatedAt: string;
   stats: ProfileStats;
+  /** User-picked accent (#rrggbb); public profile data, null when unset. */
+  accent?: string | null;
+  /** Server-sanitized profile track (owner's own published listing). */
+  profileTrack?: ProfileTrackData | null;
+  /** Server-sanitized Showcase pins, in the owner's order. */
+  showcase?: ShowcaseItem[] | null;
 }
 
 interface FeedItem {
@@ -521,12 +530,21 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, clas
             avatar: profile.avatar || '',
             website: profile.website || '',
             isPublic: profile.isPublic !== false,
+            accent: profile.accent || null,
           }}
           onClose={() => setEditing(false)}
         />
       )}
-      {/* Banner / Header */}
-      <div className={cn('relative h-40 bg-gradient-to-br rounded-t-xl', gradient)}>
+      {/* Banner / header — the Aura is the deterministic banner: a STILL
+          inline SVG generated from the handle (plus the profile's
+          optional accent), replacing the old gradient background slot. */}
+      <div className="relative h-40 overflow-hidden rounded-t-xl bg-lattice-deep">
+        <div aria-hidden="true" className="absolute inset-0">
+          <AuraBanner
+            handle={profile.username || profile.displayName || profile.userId}
+            accent={profile.accent || null}
+          />
+        </div>
         <div className="absolute inset-0 bg-black/20" />
 
         {/* Profile actions (top right) */}
@@ -586,13 +604,16 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, clas
 
       {/* Profile info */}
       <div className="relative px-5 pb-5 bg-lattice-surface border-x border-b border-lattice-border rounded-b-xl">
-        {/* Avatar (overlapping the banner) */}
+        {/* Avatar (overlapping the banner). The ring is the profile
+            surface colour — or the owner's picked accent when set. */}
         <div className="flex items-end justify-between -mt-12 mb-4">
           <div
             className={cn(
-              'relative w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white ring-4 ring-lattice-surface bg-gradient-to-br',
-              gradient
+              'relative w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white bg-gradient-to-br',
+              gradient,
+              profile.accent ? '' : 'ring-4 ring-lattice-surface',
             )}
+            style={profile.accent ? { boxShadow: `0 0 0 4px ${profile.accent}` } : undefined}
           >
             {profile.avatar ? (
               <Image
@@ -730,6 +751,26 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, clas
           <StatCard label="Citations" value={profile.stats.citationCount} icon={Quote} />
         </div>
       </div>
+
+      {/* Profile track — the owner's chosen own published track; tap to
+          play, never autoplay (ProfileTrack uses the PostMediaCard
+          player). Only the owner gets the picker. */}
+      <ProfileTrack
+        className="mt-4"
+        userId={userId}
+        track={profile.profileTrack || null}
+        isOwner={isOwnProfile}
+      />
+
+      {/* Showcase — up to 6 of the owner's own public creations,
+          server-sanitized per viewer. */}
+      <ShowcaseShelf
+        className="mt-4"
+        userId={userId}
+        showcase={profile.showcase || null}
+        isOwner={isOwnProfile}
+        onOpenPost={onOpenPost}
+      />
 
       {/* Content tabs */}
       <div className="mt-4">

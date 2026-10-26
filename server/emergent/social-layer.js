@@ -171,7 +171,11 @@ export function upsertProfile(STATE, userId, profileData) {
 // Fields a stranger may see. Everything else on the profile object is a
 // per-user setting (searches, mutes, lists, DM policy, email, …) and is
 // returned only to the owner. New settings stay private until they are
-// added here on purpose.
+// added here on purpose. `accent` is the one new PUBLIC profile field
+// (job oc-social-5): the user-picked avatar-ring/Aura colour is public
+// identity data by design; profileTrack and showcase stay off this list
+// because they are re-sanitized per viewer in lib/social-identity.js
+// instead of being projected raw.
 const PUBLIC_PROFILE_KEYS = [
   "userId",
   "displayName",
@@ -181,6 +185,7 @@ const PUBLIC_PROFILE_KEYS = [
   "isPublic",
   "specialization",
   "website",
+  "accent",
   "createdAt",
   "updatedAt",
 ];

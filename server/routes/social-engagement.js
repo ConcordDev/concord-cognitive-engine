@@ -20,6 +20,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import createSocialCoreRoutes from "./social-core.js";
+import createSocialIdentityRoutes from "./social-identity.js";
 import { postAuthorId, userOwnsListing } from "../emergent/social-layer.js";
 
 function uid() {
@@ -28,7 +29,13 @@ function uid() {
 
 export default function createSocialEngagementRoutes({ db, requireAuth }) {
   const router = Router();
-  // Registered first so these paths win over the inline server.js handlers.
+  // Social identity (job oc-social-5): mounted FIRST so its overrides of
+  // POST /profile and GET /profile/:userId win over social-core's (and
+  // both win over the inline server.js handlers). Its /identity/* paths
+  // are new owner-only surfaces for the accent, profile track and
+  // Showcase.
+  router.use(createSocialIdentityRoutes({ db, requireAuth }));
+  // Registered next so these paths win over the inline server.js handlers.
   router.use(createSocialCoreRoutes({ db, requireAuth }));
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────
