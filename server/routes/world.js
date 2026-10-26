@@ -1194,8 +1194,13 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     }
   }
 
-  router.get("/sim/inventory/:userId", wrap(async (req, res) => {
+  router.get("/sim/inventory/:userId", auth, wrap(async (req, res) => {
     const userId = req.params.userId;
+    // A player's inventory is theirs to read (and an admin's); any logged-in
+    // player used to be able to read anyone's by id.
+    if (!req.user?.id || (req.user.id !== userId && req.user.role !== "admin")) {
+      return res.status(403).json({ ok: false, error: "cannot_read_other_inventory" });
+    }
     const dbInv = await getInventoryWithLoadout(userId);
     if (dbInv) return res.json({ ok: true, inventory: dbInv });
     // Legacy in-memory fallback

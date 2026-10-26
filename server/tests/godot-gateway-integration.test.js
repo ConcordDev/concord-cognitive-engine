@@ -1405,3 +1405,20 @@ test("/unity-ws: npc:attack in the Hub is refused by Concordant Law", async () =
     assert.equal(ack.error, "concordant_law_refusal");
   } finally { ws.close(); }
 });
+
+test("/unity-ws: combat:block arms the server guard that npc:attack respects", async () => {
+  const world = `unity-it-guard-${TS}`;
+  const npcId = `it_guard_wolf_${TS}`;
+  seedCreature(npcId, world, { x: 1, z: 1 });
+  const ws = await unityAttacker("guard", world);
+  try {
+    sendMsg(ws, "combat:block", { active: true });
+    const { data: ack } = await waitForEvt(ws, "combat:block:ack");
+    assert.equal(ack.ok, true);
+    assert.equal(ack.active, true);
+    sendMsg(ws, "npc:attack", { npcId });
+    const { data: hit } = await waitForEvt(ws, "npc:attack:ack");
+    assert.equal(hit.ok, true, JSON.stringify(hit));
+    assert.equal(hit.damageResult.blocked, true, "a held guard is on the server");
+  } finally { ws.close(); }
+});

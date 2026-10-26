@@ -339,3 +339,13 @@ test("reputation and loot bags answer with real (empty) state, not invented valu
   assert.equal(loot.status, 200);
   assert.deepEqual(loot.data.bags, []);
 });
+
+test("inventory: only the owner (or an admin) can read it", async () => {
+  const a = await registerUser(`urest_${TS}_pa`);
+  const b = await registerUser(`urest_${TS}_pb`);
+  const own = await api("GET", `/api/world/sim/inventory/${a.userId}`, a.token);
+  assert.equal(own.status, 200);
+  const other = await api("GET", `/api/world/sim/inventory/${a.userId}`, b.token);
+  assert.equal(other.status, 403);
+  assert.equal(other.data.error, "cannot_read_other_inventory");
+});
