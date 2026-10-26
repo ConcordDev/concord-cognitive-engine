@@ -717,7 +717,10 @@ export default function registerAnimationActions(registerLensAction) {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
-    anim.audio = (anim.audio || []).filter((t) => t.id !== params.id);
+    const trackId = String(params.id || params.trackId || "");
+    const before = (anim.audio || []).length;
+    anim.audio = (anim.audio || []).filter((t) => t.id !== trackId);
+    if (!trackId || anim.audio.length === before) return { ok: false, error: "not_found" };
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { deleted: params.id } };

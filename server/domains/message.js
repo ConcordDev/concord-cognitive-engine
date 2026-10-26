@@ -376,6 +376,7 @@ export default function registerMessageActions(registerLensAction) {
     const list = listB(s.channels, msgActor(ctx));
     const c = list.find(x => x.id === String(params.id || ""));
     if (!c) return { ok: false, error: "channel not found" };
+    if (c.archived) return { ok: true, unchanged: true, result: { channel: c } };
     c.archived = true;
     c.archivedAt = nowIsoMsg();
     saveMessageState();

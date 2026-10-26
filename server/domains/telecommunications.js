@@ -281,9 +281,10 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       const userId = uid(ctx);
       const towers = list(s.towers, userId);
       const id = String(params?.id || "");
-      const before = towers.length;
-      s.towers.set(userId, towers.filter((t) => t.id !== id));
-      return { ok: true, result: { removed: before - s.towers.get(userId).length } };
+      const next = towers.filter((t) => t.id !== id);
+      if (!id || next.length === towers.length) return { ok: false, error: "not_found" };
+      s.towers.set(userId, next);
+      return { ok: true, result: { removed: 1 } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

@@ -874,7 +874,9 @@ export default function registerDocsActions(registerLensAction) {
     if (!page) return { ok: false, error: "page not found" };
     const comment = dcCommentList(s, page.id).find((c) => c.id === params.commentId);
     if (!comment) return { ok: false, error: "comment not found" };
-    comment.resolved = params.resolved === false ? false : true;
+    const wantResolved = params.resolved !== false;
+    if (comment.resolved === wantResolved) return { ok: true, unchanged: true, result: { comment } };
+    comment.resolved = wantResolved;
     saveDocs();
     return { ok: true, result: { comment } };
   });

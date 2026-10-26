@@ -694,7 +694,9 @@ export default function registerPhilosophyActions(registerLensAction) {
     const userId = phActor(ctx);
     const thread = phDebates(s, userId).find((t) => t.id === params.id);
     if (!thread) return { ok: false, error: "debate thread not found (must be author)" };
-    thread.status = params.status === "open" ? "open" : "resolved";
+    const nextStatus = params.status === "open" ? "open" : "resolved";
+    if (thread.status === nextStatus) return { ok: true, unchanged: true, result: { id: thread.id, status: thread.status } };
+    thread.status = nextStatus;
     thread.resolution = phClean(params.resolution, 2000) || null;
     savePhilo();
     return { ok: true, result: { id: thread.id, status: thread.status } };

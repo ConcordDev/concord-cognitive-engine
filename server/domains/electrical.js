@@ -485,10 +485,12 @@ export default function registerElectricalActions(registerLensAction) {
       const st = getState(); if (!st) return { ok: false, error: 'state unavailable' };
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const arr = list(st.panels, uid(ctx));
-      const before = arr.length;
-      st.panels.set(uid(ctx), arr.filter((p) => p.id !== data.panelId));
+      const id = String(data.panelId || data.id || "");
+      const next = arr.filter((p) => p.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      st.panels.set(uid(ctx), next);
       save();
-      return { ok: true, result: { deleted: before - st.panels.get(uid(ctx)).length } };
+      return { ok: true, result: { deleted: 1 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -618,10 +620,12 @@ export default function registerElectricalActions(registerLensAction) {
       const st = getState(); if (!st) return { ok: false, error: 'state unavailable' };
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const arr = list(st.estimates, uid(ctx));
-      const before = arr.length;
-      st.estimates.set(uid(ctx), arr.filter((e) => e.id !== data.estimateId));
+      const id = String(data.estimateId || data.id || "");
+      const next = arr.filter((e) => e.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      st.estimates.set(uid(ctx), next);
       save();
-      return { ok: true, result: { deleted: before - st.estimates.get(uid(ctx)).length } };
+      return { ok: true, result: { deleted: 1 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -765,10 +769,12 @@ export default function registerElectricalActions(registerLensAction) {
       const st = getState(); if (!st) return { ok: false, error: 'state unavailable' };
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const arr = list(st.diagrams, uid(ctx));
-      const before = arr.length;
-      st.diagrams.set(uid(ctx), arr.filter((d) => d.id !== data.diagramId));
+      const id = String(data.diagramId || data.id || "");
+      const next = arr.filter((d) => d.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      st.diagrams.set(uid(ctx), next);
       save();
-      return { ok: true, result: { deleted: before - st.diagrams.get(uid(ctx)).length } };
+      return { ok: true, result: { deleted: 1 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
