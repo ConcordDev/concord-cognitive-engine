@@ -472,14 +472,14 @@ describe("news — alerts + offline + digest schedule (shared ctx)", () => {
 describe("news — GDELT network macros (deterministic fetch-failed branch only)", () => {
   it("headlines: a blocked fetch returns the fetch-failed refusal", async () => {
     const r = await lensRun("news", "headlines", { params: { category: "tech", limit: 5 } });
-    assert.equal(r.ok, true); // dispatch ok
+    assert.equal(r.ok, false); // refusal surfaces at the top level (a032eccab)
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /headlines fetch failed/);
   });
 
   it("daily-briefing: a blocked fetch returns the briefing fetch-failed refusal", async () => {
     const r = await lensRun("news", "daily-briefing", {});
-    assert.equal(r.ok, true);
+    assert.equal(r.ok, false); // refusal surfaces at the top level (a032eccab)
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /briefing fetch failed/);
   });

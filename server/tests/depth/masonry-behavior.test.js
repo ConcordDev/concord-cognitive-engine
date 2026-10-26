@@ -227,7 +227,7 @@ describe("masonry — proposals (pricing + lifecycle + render)", () => {
 
   it("proposal-update-status to accepted stamps acceptedAt; list reflects it", async () => {
     const c = await depthCtx("masonry-prop-status");
-    const created = await lensRun("masonry", "proposal-create", { params: { client: "Beta LLC", lineItems: [{ quantity: 1, unitCost: 100 }] } }, c);
+    const created = await lensRun("masonry", "proposal-create", { params: { client: "Beta LLC", lineItems: [{ description: "Brick veneer", quantity: 1, unitCost: 100 }] } }, c);
     const id = created.result.id;
     assert.equal(created.result.acceptedAt, null);
     const upd = await lensRun("masonry", "proposal-update-status", { params: { id, status: "accepted" } }, c);

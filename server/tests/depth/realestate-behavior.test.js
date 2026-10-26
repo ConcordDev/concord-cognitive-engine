@@ -61,7 +61,7 @@ describe("realestate — finance calc contracts (exact computed values)", () => 
   });
 
   it("calc-mortgage: rejects non-positive price", async () => {
-    const r = await lensRun("realestate", "calc-mortgage", { params: { price: 0 } });
+    const r = await lensRun("realestate", "calc-mortgage", { params: { price: 0, rate: 7, taxRate: 1.2, insurance: 1500 } }); // full inputs, so the guard (not NOT_COMPUTED) answers
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /price must be > 0/);
   });
@@ -752,7 +752,7 @@ describe("realestate — uncovered macros + compute branches (wave 10 top-up)", 
   });
 
   it("calc-mortgage: rejects downPercent out of 0..100", async () => {
-    const r = await lensRun("realestate", "calc-mortgage", { params: { price: 400000, downPercent: 150 } });
+    const r = await lensRun("realestate", "calc-mortgage", { params: { price: 400000, downPercent: 150, rate: 7, taxRate: 1.2, insurance: 1500 } });
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /downPercent 0\.\.100/);
   });

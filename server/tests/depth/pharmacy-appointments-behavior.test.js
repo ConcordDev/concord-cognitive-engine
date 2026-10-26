@@ -38,7 +38,8 @@ describe("pharmacy appointments — add/list round trip + upcoming/past derivati
   it("appointment-add: missing dateTime is rejected", async () => {
     const r = await lensRun("pharmacy", "appointment-add", { params: { providerName: "Dr. Jones" } }, ctx);
     assert.equal(r.result.ok, false);
-    assert.ok(String(r.result.error).toLowerCase().includes("datetime required"));
+    // Param schema refuses before the handler (#1486): invalid_input on `dateTime`.
+    assert.ok(String(r.result.error).toLowerCase().includes("datetime required") || (r.result.error === "invalid_input" && r.result.field === "dateTime"));
   });
 
   it("appointment-list: future scheduled appointment is 'upcoming'; past dateTime is 'past'", async () => {

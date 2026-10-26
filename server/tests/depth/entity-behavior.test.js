@@ -76,7 +76,8 @@ describe("entity — deterministic analytics (entityResolution / relationshipGra
     const r = await lensRun("entity", "entityResolution", {
       data: { records: [{ id: "only", fields: { name: "Solo" } }] },
     });
-    assert.equal(r.ok, true);
+    assert.equal(r.ok, false); // refusal surfaces at the top level (a032eccab)
+    assert.equal(r.result.error, "need_at_least_2_records");
     assert.match(r.result.message, /at least 2 records/i);
   });
 

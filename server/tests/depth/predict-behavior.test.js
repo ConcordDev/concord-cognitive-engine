@@ -304,7 +304,8 @@ describe("predict — analog (honest degradation, never fabricates a finding)", 
     // that lens.run itself dispatched successfully).
     const ctx = await depthCtx("predict-analog");
     const r = await lensRun("predict", "analog", { params: { subject: "bitcoin" } }, ctx);
-    assert.equal(r.ok, true); // lens.run dispatched fine regardless of the inner outcome
+    // A refusal surfaces at the top level (a032eccab); success stays ok:true.
+    assert.equal(r.ok, r.result.ok !== false);
     if (r.result.ok === false) {
       assert.ok(r.result.reason, "a failure must carry a reason, not a silent empty payload");
     } else {
