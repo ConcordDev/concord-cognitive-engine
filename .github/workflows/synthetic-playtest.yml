@@ -7,20 +7,13 @@ name: synthetic-playtest
 # Default-off in PR CI (the test file is gated by CONCORD_SYNTHETIC_PLAYTEST);
 # this workflow flips the flag and runs it on a schedule.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  push:
-    # Run on every main push too — no point waiting until 04:13 UTC
-    # for the substrate-drift signal when we already know whether the
-    # platinum gates passed. Synthetic playtest is ~7 minutes; well
-    # within the Actions free-tier minute budget on the merge cadence
-    # of a solo project.
-    branches: [main]
   schedule:
-    # 04:13 UTC every day. Off-peak vs. main CI / lint-sweep. Kept as
-    # the fallback so the gate still runs on quiet days with no merges.
     - cron: '13 4 * * *'
   workflow_dispatch:
-    # Manual trigger from the Actions tab.
 
 # Least-privilege token scope. Without this the workflow inherits the
 # repository default, which is broader than anything here needs: these

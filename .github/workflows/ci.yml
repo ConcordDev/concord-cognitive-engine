@@ -5,6 +5,11 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  # Nightly full run (every job, incl. the npm-audit Security Scan that no
+  # longer runs on PRs). Failures open an issue via nightly-failure-issue.yml.
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '22'
@@ -18,9 +23,48 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Path filter for PRs: which parts of the repo changed. Anything outside the
+  # frontend/mobile/docs/other-client trees counts as server (conservative).
+  # Push, schedule and dispatch runs always run everything. Skipped steps/jobs
+  # count as passing for required checks.
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+      contents: read
+    outputs:
+      server: ${{ steps.f.outputs.server }}
+      frontend: ${{ steps.f.outputs.frontend }}
+      mobile: ${{ steps.f.outputs.mobile }}
+      docker: ${{ steps.f.outputs.docker }}
+    steps:
+      - id: f
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            for k in server frontend mobile docker; do echo "$k=true" >> "$GITHUB_OUTPUT"; done
+            exit 0
+          fi
+          gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate --jq '.[].filename' > files.txt
+          echo "changed files: $(wc -l < files.txt)"
+          has() { grep -qE "$1" files.txt && echo true || echo false; }
+          all=$(has '^\.github/workflows/ci\.yml$')
+          fe=$(has '^concord-frontend/'); mo=$(has '^concord-mobile/')
+          sv=$(grep -vqE '^(concord-frontend/|concord-mobile/|docs/|concord-vscode/|concord-lsp/|concord-shell/|world-lens-godot/|\.github/|[^/]*\.md$)' files.txt && echo true || echo false)
+          dk=$(has '(^|/)Dockerfile|docker-compose|^server/package(-lock)?\.json$|^concord-frontend/package(-lock)?\.json$')
+          if [ "$all" = true ]; then fe=true; mo=true; sv=true; dk=true; fi
+          echo "server=$sv frontend=$fe mobile=$mo docker=$dk"
+          { echo "server=$sv"; echo "frontend=$fe"; echo "mobile=$mo"; echo "docker=$dk"; } >> "$GITHUB_OUTPUT"
+
   lint-and-test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    needs: [changes]
 
     steps:
       - name: Checkout code
@@ -44,34 +88,41 @@ jobs:
             concord-mobile/package-lock.json
 
       - name: Install server dependencies
+        if: needs.changes.outputs.server == 'true'
         working-directory: ./server
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 
       - name: Install frontend dependencies
+        if: needs.changes.outputs.frontend == 'true'
         working-directory: ./concord-frontend
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 
       - name: Lint server (zero-warnings gate)
+        if: needs.changes.outputs.server == 'true'
         id: lint_server
         working-directory: ./server
         run: npm run lint:ci
 
       - name: Typecheck server
+        if: needs.changes.outputs.server == 'true'
         id: typecheck_server
         working-directory: ./server
         run: npm run typecheck
 
       - name: Check emergent module dependencies
+        if: needs.changes.outputs.server == 'true'
         id: check_deps
         working-directory: ./server
         run: npm run check-deps
 
       - name: Lint frontend
+        if: needs.changes.outputs.frontend == 'true'
         id: lint_frontend
         working-directory: ./concord-frontend
         run: npm run lint
 
       - name: Typecheck frontend
+        if: needs.changes.outputs.frontend == 'true'
         id: typecheck_frontend
         working-directory: ./concord-frontend
         # type-check:ci (not the plain script) — tsc --noEmit OOM'd on a
@@ -82,6 +133,7 @@ jobs:
         run: npm run type-check:ci
 
       - name: Auth bypass grep gate
+        if: needs.changes.outputs.server == 'true'
         run: |
           echo "Scanning for client-supplied userId used as actor identity..."
           HITS=$(grep -rn \
@@ -101,6 +153,7 @@ jobs:
           echo "Auth bypass gate: PASS (0 violations)"
 
       - name: Route auth coverage gate
+        if: needs.changes.outputs.server == 'true'
         id: route_auth
         working-directory: ./server
         run: |
@@ -113,6 +166,7 @@ jobs:
           # into the gate workflow.
 
       - name: Cartograph drift gate
+        if: needs.changes.outputs.server == 'true'
         id: cartograph_diff
         working-directory: ./server
         run: |
@@ -132,11 +186,13 @@ jobs:
           fi
 
       - name: Validate lens quality gate
+        if: needs.changes.outputs.frontend == 'true'
         id: validate_lens_quality
         working-directory: ./concord-frontend
         run: npm run validate-lens-quality
 
       - name: Validate production-grade-per-lens gate (Sprint 17)
+        if: needs.changes.outputs.frontend == 'true'
         id: validate_production_grade
         working-directory: ./concord-frontend
         # Soft-fail by default — surfaces a per-lens scorecard
@@ -147,6 +203,7 @@ jobs:
         run: npm run validate-production-grade
 
       - name: Build frontend
+        if: needs.changes.outputs.frontend == 'true'
         id: build_frontend
         working-directory: ./concord-frontend
         env:
@@ -161,6 +218,7 @@ jobs:
         run: npm run build
 
       - name: Frontend import-smoke net (every module imports without throwing)
+        if: needs.changes.outputs.frontend == 'true'
         id: frontend_smoke
         working-directory: ./concord-frontend
         env:
@@ -173,6 +231,7 @@ jobs:
         run: npm run test:smoke
 
       - name: Run frontend unit tests with coverage (thresholds enforced)
+        if: needs.changes.outputs.frontend == 'true'
         id: frontend_coverage
         working-directory: ./concord-frontend
         env:
@@ -193,7 +252,7 @@ jobs:
         run: npm run test:coverage:ci
 
       - name: Frontend diff-coverage gate (changed files must be tested)
-        if: github.event_name == 'pull_request'
+        if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'pull_request')
         working-directory: ./concord-frontend
         env:
           # Every components/lib/hooks file a PR touches must clear this per-file
@@ -205,6 +264,7 @@ jobs:
           node scripts/check-diff-coverage.mjs "origin/$base"
 
       - name: Verify coverage thresholds
+        if: needs.changes.outputs.frontend == 'true'
         working-directory: ./concord-frontend
         run: |
           echo "Whole-tree floors enforced via vitest.config.ts (ratchet up as real"
@@ -212,6 +272,7 @@ jobs:
           echo "functions 33. Per-PR coverage is enforced by the diff-coverage gate."
 
       - name: Upload coverage report
+        if: needs.changes.outputs.frontend == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: coverage-report
@@ -219,6 +280,7 @@ jobs:
           retention-days: 7
 
       - name: Run server tests with coverage
+        if: needs.changes.outputs.server == 'true'
         id: server_coverage
         # Report-only (non-blocking): this step boots the live server inside
         # top-level tests, which make external fetches. GitHub runners have
@@ -328,7 +390,7 @@ jobs:
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
-        if: failure() && steps.server_coverage.outcome == 'failure'
+        if: needs.changes.outputs.server == 'true' && (failure() && steps.server_coverage.outcome == 'failure')
         working-directory: ./server
         run: |
           echo "::group::Failing tests (top 50 lines of context per failure)"
@@ -389,6 +451,8 @@ jobs:
   mobile-test:
     name: Mobile Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.mobile == 'true'
     # Job-level is safe here — every step is lint/typecheck/test, no
     # production build step to worry about affecting.
     env:
@@ -459,6 +523,9 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    # npm audit moved off PRs/pushes (2026-10-26): new advisories land
+    # regardless of the diff, so it runs nightly and on demand only.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -496,6 +563,9 @@ jobs:
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
+    needs: [changes]
+    # PRs build images only when a Dockerfile or a package manifest changed.
+    if: github.event_name != 'pull_request' || needs.changes.outputs.docker == 'true'
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -538,7 +608,8 @@ jobs:
   smoke-test:
     name: Smoke Test (Everything Real)
     runs-on: ubuntu-latest
-    needs: [lint-and-test]
+    needs: [changes, lint-and-test]
+    if: needs.changes.outputs.server == 'true'
 
     steps:
       - name: Checkout code
@@ -627,7 +698,9 @@ jobs:
   integration-test:
     name: Integration Test
     runs-on: ubuntu-latest
-    needs: [lint-and-test, docker-build]
+    # Runs the server from source (no image), so it no longer waits on docker-build.
+    needs: [changes, lint-and-test]
+    if: needs.changes.outputs.server == 'true'
 
     services:
       redis:
@@ -753,7 +826,8 @@ jobs:
   e2e-core:
     name: E2E Core
     runs-on: ubuntu-latest
-    needs: [lint-and-test]
+    needs: [changes, lint-and-test]
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.frontend == 'true'
     permissions:
       contents: read
       pull-requests: write  # for the failure-digest PR-comment step
@@ -1041,7 +1115,8 @@ jobs:
   e2e-infra:
     name: E2E Infra
     runs-on: ubuntu-latest
-    needs: [lint-and-test]
+    needs: [changes, lint-and-test]
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.frontend == 'true'
     permissions:
       contents: read
       pull-requests: write  # for the failure-digest PR-comment step

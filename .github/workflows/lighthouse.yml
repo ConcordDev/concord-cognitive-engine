@@ -1,10 +1,12 @@
 name: Lighthouse CI
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: '45 6 * * *'
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '22'

@@ -9,15 +9,12 @@ name: Platinum DAST (OWASP ZAP)
 # Runs nightly on main (live target = the actual deployed app would
 # eat too much budget on every PR). Manual dispatch is also enabled.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  push:
-    # Solo-dev project: no point waiting until 04:00 UTC for the DAST
-    # signal when we already know whether the merge landed. ZAP takes
-    # ~5-10 minutes against a local instance — runs comfortably on
-    # every main push within the Actions free-tier budget.
-    branches: [main]
   schedule:
-    - cron: '0 4 * * *'  # 04:00 UTC nightly — fallback for quiet days
+    - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
       target:

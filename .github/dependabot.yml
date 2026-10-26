@@ -8,16 +8,26 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      # vitest and @vitest/* (coverage-v8, ui) must move together: a version
+      # skew between vitest and @vitest/coverage-v8 breaks the test run.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     reviewers:
       - "ryttps94jq-gif"
     labels:
       - "dependencies"
       - "server"
-    groups:
-      production-deps:
-        dependency-type: "production"
-      dev-deps:
-        dependency-type: "development"
 
   # Frontend (Next.js)
   - package-ecosystem: "npm"
@@ -26,16 +36,26 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      # vitest and @vitest/* (coverage-v8, ui) must move together: a version
+      # skew between vitest and @vitest/coverage-v8 breaks the test run.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     reviewers:
       - "ryttps94jq-gif"
     labels:
       - "dependencies"
       - "frontend"
-    groups:
-      production-deps:
-        dependency-type: "production"
-      dev-deps:
-        dependency-type: "development"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -44,6 +64,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "ci"
@@ -58,6 +87,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
 
@@ -75,6 +113,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "rust"
@@ -97,6 +144,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "docker"
@@ -107,6 +163,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "docker"
@@ -117,6 +182,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # Weekly, grouped: one PR for all minor+patch bumps in this ecosystem;
+    # semver-major bumps stay as separate PRs (not matched by any group).
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "docker"

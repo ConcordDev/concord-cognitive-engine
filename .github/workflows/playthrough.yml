@@ -5,9 +5,12 @@ name: Playthrough (Phase Z)
 # 6 canon worlds, exercises one action per category, captures
 # screenshots as artifacts.
 
+# 2026-10-26 CI smoothing: heavy audit, moved off PRs/pushes to a nightly run
+# plus manual dispatch. A failed scheduled/dispatched run opens or updates a
+# tracking issue (nightly-failure-issue.yml) instead of blocking PRs.
 on:
-  push:
-    branches: [claude/concordia-foundation, main]
+  schedule:
+    - cron: '15 7 * * *'
   workflow_dispatch:
 
 env:
