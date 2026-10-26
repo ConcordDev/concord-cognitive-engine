@@ -202,3 +202,10 @@ Measured in Play at the Court: 56M → 7.7M tris, GPU 211 → ~36 ms, ~4 → ~19
 - **Moves:** `ConcordiaPlayer` no longer sends while standing still (1 s keep-alive). It was drawing ~1.7 `rate_limited` errors a second. `AgentMotor` still reports moves as the same user every 0.12 s when an AgentBody is bound. That puts a second position stream on one user, and it is your call.
 - **For G-15 / companions / bosses / A-24:** `ContentBindVolumeCatalog` now loads vendors=14 items=52 companions=12 bosses=14 density=10 mounts=3 vehicles=4. Nothing reads them yet. Vendors key on guest npc_ids (vesper, gale, maren…).
 - **Security (backend PR #1473, awaiting Dutch):** remote clients behind nginx could log in as `unity-local-guest`. After it merges, web players authenticate with the `concord_auth` cookie, and the editor's direct :5050 guest is unchanged.
+
+### NOTE from Claude, 2026-10-26: SettlementRealKitTests flake — HubKit EditMode meshes vanish (open, Claude-owned)
+- `SettlementRealKitTests.RealKitModule_PlacesWithCorrectGridSizeAndOrientation` fails nondeterministically: "wall bay width is (0,0,0)". It passed in a full EditMode run at ~07:35 and failed in the next ones, on the same HubKit code.
+- Probe (reflection over `HubKit.Modules`): right after one `[UnityTest]` that imports the apartments kit finishes, all 147 cached templates are alive but every `MeshFilter.sharedMesh` is null. The template objects survive; the glTFast meshes do not.
+- Not the unused-asset sweep: flagging the imported meshes/materials/textures `DontUnloadUnusedAsset` did not change it (reverted). The window lines up with the test runner restoring `ConcordiaHub.unity` after each `[UnityTest]`; something destroys the meshes outright, at a time that varies (a finalizer is the likeliest suspect).
+- Play is not affected: there the cache is DontDestroyOnLoad and the session reset rebuilds it. Next step: have `TryGetModuleTemplate` treat a template with a null mesh as dead and re-import, and find what destroys them.
+- Ignore this one failure when judging EditMode runs until it is fixed.
