@@ -735,6 +735,8 @@ export function ConKayWorkspace() {
               scaleNote={viewMesh.scaleNote}
               extents_mm={viewMesh.extents_mm}
               partList={viewMesh.partList}
+              partRanges={viewMesh.partRanges}
+              engineering={viewMesh.engineering}
               className="absolute inset-0"
               testId="viewport-model"
             />

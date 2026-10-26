@@ -3,15 +3,15 @@
 /**
  * AssemblyViewer — the parametric vehicle, orbitable.
  * Studio is the default: clearcoat paint (the same graphite as the Cycles
- * render and the presentation GLB, or silver), transmissive glass, instanced
- * wheels, a same-origin CC0 sky HDRI for lighting and reflections over a flat
+ * render and the presentation GLB, or silver), transmissive glass, one mesh
+ * per wheel, a same-origin CC0 sky HDRI for lighting and reflections over a flat
  * studio backdrop (three.js RoomEnvironment until it loads, and if it fails).
  * Engineering flattens the shading and shows every envelope.
  * Selection, hide, isolate, transparency, explode and a section plane work
  * in both. A narrow screen is view-only: the canvas stays, the controls do not.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -174,47 +174,40 @@ function OverlayLayer({ overlays, mode, clip }: { overlays: SurfaceOverlays; mod
   );
 }
 
-function WheelInstances({ assembly, explode, clip, opacity, visible }: {
-  assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visible: boolean;
+function WheelMeshes({ assembly, explode, clip, opacity, visibleIds }: {
+  assembly: VehicleAssembly; explode: number; clip: THREE.Plane[]; opacity: number; visibleIds: Set<string>;
 }) {
-  const tires = useMemo(() => assembly.components.filter((c) => c.role === 'wheel'), [assembly]);
+  const tires = useMemo(() => assembly.components.filter((c) => c.role === 'wheel' && visibleIds.has(c.id)), [assembly, visibleIds]);
   const tire = useMemo(() => geo(assembly.wheel.tire), [assembly]);
   const rim = useMemo(() => geo(assembly.wheel.rim), [assembly]);
   const disc = useMemo(() => geo(assembly.wheel.disc), [assembly]);
   const caliper = useMemo(() => geo(assembly.wheel.caliper), [assembly]);
-  const tireRef = useRef<THREE.InstancedMesh>(null);
-  const rimRef = useRef<THREE.InstancedMesh>(null);
-  const discRef = useRef<THREE.InstancedMesh>(null);
-  const caliperRef = useRef<THREE.InstancedMesh>(null);
-  useEffect(() => {
-    const dummy = new THREE.Object3D();
-    const meshes = [tireRef, rimRef, discRef, caliperRef];
-    tires.forEach((w, i) => {
-      const [x, y, z] = explodedShift(w, explode);
-      const [tx, ty, tz] = toThree(x, y, z);
-      dummy.position.set(tx, ty, tz);
-      dummy.scale.set(1, 1, w.placement.y < 0 ? -1 : 1);
-      dummy.updateMatrix();
-      for (const r of meshes) r.current?.setMatrixAt(i, dummy.matrix);
-    });
-    for (const r of meshes) if (r.current) r.current.instanceMatrix.needsUpdate = true;
-  }, [tires, explode]);
-  if (!visible || !tires.length) return null;
-  const n = tires.length;
+  if (!tires.length) return null;
+  // One mesh per wheel. InstancedMesh clipping ignores the instance matrix,
+  // so a section plane cut the tyre in the wrong place.
   return (
     <group>
-      <instancedMesh ref={tireRef} args={[tire, undefined as unknown as THREE.Material, n]}>
-        <meshStandardMaterial color="#161616" roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
-      </instancedMesh>
-      <instancedMesh ref={rimRef} args={[rim, undefined as unknown as THREE.Material, n]}>
-        <meshPhysicalMaterial color="#8a8e94" metalness={1} roughness={0.22} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
-      </instancedMesh>
-      <instancedMesh ref={discRef} args={[disc, undefined as unknown as THREE.Material, n]}>
-        <meshStandardMaterial color="#3e4248" metalness={0.9} roughness={0.32} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
-      </instancedMesh>
-      <instancedMesh ref={caliperRef} args={[caliper, undefined as unknown as THREE.Material, n]}>
-        <meshStandardMaterial color="#c45c26" metalness={0.55} roughness={0.38} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
-      </instancedMesh>
+      {tires.map((w) => {
+        const [x, y, z] = explodedShift(w, explode);
+        const [tx, ty, tz] = toThree(x, y, z);
+        const mirror = w.placement.y < 0 ? -1 : 1;
+        return (
+          <group key={w.id} position={[tx, ty, tz]} scale={[1, 1, mirror]}>
+            <mesh name="tyre" geometry={tire}>
+              <meshStandardMaterial color="#161616" roughness={0.94} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+            </mesh>
+            <mesh name="rim" geometry={rim}>
+              <meshPhysicalMaterial color="#8a8e94" metalness={1} roughness={0.22} clearcoat={0.45} clearcoatRoughness={0.12} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+            </mesh>
+            <mesh name="disc" geometry={disc}>
+              <meshStandardMaterial color="#3e4248" metalness={0.9} roughness={0.32} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+            </mesh>
+            <mesh name="caliper" geometry={caliper}>
+              <meshStandardMaterial color="#c45c26" metalness={0.55} roughness={0.38} side={THREE.DoubleSide} clippingPlanes={clip} transparent={opacity < 1} opacity={opacity} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -294,7 +287,7 @@ function CarScene({ assembly, mode, paintId, hdriUrl, showOverlays, explode, sec
         {showOverlays && assembly.surface.source === 'cad.body' && assembly.surface.overlays && show('BODY_SHELL') && (
           <OverlayLayer overlays={assembly.surface.overlays} mode={mode} clip={clip} />
         )}
-        <WheelInstances assembly={assembly} explode={explode} clip={clip} opacity={opacity} visible={assembly.components.some((c) => c.role === 'wheel' && show(c.id))} />
+        <WheelMeshes assembly={assembly} explode={explode} clip={clip} opacity={opacity} visibleIds={new Set(assembly.components.filter((c) => c.role === 'wheel' && show(c.id)).map((c) => c.id))} />
         {mode === 'engineering' && doors.filter((d) => show(d.id)).map((d) => {
           const part = assembly.components.find((c) => c.id === d.id);
           const dy = part ? explodedShift(part, explode)[1] - d.placementY : 0;

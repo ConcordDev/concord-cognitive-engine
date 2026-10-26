@@ -53,7 +53,7 @@ export interface ChatArtifact {
   scale?: number;
   scaleNote?: string;
   extents_mm?: { x?: number; y?: number; z?: number };
-  partRanges?: Array<{ name?: string; nodeName?: string; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
+  partRanges?: Array<{ name?: string; nodeName?: string; i0?: number; i1?: number; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
   engineering?: { massKg?: number | null; massNote?: string };
 }
 
@@ -146,6 +146,8 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
                 scaleNote={a.scaleNote}
                 extents_mm={a.extents_mm}
                 partList={a.partList}
+                partRanges={a.partRanges}
+                engineering={a.engineering}
               />
               <div className="text-[11px] text-zinc-400">
                 {a.title || '3D model'}
