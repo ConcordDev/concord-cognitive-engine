@@ -60,7 +60,7 @@ function CommentNode({
         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="bg-[#3a3b3c] rounded-2xl px-3 py-1.5 inline-block max-w-full">
-            <p className="text-xs font-semibold text-white">{comment.authorId}</p>
+            <p className="text-xs font-semibold text-white">{comment.displayName || comment.authorId || 'Member'}</p>
             <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">{comment.text}</p>
           </div>
           <div className="flex items-center gap-3 mt-0.5 ml-2 text-[11px] text-gray-400">
@@ -68,7 +68,7 @@ function CommentNode({
             <button onClick={() => setReplying((r) => !r)} className="hover:text-white font-medium">
               Reply
             </button>
-            {comment.authorId === viewerId && (
+            {(comment.isMine || (comment.authorId != null && comment.authorId === viewerId)) && (
               <button
                 onClick={() => onDelete(comment.id)}
                 disabled={busyId === comment.id}
@@ -86,7 +86,7 @@ function CommentNode({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder={`Reply to ${comment.authorId}…`}
+                placeholder={`Reply to ${comment.displayName || comment.authorId || 'Member'}…`}
                 autoFocus
                 className="flex-1 bg-[#3a3b3c] rounded-full px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
               />

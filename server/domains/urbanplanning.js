@@ -495,10 +495,12 @@ export default function registerUrbanplanningActions(registerLensAction) {
     try {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const arr = upList(s.parcels, upAid(ctx));
-      const before = arr.length;
-      s.parcels.set(upAid(ctx), arr.filter((p) => p.id !== params.id));
+      const id = String(params.id || "");
+      const next = arr.filter((p) => p.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      s.parcels.set(upAid(ctx), next);
       saveUpState();
-      return { ok: true, result: { removed: before - s.parcels.get(upAid(ctx)).length } };
+      return { ok: true, result: { removed: 1 } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -677,10 +679,12 @@ export default function registerUrbanplanningActions(registerLensAction) {
     try {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const arr = upList(s.scenarios, upAid(ctx));
-      const before = arr.length;
-      s.scenarios.set(upAid(ctx), arr.filter((sc) => sc.id !== params.id));
+      const id = String(params.id || "");
+      const next = arr.filter((sc) => sc.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      s.scenarios.set(upAid(ctx), next);
       saveUpState();
-      return { ok: true, result: { removed: before - s.scenarios.get(upAid(ctx)).length } };
+      return { ok: true, result: { removed: 1 } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

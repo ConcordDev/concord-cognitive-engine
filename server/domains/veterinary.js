@@ -6,8 +6,11 @@
 // veterinary adverse-event feed. Free public source, no API key.
 
 import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
+import { assertPayable } from "../lib/money-guards.js";
+import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 
 export default function registerVeterinaryActions(registerLensAction) {
+  registerLensAction = bindWave1(registerLensAction);
   // ─── Clinical calculators ───────────────────────────────────────────
   registerLensAction("veterinary", "triageAssess", advisory("keyword triage heuristic; not a veterinary assessment — call a vet or emergency clinic if in doubt", (ctx, artifact, _params) => { const data = artifact.data || {}; const symptoms = data.symptoms || []; const species = (data.species || "dog").toLowerCase(); const age = parseFloat(data.age) || 3; const emergency = symptoms.some(s => ["not-breathing","seizure","bleeding","unconscious","poisoning","bloat","hit-by-car"].includes((s.name || s).toLowerCase())); const urgent = symptoms.some(s => ["vomiting","diarrhea","limping","not-eating","lethargy","swelling"].includes((s.name || s).toLowerCase())); return { ok: true, result: { species, age, symptoms: symptoms.map(s => s.name || s), triageLevel: emergency ? "EMERGENCY" : urgent ? "urgent" : "routine", responseTime: emergency ? "Immediate — go to emergency vet NOW" : urgent ? "See vet within 24 hours" : "Schedule routine appointment", firstAid: emergency ? ["Keep animal calm", "Do not move if spinal injury suspected", "Apply pressure to bleeding", "Call emergency vet en route"] : [] } }; }));
   registerLensAction("veterinary", "weightCheck", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["weight>0"]); const _miss = [...(data.species ? [] : ["species"]), ..._req.missing]; if (_miss.length) return notComputed(_miss, "Weight check needs species and current weight (lbs)."); const species = String(data.species).toLowerCase(); const breed = (data.breed || "").toLowerCase(); const weight = _req.values.weight; const idealRanges = { dog: { small: [5,20], medium: [20,55], large: [55,100] }, cat: { all: [6,14] } }; const range = species === "cat" ? idealRanges.cat.all : weight < 25 ? idealRanges.dog.small : weight < 60 ? idealRanges.dog.medium : idealRanges.dog.large; const inRange = weight >= range[0] && weight <= range[1]; return { ok: true, result: { species, breed: breed || "mixed", currentWeight: weight, idealRange: `${range[0]}-${range[1]} lbs`, status: inRange ? "healthy-weight" : weight < range[0] ? "underweight" : "overweight", recommendation: !inRange ? "Discuss weight management with your vet" : "Weight is in healthy range" } }; });
@@ -216,6 +219,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       const patientName = vtClean(params.patientName, 120);
       if (!patientName) return { ok: false, error: "patientName required" };
       const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
+      if (rawItems.length === 0) return { ok: false, error: "at least one line item required" };
       const lineItems = rawItems.map((li) => ({
         description: vtClean(li.description, 200) || "service",
         qty: Math.max(1, vtNum(li.qty) || 1),
@@ -225,6 +229,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       const taxRate = Math.max(0, Math.min(0.3, vtNum(params.taxRate)));
       const tax = Math.round(subtotal * taxRate * 100) / 100;
       const total = Math.round((subtotal + tax) * 100) / 100;
+      if (total <= 0) return { ok: false, error: "invoice total must be > 0" };
       const invoice = {
         id: vtId("inv"),
         patientId: vtClean(params.patientId, 60) || "",
@@ -233,7 +238,7 @@ export default function registerVeterinaryActions(registerLensAction) {
         lineItems, subtotal, taxRate, tax, total,
         amountPaid: 0,
         balanceDue: total,
-        status: total === 0 ? "paid" : "unpaid",
+        status: "unpaid",
         payments: [],
         createdAt: new Date().toISOString(),
       };
@@ -269,8 +274,13 @@ export default function registerVeterinaryActions(registerLensAction) {
       const arr = vtList(vtCollection(s, "invoices"), vtActor(ctx));
       const inv = arr.find((iv) => iv.id === params.id);
       if (!inv) return { ok: false, error: "invoice not found" };
-      const amount = Math.max(0, vtNum(params.amount));
-      if (amount <= 0) return { ok: false, error: "payment amount required" };
+      const payable = assertPayable(inv.balanceDue, params.amount, {
+        alreadyPaid: inv.status === "paid" || Number(inv.balanceDue) <= 0,
+        nonPositiveError: "payment amount required",
+        alreadyPaidError: "already_paid",
+      });
+      if (!payable.ok) return payable;
+      const amount = payable.amount;
       const payment = {
         amount: Math.round(amount * 100) / 100,
         method: ["cash", "card", "check", "insurance", "plan"].includes(params.method) ? params.method : "card",

@@ -87,8 +87,8 @@ interface CommentThread {
   anchor: { start: number; end: number } | null;
   resolved: boolean; commentCount: number; comments: Comment[]; updatedAt: number;
 }
-interface PermEntry { userId: string; tier: Tier }
-interface PermResult { ownerId: string; defaultTier: Tier; entries: PermEntry[]; myTier: Tier }
+interface PermEntry { userId?: string; displayName?: string; tier: Tier }
+interface PermResult { ownerId?: string; ownerDisplayName?: string; defaultTier: Tier; entries: PermEntry[]; myTier: Tier }
 interface Notification {
   id: string; kind: string; docId: string; commentId: string;
   fromId: string; fromName: string; text: string; read: boolean; createdAt: number;
@@ -972,7 +972,7 @@ export function CollabDocWorkspace() {
           {perms && (
             <>
               <div className="text-[11px] text-zinc-400">
-                Owner: <span className="font-mono text-zinc-200">{perms.ownerId}</span>
+                Owner: <span className="font-mono text-zinc-200">{perms.ownerDisplayName || perms.ownerId}</span>
                 {' · '}your tier: <span className="font-mono text-blue-300">{perms.myTier}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -1008,7 +1008,7 @@ export function CollabDocWorkspace() {
                 <div className="space-y-1">
                   {perms.entries.map((e) => (
                     <div key={e.userId} className="flex items-center justify-between p-2 rounded border border-zinc-800 bg-zinc-900/40">
-                      <span className="text-xs font-mono text-zinc-200 truncate">{e.userId}</span>
+                      <span className="text-xs font-mono text-zinc-200 truncate">{e.displayName || e.userId}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase shrink-0 ml-2"
                         style={{
                           color: TIER_RANK[e.tier] === 3 ? '#34d399' : TIER_RANK[e.tier] === 2 ? '#60a5fa' : '#a1a1aa',

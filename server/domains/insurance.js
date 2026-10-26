@@ -1008,7 +1008,9 @@ export default function registerInsuranceActions(register) {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const rem = (s.reminders.get(insAid(ctx)) || []).find((r) => r.id === params.id);
     if (!rem) return { ok: false, error: "reminder not found" };
-    rem.done = !(params.reopen === true);
+    const wantDone = params.reopen !== true;
+    if (rem.done === wantDone) return { ok: true, unchanged: true, result: { reminder: rem } };
+    rem.done = wantDone;
     saveInsState();
     return { ok: true, result: { reminder: rem } };
   });

@@ -213,7 +213,7 @@ export function CommunityNetwork() {
                 </div>
                 <div className="p-3">
                   <h4 className="font-medium text-sm truncate">{p.title}</h4>
-                  <div className="text-[11px] text-gray-400">by {p.userId} · {p.discipline}</div>
+                  <div className="text-[11px] text-gray-400">by {p.displayName || p.userId || 'Artist'} · {p.discipline}</div>
                   <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <button onClick={() => appreciate(p.id)} className="flex items-center gap-1 hover:text-neon-pink">

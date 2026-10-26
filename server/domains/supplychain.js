@@ -329,12 +329,14 @@ export default function registerSupplychainActions(registerLensAction) {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
       const scope = scScope(ctx, params, PLANNER_OR_BUYER_WRITE);
       if (!scope.ok) return scope;
-      if (!s.shipments.has(scope.key)) return { ok: true, result: { removed: 0 } };
+      const id = String(params?.shipmentId || params?.id || "");
       const arr = s.shipments.get(scope.key);
-      const before = arr.length;
-      s.shipments.set(scope.key, arr.filter(x => x.id !== params?.shipmentId));
+      if (!id || !Array.isArray(arr)) return { ok: false, error: "not_found" };
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx < 0) return { ok: false, error: "not_found" };
+      arr.splice(idx, 1);
       scSave();
-      return { ok: true, result: { removed: before - s.shipments.get(scope.key).length } };
+      return { ok: true, result: { removed: 1 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -762,12 +764,14 @@ export default function registerSupplychainActions(registerLensAction) {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
       const scope = scScope(ctx, params, PLANNER_ONLY_WRITE);
       if (!scope.ok) return scope;
-      if (!s.workOrders.has(scope.key)) return { ok: true, result: { removed: 0 } };
+      const id = String(params?.workOrderId || params?.id || "");
       const arr = s.workOrders.get(scope.key);
-      const before = arr.length;
-      s.workOrders.set(scope.key, arr.filter(x => x.id !== params?.workOrderId));
+      if (!id || !Array.isArray(arr)) return { ok: false, error: "not_found" };
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx < 0) return { ok: false, error: "not_found" };
+      arr.splice(idx, 1);
       scSave();
-      return { ok: true, result: { removed: before - s.workOrders.get(scope.key).length } };
+      return { ok: true, result: { removed: 1 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

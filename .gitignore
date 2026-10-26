@@ -445,3 +445,7 @@ server/data/conkay-brep/
 
 # Downloaded ambientCG source packs (raw archives; extracted textures are the working assets)
 apps/concordia-living-world/unity-client/Assets/Concordia/FreePacks/ambientCG/zips/
+# Newly extracted ambientCG sets stay local while the GitHub LFS budget is exhausted
+# (push refused 2026-10-26, same reason the Unity player build ships outside git).
+# Sets already committed stay tracked; drop this rule once the budget is raised.
+apps/concordia-living-world/unity-client/Assets/Concordia/FreePacks/ambientCG/extracted/

@@ -7,6 +7,7 @@
 import { listCodeReferences, listCodeReferenceCategories, PLUMBING_CODE_DISCLAIMER } from "../lib/plumbing-code-reference.js";
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
+import { assertPayable } from "../lib/money-guards.js";
 
 export default function registerPlumbingActions(registerLensAction) {
   // Finite-coercing numeric reader. parseFloat/parseInt PASS "Infinity" through
@@ -482,8 +483,14 @@ export default function registerPlumbingActions(registerLensAction) {
       const invoices = list(g.s.invoices, actor(ctx));
       const inv = invoices.find(i => i.id === params.invoiceId);
       if (!inv) return { ok: false, error: "invoice_not_found" };
-      const amount = Math.max(0, num(params.amount));
-      if (amount <= 0) return { ok: false, error: "amount_required" };
+      const remaining = Math.round(((Number(inv.total) || 0) - (Number(inv.amountPaid) || 0)) * 100) / 100;
+      const payable = assertPayable(remaining, params.amount, {
+        alreadyPaid: inv.status === "paid",
+        nonPositiveError: "amount_required",
+        alreadyPaidError: "already_paid",
+      });
+      if (!payable.ok) return payable;
+      const amount = payable.amount;
       const payment = {
         id: pid("pay"), amount,
         method: ["cash", "card", "check", "transfer"].includes(params.method) ? params.method : "card",

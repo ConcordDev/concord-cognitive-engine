@@ -9,6 +9,7 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps.
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { presentOwnedId } from "../lib/public-actor.js";
 
 export default function registerMentorshipActions(registerLensAction) {
   // ─── Pure-compute analytics ──────────────────────────────────────────
@@ -128,6 +129,13 @@ export default function registerMentorshipActions(registerLensAction) {
   const mId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const mNow = () => new Date().toISOString();
   const mAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  function presentMentorReview(ctx, viewer, review) {
+    const label = review?.authorName && review.authorName !== review.authorId ? review.authorName : "Mentee";
+    const presented = presentOwnedId(ctx, viewer, review, "authorId", { label });
+    if (presented.mentorId && String(presented.mentorId) !== String(viewer || "")) delete presented.mentorId;
+    if (presented.authorName && review?.authorId && presented.authorName === review.authorId) delete presented.authorName;
+    return presented;
+  }
   const mClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const mNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const mList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
@@ -843,7 +851,7 @@ export default function registerMentorshipActions(registerLensAction) {
       mentor.rating = Math.round((reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) * 10) / 10;
       mentor.updatedAt = mNow();
       saveState();
-      return { ok: true, result: { review, mentorRating: mentor.rating, reviewCount: mentor.reviewCount } };
+      return { ok: true, result: { review: presentMentorReview(ctx, authorId, review), mentorRating: mentor.rating, reviewCount: mentor.reviewCount } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -859,7 +867,8 @@ export default function registerMentorshipActions(registerLensAction) {
       }));
       const avg = reviews.length
         ? Math.round((reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) * 10) / 10 : 0;
-      return { ok: true, result: { reviews, count: reviews.length, avgRating: avg, histogram } };
+      const viewer = mAid(ctx);
+      return { ok: true, result: { reviews: reviews.map((r) => presentMentorReview(ctx, viewer, r)), count: reviews.length, avgRating: avg, histogram } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

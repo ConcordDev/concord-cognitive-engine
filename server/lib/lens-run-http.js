@@ -65,6 +65,10 @@ export function httpStatusForLensFailure(error, raw = {}) {
   // the missing_* validation family stay 422 below.
   if (e === "missing_api_key") return 200;
 
+  // Shared input validator. Must precede the invalid_* → 422 rule.
+  // invalid_status / invalid_transition stay 422.
+  if (e === "invalid_input") return 400;
+
   if (
     e === "validation_failed" ||
     e === "invalid_transition" ||

@@ -87,6 +87,9 @@ function TimeCrystals({ className }: { className?: string }) {
             {detectMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Scan
           </button>
+          {detectMutation.isError && (
+            <span className="text-[11px] text-amber-300/90">Scan is limited to the operator account.</span>
+          )}
           <button
             onClick={() => setExpanded(!expanded)}
             className="p-1.5 rounded-lg hover:bg-lattice-deep text-gray-400 hover:text-white transition-colors"

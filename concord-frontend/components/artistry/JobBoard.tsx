@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 interface JobApplication {
-  userId: string; message: string; portfolioProjectId: string;
+  userId?: string; displayName?: string; message: string; portfolioProjectId: string;
   quote: number | null; createdAt: string;
 }
 interface Job {
@@ -187,7 +187,7 @@ export function JobBoard() {
                   {j.applications.map((a, i) => (
                     <div key={i} className="bg-white/5 rounded-lg p-2 text-[11px]">
                       <div className="flex justify-between">
-                        <span className="text-gray-300">{a.userId}</span>
+                        <span className="text-gray-300">{a.displayName || a.userId || 'Artist'}</span>
                         {a.quote != null && <span className="text-neon-green">${a.quote}</span>}
                       </div>
                       {a.message && <p className="text-gray-400 mt-0.5">{a.message}</p>}

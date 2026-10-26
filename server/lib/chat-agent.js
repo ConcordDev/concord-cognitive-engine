@@ -66,6 +66,7 @@ import {
   ensureDesignSummary,
 } from "./chat/tool-turn-reply.js";
 import { budgetLeftMs, raceDeadline } from "./chat/gen-budget.js";
+import { fallThroughDtuGet } from "./chat/dtu-get-fallthrough.js";
 import { guardPlaybackClaim as _guardPlaybackClaimRaw, historyHasSong } from "./chat/playback-honesty.js";
 import { guardFeaClaim } from "./chat/fea-honesty.js";
 import { textbookNeedsWeb } from "./chat/textbook-fallback.js";
@@ -2564,11 +2565,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
         break;
       }
       if (_deadlineMs) ctx.chatGenTimeoutMs = Math.max(1, _left() - _budgetReserveMs);
-      const result = await raceDeadline(
+      let result = await raceDeadline(
         executeToolCall(ctx, runMacro, lensActions, call),
         _deadlineMs ? _deadlineMs - 1_000 : 0,
         () => ({ tool: call.tool, ok: false, stage: "budget", reason: "timeout", error: "It ran out of time before this step finished." }),
       );
+      result = await fallThroughDtuGet(result, [...allToolCalls, ...results], (id) =>
+        executeToolCall(ctx, runMacro, lensActions, {
+          tool: "run_lens_action",
+          params: { domain: "dtu", action: "get", params: { id } },
+        }));
       if (dupKey && result && typeof result === "object" && result.ok !== false) {
         Object.defineProperty(result, "_writeKey", { value: dupKey, enumerable: false });
       }
