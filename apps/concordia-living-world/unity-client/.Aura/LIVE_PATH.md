@@ -243,8 +243,13 @@ every vehicle, and the WorldBook quest lookup in one frame. That is the cost A-3
 - Restore after boot idle, one section per frame, as the roadmap says. Suggested order: quests → skills →
   player kit → npcs last (they must be spawned). World and faction standing already come back via `TryLoad`.
 - Online, skip `player.hp/stamina/poise` from the local file; the server owns hp.
-- Until restore ships, the overwrite in 7.4 continues in the web build. A cheap guard is to skip capture of
-  any section that was loaded but never restored this session, so the file keeps the last real value. That
-  is a change to `ConcordiaPersistenceService` and belongs with A-34.
-- Test gap: no EditMode test covers player, quest or skill round trips. The 8 tests cover world simulation,
-  world memory and faction standing only.
+- **Fixed 2026-10-26 (Claude, Dutch approved): the 7.4 overwrite.** `Capture()` now ends with
+  `KeepUnrestoredSections`: a loaded section whose runtime never received it this session is written back as
+  loaded. A section counts as restored once `Restore(envelope)` runs, or once its hook (`RestoreWorldSystems`,
+  `RestoreWorldSimulation`/`TryRestoreWorldSimulation`, `RestoreEconomy`, `RestoreWorldFabric`) finds its live
+  runtime. `IsRestored(Section.X)` reports it. World memory, plot and consequences stay live.
+  A-34 needs nothing extra for this: a staged restore that calls the existing restore paths marks its
+  sections, and from then on they save live. If A-34 adds a per-section restore API, have it call
+  `MarkRestored(Section.X)` for exactly the sections it applied.
+- Tests: `ConcordiaPersistenceTests` now has 12, adding a player/quest/skill JSON round trip and three
+  carry-forward cases.
