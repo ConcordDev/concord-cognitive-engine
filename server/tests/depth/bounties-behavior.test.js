@@ -271,10 +271,12 @@ describe("bounties — release-milestone (owner-directed partial payout)", () =>
 });
 
 describe("bounties — dispute open + resolve arbitration", () => {
-  let owner, claimant;
+  let owner, claimant, arbiter;
   before(async () => {
     owner = await depthCtx("bounties-dispute-owner");
     claimant = await depthCtx("bounties-dispute-claimant");
+    // Parties to a dispute cannot arbitrate it; a neutral admin ctx rules.
+    arbiter = await depthCtx("bounties-dispute-arbiter");
   });
 
   async function settledBounty() {
@@ -297,7 +299,7 @@ describe("bounties — dispute open + resolve arbitration", () => {
   it("dispute-resolve overturn reopens the bounty and clears the accepted submission", async () => {
     const bountyId = await settledBounty();
     await lensRun("bounties", "dispute-open", { params: { bountyId, reason: "contested resolution here" } }, claimant);
-    const res = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "overturn", rulingNote: "redo it" } }, owner);
+    const res = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "overturn", rulingNote: "redo it" } }, arbiter);
     assert.notEqual(res.result.ok, false);
     assert.equal(res.result.dispute.status, "resolved");
     assert.equal(res.result.dispute.ruling, "overturn");
@@ -308,7 +310,7 @@ describe("bounties — dispute open + resolve arbitration", () => {
   it("dispute-resolve uphold restores the paid resolution", async () => {
     const bountyId = await settledBounty();
     await lensRun("bounties", "dispute-open", { params: { bountyId, reason: "wants a second look here" } }, owner);
-    const res = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "uphold" } }, owner);
+    const res = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "uphold" } }, arbiter);
     assert.notEqual(res.result.ok, false);
     assert.equal(res.result.dispute.ruling, "uphold");
     assert.equal(res.result.bounty.status, "paid"); // acceptedSubmissionId present → allPaid → paid
@@ -339,7 +341,7 @@ describe("bounties — dispute open + resolve arbitration", () => {
   it("validation: an invalid ruling is rejected", async () => {
     const bountyId = await settledBounty();
     await lensRun("bounties", "dispute-open", { params: { bountyId, reason: "valid reason for dispute" } }, owner);
-    const bad = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "dismiss" } }, owner);
+    const bad = await lensRun("bounties", "dispute-resolve", { params: { bountyId, ruling: "dismiss" } }, arbiter);
     assert.equal(bad.result.ok, false);
     assert.ok(bad.result.error.includes("ruling must be 'uphold', 'overturn' or 'split'"));
   });

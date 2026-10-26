@@ -89,7 +89,8 @@ describe("Cognitive economics — compile probes", () => {
 });
 
 describe("Cognitive economics — full multiplier bench", () => {
-  it("runs A–E paths with success and cost comparison", async () => {
+  // ~32s locally, >60s on shared CI runners: give the bench its own budget.
+  it("runs A–E paths with success and cost comparison", { timeout: 240000 }, async () => {
     const db = setupDb();
     const bench = await runCognitiveEconomicsBench({
       db,

@@ -272,7 +272,7 @@ describe("hr — time-off lifecycle + accrual balance (shared ctx)", () => {
   });
 });
 
-describe("hr — payroll arithmetic (2024 single-filer brackets)", () => {
+describe("hr — payroll arithmetic (single-filer brackets for the pay-date tax year)", () => {
   let ctx;
   before(async () => {
     ctx = await depthCtx("hr-payroll");
@@ -280,27 +280,30 @@ describe("hr — payroll arithmetic (2024 single-filer brackets)", () => {
   });
 
   it("payroll-run: net pay derives from federal/FICA/state withholding on the salary on record", async () => {
-    const run = await lensRun("hr", "payroll-run", { params: { frequency: "biweekly", periodLabel: "PP-01" } }, ctx);
+    const run = await lensRun("hr", "payroll-run", { params: { frequency: "biweekly", periodLabel: "PP-01", stateTaxRate: 0.05 } }, ctx);
     assert.equal(run.ok, true);
     assert.equal(run.result.run.headcount, 1);
     assert.equal(run.result.run.frequency, "biweekly");
     const stub = run.result.run.stubs[0];
     // 120000 / 26 periods; verified against the source withholding math
     assert.equal(stub.grossPay, 4615.38);
-    assert.equal(stub.federalTax, 705.33);
-    assert.equal(stub.stateTax, 202.69);
+    // Pay date is in 2026 → 2026 brackets + $16,100 standard deduction:
+    // (12400*.10 + 38000*.12 + 53500*.22) / 26 = 17570 / 26 = 675.77
+    assert.equal(stub.federalTax, 675.77);
+    // No fabricated state rate: the caller supplies 5%; (120000-16100)/26*0.05
+    assert.equal(stub.stateTax, 199.81);
     assert.equal(stub.socialSecurity, 286.15);
     assert.equal(stub.medicare, 66.92);
-    assert.equal(stub.totalDeductions, 1261.1);
-    assert.equal(stub.netPay, 3354.29);
+    assert.equal(stub.totalDeductions, 1228.65);
+    assert.equal(stub.netPay, 3386.73);
     // run totals equal the single stub
-    assert.equal(run.result.run.totalNet, 3354.29);
+    assert.equal(run.result.run.totalNet, 3386.73);
 
     const stubLookup = await lensRun("hr", "payroll-stub", {
       params: { runId: run.result.run.id, employeeId: stub.employeeId },
     }, ctx);
     assert.equal(stubLookup.ok, true);
-    assert.equal(stubLookup.result.stub.netPay, 3354.29);
+    assert.equal(stubLookup.result.stub.netPay, 3386.73);
     assert.equal(stubLookup.result.stub.periodLabel, "PP-01");
   });
 

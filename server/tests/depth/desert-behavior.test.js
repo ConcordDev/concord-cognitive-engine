@@ -108,7 +108,8 @@ describe("desert — pure-compute calc contracts (exact computed values)", () =>
     // dailyKwh = 4.5*7.5*0.82 = 27.67499… (float) → round*100/100 = 27.67
     // annualKwh = dailyKwh*300 + dailyKwh*65*0.35 ≈ 8932 (round)
     const r = await lensRun("desert", "solarInstall", {
-      params: { latitude: 25, panelCount: 10, panelWatt: 450, clearDaysPerYear: 300 },
+      // Datasheet inputs are required now (no fabricated defaults → NOT_COMPUTED).
+      params: { latitude: 25, panelCount: 10, panelWatt: 450, panelAreaM2: 2.2, systemLossFactor: 0.82, clearDaysPerYear: 300 },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.sizedFor, "panelCount");
@@ -123,7 +124,7 @@ describe("desert — pure-compute calc contracts (exact computed values)", () =>
     // lat=25 → peakSunHours=7.5, panelWatt default 450.
     // perPanelDailyKwh = 0.45*7.5*0.82 = 2.76750. target=10 → ceil(10/2.7675)=ceil(3.613)=4.
     const r = await lensRun("desert", "solarInstall", {
-      params: { latitude: 25, targetDailyKwh: 10 },
+      params: { latitude: 25, targetDailyKwh: 10, panelWatt: 450, panelAreaM2: 2.2, systemLossFactor: 0.82, clearDaysPerYear: 300 },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.sizedFor, "targetLoad");
@@ -134,7 +135,7 @@ describe("desert — pure-compute calc contracts (exact computed values)", () =>
     const noLat = await lensRun("desert", "solarInstall", { params: { panelCount: 5 } });
     assert.equal(noLat.result.ok, false);
     assert.ok(String(noLat.result.error).includes("latitude required"));
-    const noSize = await lensRun("desert", "solarInstall", { params: { latitude: 25 } });
+    const noSize = await lensRun("desert", "solarInstall", { params: { latitude: 25, panelWatt: 450, panelAreaM2: 2.2, systemLossFactor: 0.82, clearDaysPerYear: 300 } });
     assert.equal(noSize.result.ok, false);
     assert.ok(String(noSize.result.error).includes("panelCount or targetDailyKwh"));
   });

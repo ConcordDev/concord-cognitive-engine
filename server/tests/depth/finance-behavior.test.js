@@ -160,7 +160,8 @@ describe("finance — validation rejections", () => {
   it("goals-create without a name is rejected", async () => {
     const bad = await lensRun("finance", "goals-create", { params: { target: 1000 } }, ctx);
     assert.equal(bad.result.ok, false);               // lens.run wraps handler {ok:false}
-    assert.ok(bad.result.error.includes("name required"));
+    // Param schema refuses before the handler (#1486): invalid_input on `name`.
+    assert.ok(bad.result.error.includes("name required") || (bad.result.error === "invalid_input" && bad.result.field === "name"));
   });
 
   it("holdings-add with zero shares is rejected", async () => {
