@@ -452,6 +452,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "wallet.scheduleSendNow",
+      "name": "scheduleSendNow"
+    },
+    {
+      "_derived": true,
+      "domain": "wallet",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "wallet.scheduleUpdate",
       "name": "scheduleUpdate"
     },
@@ -601,5 +614,5 @@
   ],
   "domain": "wallet",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 47
 }

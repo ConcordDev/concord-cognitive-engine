@@ -205,6 +205,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.ground",
+      "name": "ground"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.ground_dtu",
       "name": "ground_dtu"
     },
@@ -562,5 +575,5 @@
   ],
   "domain": "grounding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 43
+  "macroCount": 44
 }

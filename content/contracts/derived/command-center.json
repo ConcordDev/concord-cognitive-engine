@@ -23,6 +23,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "command-center.alert-acknowledge",
+      "name": "alert-acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.alert-detail",
+      "name": "alert-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.alert-edit",
+      "name": "alert-edit"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.alert-file",
+      "name": "alert-file"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.alert-front",
+      "name": "alert-front"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.alert-list",
+      "name": "alert-list"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "command-center.archive",
       "name": "archive"
     },
@@ -705,5 +783,5 @@
   ],
   "domain": "command-center",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 60
 }

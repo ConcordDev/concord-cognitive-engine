@@ -270,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ml.deploy-invoke",
+      "name": "deploy-invoke"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ml.deploy-list",
       "name": "deploy-list"
     },
@@ -1025,6 +1038,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ml.space-get",
+      "name": "space-get"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ml.space-list",
       "name": "space-list"
     },
@@ -1122,5 +1148,5 @@
   ],
   "domain": "ml",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 55
+  "macroCount": 57
 }

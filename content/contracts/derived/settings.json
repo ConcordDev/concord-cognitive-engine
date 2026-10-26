@@ -298,9 +298,22 @@
       ],
       "macro_id": "settings.setTwoFactor",
       "name": "setTwoFactor"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.status",
+      "name": "status"
     }
   ],
   "domain": "settings",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 23
+  "macroCount": 24
 }

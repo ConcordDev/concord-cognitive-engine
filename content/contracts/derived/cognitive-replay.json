@@ -133,6 +133,45 @@
       "name": "heatmap"
     },
     {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.moment-choose",
+      "name": "moment-choose"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.moment-detail",
+      "name": "moment-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.moment-list",
+      "name": "moment-list"
+    },
+    {
       "_derived": false,
       "domain": "cognitive-replay",
       "fuzz_cases": [
@@ -351,5 +390,5 @@
   ],
   "domain": "cognitive-replay",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 13
 }

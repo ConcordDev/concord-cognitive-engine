@@ -322,6 +322,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "studio.compose",
+      "name": "compose"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "studio.dashboard-summary",
       "name": "dashboard-summary"
     },
@@ -506,6 +519,19 @@
       ],
       "macro_id": "studio.groove-list",
       "name": "groove-list"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "studio.library-browse",
+      "name": "library-browse"
     },
     {
       "_derived": true,
@@ -844,6 +870,58 @@
       ],
       "macro_id": "studio.project-list",
       "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "studio.project-save",
+      "name": "project-save"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "studio.project-snapshot",
+      "name": "project-snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "studio.project-version-restore",
+      "name": "project-version-restore"
+    },
+    {
+      "_derived": true,
+      "domain": "studio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "studio.project-versions",
+      "name": "project-versions"
     },
     {
       "_derived": true,
@@ -1264,5 +1342,5 @@
   ],
   "domain": "studio",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 97
+  "macroCount": 103
 }

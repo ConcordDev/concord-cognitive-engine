@@ -855,6 +855,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "finance.net-worth-snapshot-delete",
+      "name": "net-worth-snapshot-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "finance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "finance.pin",
       "name": "pin"
     },
@@ -909,6 +922,32 @@
       ],
       "macro_id": "finance.rate",
       "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "finance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "finance.receipt-list",
+      "name": "receipt-list"
+    },
+    {
+      "_derived": true,
+      "domain": "finance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "finance.receipt-record",
+      "name": "receipt-record"
     },
     {
       "_derived": true,
@@ -1342,5 +1381,5 @@
   ],
   "domain": "finance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 103
+  "macroCount": 106
 }

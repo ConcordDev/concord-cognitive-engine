@@ -12,7 +12,7 @@
     "typeof output === 'object' && output !== null",
     "typeof output.ok === 'boolean'",
     "output.ok === false || (Number.isFinite(output.result.volume) && output.result.volume >= 0)",
-    "output.ok === false || (Number.isFinite(output.result.mass) && output.result.mass >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.mass) && output.result.mass >= 0) || (output.result.mass === null && Array.isArray(output.result.missingInputs) && output.result.missingInputs.length > 0)",
     "output.ok === false || (Number.isFinite(output.result.surfaceArea) && output.result.surfaceArea >= 0)",
     "output.ok === false || (output.result.boundingBox && Number.isFinite(output.result.boundingBox.x) && Number.isFinite(output.result.boundingBox.y) && Number.isFinite(output.result.boundingBox.z))"
   ],

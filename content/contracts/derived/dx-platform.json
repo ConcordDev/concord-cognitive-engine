@@ -285,6 +285,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dx-platform.inviteToTeam",
+      "name": "inviteToTeam"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dx-platform.issueTrend",
       "name": "issueTrend"
     },
@@ -300,6 +313,19 @@
       ],
       "macro_id": "dx-platform.joinTeam",
       "name": "joinTeam"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.leaveTeam",
+      "name": "leaveTeam"
     },
     {
       "_derived": false,
@@ -324,6 +350,19 @@
       ],
       "macro_id": "dx-platform.listCodebases",
       "name": "listCodebases"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.listMyTeams",
+      "name": "listMyTeams"
     },
     {
       "_derived": true,
@@ -523,5 +562,5 @@
   ],
   "domain": "dx-platform",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 18
+  "macroCount": 21
 }

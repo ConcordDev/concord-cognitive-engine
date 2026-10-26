@@ -253,6 +253,19 @@
       "name": "get"
     },
     {
+      "_derived": true,
+      "domain": "auctions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "auctions.list",
+      "name": "list"
+    },
+    {
       "_derived": false,
       "domain": "auctions",
       "fuzz_cases": [
@@ -383,5 +396,5 @@
   ],
   "domain": "auctions",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 11
+  "macroCount": 12
 }

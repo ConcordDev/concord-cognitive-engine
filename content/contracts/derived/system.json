@@ -179,6 +179,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "system.getStatus",
+      "name": "getStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.health",
+      "name": "health"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "system.heartbeat-health",
       "name": "heartbeat-health"
     },
@@ -549,5 +575,5 @@
   ],
   "domain": "system",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 24
+  "macroCount": 26
 }

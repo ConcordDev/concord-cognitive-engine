@@ -814,8 +814,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "legal.esign-envelope-send",
+      "name": "esign-envelope-send"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "legal.esign-envelope-sign",
       "name": "esign-envelope-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.esign-envelope-void",
+      "name": "esign-envelope-void"
     },
     {
       "_derived": true,
@@ -1594,5 +1620,5 @@
   ],
   "domain": "legal",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 87
+  "macroCount": 89
 }

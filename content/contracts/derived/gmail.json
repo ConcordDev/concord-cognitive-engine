@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "gmail.attachment",
+      "name": "attachment"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "gmail.connect",
       "name": "connect"
     },
@@ -23,8 +36,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "gmail.draft-delete",
+      "name": "draft-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.draft-save",
+      "name": "draft-save"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.draft-send",
+      "name": "draft-send"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.drafts",
+      "name": "drafts"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "gmail.get",
       "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.label-create",
+      "name": "label-create"
     },
     {
       "_derived": true,
@@ -75,6 +153,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "gmail.profile",
+      "name": "profile"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "gmail.send",
       "name": "send"
     },
@@ -88,11 +179,89 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "gmail.thread",
+      "name": "thread"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.thread-modify",
+      "name": "thread-modify"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.thread-trash",
+      "name": "thread-trash"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.thread-untrash",
+      "name": "thread-untrash"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.threads",
+      "name": "threads"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "gmail.trash",
       "name": "trash"
+    },
+    {
+      "_derived": true,
+      "domain": "gmail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gmail.untrash",
+      "name": "untrash"
     }
   ],
   "domain": "gmail",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 20
 }

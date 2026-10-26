@@ -218,8 +218,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.audit-append",
+      "name": "audit-append"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.audit-delete",
+      "name": "audit-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.audit-list",
+      "name": "audit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.audit-update",
+      "name": "audit-update"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.bookmark",
       "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.budget-simulate",
+      "name": "budget-simulate"
     },
     {
       "_derived": true,
@@ -634,6 +699,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.list_mine",
       "name": "list_mine"
     },
@@ -712,6 +790,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.member-join",
+      "name": "member-join"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.member-list",
+      "name": "member-list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.move",
       "name": "move"
     },
@@ -766,6 +870,84 @@
       ],
       "macro_id": "council.priority",
       "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposal-create",
+      "name": "proposal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposal-delete",
+      "name": "proposal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposal-list",
+      "name": "proposal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposal-update",
+      "name": "proposal-update"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposal-vote",
+      "name": "proposal-vote"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.proposePromotion",
+      "name": "proposePromotion"
     },
     {
       "_derived": true,
@@ -1193,5 +1375,5 @@
   ],
   "domain": "council",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 56
+  "macroCount": 70
 }

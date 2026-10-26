@@ -335,6 +335,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.delete",
+      "name": "delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.dislike",
       "name": "dislike"
     },
@@ -790,6 +803,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.rename",
+      "name": "rename"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.render",
       "name": "render"
     },
@@ -1095,5 +1121,5 @@
   ],
   "domain": "whiteboard",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 84
+  "macroCount": 86
 }

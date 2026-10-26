@@ -218,6 +218,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "temporal.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "temporal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "temporal.holidayForecast",
       "name": "holidayForecast"
     },
@@ -497,5 +510,5 @@
   ],
   "domain": "temporal",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 38
+  "macroCount": 39
 }

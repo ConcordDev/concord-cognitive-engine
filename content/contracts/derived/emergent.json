@@ -621,6 +621,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "emergent.context.inspector",
+      "name": "context.inspector"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "emergent.context.metrics",
       "name": "context.metrics"
     },
@@ -5177,5 +5190,5 @@
   ],
   "domain": "emergent",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 398
+  "macroCount": 399
 }

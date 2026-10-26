@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.assignCustody",
+      "name": "assignCustody"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.causal-link",
       "name": "causal-link"
     },
@@ -75,6 +88,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.count",
+      "name": "count"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.create",
       "name": "create"
     },
@@ -116,6 +142,19 @@
       ],
       "macro_id": "dtu.delete",
       "name": "delete"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.export",
+      "name": "export"
     },
     {
       "_derived": true,
@@ -205,8 +244,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.paginated",
+      "name": "paginated"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.protocol_validate",
       "name": "protocol_validate"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.recent",
+      "name": "recent"
     },
     {
       "_derived": true,
@@ -244,6 +309,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.shadow_access",
+      "name": "shadow_access"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.stats",
       "name": "stats"
     },
@@ -270,11 +361,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.tier_change",
+      "name": "tier_change"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.update",
       "name": "update"
     }
   ],
   "domain": "dtu",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 21
+  "macroCount": 29
 }

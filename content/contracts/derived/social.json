@@ -36,6 +36,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "social.cited-by",
+      "name": "cited-by"
+    },
+    {
+      "_derived": true,
+      "domain": "social",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "social.conversation",
       "name": "conversation"
     },
@@ -51,6 +64,32 @@
       ],
       "macro_id": "social.createPost",
       "name": "createPost"
+    },
+    {
+      "_derived": true,
+      "domain": "social",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "social.deletePost",
+      "name": "deletePost"
+    },
+    {
+      "_derived": true,
+      "domain": "social",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "social.discover",
+      "name": "discover"
     },
     {
       "_derived": true,
@@ -192,6 +231,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "social.profile",
+      "name": "profile"
+    },
+    {
+      "_derived": true,
+      "domain": "social",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "social.react",
       "name": "react"
     },
@@ -283,6 +335,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "social.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "social",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "social.shareTargets",
       "name": "shareTargets"
     },
@@ -341,5 +406,5 @@
   ],
   "domain": "social",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 26
+  "macroCount": 31
 }

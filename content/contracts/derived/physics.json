@@ -486,6 +486,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "physics.models",
+      "name": "models"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "physics.move",
       "name": "move"
     },
@@ -944,5 +957,5 @@
   ],
   "domain": "physics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 49
+  "macroCount": 50
 }

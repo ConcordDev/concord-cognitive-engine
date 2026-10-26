@@ -105,7 +105,13 @@ export function memoryCensus(STATE, top = 10) {
 function _tick(STATE) {
   if (++_censusTick >= CENSUS_EVERY_TICKS) {
     _censusTick = 0;
-    try { logger.log("info", "lib", "memory_census", memoryCensus(STATE)); } catch { /* diagnostic only */ }
+    // logger.log() drops meta from stdout, so emit one structured JSON line
+    // (same shape as the other `"event":` lines in backend.log).
+    try {
+      const census = memoryCensus(STATE);
+      logger.log("info", "lib", "memory_census", census);
+      console.log(JSON.stringify({ timestamp: new Date().toISOString(), level: "info", event: "memory_census", ...census }));
+    } catch { /* diagnostic only */ }
   }
   const mem = process.memoryUsage();
   const heapUsedMB = mem.heapUsed / (1024 * 1024);

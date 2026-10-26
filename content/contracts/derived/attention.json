@@ -270,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "attention.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "attention.like",
       "name": "like"
     },
@@ -614,5 +627,5 @@
   ],
   "domain": "attention",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 47
+  "macroCount": 48
 }

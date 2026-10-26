@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "markets.market-cancel",
+      "name": "market-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "markets.market-create",
       "name": "market-create"
     },
@@ -354,5 +367,5 @@
   ],
   "domain": "markets",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 27
+  "macroCount": 28
 }

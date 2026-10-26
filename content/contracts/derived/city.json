@@ -62,6 +62,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "city.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "city",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "city.get_budget",
       "name": "get_budget"
     },
@@ -90,6 +103,19 @@
       ],
       "macro_id": "city.latest_happiness",
       "name": "latest_happiness"
+    },
+    {
+      "_derived": true,
+      "domain": "city",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "city.list",
+      "name": "list"
     },
     {
       "_derived": true,
@@ -192,6 +218,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "city.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "city",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "city.summary",
       "name": "summary"
     },
@@ -211,5 +250,5 @@
   ],
   "domain": "city",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 16
+  "macroCount": 19
 }

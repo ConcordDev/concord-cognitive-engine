@@ -545,6 +545,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "manufacturing.machine-register",
+      "name": "machine-register"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "manufacturing.maintenance-complete",
       "name": "maintenance-complete"
     },
@@ -1078,6 +1091,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "manufacturing.spc-sample-log",
+      "name": "spc-sample-log"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "manufacturing.star",
       "name": "star"
     },
@@ -1169,11 +1195,37 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "manufacturing.work-order-create",
+      "name": "work-order-create"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.work-order-update",
+      "name": "work-order-update"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "manufacturing.work-orders",
       "name": "work-orders"
     }
   ],
   "domain": "manufacturing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 60
+  "macroCount": 64
 }

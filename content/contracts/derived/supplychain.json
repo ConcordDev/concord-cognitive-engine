@@ -451,8 +451,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "supplychain.orgApprove",
+      "name": "orgApprove"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "supplychain.orgCreate",
       "name": "orgCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgInvite",
+      "name": "orgInvite"
     },
     {
       "_derived": true,
@@ -1020,5 +1046,5 @@
   ],
   "domain": "supplychain",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 50
+  "macroCount": 52
 }

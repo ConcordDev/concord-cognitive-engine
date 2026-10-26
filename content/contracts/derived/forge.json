@@ -101,6 +101,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forge.generate-app",
+      "name": "generate-app"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forge.hybrid",
       "name": "hybrid"
     },
@@ -168,6 +181,19 @@
       ],
       "macro_id": "forge.openShare",
       "name": "openShare"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.preview",
+      "name": "preview"
     },
     {
       "_derived": true,
@@ -302,5 +328,5 @@
   ],
   "domain": "forge",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 23
+  "macroCount": 25
 }

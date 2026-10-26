@@ -244,6 +244,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "nonprofit.donation-page-public",
+      "name": "donation-page-public"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "nonprofit.donation-page-update",
       "name": "donation-page-update"
     },
@@ -926,5 +939,5 @@
   ],
   "domain": "nonprofit",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 71
+  "macroCount": 72
 }

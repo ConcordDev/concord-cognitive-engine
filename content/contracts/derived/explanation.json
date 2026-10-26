@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "explanation.dtu",
+      "name": "dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "explanation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "explanation.explain_dtu",
       "name": "explain_dtu"
     },
@@ -25,6 +38,19 @@
       ],
       "macro_id": "explanation.generate",
       "name": "generate"
+    },
+    {
+      "_derived": true,
+      "domain": "explanation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "explanation.get",
+      "name": "get"
     },
     {
       "_derived": true,
@@ -55,5 +81,5 @@
   ],
   "domain": "explanation",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 6
 }

@@ -14,6 +14,19 @@
       "name": "announce"
     },
     {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.archive_cohort",
+      "name": "archive_cohort"
+    },
+    {
       "_derived": false,
       "domain": "classroom",
       "fuzz_cases": [
@@ -283,6 +296,19 @@
       ],
       "macro_id": "classroom.gradebook",
       "name": "gradebook"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.leave_cohort",
+      "name": "leave_cohort"
     },
     {
       "_derived": true,
@@ -677,5 +703,5 @@
   ],
   "domain": "classroom",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 29
+  "macroCount": 31
 }

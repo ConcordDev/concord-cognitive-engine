@@ -147,8 +147,7 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": false,
-            "reason": "roadmap"
+            "ok": false
           },
           "input": {}
         }
@@ -215,8 +214,7 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": false,
-            "reason": "roadmap"
+            "ok": false
           },
           "input": {}
         }
@@ -362,7 +360,7 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": true
+            "ok": false
           },
           "input": {}
         }

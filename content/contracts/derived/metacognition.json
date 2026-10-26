@@ -413,6 +413,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.predictions",
+      "name": "predictions"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.predictions_list",
       "name": "predictions_list"
     },
@@ -640,5 +653,5 @@
   ],
   "domain": "metacognition",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 49
+  "macroCount": 50
 }

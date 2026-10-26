@@ -764,6 +764,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "government.payments-create-intent",
+      "name": "payments-create-intent"
+    },
+    {
+      "_derived": true,
+      "domain": "government",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "government.payments-list",
       "name": "payments-list"
     },
@@ -1264,5 +1277,5 @@
   ],
   "domain": "government",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 97
+  "macroCount": 98
 }
